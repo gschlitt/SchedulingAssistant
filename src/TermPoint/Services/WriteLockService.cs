@@ -553,7 +553,10 @@ public sealed class WriteLockService : IDisposable
             }
 
             if (await NetworkFileOps.DeleteAsync(path).ConfigureAwait(false))
+            {
                 App.Logger.LogInfo($"[WriteLockService] Released write lock: {path}");
+                CrashPoints.Hit("Lock.AfterDeleted");
+            }
             else
                 App.Logger.LogInfo($"[WriteLockService] Release: lock-file delete timed out — abandoning {path} (stale-lock takeover will reclaim it).");
         }
@@ -973,9 +976,10 @@ public sealed class WriteLockService : IDisposable
     {
         try
         {
-            using var fs = File.Open(_lockFilePath!, FileMode.CreateNew, FileAccess.Write, FileShare.None);
-            WriteLockData(fs);
-            return true;
+            // The stream is closed (and the payload flushed) at the end of this block, so the crash
+            // point below sees a complete lock file.
+            using (var fs = File.Open(_lockFilePath!, FileMode.CreateNew, FileAccess.Write, FileShare.None))
+                WriteLockData(fs);
         }
         catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
         {
@@ -1009,6 +1013,11 @@ public sealed class WriteLockService : IDisposable
                 $"hresult=0x{ex.HResult:X8} msg=\"{ex.Message}\" path={_lockFilePath}");
             return false;
         }
+
+        // Created and closed. Outside the try above so a hook's exception can never be mistaken for
+        // a failed create (the catch only handles IOException / UnauthorizedAccessException).
+        CrashPoints.Hit("Lock.AfterCreated");
+        return true;
     }
 
     /// <summary>
@@ -1269,7 +1278,9 @@ public sealed class WriteLockService : IDisposable
                     // Write to a temp file first, then atomically replace. This ensures
                     // a reader never observes a partially-written JSON file.
                     var tmp = path + ".tmp";
-                    renewed = await NetworkFileOps.WriteAllTextAsync(tmp, JsonSerializer.Serialize(data)).ConfigureAwait(false)
+                    var tmpWritten = await NetworkFileOps.WriteAllTextAsync(tmp, JsonSerializer.Serialize(data)).ConfigureAwait(false);
+                    if (tmpWritten) CrashPoints.Hit("Heartbeat.AfterTmpWritten");
+                    renewed = tmpWritten
                            && await NetworkFileOps.MoveAsync(tmp, path).ConfigureAwait(false);
                 }
 

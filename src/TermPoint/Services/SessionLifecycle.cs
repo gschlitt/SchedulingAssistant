@@ -899,6 +899,7 @@ public sealed class SessionLifecycle
             // A save-conflict resolution (resolveKeptChanges != null) NEVER saves: the save would be refused
             // (D changed elsewhere) and must never write D. The lock is simply given back.
             var saveOutcome = await _checkout.ReleaseAsync(saveFirst: wasWriteMode && resolveKeptChanges is null);
+            CrashPoints.Hit("Switch.AfterRelease");
 
             // Capture the current semester selection before DI teardown so it can be
             // restored after reinit without touching AppSettings (avoids a disk round-trip
@@ -916,6 +917,7 @@ public sealed class SessionLifecycle
             // as at startup), so the lines above — which this method runs again when the chooser
             // retries — never meet a disposed container.
             _host.ReleaseServices();
+            CrashPoints.Hit("Switch.AfterServicesReleased");
 
             if (resolveKeptChanges is not null)
             {
@@ -947,6 +949,7 @@ public sealed class SessionLifecycle
                     "They have been kept, and TermPoint will offer to restore them " +
                     "the next time you open that database.");
             }
+            CrashPoints.Hit("Switch.AfterOldCopyHandled");
 
             // The previous database is completely closed — its final save done, its working copy deleted
             // or deliberately kept — so give ITS guard back and keep only the target's. (When the target
@@ -1415,6 +1418,7 @@ public sealed class SessionLifecycle
                 var wasWriteMode = _checkout.Mode == CheckoutMode.WriteAccess;
                 _checkout.StopAutoSave();
                 var saveOutcome = await _checkout.ReleaseAsync(saveFirst: wasWriteMode);
+                CrashPoints.Hit("Close.AfterRelease");
 
                 // Close any detached panels / sticky notes BEFORE disposing the DI container,
                 // so windows whose content binds to view models are torn down while those VMs
@@ -1424,6 +1428,7 @@ public sealed class SessionLifecycle
 
                 // Dispose the DI container, which closes the SQLite connection cleanly.
                 _host.DisposeServices();
+                CrashPoints.Hit("Close.AfterServicesDisposed");
 
                 // Delete the working copy ONLY when its content is safely in D (save
                 // succeeded) or nothing was ever edited (no dirty marker). Otherwise the
@@ -1442,6 +1447,7 @@ public sealed class SessionLifecycle
                         "They have been kept, and TermPoint will offer to restore them " +
                         "the next time you open this database.");
                 }
+                CrashPoints.Hit("Close.AfterWorkingCopyCleanup");
             }
         }
         catch (Exception ex)

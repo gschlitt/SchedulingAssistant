@@ -132,6 +132,7 @@ internal static class NewFilePlacement
                 : await copyAsync(localPath, tmpPath).ConfigureAwait(false);
             if (!copied)
                 return UnreachableResult("copy to the share stalled", log);
+            CrashPoints.Hit("Place.AfterTmpWritten");
 
             var (hashCompleted, remoteHash) = await NetworkFileOps.ComputeHashAsync(tmpPath).ConfigureAwait(false);
             if (!hashCompleted)
@@ -155,6 +156,7 @@ internal static class NewFilePlacement
             }
 
             tmpTouched = false;   // .tmp became the target — nothing to clean up
+            CrashPoints.Hit("Place.AfterRename");
             return new NewDatabaseResult(NewDatabaseOutcome.Created);
         }
         finally

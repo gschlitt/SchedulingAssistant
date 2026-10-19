@@ -723,6 +723,7 @@ public sealed class CheckoutService : IDisposable
         // We hold the lock. Capture whether we got it by reclaiming a dead session, so the UI
         // can tell the user we recovered it. (Cleared for clean acquisitions.)
         ReclaimedDeadSession = _lockService.ReclaimedDeadSession;
+        CrashPoints.Hit("Checkout.AfterLockAcquired");
 
         // Recovery mode: adopt the crashed session's D' instead of copying D over it.
         if (recoverWorkingCopy)
@@ -775,10 +776,13 @@ public sealed class CheckoutService : IDisposable
             };
         }
 
+        CrashPoints.Hit("Checkout.AfterCopyVerified");
+
         // D' is verified. Before granting write access, make sure this app is new enough to
         // edit this database (and, in a Store/DirectDownload release that requires it, stamp it).
         if (await ApplyVersionGateAsync(isRecovery: false) is { } gated)
             return gated;
+        CrashPoints.Hit("Checkout.AfterVersionGate");
 
         // Write access is now certain and the lock is ours: only now may an orphaned D.tmp be removed.
         await CleanupOrphanedTmpOnceWriterAsync();
@@ -925,6 +929,7 @@ public sealed class CheckoutService : IDisposable
             CurrentHolder = _lockService.CurrentHolder;
             return CheckoutOutcome.Failed;
         }
+        CrashPoints.Hit("Checkout.AfterLockAcquired");
 
         // Recovery mode: adopt the crashed session's D' instead of copying D over it.
         if (recoverWorkingCopy)
@@ -993,9 +998,12 @@ public sealed class CheckoutService : IDisposable
             return CheckoutOutcome.Failed;
         }
 
+        CrashPoints.Hit("Checkout.AfterCopyVerified");
+
         // Same version gate as CheckoutAsync (see ApplyVersionGateAsync).
         if (await ApplyVersionGateAsync(isRecovery: false) is { } gated)
             return gated;
+        CrashPoints.Hit("Checkout.AfterVersionGate");
 
         // Write access is now certain and the lock is ours (see CheckoutAsync).
         await CleanupOrphanedTmpOnceWriterAsync();
@@ -1116,6 +1124,7 @@ public sealed class CheckoutService : IDisposable
 
         // D is byte-identical to what the crashed session checked out — safe to resume.
         HashAtCheckout = sourceHash;
+        CrashPoints.Hit("Recovery.AfterSourceVerified");
 
         // Version gate on the ADOPTED D' (its stamp is a superset of D's: stamps only go up).
         // On a trip, D' and its dirty marker are deliberately kept so recovery is offered
@@ -1676,6 +1685,7 @@ public sealed class CheckoutService : IDisposable
                 return SaveOutcome.LockLost;
             }
         }
+        CrashPoints.Hit("Save.AfterLockCheck");
 
         // ── Step 2: Verify D has not been externally modified ─────────────────
         if (HashAtCheckout is not null)
@@ -1730,6 +1740,8 @@ public sealed class CheckoutService : IDisposable
             }
         }
 
+        CrashPoints.Hit("Save.AfterSourceCheck");
+
         // ── Step 3: Snapshot D' locally, then stream the snapshot to D.tmp ───
         // 3a. BackupSqliteDatabase coordinates with the SQLite engine rather than
         //     copying raw bytes. This guarantees a consistent snapshot even if a
@@ -1763,6 +1775,7 @@ public sealed class CheckoutService : IDisposable
                     RaiseSaveError(SavePrompt.SessionFileMissingMessage, autoDismiss: false);
                 return SaveOutcome.CopyError;
             }
+            CrashPoints.Hit("Save.AfterLocalSnapshot");
 
             // 3b. Hash the snapshot for post-save conflict detection. BackupDatabase
             //     output is not byte-identical to D' (SQLite increments page-level
@@ -1807,6 +1820,7 @@ public sealed class CheckoutService : IDisposable
                 RaiseTransientSaveError(msg, isAutoSave);
                 return SaveOutcome.CopyError;
             }
+            CrashPoints.Hit("Save.AfterTmpCopy");
         }
         finally
         {
@@ -1858,6 +1872,8 @@ public sealed class CheckoutService : IDisposable
             return SaveOutcome.CopyError;
         }
 
+        CrashPoints.Hit("Save.AfterTmpVerify");
+
         // ── Step 5: Atomically rename D.tmp → D ──────────────────────────────
         try
         {
@@ -1901,6 +1917,8 @@ public sealed class CheckoutService : IDisposable
             return SaveOutcome.CopyError;
         }
 
+        CrashPoints.Hit("Save.AfterRename");
+
         // ── Step 6: Update state ─────────────────────────────────────────────
         HashAtCheckout   = newSourceHash;
         _pendingSaveHash = null;   // this save is confirmed — no ghost outstanding
@@ -1915,6 +1933,7 @@ public sealed class CheckoutService : IDisposable
         // removed. See the event docstring for the F2 race rationale.
         BeforeDirtyMarkerDeleted?.Invoke();
         DeleteDirtyMarker();
+        CrashPoints.Hit("Save.AfterMarkerDelete");
         if (releaseLockAfter)
             _lockService.Release();
 
@@ -2368,6 +2387,7 @@ public sealed class CheckoutService : IDisposable
                         return RefreshOutcome.SourceUnavailable;
                     }
                 }
+                CrashPoints.Hit("Refresh.AfterConnectionClosed");
 
                 try
                 {
@@ -2382,6 +2402,8 @@ public sealed class CheckoutService : IDisposable
                     TryDelete(tmpPath);
                     return RefreshOutcome.SourceUnavailable;
                 }
+
+                CrashPoints.Hit("Refresh.AfterSwap");
 
                 HashAtCheckout = sourceHash;
 
@@ -2433,6 +2455,7 @@ public sealed class CheckoutService : IDisposable
                     isAutoSave: false);
                 RaiseSaveError(SavePrompt.CrashProtectionMessage, autoDismiss: true);
             }
+            CrashPoints.Hit("Dirty.AfterMarkerWritten");
             _dispatch(() => BecameDirty?.Invoke());
         }
     }
@@ -2522,7 +2545,9 @@ public sealed class CheckoutService : IDisposable
     {
         var workingPath = ComputeWorkingPath(sourcePath);
         TryDelete(workingPath);
+        CrashPoints.Hit("Discard.AfterWorkingFileDeleted");
         TryDeleteWalSidecars(workingPath);
+        CrashPoints.Hit("Discard.AfterSidecarsDeleted");
         TryDelete(workingPath + ".dirty");
     }
 
@@ -2659,6 +2684,7 @@ public sealed class CheckoutService : IDisposable
         // destination just before writing, because the snapshot takes a moment. The leftover-.tmp removal is
         // awaited: nothing else would ever sweep a stray dest.tmp beside a file the user chose.
         await Task.Run(() => BackupSqliteDatabase(workingPath, localPath)).ConfigureAwait(false);
+        CrashPoints.Hit("Export.AfterLocalSnapshot");
         return await NewFilePlacement.PlaceAsync(localPath, destPath, awaitTmpCleanup: true, logger: _logger)
             .ConfigureAwait(false);
     }
@@ -3011,6 +3037,7 @@ public sealed class CheckoutService : IDisposable
             await WaitForInFlightSaveAsync();
 
             outcome = await SaveAsync(releaseLockAfter: true);
+            CrashPoints.Hit("Release.AfterFinalSave");
 
             if (outcome == SaveOutcome.CopyError)
                 _lockService.Suspend();          // keep the lock file — see doc above
@@ -3022,6 +3049,7 @@ public sealed class CheckoutService : IDisposable
         {
             _lockService.Release();
         }
+        CrashPoints.Hit("Release.AfterLockReleased");
 
         Mode = CheckoutMode.ReadOnly;
         LockLossNewHolder = null;
@@ -3490,6 +3518,7 @@ public sealed class CheckoutService : IDisposable
         StopAutoSave();
         _lockService.WakeDetected -= OnWake;
         _lockService.Release();
+        CrashPoints.Hit("Demote.AfterLockReleased");
 
         // 3 — let the caller close the DatabaseContext connection to D'.
         if (beforeClose is not null)
@@ -3500,6 +3529,7 @@ public sealed class CheckoutService : IDisposable
                 _logger.LogError(ex, "CheckoutService: DemoteToReadOnly — beforeClose callback threw");
             }
         }
+        CrashPoints.Hit("Demote.AfterConnectionClosed");
 
         // 4 — dispose of D' now that the connection is closed. When unsaved edits
         // exist (dirty marker present), D' and the marker are deliberately PRESERVED:
@@ -3529,11 +3559,14 @@ public sealed class CheckoutService : IDisposable
             }
         }
 
+        CrashPoints.Hit("Demote.AfterWorkingCopyHandled");
+
         SessionDirty = false;
 
         // 5 — create D''. SetupReadOnlySnapshotAsync updates WorkingPath and Mode.
         var readOnlyPath = await SetupReadOnlySnapshotAsync();
         var success = readOnlyPath is not null;
+        CrashPoints.Hit("Demote.AfterSnapshotCreated");
 
         if (!success)
         {

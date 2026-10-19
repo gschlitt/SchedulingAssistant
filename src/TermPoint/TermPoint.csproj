@@ -66,6 +66,7 @@
     <Compile Remove="Services\UpdateService.cs" />
     <Compile Remove="Services\MinimumVersionToWrite.cs" />
     <Compile Remove="Services\NetworkFileOps.cs" />
+    <Compile Remove="Services\NetworkFaults.cs" />
     <Compile Remove="Services\NewDatabaseFile.cs" />
     <Compile Remove="Services\NewFilePlacement.cs" />
     <Compile Remove="Services\RestoreDestination.cs" />

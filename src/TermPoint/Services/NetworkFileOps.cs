@@ -99,7 +99,7 @@ public static class NetworkFileOps
     /// <c>(false, false)</c> on timeout.
     /// </returns>
     public static Task<(bool Completed, bool Exists)> ExistsAsync(string path)
-        => RunAsync(() => File.Exists(path), "File.Exists");
+        => RunAsync(() => File.Exists(path), "File.Exists", path, null);
 
     /// <summary>
     /// Timeout-aware <see cref="Directory.Exists(string)"/>. Useful as a
@@ -111,7 +111,7 @@ public static class NetworkFileOps
     /// <c>(false, false)</c> on timeout.
     /// </returns>
     public static Task<(bool Completed, bool Exists)> DirectoryExistsAsync(string path)
-        => RunAsync(() => Directory.Exists(path), "Directory.Exists");
+        => RunAsync(() => Directory.Exists(path), "Directory.Exists", path, null);
 
     /// <summary>
     /// Timeout-aware existence probe that distinguishes a genuinely missing file
@@ -137,26 +137,40 @@ public static class NetworkFileOps
     /// <returns>The tri-state probe outcome; never throws.</returns>
     public static async Task<FileProbeResult> ProbeFileAsync(string path)
     {
-        var (completed, result) = await RunAsync(() =>
+        bool completed;
+        FileProbeResult result;
+        try
         {
-            try
+            (completed, result) = await RunAsync(() =>
             {
-                File.GetAttributes(path);
-                return FileProbeResult.Exists;
-            }
-            catch (FileNotFoundException)
-            {
-                return FileProbeResult.Missing;
-            }
-            catch (DirectoryNotFoundException)
-            {
-                return FileProbeResult.Missing;
-            }
-            catch
-            {
-                return FileProbeResult.Unreachable;
-            }
-        }, "ProbeFile").ConfigureAwait(false);
+                try
+                {
+                    File.GetAttributes(path);
+                    return FileProbeResult.Exists;
+                }
+                catch (FileNotFoundException)
+                {
+                    return FileProbeResult.Missing;
+                }
+                catch (DirectoryNotFoundException)
+                {
+                    return FileProbeResult.Missing;
+                }
+                catch
+                {
+                    return FileProbeResult.Unreachable;
+                }
+            }, "ProbeFile", path, null).ConfigureAwait(false);
+        }
+        // Test seam: the real probe never throws (its lambda catches everything), so this filter is false in
+        // the app and the catch can never run. Under an injected Throw fault the exception is classified the
+        // way the lambda above classifies a real one.
+        catch (Exception ex) when (NetworkFaults.Decide is not null)
+        {
+            return ex is FileNotFoundException || ex is DirectoryNotFoundException
+                ? FileProbeResult.Missing
+                : FileProbeResult.Unreachable;
+        }
 
         return completed ? result : FileProbeResult.Unreachable;
     }
@@ -172,7 +186,36 @@ public static class NetworkFileOps
     /// <c>(true, hash)</c> when the whole file was read.
     /// <c>(false, null)</c> when the open or any single chunk stalled past the deadline.
     /// </returns>
-    public static async Task<(bool Completed, string? Hash)> ComputeHashAsync(string path)
+    public static Task<(bool Completed, string? Hash)> ComputeHashAsync(string path)
+        => NetworkFaults.Decide is null ? ComputeHashCoreAsync(path) : ComputeHashFaultableAsync(path);
+
+    /// <summary>
+    /// Test seam (<see cref="NetworkFaults"/>): consults the injector for one <see cref="ComputeHashAsync"/> call and
+    /// applies the fault, or runs the real hash when the injector declines. A timeout is reported as the real stall
+    /// is: <c>(false, null)</c> with the same stall line logged.
+    /// </summary>
+    /// <param name="path">File to hash.</param>
+    /// <returns>As <see cref="ComputeHashAsync"/>.</returns>
+    private static async Task<(bool Completed, string? Hash)> ComputeHashFaultableAsync(string path)
+    {
+        var fault = NetworkFaults.Consult("ComputeHash", path, null);
+        if (fault.Kind == NetworkFaultKind.None)
+            return await ComputeHashCoreAsync(path).ConfigureAwait(false);
+
+        await ApplyFaultAsync(
+            fault,
+            () => ComputeHashCoreAsync(path),
+            () => LogStall(fault.Kind == NetworkFaultKind.TimeOut ? "ComputeHash (open)" : "ComputeHash (read)"),
+            "ComputeHash").ConfigureAwait(false);
+        return (false, null);
+    }
+
+    /// <summary>
+    /// The real <see cref="ComputeHashAsync"/>: opens the file under a deadline, then hashes it chunk by chunk.
+    /// </summary>
+    /// <param name="path">File to hash.</param>
+    /// <returns>As <see cref="ComputeHashAsync"/>.</returns>
+    private static async Task<(bool Completed, string? Hash)> ComputeHashCoreAsync(string path)
     {
         FileStream? stream = null;
         try
@@ -241,7 +284,39 @@ public static class NetworkFileOps
     /// destination file behind; callers delete it as they do today.
     /// </summary>
     /// <returns><c>true</c> when the copy completed; <c>false</c> when the open or any single chunk stalled.</returns>
-    public static async Task<bool> CopyAsync(string source, string dest)
+    public static Task<bool> CopyAsync(string source, string dest)
+        => NetworkFaults.Decide is null ? CopyCoreAsync(source, dest) : CopyFaultableAsync(source, dest);
+
+    /// <summary>
+    /// Test seam (<see cref="NetworkFaults"/>): consults the injector for one <see cref="CopyAsync"/> call and applies
+    /// the fault, or runs the real copy when the injector declines. A timeout is reported as the real stall is:
+    /// <c>false</c> with the same stall line logged. <see cref="NetworkFaultKind.TimeOut"/> creates no destination
+    /// file; <see cref="NetworkFaultKind.TimeOutAfterRunning"/> leaves the fully copied destination behind.
+    /// </summary>
+    /// <param name="source">File to copy.</param>
+    /// <param name="dest">Destination file.</param>
+    /// <returns>As <see cref="CopyAsync"/>.</returns>
+    private static async Task<bool> CopyFaultableAsync(string source, string dest)
+    {
+        var fault = NetworkFaults.Consult("CopyFile", source, dest);
+        if (fault.Kind == NetworkFaultKind.None)
+            return await CopyCoreAsync(source, dest).ConfigureAwait(false);
+
+        await ApplyFaultAsync(
+            fault,
+            () => CopyCoreAsync(source, dest),
+            () => LogStall(fault.Kind == NetworkFaultKind.TimeOut ? "CopyFile (open)" : "CopyFile (close)"),
+            "CopyFile").ConfigureAwait(false);
+        return false;
+    }
+
+    /// <summary>
+    /// The real <see cref="CopyAsync"/>: opens both files under a deadline, then copies chunk by chunk.
+    /// </summary>
+    /// <param name="source">File to copy.</param>
+    /// <param name="dest">Destination file.</param>
+    /// <returns>As <see cref="CopyAsync"/>.</returns>
+    private static async Task<bool> CopyCoreAsync(string source, string dest)
     {
         FileStream? src = null, dst = null;
         try
@@ -408,7 +483,7 @@ public static class NetworkFileOps
     /// <returns><c>true</c> when the move completed within the deadline; <c>false</c> on timeout.</returns>
     /// <exception cref="IOException">The move failed (including an existing destination when <paramref name="overwrite"/> is false).</exception>
     public static Task<bool> MoveAsync(string source, string dest, bool overwrite = true)
-        => RunAsync(() => MoveWithRetry(source, dest, overwrite), "File.Move");
+        => RunAsync(() => MoveWithRetry(source, dest, overwrite), "File.Move", source, dest);
 
     /// <summary>
     /// Timeout-aware <see cref="File.Delete(string)"/>. Non-throwing on timeout — cleanup
@@ -419,7 +494,7 @@ public static class NetworkFileOps
     {
         try
         {
-            return await RunAsync(() => File.Delete(path), "File.Delete").ConfigureAwait(false);
+            return await RunAsync(() => File.Delete(path), "File.Delete", path, null).ConfigureAwait(false);
         }
         catch
         {
@@ -435,14 +510,14 @@ public static class NetworkFileOps
     /// <c>(false, null)</c> on timeout.
     /// </returns>
     public static Task<(bool Completed, string? Text)> ReadAllTextAsync(string path)
-        => RunAsync(() => File.ReadAllText(path), "File.ReadAllText");
+        => RunAsync(() => File.ReadAllText(path), "File.ReadAllText", path, null);
 
     /// <summary>
     /// Timeout-aware <see cref="File.WriteAllText(string, string)"/>.
     /// </summary>
     /// <returns><c>true</c> when the write completed within the deadline; <c>false</c> on timeout.</returns>
     public static Task<bool> WriteAllTextAsync(string path, string content)
-        => RunAsync(() => File.WriteAllText(path, content), "File.WriteAllText");
+        => RunAsync(() => File.WriteAllText(path, content), "File.WriteAllText", path, null);
 
     /// <summary>
     /// Timeout-aware <see cref="BackupService.CheckIntegrity(string)"/>.
@@ -452,7 +527,7 @@ public static class NetworkFileOps
     /// <c>(false, false)</c> on timeout.
     /// </returns>
     public static Task<(bool Completed, bool Passed)> CheckIntegrityAsync(string path)
-        => RunAsync(() => BackupService.CheckIntegrity(path), "CheckIntegrity");
+        => RunAsync(() => BackupService.CheckIntegrity(path), "CheckIntegrity", path, null);
 
     /// <summary>
     /// Timeout-aware <see cref="BackupService.CheckIntegrityWithSummary"/>: like <see cref="CheckIntegrityAsync"/>,
@@ -467,7 +542,7 @@ public static class NetworkFileOps
     /// for an Ok result. <c>(false, default)</c> on timeout; the check is meaningless then.
     /// </returns>
     public static Task<(bool Completed, IntegrityCheckOutcome Check)> CheckIntegrityWithSummaryAsync(string path)
-        => RunAsync(() => BackupService.CheckIntegrityWithSummary(path), "CheckIntegrity");
+        => RunAsync(() => BackupService.CheckIntegrityWithSummary(path), "CheckIntegrity", path, null);
 
     // ── Generic fallbacks ─────────────────────────────────────────────────────
 
@@ -483,20 +558,82 @@ public static class NetworkFileOps
     /// <c>(true, result)</c> when the operation completed within the deadline.
     /// <c>(false, default)</c> on timeout.
     /// </returns>
-    public static async Task<(bool Completed, T? Result)> RunAsync<T>(
+    public static Task<(bool Completed, T? Result)> RunAsync<T>(
         Func<T> operation, string label)
+        => RunAsync(operation, label, null, null);
+
+    /// <summary>
+    /// <see cref="RunAsync{T}(Func{T}, string)"/> with the path(s) the operation works on, so the test-only
+    /// <see cref="NetworkFaults"/> injector can fault only operations under the share. The named helpers call this;
+    /// it is the single place the injector is consulted for them, so a helper is never consulted twice.
+    /// </summary>
+    /// <typeparam name="T">Return type of the operation.</typeparam>
+    /// <param name="operation">Synchronous operation to run.</param>
+    /// <param name="label">Human-readable label for log messages and fault requests.</param>
+    /// <param name="path">The path the operation works on (the source for a move), or null if it has none to name.</param>
+    /// <param name="destinationPath">The destination of a move, or null.</param>
+    /// <returns>As <see cref="RunAsync{T}(Func{T}, string)"/>.</returns>
+    internal static async Task<(bool Completed, T? Result)> RunAsync<T>(
+        Func<T> operation, string label, string? path, string? destinationPath)
     {
+        if (NetworkFaults.Decide is not null)
+        {
+            var fault = NetworkFaults.Consult(label, path, destinationPath);
+            if (fault.Kind != NetworkFaultKind.None)
+            {
+                await ApplyFaultAsync(fault, () => Task.Run(operation), () => LogTimeout(label), label)
+                    .ConfigureAwait(false);
+                return (false, default);
+            }
+        }
+
         var task = Task.Run(operation);
         var winner = await Task.WhenAny(task, Task.Delay(TimeoutMs)).ConfigureAwait(false);
 
         if (winner == task)
             return (true, await task.ConfigureAwait(false));
 
-        App.Logger.LogInfo(
-            $"NetworkFileOps: {label} timed out after {TimeoutMs}ms " +
-            "— network may be unavailable");
+        LogTimeout(label);
         ObserveAbandonedTask(task, label);
         return (false, default);
+    }
+
+    /// <summary>Logs that a <see cref="RunAsync(Action, string)"/>-style operation exceeded its deadline.</summary>
+    /// <param name="label">The operation's label.</param>
+    private static void LogTimeout(string label)
+        => App.Logger.LogInfo(
+            $"NetworkFileOps: {label} timed out after {TimeoutMs}ms " +
+            "— network may be unavailable");
+
+    /// <summary>
+    /// Test seam (<see cref="NetworkFaults"/>): carries out an injected fault. Returns normally when the call should
+    /// now report a timeout (the caller returns its own "not completed" value); throws for
+    /// <see cref="NetworkFaultKind.Throw"/>.
+    /// <list type="bullet">
+    /// <item><see cref="NetworkFaultKind.TimeOut"/>: the operation is not run; the timeout line is logged.</item>
+    /// <item><see cref="NetworkFaultKind.TimeOutAfterRunning"/>: the operation is run to completion and its result
+    /// discarded, then the timeout line is logged. If it throws, that is logged as an abandoned task's fault is.</item>
+    /// </list>
+    /// </summary>
+    /// <param name="fault">The injector's decision; its kind is not <see cref="NetworkFaultKind.None"/>.</param>
+    /// <param name="run">Starts the real operation; only invoked for <see cref="NetworkFaultKind.TimeOutAfterRunning"/>.</param>
+    /// <param name="logTimeout">Writes the same timeout/stall line the real path writes for this operation.</param>
+    /// <param name="label">The operation's label, for the abandoned-task fault line.</param>
+    /// <exception cref="Exception">The injected exception, for <see cref="NetworkFaultKind.Throw"/>.</exception>
+    private static async Task ApplyFaultAsync(
+        NetworkFaultDecision fault, Func<Task> run, Action logTimeout, string label)
+    {
+        if (fault.Kind == NetworkFaultKind.Throw)
+            throw fault.Exception ?? new IOException("Injected network fault.");
+
+        if (fault.Kind == NetworkFaultKind.TimeOutAfterRunning)
+        {
+            var task = run();
+            try { await task.ConfigureAwait(false); }
+            catch { ObserveAbandonedTask(task, label); }
+        }
+
+        logTimeout();
     }
 
     /// <summary>
@@ -523,8 +660,31 @@ public static class NetworkFileOps
     /// </summary>
     /// <param name="operation">Synchronous operation to run.</param>
     /// <param name="label">Human-readable label for log messages.</param>
-    public static async Task<bool> RunAsync(Action operation, string label)
+    public static Task<bool> RunAsync(Action operation, string label)
+        => RunAsync(operation, label, null, null);
+
+    /// <summary>
+    /// <see cref="RunAsync(Action, string)"/> with the path(s) the operation works on, for the test-only
+    /// <see cref="NetworkFaults"/> injector (see <see cref="RunAsync{T}(Func{T}, string, string?, string?)"/>).
+    /// </summary>
+    /// <param name="operation">Synchronous operation to run.</param>
+    /// <param name="label">Human-readable label for log messages and fault requests.</param>
+    /// <param name="path">The path the operation works on, or null if it has none to name.</param>
+    /// <param name="destinationPath">The destination of a move or copy, or null.</param>
+    /// <returns>As <see cref="RunAsync(Action, string)"/>.</returns>
+    internal static async Task<bool> RunAsync(Action operation, string label, string? path, string? destinationPath)
     {
+        if (NetworkFaults.Decide is not null)
+        {
+            var fault = NetworkFaults.Consult(label, path, destinationPath);
+            if (fault.Kind != NetworkFaultKind.None)
+            {
+                await ApplyFaultAsync(fault, () => Task.Run(operation), () => LogTimeout(label), label)
+                    .ConfigureAwait(false);
+                return false;
+            }
+        }
+
         var task = Task.Run(operation);
         var winner = await Task.WhenAny(task, Task.Delay(TimeoutMs)).ConfigureAwait(false);
 
@@ -534,9 +694,7 @@ public static class NetworkFileOps
             return true;
         }
 
-        App.Logger.LogInfo(
-            $"NetworkFileOps: {label} timed out after {TimeoutMs}ms " +
-            "— network may be unavailable");
+        LogTimeout(label);
         ObserveAbandonedTask(task, label);
         return false;
     }

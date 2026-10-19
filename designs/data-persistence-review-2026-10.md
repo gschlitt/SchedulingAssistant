@@ -488,6 +488,25 @@ The seams, all test-only, each a no-op (or the current behaviour) in the app:
 - **Noticed, existing:** when `StartPolling` runs while a poll timer already exists (the takeover's lost race), the
   old timer is replaced without being disposed.
 
+**9.2b done 2026-10-18 (seams 4–5, uncommitted):**
+- **Network faults:** `Services/NetworkFaults.cs` (`TimeOut`, `TimeOutAfterRunning`, `Throw`, scoped by label and
+  path). It is consulted once per operation: in `RunAsync`'s two forms, which the named helpers now give their paths
+  to, and in `ComputeHashAsync` and `CopyAsync`. With no injector the public methods run the unchanged bodies.
+- **Crash points:** `Services/CrashPoints.cs`, a catalogue of 45 named points across the save, checkout, recovery,
+  release, demotion, discard, export and placement, restore, refresh, close, switch and the lock file. A test checks
+  that the catalogue matches every `Hit` in the source.
+  - Two restructures, both equivalent: the lock create closes its file before its crash point, and the heartbeat's
+    two-step write is split in two.
+- **Tests:** 15 `FaultSeamTests`. Suite: 2694 passed + 21 skipped.
+- **For the harness:**
+  - A ghost rename needs two faults. The save probes the database after a timed-out rename, so `File.Move` must run
+    and then time out, and the database's hash must time out too.
+  - Share I/O inside `WriteLockService` (create, reclaim, force, reader reads) bypasses `NetworkFileOps`. Fault it
+    through the wrapping `RunAsync` labels ("lock acquire", "force lock acquire", "enter reader mode").
+- **One unidentified failure:** in a slow full run (3 min 34 s instead of about 2 min 15 s) one test failed, and the
+  run did not record which. Three later full runs and six runs of the new and lifecycle tests were all green. It is
+  most likely an existing timing-sensitive test under load. Watch for it.
+
 **Size and proof:** one small commit per pair of seams (1–3, then 4–5). Each is checked like 9.1: default behaviour
 unchanged, the full suite green, and production diffs limited to the seam itself.
 

@@ -320,6 +320,7 @@ public static class DatabaseRestore
 
             // 2. Stage the backup locally.
             if (await StageBackupAsync().ConfigureAwait(false) is { } stageFailure) return stageFailure;
+            CrashPoints.Hit("Restore.AfterStaged");
 
             // 3. Integrity-check, normalise and hash the staged copy.
             if (await CheckAndNormaliseStagedAsync().ConfigureAwait(false) is { } checkFailure) return checkFailure;
@@ -329,19 +330,24 @@ public static class DatabaseRestore
 
             // 5. Keep a verified copy of the D being replaced.
             if (await KeepPreRestoreCopyAsync().ConfigureAwait(false) is { } preCopyFailure) return preCopyFailure;
+            CrashPoints.Hit("Restore.AfterPreRestoreCopy");
 
             // 6. Stream to D.tmp.
             if (await StreamToTargetTmpAsync().ConfigureAwait(false) is { } copyFailure) return copyFailure;
+            CrashPoints.Hit("Restore.AfterTmpWritten");
 
             // 7. Verify D.tmp.
             if (await VerifyTargetTmpAsync().ConfigureAwait(false) is { } verifyFailure) return verifyFailure;
+            CrashPoints.Hit("Restore.AfterTmpVerified");
 
             // 8. Final checks immediately before the swap.
             if (await CheckLockAsync(atTheSwap: true).ConfigureAwait(false) is { } lockLate) return lockLate;
             if (await ConfirmTargetUnchangedAsync().ConfigureAwait(false) is { } changedLate) return changedLate;
 
             // 9. Swap.
-            return await SwapAsync().ConfigureAwait(false);
+            var swapped = await SwapAsync().ConfigureAwait(false);
+            CrashPoints.Hit("Restore.AfterRename");
+            return swapped;
         }
 
         /// <summary>
@@ -358,6 +364,7 @@ public static class DatabaseRestore
 
             // C2. Stage the backup locally (shared with the replace path).
             if (await StageBackupAsync().ConfigureAwait(false) is { } stageFailure) return stageFailure;
+            CrashPoints.Hit("Restore.AfterStaged");
 
             // C3. Integrity-check, normalise, TermPoint-tables check and hash (shared with the replace path).
             if (await CheckAndNormaliseStagedAsync().ConfigureAwait(false) is { } checkFailure) return checkFailure;
