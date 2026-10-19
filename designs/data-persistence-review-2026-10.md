@@ -435,6 +435,10 @@ implementations, the wiring of `CheckoutService` events to the view model, and t
     - the tests read `CheckoutService`'s private autosave timer by reflection; there is no public "is autosave
       running" property.
 - **9.1d:** the hand smoke test, then commit.
+  **Done 2026-10-18:** the user ran all 12 rows on database copies (open, close and reopen, switch, crash with
+  Restore and with Discard, stale lock, lost lock, conflict with Save a Copy and with Discard, close with the
+  conflict pending, restore from a backup, two DEBUG failure switches). All behaved as before. Helper:
+  `tmp/handtest_lock.py` (gitignored) plays Alice holding the lock. **Step 9.1 is complete.**
 
 Each sub-step is implemented by Sonnet from a brief; Opus reviews the diff (moved-lines view) and re-runs the
 compile check and the full suite independently. `MainWindow.axaml` itself is not touched.
