@@ -154,7 +154,7 @@ All of 2.8 stems from one choice: the working folder is `Environment.SpecialFold
 | **F9** | Kept files live in roaming `AppData`: they can roam back older, or sit on a server under folder redirection | 3/4 | **New** | Medium: move to `%LocalAppData%`, with a one-time migration that still finds 1.2.2's kept files |
 | **F10** | Observer mode never mentions kept changes | 4 | **New** | Small |
 | **F11** | 10b's switch wording on "Take over as writer" for the same database | 4 | **Moot**: 10b shelved 2026-10-18 | — |
-| **F12** | The save doesn't re-check the lock just before the rename | 2 | **New**, theoretical | Small: one check before step 5, as the restore already does |
+| **F12** | The save doesn't re-check the lock (or the database) just before the rename. **Confirmed by the harness 2026-10-19:** with another session's lock placed in the instant before Bob's rename, his save still lands over the database. Realistic route: Bob's laptop sleeps mid-save (after `D.tmp` is checked), Alice takes over the stale lock and saves, Bob wakes and the rename lands over Alice's save. Her edits leave the database (I1) | 1, 2 | **New, raised from theoretical** | Small: re-check the lock and the fingerprint immediately before step 5, as the restore already does |
 | **F13** | A damaged lock file is reported as "removed"; jargon | 4 | Known | Small |
 | **F14** | Kept changes on another computer are invisible from this one | 4 | **New** | Hard; probably a message only |
 | **F15** | Messages during a network outage: the autosave banner clears itself after 30 s while saves keep failing (nothing on screen until the next autosave, 10 min later); "Try saving again in a moment" is wrong advice in a long outage; the heartbeat adds a second message for the same problem, worded "safe locally"; closing then gets "Changes Not Saved" with its restore promise (F6) | 4 | **New** | Small/medium: one persistent "can't reach the database" state that clears only when a save works, one wording |
@@ -578,6 +578,22 @@ them from the list one by one, and the harness proves each is gone.
       DateTime.UtcNow)` in the lifecycle), so under fake time it reads "for a while";
     - edits per file are inspected on request, not tracked automatically.
 - **9.3b:** the invariants and the story printer.
+  **Done 2026-10-19 (uncommitted):**
+  - **The checks:**
+    - one funnel (`World.Do`) runs I1–I5 after every step;
+    - the ledger of where every edit is;
+    - dialog answers record Affirmative / Negative / closed with the X;
+    - I4 observes the rename through the crash-point hook;
+    - I5 uses a catalogue of message promises, and flags unclassified ones;
+    - a findings classifier, with each walk declaring the findings it expects;
+    - the story printer.
+  - **Findings produced:** walks 1, 2 and 5 none; walk 3 F7; walk 4 F6 and F7.
+  - **11 proof tests:** each invariant fires as intended, and the X on "Restore?" is classified as F1. **F12 is
+    confirmed:** with Alice's lock placed just before Bob's rename, his save returns Success and lands over the
+    database (raised in section 3).
+  - **Results:** harness 16/16 green; normal suite 2694 passed + 37 skipped.
+  - **Limitations:** checks run at step ends (I4 excepted); a restore-side I4 breach is not exercised; the
+    support-archive and save-failure promises are wired but not yet driven by a walk.
 - **9.3c:** the three strategies, the shrinker and the known-problems list.
 - **9.3d:** the first full run against today's code, and a report: every failure found, matched to a finding or
   added to section 3 as a new one.

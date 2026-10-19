@@ -1,5 +1,6 @@
 using TermPoint.Services;
 using Xunit;
+using Xunit.Abstractions;
 
 namespace TermPoint.Tests.Harness;
 
@@ -20,6 +21,12 @@ namespace TermPoint.Tests.Harness;
 /// </summary>
 public sealed class HarnessWalkTests
 {
+    /// <summary>The test output, where each walk's story is written.</summary>
+    private readonly ITestOutputHelper _output;
+
+    /// <summary>Creates the test class for one test.</summary>
+    /// <param name="output">xUnit's output for the test.</param>
+    public HarnessWalkTests(ITestOutputHelper output) => _output = output;
     /// <summary>The title of the stale-lock question.</summary>
     private const string StaleLockTitle = "Database Lock Is Inactive";
 
@@ -62,7 +69,7 @@ public sealed class HarnessWalkTests
     [HarnessFact]
     public async Task Walk1_BobSavesAndCloses_AliceSeesHisEdit()
     {
-        using var world = new World();
+        using var world = new World(_output, "Walk1_BobSavesAndCloses_AliceSeesHisEdit");
         world.CreateDatabase();
         var bob   = world.AddComputer("bob");
         var alice = world.AddComputer("alice");
@@ -100,6 +107,7 @@ public sealed class HarnessWalkTests
         Assert.Empty(AskedBy(bob));
         Assert.Empty(AskedBy(alice));
         world.AssertAllScriptsConsumed();
+        world.Finish();
     }
 
     // ═════════════════════════════════════════════════════════════════════════
@@ -114,7 +122,7 @@ public sealed class HarnessWalkTests
     [HarnessFact]
     public async Task Walk2_BobCrashes_RestartsAndRestores_TheOpenSavesHisWork()
     {
-        using var world = new World();
+        using var world = new World(_output, "Walk2_BobCrashes_RestartsAndRestores_TheOpenSavesHisWork");
         world.CreateDatabase();
         var bob = world.AddComputer("bob");
 
@@ -148,6 +156,7 @@ public sealed class HarnessWalkTests
         await bob.CloseAsync();
         Assert.Equal(new[] { "bob-1" }, world.EditsInDatabase());
         world.AssertAllScriptsConsumed();
+        world.Finish();
     }
 
     // ═════════════════════════════════════════════════════════════════════════
@@ -168,7 +177,8 @@ public sealed class HarnessWalkTests
     [HarnessFact]
     public async Task Walk3_BobCrashes_AliceTakesOver_BobComesBack_CantRestore_SavesACopy()
     {
-        using var world = new World();
+        using var world = new World(_output, "Walk3_BobCrashes_AliceTakesOver_BobComesBack_CantRestore_SavesACopy");
+        world.ExpectFindings("F7");   // "Restore?" is asked, then "Can't Restore" (the review's F7)
         world.CreateDatabase();
         var bob   = world.AddComputer("bob");
         var alice = world.AddComputer("alice");
@@ -223,6 +233,7 @@ public sealed class HarnessWalkTests
         Assert.False(bob.HasWorkingFile);
         Assert.Equal(new[] { "alice-1" }, world.EditsInDatabase());
         world.AssertAllScriptsConsumed();
+        world.Finish();
     }
 
     // ═════════════════════════════════════════════════════════════════════════
@@ -239,7 +250,8 @@ public sealed class HarnessWalkTests
     [HarnessFact]
     public async Task Walk4_BobsNetworkDrops_AliceTakesOver_BobIsDemoted_ThenOffersHisKeptChanges()
     {
-        using var world = new World();
+        using var world = new World(_output, "Walk4_BobsNetworkDrops_AliceTakesOver_BobIsDemoted_ThenOffersHisKeptChanges");
+        world.ExpectFindings("F6", "F7");   // the lock-lost banner promises a restore that then cannot be done (F6); "Restore?" then "Can't Restore" (F7)
         world.CreateDatabase();
         var bob   = world.AddComputer("bob");
         var alice = world.AddComputer("alice");
@@ -318,6 +330,7 @@ public sealed class HarnessWalkTests
 
         await bob.CloseAsync();
         world.AssertAllScriptsConsumed();
+        world.Finish();
     }
 
     // ═════════════════════════════════════════════════════════════════════════
@@ -332,7 +345,7 @@ public sealed class HarnessWalkTests
     [HarnessFact]
     public async Task Walk5_ColleagueChangesTheDatabase_BobSavesACopy_AndReopensOnTheirVersion()
     {
-        using var world = new World();
+        using var world = new World(_output, "Walk5_ColleagueChangesTheDatabase_BobSavesACopy_AndReopensOnTheirVersion");
         world.CreateDatabase();
         var bob = world.AddComputer("bob");
 
@@ -374,5 +387,6 @@ public sealed class HarnessWalkTests
         Assert.Equal(new[] { "colleague-1" }, world.EditsInDatabase());
         Assert.False(File.Exists(LockFile(world)));
         world.AssertAllScriptsConsumed();
+        world.Finish();
     }
 }

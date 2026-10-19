@@ -46,6 +46,62 @@ internal static class Inspector
     }
 
     /// <summary>
+    /// Runs <c>PRAGMA integrity_check</c> on a private copy of a database file (never in place; see the class remarks).
+    /// </summary>
+    /// <param name="databaseFile">The file to check (normally the shared database D).</param>
+    /// <param name="scratchRoot">A folder in which a private scratch folder is made for the copy (and removed again).</param>
+    /// <returns>Null when the file does not exist or passes the check; otherwise a short description of what is wrong (SQLite's first findings, or the exception that stopped the check).</returns>
+    public static string? IntegrityProblem(string databaseFile, string scratchRoot)
+    {
+        if (!File.Exists(databaseFile)) return null;
+
+        var scratch = Path.Combine(scratchRoot, "integrity_" + Guid.NewGuid().ToString("N"));
+        Directory.CreateDirectory(scratch);
+        try
+        {
+            var copy = Path.Combine(scratch, "copy.db");
+            CopyShared(databaseFile, copy);
+            foreach (var suffix in Sidecars)
+            {
+                if (File.Exists(databaseFile + suffix))
+                    CopyShared(databaseFile + suffix, copy + suffix);
+            }
+
+            using var conn = new SqliteConnection($"Data Source={copy};Pooling=False");
+            conn.Open();
+            using var cmd = conn.CreateCommand();
+            cmd.CommandText = "PRAGMA integrity_check";
+            var findings = new List<string>();
+            using (var reader = cmd.ExecuteReader())
+            {
+                while (reader.Read() && findings.Count < 3) findings.Add(reader.GetString(0));
+            }
+            return findings.Count == 1 && findings[0] == "ok" ? null : string.Join(" / ", findings);
+        }
+        catch (Exception ex)
+        {
+            return $"{ex.GetType().Name}: {ex.Message}";
+        }
+        finally
+        {
+            SqliteConnection.ClearAllPools();
+            try { Directory.Delete(scratch, recursive: true); } catch { /* best effort */ }
+        }
+    }
+
+    /// <summary>
+    /// Like <see cref="EditIds"/> but never throws: a file that cannot be read (damaged, or not a database) answers null,
+    /// which the checker treats as "cannot tell", so one damaged file does not hide every other finding.
+    /// </summary>
+    /// <param name="databaseFile">The database file to read.</param>
+    /// <param name="scratchRoot">The scratch root (see <see cref="EditIds"/>).</param>
+    /// <returns>The edit ids (empty when the file is missing); null when the file exists but cannot be read.</returns>
+    public static List<string>? TryEditIds(string databaseFile, string scratchRoot)
+    {
+        try { return EditIds(databaseFile, scratchRoot); }
+        catch (Exception) { return null; }
+    }
+    /// <summary>
     /// Copies a file while another handle may have it open for reading and writing (a live SQLite connection).
     /// </summary>
     /// <param name="source">The file to copy.</param>

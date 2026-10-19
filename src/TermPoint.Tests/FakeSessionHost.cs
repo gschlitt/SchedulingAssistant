@@ -345,6 +345,9 @@ internal sealed class FakeLockLossSurface : ILockLossSurface
     /// <summary>Runs inside <see cref="ReinitializeConnection"/>, before it can throw, with the path (lets a test snapshot the files at that moment); null for none.</summary>
     public Action<string>? OnReinitialize { get; set; }
 
+    /// <summary>Called with the text of every <see cref="ShowSaveError"/> banner, as it is shown (the multi-computer harness writes it into its story and checks its promises); null for none.</summary>
+    public Action<string>? OnSaveError { get; set; }
+
     /// <summary>Every <see cref="ShowSaveError"/> text, in order.</summary>
     public List<string> SaveErrors { get; } = new();
 
@@ -364,6 +367,7 @@ internal sealed class FakeLockLossSurface : ILockLossSurface
     public void ShowSaveError(string text)
     {
         SaveErrors.Add(text);
+        OnSaveError?.Invoke(text);
         _trace("surface:ShowSaveError");
     }
 
