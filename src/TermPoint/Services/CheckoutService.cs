@@ -228,6 +228,20 @@ public sealed class CheckoutService : IDisposable
     private bool    _disposed;
 
     /// <summary>
+    /// True while autosave is "on": set in <see cref="StartAutoSave"/>, cleared in <see cref="StopAutoSave"/>.
+    /// In the app it always equals <c>_autoSaveTimer is not null</c>; it is a separate flag so
+    /// <see cref="IsAutoSaveRunning"/> keeps its meaning when <c>startTimers</c> is false and no
+    /// <see cref="Timer"/> exists (test-only mode).
+    /// </summary>
+    private bool    _autoSaveRunning;
+
+    /// <summary>
+    /// False only in tests that drive autosave by hand with <see cref="TickAutoSaveAsync"/>:
+    /// <see cref="StartAutoSave"/> then creates no <see cref="Timer"/>. Always true in the app.
+    /// </summary>
+    private readonly bool _startTimers;
+
+    /// <summary>
     /// 0 = idle, 1 = a save is currently in flight. Mutated only via
     /// <see cref="Interlocked.CompareExchange(ref int, int, int)"/> so concurrent
     /// callers (UI button + autosave timer + ReleaseAsync) cannot pass the
@@ -508,13 +522,20 @@ public sealed class CheckoutService : IDisposable
     /// (or 0.0.0 if it cannot be read — which would block any stamped database, the safe
     /// direction). Override in unit tests to simulate older and newer releases.
     /// </param>
+    /// <param name="startTimers">
+    /// True (the default, and the only value the app uses) lets <see cref="StartAutoSave"/> create the real
+    /// autosave timer. Tests pass false and drive one autosave tick at a time with
+    /// <see cref="TickAutoSaveAsync"/>.
+    /// </param>
     public CheckoutService(
         WriteLockService? lockService = null,
         IAppLogger? logger           = null,
         Action<Action>? dispatch     = null,
         string? workingDir           = null,
-        Version? appVersion          = null)
+        Version? appVersion          = null,
+        bool startTimers             = true)
     {
+        _startTimers = startTimers;
         _appVersion  = appVersion ?? typeof(CheckoutService).Assembly.GetName().Version ?? new Version(0, 0, 0);
         _lockService = lockService ?? App.LockService;
         _logger      = logger      ?? App.Logger;
@@ -3107,15 +3128,13 @@ public sealed class CheckoutService : IDisposable
     public void StartAutoSave()
     {
         StopAutoSave();
+        _autoSaveRunning = true;
+        if (!_startTimers) return; // test mode: TickAutoSaveAsync drives it by hand
         var intervalMs = Math.Max(AppSettings.Current.AutoSaveIntervalMinutes, 1) * 60_000;
         _autoSaveTimer = new Timer(
             _ =>
             {
-                _ = Task.Run(async () =>
-                {
-                    try { await AutoSaveTickAsync(); }
-                    catch (Exception ex) { App.Logger.LogError(ex, "AutoSave tick failed"); }
-                });
+                _ = Task.Run(() => RunAutoSaveTickAsync());
             },
             null,
             intervalMs,
@@ -3127,6 +3146,33 @@ public sealed class CheckoutService : IDisposable
     {
         _autoSaveTimer?.Dispose();
         _autoSaveTimer = null;
+        _autoSaveRunning = false;
+    }
+
+    /// <summary>
+    /// True while autosave is on (<see cref="StartAutoSave"/> called and not since stopped, whether by
+    /// <see cref="StopAutoSave"/> or by a tick that hit a non-transient failure). Test-visible; the app
+    /// does not read it.
+    /// </summary>
+    internal bool IsAutoSaveRunning => _autoSaveRunning;
+
+    /// <summary>
+    /// Runs ONE autosave tick on demand, exactly the work the autosave timer does
+    /// (<see cref="AutoSaveTickAsync"/>); like the timer it never throws (a failure is logged). Used with
+    /// <c>startTimers: false</c>.
+    /// </summary>
+    /// <returns>A task that completes when the tick's save (or its skip) is done.</returns>
+    internal Task TickAutoSaveAsync() => RunAutoSaveTickAsync();
+
+    /// <summary>
+    /// The body of one autosave timer tick: <see cref="AutoSaveTickAsync"/> with any failure logged rather than
+    /// thrown. Shared by the autosave timer (which runs it on the thread pool) and <see cref="TickAutoSaveAsync"/>.
+    /// </summary>
+    /// <returns>A task that completes when the tick is done; never faults.</returns>
+    private async Task RunAutoSaveTickAsync()
+    {
+        try { await AutoSaveTickAsync(); }
+        catch (Exception ex) { App.Logger.LogError(ex, "AutoSave tick failed"); }
     }
 
     // ── IDisposable ───────────────────────────────────────────────────────────

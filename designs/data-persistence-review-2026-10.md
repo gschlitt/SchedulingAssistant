@@ -443,31 +443,110 @@ implementations, the wiring of `CheckoutService` events to the view model, and t
 Each sub-step is implemented by Sonnet from a brief; Opus reviews the diff (moved-lines view) and re-runs the
 compile check and the full suite independently. `MainWindow.axaml` itself is not touched.
 
-### 9.2 Seams for faults
-- **Network:** a switch in `NetworkFileOps` making a chosen operation, or all of them, time out or fail.
-- **Crash at any step:** named points in the save, the move, the open and the close where the harness can stop
-  everything, then start a fresh `CheckoutService` on the same folders: the same as the process being killed there.
-- **Other actors:** Alice is another `CheckoutService` with her own local folder, against the same share folder.
+### 9.2 Seams for faults, identity and time
+What the harness needs that the code can't do today, found by reading it (2026-10-18):
+- **Every actor would look like the same TermPoint.** The lock file records `Environment.MachineName`,
+  `Environment.ProcessId` and `Environment.UserName` (`WriteLockService.cs:1175–1180`), and the same-machine checks
+  compare against them (`:857`, `:864`). Alice and Bob in one test process would share a machine and a process: Bob's
+  lock would look like Alice's own, and a "dead" Bob could never be reclaimed.
+- **Timers run on their own.** The heartbeat (60 s), the reader poll (60 s), wake detection (30 s) and autosave are
+  real `System.Threading.Timer`s, so they would fire at random moments in a run, and some times still come from
+  `DateTime.UtcNow` rather than the injected `TimeProvider` (`:1172`, `:1235`, `:1330`).
+- **No way to fail the network or stop the process at a chosen step.**
+
+The seams, all test-only, each a no-op (or the current behaviour) in the app:
+1. **Lock identity** (`WriteLockService`): an optional identity (machine, process ID, user name, and "is this
+   process alive?") passed at construction. Default: exactly today's `Environment` values and `Process` check.
+2. **Time**: the remaining `DateTime.UtcNow` uses in `WriteLockService` go through its existing `TimeProvider`.
+   Production passes `TimeProvider.System`, so nothing changes.
+3. **Manual ticks**: an option not to start the four timers, plus internal methods that run one heartbeat, one poll,
+   one wake check or one autosave tick on demand. Default: timers start as today.
+4. **Network faults** (`NetworkFileOps`): an internal static fault injector, consulted at the start of every
+   operation, that can make an operation on the share time out (report "not completed") or throw. It is scoped by
+   path, so the share can fail while local files keep working. Default: null, no checks.
+5. **Crash points**: an internal static hook, `CrashPoints.Hit("Save.AfterRename")`, at named points in every
+   multi-step operation: the save's six steps, the checkout, recovery adoption, release, the close teardown,
+   demotion, the recovered-copy export, the restore's stages and the deletes of `DiscardCrash`. Default: null, no
+   cost beyond a null check.
+   - **How a crash is simulated:** throwing an exception isn't a crash, because the code's own `catch` and `finally`
+     blocks would run and tidy up, which a killed process never does. Instead the hook **freezes the disk**: it
+     copies the share folder and that computer's local folder at that instant, then stops the operation. The harness
+     restores that copy and starts a fresh TermPoint on it, exactly as after a kill at that point. A power cut that
+     loses data the OS hadn't written to disk yet is out of scope, as SQLite's durability already covers it.
+
+**9.2a done 2026-10-18 (seams 1–3, uncommitted):**
+- **Identity:** `Services/LockIdentity.cs`. `LockIdentity.Current` holds today's machine, user, process ID and start
+  time, and a lookup wrapping `Process.GetProcessById`. `GetHolderLiveness` keeps its decision code; only three data
+  sources changed.
+- **Time:** every `DateTime.UtcNow` in `WriteLockService` reads its `TimeProvider`.
+- **Manual ticks:** `startTimers: false` skips the four timers. `TickHeartbeatAsync`, `TickPollAsync`,
+  `TickWakeCheck` and `CheckoutService.TickAutoSaveAsync` run one tick each, through the same extracted bodies the
+  timers use.
+- **Construction:** the identity and timer options are on an internal constructor, so existing callers are
+  unchanged.
+- **Tests:** 15 `LockSeamTests`. Suite: 2679 passed + 21 skipped.
+- **Noticed, existing:** when `StartPolling` runs while a poll timer already exists (the takeover's lost race), the
+  old timer is replaced without being disposed.
+
+**Size and proof:** one small commit per pair of seams (1–3, then 4–5). Each is checked like 9.1: default behaviour
+unchanged, the full suite green, and production diffs limited to the seam itself.
 
 ### 9.3 The harness
-- **World:** one temp "share" folder; one local folder per computer (Bob's laptop, Bob's desktop, Alice's).
-- **Events:** Bob edits, saves, autosaves, closes, switches, reopens, crashes (at each named point), loses the
-  network and gets it back, sleeps; Alice opens, edits, saves, closes, takes over a stale lock; the lock file is
-  deleted; IT restores an old backup.
-- **Every event sequence up to a fixed length** is run (bounded exhaustive), plus long random sequences from fixed
-  seeds. A failing sequence is shortened automatically and printed as an Alice-and-Bob story.
-- **After every event, the invariants are checked:**
-  - **I1, lineage:** the shared database is always exactly a version some editor saved, each based on the one before
-    (tracked by a test-only record inside the database). Never a mix, never Bob's older version on top of Alice's.
-  - **I2, nothing lost:** every edit Bob applied is in the shared database, in the slot with a marker, or in a
-    recovered version.
-  - **I3, one writer:** no two sessions ever both rename onto the database from the same base.
-  - **I4, nothing deleted without a copy:** the slot is removed only when its content is in the database or in a
-    checked recovered version.
-  - **I5, honest messages:** every message is logged with what it promised ("will be added", "kept"), and the
-    harness checks the promise came true.
-- It runs as its own test category (minutes, not seconds), on demand and before each release; the normal suite
-  stays fast.
+**Where:** a separate test project, `src/TermPoint.Harness.Tests`, so the normal suite stays fast and unchanged. It
+runs on demand and before each release, for minutes; a variable sets the depth for longer runs.
+
+**The world:**
+- one temp folder playing the share;
+- per **computer** (Bob's laptop, Bob's desktop, Alice's): a local folder (working files, instance guard), a lock
+  identity, and its own `CheckoutService`, `WriteLockService`, `SessionLifecycle`, host fake and prompts;
+- one shared `FakeTimeProvider`, so a "stale lock" means minutes of fake time, not real waiting.
+
+**Edits are traceable:** every edit inserts a uniquely named row (`bob-17`, `alice-3`) into a test-only table, through
+a real connection, so `MarkDirty` and the marker behave exactly as for real data. After any event the harness knows
+exactly which edits exist in the shared database, in each slot, in each recovered or exported file.
+
+**Events,** each enabled only when it makes sense in the current state:
+- Bob or Alice: open (startup or switch), edit, save, autosave tick, close, switch away, reopen, Restore / Discard /
+  Save a Copy / X at each prompt, the conflict banner's buttons, take over a stale lock;
+- the world: the network to the share drops or returns; a computer sleeps and wakes; a crash at any named point;
+  fake time passes (heartbeats go stale); the lock file is deleted; IT restores an old backup over the database.
+
+**Prompts:** a policy fake answers each dialog from the event sequence (so "X on this dialog" is just another event)
+and logs every message with what it claims ("your changes are kept", "will offer to restore") for I5.
+
+**Invariants, checked after every event:**
+- **I1, nothing committed disappears:** an edit that reached the shared database never leaves it, except through an
+  explicit "IT restores a backup" or "restore from a backup" event. This is the check that catches Bob's older
+  version landing on top of Alice's.
+- **I2, nothing applied is lost:** every edit Bob applied is in the shared database, in his live session, in a slot
+  with its marker, or in a recovered or exported file, unless an explicit, confirmed discard covers it. An X is
+  never counted as a confirmed discard.
+- **I3, the database is always whole:** the shared file always passes `PRAGMA integrity_check`.
+- **I4, only the lock holder writes:** at the moment of every rename onto the shared database (a crash-point hook),
+  the lock is the saver's.
+- **I5, messages tell the truth:** every logged promise must come true later in the run. "Kept" means I2 holds and
+  the work is offered or moved at the next open; "will offer to restore" means a restore really is offered.
+
+**Strategies:**
+- **Bounded exhaustive:** every sequence of enabled events up to a short length (about 3–4).
+- **Crash sweep:** for each multi-step operation, a crash at each of its named points, then a restart.
+- **Random walks:** long sequences from fixed seeds, so every run is repeatable.
+
+**When something fails:** the failing sequence is shortened automatically (drop events while it still fails) and
+printed as an Alice-and-Bob story: what each person did, the dialogs they saw, the files at the end, and the
+invariant that broke.
+
+**Known problems:** the harness keeps a list of the findings already known (F1, F2, F5, F6, F8, …). A failure that
+matches one is reported as **expected**, so the run stays green while showing them. The redesign steps then remove
+them from the list one by one, and the harness proves each is gone.
+
+**Sub-steps, one commit each:**
+- **9.3a:** the world, the actors and the traceable edits, with five hand-written walks (the hand smoke test rows,
+  automated).
+- **9.3b:** the invariants and the story printer.
+- **9.3c:** the three strategies, the shrinker and the known-problems list.
+- **9.3d:** the first full run against today's code, and a report: every failure found, matched to a finding or
+  added to section 3 as a new one.
 
 ### 9.4 The new assessment
 Once 9.1–9.3 exist, section 2 of this document is redone against the design: each row becomes a harness scenario

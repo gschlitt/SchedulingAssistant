@@ -1,7 +1,6 @@
 using Avalonia.Threading;
 using TermPoint.Models;
 using System;
-using System.Diagnostics;
 using System.IO;
 using System.Text.Json;
 using System.Threading;
@@ -165,7 +164,7 @@ public sealed class WriteLockService : IDisposable
     /// the holder to release or go stale). Exposed so tests can assert which read-only sessions poll;
     /// not used by production code.
     /// </summary>
-    internal bool IsPolling => _pollTimer is not null;
+    internal bool IsPolling => _pollRunning;
 
     private string? _lockFilePath;
     private Timer? _heartbeatTimer;
@@ -178,14 +177,34 @@ public sealed class WriteLockService : IDisposable
     private int _heartbeatConsecutiveFailures;
     private Timer? _pollTimer;
     private Timer? _wakeDetectionTimer;
-    private DateTime _lastWakeTick = DateTime.UtcNow;
+    private DateTime _lastWakeTick;
     private bool _disposed;
+
+    /// <summary>
+    /// True while the poll is "on": set where the poll timer is created, cleared where it is disposed. In the
+    /// app it always equals <c>_pollTimer is not null</c>; it is a separate flag so <see cref="IsPolling"/> keeps
+    /// its meaning when <c>startTimers</c> is false and no <see cref="Timer"/> object exists (test-only mode).
+    /// </summary>
+    private bool _pollRunning;
+
+    /// <summary>
+    /// False only in tests that drive heartbeat, poll and wake checks by hand
+    /// (<see cref="TickHeartbeatAsync"/>, <see cref="TickPollAsync"/>, <see cref="TickWakeCheck"/>): the
+    /// <c>Start*</c> methods then create no <see cref="Timer"/>. Always true in the app.
+    /// </summary>
+    private readonly bool _startTimers;
+
+    /// <summary>
+    /// Who this service says it is in the lock file and who it treats as "this machine" when judging a holder.
+    /// <see cref="LockIdentity.Current"/> in the app; a per-simulated-computer value in tests.
+    /// </summary>
+    private readonly LockIdentity _identity;
 
     /// <summary>
     /// The time source for everything this service MEASURES on the reader side: how long a lock's
     /// heartbeat has been unchanged (<see cref="_heartbeatWatch"/>), and "now" for the open path's
-    /// clock hint. <see cref="TimeProvider.System"/> in production; a controllable fake in tests. The
-    /// writer side (heartbeat stamps, wake detection) deliberately keeps using the system clock.
+    /// clock hint, and for everything it STAMPS on the writer side (lock-file times, heartbeat renewal, wake
+    /// detection). <see cref="TimeProvider.System"/> in production; a controllable fake in tests.
     /// </summary>
     private readonly TimeProvider _time;
 
@@ -206,9 +225,32 @@ public sealed class WriteLockService : IDisposable
     /// <see cref="TimeProvider.System"/>; tests pass a fake so minutes of waiting take no real time.
     /// </param>
     public WriteLockService(TimeProvider? timeProvider = null)
+        : this(timeProvider, null, startTimers: true) { }
+
+    /// <summary>
+    /// Test seam: creates a lock service with its own identity and, optionally, no background timers. The app
+    /// never calls this; the public constructor above is exactly this one with the defaults. (Separate from
+    /// the public constructor only because <see cref="LockIdentity"/> is internal.)
+    /// </summary>
+    /// <param name="timeProvider">
+    /// Time source for every time this service reads or stamps. <see cref="TimeProvider.System"/> when null.
+    /// </param>
+    /// <param name="identity">
+    /// Who this service is in the lock file (machine, user, process id, start time) and how it looks up other
+    /// processes on its machine. <see cref="LockIdentity.Current"/> (the real process) when null.
+    /// </param>
+    /// <param name="startTimers">
+    /// True (the default) starts the real heartbeat, poll and wake-detection timers. False creates none; the test
+    /// then drives one tick at a time with <see cref="TickHeartbeatAsync"/>, <see cref="TickPollAsync"/> and
+    /// <see cref="TickWakeCheck"/>. Everything else about starting and stopping is unchanged.
+    /// </param>
+    internal WriteLockService(TimeProvider? timeProvider, LockIdentity? identity = null, bool startTimers = true)
     {
         _time           = timeProvider ?? TimeProvider.System;
+        _identity       = identity ?? LockIdentity.Current;
+        _startTimers    = startTimers;
         _heartbeatWatch = new LockHeartbeatWatch(_time);
+        _lastWakeTick   = _time.GetUtcNow().UtcDateTime;
     }
 
     /// <summary>
@@ -441,6 +483,7 @@ public sealed class WriteLockService : IDisposable
         _heartbeatTimer = null;
         _pollTimer?.Dispose();
         _pollTimer = null;
+        _pollRunning = false;
         _wakeDetectionTimer?.Dispose();
         _wakeDetectionTimer = null;
 
@@ -548,6 +591,7 @@ public sealed class WriteLockService : IDisposable
         _heartbeatTimer = null;
         _pollTimer?.Dispose();
         _pollTimer = null;
+        _pollRunning = false;
         _wakeDetectionTimer?.Dispose();
         _wakeDetectionTimer = null;
 
@@ -755,6 +799,7 @@ public sealed class WriteLockService : IDisposable
 
         _pollTimer?.Dispose();
         _pollTimer = null;
+        _pollRunning = false;
 
         _lockFilePath = Path.ChangeExtension(dbPath, ".lock");
         WriteLockBecameAvailable = false;
@@ -854,14 +899,14 @@ public sealed class WriteLockService : IDisposable
     private HolderLiveness GetHolderLiveness(LockFileData? holder)
     {
         if (holder is null) return HolderLiveness.Unknown;
-        if (!string.Equals(holder.Machine, Environment.MachineName, StringComparison.OrdinalIgnoreCase))
+        if (!string.Equals(holder.Machine, _identity.MachineName, StringComparison.OrdinalIgnoreCase))
             return HolderLiveness.Unknown;       // can't inspect a PID on another machine
         if (holder.ProcessId <= 0)
             return HolderLiveness.Unknown;       // lock written by an older build — no PID
 
         try
         {
-            using var p = Process.GetProcessById(holder.ProcessId);
+            using var p = _identity.LookupProcess(holder.ProcessId);
 
             // The PID is in use. Guard against PID reuse: if we recorded a start time and the
             // live process started at a different time, the original holder is gone and this is
@@ -869,7 +914,7 @@ public sealed class WriteLockService : IDisposable
             if (holder.ProcessStartTimeUtc is { } recordedStart)
             {
                 DateTime liveStart;
-                try { liveStart = p.StartTime.ToUniversalTime(); }
+                try { liveStart = p.StartTimeUtc; }
                 catch { return HolderLiveness.Unknown; } // can't read start time → don't guess
 
                 if (Math.Abs((liveStart - recordedStart).TotalSeconds) > 2)
@@ -1169,31 +1214,18 @@ public sealed class WriteLockService : IDisposable
     /// <param name="fs">An open, writable file stream positioned at the start.</param>
     private void WriteLockData(Stream fs)
     {
-        var now = DateTime.UtcNow;
+        var now = _time.GetUtcNow().UtcDateTime;
         var data = new LockFileData
         {
-            Username            = Environment.UserName,
-            Machine             = Environment.MachineName,
+            Username            = _identity.UserName,
+            Machine             = _identity.MachineName,
             SessionGuid         = SessionGuid,
             Acquired            = now,
             Heartbeat           = now,
-            ProcessId           = Environment.ProcessId,
-            ProcessStartTimeUtc = _processStartTimeUtc
+            ProcessId           = _identity.ProcessId,
+            ProcessStartTimeUtc = _identity.ProcessStartTimeUtc
         };
         JsonSerializer.Serialize(fs, data);
-    }
-
-    /// <summary>
-    /// This process's start time in UTC, captured once. Used to stamp the lock file so that
-    /// another instance can tell a live holder from a crashed one (and detect PID reuse).
-    /// Null if the start time could not be read (then PID-reuse defense is skipped).
-    /// </summary>
-    private static readonly DateTime? _processStartTimeUtc = TryGetProcessStartTimeUtc();
-
-    private static DateTime? TryGetProcessStartTimeUtc()
-    {
-        try { return Process.GetCurrentProcess().StartTime.ToUniversalTime(); }
-        catch { return null; }
     }
 
     /// <summary>
@@ -1232,7 +1264,7 @@ public sealed class WriteLockService : IDisposable
                 if (readCompleted)
                 {
                     var data = JsonSerializer.Deserialize<LockFileData>(json!) ?? new LockFileData();
-                    data.Heartbeat = DateTime.UtcNow;
+                    data.Heartbeat = _time.GetUtcNow().UtcDateTime;
 
                     // Write to a temp file first, then atomically replace. This ensures
                     // a reader never observes a partially-written JSON file.
@@ -1290,6 +1322,7 @@ public sealed class WriteLockService : IDisposable
     /// </summary>
     private void StartHeartbeat()
     {
+        if (!_startTimers) return; // test mode: TickHeartbeatAsync drives it by hand
         var interval = TimeSpan.FromSeconds(HeartbeatIntervalSeconds);
         // Fire-and-forget: RenewHeartbeatAsync is non-throwing by construction, and the
         // gate's zero-timeout wait means overlapping ticks skip rather than queue.
@@ -1304,17 +1337,28 @@ public sealed class WriteLockService : IDisposable
     private void StartPolling()
     {
 #if !BROWSER
+        _pollRunning = true;
+        if (!_startTimers) return; // test mode: TickPollAsync drives it by hand
         var interval = TimeSpan.FromSeconds(PollIntervalSeconds);
         _pollTimer = new Timer(_ =>
         {
-            _ = Dispatcher.UIThread.InvokeAsync(async () =>
-            {
-                try { await PollLockFile(); }
-                catch (Exception ex) { App.Logger.LogError(ex, "[WriteLockService] PollLockFile failed"); }
-            });
+            _ = Dispatcher.UIThread.InvokeAsync(() => RunPollTickAsync());
         }, null, interval, interval);
 #endif
     }
+
+#if !BROWSER
+    /// <summary>
+    /// The body of one poll tick: <see cref="PollLockFile"/> with its failure logged rather than thrown.
+    /// Shared by the poll timer (which runs it on the UI thread) and <see cref="TickPollAsync"/>.
+    /// </summary>
+    /// <returns>A task that completes when the poll finishes; never faults.</returns>
+    private async Task RunPollTickAsync()
+    {
+        try { await PollLockFile(); }
+        catch (Exception ex) { App.Logger.LogError(ex, "[WriteLockService] PollLockFile failed"); }
+    }
+#endif
 
     /// <summary>
     /// Starts the wake-detection timer. Fires every 30 seconds and compares the
@@ -1325,24 +1369,72 @@ public sealed class WriteLockService : IDisposable
     private void StartWakeDetection()
     {
         const int checkIntervalSeconds = 30;
-        const int wakeThresholdSeconds = 90; // 3× expected — must have been asleep
 
-        _lastWakeTick = DateTime.UtcNow;
+        _lastWakeTick = _time.GetUtcNow().UtcDateTime;
+        if (!_startTimers) return; // test mode: TickWakeCheck drives it by hand
         var interval = TimeSpan.FromSeconds(checkIntervalSeconds);
 
         _wakeDetectionTimer = new Timer(_ =>
         {
-            var now     = DateTime.UtcNow;
-            var elapsed = (now - _lastWakeTick).TotalSeconds;
-            _lastWakeTick = now;
-
-            if (elapsed > wakeThresholdSeconds)
-            {
-                App.Logger.LogInfo($"[WriteLockService] Wake detected — gap was {elapsed:F0}s.");
+            if (WakeGapExceeded())
                 Dispatcher.UIThread.Post(() => WakeDetected?.Invoke());
-            }
         }, null, interval, interval);
     }
+
+    /// <summary>A gap between wake checks longer than this many seconds (3x the 30 s interval) means the machine was asleep.</summary>
+    private const int WakeThresholdSeconds = 90;
+
+    /// <summary>
+    /// The body of one wake-detection tick: measures the time since the previous tick, remembers "now" for the
+    /// next one, and reports whether the gap was long enough to infer the machine was asleep (logging it if so).
+    /// Shared by the wake timer and <see cref="TickWakeCheck"/>; the caller decides how to raise
+    /// <see cref="WakeDetected"/>.
+    /// </summary>
+    /// <returns>True when the gap exceeded <see cref="WakeThresholdSeconds"/>.</returns>
+    private bool WakeGapExceeded()
+    {
+        var now     = _time.GetUtcNow().UtcDateTime;
+        var elapsed = (now - _lastWakeTick).TotalSeconds;
+        _lastWakeTick = now;
+
+        if (elapsed > WakeThresholdSeconds)
+        {
+            App.Logger.LogInfo($"[WriteLockService] Wake detected — gap was {elapsed:F0}s.");
+            return true;
+        }
+        return false;
+    }
+
+    // ── Manual ticks (test seam) ───────────────────────────────────────────────
+
+    /// <summary>
+    /// Runs ONE heartbeat tick on demand, exactly the work the heartbeat timer does
+    /// (<see cref="RenewHeartbeatAsync"/>). Used with <c>startTimers: false</c>. Never throws.
+    /// </summary>
+    /// <returns>A task that completes when the renewal (or its skip/failure handling) is done.</returns>
+    internal Task TickHeartbeatAsync() => RenewHeartbeatAsync();
+
+    /// <summary>
+    /// Runs ONE wake-detection tick on demand, exactly the check the wake timer makes. Differs from the timer
+    /// in one way: when a wake is detected the timer raises <see cref="WakeDetected"/> through
+    /// <c>Dispatcher.UIThread.Post</c>, whereas this raises it directly on the calling thread, so a test sees it
+    /// synchronously. Used with <c>startTimers: false</c>.
+    /// </summary>
+    internal void TickWakeCheck()
+    {
+        if (WakeGapExceeded())
+            WakeDetected?.Invoke();
+    }
+
+#if !BROWSER
+    /// <summary>
+    /// Runs ONE poll tick on demand, exactly the work the poll timer does (<see cref="PollLockFile"/> with its
+    /// failure logged), but called directly rather than posted to the UI thread. Used with
+    /// <c>startTimers: false</c>. Never throws.
+    /// </summary>
+    /// <returns>A task that completes when the poll finishes.</returns>
+    internal Task TickPollAsync() => RunPollTickAsync();
+#endif
 
     /// <summary>
     /// Checks whether the write lock is still held by another process. Called on
@@ -1469,6 +1561,7 @@ public sealed class WriteLockService : IDisposable
             WriteLockBecameAvailable = true;
             _pollTimer?.Dispose();
             _pollTimer = null;
+            _pollRunning = false;
             LockStateChanged?.Invoke();
         }
     }
