@@ -24,9 +24,20 @@ public sealed class FileAppLogger : IAppLogger
     /// <inheritdoc/>
     public event EventHandler<string>? ErrorLogged;
 
-    private static readonly string LogDirectory = Path.Combine(
+    /// <summary>The log folder every real run uses: <c>%AppData%\TermPoint\Logs</c>.</summary>
+    private static readonly string DefaultLogDirectory = Path.Combine(
         Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData),
         "TermPoint", "Logs");
+
+    /// <summary>
+    /// Test-only: when set, log files are written to (and old ones pruned from) this folder instead of
+    /// <see cref="DefaultLogDirectory"/>. The test assembly sets it once, before any test runs, so tests of this class
+    /// never touch the developer's real log folder. Always null in the app.
+    /// </summary>
+    internal static string? LogDirectoryOverride { get; set; }
+
+    /// <summary>The folder log files go to: the test override when set, otherwise the real one.</summary>
+    private static string LogDirectory => LogDirectoryOverride ?? DefaultLogDirectory;
 
     private static readonly string AppVersion =
         Assembly.GetExecutingAssembly().GetName().Version?.ToString() ?? "unknown";

@@ -2912,6 +2912,13 @@ candidate; do it before the first release that raises MinimumVersionToWrite.**
   `%TEMP%	ermpoint-test-settings-<pid>`, empty at start and removed at exit. `SettingsFileGuard` and
   `AppSettingsTests` now use `AppSettings.SettingsFilePath` instead of copying the real path. Verified: the real
   file keeps its timestamp and contents through a full run (2636 passed + 21 skipped).
+- **Also fixed 2026-10-19: logs and BugSnag.** In the test process `App.Logger` was the real file logger, writing to
+  `%AppData%\TermPoint\Logs` with a live BugSnag client (Debug reports as "development", a notified stage), so
+  production code logging an error during a test sent a real report. Now a module initializer swaps it for a
+  silent logger (same `ThrowOnError` and `ErrorLogged` behaviour), clears the original's BugSnag client, and points
+  `FileAppLogger.LogDirectoryOverride` (internal, test-only, null in the app) at the run's private folder. Verified:
+  the real log grows 0 bytes over a full suite and harness run. Leftover private folders of finished runs are
+  swept at the next run.
 - **Original note:**
 - `AppSettingsTests` (and, since item 23, `SettingsFileGuard`-based Preferences tests) save
   `AppSettings` to `%APPDATA%\TermPoint\settings.json` and restore it afterwards.

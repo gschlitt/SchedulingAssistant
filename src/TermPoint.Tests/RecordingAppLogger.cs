@@ -100,6 +100,35 @@ internal static class TestAssemblyGuards
         => DatabaseDamageReporter.DefaultLogger = static () => SilentDamageLogger;
 
     /// <summary>
+    /// Runs once, when the test assembly loads, before any test: replaces <see cref="App.Logger"/> — in a test process
+    /// otherwise the REAL file logger, writing to the developer's <c>%AppData%\TermPoint\Logs</c> and holding a live
+    /// BugSnag client whose "development" stage is reported — with a <see cref="SilentAppLogger"/> that keeps the same
+    /// <see cref="IAppLogger.ThrowOnError"/>. Production code that calls <c>App.Logger.LogError</c> during a test
+    /// (and the harness provokes thousands of failures) therefore sends nothing and writes nothing.
+    ///
+    /// <para>Reading <see cref="App.Logger"/> first runs <c>App</c>'s static initialisers, and the static services they
+    /// create (<c>App.Checkout</c>, <c>App.InstanceGuard</c>) capture the ORIGINAL logger. So that one is disconnected
+    /// from BugSnag too: its <c>BugsnagClient</c> is cleared. (Those services may still append lines to the real log
+    /// file if a test drives them directly; none of the harness does.) The swap uses the compiler-generated backing
+    /// field, as <c>WatchCommandErrorsTests</c> already does, because the setter is private.</para>
+    /// </summary>
+    [ModuleInitializer]
+    internal static void KeepAppLoggerAwayFromRealFilesAndBugsnag()
+    {
+        // Any FileAppLogger in this process — the original below, and the ones FileAppLogger's own tests build —
+        // writes to the run's private folder (beside the private settings folder), never %AppData%\TermPoint\Logs.
+        FileAppLogger.LogDirectoryOverride = Path.Combine(SettingsDirectory, "Logs");
+
+        var original = App.Logger;
+        if (original is FileAppLogger fileLogger)
+            fileLogger.BugsnagClient = null;
+
+        var field = typeof(App).GetField("<Logger>k__BackingField",
+            System.Reflection.BindingFlags.Static | System.Reflection.BindingFlags.NonPublic)!;
+        field.SetValue(null, new SilentAppLogger { ThrowOnError = original.ThrowOnError });
+    }
+
+    /// <summary>
     /// The private settings folder this test run uses instead of <c>%AppData%\TermPoint</c> (spec parking lot P5):
     /// one per test process, so a run can never read or overwrite the developer's real <c>settings.json</c>.
     /// </summary>
@@ -111,11 +140,45 @@ internal static class TestAssemblyGuards
     /// <see cref="SettingsDirectory"/>, starting empty, and removes that folder when the test process exits
     /// (best effort).
     /// </summary>
+    /// <summary>
+    /// Deletes the private settings folders (<c>termpoint-test-settings-&lt;pid&gt;</c>) left in the temp folder by
+    /// earlier test runs whose process no longer exists. Best effort: a folder that can't be deleted, or whose process
+    /// id is in use again, is left for a later run.
+    /// </summary>
+    private static void SweepFoldersOfFinishedRuns()
+    {
+        const string prefix = "termpoint-test-settings-";
+        try
+        {
+            foreach (var folder in Directory.GetDirectories(Path.GetTempPath(), prefix + "*"))
+            {
+                if (!int.TryParse(Path.GetFileName(folder)[prefix.Length..], out var pid)) continue;
+                if (pid == Environment.ProcessId || IsProcessRunning(pid)) continue;
+                try { Directory.Delete(folder, recursive: true); }
+                catch { /* best effort */ }
+            }
+        }
+        catch { /* best effort */ }
+    }
+
+    /// <summary>True when a process with id <paramref name="pid"/> exists right now.</summary>
+    /// <param name="pid">The process id.</param>
+    /// <returns>True when the process exists; false when it does not or cannot be checked.</returns>
+    private static bool IsProcessRunning(int pid)
+    {
+        try { using var p = System.Diagnostics.Process.GetProcessById(pid); return !p.HasExited; }
+        catch { return false; }
+    }
+
     [ModuleInitializer]
     internal static void KeepSettingsAwayFromTheRealFile()
     {
         try { if (Directory.Exists(SettingsDirectory)) Directory.Delete(SettingsDirectory, recursive: true); }
         catch { /* best effort: a leftover folder from a reused process id only holds test settings */ }
+
+        // The ProcessExit cleanup below does not run when the test runner ends its host process abruptly, so earlier
+        // runs leave their folders behind. Sweep up those whose process is gone; a concurrent run's folder is kept.
+        SweepFoldersOfFinishedRuns();
 
         AppSettings.SettingsDirectoryOverride = SettingsDirectory;
 
