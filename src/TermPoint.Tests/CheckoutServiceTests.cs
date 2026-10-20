@@ -3352,6 +3352,86 @@ public sealed class CheckoutServiceTests : IDisposable
     }
 
     /// <summary>
+    /// F16 (data-persistence review, section 3): a lost-lock demotion that is still running when the user switches
+    /// to another database lands on the NEW session. Forces the late ordering deterministically:
+    /// <list type="number">
+    /// <item><description>Bob holds dept.db; another user's lock replaces his (the takeover).</description></item>
+    /// <item><description>The demotion (what <c>SessionLifecycle.HandleWriteLockLostAsync</c> runs) starts on a pool
+    /// thread and is held, by the <see cref="NetworkFaults"/> seam, at the start of its D'' copy of dept.db. That is the
+    /// first real suspension point of the demotion, and where a production UI thread is free to run a click.</description></item>
+    /// <item><description>Meanwhile the switch runs to completion, exactly as <c>SwitchDatabaseAsync</c> does:
+    /// <see cref="CheckoutService.ReleaseAsync"/> then <see cref="CheckoutService.CheckoutAsync"/> of other.db, which
+    /// gets write access and the lock.</description></item>
+    /// <item><description>The held copy is let go. The demotion carries on with the service's CURRENT
+    /// <see cref="CheckoutService.SourcePath"/> (other.db): it hashes other.db against its dept.db copy (the "hash
+    /// mismatch, retrying" line), copies other.db again, and sets <see cref="CheckoutService.Mode"/> to read-only and
+    /// <see cref="CheckoutService.WorkingPath"/> to D''.</description></item>
+    /// </list>
+    /// The CORRECT behaviour asserted here: a demotion belongs to the session it was started for, so the new session
+    /// stays a writer on its own working copy. Today the new session ends read-only while it holds other.db's lock, so
+    /// the test is skipped until F16 is fixed.
+    /// </summary>
+    [Fact(Skip = "F16: a lost-lock demotion still copying D'' when the user switches database lands on the new session " +
+                 "(read-only while it holds the new lock). See data-persistence-review-2026-10.md, section 3, F16.")]
+    public async Task F16_ADemotionStillRunningWhenTheUserSwitches_DoesNotTouchTheNewSession()
+    {
+        var (svc, lockSvc) = CreateService();
+        var dept  = DbPath("dept");
+        var other = DbPath("other");
+        CreateSqliteDb(dept);
+        CreateSqliteDb(other);
+        Assert.Equal(CheckoutOutcome.WriteAccess, await svc.CheckoutAsync(dept));
+        WriteExternalFreshLock(dept);                      // the takeover: dept.lock is now someone else's
+
+        // Hold the demotion at the start of its D'' copy of dept.db (the first copy to dept.db's "_ro" snapshot).
+        using var copyReached = new ManualResetEventSlim(false);
+        using var letCopyGo   = new ManualResetEventSlim(false);
+        var held = 0;
+        NetworkFaults.Decide = request =>
+        {
+            if (request.Label == "CopyFile"
+                && string.Equals(request.Path, dept, StringComparison.OrdinalIgnoreCase)
+                && request.DestinationPath is { } destination && destination.Contains("_ro")
+                && Interlocked.Exchange(ref held, 1) == 0)
+            {
+                copyReached.Set();
+                letCopyGo.Wait(TimeSpan.FromSeconds(30));
+            }
+            return NetworkFaultDecision.None;
+        };
+
+        try
+        {
+            // The demotion, on its own thread as a posted handler would be, held inside its D'' copy.
+            var demotion = Task.Run(() => svc.DemoteToReadOnlyAsync());
+            Assert.True(copyReached.Wait(TimeSpan.FromSeconds(30)), "the demotion never reached its D'' copy");
+
+            // The switch, to completion, while the demotion is held.
+            await svc.ReleaseAsync(saveFirst: true);
+            lockSvc.PendingRelease?.Wait(TimeSpan.FromSeconds(10));
+            Assert.Equal(CheckoutOutcome.WriteAccess, await svc.CheckoutAsync(other));
+            Assert.Equal(CheckoutMode.WriteAccess, svc.Mode);
+            Assert.True(lockSvc.IsWriter);
+
+            // Let the old demotion finish.
+            letCopyGo.Set();
+            await demotion.WaitAsync(TimeSpan.FromSeconds(30));
+
+            // The new session is still a writer on its own working copy.
+            Assert.Equal(other, svc.SourcePath);
+            Assert.True(lockSvc.IsWriter, "the new session still holds other.db's lock");
+            Assert.Equal(CheckoutMode.WriteAccess, svc.Mode);
+            Assert.False(svc.IsReadOnlyMode, "a writer must not be marked read-only");
+            Assert.DoesNotContain("_ro", Path.GetFileName(svc.WorkingPath));
+        }
+        finally
+        {
+            letCopyGo.Set();
+            NetworkFaults.Decide = null;
+        }
+    }
+
+    /// <summary>
     /// When the dirty-marker write fails (here: a directory squats on the marker
     /// path), MarkDirty must warn the user that crash protection is degraded instead
     /// of failing silently — a later crash would sweep D' as "no edits made."

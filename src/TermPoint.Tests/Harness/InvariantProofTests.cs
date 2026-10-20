@@ -343,6 +343,132 @@ public sealed class InvariantProofTests
         Assert.Equal("bobs-version.db", MessagePromises.SavedFileName(SaveConflictPrompt.SavedMessage("bobs-version.db")));
     }
 
+    /// <summary>The title of the stale-lock question.</summary>
+    private const string StaleLockTitle = "Database Lock Is Inactive";
+
+    /// <summary>The title of the message a switch shows when the leaving database's changes could not be saved.</summary>
+    private const string ChangesNotSavedTitle = "Changes Not Saved";
+
+    /// <summary>
+    /// Bob opens dept.db and edits; four minutes pass; Alice takes over his stale lock; Bob switches to other.db. His
+    /// final save finds the lock gone, so he is told twice (the lock-lost banner and "Changes Not Saved") that TermPoint
+    /// will offer to restore his changes next time he opens dept.db. Leaves Bob with other.db open and the
+    /// promise pending, and Alice holding dept.db.
+    /// </summary>
+    /// <param name="world">The world (already created with dept.db).</param>
+    /// <param name="bob">Bob.</param>
+    /// <param name="alice">Alice.</param>
+    private static async Task BobLeavesDeptAfterAliceTookOverAsync(World world, Computer bob, Computer alice)
+    {
+        await bob.OpenAsync();
+        bob.Edit();
+        world.AdvanceTime(TimeSpan.FromMinutes(4));
+
+        alice.Prompts
+            .ExpectChoice(StaleLockTitle, true)
+            .ExpectStaleLockWait(true, before: () =>
+                world.AdvanceTime(TimeSpan.FromSeconds(WriteLockService.StaleConfirmationSeconds + 1)));
+        await alice.OpenAsync();
+
+        bob.Prompts.ExpectMessage(ChangesNotSavedTitle);
+        Assert.True(await bob.SwitchToAsync(world.EnsureOtherDatabase()));
+        // Bob's mode on other.db is deliberately not asserted: the harness runs the lost-lock handler inline, so the demotion
+        // his final save starts can land after the new checkout and flip it to read-only (see F16 in the design note and
+        // CheckoutServiceTests.F16_...). The promise is about dept.db whichever way that race goes.
+    }
+
+    /// <summary>
+    /// A promise about dept.db is not judged at Bob's open of ANOTHER database. Production keeps unsaved changes per
+    /// database (the working copy is named after the normalised source path), so opening other.db correctly offers
+    /// nothing for dept.db. The review found the tracker reporting F6 here ("no restore was offered") although the
+    /// promise was about dept.db. The promise must stay pending, and nothing may be reported.
+    /// </summary>
+    [HarnessFact]
+    public async Task I5_ARestorePromisedForOneDatabase_IsNotJudgedAtTheOpenOfAnother()
+    {
+        using var world = new World(_output, nameof(I5_ARestorePromisedForOneDatabase_IsNotJudgedAtTheOpenOfAnother));
+        world.ExpectFindings();   // nothing: the promise is not broken, it is not yet due
+        world.CreateDatabase();
+        var bob   = world.AddComputer("bob");
+        var alice = world.AddComputer("alice");
+
+        await BobLeavesDeptAfterAliceTookOverAsync(world, bob, alice);
+
+        Assert.True(world.HasPendingPromise(bob), "the promise is about dept.db; opening other.db does not judge it");
+        Assert.Equal("d", world.PendingPromiseCode(bob));
+        Assert.Empty(world.Violations);
+        Assert.True(bob.HasDirtyMarker, "Bob's kept changes to dept.db are still on his disk");
+        world.AssertAllScriptsConsumed();
+        world.Finish();
+    }
+
+    /// <summary>
+    /// One failure shows the same promise twice (the lock-lost banner, then "Changes Not Saved"): that is ONE claim, so
+    /// it is held once and, if it turned out false, would be reported once (the review's smallest F6 story listed the
+    /// identical violation twice). Pins that two messages made one pending promise.
+    /// </summary>
+    [HarnessFact]
+    public async Task I5_TwoMessagesPromisingTheSameRestore_AreOnePromise()
+    {
+        using var world = new World(_output, nameof(I5_TwoMessagesPromisingTheSameRestore_AreOnePromise));
+        world.ExpectFindings();
+        world.CreateDatabase();
+        var bob   = world.AddComputer("bob");
+        var alice = world.AddComputer("alice");
+
+        await BobLeavesDeptAfterAliceTookOverAsync(world, bob, alice);
+
+        // Both messages really were shown to Bob ...
+        Assert.Single(bob.Host.LockLossSurface.SaveErrors);
+        Assert.Contains(bob.Prompts.Calls, c => c.Kind == PromptKind.Message && c.Title == ChangesNotSavedTitle);
+
+        // ... and they are one pending promise, so the closing notes name it once.
+        var pending = world.PendingPromiseLines();
+        var line = Assert.Single(pending);
+        Assert.Contains("dept.db", line);
+        world.Finish();
+    }
+
+    /// <summary>
+    /// The promise about dept.db IS judged at Bob's next edit-access open of dept.db: once Alice has closed, Bob opens
+    /// dept.db, is offered his kept changes and chooses Restore, and today "Can't Restore" follows (Alice's close rewrote
+    /// the file, F5). The promise is then false and reported ONCE (F6), at that open (not at the earlier open of
+    /// other.db), although two messages made it. This is also a genuine F6 route: a promise judged at a later open of the
+    /// same database where the restore cannot work.
+    /// </summary>
+    [HarnessFact]
+    public async Task I5_ARestorePromisedForOneDatabase_IsJudgedAtTheNextOpenOfThatDatabase()
+    {
+        using var world = new World(_output, nameof(I5_ARestorePromisedForOneDatabase_IsJudgedAtTheNextOpenOfThatDatabase));
+        world.ExpectFindings("F5", "F6");
+        world.CreateDatabase();
+        var bob   = world.AddComputer("bob");
+        var alice = world.AddComputer("alice");
+
+        await BobLeavesDeptAfterAliceTookOverAsync(world, bob, alice);
+        Assert.True(world.HasPendingPromise(bob));
+
+        await alice.CloseAsync();                       // Alice gives dept.db back, so Bob can get write access to it
+
+        var export = Path.Combine(world.RootDir, "exports", "bob-recovered.db");
+        Directory.CreateDirectory(Path.GetDirectoryName(export)!);
+        bob.Prompts.ExpectChoice(HarnessTitles.RestoreUnsavedChanges, ChoiceAnswer.Affirmative)
+                   .ExpectChoice(HarnessTitles.CantRestore, ChoiceAnswer.Affirmative)
+                   .ExpectPick("Save Recovered Copy", export);
+        Assert.True(await bob.SwitchToAsync(world.DatabasePath));
+
+        Assert.Equal(CheckoutMode.WriteAccess, bob.Checkout.Mode);
+        Assert.False(world.HasPendingPromise(bob), "dept.db was opened for editing: the promise was judged");
+
+        // Judged exactly once, at the open of dept.db (step 8), not at the open of other.db (step 6).
+        var broken = Assert.Single(world.Violations, v => v.Kind == ViolationKind.BrokenPromise);
+        Assert.Equal("F6", broken.FindingId);
+        Assert.True(broken.Step > 6, "the promise is judged at the open of dept.db, after the open of other.db");
+        Assert.Contains("Can't Restore", broken.Reason);
+        world.AssertAllScriptsConsumed();
+        world.Finish();
+    }
+
     /// <summary>
     /// A broken "Your version was saved as X" promise is caught: the message names a file that does not exist when the
     /// step ends (the test deletes the export while the message is up), so the tracker reports the promise as false.

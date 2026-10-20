@@ -74,6 +74,13 @@ internal sealed class Violation
     /// <summary>For <see cref="ViolationKind.WriteWithoutLockOrOnStaleVersion"/>: the crash point at which it was seen.</summary>
     public string? CrashPoint { get; init; }
 
+    /// <summary>
+    /// For <see cref="ViolationKind.RestoreOfferedThenImpossible"/>: true when the shared database's set of edits had NOT
+    /// changed since the computer's work was kept (nobody else changed any data, so the refusal came from the database
+    /// file's bytes alone: finding F5), false when someone did change data (F7). Null for every other kind.
+    /// </summary>
+    public bool? DataUnchangedSinceKept { get; init; }
+
     /// <summary>The dialogs the concerned computer was asked during the step (for classification).</summary>
     public IReadOnlyList<PromptCall> ComputerPrompts { get; init; } = Array.Empty<PromptCall>();
 

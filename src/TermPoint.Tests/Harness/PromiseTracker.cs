@@ -8,7 +8,8 @@ namespace TermPoint.Tests.Harness;
 /// checked when they become decidable:
 /// <list type="bullet">
 /// <item><description><b>WillOfferRestore</b> ("TermPoint will offer to restore them the next time..."): decidable at that
-/// computer's next edit-access open. If Restore is chosen the work must really come back: no "Can't Restore
+/// computer's next edit-access open <i>of the same database</i> (production keeps unsaved changes per database, so
+/// opening a different one correctly offers nothing). If Restore is chosen the work must really come back: no "Can't Restore
 /// Unsaved Changes", and the promised edits in the shared database or the live session. If no restore is offered
 /// at all, the work must be back anyway. If the person answers Discard or the X, the promise is vacuous (the loss
 /// is invariant I2's business, and F1's). If the work is nowhere any more, I2 reports that and the promise is
@@ -33,9 +34,16 @@ internal sealed class PromiseTracker
     /// <param name="PromisedEdits">The unsaved edits the computer held when the step began: what the message talks about.</param>
     /// <param name="FileName">For SavedAs: the file the message names.</param>
     /// <param name="Step">The step in which the message was shown.</param>
+    /// <param name="Database">
+    /// The database the message is about, normalised the way production names the working copy
+    /// (<see cref="CheckoutService.NormalizeSourcePath"/>: full path, lower case); null when the owner's checkout had no
+    /// source yet. A "will offer to restore" promise is judged only at an edit-access open of this database.
+    /// </param>
+    /// <param name="DatabaseName">The database's file name, for the story ("dept.db"); empty when <paramref name="Database"/> is null.</param>
     private sealed record Promise(
         PromiseKind Kind, Computer Owner, string Title, string Text,
-        IReadOnlyList<string> PromisedEdits, string? FileName, int Step);
+        IReadOnlyList<string> PromisedEdits, string? FileName, int Step,
+        string? Database, string DatabaseName);
 
     /// <summary>Guards the lists (messages can be shown from a pool thread).</summary>
     private readonly object _gate = new();
@@ -73,16 +81,54 @@ internal sealed class PromiseTracker
         }
 
         var promised = world.LastLedger.UnsavedEditsOf(owner.Name);
+        // Which database the message is about. The owner's checkout still points at it whenever such a message is
+        // shown: a switch shows "Changes Not Saved" while it tears the old database down, BEFORE the checkout of the
+        // new one starts (CheckoutAsync is what moves SourcePath); a close shows it before the process ends; the
+        // lock-lost banner and "Unsaved Changes Kept" come while the session on that database is the current one.
+        var (database, databaseName) = DatabaseOf(owner);
+
         lock (_gate)
         {
             foreach (var kind in classified.Kinds.Where(k => k != PromiseKind.Info))
             {
-                var promise = new Promise(kind, owner, title, text, promised, MessagePromises.SavedFileName(text), step);
-                if (kind == PromiseKind.WillOfferRestore) _pendingOffers.Add(promise);
-                else _thisStep.Add(promise);
+                var promise = new Promise(kind, owner, title, text, promised, MessagePromises.SavedFileName(text), step,
+                                          database, databaseName);
+                if (kind != PromiseKind.WillOfferRestore)
+                {
+                    _thisStep.Add(promise);
+                    continue;
+                }
+
+                // One claim per person and database: "a restore will be offered at your next open of this database".
+                // A single failure can show it twice (the lock-lost banner AND "Changes Not Saved" in the same
+                // switch); both messages promise the same thing, so they are one claim, judged once. The first stays;
+                // the edits the second talks about are added to it.
+                var existing = _pendingOffers.FindIndex(p => p.Owner == owner && p.Database == database);
+                if (existing < 0)
+                    _pendingOffers.Add(promise);
+                else
+                    _pendingOffers[existing] = _pendingOffers[existing] with
+                    {
+                        PromisedEdits = _pendingOffers[existing].PromisedEdits.Union(promised).ToList()
+                    };
             }
         }
         return null;
+    }
+
+    /// <summary>
+    /// The database a computer's checkout points at: the one the message it just showed is about (see
+    /// <see cref="OnMessage"/>). Normalised exactly as production names the working copy, so two spellings of one path
+    /// (case, relative parts) are the same database here as they are there.
+    /// </summary>
+    /// <param name="owner">The computer.</param>
+    /// <returns>The normalised full path and the file name; (null, "") when the checkout has no source yet.</returns>
+    private static (string? Database, string Name) DatabaseOf(Computer owner)
+    {
+        var source = owner.Checkout.SourcePath;
+        return string.IsNullOrEmpty(source)
+            ? (null, "")
+            : (CheckoutService.NormalizeSourcePath(source), Path.GetFileName(source));
     }
 
     /// <summary>
@@ -119,8 +165,13 @@ internal sealed class PromiseTracker
         List<Promise> due;
         lock (_gate)
         {
+            // Due: the owner finished an open with write access, and the database now open is the one the promise is
+            // about. An open of any other database leaves the promise pending. (A promise made before the checkout had
+            // a source cannot be told apart and is judged at any edit-access open, as before.)
             due = _pendingOffers
-                .Where(p => opened.Contains(p.Owner) && p.Owner.Checkout.Mode == CheckoutMode.WriteAccess)
+                .Where(p => opened.Contains(p.Owner)
+                            && p.Owner.Checkout.Mode == CheckoutMode.WriteAccess
+                            && (p.Database is null || p.Database == DatabaseOf(p.Owner).Database))
                 .ToList();
             foreach (var p in due) _pendingOffers.Remove(p);
         }
@@ -134,6 +185,21 @@ internal sealed class PromiseTracker
         return broken;
     }
 
+    /// <summary>True when a "will offer to restore" promise made to <paramref name="owner"/> still waits for its next edit-access open.</summary>
+    /// <param name="owner">The computer.</param>
+    public bool HasPendingOffer(Computer owner)
+    {
+        lock (_gate) return _pendingOffers.Any(p => p.Owner == owner);
+    }
+
+    /// <summary>The databases (normalised, see <see cref="CheckoutService.NormalizeSourcePath"/>) a computer has a "will offer to restore" promise pending for.</summary>
+    /// <param name="owner">The computer.</param>
+    /// <returns>The normalised paths; an empty string stands for a promise whose database was not known.</returns>
+    public IReadOnlyList<string> PendingOfferDatabases(Computer owner)
+    {
+        lock (_gate) return _pendingOffers.Where(p => p.Owner == owner).Select(p => p.Database ?? "").ToList();
+    }
+
     /// <summary>One line per promise still undecided (for the story's closing notes).</summary>
     /// <returns>The lines; empty when nothing is pending.</returns>
     public IReadOnlyList<string> PendingLines()
@@ -142,7 +208,9 @@ internal sealed class PromiseTracker
         {
             return _pendingOffers
                 .Select(p => $"Promise still pending: {p.Owner.DisplayName} was told (step {p.Step}, \"{p.Title}\") that " +
-                             "TermPoint will offer to restore their unsaved changes next time; they have not opened for editing since.")
+                             "TermPoint will offer to restore their unsaved changes next time they open " +
+                             (p.Database is null ? "the database" : p.DatabaseName) +
+                             " for editing; they have not done so since.")
                 .ToList();
         }
     }

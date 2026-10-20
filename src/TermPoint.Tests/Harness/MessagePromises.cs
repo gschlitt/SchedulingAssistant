@@ -70,6 +70,10 @@ internal static class MessagePromises
         new("Restore Not Confirmed", "", PromiseKind.Info),
         new("Restore Stopped",       "", PromiseKind.Info),
         new("Restore Not Started",   "", PromiseKind.Info),
+
+        // The banner after an externally removed lock file was put back ("... TermPoint has restored it and your
+        // session continues normally"): it states a fact about the lock file, and promises nothing about unsaved work.
+        new(null, "has restored it and your session continues", PromiseKind.Info),
     };
 
     /// <summary>The result of looking a message up in the catalogue.</summary>

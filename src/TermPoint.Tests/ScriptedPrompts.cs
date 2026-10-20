@@ -47,6 +47,18 @@ internal sealed record PromptCall(
     ChoiceAnswer? Answer = null, string? PickedPath = null);
 
 /// <summary>
+/// The answer a <see cref="ScriptedPrompts.Policy"/> gives to a prompt nobody scripted (the generated runs of the
+/// multi-computer harness, spec item 9.3c).
+/// </summary>
+/// <param name="Answer">
+/// What the "user" does: a <see cref="ChoiceAnswer"/> for a choice, a <c>bool</c> for the stale-lock wait (true = it ran
+/// to the end), a <c>string?</c> for the picker (the path, or null for cancel) and the chooser (the database, or null
+/// for Exit); null for a message or a wait dialog.
+/// </param>
+/// <param name="Before">Optional action run when the prompt is asked, before the answer is given (the stale-lock wait advances the clock here).</param>
+internal sealed record PromptAnswer(object? Answer, Action? Before = null);
+
+/// <summary>
 /// How a two-button choice dialog was answered. The real dialog returns <c>true</c> only for its first button;
 /// the second button and the window's X both return <c>false</c>, so the lifecycle cannot tell them apart. The
 /// harness records the difference anyway, because the X is not a decision: it must never be taken as consent to
@@ -112,6 +124,15 @@ internal sealed class ScriptedPrompts : ILifecyclePrompts
     /// write the dialog into its story and to feed the invariants; null for none.
     /// </summary>
     public Action<PromptCall>? OnCall { get; set; }
+
+    /// <summary>
+    /// The fallback used when a prompt arrives and NO script step is queued: it decides the answer instead of throwing
+    /// <see cref="UnexpectedPromptException"/>. The call is recorded exactly as a scripted one is (title, text, buttons,
+    /// answer kind, picked path), so the story, the findings and the promise tracker work unchanged. A queued script
+    /// step always wins over the policy, so hand-written walks behave as before. Null (the default) keeps the strict
+    /// behaviour.
+    /// </summary>
+    public Func<PromptCall, PromptAnswer>? Policy { get; set; }
 
     /// <summary>Every unexpected prompt, described; empty when the lifecycle only asked what the script said.</summary>
     public List<string> Violations { get; } = new();
@@ -263,17 +284,29 @@ internal sealed class ScriptedPrompts : ILifecyclePrompts
         Calls.Add(call);
         _trace?.Invoke($"prompt:{call.Kind}:{call.Title}");
 
-        if (!_script.TryPeek(out var step))
-            throw Violation($"unexpected prompt (script is empty): {Describe(call)}");
-
-        _script.Dequeue();
-        if (step.Kind != call.Kind
-            || (step.Title is not null && step.Title != call.Title)
-            || (step.Text is not null && step.Text != call.Text))
+        Step? next;
+        Step step;
+        if (!_script.TryPeek(out next))
         {
-            throw Violation(
-                $"unexpected prompt: {Describe(call)}; the script expected {step.Kind} " +
-                $"title='{step.Title ?? "(any)"}' text='{step.Text ?? "(any)"}'");
+            // Nothing scripted: a generated run decides through the policy; a hand-written one has made a mistake.
+            if (Policy is null)
+                throw Violation($"unexpected prompt (script is empty): {Describe(call)}");
+
+            var decided = Policy(call);
+            step = new Step(call.Kind, call.Title, call.Text, decided.Answer, decided.Before);
+        }
+        else
+        {
+            step = next;
+            _script.Dequeue();
+            if (step.Kind != call.Kind
+                || (step.Title is not null && step.Title != call.Title)
+                || (step.Text is not null && step.Text != call.Text))
+            {
+                throw Violation(
+                    $"unexpected prompt: {Describe(call)}; the script expected {step.Kind} " +
+                    $"title='{step.Title ?? "(any)"}' text='{step.Text ?? "(any)"}'");
+            }
         }
 
         // Record the answer with the call, so the kind of answer survives: the lifecycle only ever sees a bool.

@@ -24,25 +24,100 @@ internal static class Inspector
     {
         if (!File.Exists(databaseFile)) return new List<string>();
 
+        var bytes = ReadAll(databaseFile);
+        var key   = ContentKey(bytes);
+        lock (CacheGate)
+        {
+            if (EditCache.TryGetValue(key, out var cached)) return cached.ToList();
+        }
+
         var scratch = Path.Combine(scratchRoot, "inspect_" + Guid.NewGuid().ToString("N"));
         Directory.CreateDirectory(scratch);
         try
         {
             var copy = Path.Combine(scratch, "copy.db");
-            CopyShared(databaseFile, copy);
-            foreach (var suffix in Sidecars)
-            {
-                if (File.Exists(databaseFile + suffix))
-                    CopyShared(databaseFile + suffix, copy + suffix);
-            }
+            WriteAll(bytes, copy);
 
-            return ReadIds(copy);
+            var ids = ReadIds(copy);
+            lock (CacheGate) EditCache[key] = ids.ToList();
+            return ids;
         }
         finally
         {
             SqliteConnection.ClearAllPools();
             try { Directory.Delete(scratch, recursive: true); } catch { /* best effort */ }
         }
+    }
+
+    /// <summary>
+    /// Content-addressed memory of what a database's bytes mean (its edit ids, its integrity verdict). The generated runs
+    /// inspect the same few database files thousands of times; two byte-identical files (with identical sidecars) always
+    /// give the same answer, so the answer is remembered by the hash of the bytes and the file is not opened again.
+    /// Nothing is assumed from a file's name, size or time stamp.
+    /// </summary>
+    private static readonly Dictionary<string, List<string>> EditCache = new();
+
+    /// <summary>The integrity verdicts, by content (see <see cref="EditCache"/>); a null verdict means the file passed.</summary>
+    private static readonly Dictionary<string, string?> IntegrityCache = new();
+
+    /// <summary>Guards both caches.</summary>
+    private static readonly object CacheGate = new();
+
+    /// <summary>The bytes of a database file and of the sidecars beside it, read while another handle may have them open.</summary>
+    /// <param name="Main">The database file.</param>
+    /// <param name="Extras">Each sidecar that exists, by its suffix ("-wal", "-shm", "-journal").</param>
+    private sealed record FileBytes(byte[] Main, IReadOnlyList<(string Suffix, byte[] Bytes)> Extras);
+
+    /// <summary>Reads a database file and every sidecar beside it.</summary>
+    /// <param name="databaseFile">The database file (it exists).</param>
+    private static FileBytes ReadAll(string databaseFile)
+    {
+        var main   = ReadShared(databaseFile);
+        var extras = new List<(string, byte[])>();
+        foreach (var suffix in Sidecars)
+        {
+            if (File.Exists(databaseFile + suffix))
+                extras.Add((suffix, ReadShared(databaseFile + suffix)));
+        }
+        return new FileBytes(main, extras);
+    }
+
+    /// <summary>Reads a whole file with <see cref="FileShare.ReadWrite"/>, so a file a live connection has open can be read.</summary>
+    /// <param name="path">The file.</param>
+    private static byte[] ReadShared(string path)
+    {
+        using var input = new FileStream(path, FileMode.Open, FileAccess.Read, FileShare.ReadWrite | FileShare.Delete);
+        using var memory = new MemoryStream();
+        input.CopyTo(memory);
+        return memory.ToArray();
+    }
+
+    /// <summary>
+    /// The hash that identifies a file's content: the database, its write-ahead log and its rollback journal. The shared
+    /// memory file is left out: it only indexes the log and is rebuilt from it.
+    /// </summary>
+    /// <param name="bytes">The file's bytes.</param>
+    private static string ContentKey(FileBytes bytes)
+    {
+        using var hash = System.Security.Cryptography.IncrementalHash.CreateHash(System.Security.Cryptography.HashAlgorithmName.SHA256);
+        hash.AppendData(bytes.Main);
+        foreach (var (suffix, content) in bytes.Extras)
+        {
+            if (suffix == "-shm") continue;
+            hash.AppendData(System.Text.Encoding.ASCII.GetBytes(suffix));
+            hash.AppendData(content);
+        }
+        return Convert.ToHexString(hash.GetHashAndReset());
+    }
+
+    /// <summary>Writes the bytes of a database and its sidecars as a private copy, so SQLite opens the copy and never the original.</summary>
+    /// <param name="bytes">What to write.</param>
+    /// <param name="copy">The path of the copy of the database file.</param>
+    private static void WriteAll(FileBytes bytes, string copy)
+    {
+        File.WriteAllBytes(copy, bytes.Main);
+        foreach (var (suffix, content) in bytes.Extras)
+            File.WriteAllBytes(copy + suffix, content);
     }
 
     /// <summary>
@@ -55,17 +130,22 @@ internal static class Inspector
     {
         if (!File.Exists(databaseFile)) return null;
 
+        FileBytes bytes;
+        try { bytes = ReadAll(databaseFile); }
+        catch (Exception ex) { return $"{ex.GetType().Name}: {ex.Message}"; }
+
+        var key = ContentKey(bytes);
+        lock (CacheGate)
+        {
+            if (IntegrityCache.TryGetValue(key, out var cached)) return cached;
+        }
+
         var scratch = Path.Combine(scratchRoot, "integrity_" + Guid.NewGuid().ToString("N"));
         Directory.CreateDirectory(scratch);
         try
         {
             var copy = Path.Combine(scratch, "copy.db");
-            CopyShared(databaseFile, copy);
-            foreach (var suffix in Sidecars)
-            {
-                if (File.Exists(databaseFile + suffix))
-                    CopyShared(databaseFile + suffix, copy + suffix);
-            }
+            WriteAll(bytes, copy);
 
             using var conn = new SqliteConnection($"Data Source={copy};Pooling=False");
             conn.Open();
@@ -76,7 +156,9 @@ internal static class Inspector
             {
                 while (reader.Read() && findings.Count < 3) findings.Add(reader.GetString(0));
             }
-            return findings.Count == 1 && findings[0] == "ok" ? null : string.Join(" / ", findings);
+            var verdict = findings.Count == 1 && findings[0] == "ok" ? null : string.Join(" / ", findings);
+            lock (CacheGate) IntegrityCache[key] = verdict;
+            return verdict;
         }
         catch (Exception ex)
         {

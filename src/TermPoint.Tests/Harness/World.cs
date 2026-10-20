@@ -103,6 +103,15 @@ internal sealed class World : IDisposable
     /// <summary>Extra code walks asked to run at a crash point, by point name; each runs once.</summary>
     private readonly Dictionary<string, List<(Action Action, string StoryLine)>> _crashPointActions = new();
 
+    /// <summary>Extra code that runs EVERY time execution passes a crash point (a planted bug), by point name.</summary>
+    private readonly Dictionary<string, List<Action>> _repeatingCrashPointActions = new();
+
+    /// <summary>How many "Save a Copy" paths have been handed out (numbers "copy-1.db", "copy-2.db", ...).</summary>
+    private int _savedCopyCounter;
+
+    /// <summary>How many times the network fault hook has been asked about an operation (a sign that work is still running on the share).</summary>
+    private int _shareActivity;
+
     /// <summary>Every file a "Save a Copy" picker answered with.</summary>
     private readonly List<string> _savedCopyPaths = new();
 
@@ -169,6 +178,25 @@ internal sealed class World : IDisposable
 
     /// <summary>Full path of D's lock file.</summary>
     public string LockFilePath => Path.ChangeExtension(DatabasePath, ".lock");
+
+    /// <summary>Full path of the second shared database ("other.db") the generated runs switch to and from (made by <see cref="EnsureOtherDatabase"/> when something first needs it).</summary>
+    public string OtherDatabasePath => Path.Combine(ShareDir, "other.db");
+
+    /// <summary>Full path of the second database's lock file.</summary>
+    public string OtherLockFilePath => Path.ChangeExtension(OtherDatabasePath, ".lock");
+
+    /// <summary>
+    /// The policy that answers a dialog nobody scripted, for every computer of this world (set by a generated run;
+    /// null for a hand-written walk, whose unexpected dialogs fail the test). Each computer hands it to its
+    /// <see cref="ScriptedPrompts"/> whenever a process is launched.
+    /// </summary>
+    public Func<Computer, PromptCall, PromptAnswer>? PromptPolicy { get; set; }
+
+    /// <summary>
+    /// A number that grows whenever work touches the share (every operation asks the network fault hook) or a computer
+    /// logs something. A caller waiting for background work to finish watches it stand still.
+    /// </summary>
+    public int Activity => Volatile.Read(ref _shareActivity) + _computers.Sum(c => c.LogActivity);
 
     /// <summary>The one fake clock every simulated lock service reads. It starts at the real current time.</summary>
     public FakeTimeProvider Clock { get; } = new();
@@ -239,6 +267,93 @@ internal sealed class World : IDisposable
             return 0;
         });
         return DatabasePath;
+    }
+
+    /// <summary>
+    /// Creates D by copying a template database that was built once per test process the way
+    /// <see cref="CreateDatabase"/> builds one (same schema, <see cref="EditsTable"/> added, rollback-journal mode, no
+    /// sidecar files). The thousands of worlds a generated exploration makes would otherwise each pay for building the
+    /// schema. The second database is made only when something needs it (<see cref="EnsureOtherDatabase"/>).
+    /// </summary>
+    /// <returns>The path of D.</returns>
+    public string CreateDatabaseFromTemplate()
+    {
+        Do<int>(null, $"The shared database {Path.GetFileName(DatabasePath)} was created", () =>
+        {
+            File.Copy(HarnessDatabaseTemplate.Path, DatabasePath);
+            return 0;
+        });
+        return DatabasePath;
+    }
+
+    /// <summary>
+    /// Makes sure the second database ("other.db") exists on the share (a copy of the template, made the first time a
+    /// computer is about to switch to it). Not a story step: the second database holds no traceable edits.
+    /// </summary>
+    /// <returns>The path of the second database.</returns>
+    public string EnsureOtherDatabase()
+    {
+        if (!File.Exists(OtherDatabasePath))
+            File.Copy(HarnessDatabaseTemplate.Path, OtherDatabasePath);
+        return OtherDatabasePath;
+    }
+
+    /// <summary>
+    /// Deletes D's lock file, as antivirus, a cloud-sync client or a person tidying the folder might (a file that
+    /// is simply gone, not taken over by anyone).
+    /// </summary>
+    public void DeleteLockFile()
+        => Do(null, "Somebody deleted the lock file from the share", () =>
+        {
+            if (File.Exists(LockFilePath)) File.Delete(LockFilePath);
+        });
+
+    /// <summary>True when D's lock file exists.</summary>
+    public bool LockFileExists => File.Exists(LockFilePath);
+
+    /// <summary>
+    /// Hands out a fresh, never-used path for a "Save a Copy" picker to answer with, under the world's scratch folder
+    /// ("copy-1.db", "copy-2.db", ...), so a generated run needs no scripted export path and its story names the
+    /// same files every time it is replayed.
+    /// </summary>
+    /// <returns>A full path whose folder exists and whose file does not.</returns>
+    public string NextSavedCopyPath()
+    {
+        var dir = Path.Combine(ScratchDir, "exports");
+        Directory.CreateDirectory(dir);
+        return Path.Combine(dir, $"copy-{++_savedCopyCounter}.db");
+    }
+
+    /// <summary>SHA-256 of D's bytes now, in the hex form the checkout service uses for its fingerprints (null when D cannot be read).</summary>
+    /// <returns>The fingerprint, or null.</returns>
+    public string? CurrentDatabaseHash()
+    {
+        try { return HashFile(DatabasePath); }
+        catch (Exception) { return null; }
+    }
+
+    /// <summary>True when a "will offer to restore" promise made to the computer is still waiting for its next edit-access open.</summary>
+    /// <param name="computer">The computer.</param>
+    public bool HasPendingPromise(Computer computer) => _promises.HasPendingOffer(computer);
+
+    /// <summary>One line per promise still undecided, as the story's closing notes print them.</summary>
+    /// <returns>The lines; empty when nothing is pending.</returns>
+    public IReadOnlyList<string> PendingPromiseLines() => _promises.PendingLines();
+
+    /// <summary>
+    /// A short code for the databases a computer has a "will offer to restore" promise pending for: "" none, "d" the
+    /// shared database D, "o" the second database, "u" a promise whose database was not known (any combination, in that
+    /// order). The exhaustive search's state key carries it, because a promise about D and one about the other database
+    /// are judged at different opens.
+    /// </summary>
+    /// <param name="computer">The computer.</param>
+    /// <returns>The code; an empty string when nothing is pending.</returns>
+    public string PendingPromiseCode(Computer computer)
+    {
+        var pending = _promises.PendingOfferDatabases(computer);
+        var d = CheckoutService.NormalizeSourcePath(DatabasePath);
+        var o = CheckoutService.NormalizeSourcePath(OtherDatabasePath);
+        return (pending.Contains(d) ? "d" : "") + (pending.Contains(o) ? "o" : "") + (pending.Contains("") ? "u" : "");
     }
 
     /// <summary>Adds a simulated computer and starts its first TermPoint process.</summary>
@@ -713,6 +828,7 @@ internal sealed class World : IDisposable
                 AddPending(new Violation
                 {
                     Step = _step, Invariant = "I5", Kind = ViolationKind.RestoreOfferedThenImpossible,
+                    DataUnchangedSinceKept = DataUnchangedSinceKept(computer),
                     Key = $"I5:F7:{_step}:{computer.Name}", Computer = computer.Name,
                     Reason = $"{computer.DisplayName} was asked \"{HarnessTitles.RestoreUnsavedChanges}\", chose Restore, and was then told " +
                              "\"Can't Restore Unsaved Changes\": the question should not have been asked",
@@ -723,6 +839,27 @@ internal sealed class World : IDisposable
 
         if (call.Kind == PromptKind.Message)
             HandMessageToTracker(computer, call.Title, call.Text);
+    }
+
+    /// <summary>
+    /// The F5 rule: did nobody change any DATA in the shared database since the computer's work was kept? True when the
+    /// edits in D are exactly the edits in the computer's kept working file, leaving out the edits the computer itself
+    /// made that D does not hold (its unsaved work). Then the database's bytes alone differ from what the computer
+    /// started from (a no-edit save somewhere rewrote the file), which is finding F5; when D holds an edit the kept
+    /// file does not know, someone changed data and the refusal is the ordinary F7. Read at the moment "Can't Restore
+    /// Unsaved Changes" is shown, when the kept file is still on disk.
+    /// </summary>
+    /// <param name="computer">The computer that was refused.</param>
+    /// <returns>True for F5; false for F7 (and when either file cannot be read).</returns>
+    private bool DataUnchangedSinceKept(Computer computer)
+    {
+        var kept = TryEditsInFile(computer.WorkingFile);
+        var shared = TryEditsInFile(DatabasePath);
+        if (kept is null || shared is null) return false;
+
+        var own = computer.AppliedEdits.Where(e => !shared.Contains(e)).ToHashSet();
+        var base_ = kept.Where(e => !own.Contains(e)).ToHashSet();
+        return base_.SetEquals(shared);
     }
 
     /// <summary>
@@ -853,6 +990,27 @@ internal sealed class World : IDisposable
     }
 
     /// <summary>
+    /// Runs extra code EVERY time execution passes a named crash point, silently (no story line): the way a test plants
+    /// a bug without touching production code ("MarkDirty forgot the marker" is the code that deletes the marker
+    /// at <c>Dirty.AfterMarkerWritten</c>). Unlike <see cref="AtCrashPoint"/> it is never used up.
+    /// </summary>
+    /// <param name="name">One of <see cref="CrashPoints.All"/>.</param>
+    /// <param name="action">What to do there, every time.</param>
+    /// <exception cref="ArgumentException">The name is not a crash point.</exception>
+    public void AtCrashPointEveryTime(string name, Action action)
+    {
+        if (!CrashPoints.All.Contains(name))
+            throw new ArgumentException($"'{name}' is not a crash point.", nameof(name));
+
+        lock (_gate)
+        {
+            if (!_repeatingCrashPointActions.TryGetValue(name, out var list))
+                _repeatingCrashPointActions[name] = list = new List<Action>();
+            list.Add(action);
+        }
+    }
+
+    /// <summary>
     /// The <see cref="CrashPoints.Hook"/>: runs the walk's extra code for the point (once), then, at the points just before
     /// a rename onto the shared database, checks invariant I4. Never throws by itself.
     /// </summary>
@@ -860,6 +1018,7 @@ internal sealed class World : IDisposable
     private void OnCrashPoint(string name)
     {
         List<(Action Action, string StoryLine)>? due = null;
+        List<Action>? repeating = null;
         lock (_gate)
         {
             if (_crashPointActions.TryGetValue(name, out var list) && list.Count > 0)
@@ -867,7 +1026,12 @@ internal sealed class World : IDisposable
                 due = list.ToList();
                 list.Clear();
             }
+            if (_repeatingCrashPointActions.TryGetValue(name, out var again))
+                repeating = again.ToList();
         }
+
+        if (repeating is not null)
+            foreach (var action in repeating) action();
 
         if (due is not null)
         {
@@ -896,16 +1060,21 @@ internal sealed class World : IDisposable
 
         var problems = new List<string>();
 
+        // The database being written is the one the acting session is on (D, or "other.db" after a switch).
+        var sourcePath = string.IsNullOrEmpty(actor.Checkout.SourcePath) ? DatabasePath : actor.Checkout.SourcePath;
+        var sourceLockPath = Path.ChangeExtension(sourcePath, ".lock");
+        var onSharedDatabase = string.Equals(Path.GetFullPath(sourcePath), Path.GetFullPath(DatabasePath), StringComparison.OrdinalIgnoreCase);
+
         // The lock must be the saver's.
         try
         {
-            if (!File.Exists(LockFilePath))
+            if (!File.Exists(sourceLockPath))
             {
                 problems.Add("the lock file does not exist");
             }
             else
             {
-                var json = ReadSharedText(LockFilePath);
+                var json = ReadSharedText(sourceLockPath);
                 var holder = JsonSerializer.Deserialize<LockFileData>(json);
                 if (holder?.SessionGuid != actor.Locks.SessionGuid)
                     problems.Add($"the lock belongs to {holder?.Username} on {holder?.Machine}, not to {actor.DisplayName}");
@@ -921,9 +1090,12 @@ internal sealed class World : IDisposable
         {
             var expected = new List<string>();
             if (actor.Checkout.HashAtCheckout is { } seen) expected.Add(seen);
-            if (actor.PendingSaveHashInMarker() is { } pending) expected.Add(pending);
+            var markerFile = onSharedDatabase || string.IsNullOrEmpty(actor.Checkout.WorkingPath)
+                ? actor.MarkerFile
+                : actor.Checkout.WorkingPath + ".dirty";
+            if (actor.PendingSaveHashInMarker(markerFile) is { } pending) expected.Add(pending);
 
-            var current = HashFile(DatabasePath);
+            var current = HashFile(sourcePath);
             if (!expected.Contains(current, StringComparer.OrdinalIgnoreCase))
                 problems.Add($"the database is no longer the version {actor.DisplayName} last saw");
         }
@@ -1027,6 +1199,7 @@ internal sealed class World : IDisposable
     /// <returns>A timeout for a share operation of a computer whose network is down; otherwise no fault.</returns>
     private NetworkFaultDecision DecideFault(NetworkFaultRequest request)
     {
+        Interlocked.Increment(ref _shareActivity);
         var actor = _currentActor;
         if (actor is null || !actor.NetworkIsDown) return NetworkFaultDecision.None;
 
@@ -1116,5 +1289,89 @@ internal sealed class World : IDisposable
 
         /// <inheritdoc/>
         public void Dispose() { }
+    }
+}
+
+/// <summary>
+/// The template database the generated runs copy instead of building a schema for every world: built ONCE per test
+/// process in a private temp folder, exactly the way <see cref="World.CreateDatabase"/> builds D (a new TermPoint
+/// database, then the test-only <see cref="World.EditsTable"/>, in rollback-journal mode with no sidecar files), and
+/// removed when the process exits.
+/// </summary>
+internal static class HarnessDatabaseTemplate
+{
+    /// <summary>Guards the one-time build.</summary>
+    private static readonly object Gate = new();
+
+    /// <summary>The template file, once built.</summary>
+    private static string? _path;
+
+    /// <summary>The full path of the template database (built on first use).</summary>
+    /// <exception cref="InvalidOperationException">The template could not be built.</exception>
+    public static string Path
+    {
+        get
+        {
+            lock (Gate) return _path ??= Build();
+        }
+    }
+
+    /// <summary>True when a process with this id is running (used to tell a live test host's template folder from a dead one's).</summary>
+    /// <param name="processId">The process id.</param>
+    private static bool IsRunning(int processId)
+    {
+        try
+        {
+            using var process = System.Diagnostics.Process.GetProcessById(processId);
+            return !process.HasExited;
+        }
+        catch (ArgumentException)
+        {
+            return false;
+        }
+    }
+
+    /// <summary>Builds the template database in this process's own temp folder and arranges for the folder to be deleted at exit (a killed host's folder is removed by the next one).</summary>
+    /// <returns>The template's full path.</returns>
+    /// <exception cref="InvalidOperationException">The database could not be created.</exception>
+    private static string Build()
+    {
+        // One folder per test process (named by its process id). A test host that is killed leaves its folder behind,
+        // so each process first removes the folders of processes that are no longer running.
+        var temp = System.IO.Path.GetTempPath();
+        foreach (var old in Directory.GetDirectories(temp, "termpoint_harness_template_*"))
+        {
+            var suffix = System.IO.Path.GetFileName(old)["termpoint_harness_template_".Length..];
+            if (!int.TryParse(suffix, out var pid)) continue;
+            if (pid == Environment.ProcessId || IsRunning(pid)) continue;
+            try { Directory.Delete(old, recursive: true); } catch { /* best effort */ }
+        }
+
+        var folder = System.IO.Path.Combine(temp, $"termpoint_harness_template_{Environment.ProcessId}");
+        var buildDir = System.IO.Path.Combine(folder, "build");
+        if (Directory.Exists(folder)) Directory.Delete(folder, recursive: true);
+        Directory.CreateDirectory(buildDir);
+        var target = System.IO.Path.Combine(folder, "template.db");
+
+        var result = NewDatabaseFile.CreateAsync(target, buildDir).GetAwaiter().GetResult();
+        if (!result.Succeeded)
+            throw new InvalidOperationException($"The harness template database could not be created: {result.Outcome}", result.Error);
+
+        using (var conn = new SqliteConnection($"Data Source={target};Pooling=False"))
+        {
+            conn.Open();
+            using var cmd = conn.CreateCommand();
+            cmd.CommandText =
+                "PRAGMA journal_mode=DELETE;" +
+                $"CREATE TABLE IF NOT EXISTS {World.EditsTable}(id TEXT PRIMARY KEY, actor TEXT NOT NULL);";
+            cmd.ExecuteNonQuery();
+        }
+        SqliteConnection.ClearAllPools();
+
+        AppDomain.CurrentDomain.ProcessExit += (_, _) =>
+        {
+            try { Directory.Delete(folder, recursive: true); } catch { /* best effort */ }
+        };
+        return target;
     }
 }

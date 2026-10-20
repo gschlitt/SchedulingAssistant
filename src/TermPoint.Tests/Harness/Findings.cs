@@ -27,8 +27,11 @@ internal static class HarnessTitles
 /// <list type="bullet">
 /// <item><description><b>F1</b>: an edit was lost in a step in which its owner answered "Restore Unsaved Changes?" or
 /// "Can't Restore Unsaved Changes" with the second button (Discard, never confirmed today) or the window's X.</description></item>
+/// <item><description><b>F5</b>: the same refusal as F7, but the shared database's set of edits had not changed since the
+/// computer's work was kept: nobody changed any data, only the file's bytes changed (every editing session rewrites the
+/// database at its first save, even with no edits).</description></item>
 /// <item><description><b>F6</b>: a "will offer to restore" promise was broken.</description></item>
-/// <item><description><b>F7</b>: "Restore Unsaved Changes?" was answered Restore and was followed by "Can't Restore Unsaved Changes".</description></item>
+/// <item><description><b>F7</b>: "Restore Unsaved Changes?" was answered Restore and was followed by "Can't Restore Unsaved Changes" because someone changed data.</description></item>
 /// <item><description><b>F12</b>: the lock was not the saver's (or the database was not the version it last saw) at the
 /// moment of the save's rename.</description></item>
 /// </list>
@@ -40,7 +43,7 @@ internal static class Findings
 
     /// <summary>Gives a violation its finding id.</summary>
     /// <param name="violation">The violation to classify.</param>
-    /// <returns>"F1", "F6", "F7", "F12", or <see cref="NewFinding"/>.</returns>
+    /// <returns>"F1", "F5", "F6", "F7", "F12", or <see cref="NewFinding"/>.</returns>
     public static string Classify(Violation violation)
     {
         switch (violation.Kind)
@@ -49,7 +52,8 @@ internal static class Findings
                 return "F1";
 
             case ViolationKind.RestoreOfferedThenImpossible:
-                return "F7";
+                // The same refusal, but nobody changed any DATA: the database's bytes changed alone (a no-edit save).
+                return violation.DataUnchangedSinceKept == true ? "F5" : "F7";
 
             case ViolationKind.BrokenPromise when violation.Promise == PromiseKind.WillOfferRestore:
                 return "F6";

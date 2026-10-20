@@ -103,6 +103,7 @@ fingerprint, delete the marker.
 | Demotion | Banner; connection closed before anything else; kept file and marker **preserved**; Bob reads from a read-only copy | OK for files |
 | **Writes after demotion** | The read-only copy is opened read-**write** (`DatabaseContext.ReinitializeConnection`, `Mode=ReadWrite`). Write blocking is UI-only (`IsWriteEnabled`/`CanWrite`). An inline editor that was already open has an `onSave` that writes without checking (`SectionListViewModel.cs:1104`). If it stays open across the demotion, Apply "succeeds" into the read-only copy, which is thrown away at the next refresh or close | **Rule 3 / 4**, to verify (F4) |
 | Lock-lost banner | "TermPoint will offer to restore them the next time you open this database" | **Confusing** (F6) |
+| Switching database while the demotion is still copying | The old demotion finishes against the new session: read-only while it holds the new lock | **Rule 3 / 4**, confirmed by test (F16) |
 | Sleep, then wake | Lock re-checked off the UI thread; same outcomes as above | OK |
 | Lock file damaged (not deleted) | Treated like removal; can't be re-created; message says "removed by another program" | **Confusing**, minor (F13) |
 
@@ -158,6 +159,7 @@ All of 2.8 stems from one choice: the working folder is `Environment.SpecialFold
 | **F13** | A damaged lock file is reported as "removed"; jargon | 4 | Known | Small |
 | **F14** | Kept changes on another computer are invisible from this one | 4 | **New** | Hard; probably a message only |
 | **F15** | Messages during a network outage: the autosave banner clears itself after 30 s while saves keep failing (nothing on screen until the next autosave, 10 min later); "Try saving again in a moment" is wrong advice in a long outage; the heartbeat adds a second message for the same problem, worded "safe locally"; closing then gets "Changes Not Saved" with its restore promise (F6) | 4 | **New** | Small/medium: one persistent "can't reach the database" state that clears only when a save works, one wording |
+| **F16** | A lost-lock demotion that is still running when Bob switches database lands on the NEW session. **Confirmed 2026-10-20 by `CheckoutServiceTests.F16_ADemotionStillRunningWhenTheUserSwitches_DoesNotTouchTheNewSession` (skipped until fixed).** The demotion (`DemoteToReadOnlyAsync`, `CheckoutService.cs:3508`) stays at `Mode = WriteAccess` until its D'' snapshot is made (`SetupReadOnlySnapshotAsync`, a network copy and hash, `:3967`/`:3990`). If Bob switches during that copy, the switch's own release and the checkout of the new database (`:597`, `:790`) complete first. The demotion then goes on with the service's CURRENT `SourcePath` (it re-reads it at `:3990` and `:4013`: the log shows "D'' copy hash mismatch, retrying"), copies the NEW database, and sets `WorkingPath = D''`, `Mode = ReadOnly` and `IsReadOnlyMode` (`:4048-4050`). Result: the new session holds the new database's lock but is read-only to the checkout service. Saves return `NotInWriteMode` (`:1423`), `MarkDirty` writes no marker (`:2444`), and the exit release skips its final save (`:3030`), while the lock service still says writer, so the window may still allow editing. **Data may be at risk (not yet demonstrated end to end):** edits made in that session after the demotion lands would not be saved at close and would have no marker, so the next start would clear the working copy as "no edits". The window is the duration of the D'' copy, and it needs the demotion to have STARTED before the switch (a heartbeat check, a wake check, an autosave or the Save button found the loss) and Bob to switch during the copy. The switch's own final save also raises the loss, but in production that handler is posted (`Dispatcher.UIThread.Post`, then `InvokeAsync`) and, by code reading, runs after `ReleaseAsync` has set `Mode = ReadOnly` (`:3054`), where the guard at `:3512` makes it a no-op. The harness dispatches synchronously, so there that same handler runs inline and can show the clobber (the dept.db to other.db story); that story is partly a harness artifact, the unit test above is the production-shaped route | 3 (possible), 4 (read-only while holding the lock) | **New** | Small/medium: tie a demotion to the session it was started for (a session number captured at the start, checked before each state change), and refuse a switch until a running demotion has finished |
 
 ---
 
@@ -595,6 +597,69 @@ them from the list one by one, and the harness proves each is gone.
   - **Limitations:** checks run at step ends (I4 excepted); a restore-side I4 breach is not exercised; the
     support-archive and save-failure promises are wired but not yet driven by a walk.
 - **9.3c:** the three strategies, the shrinker and the known-problems list.
+  - **9.3c-1:** bounded exhaustive search, random walks, the shrinker and the known-findings list. Test code only.
+    **Done 2026-10-20 (uncommitted):**
+    - **Budget (the default):** exhaustive depth 3; 300 random walks of 30 events. Both can be raised with
+      `TERMPOINT_HARNESS_DEPTH`, `_SEEDS` and `_STEPS`.
+    - **Runs:**
+      - exhaustive: 757 runs, 2205 events, 247 distinct states, 538 runs cut short by the memo;
+      - random: 300 runs, 9000 events, 138 shrink replays.
+    - **Known findings found, with the smallest story:**
+      - F1: 84 runs, 4 events (crash, restart, Discard on "Restore Unsaved Changes?").
+      - F5: 1 run, 7 events, reached only indirectly: IT restores an older copy of the file while a kept
+        change waits, so the restore is offered and then refused.
+      - F7: 5 runs, 7 events (a colleague changes the file, IT restores an older copy, crash, Restore, "Can't Restore").
+      - F12: not found, as expected. It needs a pause in the middle of a save, which is step 9.3c-2.
+      - F6: **not found by the search at the default budget**; rediscovered by the known-sequence replay list (see below).
+    - **Planted-bug check:** a hook deletes the dirty marker at `Dirty.AfterMarkerWritten`, as if `MarkDirty`
+      forgot it. A kept working file without its marker is deleted at the next start, so I2 fires. No known finding
+      explains it, so it is classified new, and the shrinker reduces the failing walk to 4 events. This proves
+      the "new violation fails the run" path.
+    - **Every event enabled:** every event in the catalogue was enabled at some point in the runs; none is dead.
+    - **F6 correction found in review.** The first full run listed F6 in 6 runs, smallest story 5 events: Bob edits,
+      Alice takes over his stale lock, Bob switches to other.db. That was a misjudgement by the tracker, not a
+      finding. The message ("Changes Not Saved") is about dept.db, and TermPoint keeps unsaved changes per database
+      (the working copy is named after the normalised source path). The tracker judged the promise at Bob's open of
+      **other.db** and found no restore offered, which is correct for other.db.
+      - Fix: each "will offer to restore" promise now records the database it is about (read from the owner's
+        checkout while the message is shown, normalised as production normalises it) and is judged only at the
+        owner's next edit-access open of **that** database. Until then it stays pending, and the story's closing notes
+        name the database.
+      - The same story listed the identical F6 violation twice. Cause: one failure shows the promise in two messages
+        (the lock-lost banner and "Changes Not Saved"), and each became its own promise. They are now one claim per
+        person and database. Without that merge the new proof tests fail with two reports.
+      - Proof tests (in `InvariantProofTests`): a promise about dept.db is not judged at the open of other.db and
+        stays pending; two messages make one pending promise; the promise is judged once, at the next open of
+        dept.db, where today "Can't Restore" follows (F6, with F5 as the cause), and exactly one violation is
+        reported.
+      - After the fix, F6 is **not found** by the default generated runs. The hand-written route exists and is
+        reported correctly (open, edit, takeover, switch away, the taker closes, switch back), but it needs about 7
+        events in a particular order, beyond depth 3, and 300 random walks of 30 events did not hit it. As a result
+        `Generated_RediscoversKnownFindings` failed at the default budget until the replay list below was added; its
+        assertion has not been weakened.
+    - **Results:** normal suite 2698 passed + 49 skipped (the harness tests need `TERMPOINT_HARNESS=1`; one more
+      is the skipped F16 test); harness 27 of 27 passed; no new violations. Findings by source: F1 search (84
+      runs); F5 search (1) and replay (1); F6 replay only (1 run, 7 events); F7 search (5); F12 not found.
+    - **Limitations:**
+      - the exhaustive search's memo is an approximation: it leaves out the clock, service counters and exact bytes,
+        so it can skip a path whose outcome depends on them;
+      - one real-time wait of about 50 ms remains, in `WakeCheckAsync`, which waits for the fire-and-forget wake
+        handler;
+      - the shrinker is greedy: it drops events while the same violation remains, so the result is small but not
+        always the smallest;
+      - sleep cannot yet model a takeover that happens during the sleep;
+      - F5 is reached only indirectly (through IT restoring an older copy), not through the no-edit save that causes it.
+    - **Known-sequence replay list:** `KnownSequences.cs` holds named decision sequences (name, finding, one-line
+      reason, event keys) that every generated exploration replays before the search, through the same replay path as
+      a recorded run. Seeded with F6's route (open, edit, stale takeover, switch away, the taker closes, switch
+      back). Findings found by a replay count toward `Generated_RediscoversKnownFindings`, and the report says for
+      each known finding whether the search found it, a replay found it, or both, so the search is never credited
+      with what only a replay reached. `KnownSequences_EachShowsItsFinding` fails when an entry stops reproducing its
+      finding.
+    - **F16 found:** the read-only-while-holding-the-lock outcome first seen in the dept.db to other.db story. A
+      deterministic unit test (`CheckoutServiceTests.F16_...`, skipped until fixed) confirms the real route: a demotion
+      already running (held in its D'' copy) when the user switches lands on the new session. The story itself is partly
+      a harness artifact (the harness runs the lost-lock handler inline, production posts it); see F16 in section 3.
 - **9.3d:** the first full run against today's code, and a report: every failure found, matched to a finding or
   added to section 3 as a new one.
 

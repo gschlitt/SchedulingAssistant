@@ -43,6 +43,9 @@ internal sealed class Computer : IDisposable
     /// <summary>True between a launch and the process ending (closed or killed).</summary>
     private bool _running;
 
+    /// <summary>How many background tasks have been added to <see cref="_pending"/> (a sign that lock-loss work is still being started).</summary>
+    private int _pendingAdded;
+
     /// <summary>Creates the computer, its folders and its first running process.</summary>
     /// <param name="world">The world it lives in.</param>
     /// <param name="name">Lower-case first name ("bob").</param>
@@ -83,6 +86,25 @@ internal sealed class Computer : IDisposable
 
     /// <summary>True between a launch and the process ending (closed or killed).</summary>
     public bool IsRunning => _running;
+
+    /// <summary>
+    /// True when the process is running and a database is open in its window (read-only sessions included), the way the
+    /// real window knows it (<see cref="FakeSessionHost.IsDatabaseOpen"/> is set when the window is wired up and cleared
+    /// when a switch starts tearing the old session down).
+    /// </summary>
+    public bool HasOpenSession => _running && Host.IsDatabaseOpen;
+
+    /// <summary>True when the open session is on the shared database D (not on the second database after a switch).</summary>
+    public bool SessionIsOnSharedDatabase
+        => HasOpenSession && string.Equals(
+            Path.GetFullPath(Checkout.SourcePath ?? ""), Path.GetFullPath(_world.DatabasePath), StringComparison.OrdinalIgnoreCase);
+
+    /// <summary>
+    /// A number that grows whenever this computer's process logs anything or starts lock-loss work. A caller waiting for
+    /// background work to finish watches it (together with <see cref="World.Activity"/>) stand still.
+    /// </summary>
+    public int LogActivity
+        => Logger is null ? 0 : Logger.Infos.Count + Logger.Warnings.Count + Logger.Errors.Count + Logger.Handled.Count + Volatile.Read(ref _pendingAdded);
 
     /// <summary>True while this computer's connection to the share is cut (see <see cref="World.NetworkDown"/>).</summary>
     public bool NetworkIsDown { get; internal set; }
@@ -153,11 +175,17 @@ internal sealed class Computer : IDisposable
         Lifecycle     = new SessionLifecycle(
             Checkout, Guard, () => Logger, () => AppSettings.Current, _ => { }, () => null, Prompts, Host);
 
-        Checkout.WriteLockLost        += reason => _pending.Add(Lifecycle.HandleWriteLockLostAsync(reason));
+        Checkout.WriteLockLost        += reason =>
+        {
+            var task = Lifecycle.HandleWriteLockLostAsync(reason);
+            lock (_pending) { _pending.Add(task); _pendingAdded++; }
+        };
         Checkout.SaveConflictDetected += () => ConflictBannerShown = true;
 
         // Everything a person would read reaches the world: dialogs (with their answers) and banners.
         Prompts.OnCall                   = call => _world.ObservePrompt(this, call);
+        if (_world.PromptPolicy is { } policy)
+            Prompts.Policy = call => policy(this, call);   // a generated run answers the dialogs nobody scripted
         Host.LockLossSurface.OnSaveError = text => _world.ObserveBanner(this, text);
         Checkout.SaveFailed             += (text, _) => _world.ObserveBanner(this, text);
 
@@ -240,6 +268,43 @@ internal sealed class Computer : IDisposable
     public Task HeartbeatTickAsync()
         => _world.DoAsync(this, $"{DisplayName}'s heartbeat ticked",
             () => ActAsync(async () => { await Locks.TickHeartbeatAsync(); return 0; }));
+
+    /// <summary>Runs one reader poll tick now (what the 60-second poll timer does while the session is read-only and watching the lock).</summary>
+    /// <returns>A task that completes when the poll is done.</returns>
+    public Task PollTickAsync()
+        => _world.DoAsync(this, $"{DisplayName}'s lock poll ticked",
+            () => ActAsync(async () => { await Locks.TickPollAsync(); return 0; }));
+
+    /// <summary>
+    /// The computer has just woken from sleep: runs one wake-detection tick (<see cref="WriteLockService.TickWakeCheck"/>),
+    /// which, when it finds a long gap since the previous tick, re-checks the lock in the background, and waits for that
+    /// background work to finish (including any lock-loss demotion it starts, which is awaited like every other
+    /// action's). The wake handler is fire-and-forget in production, so its end is detected from its log lines and
+    /// from its work on the share standing still (see <see cref="SettleBackgroundWorkAsync"/>).
+    /// </summary>
+    /// <returns>A task that completes when the wake check and everything it started are done.</returns>
+    public Task WakeCheckAsync()
+        => _world.DoAsync(this, $"{DisplayName}'s computer woke up and TermPoint checked the lock",
+            () => ActAsync(async () =>
+            {
+                var verifies = Checkout.Mode == CheckoutMode.WriteAccess;
+                var outcomesBefore = CountWakeOutcomes();
+                Locks.TickWakeCheck();
+                if (verifies) await SettleBackgroundWorkAsync(outcomesBefore);
+                return 0;
+            }));
+
+    /// <summary>
+    /// After a session ended without a window to show (a failed startup, a switch that went to the chooser and Exit,
+    /// a declined stale-lock takeover) the real application closes. The harness models that by ending the process
+    /// cleanly: handles are freed and the process id is gone, with nothing saved or released beyond what the lifecycle
+    /// already did. Does nothing when a database is open or the process has already ended.
+    /// </summary>
+    public void ExitIfNothingOpen()
+    {
+        if (_running && !Host.IsDatabaseOpen)
+            _world.Do(this, $"{DisplayName}'s TermPoint closed because nothing was open", EndProcessCleanly);
+    }
 
     /// <summary>
     /// Closes TermPoint: the window-close teardown (<see cref="SessionLifecycle.TeardownForCloseAsync"/> — final save,
@@ -336,14 +401,43 @@ internal sealed class Computer : IDisposable
     /// version this computer last saw".
     /// </summary>
     /// <returns>The pending-save hash, or null.</returns>
-    public string? PendingSaveHashInMarker()
+    public string? PendingSaveHashInMarker() => PendingSaveHashInMarker(MarkerFile);
+
+    /// <summary>
+    /// Like <see cref="PendingSaveHashInMarker()"/> for any marker file (the session on the second database has its own).
+    /// </summary>
+    /// <param name="markerFile">The marker to read.</param>
+    /// <returns>The pending-save hash, or null.</returns>
+    public string? PendingSaveHashInMarker(string markerFile)
     {
+        try
+        {
+            if (!File.Exists(markerFile)) return null;
+            using var stream = new FileStream(markerFile, FileMode.Open, FileAccess.Read, FileShare.ReadWrite | FileShare.Delete);
+            using var reader = new StreamReader(stream);
+            return JsonSerializer.Deserialize<DirtyMarkerData>(reader.ReadToEnd())?.PendingSaveHash;
+        }
+        catch (Exception)
+        {
+            return null;
+        }
+    }
+
+    /// <summary>
+    /// The fingerprint of the shared database that this computer's work started from: the live session's, or, for kept
+    /// work, the one in its marker. Null when there is neither. Used to ask "has D's file changed since this computer
+    /// last saw it?", which decides whether a restore is possible.
+    /// </summary>
+    /// <returns>The SHA-256 hex digest, or null.</returns>
+    public string? FingerprintOfWork()
+    {
+        if (HasLiveSession) return Checkout.HashAtCheckout;
         try
         {
             if (!File.Exists(MarkerFile)) return null;
             using var stream = new FileStream(MarkerFile, FileMode.Open, FileAccess.Read, FileShare.ReadWrite | FileShare.Delete);
             using var reader = new StreamReader(stream);
-            return JsonSerializer.Deserialize<DirtyMarkerData>(reader.ReadToEnd())?.PendingSaveHash;
+            return JsonSerializer.Deserialize<DirtyMarkerData>(reader.ReadToEnd())?.HashAtCheckout;
         }
         catch (Exception)
         {
@@ -401,6 +495,46 @@ internal sealed class Computer : IDisposable
 
     // ── Internals ────────────────────────────────────────────────────────────
 
+    /// <summary>How many of this process's log lines are the wake handler's outcome lines (or its failure).</summary>
+    private int CountWakeOutcomes()
+    {
+        try
+        {
+            var infos = Logger.Infos.Count(line => line.Contains("wake check", StringComparison.OrdinalIgnoreCase));
+            var failures = Logger.Errors.Count(e => (e.Context ?? "").Contains("wake-check", StringComparison.OrdinalIgnoreCase));
+            return infos + failures;
+        }
+        catch (InvalidOperationException)
+        {
+            return 0;   // the list changed under the count; the caller counts again on its next look
+        }
+    }
+
+    /// <summary>
+    /// Waits for the fire-and-forget work the wake handler started: first for it to log its outcome, then for the
+    /// activity counters (<see cref="World.Activity"/>) to stand still for a short quiet period, because the handler
+    /// still has work to do after the line is logged (a lock re-acquire, the demotion, a heartbeat renewal). Bounded
+    /// to ten seconds. This is the harness's only wait on real time; the production class gives no task to await.
+    /// </summary>
+    /// <param name="outcomesBefore">The number of wake outcome lines logged before the tick.</param>
+    private async Task SettleBackgroundWorkAsync(int outcomesBefore)
+    {
+        var deadline = DateTime.UtcNow + TimeSpan.FromSeconds(10);
+
+        while (CountWakeOutcomes() <= outcomesBefore && DateTime.UtcNow < deadline)
+            await Task.Delay(2);
+
+        var last = _world.Activity;
+        var quiet = 0;
+        while (quiet < 5 && DateTime.UtcNow < deadline)
+        {
+            await Task.Delay(8);
+            var now = _world.Activity;
+            if (now == last) quiet++;
+            else { quiet = 0; last = now; }
+        }
+    }
+
     /// <summary>
     /// Starts autosave after a database has been opened for writing, as the main window does when it is set up
     /// (<c>AppSettings.AutoSaveEnabled</c>). With no timers, this only turns the "autosave is on" flag on.
@@ -427,10 +561,15 @@ internal sealed class Computer : IDisposable
         try
         {
             var result = await body();
-            while (_pending.Count > 0)
+            while (true)
             {
-                var next = _pending[0];
-                _pending.RemoveAt(0);
+                Task next;
+                lock (_pending)
+                {
+                    if (_pending.Count == 0) break;
+                    next = _pending[0];
+                    _pending.RemoveAt(0);
+                }
                 await next;
             }
             return result;
