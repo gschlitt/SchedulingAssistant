@@ -28,11 +28,11 @@ will be verified.
 | 13 | Cloud-sync folder detection gaps | Data integrity / UX | Accepted |
 | 14 | Unapplied editor changes are lost on exit or database switch | Data loss | Accepted |
 | 15 | Exit-path hardening and the mid-save edit gap | Data loss | Accepted |
-| 16 | Remaining network I/O on the UI thread | Responsiveness | Accepted |
+| 16 | Remaining network I/O on the UI thread | Responsiveness | **Done** (16a recovered-copy export: snapshot then place, never overwrite; 16b wizard failure-path probe on a deadline) |
 | 17 | CSV import blow-up on an unmatched quote | Responsiveness | **Done**, plus 2 latent row-loss bugs fixed |
 | 18 | Wizard Cancel: hide instead of close (defence in depth) | Hang | **Done: already covered by existing code** |
 | 19 | Mouse-wheel past the end of a dropdown scrolls the section list underneath it | UX bug (user-reported) | **Done** |
-| 20 | **Load by subject / focus**: work on chosen subjects and levels only (dean's-office scale) | **New feature** | **PARKED: revisit after all other items are done, especially item 21** |
+| 20 | **Load by subject / focus**: work on chosen subjects only (dean's-office scale) | **New feature** | **Design approved 2026-10-20** (approach B, filter-based focus; 8 steps). Not started |
 | 21 | Lightweight section card: ~93 → ~15–20 controls per card | Performance / memory | **Done** (~93 → ~27 controls per card; 800-section heap ~390 MB Release); CloneSection data-loss fixed |
 | 22 | AutoCompleteBox crash when revising a meeting's start time (BugSnag, Aug 21) | Bug (production, reproduced) | **Done** (folded into item 1) |
 | 23 | Section-list virtualization with scroll anchoring, opt-in (Preferences, default off; hidden in WASM) | Performance / memory | **Done** (user-tested on desktop 2026-10-10); field tests pending (touch, macOS trackpad, Win11). Also: room conflicts one per line |
@@ -78,7 +78,7 @@ First look (2026-10-09):
 | 18                                                                          | 6: BugSnag scrubber                                                                    | Must come before item 7.                                                                                                                                                                                                                       |
 | 19                                                                          | 7: Handled-failure BugSnag events                                                      | Last of the reliability items, so it reports from the finished code of items 4, 9 and 15.                                                                                                                                                      |
 | **Phase 8**                                                                 |                                                                                        |                                                                                                                                                                                                                                                |
-| 20                                                                          | 20: Load by subject                                                                    | Parked. Re-measure memory after item 21, then decide.                                                                                                                                                                                          |
+| 20                                                                          | 20: Load by subject                                                                    | Design approved 2026-10-20. Last: touches many views, none of the persistence code.                                                                                                                                                            |
 
 **Workflow.** Opus orchestrates and Sonnet writes the code, one step at a time. For each step:
 1. Opus writes a self-contained brief.
@@ -101,9 +101,9 @@ responsiveness and data loss"). File and line references are against `e8c7c1d`.
 
 Most items are independent and can go in any order. The exceptions:
 
-- **Item 20 is parked until every other item is done.** In particular, item 21 must land first
-  so we can re-measure memory per card. Only then decide item 20's approach and scope (see
-  item 20).
+- **Item 20 goes last.** Its design was approved on 2026-10-20, after item 21 landed. It
+  touches many views (section list, grid, filter, editor, workload, Instructors flyout) but none
+  of the save, lock or restore code.
 - **Item 3 has a release-order constraint, not a branch-order one.** Unknown-field preservation
   only protects data once every client in a department has it. Any release that adds a field to
   an existing entity must ship **after** a release containing item 3 has been deployed. Fields
@@ -2233,44 +2233,73 @@ leak happens only from inside the popup. No change needed; keep it as a regressi
 
 ## 20 — Load by subject / focus (new feature)
 
-> ### ⏸ PARKED (2026-10-09): REVISIT AFTER ALL OTHER ITEMS ARE DONE
-> Decided to wait for better data. **Before resuming:**
-> 1. Item 21 (lightweight section card) has landed.
-> 2. Re-run the memory measurement on the same 800-section test DB (fresh start, snapshot on the
->    large semester and on a near-empty one). Compare with the 575 MB / 82 MB baseline.
-> 3. With those numbers, choose between the two approaches and settle the open questions in
->    [designs/load-by-subject.md](designs/load-by-subject.md):
->    - **A. Load scoping:** read only the chosen subjects from the database. Needs special
->      handling for cross-department conflicts, room availability, workload totals and bulk
->      operations.
->    - **B. Filter-based focus:** load everything as today. Add a "Hide" section-list mode that
->      doesn't build non-matching cards, remember the filter (or named presets), and show a
->      clear active-focus indicator. All global checks stay correct for free.
->    - **Leaning B as of parking.** Load scoping's only advantage was memory, which item 21 and
->      B's "Hide" both address.
->
-> Remaining questions: one remembered focus or named presets; whether the workload panel
-> follows the focus.
+> ### ✅ DESIGN APPROVED (2026-10-20): approach B, filter-based focus
+> Full design and steps: [designs/load-by-subject.md, "Approved design"](designs/load-by-subject.md#approved-design-2026-10-20).
+> **No fresh memory measurement is needed.** Item 21 brought the 800-section heap to 392 MB
+> (Release), and item 23's virtualization to ~170 MB. Hiding out-of-focus cards cuts that in
+> proportion to the slice, so load scoping (A) had no remaining advantage.
 
 **Problem.** Some customers are dean's offices that schedule about 10 departments centrally from
-one database: 800+ sections in a semester. Every view loads every section. The section list builds
-one card per section, because virtualization is disabled and filtering doesn't remove cards. The
-grid, workload panel and conflict checks also scale with the section count.
+one database: 800+ sections in a semester. Every view shows every section, so the user wades
+through nine other departments' sections, and the section list builds a card for every one.
 
-**Feature.** The user chooses which subjects to load. Only those subjects' sections are loaded
-into the working views, the current scope is always visible, and "all subjects" remains
-available.
+**Feature.** The user picks a **focus**: a set of subjects, or All, or None. Everything still
+loads. The focus decides what is **shown and offered**:
+- **Section list:** cards are built only for in-focus sections ("Hide").
+- **Grid:** shows only in-focus sections.
+- **Filter panel:** the Subjects, Courses and Instructors lists follow the focus.
+- **Section editor:** the course chooser lists focus subjects only. The instructor chooser shows
+  in-focus instructors first, then "Other instructors".
+- **Workload panel, Instructors flyout, Workload Mailer:** show in-focus instructors, with a "Show
+  all instructors" switch.
 
-**Design.** Being developed as a Progressive Design Spec:
-[designs/load-by-subject.md](designs/load-by-subject.md). Phase 1 (problem statement) is drafted,
-with seven open questions. The key ones:
-- conflicts and room availability must stay global across the scope boundary;
-- instructor workload totals;
-- how Empty Semester and other bulk operations behave under a scope (interacts with item 8);
-- whether several staff need to edit at once (the single write lock is unchanged by this feature).
+**Decisions (user, 2026-10-20).**
+- **The focus is subjects only; levels are not part of it.** One remembered focus per user per
+  database, including All and None, kept in local settings.
+- **New databases start at None**, and so does a database opened from a path not seen before.
+  This includes every existing user's first launch of 1.2.3, so the release notes must explain
+  the feature. An empty-state message offers [Choose focus] / [All subjects].
+- **The focus is a separate layer from the ordinary filter.** It survives "Clear filters", and the
+  filter works within it.
+- **In-focus instructors:** active instructors who teach a focus subject in the viewed semester or
+  the previous academic year, plus active instructors with no sections at all in that window
+  (new hires). The rule uses the subject only. One shared service answers it for every view.
+- **Workload totals always count the whole load.** Sections outside the focus are marked.
+- **The instructor chooser always includes the section's current instructors.** Otherwise an
+  untouched section could save with its instructor blanked. A test pins this.
+- **An indicator** ("Focus: BIOL, CHEM · 2 of 10 subjects" + Show all) appears in four places:
+  the section list, the grid header, the workload panel and the Instructors flyout.
+- **The Focus button is disabled while an editor is open**, so a focus change can never hide
+  unapplied edits.
+- **These stay global:** conflicts, room availability, the room chooser, Copy Semester, exports
+  and imports.
+- **Empty Semester (item 8)** keeps emptying the whole semester. Under a focus, its confirmation
+  says so explicitly.
+- **Deferred to 1.2.4:** an explicit "Subjects taught" field on instructors. Adding it in 1.2.3
+  would be wiped by 1.2.2 clients (item 3's release-order constraint). The derived rule stays as
+  the fallback.
 
-**Sequencing note.** If the scope choice is stored in local settings rather than the database, the
-feature adds no fields to existing entities and is not constrained by item 3.
+**Production / data integrity.**
+- **MinimumVersionToWrite: No.** Nothing new is saved to the database.
+- **Four rules:** none of the save, lock, switch, restore or recovery code paths change.
+  - **Rule 3:** the Focus button is disabled during edits.
+  - **Rule 4:** the indicator, the empty state and the explicit Empty Semester wording.
+- **Main risk:** the instructor chooser blanking an assigned instructor (see above).
+- **User-visible change:** sections are hidden until a focus is chosen. This is covered by the
+  empty state and the release notes.
+
+**Steps** (one Sonnet brief each; steps 2–7 edit AXAML, so warn the user first):
+
+| Step | Content |
+|---|---|
+| 20.1 | `FocusService` + per-database setting: the section match, `IsInFocus(instructor)`, `IsCourseInFocus`, `FocusChanged`. Desktop and demo DI. Unit tests only. |
+| 20.2 | Section-list Hide on load and every incremental path; rebuild on focus change; empty state. |
+| 20.3 | Focus picker (subjects / All / None), reusable indicator control, button disabled while editing. |
+| 20.4 | Grid applies the focus before the filter; the filter's Subjects / Courses / Instructors lists follow the focus. |
+| 20.5 | Editor choosers: courses filtered; instructors in focus first, then "Other instructors"; current instructors kept, with a test. |
+| 20.6 | Workload panel, Instructors flyout, Workload Mailer: focus plus "Show all instructors"; whole-load totals. |
+| 20.7 | Messages: Empty Semester wording under a focus; import summary's count of sections outside the focus. |
+| 20.8 | View-model tests of what every list and chooser shows (All, None, one or two subjects, deleted subject, multi-semester; cross-subject, previous year only, no sections, inactive instructors). Manual: 800-section DB at 2 of 10 subjects, database switch, first launch on an existing DB. |
 
 ---
 

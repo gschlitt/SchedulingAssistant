@@ -1,11 +1,11 @@
 # Load by Subject — Progressive Design Spec
 
-**Status:** ⏸ **PARKED (2026-10-09).** Revisit after every other item in
-`spec_version_1.2.3.md` is done, in particular **item 21 (lightweight section card)**.
-Then re-measure memory per card on the same 800-section test DB and settle Phase 1 with that data.
-**Target release:** 1.2.3 if time allows after re-measurement; otherwise a later release.
+**Status:** ✅ **DESIGN APPROVED (2026-10-20): approach B, filter-based focus.** See
+[Approved design](#approved-design-2026-10-20) at the end. Phase 1 below is kept as the record;
+its open questions are answered there.
+**Target release:** 1.2.3. A follow-up ("Subjects taught" on instructors) is planned for 1.2.4.
 
-**Where we left it.**
+**Where we left it when parked (2026-10-09).**
 - **Two candidate approaches:**
   - **A. Load scoping:** read only chosen subjects from the database; this is the approach this
     Phase 1 draft describes.
@@ -178,3 +178,166 @@ working views.
 - Access control. Scope is a working convenience, not a permission: any user can load any subject.
 - Fixing section-list virtualization. It's a separate effort, blocked on Avalonia's
   variable-height reflow.
+
+---
+
+## Approved design (2026-10-20)
+
+Worked through with the user on 2026-10-20, after item 21 landed.
+
+### Approach: B (filter-based focus). No fresh measurement.
+
+- **The item 21 and item 23 numbers settle it.** With all 800 cards built, the heap is 392 MB
+  (Release); with item 23's opt-in virtualization it is ~170 MB. Hiding out-of-focus cards
+  cuts what is built in proportion to the slice, the same saving load scoping (A) would give.
+- **A's remaining cost** was special handling for conflicts, room availability, workload totals
+  and bulk operations. B needs none of it: everything still loads, and the focus only decides
+  what is **displayed** and **offered**.
+
+### What a focus is
+
+- A focus is **a set of subjects**, or **All**, or **None**. **Levels are not part of it.**
+- **One remembered focus per user per database**, including All and None. It lives in local
+  settings (`AppSettings`): a new dictionary keyed by the database path, normalised. Nothing is
+  written to the database.
+- **Starting value: None.**
+  - This applies to a new database, and to a database opened from a path not seen before.
+  - **Upgrade note:** every existing user's first launch of 1.2.3 is "not seen before", so
+    everyone starts at None.
+  - **Release notes must explain the feature.** The empty-state message below is what keeps a
+    user from thinking their sections are gone.
+- **Deleted subjects** drop out of the focus silently. If none are left, the focus becomes
+  **None**, which shows the empty state.
+- **Focus is a separate layer from the ordinary filter.** "Clear filters" doesn't touch it, and
+  the ordinary filter works **within** it.
+- **The Focus button** is in the section-list header. It opens a list of subjects to tick, plus
+  All and None.
+- **Disabled while a section editor is open** (tooltip: "Finish editing first"). A focus change
+  can then never hide a card that has unapplied edits. This satisfies rule 3 structurally, not
+  through a dialog.
+- **Empty state (rule 4).** When the focus is None, or matches no sections, the section list
+  shows a short message instead of an empty panel. For example: *"No subjects in focus. Choose
+  the subjects you're working on to see their sections."* It has a **[Choose focus]** button,
+  plus **[All subjects]** for a small department. The schedule grid shows the same hint.
+
+### Indicator
+
+- **One reusable control.** It reads, for example, "Focus: BIOL, CHEM · 2 of 10 subjects", with
+  a **Show all** link that sets the focus to All. It is hidden when the focus is All.
+- **Placed in four places:** the section-list header, the schedule-grid header next to the filter
+  summary, the workload panel and the Instructors flyout.
+- Fonts, sizes and colours come from `AppColors.axaml` / `App.axaml`.
+
+### Who counts as an in-focus instructor
+
+One shared rule, `FocusService.IsInFocus(instructor)`. Every consumer below uses it, so they can
+never disagree. An **active** instructor is in focus if either:
+- they teach a section in a focus subject in the viewed semester(s), or in **the academic year
+  before** the viewed one (the year being planned is often still empty); or
+- they have **no sections at all** in that window. That covers new hires and instructors just
+  added in the flyout, so they don't vanish the moment they're created.
+
+**Further rules:**
+- **Subject only.** Levels play no part.
+- **Under None,** no instructor is in focus, not even the ones with no sections.
+- **Under All,** everyone is in focus.
+- **Changes to the rule:** a "Subjects taught" field on the instructor is planned for **1.2.4**
+  (see *Later release*).
+
+### What follows the focus
+
+| Place | Behaviour |
+|---|---|
+| **Section list** | **Hide:** sections outside the focus get **no card**, and course headings left empty go too. This holds on full load and in the add / apply / copy / replace paths. The ordinary filter's Highlight / Expand work within the focus. |
+| **Schedule grid** | In-focus sections only; the ordinary filter narrows further. |
+| **Filter panel: Subjects list** | Focus subjects only. |
+| **Filter panel: Courses list** | Courses in focus subjects only. |
+| **Filter panel: Instructors list** | In-focus instructors only. |
+| **Filter panel: other lists** (rooms, campuses, types, tags, meeting types, levels) | Unchanged. |
+| **Section editor: course chooser** | Courses in focus subjects only. Under All, every course. |
+| **Section editor: instructor chooser** | In-focus instructors first, then **"Other instructors"** below a divider. The section's **current instructors are always listed**, so an untouched section can never save with its instructor blanked (the item 3 family of bug). |
+| **Workload panel** | In-focus instructors, with a "Show all instructors" switch. **Totals always count the whole load.** Sections outside the focus are listed but marked. |
+| **Instructors flyout** | Follows the focus, with the indicator and the same "Show all instructors" switch. |
+| **Workload Mailer** | Same instructor list as the workload panel; email content shows the whole load. |
+
+**Multi-semester mode:** the focus applies to every semester shown.
+
+### What stays global
+
+- **Conflicts:** room and instructor conflicts are checked against the whole semester. A Biology
+  card still warns about an English section in the same room.
+- **Rooms:** room availability and the room chooser show every room.
+- **Whole-semester operations:** Copy Semester, the shared-schedule export, the Course History
+  export and imports.
+- **Empty Semester (item 8)** empties the whole semester. When a focus is set, its confirmation
+  adds: *"This empties **all subjects** in Fall 2026, not only the subjects in your focus."*
+- **Imports:** if any imported sections fall outside the focus, the import summary says how many,
+  with **[Show all]**.
+
+### Release and persistence check
+
+- **MinimumVersionToWrite:** asked *"Could the new version save anything the old version
+  wouldn't have?"* **No.** Nothing new is saved to the database, so item 3's release-order
+  constraint doesn't apply.
+- **Four rules:** the save, lock, switch, restore and recovery code paths are untouched.
+  - **Rule 3** is protected by disabling the Focus button while an editor is open.
+  - **Rule 4** is covered by the indicator, the empty state and the Empty Semester wording.
+  - No overlap with `designs/data-persistence-review-2026-10.md` §8.
+- **Data-integrity risk:** the instructor chooser blanking a section's out-of-focus instructor on
+  Apply. Mitigated by always listing current instructors, and pinned by a test (step 5).
+
+### Later release (1.2.4): "Subjects taught"
+
+- **What:** an explicit "Subjects taught" field on the instructor, saved in the database.
+- **Why not 1.2.3:** a 1.2.2 client neither checks MinimumVersionToWrite nor keeps unknown
+  fields, so it would wipe the field when it edits an instructor.
+- **When:** in 1.2.4, once everyone is on 1.2.3, raising MinimumVersionToWrite as item 3 lays out.
+- **The derived rule stays** as the fallback for instructors with nothing set.
+
+### Implementation steps (one Sonnet brief each)
+
+Steps 2–7 edit AXAML: warn the user before each so they can close the tab in VS.
+
+1. **`FocusService` and settings.**
+   - Holds the focus (subject set, All or None) and persists it per database path.
+   - Exposes `Matches(section)` (by the course's `SubjectId`), `IsInFocus(instructor)` (with the
+     one-year lookback and the no-sections rule), `IsCourseInFocus(course)`, and a `FocusChanged`
+     event.
+   - Reloads when the database changes. Registered in desktop `ConfigureServices` **and**
+     `ConfigureDemoServices`.
+   - Unit tests only, no UI.
+2. **Section-list Hide and empty state.**
+   - Build cards only for in-focus sections, on load and in every incremental path, and rebuild on
+     `FocusChanged`.
+   - Add the empty-state message.
+3. **Focus picker and indicator.**
+   - The reusable indicator control, and the Focus button and picker (subjects, All, None).
+   - The button is disabled while an editor is open.
+   - The indicator goes in the section list and grid header; the empty-state hint goes in the
+     grid.
+4. **Grid and filter panel.**
+   - The grid applies the focus before the ordinary filter.
+   - The filter's Subjects, Courses and Instructors lists follow the focus.
+5. **Section editor choosers.**
+   - The course chooser lists focus subjects only.
+   - The instructor chooser shows in-focus instructors, then "Other instructors"; current
+     instructors are always included.
+   - Test: an untouched section with an out-of-focus instructor saves unchanged.
+6. **Workload panel, Instructors flyout, Workload Mailer.**
+   - All three follow the focus, with the "Show all instructors" switch and the indicator.
+   - Totals cover the whole load; sections outside the focus are marked.
+7. **Messages.** The Empty Semester wording when a focus is set, and the import summary's count of
+   sections outside the focus.
+8. **UI-content tests and verification.**
+   - **Tests at the view-model level,** on the collections each list and chooser binds to: the
+     section list, grid blocks, the filter's Subjects / Courses / Instructors lists, the editor's
+     course and instructor choosers, the workload panel, the Instructors flyout and the mailer's
+     list.
+   - **Focus cases:** All, None, one subject, two subjects, a deleted subject, and multi-semester
+     mode.
+   - **Instructor cases:** cross-subject, previous year only, no sections, inactive.
+   - **Manual checks:** the 800-section database focused on 2 of 10 subjects (heap roughly in
+     proportion), switching databases, the first launch on an existing database (None plus the
+     empty state), the full test suite and the compile check.
+   - **Option, not adopted:** Avalonia.Headless binding-level UI tests would need a new test
+     dependency.
