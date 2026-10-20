@@ -32,6 +32,9 @@ internal static class HarnessTitles
 /// database at its first save, even with no edits).</description></item>
 /// <item><description><b>F6</b>: a "will offer to restore" promise was broken.</description></item>
 /// <item><description><b>F7</b>: "Restore Unsaved Changes?" was answered Restore and was followed by "Can't Restore Unsaved Changes" because someone changed data.</description></item>
+/// <item><description><b>F8</b>: the same refusal, but every edit the computer made that sits in its kept working file is
+/// already in the shared database: its own save landed, and the power went before the unsaved-changes marker was
+/// deleted. Nothing is lost, yet the person is offered a restore and then refused (step 9.3c-2a).</description></item>
 /// <item><description><b>F12</b>: the lock was not the saver's (or the database was not the version it last saw) at the
 /// moment of the save's rename.</description></item>
 /// </list>
@@ -43,7 +46,7 @@ internal static class Findings
 
     /// <summary>Gives a violation its finding id.</summary>
     /// <param name="violation">The violation to classify.</param>
-    /// <returns>"F1", "F5", "F6", "F7", "F12", or <see cref="NewFinding"/>.</returns>
+    /// <returns>"F1", "F5", "F6", "F7", "F8", "F12", or <see cref="NewFinding"/>.</returns>
     public static string Classify(Violation violation)
     {
         switch (violation.Kind)
@@ -52,6 +55,10 @@ internal static class Findings
                 return "F1";
 
             case ViolationKind.RestoreOfferedThenImpossible:
+                // Checked first, because it is the more specific reading of the same refusal: the changes are not lost
+                // and not stranded, the database already has all of them (the computer's own save landed).
+                if (violation.AllKeptEditsAlreadyShared == true) return "F8";
+
                 // The same refusal, but nobody changed any DATA: the database's bytes changed alone (a no-edit save).
                 return violation.DataUnchangedSinceKept == true ? "F5" : "F7";
 

@@ -81,6 +81,13 @@ internal sealed class Violation
     /// </summary>
     public bool? DataUnchangedSinceKept { get; init; }
 
+    /// <summary>
+    /// For <see cref="ViolationKind.RestoreOfferedThenImpossible"/>: true when every edit the computer made that sits in
+    /// its kept working file is already in the shared database (its own save landed and the crash came before the
+    /// unsaved-changes marker was deleted: finding F8), false otherwise. Null for every other kind.
+    /// </summary>
+    public bool? AllKeptEditsAlreadyShared { get; init; }
+
     /// <summary>The dialogs the concerned computer was asked during the step (for classification).</summary>
     public IReadOnlyList<PromptCall> ComputerPrompts { get; init; } = Array.Empty<PromptCall>();
 

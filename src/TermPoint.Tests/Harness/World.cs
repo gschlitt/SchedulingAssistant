@@ -40,7 +40,13 @@ namespace TermPoint.Tests.Harness;
 /// step (a dialog's script advancing the clock, say) only adds its story line: the invariants run when the outer step
 /// ends.</para>
 ///
-/// <para><b>Observers.</b> <see cref="CrashPoints.Hook"/> is installed as an OBSERVER: it never throws on its own. At
+/// <para><b>Power cuts (step 9.3c-2a).</b> The one exception to "the hook only observes" is
+/// <see cref="RunWithPowerCutAsync"/>: while it runs an operation, the hook cuts the armed computer's power at the armed
+/// crash point (freezes the disk, marks the process dead, throws <see cref="PowerCutException"/>), and throws again at every
+/// later crash point and network operation of that process. Which computer reached a point is read from an
+/// <c>AsyncLocal</c> that follows the flow of control onto other threads.</para>
+///
+/// <para><b>Observers.</b> <see cref="CrashPoints.Hook"/> is otherwise an OBSERVER: it never throws on its own. At
 /// <c>Save.AfterTmpVerify</c> (and <c>Restore.AfterTmpVerified</c>) it checks invariant I4 (the lock file holds the
 /// acting computer's session and the database is the version that computer last saw); a walk can add code at a point
 /// with <see cref="AtCrashPoint"/>. Prompts and banners report to <see cref="ObservePrompt"/> /
@@ -126,6 +132,23 @@ internal sealed class World : IDisposable
 
     /// <summary>The computer acting right now (read by the fault hook from any thread).</summary>
     private volatile Computer? _currentActor;
+
+    /// <summary>
+    /// The process whose action is running in the current flow of control (set by <see cref="EnterAction"/>). Unlike
+    /// <see cref="_currentActor"/> it follows the code across threads and awaits, including the background tasks an action
+    /// starts, so a crash point or a network operation is attributed to the right computer (and to the right
+    /// incarnation of it) wherever the production code runs it.
+    /// </summary>
+    private readonly AsyncLocal<ProcessLife?> _acting = new();
+
+    /// <summary>The power cut that is armed for the operation running now, or null (see <see cref="RunWithPowerCutAsync"/>).</summary>
+    private ArmedPowerCut? _armedCut;
+
+    /// <summary>Every crash point reached so far, in order, with the name of the computer that reached it ("?" when none could be told).</summary>
+    private readonly List<(string Computer, string Point)> _hitLog = new();
+
+    /// <summary>The crash points at which a power cut fired, in order ("bob@Save.AfterRename").</summary>
+    private readonly List<string> _firedCuts = new();
 
     /// <summary>Number of top-level funnel steps started so far; the number of the current step.</summary>
     private int _step;
@@ -324,6 +347,21 @@ internal sealed class World : IDisposable
         return Path.Combine(dir, $"copy-{++_savedCopyCounter}.db");
     }
 
+    /// <summary>How many backup files have been handed out ("backup-1.db", ...).</summary>
+    private int _backupCounter;
+
+    /// <summary>
+    /// Hands out a fresh path under the world's scratch folder for a backup file a "restore from a backup" reads, so a
+    /// generated run needs no scripted path and its story names the same files every time it is replayed.
+    /// </summary>
+    /// <returns>A full path whose folder exists and whose file does not.</returns>
+    public string NextBackupPath()
+    {
+        var dir = Path.Combine(ScratchDir, "backups");
+        Directory.CreateDirectory(dir);
+        return Path.Combine(dir, $"backup-{++_backupCounter}.db");
+    }
+
     /// <summary>SHA-256 of D's bytes now, in the hex form the checkout service uses for its fingerprints (null when D cannot be read).</summary>
     /// <returns>The fingerprint, or null.</returns>
     public string? CurrentDatabaseHash()
@@ -390,12 +428,13 @@ internal sealed class World : IDisposable
         try { result = body(); }
         catch (Exception ex)
         {
-            entry.Text += $" — it threw {ex.GetType().Name}";
+            entry.Text += DescribeThrown(ex);
             throw;
         }
         finally { _depth--; }
 
-        if (describe is not null) entry.Text += " — " + describe(result);
+        if (actor is { PowerIsOut: true }) entry.Text += " — it was cut short by the power cut";
+        else if (describe is not null) entry.Text += " — " + describe(result);
         if (!nested) EndStep();
         return result;
     }
@@ -428,12 +467,13 @@ internal sealed class World : IDisposable
         try { result = await body(); }
         catch (Exception ex)
         {
-            entry.Text += $" — it threw {ex.GetType().Name}";
+            entry.Text += DescribeThrown(ex);
             throw;
         }
         finally { _depth--; }
 
-        if (describe is not null) entry.Text += " — " + describe(result);
+        if (actor is { PowerIsOut: true }) entry.Text += " — it was cut short by the power cut";
+        else if (describe is not null) entry.Text += " — " + describe(result);
         if (!nested) EndStep();
         return result;
     }
@@ -445,6 +485,13 @@ internal sealed class World : IDisposable
     /// <returns>A task that completes when the step, and its invariants, are done.</returns>
     public Task DoAsync(Computer? actor, string storyLine, Func<Task> body)
         => DoAsync<int>(actor, storyLine, async () => { await body(); return 0; });
+
+    /// <summary>The tail of a story line for an action that ended with an exception: a power cut reads as such, anything else by type.</summary>
+    /// <param name="ex">The exception.</param>
+    private static string DescribeThrown(Exception ex)
+        => ex is PowerCutException cut
+            ? $" — it was stopped there by the power cut ({cut.Where})"
+            : $" — it threw {ex.GetType().Name}";
 
     /// <summary>Starts a top-level step: forgets the previous step's dialogs and opens.</summary>
     private void BeginStep()
@@ -688,7 +735,7 @@ internal sealed class World : IDisposable
 
     /// <summary>
     /// <b>The process was killed between actions.</b> Models a computer whose TermPoint dies (crash, power cut, Task
-    /// Manager) at a moment when no operation is in flight; operations that are cut in half arrive in step 9.3c.
+    /// Manager) at a moment when no operation is in flight; an operation cut in half is <see cref="RunWithPowerCutAsync"/> (step 9.3c-2a).
     /// <list type="number">
     /// <item><description>The computer's local folder and the share folder are copied exactly as they are on disk
     /// right now (open files included, <c>-wal</c>, <c>-shm</c>, <c>.dirty</c>, <c>.lock</c> and <c>.tmp</c> too). The
@@ -713,25 +760,168 @@ internal sealed class World : IDisposable
     /// <param name="computer">The computer whose process is killed.</param>
     private void CrashCore(Computer computer)
     {
-        var frozen      = Path.Combine(ScratchDir, $"frozen_{++_freezeCounter}");
-        var frozenShare = Path.Combine(frozen, "share");
-        var frozenLocal = Path.Combine(frozen, "local");
-
-        // (a) Freeze the disk as it is right now. The guard folder is skipped: its files are held with
-        //     FileShare.None by the dying process, cannot be copied, and carry no data.
-        CopyTree(ShareDir, frozenShare, skipDirectory: null);
-        CopyTree(computer.LocalDir, frozenLocal, skipDirectory: computer.GuardDir);
+        // (a) Freeze the disk as it is right now.
+        var frozen = FreezeDisk(computer);
 
         // (b) Throw the objects away; release only the OS handles.
         computer.AbandonProcess();
 
         // (c) Put the frozen disk back.
-        ReplaceContents(ShareDir, frozenShare);
-        ReplaceContents(computer.LocalDir, frozenLocal);
+        RestoreFrozenDisk(computer, frozen);
+    }
+
+    /// <summary>
+    /// Copies the share folder and a computer's local folder exactly as they are on disk right now. The instance-guard
+    /// folder is skipped: its files are held with <see cref="FileShare.None"/> by the dying process, cannot be copied, and
+    /// carry no data. Safe to call from any thread, while the process still has its files open.
+    /// </summary>
+    /// <param name="computer">The computer whose local folder is copied.</param>
+    /// <returns>The frozen copies.</returns>
+    private FrozenDisk FreezeDisk(Computer computer)
+    {
+        var root = Path.Combine(ScratchDir, $"frozen_{Interlocked.Increment(ref _freezeCounter)}");
+        var frozen = new FrozenDisk(root, Path.Combine(root, "share"), Path.Combine(root, "local"), Path.Combine(root, "exports"));
+        CopyTree(ShareDir, frozen.Share, skipDirectory: null);
+        CopyTree(computer.LocalDir, frozen.Local, skipDirectory: computer.GuardDir);
+
+        // Where a "Save a Copy" file goes is part of the disk too: a copy that was half placed at the cut stays half placed.
+        var exports = ExportsDir;
+        if (Directory.Exists(exports)) CopyTree(exports, frozen.Exports, skipDirectory: null);
+        return frozen;
+    }
+
+    /// <summary>The folder the generated runs' "Save a Copy" pickers answer with files in.</summary>
+    private string ExportsDir => Path.Combine(ScratchDir, "exports");
+
+    /// <summary>
+    /// Puts a frozen disk back over the share folder and the computer's local folder, then removes the frozen copies. The
+    /// computer's process must already be abandoned (its handles released), or its files cannot be replaced.
+    /// </summary>
+    /// <param name="computer">The computer whose local folder is replaced.</param>
+    /// <param name="frozen">The copies made by <see cref="FreezeDisk"/>.</param>
+    private void RestoreFrozenDisk(Computer computer, FrozenDisk frozen)
+    {
+        ReplaceContents(ShareDir, frozen.Share);
+        ReplaceContents(computer.LocalDir, frozen.Local);
         Directory.CreateDirectory(computer.GuardDir);
         Directory.CreateDirectory(computer.WorkDir);
+        if (Directory.Exists(frozen.Exports)) ReplaceContents(ExportsDir, frozen.Exports);
 
-        try { Directory.Delete(frozen, recursive: true); } catch { /* best effort */ }
+        try { Directory.Delete(frozen.Root, recursive: true); } catch { /* best effort */ }
+    }
+
+    // ── Cutting the power in the middle of an operation (step 9.3c-2a) ───────
+
+    /// <summary>
+    /// Runs one operation of a computer and cuts its power the <paramref name="occurrence"/>-th time it reaches the named
+    /// crash point. At that instant the share and the computer's local folder are frozen as they are on disk, the computer
+    /// is marked dead (every later crash-point hit and network operation of the process throws
+    /// <see cref="PowerCutException"/> at once, because production code catches exceptions and may carry on), and the
+    /// operation is stopped. When control returns here, whatever production did after the cut (cleanup, retries,
+    /// messages) is thrown away: the computer's objects are abandoned and the frozen disk is put back, exactly as after a
+    /// power cut. Only the computer in question runs during its own action, so putting back the share is correct. If the
+    /// operation never reaches the point, nothing happens and the operation simply completes.
+    ///
+    /// <para>The whole thing is ONE funnel step: the operation's own lines are nested under it and the invariants run
+    /// once, after the disk is back. Call it from a top-level context, never from inside another funnel step.</para>
+    /// </summary>
+    /// <param name="computer">The computer whose power is cut.</param>
+    /// <param name="point">One of <see cref="TermPoint.Services.CrashPoints.All"/>.</param>
+    /// <param name="occurrence">Which time the point is reached (1 = the first).</param>
+    /// <param name="storyLine">The sentence for the step ("Bob presses Save").</param>
+    /// <param name="operation">The operation, normally one of the computer's action methods.</param>
+    /// <returns>True when the power was cut; false when the operation never reached the point.</returns>
+    /// <exception cref="ArgumentException">The name is not a crash point.</exception>
+    /// <exception cref="InvalidOperationException">The disk could not be frozen at the cut, so the cut would not be faithful.</exception>
+    public Task<bool> RunWithPowerCutAsync(Computer computer, string point, int occurrence, string storyLine, Func<Task> operation)
+    {
+        if (!CrashPoints.All.Contains(point))
+            throw new ArgumentException($"'{point}' is not a crash point.", nameof(point));
+
+        var cut = new ArmedPowerCut(computer, point, occurrence);
+        return DoAsync<bool>(null, $"{storyLine}, and {computer.DisplayName}'s computer loses power at {point}", async () =>
+        {
+            lock (_gate) _armedCut = cut;
+            try
+            {
+                try { await operation(); }
+                catch (Exception) when (cut.Fired)
+                {
+                    // The process was dead from the cut on: whatever it threw afterwards is not an event.
+                }
+            }
+            finally
+            {
+                lock (_gate) _armedCut = null;
+            }
+
+            if (!cut.Fired) return false;
+
+            // Let the dead process's own background work finish (it is stopped at every crash point and network operation),
+            // so that nothing of it can write to the disk after the frozen copy is put back.
+            await computer.SettleAfterPowerCutAsync();
+            cut.WaitUntilFrozen(TimeSpan.FromSeconds(60));
+
+            if (cut.Disk is null)
+                throw new InvalidOperationException(
+                    $"The disk could not be frozen at {point}, so the power cut would not be faithful: {cut.FreezeFailure}");
+
+            computer.AbandonProcess();
+            RestoreFrozenDisk(computer, cut.Disk);
+            _story.Add(_step, 1, $"{computer.DisplayName}'s files are back exactly as they were at the cut; nothing the program did afterwards was written");
+            return true;
+        },
+        fired => fired ? "the power was cut" : "that point was not reached, so the power was not cut");
+    }
+
+    /// <summary>
+    /// Cuts the power of the process that has just reached a crash point: marks it dead, freezes the disk at this
+    /// instant, and records the cut. Called from the crash-point hook, on whatever thread reached the point.
+    /// </summary>
+    /// <param name="cut">The armed cut that matched.</param>
+    /// <param name="life">The process reaching the point.</param>
+    /// <param name="point">The crash point.</param>
+    private void FireCut(ArmedPowerCut cut, ProcessLife life, string point)
+    {
+        life.CutPower();   // first, so the process's other threads stop at their next crash point
+        try { cut.Disk = FreezeDisk(cut.Computer); }
+        catch (Exception ex) { cut.FreezeFailure = ex; }
+        finally { cut.MarkFrozen(); }
+
+        lock (_gate) _firedCuts.Add($"{cut.Computer.Name}@{point}");
+        var nth = cut.Occurrence > 1 ? $" (the {cut.Occurrence}{(cut.Occurrence == 2 ? "nd" : cut.Occurrence == 3 ? "rd" : "th")} time it was reached)" : "";
+        _story.Add(_step, 1, $"{cut.Computer.DisplayName}'s computer lost power at {point}{nth}");
+
+        // A restore from a backup that has just replaced the database is a deliberate replacement even if the program
+        // never gets to say so: the I1 baseline starts again from it.
+        if (point == "Restore.AfterRename") NoteRestoreLanded();
+    }
+
+    /// <summary>Records the process whose action is about to run in the current flow of control (called by <see cref="Computer"/> at the start of every action).</summary>
+    /// <param name="life">The process.</param>
+    internal void EnterAction(ProcessLife life) => _acting.Value = life;
+
+    /// <summary>The process the current flow of control belongs to, or (for code outside any action) the computer acting now; null when neither.</summary>
+    private ProcessLife? ActingLife() => _acting.Value ?? _currentActor?.Life;
+
+    /// <summary>How many crash points have been reached so far (a position in the hit log).</summary>
+    public int HitCount
+    {
+        get { lock (_gate) return _hitLog.Count; }
+    }
+
+    /// <summary>The crash points reached since a position in the hit log, in order.</summary>
+    /// <param name="start">A value of <see cref="HitCount"/> taken earlier.</param>
+    /// <returns>The computer's name ("?" when unknown) and the point, for each hit.</returns>
+    public IReadOnlyList<(string Computer, string Point)> HitsSince(int start)
+    {
+        lock (_gate) return _hitLog.Skip(start).ToList();
+    }
+
+    /// <summary>The cuts that fired so far ("bob@Save.AfterRename"), in order.</summary>
+    public IReadOnlyList<string> FiredCuts
+    {
+        get { lock (_gate) return _firedCuts.ToList(); }
     }
 
     // ── Inspecting the world ─────────────────────────────────────────────────
@@ -801,6 +991,8 @@ internal sealed class World : IDisposable
     /// <param name="call">What it was asked, with the answer.</param>
     public void ObservePrompt(Computer computer, PromptCall call)
     {
+        if (computer.PowerIsOut) return;   // a dialog of a process without power is seen by nobody
+
         _story.Add(_step, 1, DescribePrompt(computer, call));
 
         lock (_gate)
@@ -829,6 +1021,7 @@ internal sealed class World : IDisposable
                 {
                     Step = _step, Invariant = "I5", Kind = ViolationKind.RestoreOfferedThenImpossible,
                     DataUnchangedSinceKept = DataUnchangedSinceKept(computer),
+                    AllKeptEditsAlreadyShared = AllKeptEditsAreInShared(computer),
                     Key = $"I5:F7:{_step}:{computer.Name}", Computer = computer.Name,
                     Reason = $"{computer.DisplayName} was asked \"{HarnessTitles.RestoreUnsavedChanges}\", chose Restore, and was then told " +
                              "\"Can't Restore Unsaved Changes\": the question should not have been asked",
@@ -863,6 +1056,25 @@ internal sealed class World : IDisposable
     }
 
     /// <summary>
+    /// The F8 rule: is every edit this computer made that sits in its kept working file already in the shared database?
+    /// Then "Can't Restore" refuses to restore changes the database already holds (the computer's own save landed, and
+    /// the crash came before the unsaved-changes marker was deleted). False when there is no such edit, when one is not in
+    /// the database, or when either file cannot be read. Read at the moment "Can't Restore Unsaved Changes" is shown,
+    /// when the kept file is still on disk.
+    /// </summary>
+    /// <param name="computer">The computer that was refused.</param>
+    /// <returns>True for F8.</returns>
+    private bool AllKeptEditsAreInShared(Computer computer)
+    {
+        var kept   = TryEditsInFile(computer.WorkingFile);
+        var shared = TryEditsInFile(DatabasePath);
+        if (kept is null || shared is null) return false;
+
+        var mine = kept.Where(e => computer.AppliedEdits.Contains(e)).ToList();
+        return mine.Count > 0 && mine.All(shared.Contains);
+    }
+
+    /// <summary>
     /// Called when a banner appears on a computer's screen (the lock-lost banner, a save-failure banner): writes it into
     /// the story and hands it to the promise tracker.
     /// </summary>
@@ -870,6 +1082,8 @@ internal sealed class World : IDisposable
     /// <param name="text">The banner text.</param>
     public void ObserveBanner(Computer computer, string text)
     {
+        if (computer.PowerIsOut) return;   // a banner of a process without power is seen by nobody
+
         _story.Add(_step, 1, $"{computer.DisplayName}'s screen showed a banner: {MessagePromises.FirstSentence(text)}");
         HandMessageToTracker(computer, "", text);
     }
@@ -888,6 +1102,7 @@ internal sealed class World : IDisposable
     /// <param name="computer">The computer that opened a database.</param>
     public void NoteOpened(Computer computer)
     {
+        if (computer.PowerIsOut) return;
         lock (_gate) _openedThisStep.Add(computer);
     }
 
@@ -1017,6 +1232,34 @@ internal sealed class World : IDisposable
     /// <param name="name">The crash point being passed.</param>
     private void OnCrashPoint(string name)
     {
+        // A process without power does nothing at all from the cut on: nothing is recorded, no walk code runs, no
+        // invariant looks. Production code may have caught the first PowerCutException and carried on; this stops it again.
+        var life = ActingLife();
+        if (life is { PowerIsOut: true }) throw new PowerCutException(name);
+
+        var armed = _armedCut;
+
+        // The lock file's delete (Lock.AfterDeleted) is done by a background task, at the same time as the thread that
+        // released the lock carries on. A cut armed for it would freeze whatever the carrying-on thread had managed by then,
+        // which differs from run to run. So that the frozen disk (and a replay of the case) is always the same, the other
+        // thread waits at its next crash point, once released, until the delete has happened and the power is cut.
+        if (armed is not null && armed.Point == "Lock.AfterDeleted" && !armed.Fired && name != armed.Point
+            && life is not null && life.Owner == armed.Computer && life.Owner.Locks.PendingRelease is { IsCompleted: false })
+        {
+            armed.WaitUntilFrozen(TimeSpan.FromSeconds(5));
+            if (life.PowerIsOut) throw new PowerCutException(name);
+        }
+
+        lock (_gate) _hitLog.Add((life?.Owner.Name ?? "?", name));
+
+        // The armed power cut: the n-th time the armed computer reaches the armed point, its power goes.
+        if (armed is not null && life is not null && life.Owner == armed.Computer
+            && name == armed.Point && !armed.Fired && armed.CountArrival() && armed.TryFire())
+        {
+            FireCut(armed, life, name);
+            throw new PowerCutException(name);
+        }
+
         List<(Action Action, string StoryLine)>? due = null;
         List<Action>? repeating = null;
         lock (_gate)
@@ -1200,7 +1443,12 @@ internal sealed class World : IDisposable
     private NetworkFaultDecision DecideFault(NetworkFaultRequest request)
     {
         Interlocked.Increment(ref _shareActivity);
-        var actor = _currentActor;
+
+        // A process without power cannot reach anything: its operation throws at once (it neither waits nor times out).
+        var life = ActingLife();
+        if (life is { PowerIsOut: true }) return NetworkFaultDecision.Throwing(new PowerCutException(request.Label));
+
+        var actor = life?.Owner ?? _currentActor;
         if (actor is null || !actor.NetworkIsDown) return NetworkFaultDecision.None;
 
         var onShare = IsUnderShare(request.Path) || IsUnderShare(request.DestinationPath) || IsGenericLockOperation(request);
@@ -1235,7 +1483,13 @@ internal sealed class World : IDisposable
     {
         Directory.CreateDirectory(destination);
         foreach (var file in Directory.GetFiles(source))
-            Inspector.CopyShared(file, Path.Combine(destination, Path.GetFileName(file)));
+        {
+            // A file that is deleted while the copy is being made (by a thread of the process that is not the one being
+            // frozen) simply was not there at that instant.
+            try { Inspector.CopyShared(file, Path.Combine(destination, Path.GetFileName(file))); }
+            catch (FileNotFoundException) { }
+            catch (DirectoryNotFoundException) { }
+        }
 
         foreach (var sub in Directory.GetDirectories(source))
         {

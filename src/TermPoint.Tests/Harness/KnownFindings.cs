@@ -7,8 +7,9 @@ namespace TermPoint.Tests.Harness;
 /// and FAILS the run with its shrunk story.
 ///
 /// <para>As the redesign steps (8.9) fix findings, their ids come out of this list and the harness then proves each is
-/// gone: a generated run that meets one again fails as a new violation. F2 and F8 need a crash in the middle of an
-/// operation; their rules come with step 9.3c-2. Hand-written walks declare their own findings
+/// gone: a generated run that meets one again fails as a new violation. F8 needs a crash in the middle of an operation
+/// (the crash sweep, step 9.3c-2a, finds it). F2, F12 and F16 need a pause in the middle of an operation so that another
+/// event happens meanwhile (step 9.3c-2b). Hand-written walks declare their own findings
 /// (<see cref="World.ExpectFindings"/>) and do not read this list.</para>
 /// </summary>
 internal static class KnownFindings
@@ -20,11 +21,12 @@ internal static class KnownFindings
         ["F5"]  = "A restore is refused although nobody changed any data: every editing session rewrites the shared database at its first save, even with no edits.",
         ["F6"]  = "A message promises that TermPoint will offer to restore unsaved changes next time, and it does not (or cannot).",
         ["F7"]  = "\"Restore Unsaved Changes?\" is asked, Restore is chosen, and then \"Can't Restore Unsaved Changes\" follows because someone changed data.",
+        ["F8"]  = "A crash between the rename and the marker delete of a save: \"Can't Restore Unsaved Changes\" follows although the shared database already holds every kept change.",
         ["F12"] = "The save does not re-check the lock (or the database) just before the rename onto the shared database."
     };
 
-    /// <summary>Every known finding id, in order (F1, F5, F6, F7, F12).</summary>
-    public static IReadOnlyList<string> Ids { get; } = new[] { "F1", "F5", "F6", "F7", "F12" };
+    /// <summary>Every known finding id, in order (F1, F5, F6, F7, F8, F12).</summary>
+    public static IReadOnlyList<string> Ids { get; } = new[] { "F1", "F5", "F6", "F7", "F8", "F12" };
 
     /// <summary>True when <paramref name="findingId"/> is a finding expected on today's code.</summary>
     /// <param name="findingId">A finding id as the classifier gives it ("F1" ... or "new").</param>

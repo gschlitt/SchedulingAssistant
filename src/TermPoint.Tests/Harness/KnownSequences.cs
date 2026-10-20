@@ -8,6 +8,9 @@ namespace TermPoint.Tests.Harness;
 /// <c>Generated_RediscoversKnownFindings</c>, and the report says which findings were found by the search, by a replay,
 /// or both, so the search is never credited with something only a replay reached.
 ///
+/// <para>A sequence may contain power-cut events (<see cref="PowerCutEvent"/>, key <c>PowerCut(Save(bob) at Save.AfterRename)</c>):
+/// the replay builds them from the keys (<see cref="EventCatalogue.ExtrasFor"/>).</para>
+///
 /// <para>A sequence names events only (keys as <see cref="HarnessEvent.Key"/> writes them). Every dialog is answered
 /// with its simplest option, exactly as <see cref="ReplaySource"/> does for a recorded run that has no answers: take
 /// over, wait to completion, Restore, Save a Copy…. An event that is not enabled when its turn comes is skipped, so a
@@ -46,6 +49,17 @@ internal static class KnownSequences
             new[]
             {
                 "Open(bob)", "Edit(bob)", "AdvanceTime(4m)", "Open(alice)", "SwitchAway(bob)", "Close(alice)", "SwitchBack(bob)"
+            }),
+
+        new("F8: a power cut between the rename and the marker delete of a save",
+            "F8",
+            "Bob edits and presses Save; his computer loses power at Save.AfterRename, after the shared database has been " +
+            "replaced and before the unsaved-changes marker is deleted. When he starts again he is offered a restore, chooses " +
+            "it, and is told \"Can't Restore\" although the database already holds his edit. Found by the crash sweep " +
+            "(step 9.3c-2a), shrunk to four events.",
+            new[]
+            {
+                "Open(bob)", "Edit(bob)", "PowerCut(Save(bob) at Save.AfterRename)", "Open(bob)"
             }),
     };
 }

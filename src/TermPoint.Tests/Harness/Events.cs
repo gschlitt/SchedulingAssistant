@@ -140,6 +140,10 @@ internal abstract class ComputerEvent : HarnessEvent
     /// <summary>The computer this event acts on.</summary>
     /// <param name="ctx">The run.</param>
     protected Computer On(RunContext ctx) => ctx.Computer(ComputerName);
+
+    /// <summary>The computer this event acts on (for the power-cut event, which wraps this one).</summary>
+    /// <param name="ctx">The run.</param>
+    public Computer ComputerOf(RunContext ctx) => On(ctx);
 }
 
 /// <summary>Opens the shared database through the startup path. Enabled when the computer has no open session.</summary>
@@ -674,6 +678,28 @@ internal static class EventCatalogue
         events.Add(new ItRestoresOldFileEvent());
         events.Add(new DeleteLockFileEvent());
         return events;
+    }
+
+    /// <summary>
+    /// The events a run needs beyond the catalogue to replay the given keys: the sweep-only plain events (Refresh, Restore
+    /// from a backup) and a <see cref="PowerCutEvent"/> for every power-cut key among them. Pass the result in
+    /// <see cref="RunOptions.ExtraEvents"/>.
+    /// </summary>
+    /// <param name="keys">The event keys of the run (a record's, or a known sequence's).</param>
+    /// <returns>The extra events, in a fixed order (sweep events first, then the power cuts in the order of the keys).</returns>
+    public static IReadOnlyList<HarnessEvent> ExtrasFor(IEnumerable<string> keys)
+    {
+        var sweep = SweepEvents.Build();
+        var known = Build().Concat(sweep).ToDictionary(e => e.Key);
+
+        var extras = new List<HarnessEvent>(sweep);
+        var seen   = new HashSet<string>();
+        foreach (var key in keys)
+        {
+            if (seen.Add(key) && PowerCutEvent.TryParse(key, known) is { } cut)
+                extras.Add(cut);
+        }
+        return extras;
     }
 
     /// <summary>Every event key of the catalogue, in order (for the coverage hint "events never enabled in any run").</summary>

@@ -77,9 +77,10 @@ internal sealed class GeneratedLog
 
     /// <summary>Folds one run into the log, shrinking any breach that is new to it or shorter than before.</summary>
     /// <param name="result">The run.</param>
+    /// <param name="options">The options the run had (the extra events a replay of it needs); null for the log's own options.</param>
     /// <returns>A task that completes when the run (and any shrinking) has been folded in.</returns>
     /// <exception cref="InvalidOperationException">An event of the run hung, so the process may be in an unknown state.</exception>
-    public async Task ObserveAsync(RunResult result)
+    public async Task ObserveAsync(RunResult result, RunOptions? options = null)
     {
         Runs++;
         Events += result.Events;
@@ -105,7 +106,7 @@ internal sealed class GeneratedLog
 
             if (first.EventIndex >= tally.BestEvents) continue;
 
-            var shrunk = await Shrinker.ShrinkAsync(result.Record.Take(first.EventIndex), first.Signature, _options);
+            var shrunk = await Shrinker.ShrinkAsync(result.Record.Take(first.EventIndex), first.Signature, options ?? _options);
             tally.ShrinkReplays += shrunk.Replays;
             ShrinkReplays       += shrunk.Replays;
             if (shrunk.Reproduced)
@@ -146,6 +147,12 @@ internal sealed class StrategyOutcome
 
     /// <summary>For the replay of the known sequences: what each sequence did, in list order; empty for a search.</summary>
     public IReadOnlyList<ReplayedSequence> Replays { get; init; } = Array.Empty<ReplayedSequence>();
+
+    /// <summary>True for the crash sweep (<see cref="CrashSweep"/>): the report credits its findings to "sweep".</summary>
+    public bool IsSweep { get; init; }
+
+    /// <summary>For the crash sweep: its coverage and probes; null for every other strategy.</summary>
+    public CrashSweepResult? Sweep { get; init; }
 }
 
 /// <summary>What the replay of one <see cref="KnownSequence"/> did.</summary>
@@ -216,8 +223,9 @@ internal static class Explorers
 
         foreach (var sequence in KnownSequences.All)
         {
-            var result = await RunExecutor.ExecuteAsync(new ReplaySource(sequence.ToRecord()), new RunOptions { Title = sequence.Name });
-            await log.ObserveAsync(result);
+            var sequenceOptions = new RunOptions { Title = sequence.Name, ExtraEvents = EventCatalogue.ExtrasFor(sequence.Events) };
+            var result = await RunExecutor.ExecuteAsync(new ReplaySource(sequence.ToRecord()), sequenceOptions);
+            await log.ObserveAsync(result, sequenceOptions);
 
             var ids = result.Violations.Where(v => v.IsKnown).Select(v => v.FindingId).Distinct().OrderBy(f => f, StringComparer.Ordinal).ToList();
             replays.Add(new ReplayedSequence(sequence, result.Events, ids, result.NewViolations.Count()));
@@ -283,11 +291,12 @@ internal static class HarnessReport
     public static string Build(HarnessBudget budget, IReadOnlyList<StrategyOutcome> outcomes)
     {
         var sb = new StringBuilder();
-        sb.AppendLine("# TermPoint harness: generated runs (step 9.3c-1)");
+        sb.AppendLine("# TermPoint harness: generated runs and crash sweep (steps 9.3c-1 and 9.3c-2a)");
         sb.AppendLine();
         sb.AppendLine("## Budget");
         sb.AppendLine($"- Exhaustive depth: {budget.Depth} ({HarnessBudget.DepthVariable})");
         sb.AppendLine($"- Random walks: {budget.Seeds} seeds ({HarnessBudget.SeedsVariable}) x {budget.Steps} events ({HarnessBudget.StepsVariable})");
+        sb.AppendLine($"- Crash sweep width: {budget.CrashWidth} ({HarnessBudget.CrashWidthVariable}; 1 = the fixed starting situations, each point cut the first time it is reached; 2 = more situations, later times a point is reached, and a follow-up after the restart)");
         sb.AppendLine();
 
         sb.AppendLine("## Runs");
@@ -326,15 +335,19 @@ internal static class HarnessReport
         sb.AppendLine("## Known findings (expected on today's code)");
         foreach (var id in KnownFindings.Ids)
         {
-            var search = outcomes.Where(o => !o.IsReplay).SelectMany(o => o.Log.Tallies.Values).Where(t => t.FindingId == id).Sum(t => t.Runs);
-            var replay = outcomes.Where(o => o.IsReplay).SelectMany(o => o.Log.Tallies.Values).Where(t => t.FindingId == id).Sum(t => t.Runs);
-            var source = (search, replay) switch
-            {
-                (0, 0)   => "not found",
-                (_, 0)   => $"found by the search in {search} runs",
-                (0, _)   => $"found by replay only ({replay} runs); the search did not reach it",
-                _        => $"found by the search in {search} runs and by replay in {replay}"
-            };
+            int Runs(Func<StrategyOutcome, bool> pick)
+                => outcomes.Where(pick).SelectMany(o => o.Log.Tallies.Values).Where(t => t.FindingId == id).Sum(t => t.Runs);
+
+            var search = Runs(o => !o.IsReplay && !o.IsSweep);
+            var replay = Runs(o => o.IsReplay);
+            var sweep  = Runs(o => o.IsSweep);
+
+            var parts = new List<string>();
+            if (search > 0) parts.Add($"the search in {search} runs");
+            if (replay > 0) parts.Add($"replay in {replay} runs");
+            if (sweep > 0)  parts.Add($"the crash sweep in {sweep} runs");
+            var source = parts.Count == 0 ? "not found" : "found by " + string.Join(" and by ", parts);
+            if (search == 0 && parts.Count > 0) source += "; the search did not reach it";
             sb.AppendLine($"- **{id}**: {source}. {KnownFindings.Describe(id)}");
         }
         sb.AppendLine();
@@ -364,7 +377,10 @@ internal static class HarnessReport
             sb.AppendLine();
         }
 
-        var enabled = outcomes.SelectMany(o => o.Log.EnabledKeys).ToHashSet();
+        foreach (var sweep in outcomes.Where(o => o.Sweep is not null))
+            sb.Append(CrashSweepReport.Build(sweep));
+
+        var enabled = outcomes.Where(o => !o.IsSweep).SelectMany(o => o.Log.EnabledKeys).ToHashSet();
         var unreached = EventCatalogue.AllKeys().Where(k => !enabled.Contains(k)).ToList();
         sb.AppendLine("## Events never enabled in any run");
         sb.AppendLine(unreached.Count == 0 ? "None: every event was enabled at some point." : string.Join(", ", unreached));
@@ -408,6 +424,9 @@ internal static class GeneratedSuite
     /// <summary>The random walks, once started.</summary>
     private static Task<StrategyOutcome>? _random;
 
+    /// <summary>The crash sweep, once started.</summary>
+    private static Task<StrategyOutcome>? _sweep;
+
     /// <summary>Starts the exhaustive search the first time, and returns it.</summary>
     /// <param name="budget">The budget.</param>
     /// <param name="progress">Receives progress lines (from the test that happens to start it).</param>
@@ -422,6 +441,14 @@ internal static class GeneratedSuite
     public static Task<StrategyOutcome> RandomAsync(HarnessBudget budget, Action<string> progress)
     {
         lock (Gate) return _random ??= AfterReplaysAsync(progress, () => Explorers.RunRandomAsync(budget, progress));
+    }
+
+    /// <summary>Starts the crash sweep (step 9.3c-2a) the first time, and returns it.</summary>
+    /// <param name="budget">The budget (its crash width sets how wide the sweep goes).</param>
+    /// <param name="progress">Receives progress lines (from the test that happens to start it).</param>
+    public static Task<StrategyOutcome> SweepAsync(HarnessBudget budget, Action<string> progress)
+    {
+        lock (Gate) return _sweep ??= CrashSweep.RunAsync(budget, progress);
     }
 
     /// <summary>Replays the known sequences the first time, and returns that outcome.</summary>
@@ -440,7 +467,7 @@ internal static class GeneratedSuite
         return await search();
     }
 
-    /// <summary>The strategies that have finished, in the order known-sequence replays, exhaustive, random.</summary>
+    /// <summary>The strategies that have finished, in the order known-sequence replays, exhaustive, random, crash sweep.</summary>
     public static IReadOnlyList<StrategyOutcome> Finished()
     {
         lock (Gate)
@@ -449,6 +476,7 @@ internal static class GeneratedSuite
             if (_replays is { IsCompletedSuccessfully: true }) list.Add(_replays.Result);
             if (_exhaustive is { IsCompletedSuccessfully: true }) list.Add(_exhaustive.Result);
             if (_random is { IsCompletedSuccessfully: true }) list.Add(_random.Result);
+            if (_sweep is { IsCompletedSuccessfully: true }) list.Add(_sweep.Result);
             return list;
         }
     }

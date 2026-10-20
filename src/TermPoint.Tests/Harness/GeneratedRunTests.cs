@@ -31,19 +31,27 @@ public sealed class GeneratedRunTests
         try { _output.WriteLine(line); } catch (InvalidOperationException) { /* the test that started the run has finished */ }
     }
 
-    /// <summary>Builds the report from every strategy that has finished, writes it to its file and to the test output.</summary>
+    /// <summary>
+    /// Builds the report from every strategy that has finished, writes it to its file and hands it to <paramref name="say"/>
+    /// (the test output). Shared with the crash-sweep tests, which publish the same report.
+    /// </summary>
     /// <param name="budget">The budget in force.</param>
-    private void PublishReport(HarnessBudget budget)
+    /// <param name="say">Receives the report text and the line that says where it was written.</param>
+    internal static void PublishReportTo(HarnessBudget budget, Action<string> say)
     {
         var text = HarnessReport.Build(budget, GeneratedSuite.Finished());
         HarnessReport.Write(text);
-        Say(text);
-        Say($"(report written to {HarnessReport.Path})");
+        say(text);
+        say($"(report written to {HarnessReport.Path})");
     }
+
+    /// <summary>Builds the report from every strategy that has finished and publishes it (see <see cref="PublishReportTo"/>).</summary>
+    /// <param name="budget">The budget in force.</param>
+    private void PublishReport(HarnessBudget budget) => PublishReportTo(budget, Say);
 
     /// <summary>Fails the test when a strategy found a breach no known finding explains, with each one's shrunk story.</summary>
     /// <param name="outcome">What the strategy found.</param>
-    private static void AssertNoNewViolations(StrategyOutcome outcome)
+    internal static void AssertNoNewViolations(StrategyOutcome outcome)
     {
         var fresh = outcome.Log.NewTallies.ToList();
         if (fresh.Count == 0) return;
@@ -90,10 +98,11 @@ public sealed class GeneratedRunTests
     }
 
     /// <summary>
-    /// Across the known-sequence replays and both strategies at the budget, the generated runs find F1, F6 and F7. F1
-    /// and F7 come from the search; F6 needs a route longer than the search reaches by default, so it comes from the
-    /// replay list (<see cref="KnownSequences"/>) and the report says so. F5 and F12 are reported (F12 needs a pause in
-    /// the middle of a save, which comes with step 9.3c-2).
+    /// Across the known-sequence replays and both strategies at the budget, the generated runs find F1, F6, F7 and F8. F1
+    /// and F7 come from the search; F6 needs a route longer than the search reaches by default, and F8 needs a power cut
+    /// in the middle of a save (the search has none), so they come from the replay list (<see cref="KnownSequences"/>) and
+    /// the report says so. The crash sweep finds F8 on its own as well. F5 and F12 are reported (F12 needs a pause in the
+    /// middle of a save, which comes with step 9.3c-2b).
     /// </summary>
     [HarnessFact]
     public async Task Generated_RediscoversKnownFindings()
@@ -113,7 +122,7 @@ public sealed class GeneratedRunTests
         Say("Known findings found by a replay: " + (byReplay.Count == 0 ? "none" : string.Join(", ", byReplay.OrderBy(f => f))));
         Say($"F5 reached: {found.Contains("F5")}.  F12 reached: {found.Contains("F12")}.");
 
-        foreach (var id in new[] { "F1", "F6", "F7" })
+        foreach (var id in new[] { "F1", "F6", "F7", "F8" })
             Assert.True(found.Contains(id), $"{id} was not found by a replay, the exhaustive search or the random walks at this budget.");
     }
 

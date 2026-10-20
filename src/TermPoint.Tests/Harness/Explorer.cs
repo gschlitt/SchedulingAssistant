@@ -41,6 +41,16 @@ internal sealed class RunResult
     /// <summary>True when an event did not finish in time (the run was abandoned; the process may still have work running).</summary>
     public bool Hung { get; init; }
 
+    /// <summary>
+    /// For each event that happened (in order), the crash points it reached, with the name of the computer that reached
+    /// each ("?" when none could be told). The crash sweep's dry run reads the last event's.
+    /// </summary>
+    public IReadOnlyList<IReadOnlyList<(string Computer, string Point)>> HitsByEvent { get; init; }
+        = Array.Empty<IReadOnlyList<(string, string)>>();
+
+    /// <summary>The power cuts that fired in the run ("bob@Save.AfterRename"), in order.</summary>
+    public IReadOnlyList<string> FiredCuts { get; init; } = Array.Empty<string>();
+
     /// <summary>The breaches that no known finding explains: these fail a generated test.</summary>
     public IEnumerable<FoundViolation> NewViolations => Violations.Where(v => !v.IsKnown);
 }
@@ -53,6 +63,17 @@ internal sealed class RunOptions
 
     /// <summary>Runs on every new world before the first event (the planted-bug test installs its hook here); null for none.</summary>
     public Action<World>? ConfigureWorld { get; init; }
+
+    /// <summary>
+    /// Events the run knows besides <see cref="EventCatalogue.Build"/>: the crash sweep's plain events and its power-cut
+    /// events (<see cref="EventCatalogue.ExtrasFor"/> builds the list for the keys a run replays). Empty for a search.
+    /// </summary>
+    public IReadOnlyList<HarnessEvent> ExtraEvents { get; init; } = Array.Empty<HarnessEvent>();
+
+    /// <summary>A copy of the options with another title: what a shrunk run is called, so its story does not carry the name of the longer run it came from.</summary>
+    /// <param name="title">The new title.</param>
+    public RunOptions WithTitle(string title)
+        => new() { Title = title, ConfigureWorld = ConfigureWorld, ExtraEvents = ExtraEvents, EventTimeout = EventTimeout };
 
     /// <summary>How long one event may take before the run is called hung.</summary>
     public TimeSpan EventTimeout { get; init; } = TimeSpan.FromSeconds(90);
@@ -77,7 +98,8 @@ internal static class RunExecutor
     {
         var stopwatch = Stopwatch.StartNew();
         var recording = new RecordingSource(source);
-        var catalogue = EventCatalogue.Build();
+        var catalogue = EventCatalogue.Build().Concat(options.ExtraEvents).ToList();
+        var hitsByEvent = new List<IReadOnlyList<(string Computer, string Point)>>();
         var enabledEver = new HashSet<string>();
         var found = new List<FoundViolation>();
         var seenViolations = 0;
@@ -108,6 +130,7 @@ internal static class RunExecutor
             var chosen = enabled.First(e => e.Key == key);
             ctx.BeginEvent();
             events++;
+            var hitsBefore = world.HitCount;
 
             string? crash = null;
             var crashType = "exception";
@@ -135,6 +158,8 @@ internal static class RunExecutor
                 crashType = ex.GetType().Name;
                 crash = $"event {key} threw {ex.GetType().Name}: {FirstLine(ex.Message)}";
             }
+
+            hitsByEvent.Add(world.HitsSince(hitsBefore));
 
             // Collect the violations this event produced.
             var all = world.Violations;
@@ -174,7 +199,9 @@ internal static class RunExecutor
             EnabledKeys = enabledEver,
             Story       = story,
             Elapsed     = stopwatch.Elapsed,
-            Hung        = hung
+            Hung        = hung,
+            HitsByEvent = hitsByEvent,
+            FiredCuts   = world.FiredCuts
         };
     }
 
@@ -191,7 +218,8 @@ internal static class RunExecutor
 /// <param name="Depth">The bounded exhaustive search goes this many events deep.</param>
 /// <param name="Seeds">The number of random walks.</param>
 /// <param name="Steps">The number of events in each random walk.</param>
-internal sealed record HarnessBudget(int Depth, int Seeds, int Steps)
+/// <param name="CrashWidth">How wide the crash sweep goes (step 9.3c-2a): 1 is the fixed small set of starting situations and the first time each point is reached; 2 adds more starting situations, later times a point is reached and a follow-up after the restart.</param>
+internal sealed record HarnessBudget(int Depth, int Seeds, int Steps, int CrashWidth = HarnessBudget.DefaultCrashWidth)
 {
     /// <summary>Environment variable: depth of the exhaustive search.</summary>
     public const string DepthVariable = "TERMPOINT_HARNESS_DEPTH";
@@ -211,9 +239,16 @@ internal sealed record HarnessBudget(int Depth, int Seeds, int Steps)
     /// <summary>The default number of events per random walk.</summary>
     public const int DefaultSteps = 30;
 
+    /// <summary>Environment variable: width of the crash sweep (1 or 2).</summary>
+    public const string CrashWidthVariable = "TERMPOINT_HARNESS_CRASH_WIDTH";
+
+    /// <summary>The default width of the crash sweep.</summary>
+    public const int DefaultCrashWidth = 1;
+
     /// <summary>Reads the budget from the environment, with the defaults for anything not set (or not a positive number).</summary>
     public static HarnessBudget FromEnvironment()
-        => new(Read(DepthVariable, DefaultDepth), Read(SeedsVariable, DefaultSeeds), Read(StepsVariable, DefaultSteps));
+        => new(Read(DepthVariable, DefaultDepth), Read(SeedsVariable, DefaultSeeds), Read(StepsVariable, DefaultSteps),
+               Math.Min(2, Read(CrashWidthVariable, DefaultCrashWidth)));
 
     /// <summary>Reads one positive integer from an environment variable.</summary>
     /// <param name="name">The variable.</param>

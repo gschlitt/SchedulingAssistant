@@ -151,7 +151,7 @@ All of 2.8 stems from one choice: the working folder is `Environment.SpecialFold
 | **F5** | Every editing session rewrites the shared database at its first save, even with no edits. So *anyone* opening it for editing after Bob's crash or lost lock makes his changes unrestorable, and the "restore if nobody changed anything" path almost never happens | 4 (and makes C harder) | **New** | Small to medium: skip a save when nothing changed (check what the version-stamp raise relies on first) |
 | **F6** | Four messages promise a restore that may not be possible: the lock-lost banner, "Unsaved Changes Kept", and both "Changes Not Saved" messages | 4 | Partly found in 10c | Small: one honest wording, in a prompt class |
 | **F7** | "Restore?" is asked before checking, then "impossible" | 4 | Found (10c) | Small/medium (10c's early check) |
-| **F8** | A crash in the milliseconds between rename and marker delete leads to "can't restore" though the changes are already in the database | 4 | **New** | Small: always record the save's fingerprint as pending in the marker *before* the rename |
+| **F8** | A crash in the milliseconds between rename and marker delete leads to "can't restore" though the changes are already in the database. **Confirmed 2026-10-20 by the crash sweep (step 9.3c-2a):** open, edit, Save with the power cut at `Save.AfterRename`, open again and choose Restore ends in "Can't Restore Unsaved Changes" while D already holds the edit (4 events; `KnownSequences`) | 4 | **New** | Small: always record the save's fingerprint as pending in the marker *before* the rename |
 | **F9** | Kept files live in roaming `AppData`: they can roam back older, or sit on a server under folder redirection | 3/4 | **New** | Medium: move to `%LocalAppData%`, with a one-time migration that still finds 1.2.2's kept files |
 | **F10** | Observer mode never mentions kept changes | 4 | **New** | Small |
 | **F11** | 10b's switch wording on "Take over as writer" for the same database | 4 | **Moot**: 10b shelved 2026-10-18 | — |
@@ -660,6 +660,101 @@ them from the list one by one, and the harness proves each is gone.
       deterministic unit test (`CheckoutServiceTests.F16_...`, skipped until fixed) confirms the real route: a demotion
       already running (held in its D'' copy) when the user switches lands on the new session. The story itself is partly
       a harness artifact (the harness runs the lost-lock handler inline, production posts it); see F16 in section 3.
+  - **9.3c-2:** split in two. 2a is the crash sweep (a power cut in the middle of an operation, below). 2b is a *pause*
+    in the middle of an operation so that another event happens meanwhile: F2, F12 and F16 rediscovery, and the I6
+    invariant.
+  - **9.3c-2a:** the crash sweep. Test code only; nothing under `src/TermPoint/` changed. **Done 2026-10-20 (uncommitted):**
+    - **The cut (`World.RunWithPowerCutAsync`, `PowerCut.cs`):** one operation of one computer runs with a cut armed for
+      "the n-th time this computer reaches crash point P". At that instant the hook (1) marks the computer's process dead,
+      (2) freezes the disk, which is a copy of the share folder, of that computer's local folder (the single-instance
+      guard folder excepted, as in `CrashComputer`) and of the folder "Save a Copy" files go to, and (3) throws
+      `PowerCutException` to stop the operation. When the operation returns (production may have caught the exception and
+      carried on; whatever it threw is ignored), the harness waits for the dead process's own background work (the lock
+      release, lost-lock handlers), abandons the computer's objects and puts the frozen disk back over the share and the
+      local folder. Everything production did after the cut (cleanup, retries, a `finally` deleting a temp file) is thrown
+      away, so what the next start sees is exactly the frozen state. The operation and the restore are ONE funnel step:
+      the operation's own story lines are nested under it and the invariants run once, after the disk is back.
+    - **Dead after the cut:** the process's `ProcessLife.PowerIsOut` stays true. Every later crash-point hit of that
+      process throws again, every later network operation throws (`NetworkFaults` answers Throw, so nothing waits or times
+      out), its dialogs are stopped before they reach the run's decision source (so a dead process's dialog is never
+      recorded as a decision), and its banners, lost-lock handling and conflict flag are ignored. A restart is a new
+      process with power.
+    - **Which computer reached the hook:** an `AsyncLocal` set by `Computer.ActAsync` at the start of every action, so
+      the value follows `Task.Run`, the thread pool, timers, new threads and awaits that resume elsewhere (a proof test
+      checks all five outside any action, where the old "who is acting now" field has no answer). The old field is the
+      fallback for code outside an action. A launch inside an action (`Open` starts the process first) moves the new
+      process's record into the flow; without that the first sweep run attributed the restart to the dead process.
+    - **The sweep (`CrashSweep.cs`):** 8 starting situations (Bob edited; edited and saved once, then edited again; Bob
+      crashed with kept changes; Alice holds a stale lock; Bob lost the lock to Alice; Bob is reading while Alice edits;
+      Bob's save was refused (conflict banner); Bob saved after a backup was taken) and 16 operations (Edit, Save, autosave
+      tick, heartbeat tick, poll tick, Close, switch away, switch back, Open with the simplest answers (Restore / take
+      over), Open answering Discard to the restore question, ask to take over as writer, Save a Copy and Discard Changes on
+      the conflict banner, sleep 10 minutes (the wake check), Refresh of the read-only view, restore from a backup). Release
+      and the lost-lock demotion are reached through Close, switch, Save and the wake check, not as events of their own. For
+      each (situation, computer, operation): a DRY RUN records which points the computer reaches; then one CASE per point:
+      replay the prefix, do the operation with the power cut at the point, restart the computer (open again with the
+      default answers), every invariant through the funnel. A case is an ordinary decision list: its cut is the event
+      `PowerCut(Save(bob) at Save.AfterRename)` (`#2` for the second time a point is reached), built from the keys by
+      `EventCatalogue.ExtrasFor`, so replay, the existing shrinker and the story printer work unchanged. The story says
+      "Bob's computer lost power at Save.AfterRename".
+    - **New events used only by the sweep (not in the catalogue, so the search is unchanged):** Refresh and restore from
+      a backup (`CrashEvents.cs`). The edit counts as applied when the cut is at `Dirty.AfterMarkerWritten`, because the
+      row was inserted and the marker written before that point. A cut at `Restore.AfterRename` tells the I1 baseline that
+      the restore landed, because the operation never returns to say so.
+    - **Coverage:** **39 of 39 crash points cut** (not 45: `CrashPoints.All` has 39 names, and a test checks the catalogue
+      against the source). Default sweep (width 1): 160 dry runs, 387 cases, 8 situations, 0 planned cuts that failed to
+      fire, about 3.5 to 4 minutes. Every point has at least one case. The report has a per-point table (dry runs that reach
+      it, cases that cut it, first case) and a list of points never cut with a reason for each
+      (`CrashSweepCoverage.MissReasons`; empty now, and a test fails on a miss without a reason or a reason for a point that
+      is now cut). The "Crash sweep" section of the report is identical in two full runs (the sweep is deterministic).
+    - **Wider sweep:** `TERMPOINT_HARNESS_CRASH_WIDTH=2` adds 4 situations (Bob is on the other database; Bob lost the lock
+      and was demoted; Bob crashed after saving once; Bob has kept changes and Alice came and went), cuts at the 2nd and 3rd
+      time a point is reached, and a follow-up after the restart (Bob closes, time passes, Alice opens and closes): 834
+      runs, about 8 minutes, still 39 of 39 and no new violation. The default full harness (`TERMPOINT_HARNESS=1`, 38 tests)
+      takes about 12 minutes.
+    - **Findings (sweep counts include its dry runs; "search" is the exhaustive search plus the random walks):**
+      - **F8: found.** A cut at `Save.AfterRename`, then a restart that chooses Restore, ends in "Can't Restore" although D
+        holds every kept edit. Sweep 13 runs; replay 1; the search cannot reach it (it has no cut). Smallest story, shrunk
+        by the existing shrinker: 4 events (open, edit, save cut at `Save.AfterRename`, open again). It is on the
+        known-sequence replay list. The classifier rule: when "Can't Restore" follows Restore and every edit the computer
+        made that sits in its kept working file is already in D, it is F8, checked before F5 and F7.
+      - F1: search 84, sweep 7. F5: search 1, replay 1 (sweep 0 at width 1; 36 at width 2). F6: replay 1, sweep 6 (the
+        search still does not reach it). F7: search 5, sweep 35. F12: not found, as expected (needs 2b).
+      - **New violations: none**, at width 1 and at width 2. In particular no cut at any of the 39 points left D torn (I3),
+        lost a committed edit (I1), or left an applied edit nowhere that survives (I2) when the restart used the default
+        answers.
+      - F2 (an edit during a save loses its marker) is not found, as expected: it needs an edit *during* a save, which is 2b.
+    - **Proof tests (`InvariantProofTests`):** a cut at each of the save's seven points leaves D either the old or the new
+      version, never torn, with the edit kept (in D, or in the kept file with its marker, which only the last save step
+      deletes); a `finally` block that deletes a file on the share and one on Bob's disk after the cut leaves both there
+      after the restore, with the save's `dept.db.tmp` as the cut left it; the computer is dead after the cut (a second
+      save by it changes nothing on the live disk and passes no crash point, a hit and a network operation throw) until it
+      is restarted; the hook finds the computer on every kind of thread; the F8 route is classified F8 and the story names
+      the point; the key of a power-cut event round-trips. Two sweep tests: a case replays to the same story, and a long case
+      is shrunk to four events.
+    - **Results:** normal suite 2699 passed + 59 skipped (before: 2698 + 49; one new plain test, ten new harness tests);
+      harness 38 of 38 passed; the search is unchanged (757 exhaustive runs, 247 states, 300 random walks).
+    - **Limitations:**
+      - A cut can only happen at the 39 named boundaries. A real power cut can land between two, in the middle of a file
+        copy or of a SQLite write, and leave a half-written file. The harness never leaves one: a copy is either not begun
+        or finished. SQLite's own durability is assumed (as in 9.2b), and a loss of data the OS had not yet written to disk
+        is out of scope.
+      - The frozen disk is a file-level copy taken in the hook, not an atomic snapshot. One computer acts at a time, so
+        nothing else writes meanwhile, except the lock file's delete, which production does on a background task
+        (`Lock.AfterDeleted`). For that one point the other thread is held at its next crash point until the cut has fired
+        and the disk is frozen; without that the frozen disk (and a replay) differed from run to run. Other fire-and-forget
+        work is not tracked beyond the lock release and the lost-lock handlers.
+      - A dead process keeps running ordinary local file code until its operation returns (only crash points, network
+        operations and dialogs stop it). That is harmless because the frozen disk is put back afterwards, but it means the
+        code after the cut ran, and could in principle hang; a hang is caught by the event timeout.
+      - One computer is cut at a time and the other is idle during the cut, so a cut never interleaves with another
+        person's action (2b). The restart is the same computer opening with the default answers (Restore, take over); the
+        Discard branch is tried only as the *operation* "Open answering Discard", and the restart's other answers
+        (the X, "Open read-only") are not swept.
+      - The first time each point is reached is cut at width 1 (later times at width 2). The 8 situations are a small fixed
+        set, so a point is cut in the states they reach (for example `Recovery.AfterSourceVerified` only in "Bob crashed
+        with kept changes"); a state outside them is not swept.
+      - Refresh waits about a second of real time (production's SMB-cache delay), so it is swept only where a reader exists.
 - **9.3d:** the first full run against today's code, and a report: every failure found, matched to a finding or
   added to section 3 as a new one.
 

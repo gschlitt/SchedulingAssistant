@@ -501,4 +501,248 @@ public sealed class InvariantProofTests
         Assert.Contains(broken, v => v.Promise == PromiseKind.SavedAs);
         world.Finish();
     }
+
+    // ═════════════════════════════════════════════════════════════════════════
+    // Power cuts at a named crash point (step 9.3c-2a)
+    // ═════════════════════════════════════════════════════════════════════════
+
+    /// <summary>
+    /// A power cut at each of the save's seven crash points: Bob edits and presses Save, the power goes at the point, the
+    /// disk is frozen and put back. D is then either the old version (every point before the rename) or the new one (the
+    /// rename and after), never torn (I3), and bob-1 is still somewhere that survives (I2): in D, or in his kept working
+    /// file with its marker. The marker is deleted only by the last step of the save. Every case runs through the normal
+    /// funnel, so a breach of any invariant would throw instead of reaching these assertions.
+    /// </summary>
+    [HarnessFact]
+    public async Task PowerCut_AtEachPointOfASave_LeavesDEitherOldOrNew_NeverTorn_AndEveryEditKept()
+    {
+        var savePoints = CrashPoints.All.Where(p => p.StartsWith("Save.", StringComparison.Ordinal)).ToList();
+        Assert.Equal(7, savePoints.Count);
+
+        foreach (var point in savePoints)
+        {
+            using var world = new World(_output, $"a power cut at {point}");
+            world.CreateDatabase();
+            var bob = world.AddComputer("bob");
+            await bob.OpenAsync();
+            bob.Edit();
+
+            var fired = await world.RunWithPowerCutAsync(bob, point, 1, "Bob presses Save", () => bob.SaveAsync());
+
+            Assert.True(fired, $"the save never reached {point}");
+            Assert.Null(world.IntegrityProblem(world.DatabasePath));                                   // I3: whole
+
+            var renamed = point is "Save.AfterRename" or "Save.AfterMarkerDelete";
+            Assert.Equal(renamed ? new[] { "bob-1" } : Array.Empty<string>(), world.EditsInDatabase());  // old or new, never in between
+            Assert.True(world.LastLedger.IsSafe("bob-1"), $"bob-1 is nowhere after a cut at {point}");  // I2
+            Assert.Equal(point != "Save.AfterMarkerDelete", bob.HasDirtyMarker);                       // only the last step deletes it
+            Assert.False(bob.IsRunning, "the cut computer's process must be gone");
+            Assert.Empty(world.Violations);
+            world.Finish();
+        }
+    }
+
+    /// <summary>
+    /// What the program does after the cut is thrown away. A <c>finally</c> block around Bob's save deletes two files after
+    /// the power went (one on the share, one on Bob's own disk); after the frozen disk is put back, both are still there, as
+    /// they would be after a real power cut, and so is the verified <c>dept.db.tmp</c> the save had written at the cut.
+    /// </summary>
+    [HarnessFact]
+    public async Task PowerCut_WhatAFinallyBlockDoesAfterTheCut_IsThrownAway()
+    {
+        using var world = new World(_output, nameof(PowerCut_WhatAFinallyBlockDoesAfterTheCut_IsThrownAway));
+        world.CreateDatabase();
+        var bob = world.AddComputer("bob");
+        await bob.OpenAsync();
+        bob.Edit();
+
+        var shareCanary = Path.Combine(world.ShareDir, "canary-on-the-share.txt");
+        var localCanary = Path.Combine(bob.LocalDir, "canary-on-bobs-disk.txt");
+        File.WriteAllText(shareCanary, "x");
+        File.WriteAllText(localCanary, "x");
+
+        var fired = await world.RunWithPowerCutAsync(bob, "Save.AfterTmpVerify", 1, "Bob presses Save", async () =>
+        {
+            try { await bob.SaveAsync(); }
+            finally
+            {
+                File.Delete(shareCanary);   // runs after the cut, on the live disk ...
+                File.Delete(localCanary);
+            }
+        });
+
+        Assert.True(fired);
+        Assert.True(File.Exists(shareCanary), "the file the finally block deleted on the share must be back");
+        Assert.True(File.Exists(localCanary), "the file the finally block deleted on Bob's disk must be back");
+        Assert.Contains("dept.db.tmp", world.ShareFiles());   // the save's verified temp file, as the cut left it
+        Assert.Empty(world.EditsInDatabase());                // the rename never happened
+        world.Finish();
+    }
+
+    /// <summary>
+    /// The computer is dead after the cut: its next crash-point hit and its next network operation stop at once, and a
+    /// second save by the dead process changes nothing, not even on the live disk before the frozen one is put back
+    /// (production catches exceptions, so the first <see cref="PowerCutException"/> alone would not stop it). A restart
+    /// gives a process with power again. The assertions run after the operation, because an assertion thrown inside it
+    /// would be swallowed as "the dead process threw".
+    /// </summary>
+    [HarnessFact]
+    public async Task PowerCut_TheComputerIsDeadAfterTheCut_UntilItIsRestarted()
+    {
+        using var world = new World(_output, nameof(PowerCut_TheComputerIsDeadAfterTheCut_UntilItIsRestarted));
+        world.CreateDatabase();
+        var bob = world.AddComputer("bob");
+        await bob.OpenAsync();
+        bob.Edit();
+
+        var deadAfterFirstSave = false;
+        string? hashBefore = null, hashAfter = null;
+        int hitsBefore = 0, hitsAfter = 0;
+        Exception? hitThrew = null;
+        NetworkFaultKind networkKind = NetworkFaultKind.None;
+
+        var fired = await world.RunWithPowerCutAsync(bob, "Save.AfterLockCheck", 1, "Bob presses Save", async () =>
+        {
+            try { await bob.SaveAsync(); } catch (PowerCutException) { /* either way the process is dead now */ }
+            deadAfterFirstSave = bob.PowerIsOut;
+
+            hashBefore = world.CurrentDatabaseHash();
+            hitsBefore = world.HitCount;
+            try { await bob.SaveAsync(); } catch (PowerCutException) { /* stopped, as it should be */ }
+            hashAfter = world.CurrentDatabaseHash();
+            hitsAfter = world.HitCount;
+
+            // The same two checks, asked directly as the dead process.
+            world.EnterAction(bob.Life);
+            try { CrashPoints.Hit("Save.AfterRename"); } catch (Exception ex) { hitThrew = ex; }
+            networkKind = NetworkFaults.Consult("File.Exists", world.DatabasePath, null).Kind;
+        });
+
+        Assert.True(fired);
+        Assert.True(deadAfterFirstSave);
+        Assert.Equal(hashBefore, hashAfter);                  // the dead process wrote nothing to D
+        Assert.Equal(hitsBefore, hitsAfter);                  // and got past no crash point
+        Assert.IsType<PowerCutException>(hitThrew);
+        Assert.Equal(NetworkFaultKind.Throw, networkKind);
+
+        Assert.True(bob.PowerIsOut);
+        bob.Relaunch();
+        Assert.False(bob.PowerIsOut, "a restart is a new process, with power");
+        Assert.Equal(SaveOutcome.Success, await RestartAndSaveAsync(bob));
+        world.Finish();
+    }
+
+    /// <summary>
+    /// The hook is process-wide, so it finds out which computer reached a crash point from a value that follows the flow of
+    /// control (an <c>AsyncLocal</c>), not from "who is acting now". The value must survive every way production code hops
+    /// threads: <c>Task.Run</c> (the lock release), the thread pool, a timer callback, a new thread, and an await that
+    /// resumes on another thread. Each is checked here OUTSIDE any action, where the fallback ("the computer acting now") has
+    /// no answer, so only the flowing value can attribute the hit to Bob.
+    /// </summary>
+    [HarnessFact]
+    public async Task PowerCut_TheHookFindsTheComputer_OnEveryKindOfThread()
+    {
+        using var world = new World(_output, nameof(PowerCut_TheHookFindsTheComputer_OnEveryKindOfThread));
+        world.CreateDatabase();
+        var bob = world.AddComputer("bob");
+
+        world.EnterAction(bob.Life);   // Bob's action is running in this flow of control; nothing is "acting now" in the world
+        Assert.Null(world.CurrentActor);
+
+        var before = world.HitCount;
+        await Task.Run(() => CrashPoints.Hit("Lock.AfterDeleted"));
+        await Task.Yield();
+        await Task.Run(async () => { await Task.Delay(5); CrashPoints.Hit("Close.AfterRelease"); });
+
+        var pool = new ManualResetEventSlim();
+        ThreadPool.QueueUserWorkItem(_ => { CrashPoints.Hit("Release.AfterLockReleased"); pool.Set(); });
+        Assert.True(pool.Wait(TimeSpan.FromSeconds(10)));
+
+        var timerDone = new ManualResetEventSlim();
+        using var timer = new Timer(_ => { CrashPoints.Hit("Heartbeat.AfterTmpWritten"); timerDone.Set(); }, null, 1, Timeout.Infinite);
+        Assert.True(timerDone.Wait(TimeSpan.FromSeconds(10)));
+
+        var threadDone = new ManualResetEventSlim();
+        new Thread(() => { CrashPoints.Hit("Switch.AfterRelease"); threadDone.Set(); }).Start();
+        Assert.True(threadDone.Wait(TimeSpan.FromSeconds(10)));
+
+        var hits = world.HitsSince(before);
+        Assert.Equal(
+            new[] { "Lock.AfterDeleted", "Close.AfterRelease", "Release.AfterLockReleased", "Heartbeat.AfterTmpWritten", "Switch.AfterRelease" }.OrderBy(p => p),
+            hits.Select(h => h.Point).OrderBy(p => p));
+        Assert.All(hits, h => Assert.Equal("bob", h.Computer));
+        world.Finish();
+    }
+
+    /// <summary>Bob opens the database again (the kept changes are restored with the simplest answers) and saves.</summary>
+    /// <param name="bob">Bob, restarted.</param>
+    /// <returns>How the save ended.</returns>
+    private static async Task<SaveOutcome> RestartAndSaveAsync(Computer bob)
+    {
+        bob.Prompts.ExpectChoice(HarnessTitles.RestoreUnsavedChanges, ChoiceAnswer.Affirmative);
+        await bob.OpenAsync();
+        return await bob.SaveAsync();
+    }
+
+    /// <summary>
+    /// F8 found by a power cut: Bob saves, the power goes between the rename and the marker delete
+    /// (<c>Save.AfterRename</c>). D already holds bob-1 and the marker is still there. When Bob starts again he is offered
+    /// "Restore Unsaved Changes?", chooses Restore, and is told "Can't Restore" although nothing is missing. The story names
+    /// the point.
+    /// </summary>
+    [HarnessFact]
+    public async Task PowerCut_BetweenTheRenameAndTheMarkerDelete_IsClassifiedAsF8()
+    {
+        using var world = new World(_output, nameof(PowerCut_BetweenTheRenameAndTheMarkerDelete_IsClassifiedAsF8));
+        world.ExpectFindings("F8");
+        world.CreateDatabase();
+        var bob = world.AddComputer("bob");
+        await bob.OpenAsync();
+        bob.Edit();
+
+        Assert.True(await world.RunWithPowerCutAsync(bob, "Save.AfterRename", 1, "Bob presses Save", () => bob.SaveAsync()));
+        Assert.Equal(new[] { "bob-1" }, world.EditsInDatabase());   // the save landed ...
+        Assert.True(bob.HasDirtyMarker);                            // ... and the marker was not deleted
+
+        var export = Path.Combine(world.RootDir, "exports", "bob-recovered.db");
+        Directory.CreateDirectory(Path.GetDirectoryName(export)!);
+        bob.Relaunch();
+        bob.Prompts.ExpectChoice(HarnessTitles.RestoreUnsavedChanges, ChoiceAnswer.Affirmative)
+                   .ExpectChoice(HarnessTitles.CantRestore, ChoiceAnswer.Affirmative)
+                   .ExpectPick("Save Recovered Copy", export);
+        await bob.OpenAsync();
+
+        var violation = Assert.Single(world.Violations, v => v.Kind == ViolationKind.RestoreOfferedThenImpossible);
+        Assert.Equal("F8", violation.FindingId);
+        Assert.True(violation.AllKeptEditsAlreadyShared);
+        Assert.Contains("Bob's computer lost power at Save.AfterRename", world.PrintStory(Array.Empty<string>()));
+        world.AssertAllScriptsConsumed();
+        world.Finish();
+    }
+
+    /// <summary>
+    /// The key of a power-cut event reads back into the same event, and a key that is not one, or names an event that does
+    /// not exist, is not parsed. (A plain unit test: it runs with the normal suite.)
+    /// </summary>
+    [Fact]
+    public void PowerCutEvent_KeyRoundTrips()
+    {
+        var known = EventCatalogue.Build().Concat(SweepEvents.Build()).ToDictionary(e => e.Key);
+
+        foreach (var key in new[]
+                 {
+                     "PowerCut(Save(bob) at Save.AfterRename)",
+                     "PowerCut(Sleep(alice,10m) at Demote.AfterLockReleased #2)",
+                     "PowerCut(Refresh(bob) at Refresh.AfterSwap)",
+                 })
+        {
+            var parsed = PowerCutEvent.TryParse(key, known);
+            Assert.NotNull(parsed);
+            Assert.Equal(key, parsed!.Key);
+        }
+
+        Assert.Null(PowerCutEvent.TryParse("Save(bob)", known));
+        Assert.Null(PowerCutEvent.TryParse("PowerCut(NoSuchEvent(bob) at Save.AfterRename)", known));
+        Assert.Null(PowerCutEvent.TryParse("PowerCut(AdvanceTime(4m) at Save.AfterRename)", known));   // not a computer's event
+    }
 }

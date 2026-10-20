@@ -87,6 +87,12 @@ internal sealed class Computer : IDisposable
     /// <summary>True between a launch and the process ending (closed or killed).</summary>
     public bool IsRunning => _running;
 
+    /// <summary>This process's power record: the harness reads it from any thread to know whether the power was cut (step 9.3c-2a).</summary>
+    public ProcessLife Life { get; private set; } = null!;
+
+    /// <summary>True once the power of the current (or last) process was cut. A restart gives a new process with power.</summary>
+    public bool PowerIsOut => Life.PowerIsOut;
+
     /// <summary>
     /// True when the process is running and a database is open in its window (read-only sessions included), the way the
     /// real window knows it (<see cref="FakeSessionHost.IsDatabaseOpen"/> is set when the window is wired up and cleared
@@ -164,6 +170,7 @@ internal sealed class Computer : IDisposable
     {
         var pid = _world.StartProcess(out var started);
         _identity = new LockIdentity(MachineName, Name, pid, started, _world.LookupProcess);
+        var life = Life = new ProcessLife(this);
 
         Trace         = new List<string>();
         Logger        = new RecordingAppLogger();
@@ -175,22 +182,35 @@ internal sealed class Computer : IDisposable
         Lifecycle     = new SessionLifecycle(
             Checkout, Guard, () => Logger, () => AppSettings.Current, _ => { }, () => null, Prompts, Host);
 
+        // A process whose power was cut (step 9.3c-2a) does nothing more: no lost-lock handling, no conflict banner, and
+        // its dialogs and banners are seen by nobody. The guards read the process they were wired for (not the
+        // computer), so a leftover task of a dead process stays dead after the computer is restarted.
         Checkout.WriteLockLost        += reason =>
         {
+            if (life.PowerIsOut) return;
             var task = Lifecycle.HandleWriteLockLostAsync(reason);
             lock (_pending) { _pending.Add(task); _pendingAdded++; }
         };
-        Checkout.SaveConflictDetected += () => ConflictBannerShown = true;
+        Checkout.SaveConflictDetected += () => { if (!life.PowerIsOut) ConflictBannerShown = true; };
 
         // Everything a person would read reaches the world: dialogs (with their answers) and banners.
-        Prompts.OnCall                   = call => _world.ObservePrompt(this, call);
+        Prompts.OnCall                   = call => { if (!life.PowerIsOut) _world.ObservePrompt(this, call); };
         if (_world.PromptPolicy is { } policy)
-            Prompts.Policy = call => policy(this, call);   // a generated run answers the dialogs nobody scripted
-        Host.LockLossSurface.OnSaveError = text => _world.ObserveBanner(this, text);
-        Checkout.SaveFailed             += (text, _) => _world.ObserveBanner(this, text);
+        {
+            // A generated run answers the dialogs nobody scripted. A dead process cannot be asked anything: its dialog
+            // is stopped here, and never reaches the run's decision source (so it is never recorded as a decision).
+            Prompts.Policy = call => life.PowerIsOut ? throw new PowerCutException("a dialog") : policy(this, call);
+        }
+        Host.LockLossSurface.OnSaveError = text => { if (!life.PowerIsOut) _world.ObserveBanner(this, text); };
+        Checkout.SaveFailed             += (text, _) => { if (!life.PowerIsOut) _world.ObserveBanner(this, text); };
 
         ConflictBannerShown = false;
         _running = true;
+
+        // A launch from inside an action (an Open starts the process first) must take the new process's power record into the
+        // action's flow of control, or everything the action does next would be attributed to the old, possibly dead,
+        // process. A standalone Relaunch (outside any action) must not touch the caller's flow.
+        if (_world.CurrentActor == this) _world.EnterAction(life);
     }
 
     // ── Actions ──────────────────────────────────────────────────────────────
@@ -239,11 +259,22 @@ internal sealed class Computer : IDisposable
         var id = $"{Name}-{_editCount + 1}";
         _world.Do(this, $"{DisplayName} made edit {id}", () =>
         {
-            ActAsync(() =>
+            try
             {
-                Host.EditWith($"INSERT INTO {World.EditsTable}(id, actor) VALUES ('{id}', '{Name}')");
-                return Task.FromResult(0);
-            }).GetAwaiter().GetResult();
+                ActAsync(() =>
+                {
+                    Host.EditWith($"INSERT INTO {World.EditsTable}(id, actor) VALUES ('{id}', '{Name}')");
+                    return Task.FromResult(0);
+                }).GetAwaiter().GetResult();
+            }
+            catch (PowerCutException)
+            {
+                // The only crash point in an edit comes after the row was inserted and the marker written, so the edit WAS
+                // applied: it is in the working file the frozen disk holds. It counts, or invariant I2 would not look for it.
+                _editCount++;
+                AppliedEdits.Add(id);
+                throw;
+            }
 
             _editCount++;
             AppliedEdits.Add(id);
@@ -293,6 +324,20 @@ internal sealed class Computer : IDisposable
                 if (verifies) await SettleBackgroundWorkAsync(outcomesBefore);
                 return 0;
             }));
+
+    /// <summary>
+    /// A read-only session presses Refresh: the checkout service re-copies the shared database over its read-only
+    /// snapshot (D''), closing the window's connection to the snapshot before it is replaced and reopening it
+    /// afterwards, as <c>MainWindowViewModel.RefreshData</c> does. (Only the part that touches the files is modelled; the
+    /// section reload that follows in the window has no files to lose.)
+    /// </summary>
+    /// <returns>How the refresh ended.</returns>
+    public Task<RefreshOutcome> RefreshAsync()
+        => _world.DoAsync(this, $"{DisplayName} pressed Refresh on the read-only view",
+            () => ActAsync(() => Checkout.RefreshReadOnlySnapshotAsync(
+                beforeOverwrite: () => { Host.ReleaseServices(); return Task.CompletedTask; },
+                afterOverwrite:  () => { Host.OpenServices(Checkout.WorkingPath); return Task.CompletedTask; })),
+            outcome => outcome.ToString());
 
     /// <summary>
     /// After a session ended without a window to show (a failed startup, a switch that went to the chooser and Exit,
@@ -460,12 +505,14 @@ internal sealed class Computer : IDisposable
     // ── Process ending ───────────────────────────────────────────────────────
 
     /// <summary>
-    /// Called by <see cref="World.CrashComputer"/>: the process was killed. Releases only the operating-system handles
-    /// (the SQLite connection and the single-instance guard) and marks the process dead. Nothing is saved, released or
-    /// deleted: the lock service and the checkout service are simply abandoned.
+    /// Called by <see cref="World.CrashComputer"/> and <see cref="World.RunWithPowerCutAsync"/>: the process was killed. Marks
+    /// its power cut (anything of it still running stops at its next crash point), releases only the operating-system
+    /// handles (the SQLite connection and the single-instance guard) and marks the process gone. Nothing is saved, released
+    /// or deleted: the lock service and the checkout service are simply abandoned.
     /// </summary>
     internal void AbandonProcess()
     {
+        Life.CutPower();   // anything of this process still running anywhere stops at its next crash point
         Host.Dispose();
         Guard.Dispose();
         _pending.Clear();
@@ -557,6 +604,7 @@ internal sealed class Computer : IDisposable
     {
         var previous = _world.CurrentActor;
         _world.CurrentActor = this;
+        _world.EnterAction(Life);   // follows the code onto other threads (see World.EnterAction)
         _world.ApplySettings();
         try
         {
@@ -576,8 +624,31 @@ internal sealed class Computer : IDisposable
         }
         finally
         {
-            Locks.PendingRelease?.Wait(TimeSpan.FromSeconds(10));
+            try { Locks.PendingRelease?.Wait(TimeSpan.FromSeconds(10)); }
+            catch (AggregateException) when (Life.PowerIsOut) { /* the release was stopped by the power cut */ }
             _world.CurrentActor = previous;
+        }
+    }
+
+    /// <summary>
+    /// After this process's power was cut: waits (bounded) for the work it left running in the background, the
+    /// lock-lost handlers and the lock release, to finish. At every crash point and network operation that work is
+    /// stopped by the cut, so it ends quickly; waiting guarantees none of it can write to the disk after the frozen
+    /// copy is put back over it.
+    /// </summary>
+    /// <returns>A task that completes when the background work has ended or the wait has timed out.</returns>
+    internal async Task SettleAfterPowerCutAsync()
+    {
+        Task[] leftovers;
+        lock (_pending) leftovers = _pending.ToArray();
+
+        var all = leftovers.ToList();
+        if (Locks.PendingRelease is { } release) all.Add(release);
+
+        foreach (var task in all)
+        {
+            try { await task.WaitAsync(TimeSpan.FromSeconds(10)); }
+            catch (Exception) { /* stopped by the cut, or timed out: either way nothing more is waited for */ }
         }
     }
 }
