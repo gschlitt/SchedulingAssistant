@@ -755,6 +755,27 @@ them from the list one by one, and the harness proves each is gone.
         set, so a point is cut in the states they reach (for example `Recovery.AfterSourceVerified` only in "Bob crashed
         with kept changes"); a state outside them is not swept.
       - Refresh waits about a second of real time (production's SMB-cache delay), so it is swept only where a reader exists.
+  - **9.3c-2b (laid out 2026-10-20, approved, not started):** pauses part-way through an operation. Test code only.
+    - **Mechanism:** at a named crash point P on computer C, the operation is held (a gate, or a held
+      `NetworkFaults.Decide` as the F16 test does), the harness runs **one other event**, then releases the
+      operation and lets it finish. Every pause has a real-time limit: if the operation never resumes, or the
+      second event waits on the first, the run fails with a new **Hang** violation instead of hanging the test run.
+    - **Events offered while paused:** Alice takes over, Alice saves; IT restores an old copy; the lock file is
+      deleted; time passes; **Bob edits** (rule 3's background-work-during-a-save case); **Bob switches**.
+    - **Expected rediscoveries,** each with a classifier rule and a `KnownSequences` entry:
+      - **F12:** Alice takes over between Bob's lock check and his rename (I4);
+      - **F2:** Bob's edit lands after the save's snapshot, then a crash (I2);
+      - **F16:** Bob switches while a demotion is copying (I6 below).
+    - **New invariant I6, "nobody holds a lock they can't use":** after every step, a read-only session must not
+      hold its database's lock, and a demotion applies only to the database it started on.
+    - **Speed:** split the random walks across separate test processes by seed range (the hooks are process-wide,
+      so not threads), so the 12-minute walk pass runs on several cores.
+    - **Budget:** a few minutes by default, with a `TERMPOINT_HARNESS_*` variable to widen it. F2, F12 and F16 join
+      the known-findings list.
+    - **Against the four rules:** no production change. It closes the harness's gaps on rule 2 (changes by others
+      part-way through: F12), rule 3 (edits during a save: F2) and rule 4 (F16, through I6).
+    - **Expected cost:** like 2a (about an hour of Sonnet time, half of it builds and runs on this laptop), probably
+      a little more, because a pause is harder to make deterministic than a cut.
 - **9.3d:** the first full run against today's code, and a report: every failure found, matched to a finding or
   added to section 3 as a new one.
 
