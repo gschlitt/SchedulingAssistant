@@ -18,7 +18,7 @@ will be verified.
 | 3 | Preserve unknown JSON fields across app versions, with a minimum-version gate | Data integrity | **Done** (3a unknown-field catch-all; 3b `MinimumVersionToWrite` gate). Field test: the Store link once 1.2.3 is certified |
 | 4 | Stop opening the shared DB directly; fix startup ordering; single-instance guard | Data integrity | **Done** (4a, 4e, 4d, 4b, 4c; user-tested 2026-10-13). Open: header-only check on D (kept as built), possible 4f (working copy locked vs damaged). Field tests: Mac guard, clumsy |
 | 5 | Make Restore from backup safe | Data integrity | **Done** (5a shared routine, 5b Save & Backup, 5c chooser, 5d open-time local-copy check, 5e damage reporting to BugSnag). Field test: clumsy mid-restore. Follow-up: version-gate re-run after a locked/damaged local copy (item 3) |
-| 6 | Strip paths and usernames from BugSnag reports | Privacy | Accepted |
+| 6 | Strip paths and usernames from BugSnag reports | Privacy | Accepted; **plan approved 2026-10-21** (6a text scrubber, 6b delivery filter, 6c sources + PRIVACY.md). Not started |
 | 7 | Report handled save/lock failures and unclean exits to BugSnag | Observability | Accepted |
 | 8 | Empty / delete semester and academic year: consistent rules, no orphans | Bug / data integrity | **Done** (8a service, 8b screens, 8c orphan-tolerant queries); user-tested 2026-10-12 |
 | 9 | Make stale-lock takeover safe | Data integrity | **Done** (9a warning + click re-check, 9b clock-free staleness; user-tested on one machine 2026-10-13). 3-computer integration test pending |
@@ -1245,8 +1245,88 @@ Usernames are personal information under BC's FIPPA.
 "UNC / local / mapped drive") and usernames from breadcrumbs, metadata and messages. Add a test
 that pushes known-sensitive values through the scrubber.
 
-**Open decisions.** Drop usernames entirely, or replace them with a non-identifying marker
-("self" / "other user").
+**Decisions (user, 2026-10-21).**
+- Lock holders become a marker of their relation to this user, not a name, and are not dropped.
+- No per-database hash: InstallId already groups reports by install, and a short hash of a path that contains a
+  username can be reversed by guessing likely paths.
+- If scrubbing fails, nothing is sent.
+
+**Survey (2026-10-21).** What can reach BugSnag today:
+- **L1 — the machine name, on every event and every session batch.** Bugsnag 4.1.0 fills `device.hostname` by itself
+  (confirmed by building its `Device` payload on a dev machine). `BeforeNotify` never sees session batches. Client:
+  `App.axaml.cs:45`.
+- **L2 — the database path** in breadcrumb `["path"]`: `CheckoutService.cs:630`, `:642`, `:656`, `:668`, `:685`,
+  `:708`, `:719`, `:796`, `:1144`, `:1249`; `SessionLifecycle.cs:848`.
+- **L3 — the local copy's path**, which holds the user's own folder name: `CheckoutService.cs:3120`
+  `["workingPath"]`.
+- **L4 — lock holders' Windows usernames:** `CheckoutService.cs:708`, `:719`, `:922` `["holder"]`; `:3362`
+  `["newHolder"]`.
+- **L5 — a path in a breadcrumb's text:** `StartupWizardViewModel.cs:631` (`"Wizard: finish ({path})"`).
+- **L6 — a path in an error's context:** `BackupService.cs:238`, `:286` (also with no exception; item 7 fixes that
+  part); `TpConfigService.cs:65`.
+- **L7 — a URL in an error's context**, possibly a `mailto:` with an email address: `InlineTextHelper.cs:167`.
+- **L8 — messages of .NET's own file errors** (the exception and its inner exceptions), e.g. "Access to the path
+  'C:\Users\jsmith\…' is denied". Any `LogError(ex)` on an open or copy failure can carry one, e.g.
+  `CheckoutService.cs:4212`, and the unhandled-exception handlers (`Program.cs:30`, `App.axaml.cs:235`).
+- **Fine as is:** locale, time zone, OS name, `User.Id` (InstallId), and stack-frame file paths (the build machine's,
+  not the user's).
+- **One place sees everything.** Bugsnag 4.1.0 takes a delivery object (`new Client(config, IDelivery)`), and every
+  event (`Report`) and session batch (`BatchedSessions`) passes through it. Both payloads are dictionaries, so they
+  can be edited there. `Notify` runs `BeforeNotify` (the InstallId) first, then calls the delivery on the caller's
+  thread; `DefaultDelivery.Instance` then queues the send.
+- **Existing scrubber:** `DatabaseDamageReporter.Sanitize` (item 5e) already redacts Windows, UNC, home and Unix paths
+  and database file names, with a 250 ms regex timeout. It is reused, not copied.
+
+**What each value becomes.**
+- **Paths:** a shape tag: `<unc path>`, `<drive H: path>`, `<unix path>`, `<home path>`. The drive letter tells a
+  local drive from a mapped one and identifies nobody.
+- **Bare database file names:** `<file>` (they often name the department or institution).
+- **Email addresses:** `<email>`.
+- **Known names:** `<user>` / `<machine>`, matched case-insensitively, only for names of 3 characters or more. The list
+  holds this computer's `Environment.UserName` and `MachineName`, plus every holder name and machine read from a lock
+  file.
+- **`device.hostname`:** removed from events and session batches.
+- **Lock holders:** fixed at the source: `self`, `self-other-computer`, `other`, `unreadable` or `none`.
+- **Stays:** error class and stack traces (BugSnag groups by these, so existing issues don't split); the context with
+  paths removed; breadcrumb names; metadata keys and values that aren't sensitive; InstallId, version, release stage,
+  OS, locale, time zone.
+- **The local log is unchanged** and keeps full paths: it never leaves the machine.
+
+**Plan (user-approved 2026-10-21).**
+- **6a — `PrivacyScrubber.ScrubText` (new, `Services/`).**
+  - Move the regex table out of `DatabaseDamageReporter.Sanitize`; add the shape tags, the email pattern and the
+    known-names list (`RegisterSensitive(name, label)`).
+  - `Sanitize` keeps its length cap and "withheld" text and calls the shared scrubber.
+  - **Tests:** a user folder with spaces, UNC, a mapped drive, forward slashes, Unix and home paths, emails,
+    registered names, names under 3 characters ignored, the timeout. The existing `Sanitize` tests move from `<path>`
+    to the shape tags.
+- **6b — `ScrubbingDelivery : IDelivery`, wrapping `DefaultDelivery.Instance`, wired in at `App.axaml.cs:45`.**
+  - It edits a fixed list of fields: context, `exceptions[].message`, breadcrumb names and metadata, every metadata
+    tab, `device.hostname`. Not a blind walk over every string: that would mangle the notifier URL and the stack-frame
+    fields used for grouping.
+  - **Fails closed:** if scrubbing throws, or passes a total deadline of about 1 s, the payload is dropped (the local
+    log line already stands). The deadline also caps what a report costs the caller's thread.
+  - **Tests** (a `Bugsnag.Client` built on a recording inner delivery, so nothing reaches the network): notify an
+    IOException with a path and an inner path, plus breadcrumbs, a holder and a metadata tab. Serialize the payload.
+    - None of these appear: the username, the machine name, path pieces, the email.
+    - These survive: errorClass, the context words, InstallId.
+    - A session batch has no hostname.
+    - A scrubber that throws means nothing is forwarded.
+- **6c — sources and documents.**
+  - The holder markers at the 4 holder sites (L4).
+  - `WriteLockService` registers each holder name and machine it reads.
+  - The `["path"]` breadcrumbs (L2, L3) stay as they are: the filter turns them into shape tags.
+  - Update the "no paths or user names" doc comments on `ReportHandled` and `LogError`.
+  - **PRIVACY.md:** add the error message (with paths and names removed), locale and time zone to what is sent.
+
+**Risks.**
+- **Diagnostics:** BugSnag shows only a path's shape, not which file failed. The local log still has it; ask the
+  user for it when needed.
+- **Grouping:** unchanged (error class and stack, not the message).
+- **Over-redaction:** an `https://` URL in a message loses its path (the existing Unix-path pattern already does
+  this). Accepted.
+- **Data integrity:** none. No database or lock code and nothing a release saves, so the four rules and
+  `MinimumVersionToWrite` are not affected. Users see no change.
 
 ---
 
