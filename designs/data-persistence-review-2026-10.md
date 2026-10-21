@@ -145,7 +145,7 @@ All of 2.8 stems from one choice: the working folder is `Environment.SpecialFold
 | # | Finding | Rule | New or known | Size of fix |
 |---|---|---|---|---|
 | **F1** | The X on "Restore Unsaved Changes?" and on "Can't Restore Unsaved Changes" deletes the kept changes, with no confirmation. Discard itself is never confirmed either | 3 | **New. In 1.2.2 today** (same code on `master`) | Small: X re-asks; Discard confirms |
-| **F2** | An edit made during a save loses its marker; a crash before the next save deletes it | 3 | Known (item 15) | Medium: edit counter |
+| **F2** | An edit made during a save loses its marker; a crash before the next save deletes it. **Confirmed by the harness (9.3c-2b):** open, Save held at `Save.AfterLocalSnapshot`, Bob edits meanwhile, Bob's computer crashes: his kept working file has no marker and the edit is nowhere (3 events; `KnownSequences`). The clean-close face (item 15's "edits made during the exit save are deleted") needs no crash: a close held at `Save.AfterMarkerDelete` or `Release.AfterFinalSave` while Bob edits deletes the edit with the working copy | 3 | Known (item 15) | Medium: edit counter |
 | **F3** | Unapplied inline edits dropped at close or switch | 3 | Known (item 14) | Medium |
 | **F4** | After a lost lock, writes still reach the read-only copy (connection is read-write; only the UI blocks), so an editor left open could "save" into a file that is thrown away | 3/4 | **New**, needs one check (does the editor stay open across demotion?) | Small: open read-only copies with `Mode=ReadOnly` so any write fails loudly |
 | **F5** | Every editing session rewrites the shared database at its first save, even with no edits. So *anyone* opening it for editing after Bob's crash or lost lock makes his changes unrestorable, and the "restore if nobody changed anything" path almost never happens | 4 (and makes C harder) | **New** | Small to medium: skip a save when nothing changed (check what the version-stamp raise relies on first) |
@@ -159,7 +159,7 @@ All of 2.8 stems from one choice: the working folder is `Environment.SpecialFold
 | **F13** | A damaged lock file is reported as "removed"; jargon | 4 | Known | Small |
 | **F14** | Kept changes on another computer are invisible from this one | 4 | **New** | Hard; probably a message only |
 | **F15** | Messages during a network outage: the autosave banner clears itself after 30 s while saves keep failing (nothing on screen until the next autosave, 10 min later); "Try saving again in a moment" is wrong advice in a long outage; the heartbeat adds a second message for the same problem, worded "safe locally"; closing then gets "Changes Not Saved" with its restore promise (F6) | 4 | **New** | Small/medium: one persistent "can't reach the database" state that clears only when a save works, one wording |
-| **F16** | A lost-lock demotion that is still running when Bob switches database lands on the NEW session. **Confirmed 2026-10-20 by `CheckoutServiceTests.F16_ADemotionStillRunningWhenTheUserSwitches_DoesNotTouchTheNewSession` (skipped until fixed).** The demotion (`DemoteToReadOnlyAsync`, `CheckoutService.cs:3508`) stays at `Mode = WriteAccess` until its D'' snapshot is made (`SetupReadOnlySnapshotAsync`, a network copy and hash, `:3967`/`:3990`). If Bob switches during that copy, the switch's own release and the checkout of the new database (`:597`, `:790`) complete first. The demotion then goes on with the service's CURRENT `SourcePath` (it re-reads it at `:3990` and `:4013`: the log shows "D'' copy hash mismatch, retrying"), copies the NEW database, and sets `WorkingPath = D''`, `Mode = ReadOnly` and `IsReadOnlyMode` (`:4048-4050`). Result: the new session holds the new database's lock but is read-only to the checkout service. Saves return `NotInWriteMode` (`:1423`), `MarkDirty` writes no marker (`:2444`), and the exit release skips its final save (`:3030`), while the lock service still says writer, so the window may still allow editing. **Data may be at risk (not yet demonstrated end to end):** edits made in that session after the demotion lands would not be saved at close and would have no marker, so the next start would clear the working copy as "no edits". The window is the duration of the D'' copy, and it needs the demotion to have STARTED before the switch (a heartbeat check, a wake check, an autosave or the Save button found the loss) and Bob to switch during the copy. The switch's own final save also raises the loss, but in production that handler is posted (`Dispatcher.UIThread.Post`, then `InvokeAsync`) and, by code reading, runs after `ReleaseAsync` has set `Mode = ReadOnly` (`:3054`), where the guard at `:3512` makes it a no-op. The harness dispatches synchronously, so there that same handler runs inline and can show the clobber (the dept.db to other.db story); that story is partly a harness artifact, the unit test above is the production-shaped route | 3 (possible), 4 (read-only while holding the lock) | **New** | Small/medium: tie a demotion to the session it was started for (a session number captured at the start, checked before each state change), and refuse a switch until a running demotion has finished |
+| **F16** | A lost-lock demotion that is still running when Bob switches database lands on the NEW session. **Confirmed 2026-10-20 by `CheckoutServiceTests.F16_ADemotionStillRunningWhenTheUserSwitches_DoesNotTouchTheNewSession` (skipped until fixed).** The demotion (`DemoteToReadOnlyAsync`, `CheckoutService.cs:3508`) stays at `Mode = WriteAccess` until its D'' snapshot is made (`SetupReadOnlySnapshotAsync`, a network copy and hash, `:3967`/`:3990`). If Bob switches during that copy, the switch's own release and the checkout of the new database (`:597`, `:790`) complete first. The demotion then goes on with the service's CURRENT `SourcePath` (it re-reads it at `:3990` and `:4013`: the log shows "D'' copy hash mismatch, retrying"), copies the NEW database, and sets `WorkingPath = D''`, `Mode = ReadOnly` and `IsReadOnlyMode` (`:4048-4050`). Result: the new session holds the new database's lock but is read-only to the checkout service. Saves return `NotInWriteMode` (`:1423`), `MarkDirty` writes no marker (`:2444`), and the exit release skips its final save (`:3030`), while the lock service still says writer, so the window may still allow editing. **Data may be at risk (not yet demonstrated end to end):** edits made in that session after the demotion lands would not be saved at close and would have no marker, so the next start would clear the working copy as "no edits". The window is the duration of the D'' copy, and it needs the demotion to have STARTED before the switch (a heartbeat check, a wake check, an autosave or the Save button found the loss) and Bob to switch during the copy. The switch's own final save also raises the loss, but in production that handler is posted (`Dispatcher.UIThread.Post`, then `InvokeAsync`) and, by code reading, runs after `ReleaseAsync` has set `Mode = ReadOnly` (`:3054`), where the guard at `:3512` makes it a no-op. The harness dispatches synchronously, so there that same handler runs inline and can show the clobber (the dept.db to other.db story); that story is partly a harness artifact, the unit test above is the production-shaped route. **Confirmed by the harness (9.3c-2b)** in the pause form: Bob's computer wakes to find his lock taken over, the demotion that starts is held before its D'' copy (`Demote.AfterWorkingCopyHandled`), Bob switches to the other database and gets write access and its lock, and when the demotion goes on it copies the NEW database and leaves Bob's session read-only while it holds the new lock. Both clauses of invariant I6 fire (a demotion that started on dept.db finds the session on other.db; a read-only session holds other.db's lock); 4 events, on `KnownSequences`. The harness-inline form is also reached by the search (`Open`, `AdvanceTime(4m)`, `Open(alice)`, `SwitchAway`), so three older proof tests that run it now declare F16 | 3 (possible), 4 (read-only while holding the lock) | **New** | Small/medium: tie a demotion to the session it was started for (a session number captured at the start, checked before each state change), and refuse a switch until a running demotion has finished |
 
 ---
 
@@ -755,26 +755,124 @@ them from the list one by one, and the harness proves each is gone.
         set, so a point is cut in the states they reach (for example `Recovery.AfterSourceVerified` only in "Bob crashed
         with kept changes"); a state outside them is not swept.
       - Refresh waits about a second of real time (production's SMB-cache delay), so it is swept only where a reader exists.
-  - **9.3c-2b (laid out 2026-10-20, approved, not started):** pauses part-way through an operation. Test code only.
-    - **Mechanism:** at a named crash point P on computer C, the operation is held (a gate, or a held
-      `NetworkFaults.Decide` as the F16 test does), the harness runs **one other event**, then releases the
-      operation and lets it finish. Every pause has a real-time limit: if the operation never resumes, or the
-      second event waits on the first, the run fails with a new **Hang** violation instead of hanging the test run.
-    - **Events offered while paused:** Alice takes over, Alice saves; IT restores an old copy; the lock file is
-      deleted; time passes; **Bob edits** (rule 3's background-work-during-a-save case); **Bob switches**.
-    - **Expected rediscoveries,** each with a classifier rule and a `KnownSequences` entry:
-      - **F12:** Alice takes over between Bob's lock check and his rename (I4);
-      - **F2:** Bob's edit lands after the save's snapshot, then a crash (I2);
-      - **F16:** Bob switches while a demotion is copying (I6 below).
-    - **New invariant I6, "nobody holds a lock they can't use":** after every step, a read-only session must not
-      hold its database's lock, and a demotion applies only to the database it started on.
-    - **Speed:** split the random walks across separate test processes by seed range (the hooks are process-wide,
-      so not threads), so the 12-minute walk pass runs on several cores.
-    - **Budget:** a few minutes by default, with a `TERMPOINT_HARNESS_*` variable to widen it. F2, F12 and F16 join
-      the known-findings list.
-    - **Against the four rules:** no production change. It closes the harness's gaps on rule 2 (changes by others
-      part-way through: F12), rule 3 (edits during a save: F2) and rule 4 (F16, through I6).
-    - **Expected cost:** like 2a (about an hour of Sonnet time, half of it builds and runs on this laptop), probably
+  - **9.3c-2b (Done 2026-10-21, uncommitted):** pauses part-way through an operation, as laid out and approved on 2026-10-20 (one refinement, below).
+    Test code only; nothing under `src/TermPoint/` changed.
+    - **The pause (`World.RunWithPauseAsync`, `Pause.cs`, `PauseActions.cs`):** one operation of one computer runs with a pause armed for "the n-th time
+      it reaches crash point P". The operation runs on its own task, marked with an `AsyncLocal`, so the mark follows every task and thread it starts.
+      At that instant the thread that got there blocks on a gate, and every other thread of the operation stands still at its next crash point or network
+      operation (`NetworkFaults.Decide`): the whole process is suspended, as when a laptop sleeps, not one thread of it. The event runs meanwhile on its
+      own task, which carries no mark, so it is never held even when it is the same computer's. Then the operation is released and both finish.
+      Pause, event and release are ONE funnel step: the operation's and the event's story lines are nested under it and the invariants run once, at the
+      end. The story reads "Bob presses Save, and at Save.AfterLocalSnapshot Bob's operation is held while Alice takes over the lock, edits and saves —
+      the event happened while the operation was held, then the operation went on".
+    - **Real-time limits, and the refinement:** an event may legitimately wait for the held operation. `ReleaseAsync` calls `WaitForInFlightSaveAsync`,
+      which polls for up to 60 s, so "Bob switches while his own save is held" waits for the save; an edit waits for the close's lock release in the
+      same way. That is designed behaviour, not a violation. So: when the event has not finished after a **grace** of 2 s of real time, the operation is
+      released and both are left to finish. If they do, the story says "(the event) waited for (the operation) to finish" and the case counts as
+      *waited*, not interleaved. Only when something is STILL unfinished 30 s after the release, or the operation neither reached the point nor returned
+      within 30 s, is it a new **Hang** violation (`ViolationKind.Hang`, invariant "Hang", classified "new", so it fails a generated run). The stuck work
+      is abandoned the way the power cut abandons a dead process: the computer's `ProcessLife` is cut, so anything that ever moves is stopped at its next
+      crash point or network operation, and the run goes on. The test run never hangs. The three limits are `PauseLimits`; the proof tests use shorter ones.
+    - **I4 attribution:** `CheckWriterAtRename` now uses the computer whose flow reached the point (`World.ActingComputer`, the `AsyncLocal` from 2a),
+      not `_currentActor`, which is wrong while two actions overlap. The funnel's depth counter is changed with `Interlocked`, and the pause puts "who
+      is acting now" back when it ends (the two overlapping actions restore it in either order). A proof test leaves it pointing at the wrong computer on purpose.
+    - **The pause as a decision:** `PauseEvent`, key `Pause(Save(bob) at Save.AfterTmpVerify; AliceTakesOverAndSaves)` (`#2` after the point for a later
+      occurrence), built from keys by `EventCatalogue.ExtrasFor`. Replay, the shrinker and the story printer needed no change. What can happen meanwhile,
+      written for "the paused computer" and "the other one": the other computer takes over (time for the lock to look stale, then it opens), takes over and saves
+      (opens, edits, saves), IT restores an old copy, the lock file is deleted, time passes, **the paused computer edits**, **the paused computer switches**.
+      An event is offered, and run, only if it is possible at the pause: the sweep's dry run installs a survey (`World.CrashPointSurvey`) that asks every
+      event at every crash point, in that very state, and a pause whose event turns out not to be possible then is skipped with a story line.
+    - **The pause sweep (`PauseSweep.cs`):** reuses the crash sweep's 8 starting situations (12 at width 2) and operations. A dry run records the points the
+      operation reaches and which events are possible at each; then one case per (point, possible event): replay the prefix, run the operation paused with
+      the event, then the paused computer crashes and starts again with the default answers (that follow-up is what makes F2 visible and judges every
+      kept-work promise). **Width 1 (default) is a subset, chosen for time:** the operations Save, Close, switch away, the heartbeat, the wake check,
+      Open and restore from a backup; only their `Save.*`, `Demote.*`, `Release.*`, `Restore.*`, `Checkout.*` and `Recovery.*` points, where the lock, the
+      shared database and the kept work change hands; the first time each point is reached; each (operation, point, event) once, in the first situation
+      where it is possible; a final save (Close, switch) only from its rename on, because before that it is the Save button's code; and the events that are
+      known to wait for the held operation (a switch while the same computer's save is in flight) are left out, because each costs the whole grace period
+      to show and a proof test pins them. Width 2 (`TERMPOINT_HARNESS_PAUSE_WIDTH=2`) lifts all of that and adds the "close normally" follow-up.
+    - **Invariant I6, "nobody holds a lock they can't use"** (checked after every step, in the funnel): (a) a session whose checkout is read-only
+      (`Mode == ReadOnly`; `IsReadOnlyMode` goes with it but production never clears it, so it is not read alone) must hold neither its lock service's
+      writer flag nor its database's lock file; (b) a demotion applies only to the database it started on: the session's database is noted at the
+      demotion's first `Demote.*` point (before a pause holds it there) and compared at every later one. Both fire in the F16 route; neither fires in the
+      five hand-written walks (asserted) or in an ordinary demotion that nobody interrupts.
+    - **Findings and the classifier:** F2 and F16 join `KnownFindings`. **F2:** an I2 "edit lost" whose edit its computer applied while its own operation was held in
+      the *edit-loss window* (from a save's snapshot to the cleanup of the working copy: `Save.AfterLocalSnapshot` to `Save.AfterMarkerDelete`, then
+      `Release.*`, `Close.AfterRelease`/`Close.AfterServicesDisposed`, `Switch.AfterRelease`/`Switch.AfterServicesReleased`); recorded in the world at the
+      moment the row is inserted. The window is wider than the approved layout said because the first sweep found the clean-close face of the same finding
+      (spec item 15, "edits made during the exit save are deleted"): a close held at `Save.AfterMarkerDelete` or `Release.AfterFinalSave` while Bob edits
+      deletes the edit with the working copy, with no crash needed. **F12:** the I4 rule is unchanged; an **I1** violation in the same step whose lost edits
+      another computer committed while a save was held before its rename is F12 too (the baseline learns what the event committed through
+      `InvariantChecker.ObserveSharedMidStep`, otherwise an edit that is committed and overwritten inside one step is never seen). **F16:** any I6 violation.
+      Three older proof tests that run the harness-inline form of the switch race (the lost-lock handler runs inline) now declare F16.
+    - **Speed (`RandomWalkSharding.cs`):** the random walks run in `TERMPOINT_HARNESS_PROCESSES` separate test processes (default `min(4, processors/2)`,
+      at least 1; this laptop has 4 logical processors, so 2). The parent starts `dotnet test <this assembly> --filter RandomWalkShardTests` per shard with a
+      job file (the seeds, dealt round-robin) named by an environment variable; the shard test (skipped unless that variable is set) writes its tallies to
+      JSON; the parent merges them in shard order into the same `GeneratedLog` the loop fills, so the report and `Generated_RediscoversKnownFindings` read
+      as before. The parent keeps each child's `Process`, gives it a time limit (40 minutes, `TERMPOINT_HARNESS_SHARD_MINUTES`) and on a timeout or a
+      failure kills only that process's tree (`Kill(entireProcessTree: true)`), never by image name, and fails with the child's output.
+    - **Budget and timings (this laptop, 4 logical processors):** pause sweep at width 1: 8 starting situations, 70 dry runs (48 with the operation
+      possible), **305 cases**: 277 interleaved, 28 waited, 0 not possible, 0 never reached, **0 hung**; 59 (point, event) combinations of the known-to-wait
+      kind are left to width 2; about 3.5 minutes (3:22 to 3:29 in the full runs, about 560 ms per run). **Width 2 plans about 4590 cases, about three hours,
+      and was sampled, not run in full:** a test runs every 40th planned case, at most 60 (50 interleaved, 10 waited, 0 hung, about 2.5 minutes), enough to
+      show that the wide paths (later occurrences, the wide situations, the events that wait, the close-normally follow-up) execute. The full harness
+      (`TERMPOINT_HARNESS=1`) was 38 tests in 13 m 26 s before (random walks 7:16, crash sweep 4:01 in that run, which overlapped two builds); it is now
+      **67 tests in about 14 minutes** with the pause sweep (3:29) and the new proof and sharding tests in it (14 m 16 s for the last full run, 66 tests; the
+      67th, the wide sample, was added after it and run on its own). The random walks went from 7:16 to **4:29 with 2 processes (1.6 times)**: each shard
+      shrinks the breaches it meets by itself, so the shrink replays double (138 to 283), which is why two processes do not give two times. Without the split
+      the same run would take about 17 minutes. Only the random walks are sharded; the crash sweep (2:52) and the pause sweep (3:29) are not.
+    - **Findings by source** (full run; the counts are runs that showed it): **F2:** replay 1, pause sweep 28; the search cannot reach it. **F12:** replay 2,
+      pause sweep 37; the search cannot reach it. **F16:** the search 2, replay 3, crash sweep 2, pause sweep 20 (the search and the crash sweep reach the
+      harness-inline form of the race, which invariant I6 now flags; that is why three older proof tests declare F16). Also F7 once more, in the pause sweep
+      (Alice takes over and saves while Bob's recovery is held at `Checkout.AfterLockAcquired`). Smallest stories, each on `KnownSequences` and each shown to
+      be already as short as the shrinker can make it:
+      - **F2, 3 events:** `Open(bob)`, `Pause(Save(bob) at Save.AfterLocalSnapshot; BobEdits)`, `Crash(bob)`. Bob's edit lands after the snapshot; the save's
+        last step deletes the marker; the crash leaves "bob's working file WITHOUT its marker" and the next start deletes it.
+      - **F12, 2 events:** `Open(bob)`, `Pause(Save(bob) at Save.AfterLocalSnapshot; AliceTakesOverAndSaves)`: I4 (the lock was Alice's at the rename) and I1
+        (alice-1 left the shared database), both F12. With `AliceTakesOver` alone the story is I4 only (`Pause(Save(bob) at Save.AfterLockCheck; AliceTakesOver)`, 2 events).
+      - **F16, 4 events:** `Open(bob)`, `AdvanceTime(4m)`, `Open(alice)`, `Pause(Sleep(bob,10m) at Demote.AfterWorkingCopyHandled; BobSwitches)`: both I6
+        clauses fire. (The search's own 4-event form is `Open(bob)`, `AdvanceTime(4m)`, `Open(alice)`, `SwitchAway(bob)`, the harness-inline variant.)
+    - **New violations: none** at width 1, in the full harness. Two things the work found on the way are worth a decision:
+      - *The two ways F12 can land.* Both writers use the same temp file name (`<database>.tmp`). When Alice takes over and saves while Bob's save is held
+        AFTER his D.tmp was verified, her save takes his D.tmp, so his rename finds nothing and fails (a copy error; nothing is overwritten, and I4 still
+        reports that the lock was hers). Only when Bob is held BEFORE his copy to D.tmp (`Save.AfterLockCheck` to `Save.AfterLocalSnapshot`) does his rename land
+        over her save. The F12 fix (re-check the lock and the fingerprint just before the rename) closes both.
+      - *A candidate finding at width 2, not yet in section 3:* Bob has an edit, a 1.2.2 colleague changes the database, Bob closes (the final save is refused
+        and the close keeps his working copy), and a switch overlaps the close (`Pause(Close(bob) at Close.AfterRelease; BobSwitches)`, 4 events). The switch
+        starts from a session the close has already released, asks `ReleaseAsync` for no save, is told "Success", and `SessionLifecycle.SwitchCoreAsync` deletes
+        the working copy it believes is in the database (the trap its own comment describes for the save-conflict path); bob-1 is nowhere. It needs a switch
+        to be possible while the window closes (spec item 15 is about input during the exit save), so it may be only a harness reach, but it is data loss by
+        rule 3, so it is reported: the wide-sample test names it and fails on any other unexplained breach. **Not pursued (user,
+        2026-10-21):** too unlikely in practice to need a finding of its own; it stays out of section 3.
+    - **Proof tests** (`PauseProofTests`, `RandomWalkShardingTests`, `InvariantProofTests`, `HarnessWalkTests`; the harness ones need `TERMPOINT_HARNESS=1`):
+      the pause holds the operation (D.tmp verified, D unchanged, the save not returned) and releases it; a pause case replays to the same story; the shrinker
+      shortens a long pause case (to 3 events); the pause key round-trips (a plain test, in the normal suite); "Bob switches during his own save" waits as
+      designed and is not a violation; a planted deadlock, an operation that never returns, an event that never ends and an operation that is stuck before the
+      point are each a Hang within the limits and the test run does not hang; a point the operation never reaches just lets it happen; the rename check is
+      attributed to the right computer when "who is acting now" is wrong; F2 (the crash route and both clean-close routes), the F2 negative (an edit before the
+      snapshot loses nothing), F12 (I4 and I1 both classified, nothing "new", and the shared-D.tmp case with no loss) and F16 classify as above; I6 (a) and (b)
+      each fire on a planted state, both fire on the F16 route, and neither fires on an ordinary demotion or in the five hand-written walks (now asserted);
+      the sharded walks give the same tallies as the in-process loop (24 seeds, 2 processes); a failing shard fails the test with its output; a shard past its
+      time limit is killed and its process is gone.
+    - **Results:** normal suite 2721 passed + 66 skipped (65 harness tests skipped, plus the skipped F16 unit test; this machine also runs the tests that
+      need the private database); harness 66 passed + 1 skipped (the shard test, which only a parent run starts) in the last full run, and the wide sample
+      and the pause tests passed again after the final change; no new violations at width 1.
+    - **Limitations:**
+      - A pause stops a process only at crash points and network operations; local file and SQLite work between two of them still runs, so "the process is
+        suspended" is exact only to that granularity (as the power cut is exact only to the 39 named boundaries).
+      - One event per pause. A longer interleaving (two events, or an event that is itself paused) is not swept.
+      - The interleaved/waited split rests on the 2 s grace: an event that normally takes much less is always interleaved, but one that sits close to 2 s on a
+        loaded machine could be counted as waited. That changes the label and the order of the story's lines, never a verdict.
+      - The default sweep pauses each (operation, point, event) once, in the first situation where it is possible, at the first time the point is reached; a
+        state outside the 8 situations, and every case left to width 2, is not swept by default.
+      - The harness has no UI thread: a held operation runs on a pool thread and a person's click is an event on another, so what production posts to the UI
+        thread (the lost-lock handler) runs inline here, as before (the note under F16).
+      - Child processes need the `dotnet` executable and the test assembly's folder on disk.
+    - **Seen on the way, not changed:** `CheckoutService.IsReadOnlyMode` is set when D'' is made but cleared only by `ResetAfterFailedOpenAsync`, so after a
+      read-only session a later write session still reads `true`; `MainWindowViewModel.RefreshData` branches on it alone, and `RefreshReadOnlySnapshotAsync`
+      throws when the mode is not read-only, which the refresh logs as an error. Not checked end to end. I6 therefore reads `Mode`, not the flag.
+    - **Against the four rules:** no production change. It closes the harness's gaps on rule 2 (changes by others part-way through: F12), rule 3 (edits
+      during a save: F2) and rule 4 (F16, through I6).
       a little more, because a pause is harder to make deterministic than a cut.
 - **9.3d:** the first full run against today's code, and a report: every failure found, matched to a finding or
   added to section 3 as a new one.

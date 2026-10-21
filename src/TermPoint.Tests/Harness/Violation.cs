@@ -38,7 +38,16 @@ internal enum ViolationKind
     UnclassifiedPromise,
 
     /// <summary>I5 (the F7 rule): "Restore Unsaved Changes?" was answered Restore and was then followed by "Can't Restore Unsaved Changes".</summary>
-    RestoreOfferedThenImpossible
+    RestoreOfferedThenImpossible,
+
+    /// <summary>I6 (a): a session whose checkout is read-only still holds its database's lock (the lock service says writer, or the lock file names the session).</summary>
+    ReadOnlySessionHoldsLock,
+
+    /// <summary>I6 (b): a lost-lock demotion carried on against a database other than the one it started on.</summary>
+    DemotionOnAnotherDatabase,
+
+    /// <summary>A paused operation, or the event run while it was held, did not finish within the real-time limit (step 9.3c-2b): the harness abandoned the stuck work.</summary>
+    Hang
 }
 
 /// <summary>
@@ -50,7 +59,7 @@ internal sealed class Violation
     /// <summary>The funnel step at whose end the breach was found (0 = before any step).</summary>
     public required int Step { get; init; }
 
-    /// <summary>The invariant: "I1" to "I5".</summary>
+    /// <summary>The invariant: "I1" to "I6", or "Hang" for a pause that did not finish.</summary>
     public required string Invariant { get; init; }
 
     /// <summary>What kind of breach it is.</summary>
@@ -88,9 +97,26 @@ internal sealed class Violation
     /// </summary>
     public bool? AllKeptEditsAlreadyShared { get; init; }
 
+    /// <summary>For <see cref="ViolationKind.SharedEditsDisappeared"/>: the edits that were in the shared database and are not any more (empty for every other kind).</summary>
+    public IReadOnlyList<string> LostEdits { get; init; } = Array.Empty<string>();
+
+    /// <summary>
+    /// For <see cref="ViolationKind.SharedEditsDisappeared"/>: true when every lost edit was committed to the shared
+    /// database, by another computer, while a save of the paused computer was held before its rename, in this very step
+    /// (the save's rename then landed over them: finding F12). Null for every other kind.
+    /// </summary>
+    public bool? LostEditsCommittedDuringHeldSave { get; init; }
+
+    /// <summary>
+    /// For <see cref="ViolationKind.EditLost"/>: true when the lost edit was applied by its computer WHILE that computer's own
+    /// operation was held in the edit-loss window (<see cref="PausePoints.EditLossWindow"/>: from a save's snapshot to the cleanup of the
+    /// working copy; the edit missed the save, and what protected it was thrown away: the marker, or for a close or switch the whole working copy: finding F2). Null for every other kind.
+    /// </summary>
+    public bool? EditAppliedDuringHeldSave { get; init; }
+
     /// <summary>The dialogs the concerned computer was asked during the step (for classification).</summary>
     public IReadOnlyList<PromptCall> ComputerPrompts { get; init; } = Array.Empty<PromptCall>();
 
-    /// <summary>The finding id the classifier gave it: "F1".."F15" or "new". Set when the violation is recorded.</summary>
+    /// <summary>The finding id the classifier gave it: "F1".."F16" or "new". Set when the violation is recorded.</summary>
     public string FindingId { get; set; } = Findings.NewFinding;
 }

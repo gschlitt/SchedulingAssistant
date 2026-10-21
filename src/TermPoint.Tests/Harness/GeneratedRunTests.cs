@@ -98,11 +98,13 @@ public sealed class GeneratedRunTests
     }
 
     /// <summary>
-    /// Across the known-sequence replays and both strategies at the budget, the generated runs find F1, F6, F7 and F8. F1
-    /// and F7 come from the search; F6 needs a route longer than the search reaches by default, and F8 needs a power cut
-    /// in the middle of a save (the search has none), so they come from the replay list (<see cref="KnownSequences"/>) and
-    /// the report says so. The crash sweep finds F8 on its own as well. F5 and F12 are reported (F12 needs a pause in the
-    /// middle of a save, which comes with step 9.3c-2b).
+    /// Across the known-sequence replays and both strategies at the budget, the generated runs find F1, F2, F6, F7, F8, F12
+    /// and F16. F1 and F7 come from the search; F6 needs a route longer than the search reaches by default; F8 needs a power
+    /// cut in the middle of a save, and F2 and F12 need a pause in the middle of a save so that another event happens
+    /// meanwhile (the search has neither), so they come from the replay list (<see cref="KnownSequences"/>) and the report
+    /// says so. F16 needs a demotion that is still running when the user switches database: the search can reach the
+    /// harness-artifact form of it (the lost-lock handler runs inline) and invariant I6 flags it; the replay list carries
+    /// the pause form. The crash sweep finds F8 on its own as well, and the pause sweep finds F2, F12 and F16. F5 is reported.
     /// </summary>
     [HarnessFact]
     public async Task Generated_RediscoversKnownFindings()
@@ -120,9 +122,9 @@ public sealed class GeneratedRunTests
 
         Say("Known findings found by the search: " + (bySearch.Count == 0 ? "none" : string.Join(", ", bySearch.OrderBy(f => f))));
         Say("Known findings found by a replay: " + (byReplay.Count == 0 ? "none" : string.Join(", ", byReplay.OrderBy(f => f))));
-        Say($"F5 reached: {found.Contains("F5")}.  F12 reached: {found.Contains("F12")}.");
+        Say($"F5 reached: {found.Contains("F5")}.");
 
-        foreach (var id in new[] { "F1", "F6", "F7", "F8" })
+        foreach (var id in new[] { "F1", "F2", "F6", "F7", "F8", "F12", "F16" })
             Assert.True(found.Contains(id), $"{id} was not found by a replay, the exhaustive search or the random walks at this budget.");
     }
 
@@ -223,7 +225,7 @@ public sealed class GeneratedRunTests
             Title = "planted bug: MarkDirty forgets the marker",
             ConfigureWorld = world => world.AtCrashPointEveryTime("Dirty.AfterMarkerWritten", () =>
             {
-                var actor = world.CurrentActor;
+                var actor = world.ActingComputer;   // the computer whose flow reached the hook (see World.ActingComputer)
                 if (actor is not null && File.Exists(actor.MarkerFile)) File.Delete(actor.MarkerFile);
             })
         };

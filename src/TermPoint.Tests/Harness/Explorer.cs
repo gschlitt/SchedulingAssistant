@@ -48,8 +48,14 @@ internal sealed class RunResult
     public IReadOnlyList<IReadOnlyList<(string Computer, string Point)>> HitsByEvent { get; init; }
         = Array.Empty<IReadOnlyList<(string, string)>>();
 
+    /// <summary>For each event that happened (in order), the position in the world's hit log (<see cref="World.HitCount"/>) when it began: the pause sweep's survey, which is indexed by that position, uses it to tell an operation's hits from the prefix's.</summary>
+    public IReadOnlyList<int> HitStartByEvent { get; init; } = Array.Empty<int>();
+
     /// <summary>The power cuts that fired in the run ("bob@Save.AfterRename"), in order.</summary>
     public IReadOnlyList<string> FiredCuts { get; init; } = Array.Empty<string>();
+
+    /// <summary>What every pause of the run did (step 9.3c-2b), in order: held and interleaved, held and waited, never reached, not possible, hung.</summary>
+    public IReadOnlyList<PauseResult> PauseResults { get; init; } = Array.Empty<PauseResult>();
 
     /// <summary>The breaches that no known finding explains: these fail a generated test.</summary>
     public IEnumerable<FoundViolation> NewViolations => Violations.Where(v => !v.IsKnown);
@@ -65,6 +71,12 @@ internal sealed class RunOptions
     public Action<World>? ConfigureWorld { get; init; }
 
     /// <summary>
+    /// Runs on every new run once its context exists, before the first event: for code that needs the <see cref="RunContext"/> (the pause
+    /// sweep installs its crash-point survey here, which asks each event whether it would be possible at each point). Null for none.
+    /// </summary>
+    public Action<RunContext>? ConfigureContext { get; init; }
+
+    /// <summary>
     /// Events the run knows besides <see cref="EventCatalogue.Build"/>: the crash sweep's plain events and its power-cut
     /// events (<see cref="EventCatalogue.ExtrasFor"/> builds the list for the keys a run replays). Empty for a search.
     /// </summary>
@@ -73,7 +85,7 @@ internal sealed class RunOptions
     /// <summary>A copy of the options with another title: what a shrunk run is called, so its story does not carry the name of the longer run it came from.</summary>
     /// <param name="title">The new title.</param>
     public RunOptions WithTitle(string title)
-        => new() { Title = title, ConfigureWorld = ConfigureWorld, ExtraEvents = ExtraEvents, EventTimeout = EventTimeout };
+        => new() { Title = title, ConfigureWorld = ConfigureWorld, ConfigureContext = ConfigureContext, ExtraEvents = ExtraEvents, EventTimeout = EventTimeout };
 
     /// <summary>How long one event may take before the run is called hung.</summary>
     public TimeSpan EventTimeout { get; init; } = TimeSpan.FromSeconds(90);
@@ -100,6 +112,7 @@ internal static class RunExecutor
         var recording = new RecordingSource(source);
         var catalogue = EventCatalogue.Build().Concat(options.ExtraEvents).ToList();
         var hitsByEvent = new List<IReadOnlyList<(string Computer, string Point)>>();
+        var hitStarts   = new List<int>();
         var enabledEver = new HashSet<string>();
         var found = new List<FoundViolation>();
         var seenViolations = 0;
@@ -114,6 +127,7 @@ internal static class RunExecutor
         world.CreateDatabaseFromTemplate();
         foreach (var name in EventCatalogue.ComputerNames) world.AddComputer(name);
         options.ConfigureWorld?.Invoke(world);
+        options.ConfigureContext?.Invoke(ctx);
 
         // The starting state counts as explored at depth 0, so an event that changes nothing is not explored again.
         recording.AfterEvent(() => AbstractState.Key(ctx), 0);
@@ -131,6 +145,7 @@ internal static class RunExecutor
             ctx.BeginEvent();
             events++;
             var hitsBefore = world.HitCount;
+            hitStarts.Add(hitsBefore);
 
             string? crash = null;
             var crashType = "exception";
@@ -201,7 +216,9 @@ internal static class RunExecutor
             Elapsed     = stopwatch.Elapsed,
             Hung        = hung,
             HitsByEvent = hitsByEvent,
-            FiredCuts   = world.FiredCuts
+            HitStartByEvent = hitStarts,
+            FiredCuts   = world.FiredCuts,
+            PauseResults = world.PauseResults
         };
     }
 
@@ -219,7 +236,11 @@ internal static class RunExecutor
 /// <param name="Seeds">The number of random walks.</param>
 /// <param name="Steps">The number of events in each random walk.</param>
 /// <param name="CrashWidth">How wide the crash sweep goes (step 9.3c-2a): 1 is the fixed small set of starting situations and the first time each point is reached; 2 adds more starting situations, later times a point is reached and a follow-up after the restart.</param>
-internal sealed record HarnessBudget(int Depth, int Seeds, int Steps, int CrashWidth = HarnessBudget.DefaultCrashWidth)
+/// <param name="PauseWidth">How wide the pause sweep goes (step 9.3c-2b): 1 is the default set of operations and crash points, each pause tried once, followed by a crash and a restart; 2 adds the other crash points, the wide starting situations, later times a point is reached, and a "close normally" follow-up as well as the crash.</param>
+/// <param name="Processes">How many separate test processes the random walks are split across by seed (the crash-point hooks are process-wide, so threads would not do); 1 runs them in this process.</param>
+internal sealed record HarnessBudget(
+    int Depth, int Seeds, int Steps, int CrashWidth = HarnessBudget.DefaultCrashWidth,
+    int PauseWidth = HarnessBudget.DefaultPauseWidth, int Processes = 1)
 {
     /// <summary>Environment variable: depth of the exhaustive search.</summary>
     public const string DepthVariable = "TERMPOINT_HARNESS_DEPTH";
@@ -245,10 +266,27 @@ internal sealed record HarnessBudget(int Depth, int Seeds, int Steps, int CrashW
     /// <summary>The default width of the crash sweep.</summary>
     public const int DefaultCrashWidth = 1;
 
+    /// <summary>Environment variable: width of the pause sweep (1 or 2; step 9.3c-2b).</summary>
+    public const string PauseWidthVariable = "TERMPOINT_HARNESS_PAUSE_WIDTH";
+
+    /// <summary>The default width of the pause sweep.</summary>
+    public const int DefaultPauseWidth = 1;
+
+    /// <summary>Environment variable: how many separate test processes the random walks are split across (1 = in this process).</summary>
+    public const string ProcessesVariable = "TERMPOINT_HARNESS_PROCESSES";
+
+    /// <summary>
+    /// The default number of processes for the random walks: half the logical processors, at most four, at least one. (The walks are
+    /// processor-bound, and a process per logical processor would also fight the sweeps and Visual Studio for them.)
+    /// </summary>
+    public static int DefaultProcesses => Math.Max(1, Math.Min(4, Environment.ProcessorCount / 2));
+
     /// <summary>Reads the budget from the environment, with the defaults for anything not set (or not a positive number).</summary>
     public static HarnessBudget FromEnvironment()
         => new(Read(DepthVariable, DefaultDepth), Read(SeedsVariable, DefaultSeeds), Read(StepsVariable, DefaultSteps),
-               Math.Min(2, Read(CrashWidthVariable, DefaultCrashWidth)));
+               Math.Min(2, Read(CrashWidthVariable, DefaultCrashWidth)),
+               Math.Min(2, Read(PauseWidthVariable, DefaultPauseWidth)),
+               Read(ProcessesVariable, DefaultProcesses));
 
     /// <summary>Reads one positive integer from an environment variable.</summary>
     /// <param name="name">The variable.</param>

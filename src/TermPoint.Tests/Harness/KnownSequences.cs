@@ -8,8 +8,9 @@ namespace TermPoint.Tests.Harness;
 /// <c>Generated_RediscoversKnownFindings</c>, and the report says which findings were found by the search, by a replay,
 /// or both, so the search is never credited with something only a replay reached.
 ///
-/// <para>A sequence may contain power-cut events (<see cref="PowerCutEvent"/>, key <c>PowerCut(Save(bob) at Save.AfterRename)</c>):
-/// the replay builds them from the keys (<see cref="EventCatalogue.ExtrasFor"/>).</para>
+/// <para>A sequence may contain power-cut events (<see cref="PowerCutEvent"/>, key <c>PowerCut(Save(bob) at Save.AfterRename)</c>)
+/// and pause events (<see cref="PauseEvent"/>, key <c>Pause(Save(bob) at Save.AfterTmpVerify; AliceTakesOverAndSaves)</c>): the
+/// replay builds them from the keys (<see cref="EventCatalogue.ExtrasFor"/>).</para>
 ///
 /// <para>A sequence names events only (keys as <see cref="HarnessEvent.Key"/> writes them). Every dialog is answered
 /// with its simplest option, exactly as <see cref="ReplaySource"/> does for a recorded run that has no answers: take
@@ -60,6 +61,41 @@ internal static class KnownSequences
             new[]
             {
                 "Open(bob)", "Edit(bob)", "PowerCut(Save(bob) at Save.AfterRename)", "Open(bob)"
+            }),
+
+        new("F2: an edit made while the save is running loses its marker",
+            "F2",
+            "Bob presses Save. His save has taken its snapshot of the working file (Save.AfterLocalSnapshot) and is held there " +
+            "while Bob makes another edit. The edit is not in the snapshot, and the save's last step still deletes the " +
+            "unsaved-changes marker. When Bob's computer crashes before another save lands, his kept working file has no marker and " +
+            "the next start deletes it as \"nothing was edited\": the edit is gone. Found by the pause sweep (step 9.3c-2b).",
+            new[]
+            {
+                "Open(bob)", "Pause(Save(bob) at Save.AfterLocalSnapshot; BobEdits)", "Crash(bob)"
+            }),
+
+        new("F12: a save whose rename lands over another computer's save",
+            "F12",
+            "Bob presses Save. His save has taken its snapshot and is held there (his computer sleeps). Alice takes over his stale " +
+            "lock, edits and saves. Bob's computer wakes: the save does not look at the lock or the database again, copies its " +
+            "snapshot to D.tmp and renames it over the database. Alice's edit is gone from the shared database (I1) and the lock " +
+            "was hers at the rename (I4). Found by the pause sweep (step 9.3c-2b).",
+            new[]
+            {
+                "Open(bob)", "Pause(Save(bob) at Save.AfterLocalSnapshot; AliceTakesOverAndSaves)"
+            }),
+
+        new("F16: a demotion still running when the user switches database",
+            "F16",
+            "Bob's computer wakes to find his lock was taken over, and the demotion that starts (it makes Bob's session read-only) " +
+            "is held before it copies the database. Bob switches to the other database: it gets write access and the other " +
+            "database's lock. The old demotion goes on against the service's current database: it copies the NEW database and " +
+            "leaves Bob's session read-only while it holds the new lock (I6, both clauses). The harness runs the lost-lock handler " +
+            "inline where production posts it, so the production route is the unit test CheckoutServiceTests.F16_...; this is the " +
+            "same race, held deterministically (step 9.3c-2b).",
+            new[]
+            {
+                "Open(bob)", "AdvanceTime(4m)", "Open(alice)", "Pause(Sleep(bob,10m) at Demote.AfterWorkingCopyHandled; BobSwitches)"
             }),
     };
 }

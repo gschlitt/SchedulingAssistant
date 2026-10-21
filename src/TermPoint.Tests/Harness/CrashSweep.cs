@@ -178,7 +178,7 @@ internal static class CrashSweep
     /// </summary>
     /// <param name="prefix">The prefix's event keys.</param>
     /// <param name="steps">The steps that follow.</param>
-    private static RunRecord Record(IEnumerable<string> prefix, params RecordedStep[] steps)
+    internal static RunRecord Record(IEnumerable<string> prefix, params RecordedStep[] steps)
     {
         var record = new RunRecord();
         foreach (var key in prefix) record.Steps.Add(new RecordedStep { EventKey = key });

@@ -374,7 +374,9 @@ public sealed class InvariantProofTests
         Assert.True(await bob.SwitchToAsync(world.EnsureOtherDatabase()));
         // Bob's mode on other.db is deliberately not asserted: the harness runs the lost-lock handler inline, so the demotion
         // his final save starts can land after the new checkout and flip it to read-only (see F16 in the design note and
-        // CheckoutServiceTests.F16_...). The promise is about dept.db whichever way that race goes.
+        // CheckoutServiceTests.F16_...). The promise is about dept.db whichever way that race goes. Since step 9.3c-2b invariant I6
+        // sees that race (a demotion that goes on against other.db, and a read-only session that holds other.db's lock), so the
+        // tests that use this walk declare F16: here it is the harness form of the race, not the production form (the unit test).
     }
 
     /// <summary>
@@ -387,7 +389,7 @@ public sealed class InvariantProofTests
     public async Task I5_ARestorePromisedForOneDatabase_IsNotJudgedAtTheOpenOfAnother()
     {
         using var world = new World(_output, nameof(I5_ARestorePromisedForOneDatabase_IsNotJudgedAtTheOpenOfAnother));
-        world.ExpectFindings();   // nothing: the promise is not broken, it is not yet due
+        world.ExpectFindings("F16");   // the promise is not broken, it is not yet due. F16: the harness-inline form of the switch race (see BobLeavesDeptAfterAliceTookOverAsync)
         world.CreateDatabase();
         var bob   = world.AddComputer("bob");
         var alice = world.AddComputer("alice");
@@ -396,7 +398,7 @@ public sealed class InvariantProofTests
 
         Assert.True(world.HasPendingPromise(bob), "the promise is about dept.db; opening other.db does not judge it");
         Assert.Equal("d", world.PendingPromiseCode(bob));
-        Assert.Empty(world.Violations);
+        Assert.All(world.Violations, v => Assert.Equal("I6", v.Invariant));   // nothing about the promise: only the inline-handler form of F16
         Assert.True(bob.HasDirtyMarker, "Bob's kept changes to dept.db are still on his disk");
         world.AssertAllScriptsConsumed();
         world.Finish();
@@ -411,7 +413,7 @@ public sealed class InvariantProofTests
     public async Task I5_TwoMessagesPromisingTheSameRestore_AreOnePromise()
     {
         using var world = new World(_output, nameof(I5_TwoMessagesPromisingTheSameRestore_AreOnePromise));
-        world.ExpectFindings();
+        world.ExpectFindings("F16");   // the harness-inline form of the switch race (see BobLeavesDeptAfterAliceTookOverAsync)
         world.CreateDatabase();
         var bob   = world.AddComputer("bob");
         var alice = world.AddComputer("alice");
@@ -440,7 +442,7 @@ public sealed class InvariantProofTests
     public async Task I5_ARestorePromisedForOneDatabase_IsJudgedAtTheNextOpenOfThatDatabase()
     {
         using var world = new World(_output, nameof(I5_ARestorePromisedForOneDatabase_IsJudgedAtTheNextOpenOfThatDatabase));
-        world.ExpectFindings("F5", "F6");
+        world.ExpectFindings("F5", "F6", "F16");   // F16: the harness-inline form of the switch race (see BobLeavesDeptAfterAliceTookOverAsync)
         world.CreateDatabase();
         var bob   = world.AddComputer("bob");
         var alice = world.AddComputer("alice");

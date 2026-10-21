@@ -107,6 +107,7 @@ public sealed class HarnessWalkTests
         Assert.Empty(AskedBy(bob));
         Assert.Empty(AskedBy(alice));
         world.AssertAllScriptsConsumed();
+        Assert.DoesNotContain(world.Violations, v => v.Invariant == "I6");   // nobody holds a lock they cannot use (step 9.3c-2b)
         world.Finish();
     }
 
@@ -156,6 +157,7 @@ public sealed class HarnessWalkTests
         await bob.CloseAsync();
         Assert.Equal(new[] { "bob-1" }, world.EditsInDatabase());
         world.AssertAllScriptsConsumed();
+        Assert.DoesNotContain(world.Violations, v => v.Invariant == "I6");   // nobody holds a lock they cannot use (step 9.3c-2b)
         world.Finish();
     }
 
@@ -233,6 +235,7 @@ public sealed class HarnessWalkTests
         Assert.False(bob.HasWorkingFile);
         Assert.Equal(new[] { "alice-1" }, world.EditsInDatabase());
         world.AssertAllScriptsConsumed();
+        Assert.DoesNotContain(world.Violations, v => v.Invariant == "I6");   // nobody holds a lock they cannot use (step 9.3c-2b)
         world.Finish();
     }
 
@@ -330,6 +333,7 @@ public sealed class HarnessWalkTests
 
         await bob.CloseAsync();
         world.AssertAllScriptsConsumed();
+        Assert.DoesNotContain(world.Violations, v => v.Invariant == "I6");   // nobody holds a lock they cannot use (step 9.3c-2b)
         world.Finish();
     }
 
@@ -387,6 +391,7 @@ public sealed class HarnessWalkTests
         Assert.Equal(new[] { "colleague-1" }, world.EditsInDatabase());
         Assert.False(File.Exists(LockFile(world)));
         world.AssertAllScriptsConsumed();
+        Assert.DoesNotContain(world.Violations, v => v.Invariant == "I6");   // nobody holds a lock they cannot use (step 9.3c-2b)
         world.Finish();
     }
 }

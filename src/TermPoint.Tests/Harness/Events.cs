@@ -682,11 +682,11 @@ internal static class EventCatalogue
 
     /// <summary>
     /// The events a run needs beyond the catalogue to replay the given keys: the sweep-only plain events (Refresh, Restore
-    /// from a backup) and a <see cref="PowerCutEvent"/> for every power-cut key among them. Pass the result in
-    /// <see cref="RunOptions.ExtraEvents"/>.
+    /// from a backup), a <see cref="PowerCutEvent"/> for every power-cut key among them and a <see cref="PauseEvent"/> for every
+    /// pause key. Pass the result in <see cref="RunOptions.ExtraEvents"/>.
     /// </summary>
     /// <param name="keys">The event keys of the run (a record's, or a known sequence's).</param>
-    /// <returns>The extra events, in a fixed order (sweep events first, then the power cuts in the order of the keys).</returns>
+    /// <returns>The extra events, in a fixed order (sweep events first, then the power cuts and pauses in the order of the keys).</returns>
     public static IReadOnlyList<HarnessEvent> ExtrasFor(IEnumerable<string> keys)
     {
         var sweep = SweepEvents.Build();
@@ -696,8 +696,10 @@ internal static class EventCatalogue
         var seen   = new HashSet<string>();
         foreach (var key in keys)
         {
-            if (seen.Add(key) && PowerCutEvent.TryParse(key, known) is { } cut)
-                extras.Add(cut);
+            if (!seen.Add(key)) continue;
+
+            if (PowerCutEvent.TryParse(key, known) is { } cut) extras.Add(cut);
+            else if (PauseEvent.TryParse(key, known) is { } pause) extras.Add(pause);
         }
         return extras;
     }

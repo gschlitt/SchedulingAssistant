@@ -144,6 +144,30 @@ internal sealed class World : IDisposable
     /// <summary>The power cut that is armed for the operation running now, or null (see <see cref="RunWithPowerCutAsync"/>).</summary>
     private ArmedPowerCut? _armedCut;
 
+    /// <summary>The pause that is armed for the operation running now, or null (see <see cref="RunWithPauseAsync"/>).</summary>
+    private ArmedPause? _armedPause;
+
+    /// <summary>
+    /// The pause whose held operation the current flow of control belongs to, or null. Set on the held operation's own task, so it
+    /// follows every task and thread the operation starts (and not the event that runs meanwhile, which is never held).
+    /// </summary>
+    private readonly AsyncLocal<ArmedPause?> _pausedFlow = new();
+
+    /// <summary>
+    /// The lost-lock demotion the current flow of control is in the middle of, with the database it started on (invariant I6, clause b):
+    /// set at the demotion's first <c>Demote.*</c> point, cleared at its last. Like <see cref="_acting"/> it follows the code across awaits.
+    /// </summary>
+    private readonly AsyncLocal<DemotionRecord?> _demotion = new();
+
+    /// <summary>What every pause did so far, in order (for the report).</summary>
+    private readonly List<PauseResult> _pauseResults = new();
+
+    /// <summary>The edits a computer applied while its own operation was held in the edit-loss window, from a save's snapshot to the cleanup of the working copy (finding F2; <see cref="PausePoints.EditLossWindow"/>).</summary>
+    private readonly HashSet<string> _editsAppliedDuringHeldSave = new();
+
+    /// <summary>The edits another computer committed to the shared database while a save was held before its rename, by the step they were committed in (finding F12).</summary>
+    private readonly Dictionary<string, int> _commitsDuringHeldSave = new();
+
     /// <summary>Every crash point reached so far, in order, with the name of the computer that reached it ("?" when none could be told).</summary>
     private readonly List<(string Computer, string Point)> _hitLog = new();
 
@@ -153,7 +177,7 @@ internal sealed class World : IDisposable
     /// <summary>Number of top-level funnel steps started so far; the number of the current step.</summary>
     private int _step;
 
-    /// <summary>How many funnel calls are running inside each other (0 between steps).</summary>
+    /// <summary>How many funnel calls are running inside each other (0 between steps). Changed with <see cref="Interlocked"/>: a pause runs two actions at once.</summary>
     private int _depth;
 
     /// <summary>The ledger at the end of the previous step: "how things were before this step".</summary>
@@ -238,8 +262,29 @@ internal sealed class World : IDisposable
         set => _currentActor = value;
     }
 
+    /// <summary>
+    /// The computer whose flow of control is running the code that asks: the one whose action started it, wherever the code hops
+    /// (threads, tasks, timers, awaits). Unlike <see cref="CurrentActor"/> it is right while TWO actions overlap (a pause runs an event
+    /// of another computer, or of the same one, while an operation is held), so any code that runs inside a crash-point hook and needs
+    /// to know "who is doing this" must use it. Null when the caller belongs to no computer's action.
+    /// </summary>
+    public Computer? ActingComputer => ActingLife()?.Owner;
+
+    /// <summary>
+    /// Called for every crash point a computer's flow reaches (with its position in the hit log, the computer and the point), on the
+    /// thread that reached it, before anything else happens there. The pause sweep installs it in a dry run to ask, at each point, which
+    /// events would be possible in that very state. Null for none.
+    /// </summary>
+    public Action<int, Computer?, string>? CrashPointSurvey { get; set; }
+
     /// <summary>The ledger at the end of the previous step (what things looked like before the current step).</summary>
     public Ledger LastLedger => _last;
+
+    /// <summary>What every pause did so far, in order.</summary>
+    public IReadOnlyList<PauseResult> PauseResults
+    {
+        get { lock (_gate) return _pauseResults.ToList(); }
+    }
 
     /// <summary>The violations recorded so far, each once, with its finding id set.</summary>
     public IReadOnlyList<Violation> Violations
@@ -335,6 +380,24 @@ internal sealed class World : IDisposable
     public bool LockFileExists => File.Exists(LockFilePath);
 
     /// <summary>
+    /// The session id that the lock file of a database names (invariant I6 compares it with a computer's own session).
+    /// </summary>
+    /// <param name="databasePath">Full path of the database whose lock file (same name, <c>.lock</c>) is read.</param>
+    /// <returns>The session id; null when there is no lock file or it cannot be read.</returns>
+    public string? LockFileSession(string databasePath)
+    {
+        try
+        {
+            var lockPath = Path.ChangeExtension(databasePath, ".lock");
+            return File.Exists(lockPath) ? JsonSerializer.Deserialize<LockFileData>(ReadSharedText(lockPath))?.SessionGuid : null;
+        }
+        catch (Exception)
+        {
+            return null;
+        }
+    }
+
+    /// <summary>
     /// Hands out a fresh, never-used path for a "Save a Copy" picker to answer with, under the world's scratch folder
     /// ("copy-1.db", "copy-2.db", ...), so a generated run needs no scripted export path and its story names the
     /// same files every time it is replayed.
@@ -419,11 +482,11 @@ internal sealed class World : IDisposable
     /// <exception cref="HarnessViolationException">An invariant was broken that the walk did not declare.</exception>
     public T Do<T>(Computer? actor, string storyLine, Func<T> body, Func<T, string>? describe = null)
     {
-        var nested = _depth > 0;
+        var nested = Volatile.Read(ref _depth) > 0;
         if (!nested) BeginStep();
         var entry = _story.Add(_step, nested ? 1 : 0, storyLine);
 
-        _depth++;
+        Interlocked.Increment(ref _depth);
         T result;
         try { result = body(); }
         catch (Exception ex)
@@ -431,7 +494,7 @@ internal sealed class World : IDisposable
             entry.Text += DescribeThrown(ex);
             throw;
         }
-        finally { _depth--; }
+        finally { Interlocked.Decrement(ref _depth); }
 
         if (actor is { PowerIsOut: true }) entry.Text += " — it was cut short by the power cut";
         else if (describe is not null) entry.Text += " — " + describe(result);
@@ -458,11 +521,11 @@ internal sealed class World : IDisposable
     /// <exception cref="HarnessViolationException">An invariant was broken that the walk did not declare.</exception>
     public async Task<T> DoAsync<T>(Computer? actor, string storyLine, Func<Task<T>> body, Func<T, string>? describe = null)
     {
-        var nested = _depth > 0;
+        var nested = Volatile.Read(ref _depth) > 0;
         if (!nested) BeginStep();
         var entry = _story.Add(_step, nested ? 1 : 0, storyLine);
 
-        _depth++;
+        Interlocked.Increment(ref _depth);
         T result;
         try { result = await body(); }
         catch (Exception ex)
@@ -470,7 +533,7 @@ internal sealed class World : IDisposable
             entry.Text += DescribeThrown(ex);
             throw;
         }
-        finally { _depth--; }
+        finally { Interlocked.Decrement(ref _depth); }
 
         if (actor is { PowerIsOut: true }) entry.Text += " — it was cut short by the power cut";
         else if (describe is not null) entry.Text += " — " + describe(result);
@@ -924,6 +987,247 @@ internal sealed class World : IDisposable
         get { lock (_gate) return _firedCuts.ToList(); }
     }
 
+    // ── Pausing an operation in the middle (step 9.3c-2b) ────────────────────
+
+    /// <summary>
+    /// Runs one operation of a computer and HOLDS it the <paramref name="occurrence"/>-th time it reaches the named crash point,
+    /// runs one other event meanwhile, and then lets the operation go on. This is a computer that goes to sleep in the middle of an
+    /// operation while the world carries on: the power cut of step 9.3c-2a ends the operation, a pause only delays it.
+    ///
+    /// <list type="number">
+    /// <item><description>The operation runs on its own task, marked as the held operation. When it makes the n-th arrival at the
+    /// point, that thread blocks on a gate, and every other thread of the operation stands still at its next crash point or network
+    /// operation (the whole process is suspended).</description></item>
+    /// <item><description>The event (<paramref name="pauseEvent"/>) runs on a task of the test's flow, if it is
+    /// <paramref name="eventIsPossible"/> in the state the pause finds. It is given a grace period of real time.</description></item>
+    /// <item><description>The operation is released. If the event was still unfinished at the end of the grace period, it was waiting
+    /// for the operation (the switch waits for a save in flight, which is designed behaviour): both then finish, the story says "(the
+    /// event) waited for (the operation) to finish" and the outcome is <see cref="PauseOutcome.Waited"/>, not a violation.</description></item>
+    /// <item><description>Only when something is STILL unfinished at <see cref="PauseLimits.FinishLimit"/> after the release (or the
+    /// operation neither reached the point nor returned) is it a <see cref="ViolationKind.Hang"/>: the stuck work is abandoned the way a
+    /// power cut abandons a dead process (its computer is marked dead, so anything that ever moves is stopped at the next crash point
+    /// or network operation), and the run goes on. The test run never hangs.</description></item>
+    /// </list>
+    ///
+    /// <para>The whole thing is ONE funnel step: the operation's and the event's story lines are nested under it and the invariants run
+    /// once, at the end. Between the event and the release the shared database is read, so that invariant I1 knows what the event
+    /// committed before the held save's rename lands over it. Call it from a top-level context, never from inside another funnel step.</para>
+    /// </summary>
+    /// <param name="computer">The computer whose operation is held.</param>
+    /// <param name="point">One of <see cref="TermPoint.Services.CrashPoints.All"/>.</param>
+    /// <param name="occurrence">Which time the point is reached (1 = the first).</param>
+    /// <param name="storyLine">The sentence for the operation ("Bob presses Save").</param>
+    /// <param name="operation">The operation, normally one of the computer's action methods.</param>
+    /// <param name="eventStory">The event as a phrase that completes "... is held while ..." ("Alice takes over the lock").</param>
+    /// <param name="eventIsPossible">Asked at the pause: false means the event is not possible in this state and nothing happens meanwhile.</param>
+    /// <param name="pauseEvent">The event that happens while the operation is held.</param>
+    /// <param name="eventComputers">The computers the event works on: the ones abandoned if the event hangs (may be null).</param>
+    /// <param name="limits">The real-time limits; null for <see cref="PauseLimits.Default"/>.</param>
+    /// <returns>What the pause did.</returns>
+    /// <exception cref="ArgumentException">The name is not a crash point.</exception>
+    public Task<PauseResult> RunWithPauseAsync(
+        Computer computer, string point, int occurrence, string storyLine, Func<Task> operation,
+        string eventStory, Func<bool> eventIsPossible, Func<Task> pauseEvent,
+        IReadOnlyList<Computer>? eventComputers = null, PauseLimits? limits = null)
+    {
+        if (!CrashPoints.All.Contains(point))
+            throw new ArgumentException($"'{point}' is not a crash point.", nameof(point));
+
+        var lim   = limits ?? PauseLimits.Default;
+        var pause = new ArmedPause(computer, point, occurrence);
+        var headline = $"{storyLine}, and at {point}{DescribeOccurrence(occurrence)} {computer.DisplayName}'s operation is held while {eventStory}";
+
+        return DoAsync<PauseResult>(null, headline, async () =>
+        {
+            var actorBefore = _currentActor;
+            Task opTask    = Task.CompletedTask;
+            Task eventTask = Task.CompletedTask;
+            var outcome    = PauseOutcome.NotReached;
+            string? hang   = null;
+            var stuck      = new List<Computer>();
+
+            try
+            {
+                lock (_gate) _armedPause = pause;
+                opTask = Task.Run(() => RunHeldOperation(pause, operation));
+
+                // 1. The operation runs until it is held at the point, or it ends without reaching it.
+                if (!await CompletesWithinAsync(Task.WhenAny(pause.HeldTask, opTask), lim.ReachLimit))
+                {
+                    hang = $"{computer.DisplayName}'s operation neither reached {point}{DescribeOccurrence(occurrence)} nor finished within " +
+                           $"{lim.ReachLimit.TotalSeconds:0.#} seconds";
+                    stuck.Add(computer);
+                    outcome = PauseOutcome.Hung;
+                }
+                else if (!pause.IsHeld)
+                {
+                    await opTask;   // an exception of the operation is the step's exception
+                    _story.Add(_step, 1, $"{computer.DisplayName}'s operation never reached {point}{DescribeOccurrence(occurrence)}, so nothing happened meanwhile");
+                }
+                else
+                {
+                    // 2. The event, while every thread of the operation stands still.
+                    var heldAt = TryEditsInFile(DatabasePath);
+                    var interleaved = false;
+                    if (!eventIsPossible())
+                    {
+                        _story.Add(_step, 1, $"({eventStory}) was not possible at that moment, so nothing happened meanwhile");
+                        outcome = PauseOutcome.Skipped;
+                    }
+                    else
+                    {
+                        eventTask   = Task.Run(pauseEvent);
+                        interleaved = await CompletesWithinAsync(eventTask, lim.Grace);
+                        if (interleaved) NoteCommitsDuringHeldSave(pause, heldAt);
+                        else _story.Add(_step, 1,
+                            $"({eventStory}) had not finished after {lim.Grace.TotalSeconds:0.#} seconds: it is waiting for {computer.DisplayName}'s operation, so the operation is let go");
+                        outcome = interleaved ? PauseOutcome.Interleaved : PauseOutcome.Waited;
+                    }
+
+                    // 3. Let the operation go on, and let both finish.
+                    pause.Release();
+                    var both = Task.WhenAll(opTask, eventTask);
+                    if (!await CompletesWithinAsync(both, lim.FinishLimit))
+                    {
+                        var which = !opTask.IsCompleted ? $"{computer.DisplayName}'s operation" : $"the event ({eventStory})";
+                        hang = $"{which} had not finished {lim.FinishLimit.TotalSeconds:0.#} seconds after {computer.DisplayName}'s operation was let go from {point}";
+                        if (!opTask.IsCompleted) stuck.Add(computer);
+                        if (!eventTask.IsCompleted && eventComputers is not null) stuck.AddRange(eventComputers);
+                        outcome = PauseOutcome.Hung;
+                    }
+                    else
+                    {
+                        await both;   // an exception of the operation or the event is the step's exception
+                        if (outcome == PauseOutcome.Waited)
+                            _story.Add(_step, 1, $"({eventStory}) waited for {computer.DisplayName}'s operation to finish");
+                    }
+                }
+            }
+            finally
+            {
+                pause.Release();   // never leave a thread held, whatever happened
+                lock (_gate) _armedPause = null;
+                _currentActor = actorBefore;   // the two overlapping actions restore it in either order
+            }
+
+            if (hang is not null)
+            {
+                _story.Add(_step, 1, $"HANG: {hang}; the stuck work was abandoned");
+                AddPending(new Violation
+                {
+                    Step = _step, Invariant = "Hang", Kind = ViolationKind.Hang,
+                    Key = $"Hang:{_step}:{computer.Name}:{point}", Computer = computer.Name, CrashPoint = point,
+                    Reason = hang
+                });
+                AbandonStuck(stuck);
+            }
+
+            var result = new PauseResult(computer.Name, point, occurrence, eventStory, outcome);
+            lock (_gate) _pauseResults.Add(result);
+            return result;
+        },
+        r => r.Outcome switch
+        {
+            PauseOutcome.NotReached  => "that point was not reached, so the pause did not happen",
+            PauseOutcome.Skipped     => "the event was not possible then, so nothing happened meanwhile",
+            PauseOutcome.Interleaved => "the event happened while the operation was held, then the operation went on",
+            PauseOutcome.Waited      => "the event had to wait for the operation, which was then let go",
+            _                        => "something did not finish: a hang"
+        });
+    }
+
+    /// <summary>Starts the held operation on the calling (pool) thread, marked so that everything it starts is held with it.</summary>
+    /// <param name="pause">The pause the operation belongs to.</param>
+    /// <param name="operation">The operation.</param>
+    /// <returns>The operation's task.</returns>
+    private Task RunHeldOperation(ArmedPause pause, Func<Task> operation)
+    {
+        _pausedFlow.Value = pause;   // this flow, and every task and thread it starts, is the held operation
+        return operation();
+    }
+
+    /// <summary>Waits for a task, but not longer than a limit of real time, without leaving the timer running.</summary>
+    /// <param name="task">The task to wait for.</param>
+    /// <param name="limit">The longest to wait.</param>
+    /// <returns>True when the task completed in time (faulted or not); false when the limit passed first.</returns>
+    private static async Task<bool> CompletesWithinAsync(Task task, TimeSpan limit)
+    {
+        using var cancel = new CancellationTokenSource();
+        var timer = Task.Delay(limit, cancel.Token);
+        var first = await Task.WhenAny(task, timer);
+        if (first != task) return false;
+        cancel.Cancel();
+        return true;
+    }
+
+    /// <summary>
+    /// The event of a pause has just finished while a save was held before its rename: reads the shared database and (1) tells the
+    /// I1 baseline what it holds now, so that edits another computer committed meanwhile are known when the held save's rename lands
+    /// over them, and (2) remembers which edits those were (finding F12).
+    /// </summary>
+    /// <param name="pause">The pause.</param>
+    /// <param name="heldAt">The edits the shared database held when the operation was held (null when it could not be read).</param>
+    private void NoteCommitsDuringHeldSave(ArmedPause pause, List<string>? heldAt)
+    {
+        var now = TryEditsInFile(DatabasePath);
+        _invariants.ObserveSharedMidStep(now);
+
+        if (heldAt is null || now is null || !PausePoints.IsSaveBeforeRename(pause.Point)) return;
+        lock (_gate)
+        {
+            foreach (var edit in now.Where(e => !heldAt.Contains(e)))
+                _commitsDuringHeldSave[edit] = _step;
+        }
+    }
+
+    /// <summary>
+    /// Abandons work that never finished, the way a power cut abandons a dead process: the computer's process is marked dead (so that
+    /// if the stuck code ever moves, it is stopped at its next crash point, network operation or dialog) and its handles are released.
+    /// </summary>
+    /// <param name="computers">The computers whose work is stuck.</param>
+    private static void AbandonStuck(IEnumerable<Computer> computers)
+    {
+        foreach (var computer in computers.Distinct())
+        {
+            computer.Life.CutPower();
+            try { computer.AbandonProcess(); }
+            catch (Exception) { /* best effort: the work is stuck, so this may be too */ }
+        }
+    }
+
+    /// <summary>
+    /// Called by a computer when one of its edits has been applied (the row is in its working file and the marker is written). An edit
+    /// applied while that computer's own operation is held in the edit-loss window (<see cref="PausePoints.EditLossWindow"/>) is not in the save,
+    /// yet the save's last step deletes the marker that protected it and a close or switch deletes the working copy: finding F2. Remembered so that, if the edit is later lost, the classifier can say so.
+    /// </summary>
+    /// <param name="computer">The computer that edited.</param>
+    /// <param name="editId">The edit's id.</param>
+    internal void NoteEditApplied(Computer computer, string editId)
+    {
+        var pause = _armedPause;
+        if (pause is { IsFrozen: true } && pause.Computer == computer && PausePoints.IsInEditLossWindow(pause.Point))
+            lock (_gate) _editsAppliedDuringHeldSave.Add(editId);
+    }
+
+    /// <summary>True when the edit was applied while its computer's own operation was held in the edit-loss window (see <see cref="NoteEditApplied"/>).</summary>
+    /// <param name="editId">The edit's id.</param>
+    public bool WasEditAppliedDuringHeldSave(string editId)
+    {
+        lock (_gate) return _editsAppliedDuringHeldSave.Contains(editId);
+    }
+
+    /// <summary>
+    /// True when every one of the edits was committed to the shared database, in the given step, while a save was held before its
+    /// rename (see <see cref="NoteCommitsDuringHeldSave"/>): the rename that followed is what removed them (finding F12).
+    /// </summary>
+    /// <param name="editIds">The edits that disappeared.</param>
+    /// <param name="step">The step the disappearance was found in.</param>
+    public bool WereCommittedDuringHeldSave(IReadOnlyList<string> editIds, int step)
+    {
+        if (editIds.Count == 0) return false;
+        lock (_gate) return editIds.All(e => _commitsDuringHeldSave.TryGetValue(e, out var s) && s == step);
+    }
+
     // ── Inspecting the world ─────────────────────────────────────────────────
 
     /// <summary>
@@ -1226,8 +1530,9 @@ internal sealed class World : IDisposable
     }
 
     /// <summary>
-    /// The <see cref="CrashPoints.Hook"/>: runs the walk's extra code for the point (once), then, at the points just before
-    /// a rename onto the shared database, checks invariant I4. Never throws by itself.
+    /// The <see cref="CrashPoints.Hook"/>: runs the walk's extra code for the point (once), notes a lost-lock demotion's database
+    /// (invariant I6, clause b), holds the operation when a pause is armed for this point, then, at the points just before a rename
+    /// onto the shared database, checks invariant I4. Throws only for a process whose power is out.
     /// </summary>
     /// <param name="name">The crash point being passed.</param>
     private void OnCrashPoint(string name)
@@ -1236,6 +1541,15 @@ internal sealed class World : IDisposable
         // invariant looks. Production code may have caught the first PowerCutException and carried on; this stops it again.
         var life = ActingLife();
         if (life is { PowerIsOut: true }) throw new PowerCutException(name);
+
+        // A held operation (step 9.3c-2b) is a computer that sleeps in the middle of it: while the pause is on, every thread of the
+        // operation stands still at its next crash point. (The event that runs meanwhile is not marked, so it never waits here.)
+        var held = _pausedFlow.Value;
+        if (held is { IsFrozen: true })
+        {
+            held.WaitForRelease(PauseLimits.SafetyWait);
+            if (life is { PowerIsOut: true }) throw new PowerCutException(name);   // abandoned while it was held
+        }
 
         var armed = _armedCut;
 
@@ -1250,7 +1564,13 @@ internal sealed class World : IDisposable
             if (life.PowerIsOut) throw new PowerCutException(name);
         }
 
-        lock (_gate) _hitLog.Add((life?.Owner.Name ?? "?", name));
+        int hitIndex;
+        lock (_gate)
+        {
+            hitIndex = _hitLog.Count;
+            _hitLog.Add((life?.Owner.Name ?? "?", name));
+        }
+        CrashPointSurvey?.Invoke(hitIndex, life?.Owner, name);
 
         // The armed power cut: the n-th time the armed computer reaches the armed point, its power goes.
         if (armed is not null && life is not null && life.Owner == armed.Computer
@@ -1285,7 +1605,94 @@ internal sealed class World : IDisposable
             }
         }
 
+        // Invariant I6, clause b: a demotion stays on the database it started on. The database it started on is noted BEFORE a pause
+        // holds it here and compared AFTER, so what happened meanwhile (the person switched database) is what the comparison sees.
+        DemotionRecord? demotion = null;
+        if (life is not null && name.StartsWith("Demote.", StringComparison.Ordinal)) demotion = NoteDemotionPoint(life);
+
+        // The armed pause: the n-th time the held operation's flow reaches the armed point, the thread that got there is held.
+        var pause = _armedPause;
+        if (pause is not null && life is not null && held == pause && life.Owner == pause.Computer
+            && name == pause.Point && pause.CountArrival() && pause.TryHold())
+        {
+            HoldAtPoint(pause, life, name);
+            if (life.PowerIsOut) throw new PowerCutException(name);                 // abandoned while it was held
+        }
+
+        if (demotion is not null) CheckDemotionStaysOnItsDatabase(demotion, life!, name);
+
         if (name is "Save.AfterTmpVerify" or "Restore.AfterTmpVerified") CheckWriterAtRename(name);
+    }
+
+    /// <summary>
+    /// Holds the calling thread at the point of a pause until the harness lets the operation go. Everything else of the operation's
+    /// flow stands still at its next crash point or network operation meanwhile (see <see cref="OnCrashPoint"/>).
+    /// </summary>
+    /// <param name="pause">The pause that claimed this arrival.</param>
+    /// <param name="life">The process that reached the point.</param>
+    /// <param name="point">The crash point.</param>
+    private void HoldAtPoint(ArmedPause pause, ProcessLife life, string point)
+    {
+        _story.Add(_step, 1, $"{life.Owner.DisplayName}'s operation reached {point}{DescribeOccurrence(pause.Occurrence)} and is held there " +
+                             $"(everything of {life.Owner.DisplayName}'s process stands still)");
+        pause.WaitForRelease(PauseLimits.SafetyWait);
+    }
+
+    /// <summary>The words that say which arrival at a point was meant (" (the 2nd time it is reached)"); empty for the first.</summary>
+    /// <param name="occurrence">1 for the first arrival.</param>
+    private static string DescribeOccurrence(int occurrence)
+        => occurrence <= 1 ? "" : $" (the {occurrence}{(occurrence == 2 ? "nd" : occurrence == 3 ? "rd" : "th")} time it is reached)";
+
+    /// <summary>
+    /// The key a database is known by in invariant I6: its full path, lower case (production's <c>NormalizeSourcePath</c>); empty when
+    /// the checkout has no source yet.
+    /// </summary>
+    /// <param name="sourcePath">A checkout's <c>SourcePath</c>, or null.</param>
+    private static string DatabaseKey(string? sourcePath)
+        => string.IsNullOrEmpty(sourcePath) ? "" : CheckoutService.NormalizeSourcePath(sourcePath);
+
+    /// <summary>
+    /// A lost-lock demotion reached a <c>Demote.*</c> point (invariant I6, clause b): the first point of a demotion in this flow of
+    /// control records the database the session is on; later points compare against it.
+    /// </summary>
+    /// <param name="life">The process whose demotion it is.</param>
+    /// <returns>The record of this demotion (new at its first point).</returns>
+    private DemotionRecord NoteDemotionPoint(ProcessLife life)
+    {
+        var record = _demotion.Value;
+        if (record is null || record.Life != life)
+        {
+            record = new DemotionRecord(life, DatabaseKey(life.Owner.Checkout.SourcePath));
+            _demotion.Value = record;
+        }
+        return record;
+    }
+
+    /// <summary>
+    /// Invariant I6, clause b: a demotion applies only to the database it started on. At every <c>Demote.*</c> point (after any pause
+    /// held it there) the session's database must still be the one the demotion started on; the last point ends the record. A
+    /// mismatch is kept and raised when the step ends (finding F16: the demotion then copies the OTHER database and makes the new
+    /// session read-only).
+    /// </summary>
+    /// <param name="started">The demotion's record.</param>
+    /// <param name="life">The process whose demotion it is.</param>
+    /// <param name="point">The <c>Demote.*</c> point just reached.</param>
+    private void CheckDemotionStaysOnItsDatabase(DemotionRecord started, ProcessLife life, string point)
+    {
+        var now = DatabaseKey(life.Owner.Checkout.SourcePath);
+        if (!string.Equals(now, started.Database, StringComparison.OrdinalIgnoreCase))
+        {
+            AddPending(new Violation
+            {
+                Step = _step, Invariant = "I6", Kind = ViolationKind.DemotionOnAnotherDatabase,
+                Key = $"I6b:{_step}:{life.Owner.Name}:{Path.GetFileName(started.Database)}:{Path.GetFileName(now)}",
+                Computer = life.Owner.Name, CrashPoint = point,
+                Reason = $"a lost-lock demotion of {life.Owner.DisplayName}'s session started on {Path.GetFileName(started.Database)}, and at {point} " +
+                         $"the session is on {Path.GetFileName(now)}: the demotion goes on against the wrong database"
+            });
+        }
+
+        if (point == "Demote.AfterSnapshotCreated") _demotion.Value = null;   // the demotion's last point: it is over
     }
 
     /// <summary>
@@ -1298,7 +1705,9 @@ internal sealed class World : IDisposable
     /// <param name="point">The crash point: <c>Save.AfterTmpVerify</c> or <c>Restore.AfterTmpVerified</c>.</param>
     private void CheckWriterAtRename(string point)
     {
-        var actor = _currentActor;
+        // Who reached the rename: the computer whose flow of control it is, NOT "the computer acting now". While a pause runs an
+        // event, two actions overlap and the single "current actor" field cannot say which of them is saving.
+        var actor = ActingComputer;
         if (actor is null) return;
 
         var problems = new List<string>();
@@ -1447,6 +1856,13 @@ internal sealed class World : IDisposable
         // A process without power cannot reach anything: its operation throws at once (it neither waits nor times out).
         var life = ActingLife();
         if (life is { PowerIsOut: true }) return NetworkFaultDecision.Throwing(new PowerCutException(request.Label));
+
+        // A held operation touches the share no more than it passes crash points: its threads stand still until it is released.
+        if (_pausedFlow.Value is { IsFrozen: true } held)
+        {
+            held.WaitForRelease(PauseLimits.SafetyWait);
+            if (life is { PowerIsOut: true }) return NetworkFaultDecision.Throwing(new PowerCutException(request.Label));   // abandoned while held
+        }
 
         var actor = life?.Owner ?? _currentActor;
         if (actor is null || !actor.NetworkIsDown) return NetworkFaultDecision.None;
@@ -1628,4 +2044,27 @@ internal static class HarnessDatabaseTemplate
         };
         return target;
     }
+}
+
+/// <summary>
+/// A lost-lock demotion in progress (invariant I6, clause b): the process it belongs to and the database (the normalised source path)
+/// the session was on when the demotion's first <c>Demote.*</c> point was reached. A later point that finds the session on a different
+/// database means the demotion has carried on against the wrong one (finding F16).
+/// </summary>
+internal sealed class DemotionRecord
+{
+    /// <summary>Creates the record.</summary>
+    /// <param name="life">The process whose session is being demoted.</param>
+    /// <param name="database">The database the session was on when the demotion started (see <c>World.DatabaseKey</c>).</param>
+    public DemotionRecord(ProcessLife life, string database)
+    {
+        Life     = life;
+        Database = database;
+    }
+
+    /// <summary>The process whose session is being demoted.</summary>
+    public ProcessLife Life { get; }
+
+    /// <summary>The database the session was on when the demotion started (lower-case full path; empty when unknown).</summary>
+    public string Database { get; }
 }

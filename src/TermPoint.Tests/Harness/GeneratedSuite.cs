@@ -75,6 +75,43 @@ internal sealed class GeneratedLog
     /// <summary>The breaches no known finding explains.</summary>
     public IEnumerable<FindingTally> NewTallies => Tallies.Values.Where(t => !t.IsKnown);
 
+    /// <summary>
+    /// Folds in everything another process found (step 9.3c-2b: the random walks run in several processes). The counts are added, the
+    /// tallies of one signature are added, and the shorter story wins; on a tie the story already held (the earlier shard's) stays,
+    /// so merging shards in shard order always gives the same log.
+    /// </summary>
+    /// <param name="shard">What one shard process found.</param>
+    internal void Absorb(ShardResult shard)
+    {
+        Runs            += shard.Runs;
+        RunsEndedByMemo += shard.RunsEndedByMemo;
+        Events          += shard.Events;
+        RunTime         += TimeSpan.FromMilliseconds(shard.RunTimeMilliseconds);
+        ShrinkReplays   += shard.ShrinkReplays;
+        EnabledKeys.UnionWith(shard.EnabledKeys);
+
+        foreach (var found in shard.Tallies)
+        {
+            if (!Tallies.TryGetValue(found.Signature, out var tally))
+            {
+                tally = new FindingTally
+                {
+                    Signature = found.Signature, FindingId = found.FindingId, Invariant = found.Invariant, Reason = found.Reason,
+                    BestEvents = found.BestEvents, BestStory = found.BestStory, Reproduced = found.Reproduced
+                };
+                Tallies[found.Signature] = tally;
+            }
+            else if (found.BestEvents < tally.BestEvents)
+            {
+                tally.BestEvents = found.BestEvents;
+                tally.BestStory  = found.BestStory;
+                tally.Reproduced = found.Reproduced;
+            }
+            tally.Runs          += found.Runs;
+            tally.ShrinkReplays += found.ShrinkReplays;
+        }
+    }
+
     /// <summary>Folds one run into the log, shrinking any breach that is new to it or shorter than before.</summary>
     /// <param name="result">The run.</param>
     /// <param name="options">The options the run had (the extra events a replay of it needs); null for the log's own options.</param>
@@ -153,6 +190,12 @@ internal sealed class StrategyOutcome
 
     /// <summary>For the crash sweep: its coverage and probes; null for every other strategy.</summary>
     public CrashSweepResult? Sweep { get; init; }
+
+    /// <summary>True for the pause sweep (<see cref="PauseSweep"/>, step 9.3c-2b): the report credits its findings to "the pause sweep".</summary>
+    public bool IsPauseSweep { get; init; }
+
+    /// <summary>For the pause sweep: how its pauses ended; null for every other strategy.</summary>
+    public PauseSweepResult? PauseSweep { get; init; }
 }
 
 /// <summary>What the replay of one <see cref="KnownSequence"/> did.</summary>
@@ -246,18 +289,13 @@ internal static class Explorers
     /// <returns>What the walks found.</returns>
     public static async Task<StrategyOutcome> RunRandomAsync(HarnessBudget budget, Action<string>? progress)
     {
+        // The walks are split across separate test processes by seed range when more than one is asked for (step 9.3c-2b); the merged
+        // log is shaped exactly like the one the loop below fills, so everything that reads it is unchanged.
+        if (budget.Processes > 1 && budget.Seeds > 1)
+            return await RandomWalkSharding.RunAsync(budget, progress);
+
         var stopwatch = Stopwatch.StartNew();
-        var options   = new RunOptions { Title = "a random walk" };
-        var log       = new GeneratedLog(options);
-
-        for (var seed = 1; seed <= budget.Seeds; seed++)
-        {
-            var result = await RunExecutor.ExecuteAsync(new RandomSource(seed, budget.Steps), options);
-            await log.ObserveAsync(result);
-
-            if (seed % 10 == 0)
-                progress?.Invoke($"random walks: seed {seed} of {budget.Seeds}, {log.Tallies.Count} kinds of breach, {stopwatch.Elapsed:mm\\:ss}");
-        }
+        var log       = await RandomWalkSharding.RunSeedsAsync(Enumerable.Range(1, budget.Seeds), budget.Steps, progress);
 
         stopwatch.Stop();
         return new StrategyOutcome
@@ -291,12 +329,14 @@ internal static class HarnessReport
     public static string Build(HarnessBudget budget, IReadOnlyList<StrategyOutcome> outcomes)
     {
         var sb = new StringBuilder();
-        sb.AppendLine("# TermPoint harness: generated runs and crash sweep (steps 9.3c-1 and 9.3c-2a)");
+        sb.AppendLine("# TermPoint harness: generated runs, crash sweep and pause sweep (steps 9.3c-1, 9.3c-2a and 9.3c-2b)");
         sb.AppendLine();
         sb.AppendLine("## Budget");
         sb.AppendLine($"- Exhaustive depth: {budget.Depth} ({HarnessBudget.DepthVariable})");
-        sb.AppendLine($"- Random walks: {budget.Seeds} seeds ({HarnessBudget.SeedsVariable}) x {budget.Steps} events ({HarnessBudget.StepsVariable})");
+        sb.AppendLine($"- Random walks: {budget.Seeds} seeds ({HarnessBudget.SeedsVariable}) x {budget.Steps} events ({HarnessBudget.StepsVariable}), " +
+                      $"split across {budget.Processes} process{(budget.Processes == 1 ? "" : "es")} ({HarnessBudget.ProcessesVariable}; 1 = in the test process)");
         sb.AppendLine($"- Crash sweep width: {budget.CrashWidth} ({HarnessBudget.CrashWidthVariable}; 1 = the fixed starting situations, each point cut the first time it is reached; 2 = more situations, later times a point is reached, and a follow-up after the restart)");
+        sb.AppendLine($"- Pause sweep width: {budget.PauseWidth} ({HarnessBudget.PauseWidthVariable}; 1 = the multi-step operations at their save, demotion, release, restore and checkout points, each (operation, point, event) once, then a crash and a restart; 2 = every operation and point, later times a point is reached, the wide situations, and a \"close normally\" follow-up as well)");
         sb.AppendLine();
 
         sb.AppendLine("## Runs");
@@ -338,14 +378,16 @@ internal static class HarnessReport
             int Runs(Func<StrategyOutcome, bool> pick)
                 => outcomes.Where(pick).SelectMany(o => o.Log.Tallies.Values).Where(t => t.FindingId == id).Sum(t => t.Runs);
 
-            var search = Runs(o => !o.IsReplay && !o.IsSweep);
+            var search = Runs(o => !o.IsReplay && !o.IsSweep && !o.IsPauseSweep);
             var replay = Runs(o => o.IsReplay);
             var sweep  = Runs(o => o.IsSweep);
+            var pause  = Runs(o => o.IsPauseSweep);
 
             var parts = new List<string>();
             if (search > 0) parts.Add($"the search in {search} runs");
             if (replay > 0) parts.Add($"replay in {replay} runs");
             if (sweep > 0)  parts.Add($"the crash sweep in {sweep} runs");
+            if (pause > 0)  parts.Add($"the pause sweep in {pause} runs");
             var source = parts.Count == 0 ? "not found" : "found by " + string.Join(" and by ", parts);
             if (search == 0 && parts.Count > 0) source += "; the search did not reach it";
             sb.AppendLine($"- **{id}**: {source}. {KnownFindings.Describe(id)}");
@@ -380,7 +422,10 @@ internal static class HarnessReport
         foreach (var sweep in outcomes.Where(o => o.Sweep is not null))
             sb.Append(CrashSweepReport.Build(sweep));
 
-        var enabled = outcomes.Where(o => !o.IsSweep).SelectMany(o => o.Log.EnabledKeys).ToHashSet();
+        foreach (var sweep in outcomes.Where(o => o.PauseSweep is not null))
+            sb.Append(PauseSweepReport.Build(sweep));
+
+        var enabled = outcomes.Where(o => !o.IsSweep && !o.IsPauseSweep).SelectMany(o => o.Log.EnabledKeys).ToHashSet();
         var unreached = EventCatalogue.AllKeys().Where(k => !enabled.Contains(k)).ToList();
         sb.AppendLine("## Events never enabled in any run");
         sb.AppendLine(unreached.Count == 0 ? "None: every event was enabled at some point." : string.Join(", ", unreached));
@@ -427,6 +472,9 @@ internal static class GeneratedSuite
     /// <summary>The crash sweep, once started.</summary>
     private static Task<StrategyOutcome>? _sweep;
 
+    /// <summary>The pause sweep (step 9.3c-2b), once started.</summary>
+    private static Task<StrategyOutcome>? _pauseSweep;
+
     /// <summary>Starts the exhaustive search the first time, and returns it.</summary>
     /// <param name="budget">The budget.</param>
     /// <param name="progress">Receives progress lines (from the test that happens to start it).</param>
@@ -451,6 +499,14 @@ internal static class GeneratedSuite
         lock (Gate) return _sweep ??= CrashSweep.RunAsync(budget, progress);
     }
 
+    /// <summary>Starts the pause sweep (step 9.3c-2b) the first time, and returns it.</summary>
+    /// <param name="budget">The budget (its pause width sets how wide the sweep goes).</param>
+    /// <param name="progress">Receives progress lines (from the test that happens to start it).</param>
+    public static Task<StrategyOutcome> PauseSweepAsync(HarnessBudget budget, Action<string> progress)
+    {
+        lock (Gate) return _pauseSweep ??= PauseSweep.RunAsync(budget, progress);
+    }
+
     /// <summary>Replays the known sequences the first time, and returns that outcome.</summary>
     /// <param name="progress">Receives progress lines (from the test that happens to start it).</param>
     public static Task<StrategyOutcome> ReplaysAsync(Action<string> progress)
@@ -467,7 +523,7 @@ internal static class GeneratedSuite
         return await search();
     }
 
-    /// <summary>The strategies that have finished, in the order known-sequence replays, exhaustive, random, crash sweep.</summary>
+    /// <summary>The strategies that have finished, in the order known-sequence replays, exhaustive, random, crash sweep, pause sweep.</summary>
     public static IReadOnlyList<StrategyOutcome> Finished()
     {
         lock (Gate)
@@ -477,6 +533,7 @@ internal static class GeneratedSuite
             if (_exhaustive is { IsCompletedSuccessfully: true }) list.Add(_exhaustive.Result);
             if (_random is { IsCompletedSuccessfully: true }) list.Add(_random.Result);
             if (_sweep is { IsCompletedSuccessfully: true }) list.Add(_sweep.Result);
+            if (_pauseSweep is { IsCompletedSuccessfully: true }) list.Add(_pauseSweep.Result);
             return list;
         }
     }

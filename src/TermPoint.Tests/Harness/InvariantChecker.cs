@@ -1,3 +1,5 @@
+using TermPoint.Services;
+
 namespace TermPoint.Tests.Harness;
 
 /// <summary>
@@ -29,7 +31,29 @@ internal sealed class InvariantChecker
     /// </summary>
     public void ResetBaselineAtNextCheck() => _resetPending = true;
 
-    /// <summary>Runs I3, I1 and I2.</summary>
+    /// <summary>
+    /// Tells the I1 baseline what the shared database holds right now, in the MIDDLE of a step (a pause has run an event while an
+    /// operation is held; step 9.3c-2b). Edits another computer committed meanwhile become part of the baseline, so that when the held
+    /// save's rename lands over them, the check at the end of the step sees them disappear. Only ever grows the baseline, except
+    /// across an explicit reset (IT restoring an old file, as an event of the pause, is adopted as the new baseline).
+    /// </summary>
+    /// <param name="shared">The edits in the shared database now; null when it could not be read (then nothing is learned).</param>
+    public void ObserveSharedMidStep(IReadOnlyList<string>? shared)
+    {
+        if (shared is null) return;
+
+        if (_resetPending)
+        {
+            _baseline     = shared.ToHashSet();
+            _resetPending = false;
+        }
+        else
+        {
+            _baseline.UnionWith(shared);
+        }
+    }
+
+    /// <summary>Runs I3, I1, I2 and I6 (clause a).</summary>
     /// <param name="world">The world.</param>
     /// <param name="now">The ledger as it is now.</param>
     /// <param name="step">The current step.</param>
@@ -48,6 +72,9 @@ internal sealed class InvariantChecker
                 Reason = $"the shared database fails its integrity check: {problem}"
             });
         }
+
+        // I6 (a): nobody holds a lock they cannot use. It reads the computers and the lock files, not D.
+        found.AddRange(CheckReadOnlySessionsHoldNoLock(world, step));
 
         // I1 and I2 need to read D; a database that cannot be read is I3's business, and says "cannot tell" here.
         if (now.Shared is null) return found;
@@ -68,7 +95,9 @@ internal sealed class InvariantChecker
                 {
                     Step = step, Invariant = "I1", Kind = ViolationKind.SharedEditsDisappeared,
                     Key = $"I1:{string.Join(",", missing)}",
-                    Reason = $"{string.Join(", ", missing)} was in the shared database and is not any more"
+                    Reason = $"{string.Join(", ", missing)} was in the shared database and is not any more",
+                    LostEdits = missing,
+                    LostEditsCommittedDuringHeldSave = world.WereCommittedDuringHeldSave(missing, step)
                 });
                 _baseline = current;
             }
@@ -102,12 +131,53 @@ internal sealed class InvariantChecker
                         Step = step, Invariant = "I2", Kind = ViolationKind.EditLost,
                         Key = $"I2:lost:{edit}", Computer = computer.Name, Edit = edit,
                         Reason = $"{edit} ({computer.DisplayName}'s) is no longer anywhere that survives a crash",
+                        EditAppliedDuringHeldSave = world.WasEditAppliedDuringHeldSave(edit),
                         ComputerPrompts = world.StepPrompts(computer)
                     });
                 }
             }
         }
 
+        return found;
+    }
+
+    /// <summary>
+    /// <b>I6 clause (a), nobody holds a lock they cannot use:</b> a session whose checkout is read-only (<c>Mode == ReadOnly</c>;
+    /// <c>IsReadOnlyMode</c> is set with it, but production never clears it, so it is not read alone) must not hold its database's lock:
+    /// neither the computer's lock service may say it is the writer, nor may the lock file of the checkout's <c>SourcePath</c> name the
+    /// session. Such a session cannot save, so the lock keeps everyone else out of a database nobody can write to (finding F16: a
+    /// demotion that lands on the session that replaced the one it was started for). Only computers whose process runs with a database
+    /// open are looked at, and only at the end of a step, when no operation is half way.
+    /// </summary>
+    /// <param name="world">The world.</param>
+    /// <param name="step">The current step.</param>
+    /// <returns>The breaches found.</returns>
+    private static IEnumerable<Violation> CheckReadOnlySessionsHoldNoLock(World world, int step)
+    {
+        var found = new List<Violation>();
+        foreach (var computer in world.Computers)
+        {
+            if (!computer.IsRunning || !computer.HasOpenSession) continue;
+
+            var checkout = computer.Checkout;
+            if (checkout.Mode != CheckoutMode.ReadOnly) continue;
+
+            var database = string.IsNullOrEmpty(checkout.SourcePath) ? "?" : Path.GetFileName(checkout.SourcePath);
+            var holds = new List<string>();
+            if (computer.Locks.IsWriter) holds.Add("its lock service says it is the writer");
+            if (!string.IsNullOrEmpty(checkout.SourcePath)
+                && string.Equals(world.LockFileSession(checkout.SourcePath), computer.Locks.SessionGuid, StringComparison.Ordinal))
+                holds.Add($"the lock file of {database} names its session");
+            if (holds.Count == 0) continue;
+
+            found.Add(new Violation
+            {
+                Step = step, Invariant = "I6", Kind = ViolationKind.ReadOnlySessionHoldsLock,
+                Key = $"I6a:{step}:{computer.Name}:{database}", Computer = computer.Name,
+                Reason = $"{computer.DisplayName}'s session on {database} is read-only to the checkout service (it cannot save) yet " +
+                         string.Join(" and ", holds) + ": it holds a lock it cannot use"
+            });
+        }
         return found;
     }
 }

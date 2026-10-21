@@ -43,6 +43,9 @@ internal sealed class Computer : IDisposable
     /// <summary>True between a launch and the process ending (closed or killed).</summary>
     private bool _running;
 
+    /// <summary>How many saves of the current process are running (0 or 1: the checkout service refuses a second one).</summary>
+    private int _savesInFlight;
+
     /// <summary>How many background tasks have been added to <see cref="_pending"/> (a sign that lock-loss work is still being started).</summary>
     private int _pendingAdded;
 
@@ -92,6 +95,9 @@ internal sealed class Computer : IDisposable
 
     /// <summary>True once the power of the current (or last) process was cut. A restart gives a new process with power.</summary>
     public bool PowerIsOut => Life.PowerIsOut;
+
+    /// <summary>True while a save of the current process is running (between the checkout service's <c>SaveStarted</c> and <c>SaveFinished</c>).</summary>
+    public bool SaveInFlight => Volatile.Read(ref _savesInFlight) > 0;
 
     /// <summary>
     /// True when the process is running and a database is open in its window (read-only sessions included), the way the
@@ -193,6 +199,12 @@ internal sealed class Computer : IDisposable
         };
         Checkout.SaveConflictDetected += () => { if (!life.PowerIsOut) ConflictBannerShown = true; };
 
+        // Whether a save of this process is running right now (SaveStarted .. SaveFinished, raised inline by the harness's dispatcher).
+        // A switch's release waits for it, which the pause sweep needs to know (see PausedComputerSwitchesAction).
+        Volatile.Write(ref _savesInFlight, 0);
+        Checkout.SaveStarted  += () => Interlocked.Increment(ref _savesInFlight);
+        Checkout.SaveFinished += () => Interlocked.Decrement(ref _savesInFlight);
+
         // Everything a person would read reaches the world: dialogs (with their answers) and banners.
         Prompts.OnCall                   = call => { if (!life.PowerIsOut) _world.ObservePrompt(this, call); };
         if (_world.PromptPolicy is { } policy)
@@ -264,6 +276,7 @@ internal sealed class Computer : IDisposable
                 ActAsync(() =>
                 {
                     Host.EditWith($"INSERT INTO {World.EditsTable}(id, actor) VALUES ('{id}', '{Name}')");
+                    _world.NoteEditApplied(this, id);   // the row is in the working file NOW: an edit made while this computer's own operation is held in the edit-loss window is finding F2's route
                     return Task.FromResult(0);
                 }).GetAwaiter().GetResult();
             }
