@@ -343,6 +343,78 @@ public sealed class InvariantProofTests
         Assert.Equal("bobs-version.db", MessagePromises.SavedFileName(SaveConflictPrompt.SavedMessage("bobs-version.db")));
     }
 
+    /// <summary>
+    /// The texts step 9.3d added to the catalogue are classified and are not "unclassified promises" any more: the heartbeat banner (a
+    /// kept-changes promise, found by the first deep run) and three texts found by the sweep of every user-facing string in the save, lock,
+    /// heartbeat, exit, switch, restore and recovery paths (each states a fact or admits a loss, and promises nothing to check). A plain
+    /// test: it needs no world. The banners that are inline in the service are pinned here as the harness met them; the heartbeat one is also
+    /// shown by the real service in <see cref="I5_TheHeartbeatBannerDuringAnOutage_IsAKeptPromise_AndItHolds"/>.
+    /// </summary>
+    [Fact]
+    public void I5_TheTextsFoundByStep93d_AreInTheCatalogue()
+    {
+        const string heartbeat =
+            "Network connection interrupted — your changes are safe locally but cannot be saved until the connection is restored.";
+        var banner = MessagePromises.Classify("", heartbeat);
+        Assert.False(banner.IsUnclassifiedPromise);
+        Assert.Equal(new[] { PromiseKind.ChangesKept }, banner.Kinds);
+
+        var missingFile = MessagePromises.Classify("", SavePrompt.SessionFileMissingMessage);
+        Assert.False(missingFile.IsUnclassifiedPromise);
+        Assert.Equal(new[] { PromiseKind.Info }, missingFile.Kinds);
+
+        var noReconnect = MessagePromises.Classify("",
+            "The database connection could not be restored after losing write access. Please close and reopen the database file.");
+        Assert.False(noReconnect.IsUnclassifiedPromise);
+        Assert.Equal(new[] { PromiseKind.Info }, noReconnect.Kinds);
+
+        var newName = MessagePromises.Classify(RecoveryConflictPrompt.AlreadyExistsTitle, RecoveryConflictPrompt.AlreadyExistsMessage);
+        Assert.False(newName.IsUnclassifiedPromise);
+        Assert.Equal(new[] { PromiseKind.Info }, newName.Kinds);
+
+        // A new message that talks about kept work and matches nothing is still caught (the catalogue did not become a catch-all).
+        Assert.True(MessagePromises.Classify("", "Your edits are kept in a drawer.").IsUnclassifiedPromise);
+    }
+
+    /// <summary>
+    /// The heartbeat banner is judged for truth (step 9.3d; its wording is finding F15, a wording finding, not a harness violation). Bob edits, the
+    /// share becomes unreachable and three heartbeats fail: the real checkout service raises its "changes are safe locally" banner. It is a
+    /// kept-changes promise, and it holds: bob-1 is still in his live session. Nothing is reported, and the first deep run's "unclassified
+    /// promise" for exactly this story is gone.
+    /// </summary>
+    [HarnessFact]
+    public async Task I5_TheHeartbeatBannerDuringAnOutage_IsAKeptPromise_AndItHolds()
+    {
+        using var world = new World(_output, nameof(I5_TheHeartbeatBannerDuringAnOutage_IsAKeptPromise_AndItHolds));
+        world.CreateDatabase();
+        var bob = world.AddComputer("bob");
+        await bob.OpenAsync();
+        bob.Edit();
+
+        // The banner is raised from a task the heartbeat failure starts (fire and forget, as in production), so wait for it, in real time,
+        // with a limit; the funnel step that ran the ticks may end a moment before the banner is dispatched.
+        var banners = new List<string>();
+        var arrived = new TaskCompletionSource<string>(TaskCreationOptions.RunContinuationsAsynchronously);
+        bob.Checkout.SaveFailed += (text, _) => { lock (banners) banners.Add(text); arrived.TrySetResult(text); };   // what the window's save-error banner shows
+
+        world.NetworkDown(bob);
+        for (var tick = 0; tick < 3; tick++) await bob.HeartbeatTickAsync();
+        Assert.Same(arrived.Task, await Task.WhenAny(arrived.Task, Task.Delay(TimeSpan.FromSeconds(10))));
+        world.AdvanceTime(TimeSpan.FromSeconds(1));   // the next funnel step: the promise the banner made is judged here
+
+        string[] shown;
+        lock (banners) shown = banners.ToArray();
+        Assert.All(shown, text =>
+        {
+            var classified = MessagePromises.Classify("", text);
+            Assert.False(classified.IsUnclassifiedPromise, text);
+            Assert.Contains(PromiseKind.ChangesKept, classified.Kinds);
+        });
+        Assert.Equal(new[] { "bob-1" }, bob.WorkingFileEdits());     // the promise is true: the edit is on his disk
+        Assert.Empty(world.Violations);
+        world.Finish();
+    }
+
     /// <summary>The title of the stale-lock question.</summary>
     private const string StaleLockTitle = "Database Lock Is Inactive";
 

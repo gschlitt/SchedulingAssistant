@@ -166,7 +166,7 @@ internal sealed class ArmedPause
 /// <summary>
 /// An ordinary event of the catalogue, done with a PAUSE at a named crash point (spec item 9.3, step 9.3c-2b): "Bob presses Save; at
 /// <c>Save.AfterTmpVerify</c> his save is held while Alice takes over the lock and saves; then his save goes on". It is enabled exactly
-/// when the event it wraps is. The wrapped event runs on its own task and is held when it reaches the point (the n-th time); the
+/// when the event it wraps is, and the action may be offered while that event is held (<see cref="PauseAction.IsOfferedWhileHolding"/>). The wrapped event runs on its own task and is held when it reaches the point (the n-th time); the
 /// <see cref="PauseAction"/> runs on the test's flow; then the held event is released. When the event never reaches the point it simply
 /// happens, and the story says the pause did not happen. The whole thing is ONE funnel step (<see cref="World.RunWithPauseAsync"/>).
 ///
@@ -225,7 +225,7 @@ internal sealed class PauseEvent : HarnessEvent
     public override int Weight => 1;
 
     /// <inheritdoc/>
-    public override bool IsEnabled(RunContext ctx) => _inner.IsEnabled(ctx);
+    public override bool IsEnabled(RunContext ctx) => _inner.IsEnabled(ctx) && _action.IsOfferedWhileHolding(_inner);
 
     /// <inheritdoc/>
     public override async Task ExecuteAsync(RunContext ctx)

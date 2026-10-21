@@ -63,6 +63,15 @@ internal static class MessagePromises
         // The save failures all say "Your changes are kept." (SavePrompt).
         new(null, "your changes are kept", PromiseKind.ChangesKept),
 
+        // The heartbeat banner while the share cannot be reached (CheckoutService, heartbeat verification "Unreachable"): "Network
+        // connection interrupted — your changes are <safe> locally but cannot be saved until the connection is restored." (step 9.3d: the
+        // first deep run met it as an unclassified promise.) What it really promises: the changes are kept on this computer, and will be saved
+        // once the connection returns. I5 judges the first half at the end of the step (the unsaved edits are still somewhere that survives a
+        // crash) and I2 judges it again after every later step; the second half ("will be saved once the connection returns") is not
+        // separately judged, because it depends on a later save. The wording ("safe locally", and a second message for the same outage) is
+        // finding F15 in section 3 of the design note; wording is not a harness violation, so it is not in KnownFindings.
+        new(null, "safe locally", PromiseKind.ChangesKept),
+
         // (d) Informational: facts, or statements about the database rather than about unsaved work.
         new(LocalCopyCheckPrompt.UnsavedChangesLostTitle, "", PromiseKind.Info),   // "... could not be restored": a loss admitted, nothing promised
         new(LocalCopyCheckPrompt.CouldntOpenTitle,        "", PromiseKind.Info),
@@ -70,6 +79,15 @@ internal static class MessagePromises
         new("Restore Not Confirmed", "", PromiseKind.Info),
         new("Restore Stopped",       "", PromiseKind.Info),
         new("Restore Not Started",   "", PromiseKind.Info),
+
+        // Found by the step 9.3d sweep of every user-facing text in the save, lock, heartbeat, exit, switch, restore and recovery paths
+        // (a message dialog or a banner that mentions kept / restored / saved work but promises nothing the harness can check):
+        // the save-failure banner for a missing session file ("... changes since your last save can't be saved"), which admits a loss;
+        new(null, "changes since your last save can't be saved", PromiseKind.Info),
+        // the banner after a lost-lock demotion could not reconnect ("The database connection could not be restored after losing write access");
+        new(null, "could not be restored after losing write access", PromiseKind.Info),
+        // and "Choose a New Name" (the recovered copy is never saved over an existing file), a rule about file names.
+        new(RecoveryConflictPrompt.AlreadyExistsTitle, "", PromiseKind.Info),
 
         // The banner after an externally removed lock file was put back ("... TermPoint has restored it and your
         // session continues normally"): it states a fact about the lock file, and promises nothing about unsaved work.

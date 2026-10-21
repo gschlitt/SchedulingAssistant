@@ -30,6 +30,15 @@ internal abstract class PauseAction
     /// <param name="ctx">The run.</param>
     public virtual bool WaitsForTheHeldOperation(RunContext ctx) => false;
 
+    /// <summary>
+    /// True when the action may be offered while <paramref name="held"/> is the operation that is held. The default is yes: nearly every
+    /// action makes sense whatever is held. An action overrides it to leave out a pairing the harness deliberately does not pursue (see
+    /// <see cref="PausedComputerSwitchesAction"/>). Both the pause sweep (when it plans its cases) and <see cref="PauseEvent.IsEnabled"/> ask it,
+    /// so a pairing that is left out is neither planned nor run, at any width, and a recorded key that names it is skipped on replay.
+    /// </summary>
+    /// <param name="held">The event whose operation is held (the pause's inner event).</param>
+    public virtual bool IsOfferedWhileHolding(ComputerEvent held) => true;
+
     /// <summary>Carries the action out (through the world's funnel, so the story and the promise checks apply as always).</summary>
     /// <param name="ctx">The run.</param>
     /// <returns>A task that completes when the action is done.</returns>
@@ -184,6 +193,21 @@ internal sealed class PausedComputerSwitchesAction : PauseAction
 
     /// <inheritdoc/>
     public override bool IsPossible(RunContext ctx) => ctx.Computer(_paused).HasOpenSession;
+
+    /// <summary>
+    /// Not offered while the same computer's CLOSE is held. <b>Not pursued, by the user's decision of 2026-10-21</b> ("pretty abstruse"): in the
+    /// pairing the harness found at width 2, Bob has an edit, a 1.2.2 colleague changes the database, Bob closes (the final save is refused,
+    /// so the close keeps his working copy), and a SWITCH by the same person runs while the close is held after its release
+    /// (<c>Pause(Close(bob) at Close.AfterRelease; BobSwitches)</c>, 4 events). The switch starts from a session the close has already
+    /// released, asks <c>ReleaseAsync</c> for no save, is told Success, and <c>SessionLifecycle.SwitchCoreAsync</c> deletes the working copy it
+    /// believes is in the database: bob-1 ends up nowhere. It needs a person to start a switch while the window is closing, which the user judged
+    /// too unlikely to need a finding of its own, so it is not in section 3 of the design note. The pairing is left out at every width instead of
+    /// being excused in a test, so that any OTHER unexplained breach fails the run again. Another computer's events during Bob's close stay.
+    /// Reverse this (delete the override) if the decision is ever reversed.
+    /// </summary>
+    /// <param name="held">The event whose operation is held.</param>
+    public override bool IsOfferedWhileHolding(ComputerEvent held)
+        => !(held is CloseEvent && string.Equals(held.ComputerName, _paused, StringComparison.Ordinal));
 
     /// <summary>A switch leaves the old database through <c>CheckoutService.ReleaseAsync</c>, which waits (up to a minute) for a save in flight, so it waits for the held save.</summary>
     /// <param name="ctx">The run.</param>

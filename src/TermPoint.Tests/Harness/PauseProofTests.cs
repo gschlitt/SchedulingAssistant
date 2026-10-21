@@ -188,6 +188,107 @@ public sealed class PauseProofTests
     }
 
     // ═════════════════════════════════════════════════════════════════════════
+    // Step 9.3d: what the first deep run found
+    // ═════════════════════════════════════════════════════════════════════════
+
+    /// <summary>
+    /// Two edits of one computer that overlap get their own ids (the first deep run's harness bug: an edit held at
+    /// <c>Dirty.AfterMarkerWritten</c> had inserted bob-1 but not yet counted it, so the edit made meanwhile computed bob-1 as well and
+    /// failed on the table's primary key, an exception in 18 pause cases). Bob's edit is held after its row was inserted and its marker
+    /// written; Bob edits again meanwhile; the held edit then finishes. Both rows are in his session, both are tracked as applied, the
+    /// numbering has no repeat, and nothing is reported.
+    /// </summary>
+    [HarnessFact]
+    public async Task Pause_AnEditMadeWhileTheSameComputersEditIsHeld_GetsItsOwnId_AndBothAreTracked()
+    {
+        using var world = new World(_output, nameof(Pause_AnEditMadeWhileTheSameComputersEditIsHeld_GetsItsOwnId_AndBothAreTracked));
+        world.CreateDatabase();
+        var bob = world.AddComputer("bob");
+        await bob.OpenAsync();
+
+        string? heldId = null, meanwhileId = null;
+        var result = await world.RunWithPauseAsync(bob, "Dirty.AfterMarkerWritten", 1, "Bob makes an edit",
+            operation: () => { heldId = bob.Edit(); return Task.CompletedTask; },
+            eventStory: "Bob makes another edit", eventIsPossible: () => bob.HasLiveSession,
+            pauseEvent: () => { meanwhileId = bob.Edit(); return Task.CompletedTask; });
+
+        Assert.Equal(PauseOutcome.Interleaved, result.Outcome);
+        Assert.Equal("bob-1", heldId);          // numbered first, finished last
+        Assert.Equal("bob-2", meanwhileId);
+        Assert.Equal(new[] { "bob-1", "bob-2" }, bob.AppliedEdits.OrderBy(e => e).ToArray());   // both tracked, each once
+        Assert.Equal(new[] { "bob-1", "bob-2" }, bob.WorkingFileEdits().OrderBy(e => e).ToArray());   // and both rows are in his working file
+        Assert.Empty(world.Violations);
+
+        bob.Edit();                                   // the numbering goes on from the highest number handed out
+        Assert.Equal("bob-3", bob.AppliedEdits.OrderBy(e => e).Last());
+        world.Finish();
+    }
+
+    /// <summary>
+    /// The same pairing as a decision list (what the pause sweep builds): the pause runs, both edits end up in Bob's restored session after a
+    /// crash and a restart, and no breach is reported at all, known or new.
+    /// </summary>
+    [HarnessFact]
+    public async Task Pause_TwoOverlappingEditsAsADecisionList_RunCleanly()
+    {
+        var run = await RunKeysAsync("Open(bob)", "Pause(Edit(bob) at Dirty.AfterMarkerWritten; BobEdits)", "Crash(bob)", "Open(bob)");
+        _output.WriteLine(run.Story);
+
+        Assert.Equal(PauseOutcome.Interleaved, Assert.Single(run.PauseResults).Outcome);
+        Assert.Empty(run.Violations);
+        Assert.Matches("bob-1: .*bob's live session", run.Story);   // Restore brought both back: in the shared database (the restart's save) and in his session
+        Assert.Matches("bob-2: .*bob's live session", run.Story);
+        Assert.DoesNotContain("nowhere", run.Story.Substring(run.Story.IndexOf("WHERE EVERY EDIT IS", StringComparison.Ordinal)));
+    }
+
+    /// <summary>
+    /// A switch by the same computer is NOT offered while its Close is held (not pursued, user, 2026-10-21: the switch deletes the working copy the
+    /// close kept). Every other pairing stays: the same switch during a save, a heartbeat or a sleep; every other action during a close, including
+    /// another computer's events. The rule is symmetric for Alice. A plain test: it needs no world.
+    /// </summary>
+    [Fact]
+    public void PausedComputerSwitches_IsNotOfferedWhileTheSameComputersCloseIsHeld_ButEveryOtherPairingIs()
+    {
+        foreach (var (paused, other) in new[] { ("bob", "alice"), ("alice", "bob") })
+        {
+            var switches = PauseActions.For(paused).Single(a => a is PausedComputerSwitchesAction);
+
+            Assert.False(switches.IsOfferedWhileHolding(new CloseEvent(paused)));
+            Assert.True(switches.IsOfferedWhileHolding(new SaveEvent(paused)));
+            Assert.True(switches.IsOfferedWhileHolding(new HeartbeatTickEvent(paused)));
+            Assert.True(switches.IsOfferedWhileHolding(new SleepEvent(paused, TimeSpan.FromMinutes(10), "10m", "4m")));
+            Assert.True(switches.IsOfferedWhileHolding(new SwitchAwayEvent(paused)));
+            Assert.True(switches.IsOfferedWhileHolding(new OpenEvent(paused)));
+
+            // Everything else may happen during the paused computer's close, and the other computer's own Close is not this rule's business.
+            foreach (var action in PauseActions.For(paused).Where(a => a is not PausedComputerSwitchesAction))
+                Assert.True(action.IsOfferedWhileHolding(new CloseEvent(paused)), $"{action.Key} during {paused}'s close");
+            Assert.True(switches.IsOfferedWhileHolding(new CloseEvent(other)));
+        }
+    }
+
+    /// <summary>
+    /// The pairing is gone from the replay as well as from the sweep's plan: the key that the first deep run recorded for it
+    /// (<c>Pause(Close(bob) at Close.AfterRelease; BobSwitches)</c>) is simply not an enabled event, so a replay skips it, no pause happens,
+    /// and nothing is lost: with Bob's close never started the story ends at Alice's takeover.
+    /// </summary>
+    [HarnessFact]
+    public async Task ThePairingTheUserDidNotPursue_IsNotEnabled_SoAReplaySkipsIt()
+    {
+        var run = await RunKeysAsync("Open(bob)", "Edit(bob)", "AdvanceTime(4m)", "Open(alice)",
+                                     "Pause(Close(bob) at Close.AfterRelease; BobSwitches)");
+        _output.WriteLine(run.Story);
+
+        Assert.Empty(run.PauseResults);
+        Assert.DoesNotContain(run.Record.Steps, s => s.EventKey.StartsWith(PauseEvent.KeyPrefix, StringComparison.Ordinal));
+        Assert.Empty(run.NewViolations);
+
+        // The same pause with a different event meanwhile is still offered and runs (Alice's takeover happened first, so use a fresh route).
+        var other = await RunKeysAsync("Open(bob)", "Edit(bob)", "Pause(Close(bob) at Close.AfterRelease; TimePasses)");
+        Assert.Equal(PauseOutcome.Interleaved, Assert.Single(other.PauseResults).Outcome);
+    }
+
+    // ═════════════════════════════════════════════════════════════════════════
     // Real-time limits: designed waiting is not a violation; a deadlock is a Hang
     // ═════════════════════════════════════════════════════════════════════════
 

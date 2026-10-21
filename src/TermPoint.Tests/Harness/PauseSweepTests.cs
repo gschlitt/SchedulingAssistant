@@ -81,11 +81,9 @@ public sealed class PauseSweepTests
     /// A bounded sample of the WIDE sweep (width 2: every operation and crash point, up to the third time a point is reached, the wide
     /// starting situations, the events that wait, and the "close normally" follow-up as well as the crash). The full wide sweep plans
     /// far more cases than anyone waits for (see the count it reports), so this runs every 40th planned case, at most 60, which touches
-    /// every kind of case in a few minutes: nothing hangs, every pause step runs, and no breach is unexplained, with ONE exception that
-    /// is pinned here on purpose: a switch that overlaps a close after the close's final save was refused deletes the kept working copy
-    /// (<c>SessionLifecycle.SwitchCoreAsync</c> sees a released session, asks <c>ReleaseAsync</c> for no save, gets "Success" and cleans
-    /// up). It is a candidate new finding (design note, 9.3c-2b), not yet in section 3, so it is reported in the output, and any OTHER
-    /// unexplained breach fails the test. When that finding is fixed or filed, delete the exception.
+    /// every kind of case in a few minutes: nothing hangs, every pause step runs, and EVERY breach is explained by a known finding.
+    /// There is no pinned exception any more: the one that used to be here (a switch overlapping a close, 9.3c-2b) was not pursued by the
+    /// user on 2026-10-21, and the pairing is no longer offered at all (<see cref="PauseAction.IsOfferedWhileHolding"/>).
     /// </summary>
     [HarnessFact]
     public async Task PauseSweep_Width2_ASampleOfItsCasesRunsCleanly()
@@ -100,12 +98,10 @@ public sealed class PauseSweepTests
         Assert.True(sweep.HangCases.Count == 0, "These pauses hung:\n  " + string.Join("\n  ", sweep.HangCases));
         Assert.True(sweep.NotRunCases.Count == 0, "These cases never ran their pause step:\n  " + string.Join("\n  ", sweep.NotRunCases));
 
-        // The pinned exception: a close and a switch overlapping (the story holds a paused Close and a "...Switches" event).
-        bool OverlappingCloseAndSwitch(FindingTally t) => t.BestStory.Contains("Pause(Close(") && t.BestStory.Contains("Switches)");
-        foreach (var known in outcome.Log.NewTallies.Where(OverlappingCloseAndSwitch))
-            Say($"Reported, not failed (candidate new finding): {known.Signature}\n{known.BestStory}");
+        // The rule that leaves out a switch during the same computer's close is applied while the cases are planned (all of them are planned, only some run).
+        Assert.True(sweep.NotOffered > 0, "no pairing was left out: PauseAction.IsOfferedWhileHolding is not being applied by the plan");
 
-        var unexplained = outcome.Log.NewTallies.Where(t => !OverlappingCloseAndSwitch(t)).ToList();
+        var unexplained = outcome.Log.NewTallies.ToList();
         Assert.True(unexplained.Count == 0,
             "The wide sample found breaches that nothing explains:\n" + string.Join("\n", unexplained.Select(t => $"{t.Signature}: {t.Reason}\n{t.BestStory}")));
     }

@@ -37,8 +37,11 @@ internal sealed class Computer : IDisposable
     /// <summary>The identity of the current process (machine, user, pid, start time).</summary>
     private LockIdentity _identity = null!;
 
-    /// <summary>How many traceable edits this computer has made so far (numbers "bob-1", "bob-2", ...).</summary>
+    /// <summary>The number of the last traceable edit this computer has numbered ("bob-1", "bob-2", ...). Edits take their number from it atomically, before they are made (see <see cref="Edit"/>).</summary>
     private int _editCount;
+
+    /// <summary>Guards <see cref="AppliedEdits"/>: overlapping edits of one computer can finish on different threads.</summary>
+    private readonly object _editsGate = new();
 
     /// <summary>True between a launch and the process ending (closed or killed).</summary>
     private bool _running;
@@ -127,7 +130,7 @@ internal sealed class Computer : IDisposable
     /// </summary>
     public bool ConflictBannerShown { get; private set; }
 
-    /// <summary>The ids of the edits this computer has applied, in order ("bob-1", "bob-2", ...), across all its launches.</summary>
+    /// <summary>The ids of the edits this computer has applied ("bob-1", "bob-2", ...), across all its launches, in the order they finished (for edits that overlap, not necessarily the order of their numbers).</summary>
     public List<string> AppliedEdits { get; } = new();
 
     /// <summary>The ordered trace of host calls, prompts and saves of the current process (for debugging a failing walk).</summary>
@@ -263,12 +266,18 @@ internal sealed class Computer : IDisposable
     /// Makes the next traceable edit: inserts a row ("bob-1", "bob-2", ...) into the harness table through the
     /// session's live connection on its working file, and marks the session dirty — exactly the way a first write
     /// through the real data layer reaches the checkout service, so the unsaved-changes marker appears.
+    ///
+    /// <para><b>The id is reserved before the insert</b> (step 9.3d). Two edits of one computer can overlap: a pause holds an edit at
+    /// <c>Dirty.AfterMarkerWritten</c> (its row is already inserted) while the computer makes a second one. Numbering the edit from
+    /// the count of FINISHED edits gave both the same id, and the second insert failed on the table's primary key. Taking the number
+    /// atomically up front gives each overlapping edit its own. The cost is that an edit that fails before its row is inserted leaves a
+    /// gap in the numbering, which nothing reads: the ledger works from <see cref="AppliedEdits"/>, the ids that were really applied.</para>
     /// </summary>
     /// <returns>The id of the edit that was made.</returns>
     /// <exception cref="InvalidOperationException">No connection is open (nothing is open, or the session was closed).</exception>
     public string Edit()
     {
-        var id = $"{Name}-{_editCount + 1}";
+        var id = $"{Name}-{Interlocked.Increment(ref _editCount)}";
         _world.Do(this, $"{DisplayName} made edit {id}", () =>
         {
             try
@@ -284,15 +293,24 @@ internal sealed class Computer : IDisposable
             {
                 // The only crash point in an edit comes after the row was inserted and the marker written, so the edit WAS
                 // applied: it is in the working file the frozen disk holds. It counts, or invariant I2 would not look for it.
-                _editCount++;
-                AppliedEdits.Add(id);
+                RecordEditApplied(id);
                 throw;
             }
 
-            _editCount++;
-            AppliedEdits.Add(id);
+            RecordEditApplied(id);
         });
         return id;
+    }
+
+    /// <summary>
+    /// Adds an edit to <see cref="AppliedEdits"/>. Under a lock because two overlapping edits of one computer (a held edit and
+    /// the one made while it is held) can finish on different threads, in either order; the list is then in the order the edits
+    /// were applied, which for overlapping edits is not the order of their numbers.
+    /// </summary>
+    /// <param name="id">The edit's id.</param>
+    private void RecordEditApplied(string id)
+    {
+        lock (_editsGate) AppliedEdits.Add(id);
     }
 
     /// <summary>Saves the working copy to the shared database (the Save button: <see cref="CheckoutService.SaveAsync"/>).</summary>

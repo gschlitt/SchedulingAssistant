@@ -144,7 +144,7 @@ All of 2.8 stems from one choice: the working folder is `Environment.SpecialFold
 
 | # | Finding | Rule | New or known | Size of fix |
 |---|---|---|---|---|
-| **F1** | The X on "Restore Unsaved Changes?" and on "Can't Restore Unsaved Changes" deletes the kept changes, with no confirmation. Discard itself is never confirmed either | 3 | **New. In 1.2.2 today** (same code on `master`) | Small: X re-asks; Discard confirms |
+| **F1** | The X on "Restore Unsaved Changes?" and on "Can't Restore Unsaved Changes" deletes the kept changes, with no confirmation. Discard itself is never confirmed either. **No 1.2.2 hotfix (user, 2026-10-21): 1.2.3 is days away** | 3 | **New. In 1.2.2 today** (same code on `master`) | Small: X re-asks; Discard confirms |
 | **F2** | An edit made during a save loses its marker; a crash before the next save deletes it. **Confirmed by the harness (9.3c-2b):** open, Save held at `Save.AfterLocalSnapshot`, Bob edits meanwhile, Bob's computer crashes: his kept working file has no marker and the edit is nowhere (3 events; `KnownSequences`). The clean-close face (item 15's "edits made during the exit save are deleted") needs no crash: a close held at `Save.AfterMarkerDelete` or `Release.AfterFinalSave` while Bob edits deletes the edit with the working copy | 3 | Known (item 15) | Medium: edit counter |
 | **F3** | Unapplied inline edits dropped at close or switch | 3 | Known (item 14) | Medium |
 | **F4** | After a lost lock, writes still reach the read-only copy (connection is read-write; only the UI blocks), so an editor left open could "save" into a file that is thrown away | 3/4 | **New**, needs one check (does the editor stay open across demotion?) | Small: open read-only copies with `Mode=ReadOnly` so any write fails loudly |
@@ -874,8 +874,164 @@ them from the list one by one, and the harness proves each is gone.
     - **Against the four rules:** no production change. It closes the harness's gaps on rule 2 (changes by others part-way through: F12), rule 3 (edits
       during a save: F2) and rule 4 (F16, through I6).
       a little more, because a pause is harder to make deterministic than a cut.
-- **9.3d:** the first full run against today's code, and a report: every failure found, matched to a finding or
-  added to section 3 as a new one.
+- **9.3d (Done 2026-10-21, uncommitted):** the first full run against today's code, and a report: every failure found, matched to a finding or
+  added to section 3 as a new one. Test code only; nothing under `src/TermPoint/` changed.
+  - **In one paragraph:** the first deep run failed three tests. None was a new finding about the product: one was a harness bug, one a gap in
+    the message catalogue, and one a family the user decided not to pursue. All three are resolved (below), and the second deep run, at the same
+    budget, passed with **0 new violations** and no hang. Section 3 is unchanged: there is no F17.
+  - **Budget (both runs):** exhaustive depth 4 (`TERMPOINT_HARNESS_DEPTH`); 1000 random walks of 40 events (`_SEEDS`, `_STEPS`), in 2 processes;
+    crash sweep width 2 and pause sweep width 2 (`_CRASH_WIDTH`, `_PAUSE_WIDTH`); child time limit 180 minutes. One script ran the whole harness
+    (`TERMPOINT_HARNESS=1`, filter `Harness`): it builds to a temp folder, watches free disk space, and would stop only its own test process tree
+    if C: fell below 1 GB (it never did). Run 1 is 67 tests, run 2 is 73 (six new proof tests). Lowest free disk space: **6.26 GB** in run 1, **5.7 GB** in run 2 (it started with less).
+  - **Timings** (this laptop, 4 logical processors; the random walks in 2 child processes):
+
+    | Strategy | Run 1 | Run 2 | Size in run 2 |
+    |---|---|---|---|
+    | Known sequences (5) | 0:18 | 0:19 | 5 runs, 20 events |
+    | Bounded exhaustive, depth 4 | 11:10 | 11:40 | 4350 runs, 16796 events, 1039 distinct states, 3407 runs cut short by the memo |
+    | Random walks, 1000 x 40, 2 processes | 16:17 (failed) | 17:21 | 1000 runs, 40000 events, 463 shrink replays |
+    | Crash sweep, width 2 | 7:19 | 6:29 | 12 situations, 256 dry runs, 578 cases, 834 runs; 39 of 39 crash points cut |
+    | Pause sweep, width 2 | 54:28 | 46:04 | 12 situations, 256 dry runs, 4344 cases (run 1: 4590) |
+    | Whole run | 1 h 33 m | 1 h 25 m | |
+
+    The wide pause sweep ran **in full** for the first time. 9.3c-2b estimated about three hours for it (and sampled 60 cases); it took 54 and 46
+    minutes, at 600 to 680 ms a case, so a deep run is about an hour and a half, not half a day. The full default harness is still about 14 minutes.
+  - **The first run's three failures, and what each was:**
+    1. **A harness bug: edit ids collided** (fixed). `PauseSweep_NoNewViolations` reported `exception/SqliteException/Pause` in 18 runs, and
+       `PauseSweep_EveryPlannedPauseRan_AndNothingHung` failed because of the same 18 cases (their pause step never ran). Smallest story, 2 events:
+       `Open(bob)`, `Pause(Edit(bob) at Dirty.AfterMarkerWritten; BobEdits)`. `Computer.Edit` named the edit `bob-<finished edits + 1>` and counted it
+       only when it finished. Held at `Dirty.AfterMarkerWritten`, the first edit had inserted `bob-1` but not counted it, so the edit made meanwhile
+       was also `bob-1` and the insert failed on the table's primary key. Nothing in the product has such ids; the product was never involved.
+       - **Fix:** the number is taken before the insert with `Interlocked.Increment`, and `AppliedEdits` is added to under a lock, in the order edits
+         finish (for overlapping edits that is not the order of their numbers). **Bookkeeping checked:** the ledger, invariant I2 and the F2 and F12
+         rules read `AppliedEdits` (the ids really applied) and never the count; `NoteEditApplied` is called once per id; an edit that fails before its
+         insert would now leave a gap in the numbering, which nothing reads. A replay is unchanged, because the same events take the same numbers.
+       - **Proof tests:** `Pause_AnEditMadeWhileTheSameComputersEditIsHeld_GetsItsOwnId_AndBothAreTracked` (held edit `bob-1`, edit meanwhile `bob-2`, both
+         in his working file and both tracked, then `bob-3`) and `Pause_TwoOverlappingEditsAsADecisionList_RunCleanly` (the same pause as a decision list,
+         then a crash and Restore: both edits come back, no violation of any kind).
+       - **Result in run 2:** `Dirty.AfterMarkerWritten` has 90 cases, all interleaved (run 1: 72, with 18 never run); "pause step did not run": 0.
+    2. **A gap in the message catalogue** (fixed; not a finding). `Generated_RandomWalks_NoNewViolations` reported `I5/UnclassifiedPromise/new` in 6
+       runs, smallest story 5 events: `Open(bob)`, `NetworkDown(bob)`, `HeartbeatTick(bob)` three times. The banner is the heartbeat's, raised when the
+       share cannot be reached while Bob holds the lock (`CheckoutService`, heartbeat verification "Unreachable"). It talks about the changes being kept
+       and saved and matched no catalogue entry, which is the rule working as designed: new wording cannot slip past unexamined.
+       - **Fix:** `MessagePromises` now classifies it as a kept-changes promise (`ChangesKept`): the changes are kept on this computer and will be
+         saved once the connection returns. I5 judges the first half at the end of the step (the unsaved edits are still somewhere that survives a crash);
+         I2 judges it again after every later step; the second half depends on a later save and is not separately judged.
+       - **F15 is this message's wording** (and the second message for one outage); wording is not a harness violation, so F15 is not in `KnownFindings`.
+         The harness now sees the banner and judges its promise.
+       - **Proof tests:** `I5_TheTextsFoundByStep93d_AreInTheCatalogue` (plain test, in the normal suite) and
+         `I5_TheHeartbeatBannerDuringAnOutage_IsAKeptPromise_AndItHolds` (the real service raises the banner after three failed heartbeats; it is classified as
+         `ChangesKept`; nothing is reported). The banner is raised from a task the heartbeat failure starts, as in production, so it can reach the screen a
+         moment after the step that caused it ends; the test waits for it in real time and then runs one more step, which is where the promise is judged.
+       - **Result in run 2:** no unclassified promise. The six walks of run 1 that stopped on the banner now run on (run 1 ran 39935 walk events, run 2 ran
+         40000, most likely for that reason), and no I5 report of any kind appears in run 2: the promise held wherever the banner was shown.
+    3. **Not pursued, by the user's decision of 2026-10-21** (resolved by not offering it). `PauseSweep_NoNewViolations` also reported `I2/EditLost/new`
+       in 20 runs, smallest story 5 events (with I6/F16 firing beside it): `Open(bob)`, `Edit(bob)`, `AdvanceTime(4m)`, `Open(alice)` (takes over),
+       `Pause(Close(bob) at Close.AfterRelease; BobSwitches)`; bob-1 ends up nowhere. It is the "switch overlapping a close" family recorded under
+       9.3c-2b (a switch starts from a session the close has already released, is told Success, and deletes the working copy), reached here through a
+       lost lock instead of a colleague's change. The user judged it too
+       unlikely to need a finding of its own ("pretty abstruse"), so it stays out of section 3.
+       - **Fix:** `PauseAction.IsOfferedWhileHolding(held)`; `PausedComputerSwitchesAction` says no when the held event is the same computer's `Close`. The pause
+         sweep asks it when it plans its cases and `PauseEvent.IsEnabled` asks it when a recorded key is replayed, so the pairing is neither planned nor run, at
+         **every** width, and an old key that names it is skipped on replay. The reason, the date and how to reverse it (delete the override) are in the comment.
+       - **What stays:** Bob's switch during a save, a heartbeat, a wake check or an open; every other event during Bob's close, **including another
+         computer's** (Alice taking over, with or without saving; IT restoring an old copy; the lock file deleted; time passing) and Bob's own edits; and
+         Alice's side of all of these.
+       - **Pinned exception removed:** `PauseSweep_Width2_ASampleOfItsCasesRunsCleanly` no longer excuses any breach; it fails on every unexplained one, and
+         asserts that the rule was applied while planning. The sweep reports "Left out by decision": **120 pairings** at width 2 (240 cases with their two
+         follow-ups); the plan fell from 4590 to 4344 cases (the other 6 are in the limitations).
+       - **Proof tests:** `PausedComputerSwitches_IsNotOfferedWhileTheSameComputersCloseIsHeld_ButEveryOtherPairingIs` (plain test) and
+         `ThePairingTheUserDidNotPursue_IsNotEnabled_SoAReplaySkipsIt`.
+  - **Sweep for siblings of failure 2.** Method: a script (kept with the session's scratch files, not in the repository) reads every string literal of the
+    production code, joins literals that are concatenated, and lists those that contain one of the words the tracker watches for (the list in `MessagePromises`:
+    kept, keep, restore, saved and their forms, and one more). It was run over `CheckoutService`, `WriteLockService`, `SessionLifecycle`, every `*Prompt` class, `DatabaseSwitchPrecheck`,
+    `DatabaseSwitchRecovery`, `DatabaseRestore`, `LocalCopyIntegrity`, `DatabaseInstanceGuard`, `LockHeartbeatWatch`, `WriteAccessProbe` and `BackupService`, and
+    then over the rest of `src/TermPoint`. Only message dialogs and banners reach the tracker (the choice dialogs are judged by the F1 and F7 rules, and wait
+    dialogs are not judged), so each hit was followed to its call site.
+    - **Already in the catalogue:** "Unsaved Changes Kept", both "Changes Not Saved" texts and the lock-lost banner (will offer to restore); the save-failure
+      texts (kept; the verify failure also says the database was not changed); "Your version was saved as ..."; the restore results ("Backup Restored",
+      "Restore Stopped", "Restore Not Started", "Restore Not Confirmed", by title); the two local-copy messages (by title); the lock-file-put-back banner.
+    - **Added (three siblings, besides the heartbeat banner):** `SavePrompt.SessionFileMissingMessage` ("... changes since your last save can't be saved ...",
+      a loss admitted, nothing promised); the banner "The database connection could not be restored after losing write access ..." (shown when a demotion cannot
+      reconnect); "Choose a New Name" (a recovered copy is never saved over an existing file). All three are `Info`: they state a fact and promise nothing to check.
+    - **Not added, because a computer of the harness never reaches them:** the backup service's integrity message (it talks about a backup being usable for a
+      restore) and the database chooser's damaged-file message. If either is ever driven, the unclassified-promise rule will stop the run and ask.
+    - **Not a sweep, a limit:** a text built at run time from pieces that each lack the words is not found by reading the source. The harness still catches it when
+      it is shown, as it caught the heartbeat banner.
+  - **Second run's result:** 72 passed, 0 failed, 1 skipped (the shard test, which only a parent run starts). **New violations: none.** Hangs: 0. Crash sweep: 39 of 39
+    points cut, 0 planned cuts that did not fire. Pause sweep: **3880 interleaved, 464 waited, 0 not possible, 0 never reached, 0 hung**; every event enabled somewhere.
+  - **Known findings by source** (run 2; counts are runs that showed the finding; "search" is the exhaustive search plus the random walks). Smallest stories are the same
+    as in run 1:
+
+    | Finding | Search | Replay | Crash sweep | Pause sweep | Smallest story |
+    |---|---|---|---|---|---|
+    | F1 | 428 | - | 21 | 64 | 4 events: `Open`, `Edit`, `Crash`, `Open` answering Discard on "Restore Unsaved Changes?" |
+    | F2 | - | 1 | - | 230 | 3 events: `Open(bob)`, `Pause(Save(bob) at Save.AfterLocalSnapshot; BobEdits)`, `Crash(bob)` |
+    | F5 | 1 | 1 | 36 | 176 | 6 events: a backup copy, `Open`, `Save`, `Pause(Edit at Dirty.AfterMarkerWritten; ItRestoresOldFile)`, `Crash`, `Open` (restore offered, then refused) |
+    | F6 | 6 | 1 | 6 | 117 | 5 events: `Open(alice)`, `ColleagueWrites`, `Edit`, `Close`, `Open` (told a restore would be offered; "Can't Restore" follows; F7 beside it) |
+    | F7 | 41 | - | 36 | 156 | 4 events: `Open(bob)`, `ColleagueWrites`, `PowerCut(Edit(bob) at Dirty.AfterMarkerWritten)`, `Open(bob)` |
+    | F8 | - | 1 | 14 | - | 4 events: `Open(bob)`, `Edit(bob)`, `PowerCut(Save(bob) at Save.AfterRename)`, `Open(bob)` |
+    | F12 | - | 2 | - | 572 | 2 events: `Open(bob)`, `Pause(Save(bob) at Save.AfterLocalSnapshot; AliceTakesOverAndSaves)` (I4 and I1 both) |
+    | F16 | 18 | 3 | 5 | 150 | 4 events: `Open(bob)`, `AdvanceTime(4m)`, `Open(alice)`, `SwitchAway(bob)` (the harness-inline form; the pause form is also 4 events) |
+
+    F3, F4, F9, F10, F13 and F14 are not in the table because the harness cannot see them (next table); F15 is a wording finding. Differences from run 1, all explained:
+    F16 in the pause sweep fell from 171 to 150 and F6, F7 by a few, because the Close-and-switch cases that showed them are no longer run; the search counts differ by one
+    (F1 427 to 428, F16 19 to 18) because the six walks that stopped early in run 1 now run to the end; the F16 replay count is 2 in run 1 and 3 in run 2 (not
+    investigated).
+  - **Section 3 coverage: which findings the harness sees.** Checked against the harness's events, ledger and classifier, not against the expectation:
+
+    | Finding | Seen by the harness? | If not seen, why; and how it is checked instead |
+    |---|---|---|
+    | **F1** | **Seen.** Search, crash sweep, pause sweep: an edit lost in a step where "Restore Unsaved Changes?" or "Can't Restore" was answered Discard or X (I2, classifier F1) | |
+    | **F2** | **Seen.** Replay and pause sweep: an edit made while the computer's own save or close is held in the edit-loss window (the crash route, and both clean-close routes) | |
+    | **F3** | Not seen | No inline editor is modelled: an "edit" is a row inserted through the session's connection, already applied, so there is no unapplied input to lose. Not checked yet; belongs with spec item 14 (a unit test of the editor, then a hand test) |
+    | **F4** | Not seen | `Edit` is enabled only while the session has write access, so nothing writes after a demotion, and the harness has no editor left open. Hand test in section 6 (open a section editor, take the lock from another session, Apply); when F4 is fixed a unit test can prove that writes to the read-only copy fail. Not run yet |
+    | **F5** | **Seen indirectly.** Search, replay, crash sweep, pause sweep: a restore refused although no data changed (classifier F5) | The cause itself, the no-edit save that rewrites the database, has no invariant of its own. The probe test in section 6 (check out, save with no edits, compare hashes) is not written yet |
+    | **F6** | **Seen.** Search, replay, crash sweep, pause sweep: a "will offer to restore" promise broken at the next open of the same database | |
+    | **F7** | **Seen.** Search, crash sweep, pause sweep: "Restore?" then "Can't Restore" | |
+    | **F8** | **Seen.** Replay and crash sweep (a power cut at `Save.AfterRename`) | |
+    | **F9** | Not seen | Environment: each simulated computer's local folder is a plain folder under one temp root; nothing models roaming profiles, folder redirection or an older copy roaming back. Section 6: no way to test it here. A field test on a roaming profile, and a migration test when the files move to `%LocalAppData%`; neither exists yet |
+    | **F10** | Not seen | The harness judges messages that are shown; it cannot see a message that is missing. A read-only open while kept changes wait shows nothing, so there is nothing to judge (I2 does confirm that the kept changes survive). Not checked yet: a unit test and a hand test once the observer-mode message exists |
+    | **F11** | Moot | 10b was shelved on 2026-10-18 |
+    | **F12** | **Seen.** Replay and pause sweep, in both forms (I4 at the rename; I1 when the rename lands over another computer's save) | |
+    | **F13** | Not seen | No event writes a damaged lock file: the events delete the lock file or place another person's valid one. `StaleLockPromptTests` covers only the placeholder holder of a garbled file in the take-over text, not the "removed" wording. Not checked yet: a unit test of the wording and a harness event that damages the file |
+    | **F14** | Not seen | The ledger lists every computer's kept files, but nothing in the product shows one computer's kept changes to another, so there is no message to judge. Not checked yet; the finding itself says it is probably a message only |
+    | **F15** | **Partly.** The heartbeat banner is now met and judged: a kept-changes promise, and no deep run has found it false (9.3d, failure 2). The "Changes Not Saved" at a close during an outage is F6's face, counted under F6 when its restore is refused | Not judged: the banner's wording and the second message for one outage, the autosave banner clearing itself after 30 seconds, and the advice to try again in a moment (wording and timing are not harness violations). `SavePromptTests` pin the save-failure texts only; the rest is not checked yet (a field test of a real outage, and a unit test when the persistent outage state exists) |
+    | **F16** | **Seen.** Search, replay, crash sweep, pause sweep (invariant I6, both clauses) | Also `CheckoutServiceTests.F16_ADemotionStillRunningWhenTheUserSwitches_DoesNotTouchTheNewSession` for the production-shaped route (skipped until fixed) |
+
+  - **Results:** normal suite **2723 passed + 70 skipped** (before: 2721 passed + 66 skipped; two new plain tests, four new harness tests that skip without `TERMPOINT_HARNESS=1`);
+    the harness classes affected (`PauseProofTests`, `InvariantProofTests`, `HarnessWalkTests`, `PauseSweepTests`, known sequences) at the default budget with
+    `TERMPOINT_HARNESS=1`: 57 tests, in about 7 minutes; the last full pass of them had 56 passed and 1 failed, `F16_ADemotionHeldWhileTheUserSwitches_FiresBothClausesOfI6`,
+    a timing flake that also occurs before these changes (see the limitations); the two proof classes run again passed 47 of 47, and an earlier pass of all 57 on the same
+    code passed. Deep run 2 as above. No new violations anywhere.
+  - **Files changed (all under `src/TermPoint.Tests/Harness/`):** `Computer.cs` (edit ids), `MessagePromises.cs` (four entries), `PauseActions.cs` and `Pause.cs`
+    (`IsOfferedWhileHolding`), `PauseSweep.cs` (plan, count, report line), `PauseSweepTests.cs` (the exception removed), `PauseProofTests.cs` and `InvariantProofTests.cs` (six new tests).
+  - **Limitations:**
+    - Two deep runs, one machine, one budget. The exhaustive search stops at depth 4 and the random walks at 40 events; what lies beyond is reached only by the
+      sweeps and the replay list.
+    - **The left-out family is no longer looked for.** The harness will not report the switch-during-close loss again, at any width. If the decision is reversed, delete
+      `PausedComputerSwitchesAction.IsOfferedWhileHolding`; the harness finds it again as `I2/EditLost/new` (5 events).
+    - **The pause plan is not fully deterministic.** The plan fell by 246 cases, of which 240 are the left-out pairings (120 x 2 follow-ups) and 6 are
+      `TheLockFileIsDeleted` cases during a held Close (862 to 856); run 1 had 3 "not possible" cases of exactly that kind. By inference, whether the lock file still
+      exists when the dry run's survey asks depends on the close's background lock-file delete. Not investigated; it changes a case count, never a verdict.
+    - **One proof test is flaky (found by this step's final pass; not caused by it).** `F16_ADemotionHeldWhileTheUserSwitches_FiresBothClausesOfI6` fails now and then: only
+      clause (b) of I6 is reported (at the pause step and again at the next one) and clause (a), the read-only session holding the new lock, is not. That is what a demotion
+      that finishes a moment after the step ended would look like: the wake check settles by waiting for 5 quiet windows of 8 ms of real time
+      (`Computer.SettleBackgroundWorkAsync`), which a slow thread can outlast. Measured on the test alone: on the commit this work started from, 2 failures in 100
+      runs; on the changed code, 9 in 126. Most of the difference is one burst (5 in 40 on the changed code, none in 40 on the old build just before); run alternately, old
+      and changed builds each failed 2 in 60. I read the burst as machine load (the same race, no code path through the changes), but 100 runs cannot rule out a small effect.
+      The two deep runs did not hit it. A fix would wait on the demotion's own task instead of quiet windows; it touches the settle
+      every wake check uses, so it is not made here. A failure of this test alone, with clause (a) missing and no new violation, is this flake, not a finding.
+    - The kept-changes promise of the heartbeat banner is judged as "kept"; "will be saved once the connection returns" is not judged (it needs a later save).
+    - A message text is found by the scan only if its words are in one literal or in concatenated literals; the run-time check is the backstop. The scan is a
+      script in the session's scratch files, not a test, so a new message is caught by the harness when it is shown, not when it is written.
+    - A deep run is not part of the normal suite or of CI: about 1.5 hours, several GB of free disk space (run 2 started with 6.3 GB free and the lowest was 5.7 GB), and it should
+      not share the machine with other test runs (the pause grace period of 2 s is real time).
+  - **Seen on the way, not changed (production side):** `SavePrompt.SessionFileMissingMessage` says that changes since the last save can't be saved and to close and
+    reopen, but not whether the unsaved work is kept, which rule 4 asks of every message; the catalogue treats it as `Info` because it promises nothing. The heartbeat
+    banner's wording and timing are F15. Nothing else in the save, lock, heartbeat, exit, switch, restore and recovery texts needed a catalogue entry that is not now there.
+  - **Against the four rules:** no production change. The run found no breach of rule 1, 2 or 3 that section 3 does not already hold, apart from the family the user chose
+    not to pursue (rule 3: a switch that deletes the working copy a close kept), which is recorded here and in 9.3c-2b and left out of the harness on purpose.
 
 ### 9.4 The new assessment
 Once 9.1–9.3 exist, section 2 of this document is redone against the design: each row becomes a harness scenario

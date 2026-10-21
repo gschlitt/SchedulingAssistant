@@ -110,6 +110,15 @@ internal sealed class PauseSweepResult
 
     /// <summary>How many (point, event) combinations the width-1 sweep left to width 2 because the event is known to wait for the held operation.</summary>
     public int LeftToWidth2 { get; set; }
+
+    /// <summary>
+    /// How many cases the sweep left out BY DECISION, at any width, because the action is not offered while the held operation is what it
+    /// is (<see cref="PauseAction.IsOfferedWhileHolding"/>): today the same computer switching database while its own Close is held (not
+    /// pursued, user, 2026-10-21). Counted once per case identity (an operation, a point and an event at width 1; with the situation and the
+    /// time the point is reached at width 2), before the follow-ups multiply them, so the report shows the rule at work and a test can tell
+    /// that it was.
+    /// </summary>
+    public int NotOffered { get; set; }
 }
 
 /// <summary>
@@ -283,7 +292,8 @@ internal static class PauseSweep
     private static async Task<IReadOnlyList<PauseCasePlan>> PlanAsync(
         CrashSituation situation, string computer, SweepOperation operation, int width, HashSet<string> planned, PauseSweepResult result)
     {
-        var innerKey = operation.Make(computer).Key;
+        var held     = operation.Make(computer);
+        var innerKey = held.Key;
         var dryRecord = CrashSweep.Record(situation.Prefix,
             new RecordedStep { EventKey = innerKey, Answers = operation.Answers?.Invoke(computer).ToList() ?? new List<RecordedAnswer>() });
 
@@ -333,6 +343,18 @@ internal static class PauseSweep
                 var arrival = arrivals[occurrence - 1];
                 foreach (var action in PauseActions.For(computer).Where(a => arrival.PossibleEvents.Contains(a.Key)))
                 {
+                    var identity = width >= 2
+                        ? $"{situation.Name}|{innerKey}|{group.Key}|{occurrence}|{action.Key}"
+                        : $"{innerKey}|{group.Key}|{action.Key}";
+
+                    // A pairing left out by decision (see PausedComputerSwitchesAction): neither planned nor run, at any width. Counted once
+                    // per identity, like a case, so the count is the number of cases the rule removed (per follow-up).
+                    if (!action.IsOfferedWhileHolding(held))
+                    {
+                        if (planned.Add("left out|" + identity)) result.NotOffered++;
+                        continue;
+                    }
+
                     // An event that is known to wait for the held operation (a switch while the same computer's save is in flight) is
                     // designed behaviour that costs the whole grace period to demonstrate: a proof test pins it, and width 2 sweeps it.
                     if (width < 2 && arrival.WaitingEvents.Contains(action.Key))
@@ -341,9 +363,6 @@ internal static class PauseSweep
                         continue;
                     }
 
-                    var identity = width >= 2
-                        ? $"{situation.Name}|{innerKey}|{group.Key}|{occurrence}|{action.Key}"
-                        : $"{innerKey}|{group.Key}|{action.Key}";
                     if (!planned.Add(identity)) continue;
 
                     foreach (var followUp in FollowUpsFor(width))
@@ -456,6 +475,8 @@ internal static class PauseSweepReport
         if (sweep.Width < 2)
             sb.AppendLine($"- Left to width 2: {sweep.LeftToWidth2} (point, event) combinations in which the event is known to wait for the held operation " +
                           "(a switch while the same computer's save is in flight); a proof test pins that behaviour.");
+        sb.AppendLine($"- Left out by decision: {sweep.NotOffered} pairings (cases, before the follow-ups) in which the same computer switches database while its own Close is held " +
+                      "(not pursued, user, 2026-10-21: the switch deletes the working copy the close kept; see PausedComputerSwitchesAction). Another computer's events during a close are swept.");
         sb.AppendLine($"- Hangs: {sweep.HangCases.Count}" + (sweep.HangCases.Count == 0 ? "." : ":"));
         foreach (var line in sweep.HangCases) sb.AppendLine($"  - {line}");
         sb.AppendLine($"- Default subset (width 1): the operations {string.Join("; ", PauseSweep.DefaultOperationNames)}, at their " +
