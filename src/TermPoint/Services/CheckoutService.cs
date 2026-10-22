@@ -1619,16 +1619,26 @@ public sealed class CheckoutService : IDisposable
     }
 
     /// <summary>
-    /// Records the snapshot hash of a save whose rename was never confirmed, in memory
+    /// Records the snapshot hash of a save whose rename has not been confirmed, in memory
     /// (<see cref="_pendingSaveHash"/>, for same-session self-heal in step 2) and in the
     /// dirty marker file (for cross-restart recognition by
     /// <see cref="FinishRecoveryCheckoutAsync"/>). The marker is only rewritten when one
     /// already exists — no marker means no unsaved edits, in which case a post-exit
     /// ghost is harmless (D' content and ghost content are identical) and the in-memory
     /// copy covers the rest of this session.
+    ///
+    /// <para><b>When it is called (F8):</b> <see cref="SaveAsyncCore"/> calls this immediately BEFORE the
+    /// step-5 rename, not only after a rename that timed out or threw. Until the marker is deleted in
+    /// step 6, a crash or power cut can strike at any point after a rename that did succeed; without the
+    /// fingerprint in the marker, the next start finds D changed, matches neither the marker's
+    /// <c>HashAtCheckout</c> nor a <c>PendingSaveHash</c>, and answers "Can't Restore Unsaved Changes"
+    /// although D already holds every change. With the fingerprint recorded first, recovery recognises D as
+    /// this session's own save (<c>matchesPending</c>) and the Restore works. Step 6 clears it again on
+    /// success.</para>
+    ///
     /// Internal so tests can simulate the rename-timeout state deterministically.
     /// </summary>
-    /// <param name="hash">Hash of the D.tmp snapshot whose rename is unconfirmed.</param>
+    /// <param name="hash">Hash of the D.tmp snapshot that is about to be renamed onto D (or whose rename is unconfirmed).</param>
     internal void RecordPendingSaveHash(string? hash)
     {
         _pendingSaveHash = hash;
@@ -1659,86 +1669,13 @@ public sealed class CheckoutService : IDisposable
             return SaveOutcome.Success;
         }
 
-        // ── Step 1: Verify we still hold the lock ─────────────────────────────
-        var lockResult = await VerifyLockIsOursAsync();
-
-        if (lockResult == LockVerificationResult.Unreachable)
-        {
-            _logger.LogInfo("CheckoutService: lock verification timed out — network unreachable");
-            RaiseTransientSaveError(SavePrompt.UnreachableMessage, isAutoSave);
-            return SaveOutcome.CopyError;
-        }
-
-        if (lockResult == LockVerificationResult.NotOurs)
-        {
-            // If the lock file was merely REMOVED (antivirus, cloud-sync — no new
-            // holder), try to re-create it atomically before giving up the session.
-            if (await TryRecoverRemovedLockAsync())
-            {
-                _logger.LogBreadcrumb("Save: lock re-acquired after external removal — continuing");
-                // Fall through — the save proceeds normally under the restored lock.
-            }
-            else
-            {
-                _logger.LogBreadcrumb("Save: LockLost");
-                await HandleLockLossAsync();
-                return SaveOutcome.LockLost;
-            }
-        }
-        CrashPoints.Hit("Save.AfterLockCheck");
-
-        // ── Step 2: Verify D has not been externally modified ─────────────────
-        if (HashAtCheckout is not null)
-        {
-            // HashSourceAsync reports a plain file error on D (another program holds it exclusively,
-            // access denied, file gone) as a result instead of letting the IOException escape.
-            // Nothing has been written yet, so there is nothing to clean up.
-            var (hashCompleted, currentSourceHash, sourceUnreadable) =
-                await HashSourceAsync(SourcePath, "save: source hash");
-
-            if (sourceUnreadable)
-            {
-                RaiseTransientSaveError(SavePrompt.InUseMessage, isAutoSave);
-                return SaveOutcome.CopyError;
-            }
-
-            if (!hashCompleted)
-            {
-                _logger.LogInfo("CheckoutService: source hash timed out — network unreachable");
-                RaiseTransientSaveError(SavePrompt.UnreachableMessage, isAutoSave);
-                return SaveOutcome.CopyError;
-            }
-
-            if (currentSourceHash != HashAtCheckout)
-            {
-                // Ghost-rename self-heal: if D's hash equals the snapshot hash of a save
-                // whose rename was never confirmed, D was updated by OUR OWN delayed
-                // File.Move landing after its 5s deadline — not by another writer.
-                // Adopt that save as successful and continue with the current one.
-                // (SHA-256 equality with a foreign write is not a practical concern.)
-                if (_pendingSaveHash is not null &&
-                    string.Equals(currentSourceHash, _pendingSaveHash, StringComparison.OrdinalIgnoreCase))
-                {
-                    _logger.LogInfo("CheckoutService: source matches pending save hash — " +
-                                    "our delayed rename landed; treating prior save as successful.");
-                    _logger.LogBreadcrumb("Save: GhostRenameHealed");
-                    HashAtCheckout   = _pendingSaveHash;
-                    _pendingSaveHash = null;
-                    // Fall through to step 3 — the current save proceeds normally.
-                }
-                else
-                {
-                    _logger.LogInfo("CheckoutService: source hash mismatch — the database was modified outside this session; save refused.");
-                    _logger.LogBreadcrumb("Save: SourceModified");
-                    // A genuine conflict the user must resolve (spec item 10, step 10a). Not a SaveFailed
-                    // banner: the sticky state is HasSaveConflict, and the main window shows its own
-                    // persistent banner (Save a Copy… / Discard Changes) when SaveConflictDetected fires.
-                    HasSaveConflict = true;
-                    _dispatch(() => SaveConflictDetected?.Invoke());
-                    return SaveOutcome.SourceModified;
-                }
-            }
-        }
+        // ── Steps 1–2: the lock is still ours, and D is still the version we last saw ──
+        // The same two checks run again, as the final check, immediately before the rename (step 4b).
+        // The stamp of D taken here is what that final check compares against (the cheap path).
+        var (firstRefusal, sourceStamp) = await CheckLockAndSourceAsync(
+            isAutoSave, isFinalCheck: false, stampAtFirstCheck: null);
+        if (firstRefusal is { } refused)
+            return refused;
 
         CrashPoints.Hit("Save.AfterSourceCheck");
 
@@ -1874,7 +1811,49 @@ public sealed class CheckoutService : IDisposable
 
         CrashPoints.Hit("Save.AfterTmpVerify");
 
+        // ── Step 4b: Final check — the lock is still ours and D is still unchanged (F12) ────────────
+        // Steps 1–2 ran before the snapshot and the upload. The upload takes seconds on a slow link, and
+        // hours when the laptop goes to sleep mid-save ("click X, then shut the lid" starts the exit save
+        // and suspends the machine before it ends). Meanwhile our lock can have gone stale and another
+        // user taken it over and saved; renaming D.tmp onto D now would silently overwrite their save.
+        // So the same two checks run again, as the last thing before the rename. They cost one lock-file
+        // read and one stat of D (the stamp from the first check is compared; D is hashed again only if
+        // the stamp changed). If either refuses, D is untouched: return the refusal; the working copy D'
+        // and its dirty marker stay, exactly as for a refusal at the start, so nothing the user typed is
+        // lost. D.tmp is deleted only while the lock is still ours (rule 2: no write to the share without
+        // the lock). D.tmp has one name for every writer, so once the lock has changed hands the file may
+        // be the new holder's save in progress; ours is left for the next lock holder, whose checkout
+        // deletes an orphaned D.tmp (CleanupOrphanedTmpAsync) and whose save overwrites it.
+        //
+        // A gap of microseconds between the last check and the rename remains: another user's rename can
+        // land in it. It cannot be closed on a plain file share, which has no compare-and-swap and no
+        // server to arbitrate; the lock and the final check make it a matter of microseconds instead of
+        // the length of the upload, and it is accepted.
+        var (finalRefusal, _) = await CheckLockAndSourceAsync(
+            isAutoSave, isFinalCheck: true, stampAtFirstCheck: sourceStamp);
+        if (finalRefusal is { } refusedAtFinalCheck)
+        {
+            var lockStillOurs = refusedAtFinalCheck != SaveOutcome.LockLost;
+            _logger.LogInfo("CheckoutService: the final check before the rename refused the save — " +
+                            (lockStillOurs ? "D.tmp discarded." : "lock lost, D.tmp left for the new holder's cleanup."));
+            _logger.LogBreadcrumb("Save: refused at final check", new() { ["outcome"] = refusedAtFinalCheck.ToString() });
+            if (lockStillOurs)
+                await NetworkFileOps.DeleteAsync(tmpPath);
+            return refusedAtFinalCheck;
+        }
+
+        CrashPoints.Hit("Save.AfterFinalCheck");
+
         // ── Step 5: Atomically rename D.tmp → D ──────────────────────────────
+        // Record the snapshot's fingerprint BEFORE the rename (F8), in memory and in the dirty marker.
+        // Until step 6 deletes the marker, a crash or power cut can strike after a rename that DID
+        // succeed. If the marker lacked the fingerprint, the next start would see D changed, match
+        // neither HashAtCheckout nor a pending save hash, and refuse the Restore with "Can't Restore"
+        // although D already holds every change. With it recorded, recovery recognises D as this
+        // session's own save (matchesPending) and the Restore works. Step 6 clears it on success. The
+        // failure branches below record it again, which changes nothing: they predate this call, and an
+        // unconfirmed rename may still land.
+        RecordPendingSaveHash(newSourceHash);
         try
         {
             var renameCompleted = await NetworkFileOps.MoveAsync(tmpPath, SourcePath);
@@ -1941,6 +1920,209 @@ public sealed class CheckoutService : IDisposable
         _logger.LogBreadcrumb("Save: Success");
         _dispatch(() => SaveCompleted?.Invoke());
         return SaveOutcome.Success;
+    }
+
+    /// <summary>
+    /// What a save sees of the shared database D without reading its content: the file's size and its
+    /// last-write time (UTC), read in one stat. Step 2 of a save keeps the stamp it took before hashing D; the
+    /// final check before the rename takes it again, and re-hashes D only when the two differ. A write to D
+    /// (another user's rename onto it, or any program changing it) changes the last-write time, so a difference
+    /// is the cue to look closer; a stamp that has not changed is accepted as "D has not changed" (a hash
+    /// would only confirm it, at the cost of reading the whole database over the network).
+    /// </summary>
+    /// <param name="Length">The file's size in bytes.</param>
+    /// <param name="LastWriteUtc">The file's last-write time, UTC.</param>
+    private readonly record struct SourceStamp(long Length, DateTime LastWriteUtc);
+
+    /// <summary>
+    /// Takes a <see cref="SourceStamp"/> of the shared database D under the network deadline, reporting a plain
+    /// file error as a result instead of letting it escape — the stat counterpart of <see cref="HashSourceAsync"/>.
+    /// The read is one metadata round-trip, run through <see cref="NetworkFileOps.RunAsync{T}(Func{T}, string, string?, string?)"/>
+    /// so it gets the same <see cref="NetworkFileOps.TimeoutMs"/> deadline (and test fault seam) as every other
+    /// read of the share. A missing D throws <see cref="FileNotFoundException"/> from <see cref="FileInfo.Length"/>,
+    /// which is an <see cref="IOException"/> and so lands in the unreadable case, as a missing D does for the hash.
+    /// </summary>
+    /// <param name="path">Full path of D.</param>
+    /// <param name="stage">Short label for the log line, e.g. "save: source stamp".</param>
+    /// <returns>
+    /// <c>(true, stamp, false)</c> when the stat completed within the deadline; <c>(false, default, false)</c> when
+    /// it timed out; <c>(false, default, true)</c> when it threw <see cref="IOException"/> or
+    /// <see cref="UnauthorizedAccessException"/>. Any other exception type still propagates.
+    /// </returns>
+    private async Task<(bool Completed, SourceStamp Stamp, bool Unreadable)> StatSourceAsync(string path, string stage)
+    {
+        try
+        {
+            var (completed, stamp) = await NetworkFileOps.RunAsync(
+                () =>
+                {
+                    var info = new FileInfo(path);
+                    return new SourceStamp(info.Length, info.LastWriteTimeUtc);   // Length throws if D is missing
+                },
+                "File.Stat", path, null);
+            return (completed, stamp, false);
+        }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+        {
+            _logger.LogInfo($"CheckoutService: {stage} — cannot read the source database ({ex.GetType().Name}: {ex.Message})");
+            return (false, default, true);
+        }
+    }
+
+    /// <summary>
+    /// The two checks a save makes before it may write to the shared database D, run at the start of the save
+    /// (steps 1–2) and again, as the final check, immediately before the rename onto D (step 4b, F12).
+    ///
+    /// <para><b>Step 1 — the lock is still ours.</b> <see cref="VerifyLockIsOursAsync"/> with its one retry. A
+    /// share that cannot be reached is a transient <see cref="SaveOutcome.CopyError"/>; a lock file that was merely
+    /// REMOVED (antivirus, cloud-sync — no new holder) is re-created atomically by
+    /// <see cref="TryRecoverRemovedLockAsync"/> and the save goes on; any other loss is
+    /// <see cref="SaveOutcome.LockLost"/> after <see cref="HandleLockLossAsync"/>.</para>
+    ///
+    /// <para><b>Step 2 — D is still the version we last saw.</b> Skipped when <see cref="HashAtCheckout"/> is null.
+    /// Otherwise D is stat'ed (<see cref="StatSourceAsync"/>) and then hashed, the stamp being read BEFORE the hash
+    /// so that any change after it shows up as a difference later. A hash that differs from
+    /// <see cref="HashAtCheckout"/> is first compared with <see cref="_pendingSaveHash"/> (the ghost-rename
+    /// self-heal: our own delayed rename landed); otherwise it is <see cref="SaveOutcome.SourceModified"/> with
+    /// <see cref="HasSaveConflict"/> set and <see cref="SaveConflictDetected"/> raised. A timeout is an
+    /// unreachable-network <see cref="SaveOutcome.CopyError"/>; a file error on D is an in-use
+    /// <see cref="SaveOutcome.CopyError"/>.</para>
+    ///
+    /// <para><b>The final check is cheap.</b> When <paramref name="isFinalCheck"/> is true and
+    /// <paramref name="stampAtFirstCheck"/> is given, D is only stat'ed; if its size and last-write time are
+    /// exactly those of the first check, D has not been written since and the (whole-file, over-the-network) hash
+    /// is skipped. If either differs, D is hashed and compared exactly as in the first check — a difference of the
+    /// stamp alone (a reader touching the file, say) therefore costs a hash but never a false refusal.</para>
+    ///
+    /// <para><b>Crash points.</b> <c>Save.AfterLockCheck</c> is hit between the two steps of the FIRST check only;
+    /// the final check hits none (its own point, <c>Save.AfterFinalCheck</c>, is hit by the caller), so a save
+    /// still reaches each point once and in catalogue order.</para>
+    ///
+    /// <para>Writes nothing to D, D.tmp or D'. The caller owns any D.tmp cleanup after a refusal.</para>
+    /// </summary>
+    /// <param name="isAutoSave">True when the autosave timer started the save; selects the auto-dismissing banner text.</param>
+    /// <param name="isFinalCheck">False for the check at the start of the save, true for the one before the rename.</param>
+    /// <param name="stampAtFirstCheck">
+    /// The stamp the first check returned, for the cheap comparison of the final check; null on the first check, or
+    /// when the first check took none (<see cref="HashAtCheckout"/> was null), in which case the final check hashes.
+    /// </param>
+    /// <returns>
+    /// <c>Refusal</c>: null when the save may continue, otherwise the <see cref="SaveOutcome"/> the save must return
+    /// (any banner or event has already been raised). <c>Stamp</c>: the stamp of D this check took (null when step 2
+    /// was skipped, or when the final check found it unchanged and so has nothing newer to report).
+    /// </returns>
+    private async Task<(SaveOutcome? Refusal, SourceStamp? Stamp)> CheckLockAndSourceAsync(
+        bool isAutoSave, bool isFinalCheck, SourceStamp? stampAtFirstCheck)
+    {
+        // ── Step 1: Verify we still hold the lock ─────────────────────────────
+        var lockResult = await VerifyLockIsOursAsync();
+
+        if (lockResult == LockVerificationResult.Unreachable)
+        {
+            _logger.LogInfo("CheckoutService: lock verification timed out — network unreachable");
+            RaiseTransientSaveError(SavePrompt.UnreachableMessage, isAutoSave);
+            return (SaveOutcome.CopyError, null);
+        }
+
+        if (lockResult == LockVerificationResult.NotOurs)
+        {
+            // If the lock file was merely REMOVED (antivirus, cloud-sync — no new
+            // holder), try to re-create it atomically before giving up the session.
+            if (await TryRecoverRemovedLockAsync())
+            {
+                _logger.LogBreadcrumb("Save: lock re-acquired after external removal — continuing");
+                // Fall through — the save proceeds normally under the restored lock.
+            }
+            else
+            {
+                _logger.LogBreadcrumb("Save: LockLost");
+                await HandleLockLossAsync();
+                return (SaveOutcome.LockLost, null);
+            }
+        }
+        if (!isFinalCheck)
+            CrashPoints.Hit("Save.AfterLockCheck");
+
+        // ── Step 2: Verify D has not been externally modified ─────────────────
+        if (HashAtCheckout is null)
+            return (null, null);
+
+        // 2a. Stat D BEFORE hashing it, so a change after this read always shows up as a difference
+        //     between two stamps (a change between the stat and the hash is caught by the hash itself,
+        //     and also changes the stamp the final check will see). Like the hash below, a plain file
+        //     error on D is reported as a result, and nothing has been written yet, so there is nothing
+        //     to clean up.
+        var (statCompleted, stampNow, statUnreadable) =
+            await StatSourceAsync(SourcePath, isFinalCheck ? "save: final source stamp" : "save: source stamp");
+
+        if (statUnreadable)
+        {
+            RaiseTransientSaveError(SavePrompt.InUseMessage, isAutoSave);
+            return (SaveOutcome.CopyError, null);
+        }
+
+        if (!statCompleted)
+        {
+            _logger.LogInfo("CheckoutService: source stat timed out — network unreachable");
+            RaiseTransientSaveError(SavePrompt.UnreachableMessage, isAutoSave);
+            return (SaveOutcome.CopyError, null);
+        }
+
+        // 2b. The cheap path of the final check: size and last-write time are exactly what the first
+        //     check saw, so nobody has written D since. Skip the hash (it reads the whole database over
+        //     the network). The first check never takes this path: it has nothing to compare with.
+        if (isFinalCheck && stampAtFirstCheck is { } firstStamp && firstStamp == stampNow)
+            return (null, stampNow);
+
+        // 2c. Hash D. HashSourceAsync reports a plain file error on D (another program holds it
+        //     exclusively, access denied, file gone) as a result instead of letting the IOException escape.
+        var (hashCompleted, currentSourceHash, sourceUnreadable) =
+            await HashSourceAsync(SourcePath, isFinalCheck ? "save: final source hash" : "save: source hash");
+
+        if (sourceUnreadable)
+        {
+            RaiseTransientSaveError(SavePrompt.InUseMessage, isAutoSave);
+            return (SaveOutcome.CopyError, null);
+        }
+
+        if (!hashCompleted)
+        {
+            _logger.LogInfo("CheckoutService: source hash timed out — network unreachable");
+            RaiseTransientSaveError(SavePrompt.UnreachableMessage, isAutoSave);
+            return (SaveOutcome.CopyError, null);
+        }
+
+        if (currentSourceHash != HashAtCheckout)
+        {
+            // Ghost-rename self-heal: if D's hash equals the snapshot hash of a save
+            // whose rename was never confirmed, D was updated by OUR OWN delayed
+            // File.Move landing after its 5s deadline — not by another writer.
+            // Adopt that save as successful and continue with the current one.
+            // (SHA-256 equality with a foreign write is not a practical concern.)
+            if (_pendingSaveHash is not null &&
+                string.Equals(currentSourceHash, _pendingSaveHash, StringComparison.OrdinalIgnoreCase))
+            {
+                _logger.LogInfo("CheckoutService: source matches pending save hash — " +
+                                "our delayed rename landed; treating prior save as successful.");
+                _logger.LogBreadcrumb("Save: GhostRenameHealed");
+                HashAtCheckout   = _pendingSaveHash;
+                _pendingSaveHash = null;
+                // Fall through — the current save proceeds normally.
+            }
+            else
+            {
+                _logger.LogInfo("CheckoutService: source hash mismatch — the database was modified outside this session; save refused.");
+                _logger.LogBreadcrumb("Save: SourceModified");
+                // A genuine conflict the user must resolve (spec item 10, step 10a). Not a SaveFailed
+                // banner: the sticky state is HasSaveConflict, and the main window shows its own
+                // persistent banner (Save a Copy… / Discard Changes) when SaveConflictDetected fires.
+                HasSaveConflict = true;
+                _dispatch(() => SaveConflictDetected?.Invoke());
+                return (SaveOutcome.SourceModified, null);
+            }
+        }
+
+        return (null, stampNow);
     }
 
     /// <summary>

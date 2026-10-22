@@ -60,6 +60,29 @@ public sealed class RecoveryConflictPromptTests
         Assert.Contains("Always open the most recent database at startup", RecoveryConflictPrompt.ConflictMessage);
     }
 
+    /// <summary>
+    /// The "Discard Unsaved Changes?" confirmation (data-persistence review, F1) is the approved wording, verbatim: one title and
+    /// two buttons for both recovery questions, and a message that adds the way out ("Save a Copy…") only after the conflict question.
+    /// The title is not the title of another dialog.
+    /// </summary>
+    [Fact]
+    public void DiscardConfirmation_IsTheApprovedWording()
+    {
+        Assert.Equal("Discard Unsaved Changes?", RecoveryConflictPrompt.DiscardConfirmTitle);
+        Assert.Equal("Discard", RecoveryConflictPrompt.DiscardConfirmButton);
+        Assert.Equal("Go Back", RecoveryConflictPrompt.GoBackButton);
+        Assert.Equal(
+            "Your unsaved changes from the previous session will be deleted. This can't be undone.",
+            RecoveryConflictPrompt.DiscardConfirmMessage);
+        Assert.Equal(
+            "Your unsaved changes from the previous session will be deleted. This can't be undone.\n\n" +
+            "To keep them, go back and choose Save a Copy…",
+            RecoveryConflictPrompt.DiscardConfirmWithCopyMessage);
+
+        Assert.NotEqual(SaveConflictPrompt.DiscardConfirmTitle, RecoveryConflictPrompt.DiscardConfirmTitle);
+        Assert.NotEqual(RecoveryConflictPrompt.ConflictTitle, RecoveryConflictPrompt.DiscardConfirmTitle);
+    }
+
     /// <summary>The "choose a new name" message and its title are the approved wording, verbatim.</summary>
     [Fact]
     public void AlreadyExists_IsTheApprovedWording()
@@ -104,6 +127,9 @@ public sealed class RecoveryConflictPromptTests
         {
             RecoveryConflictPrompt.ConflictTitle, RecoveryConflictPrompt.ConflictMessage,
             RecoveryConflictPrompt.SaveCopyButton, RecoveryConflictPrompt.DiscardButton,
+            RecoveryConflictPrompt.DiscardConfirmTitle, RecoveryConflictPrompt.DiscardConfirmMessage,
+            RecoveryConflictPrompt.DiscardConfirmWithCopyMessage, RecoveryConflictPrompt.DiscardConfirmButton,
+            RecoveryConflictPrompt.GoBackButton,
             RecoveryConflictPrompt.SaveDialogTitle,
             RecoveryConflictPrompt.SuggestedFileName(Path.Combine(Path.GetTempPath(), "BIOL-TT.db")),
             RecoveryConflictPrompt.AlreadyExistsTitle, RecoveryConflictPrompt.AlreadyExistsMessage,

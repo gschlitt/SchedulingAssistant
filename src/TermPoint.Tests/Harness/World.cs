@@ -47,7 +47,8 @@ namespace TermPoint.Tests.Harness;
 /// <c>AsyncLocal</c> that follows the flow of control onto other threads.</para>
 ///
 /// <para><b>Observers.</b> <see cref="CrashPoints.Hook"/> is otherwise an OBSERVER: it never throws on its own. At
-/// <c>Save.AfterTmpVerify</c> (and <c>Restore.AfterTmpVerified</c>) it checks invariant I4 (the lock file holds the
+/// <c>Save.AfterFinalCheck</c> (the last moment before a save's rename, after the final check of the lock and of D) and at
+/// <c>Restore.AfterTmpVerified</c> it checks invariant I4 (the lock file holds the
 /// acting computer's session and the database is the version that computer last saw); a walk can add code at a point
 /// with <see cref="AtCrashPoint"/>. Prompts and banners report to <see cref="ObservePrompt"/> /
 /// <see cref="ObserveBanner"/>, which feed the story, the saved-copy list and the promise tracker (invariant I5).</para>
@@ -1308,8 +1309,11 @@ internal sealed class World : IDisposable
             if (call.Kind == PromptKind.PickSaveFile && call.PickedPath is not null)
                 _savedCopyPaths.Add(call.PickedPath);
 
-            // A confirmed discard covers the unsaved edits the computer held when the step began.
-            if (call.Kind == PromptKind.Choice && call.Title == HarnessTitles.DiscardConfirm
+            // A confirmed discard covers the unsaved edits the computer held when the step began. Two confirmations count:
+            // the conflict banner's "Discard Changes?" (spec item 10a) and the "Discard Unsaved Changes?" that follows Discard
+            // on either recovery question (finding F1, fixed): [Discard] there is a decision; Go Back and the X are not.
+            if (call.Kind == PromptKind.Choice
+                && (call.Title == HarnessTitles.DiscardConfirm || call.Title == HarnessTitles.DiscardUnsavedConfirm)
                 && call.Answer == ChoiceAnswer.Affirmative)
                 _confirmedDiscards.UnionWith(_last.UnsavedEditsOf(computer.Name));
         }
@@ -1493,7 +1497,7 @@ internal sealed class World : IDisposable
     /// </summary>
     /// <param name="name">One of <see cref="CrashPoints.All"/>.</param>
     /// <param name="action">What to do there.</param>
-    /// <param name="storyLine">The sentence for the story ("(at Save.AfterTmpVerify) ..."); null for a default.</param>
+    /// <param name="storyLine">The sentence for the story ("(at Save.AfterFinalCheck) ..."); null for a default.</param>
     /// <exception cref="ArgumentException">The name is not a crash point.</exception>
     public void AtCrashPoint(string name, Action action, string? storyLine = null)
     {
@@ -1621,7 +1625,10 @@ internal sealed class World : IDisposable
 
         if (demotion is not null) CheckDemotionStaysOnItsDatabase(demotion, life!, name);
 
-        if (name is "Save.AfterTmpVerify" or "Restore.AfterTmpVerified") CheckWriterAtRename(name);
+        // I4 looks at the true last moment before the rename. For a save that is AFTER its final check of the lock and of D
+        // (Save.AfterFinalCheck, finding F12 fixed): a save whose lock was taken over, or whose D changed, while it uploaded is
+        // refused by that check and never reaches this point; only the microseconds between the check and the rename remain.
+        if (name is "Save.AfterFinalCheck" or "Restore.AfterTmpVerified") CheckWriterAtRename(name);
     }
 
     /// <summary>
@@ -1702,7 +1709,7 @@ internal sealed class World : IDisposable
     /// observation is only a suspicion until the restore really lands, because the restore re-checks the lock and D
     /// itself immediately before its swap.
     /// </summary>
-    /// <param name="point">The crash point: <c>Save.AfterTmpVerify</c> or <c>Restore.AfterTmpVerified</c>.</param>
+    /// <param name="point">The crash point: <c>Save.AfterFinalCheck</c> or <c>Restore.AfterTmpVerified</c>.</param>
     private void CheckWriterAtRename(string point)
     {
         // Who reached the rename: the computer whose flow of control it is, NOT "the computer acting now". While a pause runs an
@@ -1758,7 +1765,7 @@ internal sealed class World : IDisposable
 
         if (problems.Count == 0) return;
 
-        var what = point == "Save.AfterTmpVerify" ? "Save's rename onto the shared database" : "the restore's rename onto the shared database";
+        var what = point == "Save.AfterFinalCheck" ? "Save's rename onto the shared database" : "the restore's rename onto the shared database";
         var violation = new Violation
         {
             Step = _step, Invariant = "I4", Kind = ViolationKind.WriteWithoutLockOrOnStaleVersion,
@@ -1766,7 +1773,7 @@ internal sealed class World : IDisposable
             Reason = $"just before {what}, {string.Join(" and ", problems)}"
         };
 
-        if (point == "Save.AfterTmpVerify") AddPending(violation);
+        if (point == "Save.AfterFinalCheck") AddPending(violation);
         else lock (_gate) _restoreSuspects.Add(violation);
     }
 

@@ -9,8 +9,8 @@ namespace TermPoint.Tests.Harness;
 /// Proof tests for the pause (spec item 9.3, step 9.3c-2b): an operation held at a named crash point while one other event happens,
 /// then released. Like the other proof tests they make the thing really happen and assert what the harness sees: that the operation
 /// is really held and really released, that a case replays to the same story and shrinks, that a deadlock becomes a Hang and not a
-/// hung test run, that designed waiting is not a violation, and that the F2, F12 and F16 routes (and invariant I6) classify as the
-/// design note says. They run only with <c>TERMPOINT_HARNESS=1</c> (<see cref="HarnessFactAttribute"/>), except the plain key test.
+/// hung test run, that designed waiting is not a violation, that the F2 and F16 routes (and invariant I6) classify as the design note
+/// says, and that the F12 route, fixed 2026-10-21, now ends with the save refused. They run only with <c>TERMPOINT_HARNESS=1</c> (<see cref="HarnessFactAttribute"/>), except the plain key test.
 /// </summary>
 public sealed class PauseProofTests
 {
@@ -40,7 +40,10 @@ public sealed class PauseProofTests
         "Open(bob)", "Edit(bob)", "Pause(Save(bob) at Save.AfterLocalSnapshot; BobEdits)", "Crash(bob)", "Open(bob)"
     };
 
-    /// <summary>The keys of the F12 route: Alice takes over and saves while Bob's save is held before it has copied to D.tmp; his rename then lands over her save.</summary>
+    /// <summary>
+    /// The keys of the old F12 route: Alice takes over and saves while Bob's save is held before it has copied to D.tmp. Before the fix his
+    /// rename then landed over her save; now his final check refuses it (<see cref="FixedFindingsProofTests"/> pins that).
+    /// </summary>
     private static readonly string[] F12Route =
     {
         "Open(bob)", "Edit(bob)", "Pause(Save(bob) at Save.AfterLocalSnapshot; AliceTakesOverAndSaves)", "Crash(bob)", "Open(bob)"
@@ -438,6 +441,11 @@ public sealed class PauseProofTests
     /// pointing at ALICE (the way an overlapping action of hers would) and puts her lock on the share; when Bob's save goes on and
     /// reaches the rename, the I4 observation must still be about BOB, the computer whose flow reached the point, and say the lock is
     /// not his. (Before the fix the observer asked "who is acting now" and would have looked at Alice.)
+    ///
+    /// <para>The pause is at <c>Save.AfterFinalCheck</c>, the accepted microsecond window after the save's final check: a lock that
+    /// changed hands earlier is refused by that check and never reaches the observation (see
+    /// <see cref="FixedFindingsProofTests"/>). A sweep never pauses there (<see cref="PausePoints.NeverPaused"/>); this test does,
+    /// on purpose, to hold Bob exactly where I4 looks.</para>
     /// </summary>
     [HarnessFact]
     public async Task Pause_TheRenameCheck_IsAttributedToTheComputerWhoseFlowReachedIt()
@@ -450,7 +458,7 @@ public sealed class PauseProofTests
         await bob.OpenAsync();
         bob.Edit();
 
-        await world.RunWithPauseAsync(bob, "Save.AfterLocalSnapshot", 1, "Bob presses Save",
+        await world.RunWithPauseAsync(bob, "Save.AfterFinalCheck", 1, "Bob presses Save",
             operation: () => bob.SaveAsync(), eventStory: "Alice's lock appears, and the world still thinks Alice is acting",
             eventIsPossible: () => true,
             pauseEvent: () =>
@@ -537,40 +545,41 @@ public sealed class PauseProofTests
     }
 
     /// <summary>
-    /// F12: Alice takes over and saves while Bob's save is held before it has copied to D.tmp. Bob's save goes on, finds nothing
-    /// to stop it, and his rename lands over Alice's save. Every violation the route causes is F12: I4 (the lock was Alice's and
-    /// the database was not the version Bob saw, at the rename) and I1 (Alice's committed edit left the shared database, in the
-    /// same step). Nothing is "new".
+    /// F12 is fixed. Alice takes over and saves while Bob's save is held before it has copied to D.tmp. Before the fix Bob's save went on,
+    /// found nothing to stop it, and his rename landed over Alice's save (I4 and I1, both F12). Now his final check, immediately before the
+    /// rename, finds the lock is Alice's: his save is refused (LockLost), Alice's committed edit stays in the shared database, and
+    /// neither I4 nor I1 (nor any F12) is reported. (The restart at the end of the route is Bob finding that his kept change no longer fits
+    /// the database Alice changed, which is F7, not F12.)
     /// </summary>
     [HarnessFact]
-    public async Task F12_ASaveWhoseRenameLandsOverAnotherComputersSave_IsClassifiedF12_ForBothI4AndI1()
+    public async Task F12_ASaveWhoseLockWasTakenOverWhileItUploaded_IsRefused_AndAlicesSaveSurvives()
     {
         var run = await RunKeysAsync(F12Route);
         _output.WriteLine(run.Story);
 
-        Assert.Contains(run.Violations, v => v.Invariant == "I4" && v.FindingId == "F12");
-        Assert.Contains(run.Violations, v => v.Invariant == "I1" && v.FindingId == "F12");
+        Assert.DoesNotContain(run.Violations, v => v.FindingId == "F12");
+        Assert.DoesNotContain(run.Violations, v => v.Invariant is "I1" or "I4");
         Assert.Empty(run.NewViolations);
-        Assert.All(run.Violations, v => Assert.Equal("F12", v.FindingId));
+        Assert.Contains("Bob saved the database — LockLost", run.Story);
+        Assert.Matches("alice-1: .*the shared database", run.Story);
     }
 
     /// <summary>
     /// When Alice takes over and saves while Bob's save is held AFTER his D.tmp is verified, her save uses the same D.tmp (the
-    /// name is shared) and moves it onto D, so Bob's rename finds no D.tmp and fails: nothing is overwritten, his save reports a copy
-    /// error and his edit stays kept. I4 still sees that the lock was Alice's when the rename was about to happen (F12), but no
-    /// committed edit is lost. Pins the difference between the two F12 routes.
+    /// name is shared) and moves it onto D. Before the fix Bob's rename then found no D.tmp and failed (CopyError), and only I4 saw that the lock
+    /// was Alice's. Now Bob's final check refuses the save first (LockLost): nothing is overwritten, no committed edit is lost, his edit
+    /// stays kept, and I4 has nothing to report.
     /// </summary>
     [HarnessFact]
-    public async Task F12_WhenTheOtherSaveTakesTheSharedTempFile_TheRenameFails_AndNothingIsLost()
+    public async Task F12_WhenTheOtherSaveTakesTheSharedTempFile_TheFinalCheckRefuses_AndNothingIsLost()
     {
         var run = await RunKeysAsync("Open(bob)", "Edit(bob)", "Pause(Save(bob) at Save.AfterTmpVerify; AliceTakesOverAndSaves)", "Crash(bob)", "Open(bob)");
         _output.WriteLine(run.Story);
 
-        Assert.Contains(run.Violations, v => v.Invariant == "I4" && v.FindingId == "F12");
-        Assert.DoesNotContain(run.Violations, v => v.Invariant == "I1");
-        Assert.DoesNotContain(run.Violations, v => v.Invariant == "I2");
+        Assert.DoesNotContain(run.Violations, v => v.FindingId == "F12");
+        Assert.DoesNotContain(run.Violations, v => v.Invariant is "I1" or "I2" or "I4");
         Assert.Empty(run.NewViolations);
-        Assert.Contains("Bob saved the database — CopyError", run.Story);
+        Assert.Contains("Bob saved the database — LockLost", run.Story);
     }
 
     /// <summary>
@@ -595,14 +604,14 @@ public sealed class PauseProofTests
 
 
     /// <summary>
-    /// The pause entries of <see cref="KnownSequences"/> (F2, F12, F16) are already as short as they can be: each shows its finding,
-    /// has no breach nobody explains, and the shrinker cannot take an event out of it. (A sequence that could be shortened is a
-    /// sequence that says more than it needs to.)
+    /// The pause entries of <see cref="KnownSequences"/> (F2, F16; F12 is fixed and its entry is gone) are already as short as they
+    /// can be: each shows its finding, has no breach nobody explains, and the shrinker cannot take an event out of it. (A sequence
+    /// that could be shortened is a sequence that says more than it needs to.)
     /// </summary>
     [HarnessFact]
     public async Task KnownSequences_OfThePauseFindings_AreAlreadyShrunk()
     {
-        foreach (var finding in new[] { "F2", "F12", "F16" })
+        foreach (var finding in new[] { "F2", "F16" })
         {
             var sequence = KnownSequences.All.Single(s => s.Finding == finding);
             var options  = new RunOptions { Title = sequence.Name, ExtraEvents = EventCatalogue.ExtrasFor(sequence.Events) };

@@ -46,6 +46,35 @@ public static class RecoveryConflictPrompt
     /// <summary>Label of the prompt's other button: give up the unsaved changes.</summary>
     public const string DiscardButton = "Discard";
 
+    // ── The "discard?" confirmation (data-persistence review, F1) ────────────
+
+    /// <summary>
+    /// Title of the confirmation shown when the user chooses Discard on "Restore Unsaved Changes?" or on "Can't
+    /// Restore Unsaved Changes". Distinct from <see cref="SaveConflictPrompt.DiscardConfirmTitle"/>, which confirms
+    /// discarding changes in a running session.
+    /// </summary>
+    public const string DiscardConfirmTitle = "Discard Unsaved Changes?";
+
+    /// <summary>
+    /// Body of the confirmation that follows Discard on "Restore Unsaved Changes?". Says what is lost and that it
+    /// cannot be undone; the way back is the Go Back button.
+    /// </summary>
+    public const string DiscardConfirmMessage =
+        "Your unsaved changes from the previous session will be deleted. This can't be undone.";
+
+    /// <summary>
+    /// Body of the confirmation that follows Discard on "Can't Restore Unsaved Changes". Adds the one thing the
+    /// user can still do instead: go back and save their version as a separate file.
+    /// </summary>
+    public const string DiscardConfirmWithCopyMessage =
+        DiscardConfirmMessage + "\n\nTo keep them, go back and choose " + SaveCopyButton;
+
+    /// <summary>Label of the confirmation's confirming button: really delete the unsaved changes.</summary>
+    public const string DiscardConfirmButton = "Discard";
+
+    /// <summary>Label of the confirmation's other button: return to the original question. The confirmation's X counts as this button.</summary>
+    public const string GoBackButton = "Go Back";
+
     // ── The save dialog ───────────────────────────────────────────────────────
 
     /// <summary>Title of the save-file dialog in which the user picks where to save the recovered copy.</summary>

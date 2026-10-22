@@ -47,7 +47,12 @@ public sealed class RandomWalkShardingTests
         Assert.Equal(single.Log.RunsEndedByMemo, split.Log.RunsEndedByMemo);
         Assert.Equal(single.Log.EnabledKeys.OrderBy(k => k), split.Log.EnabledKeys.OrderBy(k => k));
         Assert.Equal(single.Log.Tallies.Keys, split.Log.Tallies.Keys);
-        Assert.NotEmpty(single.Log.Tallies);   // the range shows something, or the comparison proves little
+
+        // The comparison must have had something to compare. It used to require a breach in the range, but most of the
+        // range's breaches were F1, and as findings are fixed (F1, F8 and F12 in 1.2.3) a small range may show none. The
+        // runs, the events and the events ever enabled are compared above in any case; require that they are not trivial.
+        Assert.True(single.Log.Events > 0, "the walks made no events, so the comparison proves nothing");
+        Assert.NotEmpty(single.Log.EnabledKeys);
 
         foreach (var (signature, expected) in single.Log.Tallies)
         {

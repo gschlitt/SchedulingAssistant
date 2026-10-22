@@ -16,6 +16,12 @@ internal static class HarnessTitles
 
     /// <summary>The confirmation of the conflict banner's "Discard Changes" (spec item 10a).</summary>
     public const string DiscardConfirm = SaveConflictPrompt.DiscardConfirmTitle;
+
+    /// <summary>
+    /// The confirmation that follows Discard on either recovery question (data-persistence review, F1, fixed 2026-10-21):
+    /// [Discard] really deletes the kept changes, [Go Back] (or the window's X) asks the original question again.
+    /// </summary>
+    public const string DiscardUnsavedConfirm = RecoveryConflictPrompt.DiscardConfirmTitle;
 }
 
 /// <summary>
@@ -25,19 +31,26 @@ internal static class HarnessTitles
 ///
 /// <para>The rules:</para>
 /// <list type="bullet">
-/// <item><description><b>F1</b>: an edit was lost in a step in which its owner answered "Restore Unsaved Changes?" or
-/// "Can't Restore Unsaved Changes" with the second button (Discard, never confirmed today) or the window's X.</description></item>
+/// <item><description><b>F1</b> (fixed 2026-10-21, 1.2.3: the X on either recovery question asks it again, and Discard asks
+/// "Discard Unsaved Changes?" first, so the rule stays as the regression detector): an edit was lost in a step in which its owner
+/// answered "Restore Unsaved Changes?" or "Can't Restore Unsaved Changes" with the second button or the window's X and the
+/// lifecycle acted on it at once: the second button was not followed by the "Discard Unsaved Changes?" confirmation, or the X was
+/// not followed by the same question again. A confirmed discard is a decision (the confirmation records it, see
+/// <see cref="World.ConfirmedDiscards"/>) and a Go Back or an X that was followed up loses nothing.</description></item>
 /// <item><description><b>F5</b>: the same refusal as F7, but the shared database's set of edits had not changed since the
 /// computer's work was kept: nobody changed any data, only the file's bytes changed (every editing session rewrites the
 /// database at its first save, even with no edits).</description></item>
 /// <item><description><b>F6</b>: a "will offer to restore" promise was broken.</description></item>
 /// <item><description><b>F7</b>: "Restore Unsaved Changes?" was answered Restore and was followed by "Can't Restore Unsaved Changes" because someone changed data.</description></item>
-/// <item><description><b>F8</b>: the same refusal, but every edit the computer made that sits in its kept working file is
-/// already in the shared database: its own save landed, and the power went before the unsaved-changes marker was
+/// <item><description><b>F8</b> (fixed 2026-10-21, 1.2.3: the save records its fingerprint in the marker before the rename, so
+/// the rule stays as the regression detector): the same refusal, but every edit the computer made that sits in its kept working
+/// file is already in the shared database: its own save landed, and the power went before the unsaved-changes marker was
 /// deleted. Nothing is lost, yet the person is offered a restore and then refused (step 9.3c-2a).</description></item>
-/// <item><description><b>F12</b>: the lock was not the saver's (or the database was not the version it last saw) at the
-/// moment of the save's rename (invariant I4); and, in the same step, an I1 violation whose lost committed edits another
-/// computer committed while the save was held before its rename (the rename landed over them). Step 9.3c-2b.</description></item>
+/// <item><description><b>F12</b> (fixed 2026-10-21, 1.2.3: the save re-checks the lock and D just before the rename, so the rules
+/// stay as the regression detector): the lock was not the saver's (or the database was not the version it last saw) at the
+/// moment of the save's rename (invariant I4, observed at <c>Save.AfterFinalCheck</c>); and, in the same step, an I1 violation
+/// whose lost committed edits another computer committed while the save was held before its rename (the rename landed over
+/// them). Step 9.3c-2b.</description></item>
 /// <item><description><b>F2</b> (spec item 15): an edit was lost whose computer applied it while its own operation was held in the
 /// edit-loss window (<see cref="PausePoints.EditLossWindow"/>: from a save's snapshot to the cleanup of the working copy). It
 /// missed the save, and what protected it was thrown away when the operation ended: the save's last step deleted the marker and the
@@ -79,7 +92,10 @@ internal static class Findings
             case ViolationKind.BrokenPromise when violation.Promise == PromiseKind.WillOfferRestore:
                 return "F6";
 
-            case ViolationKind.WriteWithoutLockOrOnStaleVersion when violation.CrashPoint == "Save.AfterTmpVerify":
+            // Observed at Save.AfterFinalCheck, the true last moment before the rename (after the save's final check of the lock and of
+            // D). F12 is fixed: the final check refuses a save that lost its lock or whose D changed during the upload, so this only
+            // fires for the microseconds between that check and the rename (or if the final check is ever removed).
+            case ViolationKind.WriteWithoutLockOrOnStaleVersion when violation.CrashPoint == "Save.AfterFinalCheck":
                 return "F12";
 
             // The other face of F12: the save's rename landed over what another computer committed while the save was held
@@ -98,13 +114,25 @@ internal static class Findings
     }
 
     /// <summary>
-    /// True when one of the dialogs was a recovery question ("Restore Unsaved Changes?" or "Can't Restore Unsaved
-    /// Changes") answered with the second button or the X. Neither is a confirmed discard: Discard asks for no
-    /// confirmation today and the X is never a decision.
+    /// True when a recovery question ("Restore Unsaved Changes?" or "Can't Restore Unsaved Changes") was answered with the
+    /// second button or the X and the lifecycle did NOT do what the fix requires next: ask "Discard Unsaved Changes?" after
+    /// the second button, or ask the same question again after the X. The X is never a decision and Discard is never final
+    /// until confirmed, so a negative answer that is not followed up means the kept changes were deleted on an unconfirmed
+    /// click (finding F1, which is fixed: this is its regression detector).
     /// </summary>
     /// <param name="prompts">The dialogs the computer was asked in the step.</param>
     private static bool DiscardedWithoutConfirmation(IReadOnlyList<PromptCall> prompts)
-        => prompts.Any(p => p.Kind == PromptKind.Choice
-                            && (p.Title == HarnessTitles.RestoreUnsavedChanges || p.Title == HarnessTitles.CantRestore)
-                            && p.Answer is ChoiceAnswer.Negative or ChoiceAnswer.ClosedWithX);
+    {
+        var choices = prompts.Where(p => p.Kind == PromptKind.Choice).ToList();
+        for (var i = 0; i < choices.Count; i++)
+        {
+            var asked = choices[i];
+            if (asked.Title != HarnessTitles.RestoreUnsavedChanges && asked.Title != HarnessTitles.CantRestore) continue;
+
+            var next = i + 1 < choices.Count ? choices[i + 1].Title : null;
+            if (asked.Answer == ChoiceAnswer.Negative && next != HarnessTitles.DiscardUnsavedConfirm) return true;
+            if (asked.Answer == ChoiceAnswer.ClosedWithX && next != asked.Title) return true;
+        }
+        return false;
+    }
 }

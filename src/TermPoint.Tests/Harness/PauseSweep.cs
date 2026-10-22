@@ -125,8 +125,9 @@ internal sealed class PauseSweepResult
 /// The pause sweep (spec item 9.3, step 9.3c-2b): for each multi-step operation and each crash point it reaches, a PAUSE there, one
 /// other event while the operation is held, then a follow-up, with every invariant checked through the normal funnel. It is the
 /// crash sweep's twin: where that one ends an operation with a power cut, this one only delays it, so that someone else acts in
-/// the middle. That is how it finds the route of F12 (Alice takes over between Bob's checks and his rename), F2 (Bob edits during
-/// his own save) and F16 (Bob switches while a demotion is copying).
+/// the middle. That is how it found the route of F12 (Alice takes over between Bob's checks and his rename; fixed 2026-10-21: the save
+/// now re-checks before the rename, so the sweep proves the route gone), and how it finds F2 (Bob edits during his own save) and F16
+/// (Bob switches while a demotion is copying). It never pauses at <c>Save.AfterFinalCheck</c> (<see cref="PausePoints.NeverPaused"/>).
 ///
 /// <para><b>How a case is made.</b> From the crash sweep's starting situations and operations: (1) a DRY RUN does the situation's
 /// prefix and then the operation with a survey on, which records every crash point the computer reaches AND which pause events
@@ -187,11 +188,15 @@ internal static class PauseSweep
     /// </summary>
     public static readonly IReadOnlyList<string> FinalSavePointsKept = new[] { "Save.AfterRename", "Save.AfterMarkerDelete" };
 
-    /// <summary>True when a sweep of the given width pauses at the point, whichever operation reaches it.</summary>
+    /// <summary>
+    /// True when a sweep of the given width pauses at the point, whichever operation reaches it. A point in <see cref="PausePoints.NeverPaused"/>
+    /// is not paused at any width (<c>Save.AfterFinalCheck</c>: the accepted microsecond window before a rename; the crash sweep still cuts it).
+    /// </summary>
     /// <param name="point">A crash point.</param>
     /// <param name="width">1 (default) or 2.</param>
     public static bool PointIsSwept(string point, int width)
-        => width >= 2 || DefaultPointPrefixes.Any(p => point.StartsWith(p, StringComparison.Ordinal));
+        => !PausePoints.IsNeverPaused(point)
+           && (width >= 2 || DefaultPointPrefixes.Any(p => point.StartsWith(p, StringComparison.Ordinal)));
 
     /// <summary>True when a sweep of the given width pauses the given operation at the point (a final save is paused only from its rename on at width 1).</summary>
     /// <param name="point">A crash point.</param>
@@ -492,7 +497,10 @@ internal static class PauseSweepReport
         {
             if (!sweep.PerPoint.TryGetValue(point, out var c))
             {
-                sb.AppendLine($"| {point} | 0{(PauseSweep.PointIsSwept(point, sweep.Width) ? "" : " (width 2 only)")} | - | - | - | - | - |");
+                var why = PausePoints.IsNeverPaused(point) ? " (never paused: a few microseconds of local code; the crash sweep cuts it)"
+                        : PauseSweep.PointIsSwept(point, sweep.Width) ? ""
+                        : " (width 2 only)";
+                sb.AppendLine($"| {point} | 0{why} | - | - | - | - | - |");
                 continue;
             }
             sb.AppendLine($"| {point} | {c.Cases} | {c.Interleaved} | {c.Waited} | {c.Skipped} | {c.NotReached} | {c.Hung} |");

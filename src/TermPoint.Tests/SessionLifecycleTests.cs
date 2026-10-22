@@ -36,8 +36,9 @@ namespace TermPoint.Tests;
 /// so the result never depends on the developer's own settings.</para>
 ///
 /// <para><b>Known-bad behaviour is pinned on purpose</b> and named with the finding id from
-/// <c>designs/data-persistence-review-2026-10.md</c> section 3 (for example <c>Pins_F1</c>): the test documents
-/// today's behaviour; the step that fixes the finding is expected to change it.</para>
+/// <c>designs/data-persistence-review-2026-10.md</c> section 3 (for example <c>Pins_F6</c>): the test documents
+/// today's behaviour; the step that fixes the finding is expected to change it, and the test is then renamed with the
+/// <c>_F1Fixed</c> suffix style (finding F1 was fixed on 2026-10-21: the X re-asks and Discard asks for confirmation).</para>
 /// </summary>
 public sealed class SessionLifecycleTests : SessionLifecycleTestBase
 {
@@ -191,20 +192,27 @@ public sealed class SessionLifecycleTests : SessionLifecycleTestBase
     }
 
     /// <summary>
-    /// Kept changes, the user chooses Discard: the kept D' and its marker are deleted (no confirmation — F1 covers
-    /// that Discard itself is unconfirmed) and the database then opens normally from a fresh copy of D. No save runs.
+    /// Kept changes, the user chooses Discard, then confirms: Discard alone deletes nothing — "Discard Unsaved Changes?"
+    /// follows (F1 is fixed) and the kept files are still there when it is asked. Only its [Discard] deletes the kept D' and
+    /// its marker, and the database then opens normally from a fresh copy of D. No save runs.
     /// </summary>
     [Fact]
-    public async Task Open_KeptChanges_Discard_DeletesKeptFiles_ThenOpensNormally_Pins_F1()
+    public async Task Open_KeptChanges_Discard_ThenDiscard_DeletesKeptFiles_ThenOpensNormally_F1Fixed()
     {
         var db = NewDb();
         var kept = await LeaveKeptChangesAsync(db, colleagueChangedD: false);
-        _prompts.ExpectChoice("Restore Unsaved Changes?", false);
+        var keptWhenConfirming = false;
+        _prompts.ExpectChoice("Restore Unsaved Changes?", false)
+                .ExpectChoice("Discard Unsaved Changes?", true,
+                    "Your unsaved changes from the previous session will be deleted. This can't be undone.",
+                    () => keptWhenConfirming = File.Exists(MarkerOf(kept)));
 
         var next = await StartupAsync(db);
 
         Assert.Null(next);
-        AssertPrompts("Choice:Restore Unsaved Changes?");
+        AssertPrompts("Choice:Restore Unsaved Changes?", "Choice:Discard Unsaved Changes?");
+        Assert.Equal("Discard|Go Back", _prompts.Calls[1].Buttons);
+        Assert.True(keptWhenConfirming, "nothing may be deleted before the discard is confirmed");
         Assert.False(File.Exists(MarkerOf(kept)));
         Assert.Equal("original", NewestValue(_host.OpenCalls.Single().WorkingPath));   // a fresh copy of D, not the kept one
         Assert.DoesNotContain("checkout:SaveCompleted", _trace);
@@ -214,24 +222,76 @@ public sealed class SessionLifecycleTests : SessionLifecycleTestBase
     }
 
     /// <summary>
-    /// F1: closing "Restore Unsaved Changes?" with the window's X counts as the negative button, so it behaves
-    /// exactly like Discard — the kept changes are deleted at once and the database opens from a fresh copy. The
-    /// scripted answer is <c>false</c>, which is what the production dialog returns for the X.
+    /// F1 is fixed: closing "Restore Unsaved Changes?" with the window's X is not a decision. The question is asked again (the
+    /// kept files are still there when it is), and Restore then works exactly as if it had been chosen the first time: the
+    /// recovery checkout adopts the kept D', and a save after the window is wired up carries the restored change into D.
     /// </summary>
     [Fact]
-    public async Task Open_KeptChanges_XOnRestorePrompt_DeletesThem_Pins_F1()
+    public async Task Open_KeptChanges_XOnRestorePrompt_AsksAgain_ThenRestoreWorks_F1Fixed()
     {
         var db = NewDb();
         var kept = await LeaveKeptChangesAsync(db, colleagueChangedD: false);
-        _prompts.ExpectChoice("Restore Unsaved Changes?", false /* the X */);
+        var keptWhenAskedAgain = false;
+        _prompts.ExpectChoice("Restore Unsaved Changes?", ChoiceAnswer.ClosedWithX)
+                .ExpectChoice("Restore Unsaved Changes?", true, null, () => keptWhenAskedAgain = File.Exists(MarkerOf(kept)));
 
         await StartupAsync(db);
 
-        // The unsaved change exists nowhere any more: not in D, not in D', not in a kept file.
-        Assert.Equal("original", NewestValue(_host.OpenCalls.Single().WorkingPath));
-        Assert.Equal("original", NewestValue(db));
-        Assert.False(File.Exists(MarkerOf(kept)));
+        AssertPrompts("Choice:Restore Unsaved Changes?", "Choice:Restore Unsaved Changes?");
+        Assert.Equal(ChoiceAnswer.ClosedWithX, _prompts.Calls[0].Answer);
+        Assert.True(keptWhenAskedAgain, "the X must not delete anything");
+        Assert.Equal(kept, _checkout.WorkingPath);                                       // the SAME D' was adopted
+        Assert.Equal(UnsavedValue, NewestValue(_host.OpenCalls.Single().WorkingPath));
+        AssertInOrder(_trace, "host:OpenServices", "host:SetupWindow", "checkout:SaveCompleted");
+        Assert.Equal(UnsavedValue, NewestValue(db));                                     // the restored change reached D
         Assert.Empty(Directory.GetFiles(_workingDir, "*corrupt*"));
+        AssertScriptConsumed();
+    }
+
+    /// <summary>
+    /// Discard, then Go Back: "Discard Unsaved Changes?" is declined, so the original question is asked again with the kept
+    /// files untouched, and Restore then works.
+    /// </summary>
+    [Fact]
+    public async Task Open_KeptChanges_Discard_ThenGoBack_AsksTheQuestionAgain_ThenRestoreWorks_F1Fixed()
+    {
+        var db = NewDb();
+        var kept = await LeaveKeptChangesAsync(db, colleagueChangedD: false);
+        var keptWhenAskedAgain = false;
+        _prompts.ExpectChoice("Restore Unsaved Changes?", false)
+                .ExpectChoice("Discard Unsaved Changes?", false /* Go Back */)
+                .ExpectChoice("Restore Unsaved Changes?", true, null, () => keptWhenAskedAgain = File.Exists(MarkerOf(kept)));
+
+        await StartupAsync(db);
+
+        AssertPrompts("Choice:Restore Unsaved Changes?", "Choice:Discard Unsaved Changes?", "Choice:Restore Unsaved Changes?");
+        Assert.True(keptWhenAskedAgain, "Go Back must not delete anything");
+        Assert.Equal(kept, _checkout.WorkingPath);
+        Assert.Equal(UnsavedValue, NewestValue(_host.OpenCalls.Single().WorkingPath));
+        Assert.Equal(UnsavedValue, NewestValue(db));
+        AssertScriptConsumed();
+    }
+
+    /// <summary>
+    /// The confirmation's own X counts as Go Back: Discard, then the X on "Discard Unsaved Changes?", asks the original
+    /// question again; the kept changes are untouched and Restore works.
+    /// </summary>
+    [Fact]
+    public async Task Open_KeptChanges_Discard_ThenXOnTheConfirmation_IsGoBack_F1Fixed()
+    {
+        var db = NewDb();
+        var kept = await LeaveKeptChangesAsync(db, colleagueChangedD: false);
+        var keptWhenAskedAgain = false;
+        _prompts.ExpectChoice("Restore Unsaved Changes?", false)
+                .ExpectChoice("Discard Unsaved Changes?", ChoiceAnswer.ClosedWithX)
+                .ExpectChoice("Restore Unsaved Changes?", true, null, () => keptWhenAskedAgain = File.Exists(MarkerOf(kept)));
+
+        await StartupAsync(db);
+
+        AssertPrompts("Choice:Restore Unsaved Changes?", "Choice:Discard Unsaved Changes?", "Choice:Restore Unsaved Changes?");
+        Assert.True(keptWhenAskedAgain, "the confirmation's X must not delete anything");
+        Assert.Equal(UnsavedValue, NewestValue(_host.OpenCalls.Single().WorkingPath));
+        Assert.Equal(UnsavedValue, NewestValue(db));
         AssertScriptConsumed();
     }
 
@@ -273,23 +333,111 @@ public sealed class SessionLifecycleTests : SessionLifecycleTestBase
     }
 
     /// <summary>
-    /// F1: X on "Can't Restore Unsaved Changes" counts as Discard — the kept changes are deleted with no export and
-    /// no confirmation, and the database opens normally.
+    /// F1 is fixed: the X on "Can't Restore Unsaved Changes" is not Discard. The question is asked again with the kept
+    /// changes untouched; Save a Copy… then exports them, and only after the copy landed are the kept files deleted.
     /// </summary>
     [Fact]
-    public async Task Open_CantRestore_XOnTheChoice_DeletesTheKeptChangesWithoutExport_Pins_F1()
+    public async Task Open_CantRestore_XOnTheChoice_AsksAgain_ThenSaveACopyExports_F1Fixed()
     {
         var db = NewDb();
         var kept = await LeaveKeptChangesAsync(db, colleagueChangedD: true);
+        var export = Path.Combine(_shareDir, "recovered.db");
+        var keptWhenAskedAgain = false;
         _prompts.ExpectChoice("Restore Unsaved Changes?", true)
-                .ExpectChoice("Can't Restore Unsaved Changes", false /* the X */);
+                .ExpectChoice("Can't Restore Unsaved Changes", ChoiceAnswer.ClosedWithX)
+                .ExpectChoice("Can't Restore Unsaved Changes", true, null, () => keptWhenAskedAgain = File.Exists(MarkerOf(kept)))
+                .ExpectPick("Save Recovered Copy", export);
 
         await StartupAsync(db);
 
-        AssertPrompts("Choice:Restore Unsaved Changes?", "Choice:Can't Restore Unsaved Changes");
+        AssertPrompts(
+            "Choice:Restore Unsaved Changes?", "Choice:Can't Restore Unsaved Changes",
+            "Choice:Can't Restore Unsaved Changes", "PickSaveFile:Save Recovered Copy");
+        Assert.True(keptWhenAskedAgain, "the X must not delete anything");
+        Assert.Equal(UnsavedValue, NewestValue(export));                                // the copy holds the kept change
+        Assert.False(File.Exists(MarkerOf(kept)));                                      // deleted only after the copy landed
+        Assert.Equal(ColleagueValue, NewestValue(_host.OpenCalls.Single().WorkingPath));
+        AssertScriptConsumed();
+    }
+
+    /// <summary>
+    /// Discard, then Discard, on "Can't Restore Unsaved Changes": "Discard Unsaved Changes?" follows with the extra line that
+    /// points back to Save a Copy…, and only its [Discard] deletes the kept changes — with no export. The database opens normally.
+    /// </summary>
+    [Fact]
+    public async Task Open_CantRestore_Discard_ThenDiscard_DeletesTheKeptChangesWithoutExport_F1Fixed()
+    {
+        var db = NewDb();
+        var kept = await LeaveKeptChangesAsync(db, colleagueChangedD: true);
+        var keptWhenConfirming = false;
+        _prompts.ExpectChoice("Restore Unsaved Changes?", true)
+                .ExpectChoice("Can't Restore Unsaved Changes", false)
+                .ExpectChoice("Discard Unsaved Changes?", true,
+                    "Your unsaved changes from the previous session will be deleted. This can't be undone.\n\n" +
+                    "To keep them, go back and choose Save a Copy…",
+                    () => keptWhenConfirming = File.Exists(MarkerOf(kept)));
+
+        await StartupAsync(db);
+
+        AssertPrompts("Choice:Restore Unsaved Changes?", "Choice:Can't Restore Unsaved Changes", "Choice:Discard Unsaved Changes?");
+        Assert.Equal("Discard|Go Back", _prompts.Calls[2].Buttons);
+        Assert.True(keptWhenConfirming, "nothing may be deleted before the discard is confirmed");
         Assert.False(File.Exists(MarkerOf(kept)));
         Assert.Equal(ColleagueValue, NewestValue(_host.OpenCalls.Single().WorkingPath));
         Assert.Empty(Directory.GetFiles(_shareDir, "*.db").Where(f => f != db));    // nothing was exported
+        AssertScriptConsumed();
+    }
+
+    /// <summary>
+    /// Discard, then Go Back, on "Can't Restore Unsaved Changes": the confirmation is declined, the conflict question is asked
+    /// again with the kept changes untouched, and Save a Copy… exports them.
+    /// </summary>
+    [Fact]
+    public async Task Open_CantRestore_Discard_ThenGoBack_ThenSaveACopyExports_F1Fixed()
+    {
+        var db = NewDb();
+        var kept = await LeaveKeptChangesAsync(db, colleagueChangedD: true);
+        var export = Path.Combine(_shareDir, "recovered.db");
+        var keptWhenAskedAgain = false;
+        _prompts.ExpectChoice("Restore Unsaved Changes?", true)
+                .ExpectChoice("Can't Restore Unsaved Changes", false)
+                .ExpectChoice("Discard Unsaved Changes?", false /* Go Back */)
+                .ExpectChoice("Can't Restore Unsaved Changes", true, null, () => keptWhenAskedAgain = File.Exists(MarkerOf(kept)))
+                .ExpectPick("Save Recovered Copy", export);
+
+        await StartupAsync(db);
+
+        AssertPrompts(
+            "Choice:Restore Unsaved Changes?", "Choice:Can't Restore Unsaved Changes", "Choice:Discard Unsaved Changes?",
+            "Choice:Can't Restore Unsaved Changes", "PickSaveFile:Save Recovered Copy");
+        Assert.True(keptWhenAskedAgain, "Go Back must not delete anything");
+        Assert.Equal(UnsavedValue, NewestValue(export));
+        Assert.False(File.Exists(MarkerOf(kept)));
+        AssertScriptConsumed();
+    }
+
+    /// <summary>
+    /// The confirmation's own X counts as Go Back on "Can't Restore Unsaved Changes" too: Discard, the X on "Discard Unsaved
+    /// Changes?", then the conflict question again, with the kept changes untouched, and Save a Copy… exports them.
+    /// </summary>
+    [Fact]
+    public async Task Open_CantRestore_Discard_ThenXOnTheConfirmation_IsGoBack_F1Fixed()
+    {
+        var db = NewDb();
+        var kept = await LeaveKeptChangesAsync(db, colleagueChangedD: true);
+        var export = Path.Combine(_shareDir, "recovered.db");
+        var keptWhenAskedAgain = false;
+        _prompts.ExpectChoice("Restore Unsaved Changes?", true)
+                .ExpectChoice("Can't Restore Unsaved Changes", false)
+                .ExpectChoice("Discard Unsaved Changes?", ChoiceAnswer.ClosedWithX)
+                .ExpectChoice("Can't Restore Unsaved Changes", true, null, () => keptWhenAskedAgain = File.Exists(MarkerOf(kept)))
+                .ExpectPick("Save Recovered Copy", export);
+
+        await StartupAsync(db);
+
+        Assert.True(keptWhenAskedAgain, "the confirmation's X must not delete anything");
+        Assert.Equal(UnsavedValue, NewestValue(export));
+        Assert.False(File.Exists(MarkerOf(kept)));
         AssertScriptConsumed();
     }
 

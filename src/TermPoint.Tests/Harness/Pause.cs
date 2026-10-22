@@ -65,16 +65,34 @@ internal static class PausePoints
     /// </summary>
     public static readonly IReadOnlyList<string> EditLossWindow = new[]
     {
-        "Save.AfterLocalSnapshot", "Save.AfterTmpCopy", "Save.AfterTmpVerify", "Save.AfterRename", "Save.AfterMarkerDelete",
+        "Save.AfterLocalSnapshot", "Save.AfterTmpCopy", "Save.AfterTmpVerify", "Save.AfterFinalCheck", "Save.AfterRename", "Save.AfterMarkerDelete",
         "Release.AfterFinalSave", "Release.AfterLockReleased",
         "Close.AfterRelease", "Close.AfterServicesDisposed", "Switch.AfterRelease", "Switch.AfterServicesReleased"
     };
 
-    /// <summary>The save's points before its rename onto the shared database: whatever another computer commits meanwhile is overwritten by the rename (finding F12).</summary>
+    /// <summary>
+    /// The save's points before its rename onto the shared database: whatever another computer commits meanwhile is overwritten by the
+    /// rename (finding F12) unless the save's final check, between <c>Save.AfterTmpVerify</c> and <c>Save.AfterFinalCheck</c>, refuses it.
+    /// </summary>
     public static readonly IReadOnlyList<string> SaveBeforeRename = new[]
     {
-        "Save.AfterLockCheck", "Save.AfterSourceCheck", "Save.AfterLocalSnapshot", "Save.AfterTmpCopy", "Save.AfterTmpVerify"
+        "Save.AfterLockCheck", "Save.AfterSourceCheck", "Save.AfterLocalSnapshot", "Save.AfterTmpCopy", "Save.AfterTmpVerify", "Save.AfterFinalCheck"
     };
+
+    /// <summary>
+    /// The crash points no pause sweep holds an operation at. <c>Save.AfterFinalCheck</c> is the true last moment before a save's rename:
+    /// the lock and D were checked a few microseconds ago, and nothing else of the operation stands between the point and the rename.
+    /// The window is a few microseconds of LOCAL code, not a network step, so no sleeping laptop or slow link can hold a save there; a
+    /// pause would hold it for as long as the harness likes and the sweep would report, as a "new" violation, exactly the accepted
+    /// residual window that closing would need a server for (a plain file share has no compare-and-swap). The CRASH sweep still cuts
+    /// the power there: a crash at that point is meaningful (D.tmp is verified and checked, the rename has not happened). A proof test
+    /// may still pause there on purpose, to show invariant I4 can see that window.
+    /// </summary>
+    public static readonly IReadOnlyList<string> NeverPaused = new[] { "Save.AfterFinalCheck" };
+
+    /// <summary>True when no pause sweep holds an operation at <paramref name="point"/> (see <see cref="NeverPaused"/>).</summary>
+    /// <param name="point">A crash point name.</param>
+    public static bool IsNeverPaused(string point) => NeverPaused.Contains(point);
 
     /// <summary>True when an edit applied while the computer's own operation is held at <paramref name="point"/> falls in the edit-loss window (finding F2).</summary>
     /// <param name="point">A crash point name.</param>

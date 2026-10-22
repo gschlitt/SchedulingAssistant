@@ -12,6 +12,15 @@ internal sealed class RunContext
     /// <summary>The most dialogs one event may raise before every further dialog is answered with its terminal answer (a guard against dialog loops that a random "Try again" would never leave).</summary>
     public const int MaxDialogsPerEvent = 24;
 
+    /// <summary>
+    /// How many times one event may send a crash-recovery question back to the person (the window's X on "Restore Unsaved
+    /// Changes?" or "Can't Restore Unsaved Changes", or Go Back / the X on "Discard Unsaved Changes?"). Each of those makes the
+    /// lifecycle ask the question again (finding F1, fixed), so a decision source that can keep answering them would keep the
+    /// event in the loop for ever; the search would also fan out into ever-deeper choice points. After this many, the question
+    /// no longer offers the X and the confirmation offers only Discard, so the loop ends (see <see cref="GeneratedPrompts"/>).
+    /// </summary>
+    public const int MaxRecoveryReasksPerEvent = 1;
+
     /// <summary>Serialises decisions: a dialog can be raised from a background thread.</summary>
     private readonly object _gate = new();
 
@@ -20,6 +29,9 @@ internal sealed class RunContext
 
     /// <summary>How many dialogs the current event has raised so far.</summary>
     private int _dialogsThisEvent;
+
+    /// <summary>How many times the current event has sent a recovery question back to the person (see <see cref="MaxRecoveryReasksPerEvent"/>).</summary>
+    private int _recoveryReasksThisEvent;
 
     /// <summary>How many edits the colleague has made.</summary>
     private int _colleagueEdits;
@@ -50,10 +62,29 @@ internal sealed class RunContext
     /// <summary>Hands out the next id for an edit made by the colleague ("colleague-1", ...).</summary>
     public string NextColleagueEdit() => $"colleague-{++_colleagueEdits}";
 
-    /// <summary>Forgets the dialog count: a new event starts.</summary>
+    /// <summary>Forgets the dialog counts: a new event starts.</summary>
     public void BeginEvent()
     {
-        lock (_gate) _dialogsThisEvent = 0;
+        lock (_gate)
+        {
+            _dialogsThisEvent = 0;
+            _recoveryReasksThisEvent = 0;
+        }
+    }
+
+    /// <summary>
+    /// True while the current event may still send a recovery question back to the person (fewer than
+    /// <see cref="MaxRecoveryReasksPerEvent"/> times so far); once false, the dialogs stop offering the answers that ask again.
+    /// </summary>
+    public bool RecoveryReaskAllowed
+    {
+        get { lock (_gate) return _recoveryReasksThisEvent < MaxRecoveryReasksPerEvent; }
+    }
+
+    /// <summary>Counts one more time the current event sent a recovery question back to the person (an X, or Go Back).</summary>
+    public void NoteRecoveryReask()
+    {
+        lock (_gate) _recoveryReasksThisEvent++;
     }
 
     /// <summary>

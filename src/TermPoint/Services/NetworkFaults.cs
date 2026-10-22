@@ -38,7 +38,7 @@ internal enum NetworkFaultKind
 /// The operation's label, the same string the code already passes to <see cref="NetworkFileOps.RunAsync{T}(System.Func{T}, string)"/>
 /// or logs: "File.Exists", "Directory.Exists", "ProbeFile", "File.Move", "File.Delete", "File.ReadAllText",
 /// "File.WriteAllText", "CheckIntegrity", "ComputeHash", "CopyFile", or a caller's own label such as
-/// "lock acquire".
+/// "lock acquire" or "File.Stat" (the save's stat of D: its size and last-write time).
 /// </param>
 /// <param name="Path">
 /// The path the operation works on (the source, for a copy or move), or null when the call site did not name one

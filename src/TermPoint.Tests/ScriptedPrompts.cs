@@ -59,10 +59,11 @@ internal sealed record PromptCall(
 internal sealed record PromptAnswer(object? Answer, Action? Before = null);
 
 /// <summary>
-/// How a two-button choice dialog was answered. The real dialog returns <c>true</c> only for its first button;
-/// the second button and the window's X both return <c>false</c>, so the lifecycle cannot tell them apart. The
-/// harness records the difference anyway, because the X is not a decision: it must never be taken as consent to
-/// delete someone's unsaved work (data-persistence review, F1).
+/// How a two-button choice dialog was answered. <see cref="ILifecyclePrompts.ShowChoiceAsync"/> returns <c>true</c>
+/// only for the first button; the second button and the window's X both return <c>false</c>, so the lifecycle cannot
+/// tell them apart there. The harness records the difference anyway, because the X is not a decision: it must never
+/// be taken as consent to delete someone's unsaved work (data-persistence review, F1). The crash-recovery questions
+/// ask through <see cref="ILifecyclePrompts.ShowChoiceOrCloseAsync"/>, which does tell the X apart and asks again.
 /// </summary>
 internal enum ChoiceAnswer
 {
@@ -240,6 +241,24 @@ internal sealed class ScriptedPrompts : ILifecyclePrompts
     {
         var step = Take(new PromptCall(PromptKind.Choice, title, message, affirmative + "|" + negative));
         return Task.FromResult((ChoiceAnswer)step.Answer! == ChoiceAnswer.Affirmative);
+    }
+
+    /// <summary>
+    /// The three-outcome form of <see cref="ShowChoiceAsync"/>: recorded and answered from the SAME script step (a
+    /// <see cref="PromptKind.Choice"/> with the same title, text and buttons), so the harness and the story printer see
+    /// it exactly as they see the two-outcome form. <see cref="ChoiceAnswer.ClosedWithX"/> maps to
+    /// <see cref="ChoiceResult.Closed"/>.
+    /// </summary>
+    /// <inheritdoc/>
+    public Task<ChoiceResult> ShowChoiceOrCloseAsync(string title, string message, string affirmative, string negative)
+    {
+        var step = Take(new PromptCall(PromptKind.Choice, title, message, affirmative + "|" + negative));
+        return Task.FromResult((ChoiceAnswer)step.Answer! switch
+        {
+            ChoiceAnswer.Affirmative => ChoiceResult.Affirmative,
+            ChoiceAnswer.Negative    => ChoiceResult.Negative,
+            _                        => ChoiceResult.Closed
+        });
     }
 
     /// <inheritdoc/>

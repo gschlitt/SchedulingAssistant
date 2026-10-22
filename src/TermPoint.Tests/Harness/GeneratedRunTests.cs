@@ -98,13 +98,13 @@ public sealed class GeneratedRunTests
     }
 
     /// <summary>
-    /// Across the known-sequence replays and both strategies at the budget, the generated runs find F1, F2, F6, F7, F8, F12
-    /// and F16. F1 and F7 come from the search; F6 needs a route longer than the search reaches by default; F8 needs a power
-    /// cut in the middle of a save, and F2 and F12 need a pause in the middle of a save so that another event happens
-    /// meanwhile (the search has neither), so they come from the replay list (<see cref="KnownSequences"/>) and the report
-    /// says so. F16 needs a demotion that is still running when the user switches database: the search can reach the
-    /// harness-artifact form of it (the lost-lock handler runs inline) and invariant I6 flags it; the replay list carries
-    /// the pause form. The crash sweep finds F8 on its own as well, and the pause sweep finds F2, F12 and F16. F5 is reported.
+    /// Across the known-sequence replays and both strategies at the budget, the generated runs find F2, F6, F7 and F16.
+    /// F7 comes from the search; F6 needs a route longer than the search reaches by default; F2 needs a pause in the
+    /// middle of a save so that another event happens meanwhile (the search has none), so it comes from the replay list
+    /// (<see cref="KnownSequences"/>) and the report says so. F16 needs a demotion that is still running when the user switches
+    /// database: the search can reach the harness-artifact form of it (the lost-lock handler runs inline) and invariant I6 flags
+    /// it; the replay list carries the pause form. The pause sweep finds F2 and F16. F5 is reported. F1, F8 and F12 are fixed
+    /// (2026-10-21) and no longer expected: their old routes are proof tests (<see cref="FixedFindingsProofTests"/>).
     /// </summary>
     [HarnessFact]
     public async Task Generated_RediscoversKnownFindings()
@@ -124,7 +124,7 @@ public sealed class GeneratedRunTests
         Say("Known findings found by a replay: " + (byReplay.Count == 0 ? "none" : string.Join(", ", byReplay.OrderBy(f => f))));
         Say($"F5 reached: {found.Contains("F5")}.");
 
-        foreach (var id in new[] { "F1", "F2", "F6", "F7", "F8", "F12", "F16" })
+        foreach (var id in new[] { "F2", "F6", "F7", "F16" })
             Assert.True(found.Contains(id), $"{id} was not found by a replay, the exhaustive search or the random walks at this budget.");
     }
 

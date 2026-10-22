@@ -52,17 +52,6 @@ internal static class KnownSequences
                 "Open(bob)", "Edit(bob)", "AdvanceTime(4m)", "Open(alice)", "SwitchAway(bob)", "Close(alice)", "SwitchBack(bob)"
             }),
 
-        new("F8: a power cut between the rename and the marker delete of a save",
-            "F8",
-            "Bob edits and presses Save; his computer loses power at Save.AfterRename, after the shared database has been " +
-            "replaced and before the unsaved-changes marker is deleted. When he starts again he is offered a restore, chooses " +
-            "it, and is told \"Can't Restore\" although the database already holds his edit. Found by the crash sweep " +
-            "(step 9.3c-2a), shrunk to four events.",
-            new[]
-            {
-                "Open(bob)", "Edit(bob)", "PowerCut(Save(bob) at Save.AfterRename)", "Open(bob)"
-            }),
-
         new("F2: an edit made while the save is running loses its marker",
             "F2",
             "Bob presses Save. His save has taken its snapshot of the working file (Save.AfterLocalSnapshot) and is held there " +
@@ -72,17 +61,6 @@ internal static class KnownSequences
             new[]
             {
                 "Open(bob)", "Pause(Save(bob) at Save.AfterLocalSnapshot; BobEdits)", "Crash(bob)"
-            }),
-
-        new("F12: a save whose rename lands over another computer's save",
-            "F12",
-            "Bob presses Save. His save has taken its snapshot and is held there (his computer sleeps). Alice takes over his stale " +
-            "lock, edits and saves. Bob's computer wakes: the save does not look at the lock or the database again, copies its " +
-            "snapshot to D.tmp and renames it over the database. Alice's edit is gone from the shared database (I1) and the lock " +
-            "was hers at the rename (I4). Found by the pause sweep (step 9.3c-2b).",
-            new[]
-            {
-                "Open(bob)", "Pause(Save(bob) at Save.AfterLocalSnapshot; AliceTakesOverAndSaves)"
             }),
 
         new("F16: a demotion still running when the user switches database",

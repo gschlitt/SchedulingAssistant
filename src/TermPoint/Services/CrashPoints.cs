@@ -50,7 +50,10 @@ internal static class CrashPoints
     /// <item><b>Save.*</b> (<c>CheckoutService.SaveAsyncCore</c>): a crash leaves the shared database D either as
     /// it was (every point before <c>Save.AfterRename</c>, with a possible D.tmp and local .savetmp left behind)
     /// or already replaced (<c>Save.AfterRename</c>, <c>Save.AfterMarkerDelete</c>) with the dirty marker still
-    /// present at <c>Save.AfterRename</c>.</item>
+    /// present at <c>Save.AfterRename</c>. <c>Save.AfterFinalCheck</c> is the last moment before the rename: the
+    /// lock and D were re-checked just before it (finding F12), so it is where a harness looks at who holds the
+    /// lock when the save's rename lands. The dirty marker already carries the save's fingerprint there
+    /// (finding F8).</item>
     /// <item><b>Dirty.*</b> (<c>CheckoutService.MarkDirty</c>): the dirty marker has just been written.</item>
     /// <item><b>Checkout.*, Recovery.*</b> (<c>CheckoutAsync</c>, <c>ForceCheckoutAsync</c>,
     /// <c>FinishRecoveryCheckoutAsync</c>): the lock file is ours on the share and the process dies, leaving a
@@ -79,6 +82,7 @@ internal static class CrashPoints
         "Save.AfterLocalSnapshot",
         "Save.AfterTmpCopy",
         "Save.AfterTmpVerify",
+        "Save.AfterFinalCheck",
         "Save.AfterRename",
         "Save.AfterMarkerDelete",
 

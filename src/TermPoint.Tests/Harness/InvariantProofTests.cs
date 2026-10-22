@@ -238,31 +238,65 @@ public sealed class InvariantProofTests
     // ═════════════════════════════════════════════════════════════════════════
 
     /// <summary>
-    /// Bob saves. In the instant after his <c>D.tmp</c> has been verified and just before the rename, another person's
-    /// lock appears on the share (the walk writes it from <see cref="World.AtCrashPoint"/>). The save does not look at
-    /// the lock again before step 5, so the rename still lands: I4 sees that the lock was not Bob's at the rename, and the
-    /// finding is F12 (the review's "the save doesn't re-check the lock just before the rename"). This is the
-    /// theoretical F12 made real: the test also asserts that Bob's save did overwrite D.
+    /// F12 is fixed. Bob saves. In the instant after his <c>D.tmp</c> has been verified, another person's lock appears on the
+    /// share (the walk writes it from <see cref="World.AtCrashPoint"/>). Before this fix the save did not look at the lock
+    /// again, the rename landed and I4 reported it. Now the save's final check, made immediately before the rename, finds the
+    /// lock is not Bob's: his save is refused (LockLost), D is byte-for-byte what it was, and his edit stays in his kept working
+    /// file with its marker. His D.tmp is left where it is: without the lock his save may not write to the share (rule 2), and the
+    /// file's one shared name may by now be Alice's save in progress. I4 has nothing to report because there is no rename.
     /// </summary>
     [HarnessFact]
-    public async Task I4_ALockThatChangesHandsBeforeTheRename_IsCaught_AsF12()
+    public async Task I4_ALockThatChangesHandsBeforeTheRename_IsRefusedByTheFinalCheck_F12IsFixed()
     {
-        using var world = new World(_output, nameof(I4_ALockThatChangesHandsBeforeTheRename_IsCaught_AsF12));
+        using var world = new World(_output, nameof(I4_ALockThatChangesHandsBeforeTheRename_IsRefusedByTheFinalCheck_F12IsFixed));
+        world.CreateDatabase();
+        var bob = world.AddComputer("bob");
+
+        await bob.OpenAsync();
+        bob.Edit();
+        var databaseBefore = world.CurrentDatabaseHash();
+        world.AtCrashPoint("Save.AfterTmpVerify", () => world.PlaceForeignLock("alice", "ALICE-PC"),
+            "(after Bob's D.tmp is verified) Alice takes the lock");
+
+        var outcome = await bob.SaveAsync();
+
+        Assert.Equal(SaveOutcome.LockLost, outcome);
+        Assert.Empty(world.Violations);                                    // I4 had no rename to look at
+        Assert.Equal(databaseBefore, world.CurrentDatabaseHash());         // D was never touched
+        Assert.Empty(world.EditsInDatabase());
+        Assert.Contains("dept.db.tmp", world.ShareFiles());                // without the lock, the refused save leaves D.tmp alone
+        Assert.True(bob.HasWorkingFile, "D' is kept");
+        Assert.True(bob.HasDirtyMarker, "and so is its marker");
+        Assert.Equal(new[] { "bob-1" }, bob.WorkingFileEdits());
+        world.Finish();
+    }
+
+    /// <summary>
+    /// What is left of F12 is still seen. The final check cannot close the few microseconds between itself and the rename (a plain
+    /// file share has no compare-and-swap and no server), so invariant I4 is observed there, at <c>Save.AfterFinalCheck</c>, the true
+    /// last moment before the rename. Another person's lock appears in exactly that window (the walk writes it from
+    /// <see cref="World.AtCrashPoint"/>); the rename lands and I4 sees that the lock was not Bob's, classified F12. This proves the
+    /// checker can still fail, and documents the accepted window.
+    /// </summary>
+    [HarnessFact]
+    public async Task I4_ALockThatChangesHandsAfterTheFinalCheck_IsStillCaught_AsTheAcceptedWindow()
+    {
+        using var world = new World(_output, nameof(I4_ALockThatChangesHandsAfterTheFinalCheck_IsStillCaught_AsTheAcceptedWindow));
         world.ExpectFindings("F12");
         world.CreateDatabase();
         var bob = world.AddComputer("bob");
 
         await bob.OpenAsync();
         bob.Edit();
-        world.AtCrashPoint("Save.AfterTmpVerify", () => world.PlaceForeignLock("alice", "ALICE-PC"),
-            "(just before Bob's rename) Alice takes the lock");
+        world.AtCrashPoint("Save.AfterFinalCheck", () => world.PlaceForeignLock("alice", "ALICE-PC"),
+            "(the last moment before Bob's rename) Alice takes the lock");
 
         var outcome = await bob.SaveAsync();
 
         var violation = Only(world, "I4");
         Assert.Equal(ViolationKind.WriteWithoutLockOrOnStaleVersion, violation.Kind);
         Assert.Equal("F12", violation.FindingId);
-        Assert.Equal("Save.AfterTmpVerify", violation.CrashPoint);
+        Assert.Equal("Save.AfterFinalCheck", violation.CrashPoint);
         Assert.Contains("alice", violation.Reason);
 
         // The rename really landed: Bob's version is now D, written while the lock file said Alice.
@@ -272,33 +306,19 @@ public sealed class InvariantProofTests
     }
 
     // ═════════════════════════════════════════════════════════════════════════
-    // I5 / F1: the X on "Restore Unsaved Changes?" deletes the only copy
+    // I2 / F1 (fixed): the X and an unconfirmed Discard no longer delete the only copy
     // ═════════════════════════════════════════════════════════════════════════
 
     /// <summary>
-    /// Bob edits and crashes, restarts, and closes "Restore Unsaved Changes?" with the X. The lifecycle takes the X for
-    /// Discard and deletes the kept changes with no confirmation: bob-1 is nowhere. I2 fires and the classifier says
-    /// F1. The story records "closed it with the X", which is how the classifier tells a dismissal from a decision.
+    /// F1 is fixed. Bob edits and crashes, restarts, and closes "Restore Unsaved Changes?" with the X. The X is not a decision, so
+    /// the question is asked again; Bob then chooses Restore and bob-1 is back in his session. Before the fix the lifecycle took
+    /// the X for Discard and deleted the kept changes at once (I2 fired and the classifier said F1). No violation; the story records
+    /// "closed it with the X".
     /// </summary>
     [HarnessFact]
-    public async Task I5_TheXOnTheRestoreQuestion_LosesTheWork_AsF1()
-        => await LoseWorkByAnsweringTheRestoreQuestion(ChoiceAnswer.ClosedWithX, nameof(I5_TheXOnTheRestoreQuestion_LosesTheWork_AsF1));
-
-    /// <summary>
-    /// The same loss through the Discard button of "Restore Unsaved Changes?": it is not confirmed either today, so it is
-    /// F1 as well.
-    /// </summary>
-    [HarnessFact]
-    public async Task I5_DiscardOnTheRestoreQuestion_IsNotConfirmed_AlsoF1()
-        => await LoseWorkByAnsweringTheRestoreQuestion(ChoiceAnswer.Negative, nameof(I5_DiscardOnTheRestoreQuestion_IsNotConfirmed_AlsoF1));
-
-    /// <summary>The shared body of the two F1 proofs.</summary>
-    /// <param name="answer">How Bob answers "Restore Unsaved Changes?".</param>
-    /// <param name="title">The story's title.</param>
-    private async Task LoseWorkByAnsweringTheRestoreQuestion(ChoiceAnswer answer, string title)
+    public async Task I2_TheXOnTheRestoreQuestion_AsksAgain_AndNothingIsLost_F1IsFixed()
     {
-        using var world = new World(_output, title);
-        world.ExpectFindings("F1");
+        using var world = new World(_output, nameof(I2_TheXOnTheRestoreQuestion_AsksAgain_AndNothingIsLost_F1IsFixed));
         world.CreateDatabase();
         var bob = world.AddComputer("bob");
 
@@ -307,16 +327,43 @@ public sealed class InvariantProofTests
         world.CrashComputer(bob);
 
         bob.Relaunch();
-        bob.Prompts.ExpectChoice(HarnessTitles.RestoreUnsavedChanges, answer);
+        bob.Prompts.ExpectChoice(HarnessTitles.RestoreUnsavedChanges, ChoiceAnswer.ClosedWithX)
+                   .ExpectChoice(HarnessTitles.RestoreUnsavedChanges, ChoiceAnswer.Affirmative);
         await bob.OpenAsync();
 
-        var call = Assert.Single(bob.Prompts.Calls);
-        Assert.Equal(answer, call.Answer);
+        Assert.Equal(new[] { ChoiceAnswer.ClosedWithX, ChoiceAnswer.Affirmative }, bob.Prompts.Calls.Select(c => c.Answer!.Value));
+        Assert.Empty(world.Violations);
+        Assert.Equal(new[] { "bob-1" }, bob.WorkingFileEdits());   // the kept changes were restored
+        Assert.Contains("closed it with the X", world.PrintStory(Array.Empty<string>()));
+        world.AssertAllScriptsConsumed();
+        world.Finish();
+    }
 
-        var violation = Only(world, "I2");
-        Assert.Equal("bob-1", violation.Edit);
-        Assert.Equal("F1", violation.FindingId);
+    /// <summary>
+    /// F1 is fixed. Discard on "Restore Unsaved Changes?" is no longer final: "Discard Unsaved Changes?" follows, and only its
+    /// [Discard] deletes the kept changes. The confirmed discard is recorded for invariant I2 (the edit is nowhere, and that is the
+    /// person's decision), so there is no violation; the edit is in <see cref="World.ConfirmedDiscards"/>.
+    /// </summary>
+    [HarnessFact]
+    public async Task I2_DiscardOnTheRestoreQuestion_IsConfirmedFirst_AndThenItIsADecision_F1IsFixed()
+    {
+        using var world = new World(_output, nameof(I2_DiscardOnTheRestoreQuestion_IsConfirmedFirst_AndThenItIsADecision_F1IsFixed));
+        world.CreateDatabase();
+        var bob = world.AddComputer("bob");
+
+        await bob.OpenAsync();
+        bob.Edit();
+        world.CrashComputer(bob);
+
+        bob.Relaunch();
+        bob.Prompts.ExpectChoice(HarnessTitles.RestoreUnsavedChanges, ChoiceAnswer.Negative)
+                   .ExpectChoice(HarnessTitles.DiscardUnsavedConfirm, ChoiceAnswer.Affirmative);
+        await bob.OpenAsync();
+
+        Assert.Empty(world.Violations);
+        Assert.Contains("bob-1", world.ConfirmedDiscards);
         Assert.Empty(world.EditsInDatabase());
+        Assert.Empty(bob.WorkingFileEdits());
         world.AssertAllScriptsConsumed();
         world.Finish();
     }
@@ -581,7 +628,7 @@ public sealed class InvariantProofTests
     // ═════════════════════════════════════════════════════════════════════════
 
     /// <summary>
-    /// A power cut at each of the save's seven crash points: Bob edits and presses Save, the power goes at the point, the
+    /// A power cut at each of the save's eight crash points: Bob edits and presses Save, the power goes at the point, the
     /// disk is frozen and put back. D is then either the old version (every point before the rename) or the new one (the
     /// rename and after), never torn (I3), and bob-1 is still somewhere that survives (I2): in D, or in his kept working
     /// file with its marker. The marker is deleted only by the last step of the save. Every case runs through the normal
@@ -591,7 +638,7 @@ public sealed class InvariantProofTests
     public async Task PowerCut_AtEachPointOfASave_LeavesDEitherOldOrNew_NeverTorn_AndEveryEditKept()
     {
         var savePoints = CrashPoints.All.Where(p => p.StartsWith("Save.", StringComparison.Ordinal)).ToList();
-        Assert.Equal(7, savePoints.Count);
+        Assert.Equal(8, savePoints.Count);
 
         foreach (var point in savePoints)
         {
@@ -759,16 +806,16 @@ public sealed class InvariantProofTests
     }
 
     /// <summary>
-    /// F8 found by a power cut: Bob saves, the power goes between the rename and the marker delete
-    /// (<c>Save.AfterRename</c>). D already holds bob-1 and the marker is still there. When Bob starts again he is offered
-    /// "Restore Unsaved Changes?", chooses Restore, and is told "Can't Restore" although nothing is missing. The story names
-    /// the point.
+    /// F8 is fixed. Bob saves, the power goes between the rename and the marker delete (<c>Save.AfterRename</c>). D already holds
+    /// bob-1 and the marker is still there, and (the fix) the marker already carries the save's fingerprint, recorded before the
+    /// rename. When Bob starts again he is offered "Restore Unsaved Changes?", chooses Restore, and the Restore WORKS: recovery
+    /// recognises D as his own save. Before the fix he was told "Can't Restore" although nothing was missing. No violation; the
+    /// story names the point.
     /// </summary>
     [HarnessFact]
-    public async Task PowerCut_BetweenTheRenameAndTheMarkerDelete_IsClassifiedAsF8()
+    public async Task PowerCut_BetweenTheRenameAndTheMarkerDelete_RestoreWorks_F8IsFixed()
     {
-        using var world = new World(_output, nameof(PowerCut_BetweenTheRenameAndTheMarkerDelete_IsClassifiedAsF8));
-        world.ExpectFindings("F8");
+        using var world = new World(_output, nameof(PowerCut_BetweenTheRenameAndTheMarkerDelete_RestoreWorks_F8IsFixed));
         world.CreateDatabase();
         var bob = world.AddComputer("bob");
         await bob.OpenAsync();
@@ -777,19 +824,19 @@ public sealed class InvariantProofTests
         Assert.True(await world.RunWithPowerCutAsync(bob, "Save.AfterRename", 1, "Bob presses Save", () => bob.SaveAsync()));
         Assert.Equal(new[] { "bob-1" }, world.EditsInDatabase());   // the save landed ...
         Assert.True(bob.HasDirtyMarker);                            // ... and the marker was not deleted
+        Assert.Equal(world.CurrentDatabaseHash(), bob.PendingSaveHashInMarker());   // ... but it names D's new version
 
-        var export = Path.Combine(world.RootDir, "exports", "bob-recovered.db");
-        Directory.CreateDirectory(Path.GetDirectoryName(export)!);
         bob.Relaunch();
-        bob.Prompts.ExpectChoice(HarnessTitles.RestoreUnsavedChanges, ChoiceAnswer.Affirmative)
-                   .ExpectChoice(HarnessTitles.CantRestore, ChoiceAnswer.Affirmative)
-                   .ExpectPick("Save Recovered Copy", export);
+        bob.Prompts.ExpectChoice(HarnessTitles.RestoreUnsavedChanges, ChoiceAnswer.Affirmative);   // and nothing else is asked
         await bob.OpenAsync();
 
-        var violation = Assert.Single(world.Violations, v => v.Kind == ViolationKind.RestoreOfferedThenImpossible);
-        Assert.Equal("F8", violation.FindingId);
-        Assert.True(violation.AllKeptEditsAlreadyShared);
-        Assert.Contains("Bob's computer lost power at Save.AfterRename", world.PrintStory(Array.Empty<string>()));
+        Assert.Empty(world.Violations);
+        Assert.Equal(CheckoutMode.WriteAccess, bob.Checkout.Mode);   // the Restore worked: Bob is writing again
+        Assert.Equal(new[] { "bob-1" }, bob.WorkingFileEdits());     // with his edit in his session ...
+        Assert.Equal(new[] { "bob-1" }, world.EditsInDatabase());    // ... and in D
+        var story = world.PrintStory(Array.Empty<string>());
+        Assert.Contains("Bob's computer lost power at Save.AfterRename", story);
+        Assert.DoesNotContain("Can't Restore", story);
         world.AssertAllScriptsConsumed();
         world.Finish();
     }

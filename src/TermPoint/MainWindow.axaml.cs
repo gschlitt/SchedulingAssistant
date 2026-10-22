@@ -1194,18 +1194,35 @@ public partial class MainWindow : Window, ILifecyclePrompts, ISessionHost
     /// Shows a modal two-button dialog built in code and Topmost (see <see cref="ShowFatalAsync"/>). Static and
     /// given its owner so any window can use it: this window through <see cref="ShowChoiceAsync"/>, and the
     /// database chooser, which runs before this window is shown. Closing the dialog without a button counts as
-    /// the declining button.
+    /// the declining button. A thin wrapper over <see cref="ShowChoiceOrCloseDialogAsync"/>, which keeps the X
+    /// apart for the few questions where it must not count as a decision.
     /// </summary>
     /// <param name="owner">Window to parent the dialog to.</param>
     /// <param name="title">Dialog window title.</param>
     /// <param name="message">Body text; wraps automatically.</param>
     /// <param name="affirmative">Label of the confirming button (returned as true).</param>
     /// <param name="negative">Label of the declining button (returned as false).</param>
-    /// <returns>True when the affirmative button was clicked.</returns>
+    /// <returns>True when the affirmative button was clicked; false for the negative button or the window's X.</returns>
     internal static async Task<bool> ShowChoiceDialogAsync(
         Window owner, string title, string message, string affirmative, string negative)
+        => await ShowChoiceOrCloseDialogAsync(owner, title, message, affirmative, negative) == ChoiceResult.Affirmative;
+
+    /// <summary>
+    /// The core of every two-button dialog: built in code and Topmost (see <see cref="ShowFatalAsync"/>), and it
+    /// reports THREE outcomes, so a caller can tell a button press from the window's X. Used directly by the
+    /// crash-recovery questions, where the X must never be taken for "discard my unsaved work" (data-persistence
+    /// review, F1); every other caller goes through the <c>bool</c> wrapper <see cref="ShowChoiceDialogAsync"/>.
+    /// </summary>
+    /// <param name="owner">Window to parent the dialog to.</param>
+    /// <param name="title">Dialog window title.</param>
+    /// <param name="message">Body text; wraps automatically.</param>
+    /// <param name="affirmative">Label of the confirming button.</param>
+    /// <param name="negative">Label of the declining button.</param>
+    /// <returns><see cref="ChoiceResult.Affirmative"/> or <see cref="ChoiceResult.Negative"/> for a button; <see cref="ChoiceResult.Closed"/> when the window was closed without one.</returns>
+    internal static async Task<ChoiceResult> ShowChoiceOrCloseDialogAsync(
+        Window owner, string title, string message, string affirmative, string negative)
     {
-        var result = false;
+        var result = ChoiceResult.Closed; // stays Closed unless a button sets it first
         var dlg = new Window
         {
             Title = title,
@@ -1228,8 +1245,8 @@ public partial class MainWindow : Window, ILifecyclePrompts, ISessionHost
         panel.Children.Add(btns);
         dlg.Content = panel;
 
-        yes.Click += (_, _) => { result = true;  Dispatcher.UIThread.Post(() => dlg.Close()); };
-        no.Click  += (_, _) => { result = false; Dispatcher.UIThread.Post(() => dlg.Close()); };
+        yes.Click += (_, _) => { result = ChoiceResult.Affirmative; Dispatcher.UIThread.Post(() => dlg.Close()); };
+        no.Click  += (_, _) => { result = ChoiceResult.Negative;    Dispatcher.UIThread.Post(() => dlg.Close()); };
         await dlg.ShowDialog(owner);
         return result;
     }
@@ -1638,6 +1655,10 @@ public partial class MainWindow : Window, ILifecyclePrompts, ISessionHost
     /// <inheritdoc cref="ILifecyclePrompts.ShowChoiceAsync"/>
     Task<bool> ILifecyclePrompts.ShowChoiceAsync(string title, string message, string affirmative, string negative)
         => ShowChoiceAsync(title, message, affirmative, negative);
+
+    /// <inheritdoc cref="ILifecyclePrompts.ShowChoiceOrCloseAsync"/>
+    Task<ChoiceResult> ILifecyclePrompts.ShowChoiceOrCloseAsync(string title, string message, string affirmative, string negative)
+        => ShowChoiceOrCloseDialogAsync(this, title, message, affirmative, negative);
 
     /// <inheritdoc cref="ILifecyclePrompts.RunWithWaitAsync{T}"/>
     Task<T> ILifecyclePrompts.RunWithWaitAsync<T>(string title, string message, Func<Task<T>> work)

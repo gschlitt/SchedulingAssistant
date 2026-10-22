@@ -1198,6 +1198,10 @@ public sealed class SessionLifecycle
     /// (<see cref="CheckoutService.CheckoutAsync"/> with <c>recoverWorkingCopy: true</c>),
     /// which resumes the crashed session only after proving D is unchanged since the crash.</para>
     ///
+    /// <para><b>The kept changes are deleted only on a confirmed Discard</b> (see
+    /// <see cref="AskKeepOrDiscardAsync"/>): the window's X re-asks the question, and Discard first asks
+    /// "Discard Unsaved Changes?".</para>
+    ///
     /// <para><b>UX rule:</b> the user is never told about working copies or file paths —
     /// from their point of view TermPoint simply "kept their unsaved changes."</para>
     /// </summary>
@@ -1221,10 +1225,12 @@ public sealed class SessionLifecycle
         // Neutral phrasing: these artifacts can come from a crash, a failed
         // save-on-exit, or a lock-loss demotion — "did not close properly" would
         // be wrong for the latter two.
-        var restore = await _prompts.ShowChoiceAsync("Restore Unsaved Changes?",
+        // F1 / rule 3: the kept changes are the user's only copy, so neither the window's X nor a single click on
+        // Discard may delete them — the helper keeps asking until the user presses Restore or confirms the discard.
+        var restore = await AskKeepOrDiscardAsync("Restore Unsaved Changes?",
             "Unsaved changes from a previous session with this database were kept." +
             "\n\nWould you like to restore them?",
-            "Restore", "Discard");
+            "Restore", "Discard", RecoveryConflictPrompt.DiscardConfirmMessage);
 
         if (!restore)
         {
@@ -1236,13 +1242,57 @@ public sealed class SessionLifecycle
     }
 
     /// <summary>
+    /// Asks a keep-or-discard question about the user's kept unsaved changes and returns only when the user has
+    /// made a real decision (data-persistence review, F1; rule 3 of the shared-database rules: never delete the only
+    /// copy of someone's unsaved work on a click that was not a decision). Loops:
+    /// <list type="bullet">
+    /// <item><description>The window's X (<see cref="ChoiceResult.Closed"/>): asks the same question again. The X is not a decision.</description></item>
+    /// <item><description>The keep button: returns true.</description></item>
+    /// <item><description>The discard button: asks "Discard Unsaved Changes?" with [Discard] and [Go Back]. Discard returns
+    /// false; Go Back, or that confirmation's own X, asks the original question again.</description></item>
+    /// </list>
+    /// Used by both crash-recovery questions ("Restore Unsaved Changes?" and "Can't Restore Unsaved Changes").
+    /// </summary>
+    /// <param name="title">Title of the original question.</param>
+    /// <param name="message">Body of the original question.</param>
+    /// <param name="keepLabel">Label of the original question's confirming button (the one that keeps the changes).</param>
+    /// <param name="discardLabel">Label of the original question's other button (the one that leads to the confirmation).</param>
+    /// <param name="confirmMessage">Body of the "Discard Unsaved Changes?" confirmation (texts in <see cref="RecoveryConflictPrompt"/>).</param>
+    /// <returns>True when the user chose to keep the changes; false only when the user confirmed the discard.</returns>
+    private async Task<bool> AskKeepOrDiscardAsync(
+        string title, string message, string keepLabel, string discardLabel, string confirmMessage)
+    {
+        while (true)
+        {
+            var answer = await _prompts.ShowChoiceOrCloseAsync(title, message, keepLabel, discardLabel);
+
+            if (answer == ChoiceResult.Affirmative)
+                return true;
+
+            if (answer == ChoiceResult.Negative)
+            {
+                // Discard is asked about before it is done. The confirmation's X is Go Back (ShowChoiceAsync folds
+                // the X into its negative button), so only the Discard button deletes anything.
+                var confirmed = await _prompts.ShowChoiceAsync(
+                    RecoveryConflictPrompt.DiscardConfirmTitle, confirmMessage,
+                    RecoveryConflictPrompt.DiscardConfirmButton, RecoveryConflictPrompt.GoBackButton);
+                if (confirmed)
+                    return false;
+            }
+
+            // Closed with the X, or Go Back: ask the original question again.
+        }
+    }
+
+    /// <summary>
     /// Handles <see cref="CheckoutOutcome.RecoveryConflict"/>: the unsaved changes exist
     /// and are intact, but D was modified since the crash (or the marker is unverifiable),
     /// so restoring them automatically would overwrite someone else's work. Offers to
     /// export the unsaved version as a separate file, then discards the crash artifacts.
     /// A cancelled save-picker, a name that is already taken, an unreachable location or a
-    /// failed copy re-offers the choice rather than silently discarding. The texts live in
-    /// <see cref="RecoveryConflictPrompt"/>.
+    /// failed copy re-offers the choice rather than silently discarding, and so does the
+    /// window's X; Discard discards only after "Discard Unsaved Changes?" is confirmed
+    /// (<see cref="AskKeepOrDiscardAsync"/>). The texts live in <see cref="RecoveryConflictPrompt"/>.
     /// </summary>
     /// <param name="sourcePath">The database path whose recovery hit a conflict.</param>
     private async Task HandleRecoveryConflictAsync(string sourcePath)
@@ -1251,10 +1301,12 @@ public sealed class SessionLifecycle
 
         while (info is not null)
         {
-            var export = await _prompts.ShowChoiceAsync(
+            // F1 / rule 3: only a CONFIRMED discard leaves the loop without a copy; the window's X just asks again.
+            var export = await AskKeepOrDiscardAsync(
                 RecoveryConflictPrompt.ConflictTitle,
                 RecoveryConflictPrompt.ConflictMessage,
-                RecoveryConflictPrompt.SaveCopyButton, RecoveryConflictPrompt.DiscardButton);
+                RecoveryConflictPrompt.SaveCopyButton, RecoveryConflictPrompt.DiscardButton,
+                RecoveryConflictPrompt.DiscardConfirmWithCopyMessage);
 
             if (!export)
                 break;

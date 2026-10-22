@@ -24,7 +24,8 @@ public interface ILifecyclePrompts
 
     /// <summary>
     /// Shows a modal two-button dialog with caller-supplied button labels (for example "Restore" / "Discard").
-    /// Closing the dialog without pressing a button (the window's X) counts as the negative answer.
+    /// Closing the dialog without pressing a button (the window's X) counts as the negative answer. A question
+    /// whose negative answer destroys something must use <see cref="ShowChoiceOrCloseAsync"/> instead.
     /// </summary>
     /// <param name="title">Dialog window title.</param>
     /// <param name="message">Body text; wraps automatically.</param>
@@ -32,6 +33,19 @@ public interface ILifecyclePrompts
     /// <param name="negative">Label of the declining button (answers false).</param>
     /// <returns>True when the affirmative button was clicked; false for the negative button OR for closing the dialog without a button.</returns>
     Task<bool> ShowChoiceAsync(string title, string message, string affirmative, string negative);
+
+    /// <summary>
+    /// Shows the same modal two-button dialog as <see cref="ShowChoiceAsync"/>, but reports a window closed with
+    /// its X as <see cref="ChoiceResult.Closed"/> instead of folding it into the negative button. For questions
+    /// where the negative answer destroys something and the X must therefore never count as consent (the
+    /// crash-recovery questions: closing the window must not delete the user's only copy of their unsaved work).
+    /// </summary>
+    /// <param name="title">Dialog window title.</param>
+    /// <param name="message">Body text; wraps automatically.</param>
+    /// <param name="affirmative">Label of the confirming button.</param>
+    /// <param name="negative">Label of the declining button.</param>
+    /// <returns><see cref="ChoiceResult.Affirmative"/>, <see cref="ChoiceResult.Negative"/>, or <see cref="ChoiceResult.Closed"/> when the dialog was closed without a button.</returns>
+    Task<ChoiceResult> ShowChoiceOrCloseAsync(string title, string message, string affirmative, string negative);
 
     /// <summary>
     /// Runs <paramref name="work"/> under a modal wait dialog that the user cannot dismiss until the work ends.

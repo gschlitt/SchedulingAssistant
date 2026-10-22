@@ -260,7 +260,9 @@ internal sealed class PromiseTracker
         if (p.PromisedEdits.Count == 0 || p.PromisedEdits.All(e => !now.IsSafe(e))) return null;
 
         var prompts = world.StepPrompts(p.Owner);
-        var offer   = prompts.FirstOrDefault(c => c.Kind == PromptKind.Choice && c.Title == HarnessTitles.RestoreUnsavedChanges);
+        // The LAST "Restore?" of the step is the person's answer: the X and Go Back ask the question again (finding F1, fixed),
+        // so an earlier ask may have been dismissed and a later one answered.
+        var offer   = prompts.LastOrDefault(c => c.Kind == PromptKind.Choice && c.Title == HarnessTitles.RestoreUnsavedChanges);
         var cantRestore = prompts.Any(c => c.Kind == PromptKind.Choice && c.Title == HarnessTitles.CantRestore);
 
         var live = now.Live.TryGetValue(p.Owner.Name, out var liveEdits) ? liveEdits : Array.Empty<string>();

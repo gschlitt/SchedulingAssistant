@@ -6371,4 +6371,247 @@ public sealed class CheckoutServiceTests : IDisposable
         Assert.Equal(IntegrityCheckResult.Damaged, BackupService.CheckIntegrityDetailed(svc.WorkingPath));
         Assert.Equal(hashOfD, ComputeFileHash(db));
     }
+
+    // ═════════════════════════════════════════════════════════════════════════
+    // Group 20 — the save re-checks the lock and D just before the rename (F12),
+    //            and records its fingerprint before the rename (F8)
+    //
+    // data-persistence-review-2026-10.md, section 3. The upload between the first
+    // check and the rename can take hours (a laptop that sleeps mid-save), during
+    // which another user can take over the lock and save. The crash-point hook
+    // plays that other user at Save.AfterTmpVerify, the last point before the
+    // final check.
+    // ═════════════════════════════════════════════════════════════════════════
+
+    /// <summary>Thrown by a crash-point hook to stop the operation where a killed process would stop.</summary>
+    private sealed class SimulatedCrashException : Exception { }
+
+    /// <summary>
+    /// Counts the operations the share sees on one path, by label, from any thread: the test seam for "how many
+    /// times did the save read D?" (installed through <see cref="NetworkFaults.Decide"/>, which answers "no fault").
+    /// </summary>
+    private sealed class ShareOpCounter
+    {
+        private readonly object _gate = new();
+        private readonly Dictionary<string, int> _counts = new();
+
+        /// <summary>
+        /// Installs the counting hook; operations on <paramref name="path"/> are counted, all others pass untouched.
+        /// The caller must reset <see cref="NetworkFaults.Decide"/> to null when the test ends.
+        /// </summary>
+        /// <param name="path">The path whose operations are counted.</param>
+        public void Install(string path)
+            => NetworkFaults.Decide = request =>
+            {
+                if (string.Equals(request.Path, path, StringComparison.OrdinalIgnoreCase))
+                    lock (_gate) _counts[request.Label] = _counts.GetValueOrDefault(request.Label) + 1;
+                return NetworkFaultDecision.None;
+            };
+
+        /// <summary>How many operations with this label were seen on the path.</summary>
+        /// <param name="label">The operation's label, e.g. "ComputeHash" or "File.Stat".</param>
+        public int Count(string label)
+        {
+            lock (_gate) return _counts.GetValueOrDefault(label);
+        }
+    }
+
+    /// <summary>
+    /// Runs <see cref="CheckoutService.SaveAsync"/> with a crash-point hook that does <paramref name="atTmpVerify"/>
+    /// when the save reaches <c>Save.AfterTmpVerify</c> (D.tmp uploaded and verified, final check not yet made), and
+    /// always resets both static hooks afterwards.
+    /// </summary>
+    /// <param name="svc">The service whose save runs.</param>
+    /// <param name="atTmpVerify">What "the world" does while the save is between its upload and its final check.</param>
+    /// <returns>The save's outcome.</returns>
+    private static async Task<SaveOutcome> SaveWhileAsync(CheckoutService svc, Action atTmpVerify)
+    {
+        CrashPoints.Hook = name => { if (name == "Save.AfterTmpVerify") atTmpVerify(); };
+        try { return await svc.SaveAsync(); }
+        finally { CrashPoints.Hook = null; NetworkFaults.Decide = null; }
+    }
+
+    /// <summary>
+    /// F12, the lock: another user takes over the lock while the save is uploading. The final check before the
+    /// rename finds a foreign lock and refuses with LockLost, so the rename never happens. D is byte-for-byte what it
+    /// was, and D' and its dirty marker stay: the user's edit is not lost. The D.tmp is NOT deleted: without the lock
+    /// this save must not write to the share (rule 2), and D.tmp's one shared name may by now be the new holder's save
+    /// in progress. The new holder's checkout or save deals with a leftover one.
+    /// </summary>
+    [Fact]
+    public async Task SaveAsync_LockTakenOverWhileUploading_IsRefusedAtTheFinalCheck_AndDIsUntouched()
+    {
+        var db = DbPath();
+        var (svc, _) = await CheckoutWithUnsavedEditAsync(db);
+        var before = DbFileTestHelpers.HashOf(db);
+
+        var outcome = await SaveWhileAsync(svc, () => WriteExternalFreshLock(db));
+
+        Assert.Equal(SaveOutcome.LockLost, outcome);
+        Assert.Equal(before, DbFileTestHelpers.HashOf(db));
+        Assert.True(File.Exists(db + ".tmp"), "Without the lock the save must leave D.tmp alone (it may be the new holder's).");
+        Assert.True(File.Exists(svc.WorkingPath), "D' must survive the refusal.");
+        Assert.True(File.Exists(svc.WorkingPath + ".dirty"), "The dirty marker must survive the refusal.");
+    }
+
+    /// <summary>
+    /// F12, the database: another user saves to D while this save is uploading (the lock is still ours as far as the
+    /// file says, e.g. they took it over and released it again). The final check sees that D's stamp changed, hashes
+    /// it, finds it is not the version this session last saw, and refuses with SourceModified and the save-conflict
+    /// state. D keeps the other writer's content, the D.tmp is gone, and D' and its marker stay.
+    /// </summary>
+    [Fact]
+    public async Task SaveAsync_DChangedWhileUploading_IsRefusedAtTheFinalCheck_AsSourceModified()
+    {
+        var db = DbPath();
+        var (svc, _) = await CheckoutWithUnsavedEditAsync(db);
+        var conflictsRaised = 0;
+        svc.SaveConflictDetected += () => conflictsRaised++;
+
+        var outcome = await SaveWhileAsync(svc, () =>
+        {
+            InsertTestValue(db, "other-writers-save");
+            // Make the change visible to the stamp however coarse the file system's clock is.
+            File.SetLastWriteTimeUtc(db, File.GetLastWriteTimeUtc(db).AddMinutes(1));
+        });
+
+        Assert.Equal(SaveOutcome.SourceModified, outcome);
+        Assert.True(svc.HasSaveConflict);
+        Assert.Equal(1, conflictsRaised);
+        Assert.Equal("other-writers-save", ReadTestValue(db));   // D keeps the other writer's content
+        Assert.False(File.Exists(db + ".tmp"), "The D.tmp of a refused save must be deleted.");
+        Assert.True(File.Exists(svc.WorkingPath));
+        Assert.True(File.Exists(svc.WorkingPath + ".dirty"));
+    }
+
+    /// <summary>
+    /// The cheap path: lock ours and D untouched since the first check. The save succeeds, and the final check only
+    /// stat'ed D (twice in all, one per check) without reading it again: D is hashed exactly once, by the first check.
+    /// </summary>
+    [Fact]
+    public async Task SaveAsync_NothingChanged_FinalCheckStatsDButDoesNotRehashIt()
+    {
+        var db = DbPath();
+        var (svc, _) = await CheckoutWithUnsavedEditAsync(db);
+        var counter = new ShareOpCounter();
+        counter.Install(db);
+
+        var outcome = await SaveWhileAsync(svc, () => { /* nobody does anything */ });
+
+        Assert.Equal(SaveOutcome.Success, outcome);
+        Assert.Equal("unsaved-edit", ReadTestValue(db));
+        Assert.Equal(2, counter.Count("File.Stat"));
+        Assert.Equal(1, counter.Count("ComputeHash"));
+    }
+
+    /// <summary>
+    /// A stamp that differs while the content does not (a program touched D's timestamp, say) costs a re-hash but
+    /// never a false refusal: the hash still equals the one from checkout, so the save goes on and succeeds.
+    /// </summary>
+    [Fact]
+    public async Task SaveAsync_OnlyDsTimestampChanged_FinalCheckRehashesAndTheSaveSucceeds()
+    {
+        var db = DbPath();
+        var (svc, _) = await CheckoutWithUnsavedEditAsync(db);
+        var counter = new ShareOpCounter();
+        counter.Install(db);
+
+        var outcome = await SaveWhileAsync(svc, () =>
+            File.SetLastWriteTimeUtc(db, File.GetLastWriteTimeUtc(db).AddMinutes(1)));
+
+        Assert.Equal(SaveOutcome.Success, outcome);
+        Assert.False(svc.HasSaveConflict);
+        Assert.Equal("unsaved-edit", ReadTestValue(db));
+        Assert.Equal(2, counter.Count("ComputeHash"));
+    }
+
+    /// <summary>
+    /// The final check's stat of D times out (the share went away during the upload): the save is refused as
+    /// "cannot reach the database" (CopyError), exactly as a timed-out first check is. D is untouched, the D.tmp
+    /// is deleted, and D' and its marker stay.
+    /// </summary>
+    [Fact]
+    public async Task SaveAsync_FinalStatTimesOut_IsAnUnreachableCopyError_AndDIsUntouched()
+    {
+        var db = DbPath();
+        var (svc, lockSvc) = await CheckoutWithUnsavedEditAsync(db);
+        var banners = CaptureSaveBanners(svc);
+        var before = DbFileTestHelpers.HashOf(db);
+
+        var outcome = await SaveWhileAsync(svc, () => FaultNextStatOf(db, NetworkFaultDecision.TimeOut));
+
+        Assert.Equal(SaveOutcome.CopyError, outcome);
+        Assert.Equal((SavePrompt.ForTransientFailure(SavePrompt.UnreachableMessage, isAutoSave: false), false), Assert.Single(banners));
+        Assert.Equal(before, DbFileTestHelpers.HashOf(db));
+        Assert.False(File.Exists(db + ".tmp"));
+        AssertSessionKept(svc, lockSvc);
+    }
+
+    /// <summary>
+    /// The final check's stat of D fails with a file error (another program holds D): the save is refused with the
+    /// "in use" message (CopyError), exactly as an unreadable D is at the first check. Nothing is lost.
+    /// </summary>
+    [Fact]
+    public async Task SaveAsync_FinalStatFailsWithAFileError_IsAnInUseCopyError_AndDIsUntouched()
+    {
+        var db = DbPath();
+        var (svc, lockSvc) = await CheckoutWithUnsavedEditAsync(db);
+        var banners = CaptureSaveBanners(svc);
+        var before = DbFileTestHelpers.HashOf(db);
+
+        var outcome = await SaveWhileAsync(svc, () =>
+            FaultNextStatOf(db, NetworkFaultDecision.Throwing(new IOException("sharing violation"))));
+
+        Assert.Equal(SaveOutcome.CopyError, outcome);
+        Assert.Equal((SavePrompt.ForTransientFailure(SavePrompt.InUseMessage, isAutoSave: false), false), Assert.Single(banners));
+        Assert.Equal(before, DbFileTestHelpers.HashOf(db));
+        Assert.False(File.Exists(db + ".tmp"));
+        AssertSessionKept(svc, lockSvc);
+    }
+
+    /// <summary>
+    /// Makes the NEXT stat of <paramref name="path"/> through <see cref="NetworkFileOps"/> fail the given way (the
+    /// save's final check, when called from the Save.AfterTmpVerify hook); every other operation is untouched.
+    /// </summary>
+    /// <param name="path">D's path.</param>
+    /// <param name="fault">What the stat does.</param>
+    private static void FaultNextStatOf(string path, NetworkFaultDecision fault)
+    {
+        var fired = 0;
+        NetworkFaults.Decide = request =>
+            request.Label == "File.Stat"
+            && string.Equals(request.Path, path, StringComparison.OrdinalIgnoreCase)
+            && Interlocked.Exchange(ref fired, 1) == 0
+                ? fault
+                : NetworkFaultDecision.None;
+    }
+
+    /// <summary>
+    /// F8: the process dies right after a rename that DID succeed, before the dirty marker is deleted. Because the
+    /// save recorded its fingerprint in the marker before the rename, the marker's PendingSaveHash is D's new hash,
+    /// and the next start's recovery recognises D as this session's own save and returns write access with the
+    /// kept edits, instead of the "Can't Restore" conflict.
+    /// </summary>
+    [Fact]
+    public async Task SaveAsync_CrashRightAfterTheRename_MarkerHoldsTheNewHash_AndRecoveryRestores()
+    {
+        var db = DbPath();
+        var (svc1, lockSvc1) = await CheckoutWithUnsavedEditAsync(db);
+        CrashPoints.Hook = name => { if (name == "Save.AfterRename") throw new SimulatedCrashException(); };
+        try { await svc1.SaveAsync(); }   // the process "dies" at the hook; SaveAsync's net absorbs the exception here
+        finally { CrashPoints.Hook = null; }
+
+        // D holds the new content, and the marker (still there) names it as this session's save.
+        Assert.Equal("unsaved-edit", ReadTestValue(db));
+        var marker = CheckoutService.TryReadMarker(svc1.WorkingPath + ".dirty");
+        Assert.NotNull(marker);
+        Assert.Equal(NetworkFileOps.ComputeHash(db), marker!.PendingSaveHash);
+
+        SimulateCrash(lockSvc1, db);
+        var (svc2, _) = CreateService();
+        var outcome = await svc2.CheckoutAsync(db, recoverWorkingCopy: true);
+
+        Assert.Equal(CheckoutOutcome.WriteAccess, outcome);
+        Assert.Equal("unsaved-edit", ReadTestValue(svc2.WorkingPath));
+    }
 }
