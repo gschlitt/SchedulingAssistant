@@ -232,7 +232,7 @@ public partial class CourseEditViewModel : ViewModelBase
         catch (Exception ex)
         {
             App.Logger.LogError(ex, "CourseEditViewModel.ApplyTagsToAllSections");
-            ApplyTagsResult = "Failed to apply tags. Please try again.";
+            ApplyTagsResult = WriteFailureText.For(ex, "Failed to apply tags. Please try again.");
         }
     }
 }

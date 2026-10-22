@@ -1909,6 +1909,9 @@ public sealed class SessionLifecycle
             async Task BeforeClose()
             {
                 await Task.CompletedTask;
+                // Read-only FIRST: from here until the read-only copy arrives an open editor can still be
+                // applied, and it must be refused with the plain message, not fail on a closed connection.
+                surface.MarkReadOnly();
                 surface.CloseConnection();
             }
 
@@ -1919,7 +1922,9 @@ public sealed class SessionLifecycle
                 {
                     try
                     {
-                        surface.ReinitializeConnection(_checkout.WorkingPath);
+                        // readOnly: true also when the demotion failed and WorkingPath is still the kept D'
+                        // (the user's only copy of unsaved work): nothing may write to it from here on.
+                        surface.ReinitializeConnection(_checkout.WorkingPath, readOnly: true);
                     }
                     catch (System.Exception ex)
                     {

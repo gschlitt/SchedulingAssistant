@@ -17,6 +17,13 @@ public sealed class ConsoleAppLogger : IAppLogger
     /// <inheritdoc/>
     public void LogError(Exception? ex, string? context = null, bool unhandled = false)
     {
+        // A refused read-only write is not an error to break on: log it and return (same rule as FileAppLogger).
+        if (WriteFailureText.IsWriteAccessLost(ex))
+        {
+            Write("WARN", context, ex);
+            return;
+        }
+
         Write("ERROR", context, ex);
         if (ThrowOnError)
             ExceptionDispatchInfo.Capture(ex).Throw();

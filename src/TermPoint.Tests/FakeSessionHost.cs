@@ -354,6 +354,15 @@ internal sealed class FakeLockLossSurface : ILockLossSurface
     /// <summary>Every path <see cref="ReinitializeConnection"/> was called with, in order.</summary>
     public List<string> ReinitializedPaths { get; } = new();
 
+    /// <summary>Every <c>readOnly</c> argument <see cref="ReinitializeConnection"/> was called with, in order (parallel to <see cref="ReinitializedPaths"/>).</summary>
+    public List<bool> ReinitializedReadOnly { get; } = new();
+
+    /// <summary>Number of times <see cref="MarkReadOnly"/> was called.</summary>
+    public int MarkReadOnlyCalls { get; private set; }
+
+    /// <summary>True when <see cref="MarkReadOnly"/> had already been called at the moment <see cref="CloseConnection"/> ran (the demotion must mark first).</summary>
+    public bool WasReadOnlyWhenClosed { get; private set; }
+
     /// <summary>Creates the surface.</summary>
     /// <param name="trace">Receives a line "surface:..." for every call.</param>
     /// <param name="closeHostConnection">Closes the host's connection to the working file (called by <see cref="CloseConnection"/> when <see cref="HasConnection"/>).</param>
@@ -372,17 +381,26 @@ internal sealed class FakeLockLossSurface : ILockLossSurface
     }
 
     /// <inheritdoc/>
+    public void MarkReadOnly()
+    {
+        MarkReadOnlyCalls++;
+        _trace("surface:MarkReadOnly");
+    }
+
+    /// <inheritdoc/>
     public void CloseConnection()
     {
+        WasReadOnlyWhenClosed = MarkReadOnlyCalls > 0;
         _trace("surface:CloseConnection");
         if (HasConnection)
             _closeHostConnection();
     }
 
     /// <inheritdoc/>
-    public void ReinitializeConnection(string path)
+    public void ReinitializeConnection(string path, bool readOnly)
     {
         ReinitializedPaths.Add(path);
+        ReinitializedReadOnly.Add(readOnly);
         _trace($"surface:ReinitializeConnection({Path.GetFileName(path)})");
         OnReinitialize?.Invoke(path);
         if (ReinitializeFailure is not null)

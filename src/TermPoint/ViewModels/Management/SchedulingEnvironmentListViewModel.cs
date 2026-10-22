@@ -288,7 +288,7 @@ public partial class SchedulingEnvironmentListViewModel : ViewModelBase, IDismis
         {
             tx?.Rollback();
             App.Logger.LogError(ex, "SchedulingEnvironmentListViewModel.Delete");
-            LastErrorMessage = "The delete could not be completed. No changes were made. Please try again.";
+            LastErrorMessage = WriteFailureText.For(ex, "The delete could not be completed. No changes were made. Please try again.");
         }
         finally
         {

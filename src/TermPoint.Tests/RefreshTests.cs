@@ -318,7 +318,7 @@ public sealed class RefreshTests : IDisposable
         InsertSemester(db.Connection, "sem-1");
         var before = CountSemesters(db.Connection);
 
-        db.ReinitializeConnection(_dbPath);
+        db.ReinitializeConnection(_dbPath, readOnly: false);
 
         Assert.Equal(before, CountSemesters(db.Connection));
         Assert.True(before >= 1, "The reopened file still holds the semester inserted before.");
@@ -342,7 +342,7 @@ public sealed class RefreshTests : IDisposable
         using var db = new DatabaseContext(_dbPath);
         var missing = Path.Combine(_tempDir, "vanished.db");
 
-        Assert.Throws<InvalidOperationException>(() => db.ReinitializeConnection(missing));
+        Assert.Throws<InvalidOperationException>(() => db.ReinitializeConnection(missing, readOnly: false));
         Assert.False(File.Exists(missing), "No database may be created at a missing path.");
     }
 }

@@ -337,7 +337,7 @@ public partial class LegalStartTimeListViewModel : ViewModelBase, IDisposable, I
             onSave: async e =>
             {
                 try { _repo.Insert(e, _currentAcademicYearId); Load(); EditVm = null; }
-                catch (Exception ex) { App.Logger.LogError(ex, "LegalStartTimeListViewModel.Add"); LastErrorMessage = "The save could not be completed. Please try again."; }
+                catch (Exception ex) { App.Logger.LogError(ex, "LegalStartTimeListViewModel.Add"); LastErrorMessage = WriteFailureText.For(ex, "The save could not be completed. Please try again."); }
                 await Task.CompletedTask;
             },
             onCancel: () => EditVm = null,
@@ -354,7 +354,7 @@ public partial class LegalStartTimeListViewModel : ViewModelBase, IDisposable, I
             onSave: async e =>
             {
                 try { _repo.Update(e, _currentAcademicYearId); Load(); EditVm = null; }
-                catch (Exception ex) { App.Logger.LogError(ex, "LegalStartTimeListViewModel.Edit"); LastErrorMessage = "The save could not be completed. Please try again."; }
+                catch (Exception ex) { App.Logger.LogError(ex, "LegalStartTimeListViewModel.Edit"); LastErrorMessage = WriteFailureText.For(ex, "The save could not be completed. Please try again."); }
                 await Task.CompletedTask;
             },
             onCancel: () => EditVm = null);
@@ -373,7 +373,7 @@ public partial class LegalStartTimeListViewModel : ViewModelBase, IDisposable, I
         catch (Exception ex)
         {
             App.Logger.LogError(ex, "LegalStartTimeListViewModel.Delete");
-            LastErrorMessage = "The delete could not be completed. Please try again.";
+            LastErrorMessage = WriteFailureText.For(ex, "The delete could not be completed. Please try again.");
         }
     }
 

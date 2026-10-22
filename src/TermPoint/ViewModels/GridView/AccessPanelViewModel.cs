@@ -11,12 +11,32 @@ namespace TermPoint.ViewModels.GridView;
 /// ViewModel for the Access toolbar group in the Schedule Grid. Manages the list of
 /// <see cref="ProgramWatch"/> entries for the current semester and exposes conflict
 /// summary data for the collapsed badge.
+///
+/// <para><b>Read-only sessions.</b> A watch is a viewing aid, so a reader (reader / observer mode, or after the
+/// write lock was lost) keeps using the panel. For a session that cannot write, creating, toggling, renaming and
+/// deleting a watch change only the in-memory <see cref="Watches"/> list (remembered per semester for the life of
+/// the session in <c>_sessionWatches</c>); the repository is never called, because its database is a throw-away
+/// copy and a refused write would only confuse. The grid reads <see cref="GetEnabledWatches"/>, not the database,
+/// so conflicts update exactly as for a writer. A writer's watches are saved to the database as before.</para>
 /// </summary>
 public partial class AccessPanelViewModel : ObservableObject
 {
     private readonly IProgramWatchRepository _repo;
     private readonly SemesterContext _semesterContext;
     private readonly GridChangeNotifier _changeNotifier;
+
+    /// <summary>
+    /// Tells whether this session may write to the database (the write lock is ours). Asked at the moment of
+    /// each change, so a lock lost mid-session switches the panel to in-memory behaviour at once.
+    /// </summary>
+    private readonly Func<bool> _canWrite;
+
+    /// <summary>
+    /// The watches of each semester as a read-only session has changed them, keyed by semester id. Consulted by
+    /// <see cref="LoadWatches"/> in place of the repository, so edits made without write access survive a
+    /// switch of semester within the session. Empty (and unused) for a writer.
+    /// </summary>
+    private readonly Dictionary<string, List<ProgramWatch>> _sessionWatches = [];
 
     /// <summary>The watch list for the current semester.</summary>
     public ObservableCollection<ProgramWatchItemViewModel> Watches { get; } = [];
@@ -40,16 +60,24 @@ public partial class AccessPanelViewModel : ObservableObject
     /// <summary>The inline creation form VM. Visible when the user clicks "New Watch".</summary>
     public WatchCreationViewModel Creation { get; }
 
+    /// <param name="repo">Where a writer's watches are saved.</param>
+    /// <param name="semesterContext">The selected semester(s); watches belong to the first one.</param>
+    /// <param name="changeNotifier">Told when the grid must redraw after a watch change.</param>
+    /// <param name="envRepo">Section-property values for the creation form.</param>
+    /// <param name="courseRepo">Courses for the creation form.</param>
+    /// <param name="canWrite">True while the session may write to the database (normally the write lock's <c>IsWriter</c>).</param>
     public AccessPanelViewModel(
         IProgramWatchRepository repo,
         SemesterContext semesterContext,
         GridChangeNotifier changeNotifier,
         ISchedulingEnvironmentRepository envRepo,
-        ICourseRepository courseRepo)
+        ICourseRepository courseRepo,
+        Func<bool> canWrite)
     {
         _repo = repo;
         _semesterContext = semesterContext;
         _changeNotifier = changeNotifier;
+        _canWrite = canWrite;
 
         Creation = new WatchCreationViewModel(envRepo, courseRepo, OnCreationSave, OnCreationCancel);
 
@@ -109,7 +137,8 @@ public partial class AccessPanelViewModel : ObservableObject
     }
 
     /// <summary>
-    /// Creates a new watch from the given definition, persists it, and triggers a grid reload.
+    /// Creates a new watch from the given definition and triggers a grid reload. A writer's watch is saved to the
+    /// database; in a read-only session it is only added to the in-memory list (see the class remarks).
     /// </summary>
     /// <param name="watch">The watch to create (should have a fresh ID).</param>
     public void CreateWatch(ProgramWatch watch)
@@ -117,8 +146,17 @@ public partial class AccessPanelViewModel : ObservableObject
         var semesterId = GetCurrentSemesterId();
         if (semesterId is null) return;
 
-        _repo.Save(semesterId, watch);
-        LoadWatches();
+        if (_canWrite())
+        {
+            _repo.Save(semesterId, watch);
+            LoadWatches();
+        }
+        else
+        {
+            Watches.Add(NewItem(watch));
+            RememberSessionWatches(semesterId);
+            RefreshSummary();
+        }
         _changeNotifier.NotifyGridContentChanged();
     }
 
@@ -142,15 +180,28 @@ public partial class AccessPanelViewModel : ObservableObject
             return;
         }
 
-        var watches = _repo.GetAll(semesterId);
+        // A read-only session shows its own edits for this semester, if it has made any; everyone else reads the database.
+        IReadOnlyList<ProgramWatch> watches =
+            !_canWrite() && _sessionWatches.TryGetValue(semesterId, out var kept) ? kept : _repo.GetAll(semesterId);
         foreach (var w in watches)
-        {
-            var summary = FormatModeSummary(w);
-            Watches.Add(new ProgramWatchItemViewModel(w, summary, OnWatchChanged, OnWatchDeleteRequested));
-        }
+            Watches.Add(NewItem(w));
 
         RefreshSummary();
     }
+
+    /// <summary>Wraps <paramref name="watch"/> in a list item wired to this panel's change and delete handlers.</summary>
+    /// <param name="watch">The watch to show.</param>
+    /// <returns>The new list item.</returns>
+    private ProgramWatchItemViewModel NewItem(ProgramWatch watch)
+        => new(watch, FormatModeSummary(watch), OnWatchChanged, OnWatchDeleteRequested);
+
+    /// <summary>
+    /// Remembers the watches now shown for <paramref name="semesterId"/> as this read-only session's version of
+    /// that semester's watches, so <see cref="LoadWatches"/> shows them again after a semester switch.
+    /// </summary>
+    /// <param name="semesterId">The semester whose list changed.</param>
+    private void RememberSessionWatches(string semesterId)
+        => _sessionWatches[semesterId] = [.. Watches.Select(w => w.Watch)];
 
     /// <summary>
     /// Builds a compact description of the watch definition for display in the list.
@@ -204,15 +255,25 @@ public partial class AccessPanelViewModel : ObservableObject
         var semesterId = GetCurrentSemesterId();
         if (semesterId is null) return;
 
-        _repo.Save(semesterId, item.Watch);
+        // Writer: save. Read-only session: the item has already updated its model; just remember the list.
+        if (_canWrite())
+            _repo.Save(semesterId, item.Watch);
+        else
+            RememberSessionWatches(semesterId);
         RefreshSummary();
         _changeNotifier.NotifyGridContentChanged();
     }
 
     private void OnWatchDeleteRequested(ProgramWatchItemViewModel item)
     {
-        _repo.Delete(item.Watch.Id);
+        var writer = _canWrite();
+        if (writer)
+            _repo.Delete(item.Watch.Id);
         Watches.Remove(item);
+
+        // Read-only session: the list itself is the record of the deletion.
+        if (!writer && GetCurrentSemesterId() is { } semesterId)
+            RememberSessionWatches(semesterId);
         RefreshSummary();
         _changeNotifier.NotifyGridContentChanged();
     }

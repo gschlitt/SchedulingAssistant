@@ -26,7 +26,14 @@ public interface IAppLogger
     /// </summary>
     event EventHandler<string>? ErrorLogged;
 
-    /// <summary>Log an exception with an optional human-readable context message.</summary>
+    /// <summary>
+    /// Log an exception with an optional human-readable context message.
+    ///
+    /// <para><b>Exception:</b> a <see cref="Data.WriteAccessLostException"/> (a write refused because the session is
+    /// read-only), found anywhere in the exception chain, is only written to the local log: no remote report, no
+    /// <see cref="ErrorLogged"/> banner and no <see cref="ThrowOnError"/> re-throw. The caller shows the one plain
+    /// message itself (<see cref="WriteFailureText"/>).</para>
+    /// </summary>
     /// <param name="ex">The exception to log.</param>
     /// <param name="context">Short human-readable description shown in the notification banner.</param>
     /// <param name="unhandled">

@@ -35,6 +35,14 @@ public interface ILockLossSurface
     void ShowSaveError(string text);
 
     /// <summary>
+    /// Marks the captured data connection read-only, so that from now on every write is refused with the plain
+    /// "you no longer have write access" message. The handler calls it before <see cref="CloseConnection"/>: a
+    /// demotion takes seconds (the read-only copy has to arrive), and an editor applied in that gap must be
+    /// refused, not fail against a closed connection. Does nothing when no connection was captured.
+    /// </summary>
+    void MarkReadOnly();
+
+    /// <summary>
     /// Closes the captured data connection (so the working copy can be handed over without a sharing violation).
     /// Does nothing when no connection was captured.
     /// </summary>
@@ -45,8 +53,9 @@ public interface ILockLossSurface
     /// <see cref="HasConnection"/> is true.
     /// </summary>
     /// <param name="path">The working copy to reconnect to.</param>
+    /// <param name="readOnly">True when the reopened session may not write (a demotion always passes true).</param>
     /// <exception cref="InvalidOperationException">The file could not be opened (for example another process has it locked).</exception>
-    void ReinitializeConnection(string path);
+    void ReinitializeConnection(string path, bool readOnly);
 
     /// <summary>
     /// Reloads the section list of the captured view model from the database. Only call it when

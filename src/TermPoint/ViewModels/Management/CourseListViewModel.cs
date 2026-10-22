@@ -153,7 +153,7 @@ public partial class CourseListViewModel : ViewModelBase, IDismissableEditor, ID
             onSave: async c =>
             {
                 try { _courseRepo.Insert(c); LoadCourses(); SelectedCourse = Courses.FirstOrDefault(x => x.Id == c.Id); EditVm = null; }
-                catch (Exception ex) { App.Logger.LogError(ex, "CourseListViewModel.Add"); LastErrorMessage = "The save could not be completed. Please try again."; }
+                catch (Exception ex) { App.Logger.LogError(ex, "CourseListViewModel.Add"); LastErrorMessage = WriteFailureText.For(ex, "The save could not be completed. Please try again."); }
                 await Task.CompletedTask;
             },
             onCancel: () => EditVm = null,
@@ -187,7 +187,7 @@ public partial class CourseListViewModel : ViewModelBase, IDismissableEditor, ID
             onSave: async c =>
             {
                 try { _courseRepo.Update(c); LoadCourses(); SelectedCourse = Courses.FirstOrDefault(x => x.Id == c.Id); EditVm = null; }
-                catch (Exception ex) { App.Logger.LogError(ex, "CourseListViewModel.Edit"); LastErrorMessage = "The save could not be completed. Please try again."; }
+                catch (Exception ex) { App.Logger.LogError(ex, "CourseListViewModel.Edit"); LastErrorMessage = WriteFailureText.For(ex, "The save could not be completed. Please try again."); }
                 await Task.CompletedTask;
             },
             onCancel: () => EditVm = null,
@@ -219,7 +219,7 @@ public partial class CourseListViewModel : ViewModelBase, IDismissableEditor, ID
         catch (Exception ex)
         {
             App.Logger.LogError(ex, "CourseListViewModel.Delete");
-            LastErrorMessage = "The delete could not be completed. Please try again.";
+            LastErrorMessage = WriteFailureText.For(ex, "The delete could not be completed. Please try again.");
         }
     }
 
@@ -234,7 +234,7 @@ public partial class CourseListViewModel : ViewModelBase, IDismissableEditor, ID
             onSave: async s =>
             {
                 try { _subjectRepo.Insert(s); LoadSubjects(); SelectedSubject = Subjects.FirstOrDefault(x => x.Id == s.Id); SubjectEditVm = null; }
-                catch (Exception ex) { App.Logger.LogError(ex, "CourseListViewModel.AddSubject"); LastErrorMessage = "The save could not be completed. Please try again."; }
+                catch (Exception ex) { App.Logger.LogError(ex, "CourseListViewModel.AddSubject"); LastErrorMessage = WriteFailureText.For(ex, "The save could not be completed. Please try again."); }
                 await Task.CompletedTask;
             },
             onCancel: () => SubjectEditVm = null,
@@ -258,7 +258,7 @@ public partial class CourseListViewModel : ViewModelBase, IDismissableEditor, ID
             onSave: async s =>
             {
                 try { _subjectRepo.Update(s); LoadSubjects(); SelectedSubject = Subjects.FirstOrDefault(x => x.Id == s.Id); SubjectEditVm = null; }
-                catch (Exception ex) { App.Logger.LogError(ex, "CourseListViewModel.EditSubject"); LastErrorMessage = "The save could not be completed. Please try again."; }
+                catch (Exception ex) { App.Logger.LogError(ex, "CourseListViewModel.EditSubject"); LastErrorMessage = WriteFailureText.For(ex, "The save could not be completed. Please try again."); }
                 await Task.CompletedTask;
             },
             onCancel: () => SubjectEditVm = null,
@@ -287,7 +287,7 @@ public partial class CourseListViewModel : ViewModelBase, IDismissableEditor, ID
         catch (Exception ex)
         {
             App.Logger.LogError(ex, "CourseListViewModel.DeleteSubject");
-            LastErrorMessage = "The delete could not be completed. Please try again.";
+            LastErrorMessage = WriteFailureText.For(ex, "The delete could not be completed. Please try again.");
         }
     }
 

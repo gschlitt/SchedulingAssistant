@@ -189,7 +189,7 @@ public partial class AcademicYearListViewModel : ViewModelBase, IDismissableEdit
                 catch (Exception ex)
                 {
                     App.Logger.LogError(ex, "AcademicYearListViewModel.Add");
-                    LastErrorMessage = "The save could not be completed. Please try again.";
+                    LastErrorMessage = WriteFailureText.For(ex, "The save could not be completed. Please try again.");
                 }
             });
     }
@@ -236,7 +236,7 @@ public partial class AcademicYearListViewModel : ViewModelBase, IDismissableEdit
         catch (Exception ex)
         {
             App.Logger.LogError(ex, "AcademicYearListViewModel.Delete");
-            LastErrorMessage = "The delete could not be completed. Please try again.";
+            LastErrorMessage = WriteFailureText.For(ex, "The delete could not be completed. Please try again.");
         }
     }
 

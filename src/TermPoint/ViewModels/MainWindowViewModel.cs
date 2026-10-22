@@ -850,6 +850,16 @@ public partial class MainWindowViewModel : ViewModelBase
         await MainWindowReference.ShowItDetailAsync(
             "Technical Details (for IT)", _lockService.LockWriteItDetail);
     }
+
+    /// <summary>
+    /// True when the session should refresh by re-copying D to D'': it is a read-only (snapshot) session. Decided by
+    /// the checkout <see cref="CheckoutService.Mode"/> alone. <see cref="CheckoutService.IsReadOnlyMode"/> is NOT
+    /// used: it is set when a snapshot is made but never cleared when the same window later switches to write
+    /// access, so a former reader would otherwise be treated as a reader forever.
+    /// </summary>
+    /// <param name="mode">The current <see cref="CheckoutService.Mode"/>.</param>
+    /// <returns>True for <see cref="CheckoutMode.ReadOnly"/>.</returns>
+    internal static bool RefreshesReadOnlySnapshot(CheckoutMode mode) => mode == CheckoutMode.ReadOnly;
 #endif
 
     /// <summary>
@@ -862,8 +872,8 @@ public partial class MainWindowViewModel : ViewModelBase
     private async Task RefreshData()
     {
 #if !BROWSER
-        // If in read-only snapshot mode, re-copy D → D'' to fetch latest data.
-        if (App.Checkout.IsReadOnlyMode)
+        // If in read-only snapshot mode, re-copy D → D'' to fetch latest data (decided by Mode — see the helper).
+        if (RefreshesReadOnlySnapshot(App.Checkout.Mode))
         {
             var dbContext = _services.GetRequiredService<IDatabaseContext>() as DatabaseContext;
 
@@ -878,7 +888,7 @@ public partial class MainWindowViewModel : ViewModelBase
                 async Task AfterOverwrite()
                 {
                     await Task.CompletedTask;
-                    dbContext?.ReinitializeConnection(App.Checkout.WorkingPath);
+                    dbContext?.ReinitializeConnection(App.Checkout.WorkingPath, readOnly: true);
                 }
 
                 var refreshOutcome = await App.Checkout.RefreshReadOnlySnapshotAsync(BeforeOverwrite, AfterOverwrite);

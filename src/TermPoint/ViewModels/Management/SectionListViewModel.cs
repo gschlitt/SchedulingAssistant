@@ -1123,7 +1123,7 @@ public partial class SectionListViewModel : ViewModelBase, IDisposable
                 catch (Exception ex)
                 {
                     App.Logger.LogError(ex, $"SectionListViewModel.{callerTag}");
-                    LastErrorMessage = "The save could not be completed. Please try again.";
+                    LastErrorMessage = WriteFailureText.For(ex, "The save could not be completed. Please try again.");
                 }
             },
             _blockPatternRepo,
@@ -1345,7 +1345,7 @@ public partial class SectionListViewModel : ViewModelBase, IDisposable
         catch (Exception ex)
         {
             App.Logger.LogError(ex, "SectionListViewModel.Delete");
-            LastErrorMessage = "The delete could not be completed. Please try again.";
+            LastErrorMessage = WriteFailureText.For(ex, "The delete could not be completed. Please try again.");
         }
     }
 

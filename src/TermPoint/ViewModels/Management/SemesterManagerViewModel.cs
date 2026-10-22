@@ -144,6 +144,7 @@ public partial class SemesterManagerViewModel : ViewModelBase, IDisposable
         }
         catch (Exception ex)
         {
+            // For a refused read-only write (WriteAccessLostException) the logger shows the one plain banner itself.
             App.Logger.LogError(ex, "SemesterManagerViewModel.OnSemesterColorChanged");
         }
     }
@@ -217,7 +218,7 @@ public partial class SemesterManagerViewModel : ViewModelBase, IDisposable
                 catch (Exception ex)
                 {
                     App.Logger.LogError(ex, "SemesterManagerViewModel.Add");
-                    LastErrorMessage = "The save could not be completed. Please try again.";
+                    LastErrorMessage = WriteFailureText.For(ex, "The save could not be completed. Please try again.");
                 }
             },
             onCancel: () => EditVm = null);
@@ -251,7 +252,7 @@ public partial class SemesterManagerViewModel : ViewModelBase, IDisposable
                 catch (Exception ex)
                 {
                     App.Logger.LogError(ex, "SemesterManagerViewModel.Rename");
-                    LastErrorMessage = "The save could not be completed. Please try again.";
+                    LastErrorMessage = WriteFailureText.For(ex, "The save could not be completed. Please try again.");
                 }
             },
             onCancel: () => EditVm = null);
@@ -290,7 +291,7 @@ public partial class SemesterManagerViewModel : ViewModelBase, IDisposable
         catch (Exception ex)
         {
             App.Logger.LogError(ex, "SemesterManagerViewModel.Delete");
-            LastErrorMessage = "The delete could not be completed. Please try again.";
+            LastErrorMessage = WriteFailureText.For(ex, "The delete could not be completed. Please try again.");
         }
     }
 

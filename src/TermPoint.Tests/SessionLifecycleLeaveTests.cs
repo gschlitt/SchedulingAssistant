@@ -1007,6 +1007,55 @@ public sealed class SessionLifecycleLeaveTests : SessionLifecycleTestBase
     }
 
     /// <summary>
+    /// F4: the demotion marks the data connection read-only BEFORE it closes it (so an editor applied while the
+    /// read-only copy is being made is refused with the plain message, not left to fail on a closed connection) and
+    /// reopens it read-only on the new snapshot.
+    /// </summary>
+    [Fact]
+    public async Task LostLock_MarksTheConnectionReadOnlyBeforeClosing_AndReopensItReadOnly()
+    {
+        var db = NewDb();
+        await OpenCleanAsync(db);
+        File.Delete(LockOf(db));
+
+        await _lifecycle.HandleWriteLockLostAsync(WriteLockLostReason.LockFileRemoved);
+
+        Assert.Equal(1, _host.LockLossSurface.MarkReadOnlyCalls);
+        Assert.True(_host.LockLossSurface.WasReadOnlyWhenClosed);
+        AssertInOrder(_trace,
+            "surface:ShowSaveError",
+            "surface:MarkReadOnly",
+            "surface:CloseConnection",
+            $"surface:ReinitializeConnection({Path.GetFileName(_checkout.WorkingPath)})",
+            "surface:ReloadSections");
+        Assert.Equal(new[] { true }, _host.LockLossSurface.ReinitializedReadOnly);
+    }
+
+    /// <summary>
+    /// F4: when the read-only snapshot cannot be made, the connection is still reopened on what was left (the kept
+    /// D', the user's only copy of unsaved work) — and it is reopened READ-ONLY, so nothing can write to that copy
+    /// from now on. The section list is not reloaded (the demotion failed).
+    /// </summary>
+    [Fact]
+    public async Task LostLock_WhenTheSnapshotCannotBeMade_StillReopensReadOnly_OnTheKeptWorkingCopy()
+    {
+        var db = NewDb();
+        await OpenCleanAsync(db);
+        var working = _checkout.WorkingPath;
+        _host.Edit(SessionEdit);
+        _checkout.FaultPlan = CheckoutFaultPlan.Parse("snapshot");
+        File.Delete(LockOf(db));
+
+        await _lifecycle.HandleWriteLockLostAsync(WriteLockLostReason.LockFileRemoved);
+
+        Assert.True(_host.LockLossSurface.WasReadOnlyWhenClosed);
+        Assert.Equal(new[] { working }, _host.LockLossSurface.ReinitializedPaths);
+        Assert.Equal(new[] { true }, _host.LockLossSurface.ReinitializedReadOnly);
+        Assert.DoesNotContain("surface:ReloadSections", _trace);
+        Assert.True(File.Exists(working));                            // the unsaved work is still there
+    }
+
+    /// <summary>
     /// Reopening the connection on the snapshot fails: the SECOND banner replaces the first ("could not be restored…
     /// close and reopen the database file"), the error is logged, and — pinned as it is today — the section reload is
     /// STILL attempted, because the failure is swallowed inside the reopen step and the demotion reports success.

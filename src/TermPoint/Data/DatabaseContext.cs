@@ -32,6 +32,18 @@ public class DatabaseContext : IDatabaseContext
 
     private string _dbPath;
 
+    /// <summary>
+    /// True while this session may not write: the user never held the write lock, or lost it. Set by the
+    /// constructor / <see cref="ReinitializeConnection"/> (the session's mode) and by <see cref="MarkReadOnly"/>
+    /// (the start of a demotion, before the connection is closed). While true, <see cref="MarkDirty"/> refuses
+    /// with <see cref="WriteAccessLostException"/>, which every repository write reaches first. Volatile: the
+    /// flag is read on whichever thread a write happens to run on.
+    /// </summary>
+    private volatile bool _readOnly;
+
+    /// <summary>True while this session may not write (see <c>_readOnly</c>).</summary>
+    public bool IsReadOnly => _readOnly;
+
     /// <inheritdoc/>
     public DbConnection Connection => _conn;
 
@@ -41,12 +53,29 @@ public class DatabaseContext : IDatabaseContext
     /// <inheritdoc/>
     public bool SupportsTransactions => true;
 
-    /// <inheritdoc/>
+    /// <summary>
+    /// Called by every repository write BEFORE it touches the database. In a read-only session it refuses the
+    /// write: the change would only land in the throw-away read-only copy and silently disappear, so the user is
+    /// told instead (see <see cref="WriteAccessLostException"/>). A writer session behaves as before.
+    /// </summary>
+    /// <exception cref="WriteAccessLostException">The session is read-only; nothing has been written.</exception>
     public void MarkDirty()
     {
+        if (_readOnly)
+            throw new WriteAccessLostException();
+
         if (Interlocked.CompareExchange(ref _dirtyFired, 1, 0) == 0)
             _onFirstWrite?.Invoke();
     }
+
+    /// <summary>
+    /// Marks the session read-only without touching the connection, so every later write is refused by
+    /// <see cref="MarkDirty"/>. Called at the START of a lost-lock demotion, before the connection is closed:
+    /// during the seconds the read-only copy takes to arrive an editor can still be applied, and without this
+    /// it would hit a closed connection instead of getting the plain message. Deliberately NOT done in
+    /// <see cref="CloseConnection"/>, which a switch or restore also uses and which must not report a lost lock.
+    /// </summary>
+    public void MarkReadOnly() => _readOnly = true;
 
     /// <inheritdoc/>
     public void ResetDirty() => Interlocked.Exchange(ref _dirtyFired, 0);
@@ -58,7 +87,13 @@ public class DatabaseContext : IDatabaseContext
     /// at the right moment — after checkout but only when data actually changes.
     /// Pass <c>null</c> in tests and demo contexts where no dirty marker is needed.
     /// </param>
-    public DatabaseContext(string dbPath, Action? onFirstWrite = null)
+    /// <param name="readOnly">
+    /// True for a read-only session (reader / observer mode, the version-gate or fallback snapshot D''):
+    /// every repository write is then refused with <see cref="WriteAccessLostException"/>. Applied at the END of
+    /// the constructor, after the schema, migrations and seed data have run, so a snapshot of an older database
+    /// still gets the tables and columns the readers need. Defaults to false (a writer session).
+    /// </param>
+    public DatabaseContext(string dbPath, Action? onFirstWrite = null, bool readOnly = false)
     {
         _onFirstWrite = onFirstWrite;
         _dbPath       = dbPath;
@@ -78,6 +113,9 @@ public class DatabaseContext : IDatabaseContext
             InitializeSchema();
             Migrate(dbPath);
             SeedData.EnsureSeeded(_conn);
+
+            // Last of all: the init above legitimately writes to a snapshot of an older database.
+            _readOnly = readOnly;
         }
         catch (Exception ex)
         {
@@ -597,8 +635,14 @@ public class DatabaseContext : IDatabaseContext
     /// Absolute path to the database file. Typically this is the same path as before (D''),
     /// but the underlying file has been replaced with a fresh copy from D.
     /// </param>
+    /// <param name="readOnly">
+    /// Whether the reopened session may not write. There is deliberately no default: every caller must say.
+    /// A demotion and a reader refresh pass <c>true</c> (the reopened file is D'', or the kept D' that holds the
+    /// user's only copy of unsaved work); the flag is set only once the file has opened, so a failed reopen leaves
+    /// whatever the session had before (a demotion has already called <see cref="MarkReadOnly"/>).
+    /// </param>
     /// <exception cref="InvalidOperationException">Thrown if the new database cannot be opened.</exception>
-    public void ReinitializeConnection(string newDbPath)
+    public void ReinitializeConnection(string newDbPath, bool readOnly)
     {
         // Close and clear the old connection from the pool.
         _conn.Dispose();
@@ -616,6 +660,7 @@ public class DatabaseContext : IDatabaseContext
             ConfigureConnection(_conn);
             // No need to call InitializeSchema or Migrate — the new file already has the schema
             // (it was a copy of the old D'', which was a consistent snapshot).
+            _readOnly = readOnly;
         }
         catch (Exception ex)
         {

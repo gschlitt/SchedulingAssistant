@@ -232,8 +232,9 @@ public partial class EmptySemesterViewModel : ViewModelBase, IDisposable
         catch (Exception ex)
         {
             App.Logger.LogError(ex, "EmptySemesterViewModel.Empty");
-            if (ShowError is not null)
-                await ShowError("The operation could not be completed. Please try again.");
+            // Null for a refused read-only write: the logger has already shown the one plain banner.
+            if (ShowError is not null && WriteFailureText.For(ex, "The operation could not be completed. Please try again.") is { } text)
+                await ShowError(text);
         }
     }
 

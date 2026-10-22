@@ -37,8 +37,11 @@ public interface IDatabaseContext : IDisposable
     /// <summary>
     /// Signals that a user-initiated write is about to occur. On the first call per session
     /// this triggers the dirty marker so crash recovery detection works correctly.
-    /// Subsequent calls are no-ops. Ignored in read-only and demo contexts.
+    /// Subsequent calls are no-ops. Ignored in demo contexts. In a read-only SQLite session it REFUSES the
+    /// write instead (every repository write calls it first), so a change can never land in the throw-away
+    /// read-only copy unnoticed.
     /// </summary>
+    /// <exception cref="WriteAccessLostException">The session is read-only; the caller must not write.</exception>
     void MarkDirty();
 
     /// <summary>

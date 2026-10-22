@@ -59,7 +59,7 @@ public partial class SubjectListViewModel : ViewModelBase, IDisposable
             onSave: async s =>
             {
                 try { _repo.Insert(s); Load(); EditVm = null; }
-                catch (Exception ex) { App.Logger.LogError(ex, "SubjectListViewModel.Add"); LastErrorMessage = "The save could not be completed. Please try again."; }
+                catch (Exception ex) { App.Logger.LogError(ex, "SubjectListViewModel.Add"); LastErrorMessage = WriteFailureText.For(ex, "The save could not be completed. Please try again."); }
                 await Task.CompletedTask;
             },
             onCancel: () => EditVm = null,
@@ -83,7 +83,7 @@ public partial class SubjectListViewModel : ViewModelBase, IDisposable
             onSave: async s =>
             {
                 try { _repo.Update(s); Load(); EditVm = null; }
-                catch (Exception ex) { App.Logger.LogError(ex, "SubjectListViewModel.Edit"); LastErrorMessage = "The save could not be completed. Please try again."; }
+                catch (Exception ex) { App.Logger.LogError(ex, "SubjectListViewModel.Edit"); LastErrorMessage = WriteFailureText.For(ex, "The save could not be completed. Please try again."); }
                 await Task.CompletedTask;
             },
             onCancel: () => EditVm = null,

@@ -121,7 +121,7 @@ public partial class CampusListViewModel : ViewModelBase, IDismissableEditor, ID
         catch (Exception ex)
         {
             App.Logger.LogError(ex, "CampusListViewModel.Delete");
-            LastErrorMessage = "The delete could not be completed. No changes were made. Please try again.";
+            LastErrorMessage = WriteFailureText.For(ex, "The delete could not be completed. No changes were made. Please try again.");
         }
     }
 

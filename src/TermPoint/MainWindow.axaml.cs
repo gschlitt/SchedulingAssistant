@@ -1826,12 +1826,15 @@ public partial class MainWindow : Window, ILifecyclePrompts, ISessionHost
         /// <inheritdoc cref="ILockLossSurface.ShowSaveError"/>
         public void ShowSaveError(string text) => _vm?.SetSaveError(text, autoDismiss: false);
 
+        /// <inheritdoc cref="ILockLossSurface.MarkReadOnly"/>
+        public void MarkReadOnly() => _dbContext?.MarkReadOnly();
+
         /// <inheritdoc cref="ILockLossSurface.CloseConnection"/>
         public void CloseConnection() => _dbContext?.CloseConnection();
 
         /// <inheritdoc cref="ILockLossSurface.ReinitializeConnection"/>
         /// <exception cref="NullReferenceException">No connection was captured (<see cref="HasConnection"/> is false).</exception>
-        public void ReinitializeConnection(string path) => _dbContext!.ReinitializeConnection(path);
+        public void ReinitializeConnection(string path, bool readOnly) => _dbContext!.ReinitializeConnection(path, readOnly);
 
         /// <inheritdoc cref="ILockLossSurface.ReloadSections"/>
         /// <exception cref="NullReferenceException">No view model was captured (<see cref="HasViewModel"/> is false).</exception>

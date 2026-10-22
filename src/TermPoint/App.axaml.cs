@@ -230,6 +230,14 @@ public partial class App : Application
         // propagates to the debugger as usual.
         Avalonia.Threading.Dispatcher.UIThread.UnhandledException += (_, e) =>
         {
+            // A write refused because this session is read-only is not a bug and not unexpected: say so in
+            // plain words (one banner, no crash report), whether or not the developer switch is on.
+            if (WriteFailureText.NotifyIfWriteAccessLost(Logger, e.Exception))
+            {
+                e.Handled = true;
+                return;
+            }
+
             if (Logger.ThrowOnError) return;
 
             Logger.LogError(e.Exception, "Unexpected error (the app will try to continue)", unhandled: true);
@@ -429,7 +437,11 @@ public partial class App : Application
         services.AddSingleton<TourRunner>();
         services.AddTransient<IDialogService, DialogService>();
 
-        services.AddSingleton<IDatabaseContext>(_ => new DatabaseContext(dbPath, App.Checkout.MarkDirty));
+        // readOnly: any session that does not hold the write lock (reader / observer mode, the version-gate
+        // or fallback snapshot D''). Checkout has already run by the time this is resolved, so Mode is final.
+        // Mode, not IsReadOnlyMode: IsReadOnlyMode is sticky after a switch from reader to writer.
+        services.AddSingleton<IDatabaseContext>(_ => new DatabaseContext(
+            dbPath, App.Checkout.MarkDirty, readOnly: App.Checkout.Mode != CheckoutMode.WriteAccess));
         services.AddSingleton<IAcademicYearRepository, AcademicYearRepository>();
         services.AddSingleton<ISemesterRepository, SemesterRepository>();
         services.AddSingleton<IInstructorRepository, InstructorRepository>();
@@ -593,7 +605,9 @@ public partial class App : Application
             sp.GetRequiredService<SemesterContext>(),
             sp.GetRequiredService<GridChangeNotifier>(),
             sp.GetRequiredService<ISchedulingEnvironmentRepository>(),
-            sp.GetRequiredService<ICourseRepository>()));
+            sp.GetRequiredService<ICourseRepository>(),
+            // Watches are saved only while the write lock is ours; a reader keeps them in memory (see the class).
+            () => sp.GetRequiredService<WriteLockService>().IsWriter));
         services.AddSingleton<MainWindowViewModel>();
         services.AddSingleton<SectionListViewModel>();
         services.AddSingleton<MeetingListViewModel>();

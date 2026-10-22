@@ -252,7 +252,7 @@ public partial class RoomListViewModel : ViewModelBase, IDismissableEditor, IDis
         {
             tx?.Rollback();
             App.Logger.LogError(ex, "RoomListViewModel.Delete");
-            LastErrorMessage = "The delete could not be completed. No changes were made. Please try again.";
+            LastErrorMessage = WriteFailureText.For(ex, "The delete could not be completed. No changes were made. Please try again.");
         }
         finally
         {
