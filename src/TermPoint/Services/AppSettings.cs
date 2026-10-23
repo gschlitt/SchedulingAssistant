@@ -157,6 +157,24 @@ public class AppSettings
     public bool VirtualizeSectionList { get; set; } = false;
 
     /// <summary>
+    /// Spec item 20 (load by subject / focus): the user's remembered subject focus, one per database, including
+    /// All and None. Nothing about a focus is ever written to the database itself.
+    /// <para>
+    /// <b>The key is the SHARED database's path (D)</b>, normalised with
+    /// <see cref="CheckoutService.NormalizeSourcePath"/>, the same key <see cref="DatabaseInstanceGuard"/> uses;
+    /// never the path of a local working copy (D' / D''), which is not the database the user thinks of. The same file
+    /// reached by a mapped drive and by its UNC path gives two keys, and the second simply starts fresh
+    /// (see <see cref="FocusService"/>, "starting value"). Read and written only by <see cref="FocusService"/>.
+    /// </para>
+    /// <para>
+    /// A settings file written before this property existed deserializes to an empty dictionary, and an older
+    /// TermPoint ignores the unknown key, so no migration is needed either way. Always empty in the browser demo,
+    /// whose focus is never persisted.
+    /// </para>
+    /// </summary>
+    public Dictionary<string, SavedFocus> FocusByDatabase { get; set; } = new();
+
+    /// <summary>
     /// When true, this instance opens as a read-only observer: it never acquires the
     /// write lock (so it can never block a writer), never polls for the lock, and never
     /// offers to take over write access. It opens against a read-only snapshot (D'') and

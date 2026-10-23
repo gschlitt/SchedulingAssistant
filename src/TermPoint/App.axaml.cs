@@ -420,6 +420,16 @@ public partial class App : Application
         return vm;
     }
 
+    /// <summary>
+    /// The <see cref="AppSettings.FocusByDatabase"/> key for the database that is open now:
+    /// <see cref="CheckoutService.NormalizeSourcePath"/> of the SHARED database path (D, from
+    /// <see cref="CheckoutService.SourcePath"/>), never the local working copy. Returns null (an in-memory
+    /// focus that is never saved) if the checkout has no source path, which no real open path does: it keeps an
+    /// unexpected state from crashing service resolution.
+    /// </summary>
+    private static string? DesktopFocusDatabaseKey() =>
+        string.IsNullOrEmpty(Checkout.SourcePath) ? null : CheckoutService.NormalizeSourcePath(Checkout.SourcePath);
+
     private static void ConfigureServices(IServiceCollection services, string dbPath)
     {
         services.AddSingleton<IAppLogger>(App.Logger);
@@ -463,6 +473,11 @@ public partial class App : Application
 
         // Owns the empty / delete semester and academic year rules (spec item 8).
         services.AddSingleton<SemesterContentsService>();
+
+        // Subject focus (spec item 20), remembered per SHARED database. The key is read when the service is first
+        // resolved: every path that builds this container (startup, database switch, the wizard, reader mode) has
+        // already run CheckoutAsync, which sets Checkout.SourcePath to D, so it names the right database.
+        RegisterFocusService(services, DesktopFocusDatabaseKey);
 
         RegisterViewModels(services);
 
@@ -579,7 +594,33 @@ public partial class App : Application
         // Owns the empty / delete semester and academic year rules (spec item 8).
         services.AddSingleton<SemesterContentsService>();
 
+        // Subject focus (spec item 20). A null key means the demo: it always starts at All and is never read from
+        // or written to settings (the browser's settings do not survive a visit anyway).
+        RegisterFocusService(services, () => null);
+
         RegisterViewModels(services);
+    }
+
+    /// <summary>
+    /// Registers <see cref="FocusService"/> as a singleton over whichever repositories the container holds. Shared by
+    /// the desktop and demo registrations so the constructor wiring exists once.
+    /// </summary>
+    /// <param name="services">The collection being configured.</param>
+    /// <param name="databaseKey">
+    /// Produces the settings key for the open database, called when the service is first resolved; null for the
+    /// demo (see <see cref="FocusService"/>).
+    /// </param>
+    private static void RegisterFocusService(IServiceCollection services, Func<string?> databaseKey)
+    {
+        services.AddSingleton(sp => new FocusService(
+            sp.GetRequiredService<ISubjectRepository>(),
+            sp.GetRequiredService<ICourseRepository>(),
+            sp.GetRequiredService<ISectionRepository>(),
+            sp.GetRequiredService<ISemesterRepository>(),
+            sp.GetRequiredService<IAcademicYearRepository>(),
+            sp.GetRequiredService<SemesterContext>(),
+            sp.GetRequiredService<SectionStore>(),
+            databaseKey()));
     }
 
     /// <summary>

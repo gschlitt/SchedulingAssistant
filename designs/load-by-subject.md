@@ -380,6 +380,18 @@ Steps 2–7 edit AXAML: warn the user before each so they can close the tab in V
    - Reloads when the database changes. Registered in desktop `ConfigureServices` **and**
      `ConfigureDemoServices`.
    - Unit tests only, no UI.
+   - **Done 2026-10-23** (uncommitted when written). Notes for later steps:
+     - **Handler order:** `FocusService` clears its caches in its own `SectionStore.SectionsChanged`
+       handler. A consumer that asks `Matches` / `IsInFocus` from its own `SectionsChanged` handler
+       must take `FocusService` as a constructor dependency, so DI builds it (and subscribes it) first.
+     - **Deleted subjects are pruned only when the service is built** (database open). A focused
+       subject deleted mid-session keeps its dead id until the next open; it matches nothing. Step 3
+       should prune when the subject list changes, so the indicator never names a deleted subject.
+     - **No event on a viewed-year change.** `FocusService` re-reads its history but raises nothing,
+       so instructor lists (steps 4–6) must also refresh on `SemesterContext` changes.
+     - **Course saves don't reload `SectionStore`.** Harmless: a course's subject is locked once it
+       has sections, so only a stale course-to-subject map is possible, and the next
+       `SectionsChanged` clears it.
 2. **Section-list Hide and empty state.**
    - Build cards only for in-focus sections, on load and in every incremental path, and rebuild on
      `FocusChanged`.
