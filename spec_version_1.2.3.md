@@ -2336,21 +2336,34 @@ loads. The focus decides what is **shown and offered**:
 **Decisions (user, 2026-10-20).**
 - **The focus is subjects only; levels are not part of it.** One remembered focus per user per
   database, including All and None, kept in local settings.
-- **New databases start at None**, and so does a database opened from a path not seen before.
-  This includes every existing user's first launch of 1.2.3, so the release notes must explain
-  the feature. An empty-state message offers [Choose focus] / [All subjects].
+- **Starting value (revised 2026-10-23).** When a database is first seen (new, or a path not
+  seen before, which includes every user's first launch of 1.2.3): **All** if it has 3 subjects
+  or fewer, otherwise **None**. The rule runs once; after that the remembered focus is used. The
+  release notes must explain the feature. Under None, an empty-state message offers
+  [Choose focus] / [All subjects].
+- **The setting is keyed by the shared database's path** (`CheckoutService.NormalizeSourcePath`),
+  never the local working copy's.
+- **The web demo always starts at All. Tours switch the focus to All when they start.**
+- **In multi-semester mode, semester banners stay** even when none of their sections are in
+  focus.
 - **The focus is a separate layer from the ordinary filter.** It survives "Clear filters", and the
   filter works within it.
-- **In-focus instructors:** active instructors who teach a focus subject in the viewed semester or
-  the previous academic year, plus active instructors with no sections at all in that window
-  (new hires). The rule uses the subject only. One shared service answers it for every view.
+- **In-focus instructors (revised 2026-10-23).** The window is two whole academic years: the
+  viewed one and the one before. An active instructor is in focus if they teach a focus subject
+  in the window. If they teach nothing in the window, their most recent earlier year of
+  teaching decides. Someone who has never taught (a new hire) is in focus under every focus. The
+  rule uses the subject only. It lives in its own class (`InstructorFocusRule`) behind
+  `FocusService.IsInFocus`, so every view agrees and the logic can be changed later in one place.
+  Full rule and examples in the design doc.
 - **Workload totals always count the whole load.** Sections outside the focus are marked.
 - **The instructor chooser always includes the section's current instructors.** Otherwise an
   untouched section could save with its instructor blanked. A test pins this.
 - **An indicator** ("Focus: BIOL, CHEM · 2 of 10 subjects" + Show all) appears in four places:
   the section list, the grid header, the workload panel and the Instructors flyout.
-- **The Focus button is disabled while an editor is open**, so a focus change can never hide
-  unapplied edits.
+- **No focus change while an editor is open**, so a focus change can never hide unapplied
+  edits. Any focus change rebuilds the list, which closes the editor, so this is one guard in
+  `FocusService` (`CanChangeFocus`) that every focus-changing control binds to: the Focus
+  button, every **Show all**, and the empty-state buttons (revised 2026-10-23).
 - **These stay global:** conflicts, room availability, the room chooser, Copy Semester, exports
   and imports.
 - **Empty Semester (item 8)** keeps emptying the whole semester. Under a focus, its confirmation
@@ -2362,24 +2375,24 @@ loads. The focus decides what is **shown and offered**:
 **Production / data integrity.**
 - **MinimumVersionToWrite: No.** Nothing new is saved to the database.
 - **Four rules:** none of the save, lock, switch, restore or recovery code paths change.
-  - **Rule 3:** the Focus button is disabled during edits.
+  - **Rule 3:** `CanChangeFocus` blocks every focus change during edits.
   - **Rule 4:** the indicator, the empty state and the explicit Empty Semester wording.
 - **Main risk:** the instructor chooser blanking an assigned instructor (see above).
-- **User-visible change:** sections are hidden until a focus is chosen. This is covered by the
-  empty state and the release notes.
+- **User-visible change:** in a database with more than 3 subjects, sections are hidden until a
+  focus is chosen. This is covered by the empty state and the release notes.
 
 **Steps** (one Sonnet brief each; steps 2–7 edit AXAML, so warn the user first):
 
 | Step | Content |
 |---|---|
-| 20.1 | `FocusService` + per-database setting: the section match, `IsInFocus(instructor)`, `IsCourseInFocus`, `FocusChanged`. Desktop and demo DI. Unit tests only. |
+| 20.1 | `FocusService` + per-database setting: the section match, `IsInFocus(instructor)`, `IsCourseInFocus`, `CanChangeFocus`, `FocusChanged`; `InstructorFocusRule` over an all-years teaching history; 3-subject starting rule; demo always All. Desktop and demo DI. Unit tests only. |
 | 20.2 | Section-list Hide on load and every incremental path; rebuild on focus change; empty state. |
-| 20.3 | Focus picker (subjects / All / None), reusable indicator control, button disabled while editing. |
+| 20.3 | Focus picker (subjects / All / None), reusable indicator control; every focus-changing control bound to `CanChangeFocus`; tours set All on start. |
 | 20.4 | Grid applies the focus before the filter; the filter's Subjects / Courses / Instructors lists follow the focus. |
 | 20.5 | Editor choosers: courses filtered; instructors in focus first, then "Other instructors"; current instructors kept, with a test. |
 | 20.6 | Workload panel, Instructors flyout, Workload Mailer: focus plus "Show all instructors"; whole-load totals. |
 | 20.7 | Messages: Empty Semester wording under a focus; import summary's count of sections outside the focus. |
-| 20.8 | View-model tests of what every list and chooser shows (All, None, one or two subjects, deleted subject, multi-semester; cross-subject, previous year only, no sections, inactive instructors). Manual: 800-section DB at 2 of 10 subjects, database switch, first launch on an existing DB. |
+| 20.8 | View-model tests of what every list and chooser shows (All, None, one or two subjects, deleted subject, multi-semester; instructors: cross-subject, another semester of the viewed year, previous year only, last taught before the window, never taught, inactive). Manual: 800-section DB at 2 of 10 subjects, database switch, first launch on an existing DB. |
 
 ---
 

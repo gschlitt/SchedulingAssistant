@@ -3,6 +3,10 @@
 **Status:** ✅ **DESIGN APPROVED (2026-10-20): approach B, filter-based focus.** See
 [Approved design](#approved-design-2026-10-20) at the end. Phase 1 below is kept as the record;
 its open questions are answered there.
+**Revised 2026-10-23** after a code review against `Version_1.2.3` (`6cead7d`): starting value,
+demo, tours, one focus-change guard, settings key, semester banners, and a new in-focus
+instructor rule (two-year window, last-year-taught fallback; see *Who counts as an in-focus
+instructor*).
 **Target release:** 1.2.3. A follow-up ("Subjects taught" on instructors) is planned for 1.2.4.
 
 **Where we left it when parked (2026-10-09).**
@@ -198,23 +202,44 @@ Worked through with the user on 2026-10-20, after item 21 landed.
 
 - A focus is **a set of subjects**, or **All**, or **None**. **Levels are not part of it.**
 - **One remembered focus per user per database**, including All and None. It lives in local
-  settings (`AppSettings`): a new dictionary keyed by the database path, normalised. Nothing is
-  written to the database.
-- **Starting value: None.**
-  - This applies to a new database, and to a database opened from a path not seen before.
-  - **Upgrade note:** every existing user's first launch of 1.2.3 is "not seen before", so
-    everyone starts at None.
-  - **Release notes must explain the feature.** The empty-state message below is what keeps a
-    user from thinking their sections are gone.
+  settings (`AppSettings`), in a new dictionary from database to focus. Nothing is written to
+  the database.
+  - **The dictionary key is the shared database's path** (D), normalised with
+    `CheckoutService.NormalizeSourcePath`, the same key `DatabaseInstanceGuard` uses. Never the
+    path of the local working copy.
+  - The same file reached by a mapped drive and by its UNC path gives two keys. The second one
+    just starts fresh (see *Starting value*). Accepted.
+- **Starting value (revised 2026-10-23).** When a database is seen for the first time (a new
+  database, or a path not seen before):
+  - **3 subjects or fewer: All.** A department never notices the feature. This includes a new
+    database from the wizard, which has no subjects yet.
+  - **More than 3 subjects: None**, which shows the empty state. This is the dean's-office case.
+  - The rule runs **once**, when the database is first seen. After that the remembered focus is
+    used, so a department that later grows past 3 subjects stays at All.
+  - **Upgrade note:** every existing user's first launch of 1.2.3 is "not seen before", so the
+    rule runs for everyone then. Only databases with more than 3 subjects start at None.
+  - **Release notes must explain the feature.** For a large database, the empty-state message
+    below is what keeps a user from thinking their sections are gone.
+- **The web demo always starts at All.** Its settings live in the browser's in-memory file
+  system, so every visit would otherwise be "not seen before".
+- **Tours switch the focus to All when they start.** Several tour steps open a section card or
+  its editor, and need the cards to exist.
 - **Deleted subjects** drop out of the focus silently. If none are left, the focus becomes
   **None**, which shows the empty state.
 - **Focus is a separate layer from the ordinary filter.** "Clear filters" doesn't touch it, and
   the ordinary filter works **within** it.
 - **The Focus button** is in the section-list header. It opens a list of subjects to tick, plus
   All and None.
-- **Disabled while a section editor is open** (tooltip: "Finish editing first"). A focus change
-  can then never hide a card that has unapplied edits. This satisfies rule 3 structurally, not
-  through a dialog.
+- **No focus change while a section editor is open** (tooltip: "Finish editing first"). A focus
+  change can then never hide a card that has unapplied edits. This satisfies rule 3
+  structurally, not through a dialog.
+  - **One guard, not one per control (revised 2026-10-23).** Rebuilding the section list goes
+    through `LoadCore`, which calls `CollapseEditor()`. So *any* focus change, not only the Focus
+    button, could close an editor with unapplied edits. That includes **Show all** on every
+    indicator (grid header, workload panel, Instructors flyout) and the empty-state buttons.
+  - `FocusService` exposes a single `CanChangeFocus`, false while an editor is open, and refuses
+    a change when it is false. Every control that changes the focus binds its enabled state to
+    it.
 - **Empty state (rule 4).** When the focus is None, or matches no sections, the section list
   shows a short message instead of an empty panel. For example: *"No subjects in focus. Choose
   the subjects you're working on to see their sections."* It has a **[Choose focus]** button,
@@ -230,25 +255,67 @@ Worked through with the user on 2026-10-20, after item 21 landed.
 
 ### Who counts as an in-focus instructor
 
-One shared rule, `FocusService.IsInFocus(instructor)`. Every consumer below uses it, so they can
-never disagree. An **active** instructor is in focus if either:
-- they teach a section in a focus subject in the viewed semester(s), or in **the academic year
-  before** the viewed one (the year being planned is often still empty); or
-- they have **no sections at all** in that window. That covers new hires and instructors just
-  added in the flyout, so they don't vanish the moment they're created.
+**Revised 2026-10-23.** The 2026-10-20 rule counted an active instructor with nothing in the
+window as in focus for **every** subject, so long-idle instructors from every department piled
+into every focus. Its window was also only the *viewed* semesters plus the previous year, so an
+instructor teaching the focus subject in another semester of the viewed year was missed.
+
+**One rule, in its own class.** `FocusService.IsInFocus(instructor)` is the only entry point,
+so every consumer below agrees. The decision itself lives in a separate class,
+`InstructorFocusRule`, a pure function of the focus and the instructor's teaching history. It
+can be unit-tested on its own, and changed later if users find it too narrow or too generous,
+without touching any view.
+
+**Terms.**
+- **Y** is the academic year being viewed. In multi-semester mode every ticked semester is in Y.
+- **The window** is every semester of **Y and Y−1** (two whole academic years). It doesn't
+  depend on which semesters are ticked, so the lists don't change as the user moves between
+  semesters. Y−1 is included because the year being planned is often still mostly empty.
+- **A section counts for an instructor** when they are assigned to it. Its subject is its
+  course's `SubjectId`.
+
+**The rule, applied in order:**
+1. **Focus is All:** in focus.
+2. **Focus is None:** not in focus.
+3. **Inactive instructor:** not in focus.
+4. **Any section in the window:** in focus if at least one of those sections is in a focus
+   subject. Earlier years are ignored.
+5. **Nothing in the window, but sections in an earlier year:** take the most recent academic
+   year before Y−1 in which they had any section. In focus if at least one section that year is
+   in a focus subject.
+6. **Nothing in the window and nothing earlier** (a new hire, or someone just added in the
+   flyout): in focus under every subject focus, so they don't vanish the moment they're
+   created. This also covers sections only in years after Y (viewing a past year), which is
+   harmless.
+
+**Examples, focus = Biology:**
+
+| Instructor | In focus? | Why |
+|---|---|---|
+| Teaches BIOL this year or last | Yes | Step 4 |
+| Teaches BIOL and ENGL in the window | Yes (and under English too) | Step 4 |
+| Only ENGL in the window, taught BIOL 4 years ago | No | Step 4 ignores earlier years |
+| Taught BIOL in 2022–23, nothing since | Yes | Step 5 |
+| Idle ENGL sessional, last taught 2021–22, still active | No (only under English) | Step 5 |
+| New hire, no sections anywhere | Yes, under every focus | Step 6 |
+| New hire given a first CHEM section | No (now only under Chemistry) | Step 4 |
+| Inactive | No | Step 3 |
+
+**Data and cost.** `FocusService` reads one small table of (instructor, subject, academic year)
+across **all** sections in the database, not just the viewed semesters (`SectionStore` only holds
+those). It rebuilds it when sections change and when the viewed academic year changes. Academic
+years are ordered by `StartYear`. A few thousand rows at dean's-office size.
 
 **Further rules:**
 - **Subject only.** Levels play no part.
-- **Under None,** no instructor is in focus, not even the ones with no sections.
-- **Under All,** everyone is in focus.
 - **Changes to the rule:** a "Subjects taught" field on the instructor is planned for **1.2.4**
-  (see *Later release*).
+  (see *Later release*). It would slot into `InstructorFocusRule`.
 
 ### What follows the focus
 
 | Place | Behaviour |
 |---|---|
-| **Section list** | **Hide:** sections outside the focus get **no card**, and course headings left empty go too. This holds on full load and in the add / apply / copy / replace paths. The ordinary filter's Highlight / Expand work within the focus. |
+| **Section list** | **Hide:** sections outside the focus get **no card**. This holds on full load and in the add / apply / copy / replace paths. The ordinary filter's Highlight / Expand work within the focus. In multi-semester mode, a **semester banner stays** even when none of its sections are in focus. |
 | **Schedule grid** | In-focus sections only; the ordinary filter narrows further. |
 | **Filter panel: Subjects list** | Focus subjects only. |
 | **Filter panel: Courses list** | Courses in focus subjects only. |
@@ -280,7 +347,8 @@ never disagree. An **active** instructor is in focus if either:
   wouldn't have?"* **No.** Nothing new is saved to the database, so item 3's release-order
   constraint doesn't apply.
 - **Four rules:** the save, lock, switch, restore and recovery code paths are untouched.
-  - **Rule 3** is protected by disabling the Focus button while an editor is open.
+  - **Rule 3** is protected by `FocusService.CanChangeFocus`: no control can change the focus
+    while an editor is open.
   - **Rule 4** is covered by the indicator, the empty state and the Empty Semester wording.
   - No overlap with `designs/data-persistence-review-2026-10.md` §8.
 - **Data-integrity risk:** the instructor chooser blanking a section's out-of-focus instructor on
@@ -300,9 +368,15 @@ Steps 2–7 edit AXAML: warn the user before each so they can close the tab in V
 
 1. **`FocusService` and settings.**
    - Holds the focus (subject set, All or None) and persists it per database path.
-   - Exposes `Matches(section)` (by the course's `SubjectId`), `IsInFocus(instructor)` (with the
-     one-year lookback and the no-sections rule), `IsCourseInFocus(course)`, and a `FocusChanged`
-     event.
+   - Exposes `Matches(section)` (by the course's `SubjectId`), `IsInFocus(instructor)`,
+     `IsCourseInFocus(course)`, `CanChangeFocus`, and a `FocusChanged` event.
+   - `IsInFocus` delegates to `InstructorFocusRule` (the six-step rule above), tested on its own
+     with every row of the examples table.
+   - Keyed by `CheckoutService.NormalizeSourcePath(D)`. Starting value by the 3-subject rule;
+     always All in the demo.
+   - The teaching history (instructor, subject, academic year) needs a repository read across
+     all sections: `SectionStore` only holds the viewed semesters. Rebuild it when sections
+     change and when the viewed academic year changes.
    - Reloads when the database changes. Registered in desktop `ConfigureServices` **and**
      `ConfigureDemoServices`.
    - Unit tests only, no UI.
@@ -312,7 +386,8 @@ Steps 2–7 edit AXAML: warn the user before each so they can close the tab in V
    - Add the empty-state message.
 3. **Focus picker and indicator.**
    - The reusable indicator control, and the Focus button and picker (subjects, All, None).
-   - The button is disabled while an editor is open.
+   - The button, **Show all** and the empty-state buttons bind to `CanChangeFocus`.
+   - Tours set the focus to All when they start.
    - The indicator goes in the section list and grid header; the empty-state hint goes in the
      grid.
 4. **Grid and filter panel.**
@@ -335,7 +410,8 @@ Steps 2–7 edit AXAML: warn the user before each so they can close the tab in V
      list.
    - **Focus cases:** All, None, one subject, two subjects, a deleted subject, and multi-semester
      mode.
-   - **Instructor cases:** cross-subject, previous year only, no sections, inactive.
+   - **Instructor cases:** cross-subject, another semester of the viewed year, previous year
+     only, last taught before the window (in and out of focus), never taught, inactive.
    - **Manual checks:** the 800-section database focused on 2 of 10 subjects (heap roughly in
      proportion), switching databases, the first launch on an existing database (None plus the
      empty state), the full test suite and the compile check.
