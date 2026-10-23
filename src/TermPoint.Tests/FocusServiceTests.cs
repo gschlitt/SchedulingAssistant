@@ -541,4 +541,97 @@ public sealed class FocusServiceTests : IDisposable
 
         Assert.True(svc.IsInFocus(instructor));                  // cache was not dropped
     }
+
+    // ── PruneDeletedSubjects (step 20.3) ───────────────────────────────────────
+
+    /// <summary>
+    /// Deleting a focused subject mid-session drops it at once: the focus changes, is saved, and FocusChanged is
+    /// raised once. The other focused subject stays.
+    /// </summary>
+    [Fact]
+    public void Prune_DropsDeletedSubject_Immediately_SavesAndRaises()
+    {
+        var subjects = AddSubjects(5);
+        var svc = Make();
+        Assert.True(svc.SetFocus(SubjectFocus.ForSubjects([subjects[0].Id, subjects[1].Id])));
+        var raised = 0;
+        svc.FocusChanged += () => raised++;
+
+        _subjectRepo.Delete(subjects[1].Id);
+        svc.PruneDeletedSubjects();
+
+        var expected = SubjectFocus.ForSubjects([subjects[0].Id]);
+        Assert.Equal(expected, svc.Current);
+        Assert.Equal(expected, RememberedOnDisk());
+        Assert.Equal(1, raised);
+    }
+
+    /// <summary>If the only focused subject is deleted, the focus becomes None (the empty state).</summary>
+    [Fact]
+    public void Prune_LastFocusedSubjectDeleted_BecomesNone()
+    {
+        var subjects = AddSubjects(5);
+        var svc = Make();
+        Assert.True(svc.SetFocus(SubjectFocus.ForSubjects([subjects[2].Id])));
+
+        _subjectRepo.Delete(subjects[2].Id);
+        svc.PruneDeletedSubjects();
+
+        Assert.Equal(SubjectFocus.None, svc.Current);
+        Assert.Equal(SubjectFocus.None, RememberedOnDisk());
+    }
+
+    /// <summary>Nothing deleted, or an unfocused subject deleted, or All/None: no change, no save, no event.</summary>
+    [Fact]
+    public void Prune_NothingToDrop_RaisesNoEvent()
+    {
+        var subjects = AddSubjects(5);
+        var svc = Make();
+        var raised = 0;
+        svc.FocusChanged += () => raised++;
+
+        svc.PruneDeletedSubjects();                       // None
+        Assert.True(svc.SetFocus(SubjectFocus.All));
+        raised = 0;
+        svc.PruneDeletedSubjects();                       // All
+        Assert.True(svc.SetFocus(SubjectFocus.ForSubjects([subjects[0].Id])));
+        raised = 0;
+        svc.PruneDeletedSubjects();                       // Subjects, all present
+        _subjectRepo.Delete(subjects[4].Id);              // an unfocused subject
+        svc.PruneDeletedSubjects();
+
+        Assert.Equal(0, raised);
+        Assert.Equal(SubjectFocus.ForSubjects([subjects[0].Id]), svc.Current);
+    }
+
+    /// <summary>
+    /// A prune asked for while an editor is open is deferred: nothing changes (rule 3), and it runs, raising
+    /// FocusChanged once, when the editor closes.
+    /// </summary>
+    [Fact]
+    public void Prune_WhileEditorOpen_IsDeferredUntilEditorCloses()
+    {
+        var subjects = AddSubjects(5);
+        var svc = Make();
+        var focus = SubjectFocus.ForSubjects([subjects[0].Id, subjects[1].Id]);
+        Assert.True(svc.SetFocus(focus));
+        var raised = 0;
+        svc.FocusChanged += () => raised++;
+
+        svc.SetEditorOpen(true);
+        _subjectRepo.Delete(subjects[1].Id);
+        svc.PruneDeletedSubjects();
+
+        Assert.Equal(focus, svc.Current);                 // untouched while editing
+        Assert.Equal(0, raised);
+
+        svc.SetEditorOpen(false);
+
+        Assert.Equal(SubjectFocus.ForSubjects([subjects[0].Id]), svc.Current);
+        Assert.Equal(1, raised);
+
+        svc.SetEditorOpen(true);                          // the pending flag was cleared: no second prune
+        svc.SetEditorOpen(false);
+        Assert.Equal(1, raised);
+    }
 }

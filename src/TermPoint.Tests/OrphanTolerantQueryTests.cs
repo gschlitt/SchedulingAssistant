@@ -269,7 +269,8 @@ public sealed class OrphanTolerantQueryTests : IDisposable
         new(_sectionRepo, _courseRepo, _subjectRepo, _instructorRepo, _roomRepo,
             _legalRepo, _semesterRepo, _blockPatternRepo, _codePatternRepo,
             _semesterContext, _sectionStore, _envRepo, _campusRepo, _meetingRepo,
-            dialog, _fx.Lock);
+            dialog, _fx.Lock,
+            FocusTestSupport.AllFocus(_semesterContext, _sectionStore));
 
     // ═════════════════════════════════════════════════════════════════════════
     // Fixture sanity

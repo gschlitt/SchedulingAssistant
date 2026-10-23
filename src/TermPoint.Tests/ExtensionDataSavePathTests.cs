@@ -94,7 +94,8 @@ public sealed class ExtensionDataSavePathTests : IDisposable
         new(_sectionRepo, _courseRepo, _subjectRepo, _instructorRepo, _roomRepo,
             _legalRepo, _semesterRepo, _blockPatternRepo, _codePatternRepo,
             _semesterContext, _sectionStore, _envRepo, _campusRepo, _meetingRepo,
-            _dialog, _fx.Lock);
+            _dialog, _fx.Lock,
+            FocusTestSupport.AllFocus(_semesterContext, _sectionStore));
 
     // ══════════════════════════════════════════════════════════════════════════
     // List view models whose Edit works on a hand-built copy of the selected record
@@ -154,7 +155,7 @@ public sealed class ExtensionDataSavePathTests : IDisposable
         _subjectRepo.Insert(subject);
         _fx.Stamp("Subjects", subject.Id);
 
-        var vm = new SubjectListViewModel(_subjectRepo, _dialog, _fx.Lock);
+        var vm = new SubjectListViewModel(_subjectRepo, _dialog, _fx.Lock, FocusTestSupport.AllFocus());
         vm.SelectedSubject = vm.Subjects.Single();
         vm.EditCommand.Execute(null);
         vm.EditVm!.Name = "World History";

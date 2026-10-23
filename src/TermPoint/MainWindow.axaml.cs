@@ -1377,6 +1377,21 @@ public partial class MainWindow : Window, ILifecyclePrompts, ISessionHost
         toggleButton.Bind(ContentControl.ContentProperty,
             new Binding("ToggleMeetingViewLabel") { Source = Vm });
 
+        // The detached header mirrors the inline one: the focus statement fills the width and the Events toggle
+        // docks right. The statement shows in the Section View only (the wrapper Panel carries that condition,
+        // because FocusIndicator's own DataContext is the FocusViewModel) and hides itself under focus All.
+        var focusPanel = new Panel
+        {
+            VerticalAlignment = VerticalAlignment.Center,
+            Children = { new FocusIndicator { DataContext = Vm.FocusVm } }
+        };
+        focusPanel.Bind(IsVisibleProperty, new Binding("IsShowingSections") { Source = Vm });
+        toggleButton.Margin = new Thickness(6, 0, 0, 0);
+        DockPanel.SetDock(toggleButton, Dock.Right);
+        var headerContent = new DockPanel();
+        headerContent.Children.Add(toggleButton);
+        headerContent.Children.Add(focusPanel);
+
         // Null out PanelContent to prevent dual event firing while detached.
         slot.PanelContent = null;
 
@@ -1391,7 +1406,7 @@ public partial class MainWindow : Window, ILifecyclePrompts, ISessionHost
                 slot.IsVisible = true;
                 _sectionViewWindow = null;
             },
-            toggleButton);
+            headerContent);
     }
 
     private void OnWorkloadDetach(object? sender, EventArgs e)
@@ -1430,12 +1445,19 @@ public partial class MainWindow : Window, ILifecyclePrompts, ISessionHost
             headerContext);
     }
 
-    private StackPanel CreateScheduleGridHeaderContext()
+    /// <summary>
+    /// Builds the header shown above a detached Schedule View window: academic unit, semesters, stats, focus,
+    /// filter, overlay and shared-schedule statements, mirroring the inline header in MainView.axaml.
+    /// A <see cref="WrapPanel"/>, like the inline header, so in a narrow window the statements move onto further
+    /// lines instead of running off the edge (a horizontal StackPanel never wraps).
+    /// </summary>
+    /// <returns>The header panel, bound to the main window's view model.</returns>
+    private WrapPanel CreateScheduleGridHeaderContext()
     {
-        var stack = new StackPanel
+        var stack = new WrapPanel
         {
             Orientation = Orientation.Horizontal,
-            Spacing = 6,
+            ItemSpacing = 6,
             VerticalAlignment = VerticalAlignment.Center
         };
 
@@ -1531,6 +1553,18 @@ public partial class MainWindow : Window, ILifecyclePrompts, ISessionHost
             Converter = StringConverters.IsNotNullOrEmpty
         });
         stack.Children.Add(statsTextBlock);
+
+        // Subject focus (outermost layer, so before "Filtered by:"): separator + the shared statement control,
+        // both hidden under focus All.
+        var focusSeparator = new Border
+        {
+            Width = 1,
+            Background = (IBrush)(this.FindResource("SeparatorLine") ?? Brushes.Gray),
+            Margin = new Thickness(0, 3)
+        };
+        focusSeparator.Bind(IsVisibleProperty, new Binding("IsIndicatorVisible") { Source = Vm.FocusVm });
+        stack.Children.Add(focusSeparator);
+        stack.Children.Add(new FocusIndicator { DataContext = Vm.FocusVm, VerticalAlignment = VerticalAlignment.Center });
 
         // Filter separator
         var filterSeparator = new Border

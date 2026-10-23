@@ -12,6 +12,7 @@ public partial class SubjectListViewModel : ViewModelBase, IDisposable
     private readonly ISubjectRepository _repo;
     private readonly IDialogService _dialog;
     private readonly WriteLockService _lockService;
+    private readonly FocusService _focus;
 
     [ObservableProperty] private ObservableCollection<Subject> _subjects = new();
     [ObservableProperty] private Subject? _selectedSubject;
@@ -23,8 +24,14 @@ public partial class SubjectListViewModel : ViewModelBase, IDisposable
     /// <summary>Returns true when the current user holds the write lock. Used as a CanExecute predicate for all write commands.</summary>
     private bool CanWrite() => _lockService.IsWriter;
 
-    public SubjectListViewModel(ISubjectRepository repo, IDialogService dialog, WriteLockService lockService)
+    /// <summary>Creates the subject list and loads the subjects.</summary>
+    /// <param name="repo">Subject data access.</param>
+    /// <param name="dialog">Dialog service.</param>
+    /// <param name="lockService">The write lock; gates the write commands.</param>
+    /// <param name="focus">The subject focus; told to drop a subject that has just been deleted.</param>
+    public SubjectListViewModel(ISubjectRepository repo, IDialogService dialog, WriteLockService lockService, FocusService focus)
     {
+        _focus = focus;
         _repo = repo;
         _dialog = dialog;
         _lockService = lockService;
@@ -106,6 +113,9 @@ public partial class SubjectListViewModel : ViewModelBase, IDisposable
 
         _repo.Delete(SelectedSubject.Id);
         Load();
+
+        // A focused subject that was just deleted leaves the focus now (or when the section editor closes).
+        _focus.PruneDeletedSubjects();
     }
 
     /// <inheritdoc/>

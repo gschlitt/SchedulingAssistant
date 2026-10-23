@@ -3,6 +3,7 @@
 	xmlns="https://github.com/avaloniaui"
 	xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
 	xmlns:b="using:TermPoint.Behaviors"
+	xmlns:controls="using:TermPoint.Controls"
 	xmlns:views="using:TermPoint.Views.Management"
 	x:CompileBindings="False">
 
@@ -110,6 +111,12 @@
 					FontSize="{StaticResource FontSizeNormal}"
 					ItemsSource="{Binding SortModeOptions}"
 					SelectedIndex="{Binding SelectedSortModeIndex}" />
+				<!--
+					Subject focus (spec item 20): opens the picker. A view preference, so not write-gated; it is
+					disabled (tooltip "Finish editing first") while a section editor is open. FocusVm lives on
+					MainWindowViewModel, not on this StackPanel's SectionListVm DataContext.
+				-->
+				<controls:FocusButton DataContext="{Binding DataContext.FocusVm, RelativeSource={RelativeSource AncestorType=UserControl}}" />
 			</StackPanel>
 
 			<!--  Event action buttons — shown when Events View is active  -->
@@ -156,6 +163,50 @@
 			Foreground="{StaticResource TextFaint}"
 			IsVisible="{Binding !SemesterContext.HasSemesterSelected}"
 			Text="Select a semester to load sections" />
+
+		<!--
+			Focus empty state (spec item 20, rule 4): shown instead of an empty list when the focus is None, or
+			matches no section in the loaded semesters. Section View only. Both buttons run FocusVm commands, so
+			they are disabled (tooltip "Finish editing first") while a section editor is open.
+		-->
+		<Panel Grid.Row="1" IsVisible="{Binding IsShowingSections}">
+			<Border
+				Margin="0,2,0,4"
+				Padding="6,4"
+				Background="{StaticResource NotificationInfoBackground}"
+				BorderBrush="{StaticResource NotificationInfoBorder}"
+				BorderThickness="1"
+				CornerRadius="3"
+				IsVisible="{Binding SectionListVm.IsFocusEmpty}">
+				<StackPanel Spacing="4">
+					<TextBlock
+						FontSize="{StaticResource FontSizeSmall}"
+						Foreground="{StaticResource NotificationInfoText}"
+						Text="{Binding SectionListVm.FocusEmptyMessage}"
+						TextWrapping="Wrap" />
+					<StackPanel Orientation="Horizontal" Spacing="3">
+						<Button
+							MinWidth="0"
+							MinHeight="0"
+							Padding="5,1"
+							Command="{Binding FocusVm.OpenPickerCommand}"
+							Content="Choose focus"
+							FontSize="{StaticResource FontSizeNormal}"
+							ToolTip.ShowOnDisabled="True"
+							ToolTip.Tip="{Binding FocusVm.ChangeFocusToolTip}" />
+						<Button
+							MinWidth="0"
+							MinHeight="0"
+							Padding="5,1"
+							Command="{Binding FocusVm.AllCommand}"
+							Content="All subjects"
+							FontSize="{StaticResource FontSizeNormal}"
+							ToolTip.ShowOnDisabled="True"
+							ToolTip.Tip="{Binding FocusVm.ChangeFocusToolTip}" />
+					</StackPanel>
+				</StackPanel>
+			</Border>
+		</Panel>
 
 		<!--  Edit-conflict advisory — always visible above the scroll area regardless of scroll position  -->
 		<Border

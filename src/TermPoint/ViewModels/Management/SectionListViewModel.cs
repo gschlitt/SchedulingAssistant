@@ -29,6 +29,25 @@ public partial class SectionListViewModel : ViewModelBase, IDisposable
     private readonly WriteLockService _lockService;
 
     /// <summary>
+    /// The user's subject focus (spec item 20). Sections outside it get no card; the service is also told
+    /// whenever an inline editor opens or closes, which is what disables every focus-changing control while
+    /// an editor holds unapplied edits (rule 3). Taken as a constructor dependency so dependency injection
+    /// builds it, and so subscribes its <see cref="SectionStore.SectionsChanged"/> handler, before this VM's
+    /// own: the service's caches are then fresh when this VM asks <see cref="FocusService.Matches"/>.
+    /// </summary>
+    private readonly FocusService _focus;
+
+    /// <summary>
+    /// True only while <see cref="OnStoreSelectionChanged"/> clears <see cref="SelectedItem"/> because the section
+    /// the store selected has no card (it is outside the focus). Stops <see cref="OnSelectedItemChanged"/> from
+    /// pushing that null back into the store.
+    /// </summary>
+    private bool _isClearingForMissingCard;
+
+    /// <summary>Backing field of <see cref="IsFocusEmpty"/>; recomputed by <see cref="RefreshFocusEmptyState"/>.</summary>
+    private bool _isFocusEmpty;
+
+    /// <summary>
     /// Callback to push ghost blocks (Room Availability Browser) onto the schedule grid.
     /// Set by <see cref="MainWindowViewModel"/> after construction.
     /// </summary>
@@ -181,8 +200,60 @@ public partial class SectionListViewModel : ViewModelBase, IDisposable
 
     // ── Property-Changed Hooks ─────────────────────────────────────────────────
 
-    partial void OnEditVmChanged(SectionEditViewModel? value) =>
+    /// <summary>
+    /// Raises <see cref="IsEditing"/> and tells the <see cref="FocusService"/> whether an editor is open, so no
+    /// focus change (Focus button, Show all, empty-state buttons, tours) can rebuild the list underneath unapplied
+    /// edits. Every path that opens or closes an editor (Add, Copy, Edit, Apply, Cancel, RequestClose,
+    /// <see cref="CollapseEditor"/>, <see cref="LoadCore"/>) goes through <see cref="EditVm"/>, so this is the single place.
+    /// </summary>
+    /// <param name="value">The new editor, or null when the editor has closed.</param>
+    partial void OnEditVmChanged(SectionEditViewModel? value)
+    {
         OnPropertyChanged(nameof(IsEditing));
+        _focus.SetEditorOpen(value is not null);
+    }
+
+    /// <summary>
+    /// True when the section list is empty because of the focus, not because the semester is empty: at least one
+    /// semester is selected and either the focus is None, or sections were loaded and none of them is in focus.
+    /// The view shows a message with [Choose focus] / [All subjects] instead of an empty panel (rule 4). Never true
+    /// under All: there every loaded section is in focus, and an empty semester is just an empty semester.
+    /// </summary>
+    public bool IsFocusEmpty => _isFocusEmpty;
+
+    /// <summary>
+    /// The empty-state text: the "choose your subjects" prompt when the focus is None, otherwise the note that the
+    /// chosen focus has no sections in the loaded semesters. Only meaningful while <see cref="IsFocusEmpty"/> is true.
+    /// </summary>
+    public string FocusEmptyMessage => _focus.Current.Kind == FocusKind.None
+        ? "No subjects in focus. Choose the subjects you're working on to see their sections."
+        : "No sections in your focus in this semester.";
+
+    /// <summary>
+    /// Recomputes <see cref="IsFocusEmpty"/> (and the message) from the current state and raises PropertyChanged.
+    /// Called after every full load and every incremental update, because any of them can change the answer.
+    /// "Loaded" counts the sections in the store for the selected semesters; "cards" counts real section cards
+    /// (an Add/Copy placeholder is not a section in focus).
+    /// </summary>
+    private void RefreshFocusEmptyState()
+    {
+        bool value = false;
+        var semesters = _semesterContext.SelectedSemesters.ToList();
+        if (semesters.Count > 0)
+        {
+            int loaded = semesters.Sum(s =>
+                _sectionStore.SectionsBySemester.TryGetValue(s.Semester.Id, out var list) ? list.Count : 0);
+            int cards = SectionItems.OfType<SectionListItemViewModel>().Count(i => !i.IsBeingCreated);
+
+            value = cards == 0
+                    && (_focus.Current.Kind == FocusKind.None
+                        || (_focus.Current.Kind == FocusKind.Subjects && loaded > 0));
+        }
+
+        _isFocusEmpty = value;
+        OnPropertyChanged(nameof(IsFocusEmpty));
+        OnPropertyChanged(nameof(FocusEmptyMessage));
+    }
 
     /// <summary>
     /// Called when the list selection changes.
@@ -194,6 +265,7 @@ public partial class SectionListViewModel : ViewModelBase, IDisposable
     partial void OnSelectedItemChanged(ISectionListEntry? value)
     {
         if (value is SemesterBannerViewModel) return; // banners are not selectable entities
+        if (_isClearingForMissingCard) return;        // the store already holds the selection; see OnStoreSelectionChanged
 
         if (value is SectionListItemViewModel svm)
             _lastSelectedIndex = SectionItems.IndexOf(svm);
@@ -222,8 +294,10 @@ public partial class SectionListViewModel : ViewModelBase, IDisposable
         ICampusRepository campusRepo,
         IMeetingRepository meetingRepo,
         IDialogService dialog,
-        WriteLockService lockService)
+        WriteLockService lockService,
+        FocusService focus)
     {
+        _focus = focus;
         _sectionRepo = sectionRepo;
         _courseRepo = courseRepo;
         _subjectRepo = subjectRepo;
@@ -256,6 +330,10 @@ public partial class SectionListViewModel : ViewModelBase, IDisposable
 
         // Switch panels live when the user toggles the virtualization preference.
         AppSettings.SettingChanged += OnAppSettingChanged;
+
+        // A changed focus (picker, Show all, tour start, a deleted subject) shows a different set of cards.
+        // The service refuses a change while an editor is open, so the rebuild never closes unapplied edits.
+        _focus.FocusChanged += Reload;
 
         _sortMode = AppSettings.Current.SectionSortMode;
         _selectedSortModeIndex = SortModeToIndex(_sortMode);
@@ -317,8 +395,23 @@ public partial class SectionListViewModel : ViewModelBase, IDisposable
         {
             var id = ids.Single();
             if (SelectedSectionItem?.Section.Id != id)
-                SelectedItem = SectionItems.OfType<SectionListItemViewModel>()
-                                           .FirstOrDefault(i => i.Section.Id == id);
+            {
+                var match = SectionItems.OfType<SectionListItemViewModel>()
+                                        .FirstOrDefault(i => i.Section.Id == id);
+                if (match is not null)
+                {
+                    SelectedItem = match;
+                }
+                else
+                {
+                    // The selected section has no card here: it is outside the focus (a grid overlay can show
+                    // such a section). Clear the list's own selection so Edit/Copy/Delete don't act on a stale
+                    // card, but do NOT push that back to the store, or it would wipe the selection just made.
+                    _isClearingForMissingCard = true;
+                    try { SelectedItem = null; }
+                    finally { _isClearingForMissingCard = false; }
+                }
+            }
         }
         // else: multi-select; don't move ListBox focus
 
@@ -368,6 +461,10 @@ public partial class SectionListViewModel : ViewModelBase, IDisposable
             App.Logger.LogError(ex, "SectionListViewModel.Load");
             SectionItems = new();
             LastErrorMessage = "An error occurred loading the section list. Please try again.";
+
+            // The error banner explains the empty list; the focus message would only mislead.
+            _isFocusEmpty = false;
+            OnPropertyChanged(nameof(IsFocusEmpty));
         }
     }
 
@@ -392,7 +489,12 @@ public partial class SectionListViewModel : ViewModelBase, IDisposable
         CollapseEditor();
 
         var semesters = _semesterContext.SelectedSemesters.ToList();
-        if (semesters.Count == 0) { SectionItems = new(); return; }
+        if (semesters.Count == 0)
+        {
+            SectionItems = new();
+            RefreshFocusEmptyState();
+            return;
+        }
 
         // Detect semester-context change (covers startup, switch, add/remove a semester).
         // Empty _loadedSemesterIds on startup → first load is always treated as a new context.
@@ -430,7 +532,9 @@ public partial class SectionListViewModel : ViewModelBase, IDisposable
             App.Logger.LogInfo(
                 $"LoadCore: {sections.Count} sections for semester {semDisplay.Semester.Id}", "LoadCore");
 
-            var rawItems = sections.Select(s =>
+            // Only sections in the focus get a card (the banner above stays even when none do). Under All
+            // every section matches, so the list is exactly what it was before the focus existed.
+            var rawItems = sections.Where(_focus.Matches).Select(s =>
             {
                 var vm = CreateSectionItem(
                     s, lk, semDisplay.Semester.Name, semDisplay.Semester.Color ?? string.Empty);
@@ -461,6 +565,9 @@ public partial class SectionListViewModel : ViewModelBase, IDisposable
         // Honour the "open with all sections collapsed" preference on semester change.
         if (isSemesterChange && AppSettings.Current.OpenWithAllSectionsCollapsed)
             CollapseAll();
+
+        // Decide whether the panel should show the focus empty state instead of an empty list.
+        RefreshFocusEmptyState();
     }
 
     /// <summary>
@@ -516,6 +623,10 @@ public partial class SectionListViewModel : ViewModelBase, IDisposable
     /// Returns <c>false</c> when the section is not already present (e.g. a brand-new section) or
     /// its semester is not currently displayed, in which case the caller should fall back to a
     /// full <see cref="Load"/>.
+    /// <para>
+    /// If the saved section is no longer in the subject focus, its card is removed instead of replaced
+    /// (and the method still returns <c>true</c>: no full rebuild is needed).
+    /// </para>
     /// </summary>
     /// <param name="s">The just-saved section whose card should be refreshed.</param>
     private bool TryUpdateCardInPlace(Section s)
@@ -539,6 +650,20 @@ public partial class SectionListViewModel : ViewModelBase, IDisposable
         if (sem is null) return false;
 
         var lk = BuildItemLookups();
+
+        // The edit may have moved the section out of the focus (for example a course in another subject):
+        // then it simply loses its card, with no full rebuild.
+        if (!_focus.Matches(s))
+        {
+            SectionItems.RemoveAt(oldIndex);
+            if (ReferenceEquals(SelectedItem, old)) SelectedItem = null;
+
+            ApplyRoomConflicts(lk.Courses, lk.Rooms);
+            ApplyInstructorConflicts(lk.Courses, lk.Instructors);
+            RefreshFocusEmptyState();
+            return true;
+        }
+
         var newVm = CreateSectionItem(s, lk, sem.Semester.Name, sem.Semester.Color ?? string.Empty);
         newVm.IsCollapsed = old.IsCollapsed; // preserve collapsed/expanded state across the swap
 
@@ -554,6 +679,7 @@ public partial class SectionListViewModel : ViewModelBase, IDisposable
         ApplyFilterHighlights();
         ApplyRoomConflicts(lk.Courses, lk.Rooms);
         ApplyInstructorConflicts(lk.Courses, lk.Instructors);
+        RefreshFocusEmptyState();
         return true;
     }
 
@@ -1086,9 +1212,20 @@ public partial class SectionListViewModel : ViewModelBase, IDisposable
         Section section, bool isNew, EditorContext ctx,
         string semesterId, string callerTag, bool isCopy = false)
     {
+        // The Subject chooser follows the subject focus (spec item 20), but always keeps the section's current
+        // subject (an edit or a copy), so an untouched section can never lose its course. The Course Number list
+        // still shows only the chosen subject's courses.
+        var currentSubjectId = section.CourseId is null
+            ? null
+            : ctx.AllCourses.FirstOrDefault(c => c.Id == section.CourseId)?.SubjectId;
+        var chooserSubjects = _focus.SubjectsForChooser(ctx.Subjects, currentSubjectId);
+
+        // The Instructor chooser lists in-focus instructors first and demotes the rest, never dropping anyone.
+        var instructorOrder = _focus.OrderInstructorsForChooser(ctx.Instructors);
+
         var editVm = new SectionEditViewModel(
             section, isNew, isCopy,
-            ctx.Courses, ctx.Subjects, ctx.Instructors, ctx.Rooms,
+            ctx.Courses, chooserSubjects, instructorOrder.Ordered, ctx.Rooms,
             ctx.LegalStartTimes, ctx.IncludeSaturday, ctx.IncludeSunday,
             ctx.SectionTypes, ctx.MeetingTypes, ctx.Campuses,
             ctx.AllTags, ctx.AllResources, ctx.AllReserves,
@@ -1129,7 +1266,8 @@ public partial class SectionListViewModel : ViewModelBase, IDisposable
             _blockPatternRepo,
             roomTypes: ctx.RoomTypes,
             defaultBlockLength: ctx.DefaultBlockLength,
-            defaultSectionCapacity: AppSettings.Current.DefaultSectionCapacity);
+            defaultSectionCapacity: AppSettings.Current.DefaultSectionCapacity,
+            outOfFocusInstructorIds: instructorOrder.OutOfFocusIds);
 
         // Wire the Room Availability Browser factory (disabled in multi-semester mode)
         if (!_semesterContext.IsMultiSemesterMode)
@@ -1395,6 +1533,7 @@ public partial class SectionListViewModel : ViewModelBase, IDisposable
         _sectionStore.SelectionChanged -= OnStoreSelectionChanged;
         _sectionStore.FilteredIdsChanged -= ApplyFilterHighlights;
         AppSettings.SettingChanged -= OnAppSettingChanged;
+        _focus.FocusChanged -= Reload;
     }
 
     // ── Debug / Dev ────────────────────────────────────────────────────────────

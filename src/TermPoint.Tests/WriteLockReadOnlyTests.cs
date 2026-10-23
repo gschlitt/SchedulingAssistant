@@ -164,7 +164,8 @@ public sealed class WriteLockReadOnlyTests : IDisposable
         new(_sectionRepo, _courseRepo, _subjectRepo, _instructorRepo, _roomRepo,
             _legalStartTimeRepo, _semesterRepo, _blockPatternRepo, _codePatternRepo,
             _semesterContext, _sectionStore, _propertyRepo, _campusRepo, _meetingRepo,
-            _dialog, _lock);
+            _dialog, _lock,
+            FocusTestSupport.AllFocus(_semesterContext, _sectionStore));
 
     /// <summary>Creates the service that owns the empty/delete-semester rules, over the fixture's repositories.</summary>
     private SemesterContentsService CreateContentsService() =>
@@ -293,28 +294,28 @@ public sealed class WriteLockReadOnlyTests : IDisposable
     [Fact]
     public void Subject_IsWriteEnabled_FalseInReaderMode()
     {
-        var vm = new SubjectListViewModel(_subjectRepo, _dialog, _lock);
+        var vm = new SubjectListViewModel(_subjectRepo, _dialog, _lock, FocusTestSupport.AllFocus());
         Assert.False(vm.IsWriteEnabled);
     }
 
     [Fact]
     public void Subject_AddCommand_CanExecuteIsFalseInReaderMode()
     {
-        var vm = new SubjectListViewModel(_subjectRepo, _dialog, _lock);
+        var vm = new SubjectListViewModel(_subjectRepo, _dialog, _lock, FocusTestSupport.AllFocus());
         Assert.False(vm.AddCommand.CanExecute(null));
     }
 
     [Fact]
     public void Subject_EditCommand_CanExecuteIsFalseInReaderMode()
     {
-        var vm = new SubjectListViewModel(_subjectRepo, _dialog, _lock);
+        var vm = new SubjectListViewModel(_subjectRepo, _dialog, _lock, FocusTestSupport.AllFocus());
         Assert.False(vm.EditCommand.CanExecute(null));
     }
 
     [Fact]
     public void Subject_DeleteCommand_CanExecuteIsFalseInReaderMode()
     {
-        var vm = new SubjectListViewModel(_subjectRepo, _dialog, _lock);
+        var vm = new SubjectListViewModel(_subjectRepo, _dialog, _lock, FocusTestSupport.AllFocus());
         Assert.False(vm.DeleteCommand.CanExecute(null));
     }
 

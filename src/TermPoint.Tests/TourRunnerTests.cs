@@ -1,3 +1,4 @@
+using TermPoint.Models;
 using TermPoint.Models.Tour;
 using TermPoint.Services;
 using Xunit;
@@ -10,7 +11,15 @@ namespace TermPoint.Tests;
 /// </summary>
 public class TourRunnerTests : IDisposable
 {
-    private readonly TourRunner _runner = new();
+    /// <summary>The focus the runner switches to All on start; a null-key service, so nothing touches settings.</summary>
+    private readonly FocusService _focus = FocusTestSupport.AllFocus();
+
+    private readonly TourRunner _runner;
+
+    public TourRunnerTests()
+    {
+        _runner = new TourRunner(_focus);
+    }
 
     public void Dispose() => TourCatalog.Reset();
 
@@ -52,6 +61,49 @@ public class TourRunnerTests : IDisposable
         Assert.Equal(TourStatus.InProgress, _runner.Progress!.Status);
         Assert.Equal(0, _runner.Progress.CurrentSegmentIndex);
         Assert.Equal(0, _runner.Progress.CurrentStepIndex);
+    }
+
+    /// <summary>Starting a tour switches the subject focus to All, so the cards a tour step opens exist.</summary>
+    [Fact]
+    public void Start_SwitchesFocusToAll()
+    {
+        SetupSimpleTour();
+        Assert.True(_focus.SetFocus(SubjectFocus.ForSubjects(["subj-1"])));
+
+        _runner.Start("tour1");
+
+        Assert.Equal(SubjectFocus.All, _focus.Current);
+    }
+
+    /// <summary>Starting a tour from the None focus (a large database's first launch) also lands on All.</summary>
+    [Fact]
+    public void Start_FromNone_SwitchesFocusToAll()
+    {
+        SetupSimpleTour();
+        _focus.SetFocus(SubjectFocus.None);
+
+        _runner.Start("tour1");
+
+        Assert.Equal(SubjectFocus.All, _focus.Current);
+    }
+
+    /// <summary>
+    /// While a section editor is open the service refuses the change (it would rebuild the list under unapplied
+    /// edits), but the tour still starts and the focus is left as it was.
+    /// </summary>
+    [Fact]
+    public void Start_WhileEditorOpen_RefusedFocusChangeStillStartsTour()
+    {
+        SetupSimpleTour();
+        var focus = SubjectFocus.ForSubjects(["subj-1"]);
+        _focus.SetFocus(focus);
+        _focus.SetEditorOpen(true);
+
+        var started = _runner.Start("tour1");
+
+        Assert.True(started);
+        Assert.True(_runner.IsActive);
+        Assert.Equal(focus, _focus.Current);
     }
 
     [Fact]

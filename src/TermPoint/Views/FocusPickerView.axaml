@@ -1,0 +1,79 @@
+<UserControl
+	x:Class="TermPoint.Views.FocusPickerView"
+	xmlns="https://github.com/avaloniaui"
+	xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+	x:CompileBindings="False">
+
+	<!--
+		The Focus picker (spec item 20): a checklist of subjects, All / None (apply at once and close) and
+		Apply / Cancel. DataContext = FocusViewModel. Compact, like the rest of the section list. Apply, All
+		and None are disabled while a section editor is open.
+	-->
+	<Border
+		MinWidth="200"
+		Padding="6"
+		Background="{StaticResource FilterExpanderContent}"
+		BorderBrush="{StaticResource FilterPopupBorder}"
+		BorderThickness="1"
+		BoxShadow="{StaticResource FilterPopupShadow}"
+		CornerRadius="5">
+		<StackPanel Spacing="4">
+			<TextBlock
+				FontSize="{StaticResource FontSizeSmall}"
+				Foreground="{StaticResource TextFaint}"
+				Text="Subjects you are working on" />
+
+			<StackPanel Orientation="Horizontal" Spacing="3">
+				<Button
+					MinWidth="0"
+					MinHeight="0"
+					Padding="5,1"
+					Command="{Binding AllCommand}"
+					Content="All"
+					FontSize="{StaticResource FontSizeNormal}" />
+				<Button
+					MinWidth="0"
+					MinHeight="0"
+					Padding="5,1"
+					Command="{Binding NoneCommand}"
+					Content="None"
+					FontSize="{StaticResource FontSizeNormal}" />
+			</StackPanel>
+
+			<ScrollViewer MaxHeight="{StaticResource FocusPickerListMaxHeight}" VerticalScrollBarVisibility="Auto">
+				<ItemsControl ItemsSource="{Binding SubjectItems}">
+					<ItemsControl.ItemTemplate>
+						<DataTemplate>
+							<CheckBox
+								MinHeight="0"
+								Padding="4,1"
+								Content="{Binding DisplayText}"
+								FontSize="{StaticResource FontSizeNormal}"
+								IsChecked="{Binding IsTicked}" />
+						</DataTemplate>
+					</ItemsControl.ItemTemplate>
+				</ItemsControl>
+			</ScrollViewer>
+
+			<StackPanel
+				HorizontalAlignment="Right"
+				Orientation="Horizontal"
+				Spacing="3">
+				<Button
+					MinWidth="0"
+					MinHeight="0"
+					Padding="5,1"
+					Command="{Binding ApplyCommand}"
+					Content="Apply"
+					FontSize="{StaticResource FontSizeNormal}" />
+				<Button
+					MinWidth="0"
+					MinHeight="0"
+					Padding="5,1"
+					Command="{Binding CancelCommand}"
+					Content="Cancel"
+					FontSize="{StaticResource FontSizeNormal}" />
+			</StackPanel>
+		</StackPanel>
+	</Border>
+</UserControl>

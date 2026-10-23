@@ -552,19 +552,31 @@
 						Grid.Row="0"
 						Header="{Binding LeftPanelTitle}">
 						<controls:DetachablePanel.HeaderContext>
-							<Button
-								MinWidth="0"
-								MinHeight="0"
-								Padding="4,1"
-								HorizontalAlignment="Right"
-								VerticalAlignment="Center"
-								Background="{StaticResource ButtonBackground}"
-								BorderThickness="0"
-								Command="{Binding ToggleMeetingViewCommand}"
-								Content="{Binding ToggleMeetingViewLabel}"
-								FontSize="10"
-								Foreground="{StaticResource TextFaint}"
-								ToolTip.Tip="Switch between Section View and Events View" />
+							<!--
+								Section View header: the prominent focus statement ("Focus: BIOL, CHEM") fills the space between the title
+								and the right-aligned Events toggle, wrapping onto more lines when the list is long. The wrapper carries the
+								"Section View only" condition because FocusIndicator's own DataContext is the FocusViewModel. The statement
+								hides itself under All. (A detached Section View window builds the same header in MainWindow.axaml.cs.)
+							-->
+							<DockPanel>
+								<Button
+									MinWidth="0"
+									MinHeight="0"
+									Margin="6,0,0,0"
+									Padding="4,1"
+									VerticalAlignment="Center"
+									Background="{StaticResource ButtonBackground}"
+									BorderThickness="0"
+									Command="{Binding ToggleMeetingViewCommand}"
+									Content="{Binding ToggleMeetingViewLabel}"
+									DockPanel.Dock="Right"
+									FontSize="10"
+									Foreground="{StaticResource TextFaint}"
+									ToolTip.Tip="Switch between Section View and Events View" />
+								<Panel VerticalAlignment="Center" IsVisible="{Binding IsShowingSections}">
+									<controls:FocusIndicator DataContext="{Binding FocusVm}" />
+								</Panel>
+							</DockPanel>
 						</controls:DetachablePanel.HeaderContext>
 						<controls:DetachablePanel.PanelContent>
 							<panelViews:SectionPanelContent />
@@ -663,6 +675,21 @@
 								FontSize="{StaticResource FontSizeLarge}"
 								IsVisible="{Binding ScheduleGridVm.StatsLine, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"
 								Text="{Binding ScheduleGridVm.StatsLine}" />
+
+							<!--
+								Subject focus: the outermost layer, so it comes before "Filtered by:". Same pattern as the statements
+								below (separator + statement), in its own colour. The statement hides itself under All; the separator
+								follows the same condition.
+							-->
+							<Border
+								Width="1"
+								Margin="0,3,6,3"
+								Background="{StaticResource SeparatorLine}"
+								IsVisible="{Binding FocusVm.IsIndicatorVisible}" />
+							<controls:FocusIndicator
+								Margin="0,0,6,0"
+								VerticalAlignment="Center"
+								DataContext="{Binding FocusVm}" />
 
 							<Border
 								Width="1"

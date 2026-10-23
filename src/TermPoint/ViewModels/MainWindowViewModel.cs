@@ -29,6 +29,12 @@ public partial class MainWindowViewModel : ViewModelBase
     public SectionListViewModel SectionListVm { get; }
 
     /// <summary>
+    /// The subject-focus view model (spec item 20) shared by the indicator control and the Focus picker wherever
+    /// they appear. Held for app lifetime.
+    /// </summary>
+    public FocusViewModel FocusVm { get; }
+
+    /// <summary>
     /// The permanent left-panel meeting list. Held for app lifetime.
     /// Swaps with <see cref="SectionListVm"/> via <see cref="IsShowingMeetings"/>.
     /// </summary>
@@ -679,7 +685,8 @@ public partial class MainWindowViewModel : ViewModelBase
         WorkloadPanelViewModel workloadPanelVm,
         WriteLockService lockService,
         AppNotificationService notificationService,
-        TourRunner tourRunner)
+        TourRunner tourRunner,
+        FocusViewModel focusVm)
     {
         _services             = services;
         SemesterContext       = semesterContext;
@@ -690,6 +697,7 @@ public partial class MainWindowViewModel : ViewModelBase
         _lockService          = lockService;
         _notificationService  = notificationService;
         _tourRunner           = tourRunner;
+        FocusVm               = focusVm;
         TourOverlayVm         = new TourOverlayViewModel(tourRunner);
 
         // Wire the Room Availability Browser ghost block callback

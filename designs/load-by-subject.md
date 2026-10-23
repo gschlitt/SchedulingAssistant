@@ -402,6 +402,25 @@ Steps 2–7 edit AXAML: warn the user before each so they can close the tab in V
      - **Course saves don't reload `SectionStore`.** Harmless: a course's subject is locked once it
        has sections, so only a stale course-to-subject map is possible, and the next
        `SectionsChanged` clears it.
+> **Progress (2026-10-23).** Steps 2, 3 and 5 are done. Step 4 is half done: the grid follows the
+> focus and overlays ignore it; the filter-panel lists don't follow it yet. Changes made after the
+> user tried it in the app:
+> - **The focus statement is prominent:** "Focus: BIOL, CHEM" (bold, teal `FocusBadgeText`) in the
+>   Section View header beside the title and in the Schedule View header before "Filtered by:",
+>   with a "Show all" link, including in detached windows (built in `MainWindow.axaml.cs`). The
+>   small indicator row and the "N of M subjects" count were dropped. Under None: "Focus: no
+>   subjects".
+> - **The editor's Subject chooser** lists focus subjects plus the section's current subject.
+>   Under All or None it lists every subject.
+> - **The editor's instructor chooser** lists in-focus instructors first, then an "Other
+>   instructors" heading and rule, then the rest in a lighter font (`TextOutOfFocus`). Nobody is
+>   dropped. Under All or None there is no grouping.
+> - **Program access watches** run on all filter-passing sections, not only in-focus ones (they
+>   are a conflict check).
+> - **The detached Schedule View header** now wraps (a WrapPanel, like the inline header).
+> - **Still open:** what double-clicking an out-of-focus overlay tile should do (today: nothing);
+>   the filter lists (step 4); steps 6–8. The user is watching for "Focus" vs "Filter" confusion.
+
 2. **Section-list Hide and empty state.**
    - Build cards only for in-focus sections, on load and in every incremental path, and rebuild on
      `FocusChanged`.

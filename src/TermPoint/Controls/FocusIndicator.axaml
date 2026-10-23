@@ -1,0 +1,44 @@
+<UserControl
+	x:Class="TermPoint.Controls.FocusIndicator"
+	xmlns="https://github.com/avaloniaui"
+	xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+	x:CompileBindings="False">
+
+	<!--
+		The reusable subject-focus statement (spec item 20): "Focus: BIOL, CHEM, PHYS" in the same bold large
+		style as the grid header's "Filtered by:" statements, but in its own colour (FocusBadgeText) so it reads
+		as a separate layer. Long lists wrap. A small "Show all" link follows it and sets the focus to All.
+
+		DataContext = FocusViewModel. The control depends on nothing around it, so every header can reuse it by
+		binding DataContext to MainWindowViewModel.FocusVm. It hides itself (costing no space) when the focus is
+		All, so a host only needs its own IsVisible for extra conditions (for example "Section View only", set on
+		a wrapper, since this control's own DataContext is the FocusViewModel). "Show all" is disabled, with the
+		"Finish editing first" tooltip, while a section editor is open.
+	-->
+	<DockPanel IsVisible="{Binding IsIndicatorVisible}">
+		<Button
+			MinWidth="0"
+			MinHeight="0"
+			Margin="6,0,0,0"
+			Padding="2,0"
+			VerticalAlignment="Center"
+			Background="Transparent"
+			Command="{Binding ShowAllCommand}"
+			DockPanel.Dock="Right"
+			ToolTip.ShowOnDisabled="True"
+			ToolTip.Tip="{Binding ChangeFocusToolTip}">
+			<TextBlock
+				FontSize="{StaticResource FontSizeSmall}"
+				Foreground="{StaticResource FocusLinkText}"
+				Text="Show all"
+				TextDecorations="Underline" />
+		</Button>
+		<TextBlock
+			VerticalAlignment="Center"
+			FontSize="{StaticResource FontSizeLarge}"
+			FontWeight="Bold"
+			Foreground="{StaticResource FocusBadgeText}"
+			Text="{Binding IndicatorText}"
+			TextWrapping="Wrap" />
+	</DockPanel>
+</UserControl>

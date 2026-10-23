@@ -39,6 +39,12 @@ public partial class ScheduleGridViewModel : ViewModelBase
     private readonly SharedScheduleService _sharedScheduleService;
 
     /// <summary>
+    /// The subject focus (spec item 20). Pass 1 asks it whether a section is in focus; overlays, meetings, shared
+    /// schedules and ghosts never do (see <see cref="BuildFilteredBlocks"/> and <see cref="BuildOverlayBlocks"/>).
+    /// </summary>
+    private readonly FocusService _focus;
+
+    /// <summary>
     /// Tracks the set of semester IDs from the last reload so <see cref="ReloadCore"/>
     /// can detect when the semester selection has changed and clear the filter state.
     /// </summary>
@@ -161,7 +167,8 @@ public partial class ScheduleGridViewModel : ViewModelBase
         IInstructorCommitmentRepository commitmentRepo,
         WriteLockService lockService,
         SharedScheduleService sharedScheduleService,
-        AccessPanelViewModel accessPanelViewModel)
+        AccessPanelViewModel accessPanelViewModel,
+        FocusService focus)
     {
         _sectionRepo = sectionRepo;
         _courseRepo = courseRepo;
@@ -180,6 +187,7 @@ public partial class ScheduleGridViewModel : ViewModelBase
         _tileFontSize = AppSettings.Current.TileFontSize;
         _lockService = lockService;
         _sharedScheduleService = sharedScheduleService;
+        _focus = focus;
         Access = accessPanelViewModel;
         SharedScheduleStrip = new SharedScheduleStripViewModel(sharedScheduleService);
 
@@ -210,6 +218,10 @@ public partial class ScheduleGridViewModel : ViewModelBase
 
         // Reload grid when shared schedules are imported or dismissed.
         _sharedScheduleService.Changed += Reload;
+
+        // The grid follows the subject focus: a focus change redraws it. FocusService is a constructor dependency,
+        // so DI built it first and its own SectionsChanged handler (which drops its caches) runs before our Reload.
+        _focus.FocusChanged += Reload;
 
         // Keep SelectedSectionIds in sync with the store's single source of truth.
         _sectionStore.SelectionChanged += ids => SelectedSectionIds = ids;
@@ -337,11 +349,11 @@ public partial class ScheduleGridViewModel : ViewModelBase
     ///                     match the active section-level overlay (instructor or tag).
     ///                     Room overlays are resolved per-meeting inside Pass 1 instead.
     ///   6. BuildFilteredBlocks (Pass 1) — iterate sections and emit one
-    ///                     <see cref="SectionMeetingBlock"/> per meeting that passes all
-    ///                     active filter predicates.
+    ///                     <see cref="SectionMeetingBlock"/> per meeting that passes the
+    ///                     subject focus (spec item 20) and all active filter predicates.
     ///   7. BuildOverlayBlocks (Pass 2) — add any overlay-matched meetings that were
     ///                     excluded by the filters in Pass 1, so overlays always show up
-    ///                     regardless of other active filters.
+    ///                     regardless of other active filters and of the subject focus.
     ///   8. BuildCommitmentBlocks (Pass 3) — if an instructor overlay is active, inject
     ///                     that instructor's time commitments as <see cref="CommitmentBlock"/>
     ///                     objects.
@@ -385,9 +397,8 @@ public partial class ScheduleGridViewModel : ViewModelBase
         PopulateFilterOptions(lookups);
         var snap = TakeFilterSnapshot();
 
-        var overlayMatchedIds = ComputeOverlayMatchedSectionIds(lookups.Sections, snap);
-        var filtered    = BuildFilteredBlocks(lookups.Sections, snap, lookups, overlayMatchedIds);
-        var overlayOnly = BuildOverlayBlocks(lookups.Sections, snap, lookups, filtered, overlayMatchedIds);
+        var (filtered, overlayOnly, overlayMatchedIds) =
+            BuildSectionBlocks(lookups.Sections, snap, lookups, FocusPredicate());
 
         // Push filtered section IDs to SectionStore so the section list can highlight matching cards.
         // Only publish when a real (non-overlay) filter is active; null signals "no highlighting".
@@ -421,7 +432,13 @@ public partial class ScheduleGridViewModel : ViewModelBase
         IReadOnlyList<ProgramConflict> programConflicts = [];
         if (enabledWatches.Count > 0)
         {
-            var visibleSectionIds = filtered.OfType<SectionMeetingBlock>()
+            // Program access watches are a conflict check, so they sit outside the subject focus (spec item 20):
+            // a Biology student's watch must still see an out-of-focus section that clashes. They still honour the
+            // ordinary filter, as before, so when the focus hides anything Pass 1 is rerun without it.
+            var watchBlocks = _focus.Current.Kind == FocusKind.All
+                ? filtered
+                : BuildFilteredBlocks(lookups.Sections, snap, lookups, overlayMatchedIds, isInFocus: null);
+            var visibleSectionIds = watchBlocks.OfType<SectionMeetingBlock>()
                 .Select(b => b.SectionId).ToHashSet();
             var visibleSections = lookups.Sections
                 .Where(s => visibleSectionIds.Contains(s.Id)).ToList();
@@ -459,6 +476,39 @@ public partial class ScheduleGridViewModel : ViewModelBase
     // Steps that read from repositories or write to observable properties are private
     // instance methods.
     // ─────────────────────────────────────────────────────────────────────────────
+
+    /// <summary>
+    /// Runs the section half of the block pipeline: the overlay pre-pass, Pass 1 (focus, then the ordinary filter)
+    /// and Pass 2 (overlay-matched sections the first pass dropped, focus ignored). Held in one place so the grid
+    /// and the tests share exactly the same composition.
+    /// </summary>
+    /// <param name="sections">All sections for the selected semester(s).</param>
+    /// <param name="snap">Snapshot of the current filter and overlay state.</param>
+    /// <param name="lookups">Entity lookup dictionaries.</param>
+    /// <param name="isInFocus">The subject-focus test for Pass 1; null when every section is in focus.</param>
+    /// <returns>
+    /// The Pass 1 blocks, the Pass 2 overlay-only blocks, and the set of sections matching a section-level overlay.
+    /// </returns>
+    internal static (List<GridBlock> Filtered, List<GridBlock> OverlayOnly, HashSet<string> OverlayMatchedIds)
+        BuildSectionBlocks(
+            IReadOnlyList<Section> sections,
+            FilterSnapshot snap,
+            GridLookups lookups,
+            Func<Section, bool>? isInFocus)
+    {
+        var overlayMatchedIds = ComputeOverlayMatchedSectionIds(sections, snap);
+        var filtered    = BuildFilteredBlocks(sections, snap, lookups, overlayMatchedIds, isInFocus);
+        var overlayOnly = BuildOverlayBlocks(sections, snap, lookups, filtered, overlayMatchedIds);
+        return (filtered, overlayOnly, overlayMatchedIds);
+    }
+
+    /// <summary>
+    /// The focus test handed to <see cref="BuildFilteredBlocks"/>: null under All (nothing is hidden, so Pass 1 skips
+    /// the test entirely) and <see cref="FocusService.Matches"/> otherwise.
+    /// </summary>
+    /// <returns>The predicate, or null when the focus is All.</returns>
+    private Func<Section, bool>? FocusPredicate() =>
+        _focus.Current.Kind == FocusKind.All ? null : _focus.Matches;
 
     /// <summary>
     /// Resets all display-facing observable properties to their empty/default state.
@@ -749,6 +799,11 @@ public partial class ScheduleGridViewModel : ViewModelBase
     ///   </item>
     /// </list>
     ///
+    /// <b>Subject focus (spec item 20):</b> a section outside the focus emits nothing here, and this test comes
+    /// before every ordinary filter (focus is the outer layer; the filter narrows within it). A section hidden by the
+    /// focus is still picked up by <see cref="BuildOverlayBlocks"/> when it matches the overlay, because overlays
+    /// ignore the focus.
+    ///
     /// Overlay marking: blocks for sections in <paramref name="overlayMatchedIds"/> are
     /// emitted with <c>IsOverlay=true</c>. For room overlays the meeting's
     /// <c>RoomId</c> is compared against <see cref="FilterSnapshot.SelectedOverlayId"/>
@@ -762,20 +817,28 @@ public partial class ScheduleGridViewModel : ViewModelBase
     /// by <see cref="ComputeOverlayMatchedSectionIds"/>. Pass an empty set when no
     /// section-level overlay is active.
     /// </param>
+    /// <param name="isInFocus">
+    /// Tells whether a section is inside the subject focus (normally <see cref="FocusService.Matches"/>). Null means
+    /// "no focus", every section is considered; that is what the focus-All case and the existing pipeline tests pass.
+    /// </param>
     /// <returns>
-    /// All <see cref="SectionMeetingBlock"/> objects for meetings that survived all
+    /// All <see cref="SectionMeetingBlock"/> objects for meetings that survived the focus and all
     /// filter predicates. Not yet deduplicated.
     /// </returns>
     internal static List<GridBlock> BuildFilteredBlocks(
         IReadOnlyList<Section> sections,
         FilterSnapshot snap,
         GridLookups lookups,
-        HashSet<string> overlayMatchedIds)
+        HashSet<string> overlayMatchedIds,
+        Func<Section, bool>? isInFocus = null)
     {
         var blocks = new List<GridBlock>();
 
         foreach (var section in sections)
         {
+            // ── Subject focus: the outer layer, applied before every ordinary filter ───
+            if (isInFocus is not null && !isInFocus(section)) continue;
+
             // ── Section-level filters ──────────────────────────────────────────────
 
             if (snap.FilterInstructor)
@@ -890,6 +953,11 @@ public partial class ScheduleGridViewModel : ViewModelBase
     ///
     /// All blocks emitted here carry <c>IsOverlay=true</c>. Returns an empty list when
     /// no overlay is active.
+    ///
+    /// <b>Overlays ignore the subject focus (spec item 20).</b> This pass takes no focus test on purpose:
+    /// <paramref name="overlayMatchedIds"/> and the room scan are built from every section, so an out-of-focus
+    /// section that Pass 1 skipped is added here just as a filter-excluded one is. An instructor overlay that hid
+    /// the instructor's out-of-focus sections would make them look free when they are busy.
     /// </summary>
     /// <param name="sections">All sections for the selected semester(s).</param>
     /// <param name="snap">Snapshot of the current filter and overlay state.</param>

@@ -61,6 +61,12 @@ public sealed class FocusService : ObservableObject, IDisposable
     private bool _canChangeFocus = true;
 
     /// <summary>
+    /// True when <see cref="PruneDeletedSubjects"/> was asked to run while an editor was open (so it was refused) and
+    /// must run once <see cref="SetEditorOpen"/> reports the editor closed.
+    /// </summary>
+    private bool _prunePending;
+
+    /// <summary>
     /// Creates the service and resolves the starting focus (see the class remarks). Reads
     /// <see cref="ISubjectRepository.GetAll"/> unless <paramref name="databaseKey"/> is null.
     /// </summary>
@@ -122,7 +128,13 @@ public sealed class FocusService : ObservableObject, IDisposable
     /// it closes (by Apply, Cancel or any collapse); while open, <see cref="CanChangeFocus"/> is false.
     /// </summary>
     /// <param name="isOpen">True when an editor has just opened, false when none is open any more.</param>
-    public void SetEditorOpen(bool isOpen) => CanChangeFocus = !isOpen;
+    public void SetEditorOpen(bool isOpen)
+    {
+        CanChangeFocus = !isOpen;
+
+        // A subject deleted while the editor was open could not be pruned then; do it now the editor is closed.
+        if (!isOpen && _prunePending) PruneDeletedSubjects();
+    }
 
     /// <summary>
     /// Changes the focus. Refuses (returns false; nothing saved, no event) when <see cref="CanChangeFocus"/> is
@@ -139,6 +151,48 @@ public sealed class FocusService : ObservableObject, IDisposable
         Persist(focus);
         FocusChanged?.Invoke();
         return true;
+    }
+
+    /// <summary>
+    /// Drops focused subjects that no longer exist (re-reading <see cref="ISubjectRepository.GetAll"/>), so a
+    /// subject deleted mid-session leaves the focus at once instead of lingering until the next database open. A
+    /// Subjects focus left with none becomes None. Saves and raises <see cref="FocusChanged"/> only when something
+    /// was dropped. Called by the subject list right after a delete.
+    /// <para>
+    /// This is a focus change, so it honours the guard: while <see cref="CanChangeFocus"/> is false the prune is
+    /// remembered and runs when <see cref="SetEditorOpen"/> next reports the editor closed. If the subjects cannot
+    /// be read the focus is left alone (logged).
+    /// </para>
+    /// </summary>
+    public void PruneDeletedSubjects()
+    {
+        if (!CanChangeFocus)
+        {
+            _prunePending = true;
+            return;
+        }
+        _prunePending = false;
+
+        // Only a Subjects focus can name a dead subject; All and None need no read.
+        if (Current.Kind != FocusKind.Subjects) return;
+
+        HashSet<string> existingSubjectIds;
+        try
+        {
+            existingSubjectIds = _subjectRepo.GetAll().Select(s => s.Id).ToHashSet(StringComparer.Ordinal);
+        }
+        catch (Exception ex)
+        {
+            App.Logger.LogInfo($"[FocusService] Could not read subjects to prune the focus: {ex.Message}");
+            return;
+        }
+
+        var pruned = SubjectFocus.ForSubjects(Current.SubjectIds.Where(existingSubjectIds.Contains));
+        if (pruned.Equals(Current)) return;
+
+        Current = pruned;
+        Persist(pruned);
+        FocusChanged?.Invoke();
     }
 
     // ── Questions the views ask ────────────────────────────────────────────────
@@ -172,6 +226,27 @@ public sealed class FocusService : ObservableObject, IDisposable
     };
 
     /// <summary>
+    /// The subjects the section editor's Subject chooser should offer (spec item 20, step 20.5). Under a Subjects
+    /// focus: the focused subjects, plus the section's CURRENT subject when it is not one of them, so editing or
+    /// copying an out-of-focus section never blanks its course. Under All: every subject. Under None: also every
+    /// subject, because None means "nothing chosen yet" and Add still works (no section cards exist then, so there
+    /// is no current subject to keep). The input order is preserved.
+    /// </summary>
+    /// <param name="subjects">Every subject, in the order the chooser should show them.</param>
+    /// <param name="currentSubjectId">
+    /// The subject of the section being edited or copied, or null for a brand-new section.
+    /// </param>
+    /// <returns>The subjects to list in the chooser.</returns>
+    public IReadOnlyList<Subject> SubjectsForChooser(IReadOnlyList<Subject> subjects, string? currentSubjectId)
+    {
+        if (Current.Kind != FocusKind.Subjects) return subjects;
+
+        return subjects
+            .Where(s => Current.ContainsSubject(s.Id) || s.Id == currentSubjectId)
+            .ToList();
+    }
+
+    /// <summary>
     /// Whether an instructor is in focus, by <see cref="InstructorFocusRule"/> over the database-wide teaching
     /// history and the academic year currently viewed. Under All or None the history is not even built (the rule's
     /// first two steps need none), so a department using All never pays for the whole-database read.
@@ -183,6 +258,31 @@ public sealed class FocusService : ObservableObject, IDisposable
         var history = Current.Kind == FocusKind.Subjects ? History : TeachingHistory.Empty;
         return InstructorFocusRule.IsInFocus(
             Current, instructor, history, _semesterContext.SelectedAcademicYear?.Id);
+    }
+
+    /// <summary>
+    /// Orders the section editor's instructor chooser (spec item 20, step 20.5): under a Subjects focus, the
+    /// in-focus instructors first, then every other instructor, each group keeping the input order. NO instructor
+    /// is ever dropped, so a section's current instructors always stay listed (and ticked, by the caller) even when
+    /// they are out of focus; they simply sit in the second group. Under All or None the list is returned as given
+    /// with nothing demoted (None only reaches the editor through Add, and is treated like All, as for the Subject
+    /// chooser). This is the one place the grouping decision is made.
+    /// </summary>
+    /// <param name="instructors">Every instructor, in the order the chooser shows them today.</param>
+    /// <returns>The ordered list and the ids of the demoted (out-of-focus) instructors.</returns>
+    public InstructorChooserOrder OrderInstructorsForChooser(IReadOnlyList<Instructor> instructors)
+    {
+        if (Current.Kind != FocusKind.Subjects)
+            return new InstructorChooserOrder(instructors, new HashSet<string>());
+
+        var inFocus = new List<Instructor>();
+        var others = new List<Instructor>();
+        foreach (var instructor in instructors)
+            (IsInFocus(instructor) ? inFocus : others).Add(instructor);
+
+        return new InstructorChooserOrder(
+            inFocus.Concat(others).ToList(),
+            others.Select(i => i.Id).ToHashSet(StringComparer.Ordinal));
     }
 
     /// <summary>
@@ -294,3 +394,11 @@ public sealed class FocusService : ObservableObject, IDisposable
         settings.Save();
     }
 }
+
+/// <summary>
+/// The result of <see cref="FocusService.OrderInstructorsForChooser"/>: the instructors in chooser order, and which
+/// of them are out of focus (shown dimmed under an "Other instructors" heading). Empty set when nothing is demoted.
+/// </summary>
+/// <param name="Ordered">Every instructor: in-focus ones first, then the rest, each group in input order.</param>
+/// <param name="OutOfFocusIds">Ids of the instructors in the second group.</param>
+public sealed record InstructorChooserOrder(IReadOnlyList<Instructor> Ordered, IReadOnlySet<string> OutOfFocusIds);

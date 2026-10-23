@@ -105,3 +105,21 @@ internal sealed class FocusWorld
     public static Instructor Instructor(string id, bool isActive = true) =>
         new() { Id = id, LastName = id, IsActive = isActive };
 }
+
+/// <summary>
+/// Builds a <see cref="FocusService"/> for tests that only need "no focus" behaviour (spec item 20, steps 20.2 and
+/// 20.3). A null database key means All: nothing is read from or written to settings, and no repository is ever
+/// touched, so the repositories can be absent.
+/// </summary>
+internal static class FocusTestSupport
+{
+    /// <summary>
+    /// A focus service fixed at All (the demo's null-key behaviour).
+    /// </summary>
+    /// <param name="semesterContext">The semester context the test already uses; a fresh one when null.</param>
+    /// <param name="sectionStore">The section store the test already uses; a fresh one when null.</param>
+    /// <returns>A service whose <c>Current</c> is All.</returns>
+    public static FocusService AllFocus(SemesterContext? semesterContext = null, SectionStore? sectionStore = null) =>
+        new(null!, null!, null!, null!, null!,
+            semesterContext ?? new SemesterContext(), sectionStore ?? new SectionStore(), databaseKey: null);
+}

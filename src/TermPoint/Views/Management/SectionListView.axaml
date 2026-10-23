@@ -687,16 +687,40 @@
                                         CornerRadius="3">
                                         <ScrollViewer VerticalScrollBarVisibility="Auto">
                                             <ItemsControl Margin="2" ItemsSource="{Binding InstructorSelections}">
+                                                <!--
+                                                    Out-of-focus instructors (spec item 20) show the name lighter. The class sits on the
+                                                    name's TextBlock (not the CheckBox) so the CheckBox's own checked/hover states cannot
+                                                    repaint it. Only the one open editor has these rows, so the class style is cheap.
+                                                -->
+                                                <ItemsControl.Styles>
+                                                    <Style Selector="TextBlock.outOfFocus">
+                                                        <Setter Property="Foreground" Value="{StaticResource TextOutOfFocus}" />
+                                                    </Style>
+                                                </ItemsControl.Styles>
                                                 <ItemsControl.ItemTemplate>
                                                     <DataTemplate DataType="{x:Type vm:InstructorSelectionViewModel}">
+                                                      <StackPanel>
+                                                        <!--  "Other instructors" heading and thin rule, on the first out-of-focus row only  -->
+                                                        <Border
+                                                            Margin="0,3,0,2"
+                                                            Padding="2,2,0,0"
+                                                            BorderBrush="{StaticResource SubduedBorder}"
+                                                            BorderThickness="0,1,0,0"
+                                                            IsVisible="{Binding ShowOthersHeading}">
+                                                            <TextBlock
+                                                                FontSize="{StaticResource FontSizeSmall}"
+                                                                Foreground="{StaticResource TextDimLabel}"
+                                                                Text="Other instructors" />
+                                                        </Border>
                                                         <Grid Margin="2,1,2,1" ColumnDefinitions="Auto,*,Auto">
                                                             <CheckBox
                                                                 Grid.Column="0"
                                                                 Padding="2,1"
                                                                 VerticalAlignment="Center"
-                                                                Content="{Binding DisplayName}"
                                                                 FontSize="{StaticResource FontSizeNormal}"
-                                                                IsChecked="{Binding IsSelected}" />
+                                                                IsChecked="{Binding IsSelected}">
+                                                                <TextBlock Classes.outOfFocus="{Binding IsOutOfFocus}" Text="{Binding DisplayName}" />
+                                                            </CheckBox>
                                                             <TextBox
                                                                 Grid.Column="2"
                                                                 Width="36"
@@ -710,6 +734,7 @@
                                                                 TextAlignment="Center"
                                                                 PlaceholderText="1" />
                                                         </Grid>
+                                                      </StackPanel>
                                                     </DataTemplate>
                                                 </ItemsControl.ItemTemplate>
                                             </ItemsControl>

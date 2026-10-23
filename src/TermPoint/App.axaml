@@ -25,6 +25,9 @@
 			<x:Double x:Key="FontSizeXLarge">18</x:Double>
 			<x:Double x:Key="FontSizeSplash">72</x:Double>
 
+			<!--  Tallest the Focus picker's subject checklist grows before it scrolls  -->
+			<x:Double x:Key="FocusPickerListMaxHeight">220</x:Double>
+
 			<!--  Converters  -->
 			<conv:MinutesToTimeConverter x:Key="MinutesToTimeConverter" />
 			<conv:MultiSemesterLeftBorderThicknessConverter x:Key="MultiSemesterLeftBorderThicknessConverter" />

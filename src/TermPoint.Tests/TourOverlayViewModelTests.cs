@@ -12,7 +12,7 @@ namespace TermPoint.Tests;
 /// </summary>
 public class TourOverlayViewModelTests : IDisposable
 {
-    private readonly TourRunner _runner = new();
+    private readonly TourRunner _runner = new(FocusTestSupport.AllFocus());
     private readonly TourOverlayViewModel _vm;
 
     public TourOverlayViewModelTests()

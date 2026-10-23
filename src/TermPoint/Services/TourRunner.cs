@@ -1,3 +1,4 @@
+using TermPoint.Models;
 using TermPoint.Models.Tour;
 
 namespace TermPoint.Services;
@@ -37,11 +38,28 @@ public class TourRunner
     private int _bodyIndex;
 
     /// <summary>
+    /// The subject focus (spec item 20). Tours switch it to All when they start, because several steps open a
+    /// section card or its editor and need the cards to exist.
+    /// </summary>
+    private readonly FocusService _focus;
+
+    /// <summary>Creates the runner.</summary>
+    /// <param name="focus">The subject focus, set to All whenever a tour starts.</param>
+    public TourRunner(FocusService focus)
+    {
+        _focus = focus;
+    }
+
+    /// <summary>
     /// Starts a tour by key. If another tour is currently active, it is dismissed first
     /// (invariant 11: at most one active tour at a time). Creates a fresh
     /// <see cref="TourProgress"/> and fires <see cref="StepChanged"/> with the first step.
     /// </summary>
     /// <param name="tourKey">Key of the tour to start. Must exist in <see cref="TourCatalog"/>.</param>
+    /// <remarks>
+    /// Also sets the subject focus to All first (see <see cref="FocusService"/>), unless a section editor is open.
+    /// The change is remembered like any other focus change; the tour does not restore the previous focus.
+    /// </remarks>
     /// <returns>True if the tour was started successfully; false if the tour key was not found.</returns>
     public bool Start(string tourKey)
     {
@@ -51,6 +69,12 @@ public class TourRunner
         // Dismiss any active tour first
         if (IsActive)
             DismissInternal(persist: true);
+
+        // Show every subject for the tour: its steps open section cards and editors, which need their cards.
+        // The service refuses while a section editor is open (it would rebuild the list under unapplied edits);
+        // then the tour starts anyway, on whatever the list shows.
+        if (!_focus.SetFocus(SubjectFocus.All))
+            App.Logger.LogInfo($"[Tour] Focus not switched to All for '{tourKey}': a section editor is open.");
 
         ActiveTour = tour;
         Progress = TourProgress.Start(tourKey);

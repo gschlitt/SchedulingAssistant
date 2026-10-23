@@ -1,0 +1,34 @@
+<UserControl
+	x:Class="TermPoint.Controls.FocusButton"
+	xmlns="https://github.com/avaloniaui"
+	xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+	xmlns:views="using:TermPoint.Views"
+	x:CompileBindings="False">
+
+	<!--
+		The "Focus" button and the picker popup it opens (spec item 20). DataContext = FocusViewModel.
+		The button is disabled, with the "Finish editing first" tooltip, while a section editor is open
+		(OpenPickerCommand.CanExecute follows FocusService.CanChangeFocus). The popup is bound two-way to
+		IsPickerOpen so a click outside closes it; the empty-state [Choose focus] button opens this same
+		popup by running the same command.
+	-->
+	<Panel>
+		<Button
+			x:Name="FocusButtonControl"
+			MinWidth="0"
+			MinHeight="0"
+			Padding="5,1"
+			Command="{Binding OpenPickerCommand}"
+			Content="Focus"
+			FontSize="{StaticResource FontSizeNormal}"
+			ToolTip.ShowOnDisabled="True"
+			ToolTip.Tip="{Binding ChangeFocusToolTip}" />
+		<Popup
+			IsLightDismissEnabled="True"
+			IsOpen="{Binding IsPickerOpen, Mode=TwoWay}"
+			Placement="Bottom"
+			PlacementTarget="{Binding #FocusButtonControl}">
+			<views:FocusPickerView />
+		</Popup>
+	</Panel>
+</UserControl>

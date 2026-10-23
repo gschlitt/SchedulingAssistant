@@ -649,6 +649,8 @@ public partial class App : Application
             sp.GetRequiredService<ICourseRepository>(),
             // Watches are saved only while the write lock is ours; a reader keeps them in memory (see the class).
             () => sp.GetRequiredService<WriteLockService>().IsWriter));
+        // Shared by every indicator and the Focus picker (spec item 20); exposed as MainWindowViewModel.FocusVm.
+        services.AddSingleton<FocusViewModel>();
         services.AddSingleton<MainWindowViewModel>();
         services.AddSingleton<SectionListViewModel>();
         services.AddSingleton<MeetingListViewModel>();
@@ -669,7 +671,9 @@ public partial class App : Application
             sp.GetRequiredService<IInstructorCommitmentRepository>(),
             sp.GetRequiredService<WriteLockService>(),
             sp.GetRequiredService<SharedScheduleService>(),
-            sp.GetRequiredService<AccessPanelViewModel>()));
+            sp.GetRequiredService<AccessPanelViewModel>(),
+            // A constructor dependency so FocusService is built, and subscribes to SectionsChanged, first.
+            sp.GetRequiredService<FocusService>()));
         services.AddSingleton<WorkloadPanelViewModel>(sp => new WorkloadPanelViewModel(
             sp.GetRequiredService<IInstructorRepository>(),
             sp.GetRequiredService<ISectionRepository>(),

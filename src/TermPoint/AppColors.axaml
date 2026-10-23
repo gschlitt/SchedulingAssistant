@@ -283,4 +283,17 @@
 	<SolidColorBrush x:Key="WorkflowPillSuccessBackground" Color="#D1FAE5" />
 	<SolidColorBrush x:Key="WorkflowPillSuccessText" Color="#1E5A3A" />
 
+	<!--  ── Subject focus (spec item 20)  ──────────────────────────────────  -->
+	<!--
+		The prominent "Focus: BIOL, CHEM" statement in the Section View and Schedule View headers. Teal, so it reads
+		as its own layer and is never mistaken for the filter (blue FilterBadgeText), an overlay (purple) or a shared
+		schedule (orange).
+	-->
+	<Color x:Key="FocusColor">#0E7C6B</Color>
+	<SolidColorBrush x:Key="FocusBadgeText" Color="{StaticResource FocusColor}" />
+	<!--  The "Show all" link beside the focus statement  -->
+	<SolidColorBrush x:Key="FocusLinkText" Color="{StaticResource FocusColor}" />
+	<!--  Out-of-focus instructors in the section editor's instructor list: lighter than normal text, still legible  -->
+	<SolidColorBrush x:Key="TextOutOfFocus" Color="#8A94A3" />
+
 </ResourceDictionary>

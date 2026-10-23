@@ -471,7 +471,7 @@ public partial class SectionEditViewModel : ViewModelBase
     /// <param name="isNew">True when creating a new section; false when editing an existing one.</param>
     /// <param name="courses">Active courses available for selection.</param>
     /// <param name="subjects">All subjects, used to populate the Subject dropdown.</param>
-    /// <param name="instructors">All instructors for the multi-select panel.</param>
+    /// <param name="instructors">All instructors for the multi-select panel, already in display order.</param>
     /// <param name="rooms">All rooms, passed to each meeting editor.</param>
     /// <param name="legalStartTimes">Valid start times for the academic year.</param>
     /// <param name="includeSaturday">Whether Saturday is shown as a meeting day.</param>
@@ -493,6 +493,11 @@ public partial class SectionEditViewModel : ViewModelBase
     /// <param name="onSave">Async callback invoked when the user saves.</param>
     /// <param name="blockPatternRepository">Repository used to load saved block patterns.</param>
     /// <param name="roomTypes">Room type scheduling environment values for the room type dropdown.</param>
+    /// <param name="outOfFocusInstructorIds">
+    /// Ids of instructors outside the subject focus (spec item 20): shown dimmed, with an "Other instructors"
+    /// heading above the first of them when an in-focus instructor precedes it. Null or empty means no grouping.
+    /// The caller must already have ordered <paramref name="instructors"/> so these come last.
+    /// </param>
     /// <param name="defaultBlockLength">
     /// Optional preferred block length (hours). It is not pre-filled when a meeting row is created:
     /// it is filled in after a start time is committed on a meeting that has no block length yet,
@@ -521,7 +526,8 @@ public partial class SectionEditViewModel : ViewModelBase
         IBlockPatternRepository blockPatternRepository,
         IReadOnlyList<SchedulingEnvironmentValue> roomTypes,
         double? defaultBlockLength = null,
-        int? defaultSectionCapacity = null)
+        int? defaultSectionCapacity = null,
+        IReadOnlySet<string>? outOfFocusInstructorIds = null)
     {
         _section = section;
         IsNew = isNew;
@@ -606,12 +612,20 @@ public partial class SectionEditViewModel : ViewModelBase
         }
 
         // Instructor multi-select with workload
+        // Nobody is dropped: the list holds every instructor, so a current (ticked) instructor stays listed even
+        // when out of focus. The heading goes on the first out-of-focus row, and only if an in-focus row precedes it.
+        var anyInFocusYet = false;
+        var headingShown = false;
         InstructorSelections = new ObservableCollection<InstructorSelectionViewModel>(
             instructors.Select(i =>
             {
                 var assignment = section.InstructorAssignments.FirstOrDefault(a => a.InstructorId == i.Id);
-                return new InstructorSelectionViewModel(i, assignment is not null, assignment?.Workload);
-            }));
+                var outOfFocus = outOfFocusInstructorIds?.Contains(i.Id) == true;
+                var heading = outOfFocus && anyInFocusYet && !headingShown;
+                headingShown |= heading;
+                anyInFocusYet |= !outOfFocus;
+                return new InstructorSelectionViewModel(i, assignment is not null, assignment?.Workload, outOfFocus, heading);
+            }).ToList());
         WireSelectionSummary(InstructorSelections, nameof(InstructorSummary));
 
         // Build single-select lists with a leading "(none)" sentinel
