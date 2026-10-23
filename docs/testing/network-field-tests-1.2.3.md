@@ -15,21 +15,29 @@ tested with `tools/NetworkProbe` (spec: `designs/network-probe-spec.md`), which 
 - [x] **A1 found and fixed:** a cut mid-copy could go unnoticed for the whole outage (no log line, no banner) because
       the copy's chunk write could block before its 5 s timer started. Fix: the write runs under `Task.Run`
       (`NetworkFileOps.CopyCoreAsync`). Probe before: 1 of 3 mid-copy runs failed; after: 10 of 10 passed. Full test
-      suite green. Uncommitted.
+      suite green. Committed b193eb8.
 - [x] **1. The hash's reads:** same pattern (`NetworkFileOps.ReadChunkAsync`); reads now start under `Task.Run`; full
       suite green. The probe's `hash-cm` now cuts only after 1 MB has provably been read and counts a pass only if
       caught in `ComputeHash (read)`. Probe 2026-10-22 18:58: hash-cm 5 of 5 caught in the read; copy-cm 5 of 5 (15 of
-      15 since the write fix). Uncommitted.
+      15 since the write fix). Committed b193eb8.
 - [x] **2. New MSIX test build** 1.2.3.1 with both fixes: installed on GregDeskTop 2026-10-22; the log stamps
       `[v1.2.3.1]` (the window title shows only three parts, "v1.2.3"). Install it on GregSurface too (certificate
       first, see "Before you start"); never on Mekler.
 - [ ] **Before release:** set `<Version>` back to `1.2.3` in `src/TermPoint/TermPoint.csproj`; never commit 1.2.3.1.
 - [x] **3. Checklist updated:** M1 is now Part A (the probe, every network call) plus Part B (a few untimed cuts in real
       TermPoint, to see the banner and recovery); M2 kills by watching "Saving…", not by the second; A1 recorded.
-- [ ] **M1 Part A still to do:** one full probe run (all 18 cases) on the final code.
+- [x] **M1 Part A:** full probe run on the final code, 2026-10-22 19:35: 18 of 18 passed, controls OK.
+- [ ] **Watch for:** the database chooser panel staying on screen after a database opens (seen once on GregSurface,
+      1.2.3.1, 2026-10-22; could not make it happen again). If it does: do not press its buttons; drag its header, then
+      minimise and restore the main window (does it come back with it?), and note the Windows version (`winver`).
+- [ ] **Watch for / probe:** a TermPoint process left running with no window after its main window closed (seen once,
+      GregDeskTop, 2026-10-22: PID 15416 closed its main window at 21:44:48 during the restart after a restore, logged
+      "Managed teardown complete" but never "Dispatcher loop exited", and kept two hidden untitled windows). It held no
+      lock or guard. Suspected: the hidden-not-closed database chooser or wizard refusing the app's own shutdown. Probe:
+      open via the chooser, close with the X, check Task Manager for a leftover TermPoint.exe.
 - [ ] **4. Later:** `BackupService` deletes a partial backup with plain, unguarded file calls when the backup folder's
       share is dead (`BackupService.cs:286`); see `tools/NetworkProbe/GAP-AUDIT.md` for the other 24.
-- [ ] **Commit** when the user says.
+- [x] **Committed** 2026-10-22: b193eb8 (the fix), d06b8d0 (probe, spec, this checklist). Not pushed.
 
 ## The computers
 
@@ -140,8 +148,8 @@ failure: re-run that case with `--only <case>`.
 a control fails, the rig is not working and the run says nothing about TermPoint.
 **Done so far (2026-10-22, reports in `tmp\netprobe\`):** full run before the fixes: 17 pass, 1 fail (copy-cm, A1); after
 the write fix: copy-cm 10/10; after the read fix: hash-cm 5/5 caught in the read, copy-cm 5/5.
-**Still to do:** one full run on the final code.
-**Result:** ☐ pass ☐ fail / notes:
+**Final run (2026-10-22 19:35, the committed fix b193eb8):** 18 of 18 passed, both controls OK; report `tmp\netprobe\netprobe-20261022-193513.md`.
+**Result:** ☒ pass ☐ fail / notes: 18/18 on the final code (copy-cm caught in the write, hash-cm in the read, every cut-before case at 5.0 s; no call held up its caller).
 
 **Part B — what the user sees, in real TermPoint.** Not aimed at any step: Part A covers the steps.
 *Setup:* GregSurface is writer on `FT.db` (1.2.3.1 or later), autosave on. Clumsy on Mekler: **Lag 110 ms only**, so a
@@ -157,7 +165,10 @@ after reopening; D opens cleanly. A save that finishes before the cut takes effe
 line, then `File.Delete timed out` for the leftover `.db.tmp`, and later `abandoned … task faulted after timeout`.
 **FAIL:** "Saving…" stuck with no banner and nothing logged until the network returns (A1 again), any freeze, an
 exception dialog, a demotion to read-only, or a save that doesn't land after recovery.
-**Result:** ☐ pass ☐ fail / notes:
+**Result:** ☒ pass ☐ fail / notes: 2026-10-22, GregDeskTop, 1.2.3.1 (user): three cuts at about 3, 8 and 13 s into the save, all as expected.
+Log check (Claude): stalls caught in `CopyFile (write)` at 20:20:27 and 20:23:32 (where A1 used to hide) and in
+`ComputeHash (read)` at 20:20:57 and 20:22:21, each save gave up about 10 s after the cut; the heartbeat check kept the
+session writer ("lock still ours"); saves landed afterwards (20:21:51, 20:23:07, 20:24:02). No A1 signature.
 
 *Earlier note, from the first hand-timed runs (2026-10-22, before the log analysis):* "A1: pass, A2 pass A3 pass".
 The analysis then showed most A1 and A3 runs had missed, and two A1-type runs had shown the A1 defect; the A2 runs
@@ -184,7 +195,17 @@ shows. Have the `taskkill /F /PID <pid>` command typed and ready.
 "Can't Restore Unsaved Changes" when D already holds the edit (that is F8 coming back); a lock that isn't reclaimed.
 **F8 can't be produced by hand:** the crash must fall in the milliseconds between the rename and the marker delete. The harness's
 crash sweep covers it (`Save.AfterRename`); C2 is the nearest hand test.
-**Result:** ☐ pass ☐ fail / notes (C1, C2, C3):
+**Result:** ☒ pass ☐ fail / notes (C1, C2, C3): 2026-10-22, GregDeskTop, 1.2.3.1, `BIOL-TT.db` on Mekler. C1 and C2
+pass. C3 re-run with care (Save, 30 s untouched, switch to Task Manager, kill): "Unsaved changes" never came back and the
+relaunch asked nothing, so C3 passes; the first C3's prompt most likely followed a change after its last save (see
+below). Log check (Claude): four kills, each relaunch reclaimed the lock at once ("Reclaimed lock
+from dead session"). A mid-save kill with an unsaved edit was offered Restore; its leftovers were swept (local `.savetmp`
+20:29:58, `BIOL-TT.db.tmp` on the share 20:30:58) and the next save landed. The kill around 20:32 came just after the save
+at 20:31:59 had landed: no prompt, working copy cleared (C2 outcome (a)). **C3 (kill after the 20:32:50 save, while
+idle): the user saw "Restore Unsaved Changes?"**, and the 20:33:39 relaunch shows the unsaved-changes marker was present.
+Expected: no prompt. Open question: did anything change after 20:32:50 (an edit, or a write on focus loss when switching
+to Task Manager)? Two launches while the link was still impaired (20:25, 20:33) stopped at the integrity check
+("CheckIntegrity timed out") and closed.
 
 ### M3 — F1: the X and Discard on "Restore Unsaved Changes?"
 *GregSurface (at M2's C1 relaunch) · R3 R4 · ~5 min*
@@ -197,7 +218,7 @@ crash sweep covers it (`Save.AfterRename`); C2 is the nearest hand test.
 **Expect:** steps 1 and 3 and Go Back each return to "Restore Unsaved Changes?" and nothing is deleted (the edit still restores at step 4);
 only the second dialog's **Discard** button deletes. The same holds on "Can't Restore Unsaved Changes" (seen in M5 (3)); its
 confirmation adds "To keep them, go back and choose Save a Copy…".
-**Result:** ☐ pass ☐ fail / notes:
+**Result:** ☒ pass ☐ fail / notes: 2026-10-22, GregDeskTop, 1.2.3.1, local test copy `tmp\f4-test`: all steps as expected (user).
 
 ### M4 — Two-user contention (July B1, B2, B3, B5)
 *GregSurface, GregDeskTop, Mekler · R2 R3 · ~35 min*
@@ -289,7 +310,11 @@ Dry run of the prompt on one computer: `python tmp/handtest_lock.py stale <copy>
 - **(b) Black hole.** Add `ZZZT-502 S`, set Drop to 100 %, click **X** once. **Expect:** after the stall, "Changes Not Saved": "Your latest changes could not be saved to the database. They have been kept, and TermPoint will offer to restore them the next time you open this database." Network back, relaunch: "Restore Unsaved Changes?" → Restore → the edit is present and saves.
 - Repeated X and edits during the exit save are S4.
 
-**Result:** ☐ pass ☐ fail / notes (a, b):
+**Result:** ☒ pass ☐ fail / notes (a, b): 2026-10-22, GregDeskTop, 1.2.3.1, both parts as expected (user). Log check
+(Claude): (a) exit save landed 20:42:05, lock released 20:42:06. (b) exit save refused at its first check 20:44:13
+("lock verification timed out"), lock deliberately left in place ("Suspended"), changes kept; two launches while the link
+was still dead stopped at the integrity check without touching the kept changes; at 20:44:51 the relaunch reclaimed its own
+lock at once, Restore was offered, and the restored edit saved at 20:45:00.
 
 ### M11 — Restore from backup (item 5)
 *GregSurface, GregDeskTop, Mekler · R1 R2 R3 · ~30 min*
@@ -299,7 +324,16 @@ Dry run of the prompt on one computer: `python tmp/handtest_lock.py stale <copy>
 - **(d) Chooser vs. an active editor.** GregSurface is editing `FT.db`; on GregDeskTop restore from the chooser onto `FT.db`. **Expect:** refused, naming GregSurface: "<user> on GREGSURFACE is editing this database, so it can't be restored right now. Restore it after they've closed it…".
 - **(b) Success.** Network back; GregSurface restores. **Expect:** "The backup was restored. The database as it was just before the restore is kept beside it as …"; TermPoint restarts; `FT (before restore yyyy-MM-dd HH-mm).db` sits beside D and opens; D holds the backup's content. Chooser variant: the same copy appears and the database opens.
 
-**Result:** ☐ pass ☐ fail / notes (a, b, c, d):
+**Result:** ☐ pass ☐ fail / notes (a, b, c, d): (a) ☒ pass, 2026-10-22, GregDeskTop, 1.2.3.1 (user, log check by
+Claude). Save & Backup restore on `BIOL-TT.db` with the link cut: 21:38:41 "hashing the database — location
+unreachable (database unchanged)"; 21:41:19 and 21:42:31 "restore not started — the save before it ended with
+CopyError"; the session carried on each time. Chooser restore on the local test copy `tmp\item5d-test`: with the network
+up it restored and restarted (21:44:42); with the backup location black-holed it stopped at 21:45:32 "staging the backup —
+location unreachable (database unchanged)" and the chooser showed "Cannot reach the database…". The ~45 s wait before
+that notice is Windows' file dialog on a dead share (as in S6). Also seen: the session left open with the S6(b) banner
+stayed up through the whole S6(b)/(c) black hole (20:56 to 21:27, about 30 minutes, deliberate), retrying its heartbeat
+every minute and keeping its writer state ("share unreachable; keeping writer state"); once the network was back the
+banner's Discard Changes worked and the database reopened (21:27:48). (b), (c), (d): block 2.
 
 ### M12 — D changed by someone else (item 10, "Save aborted")
 *GregSurface; any computer with Python for the script · R2 R3 R4 · ~15 min*
@@ -311,7 +345,9 @@ Dry run of the prompt on one computer: `python tmp/handtest_lock.py stale <copy>
 
 **Expect (step 2):** a persistent banner, "TermPoint can't save your changes: the database was changed elsewhere since you opened it. Save your version as a separate file, or discard your changes, and TermPoint will reopen the current database.", with only **Save a Copy…** and **Discard Changes**; no Dismiss; no other message replaces it.
 **Log:** `source hash mismatch — the database was modified outside this session; save refused.`, then `save conflict — the user's version was saved as a separate file; the kept changes were deleted.` (or `…the user's changes were discarded.`).
-**Result:** ☐ pass ☐ fail / notes:
+**Result:** ☒ pass ☐ fail / notes: 2026-10-22, GregDeskTop, 1.2.3.1, all as expected (user). Log check (Claude):
+refused on the hash mismatch 20:47:22; Save a Copy… created `BIOL-TT (recovered).db` and reopened the database
+20:48:29; Discard Changes 20:50:09; a second copy went to `BIOL-TT (recovered-1).db`, never over the first, 20:52:04.
 
 ---
 
@@ -325,7 +361,12 @@ Dry run of the prompt on one computer: `python tmp/handtest_lock.py stale <copy>
 2. Freeze the first (Resource Monitor → CPU → right-click TermPoint.exe → Suspend Process). Start a second: the same message. End the first from Details; relaunch: "Restore Unsaved Changes?" → Restore.
 3. A killed copy never blocks a relaunch (that is M2).
 
-**Result:** ☐ pass ☐ fail / notes:
+A second copy CAN open a different database: the guard is per database and per Windows user
+(`DatabaseInstanceGuard`), so only the same database is refused.
+
+**Result:** ☒ pass ☐ fail / notes: 2026-10-22, GregDeskTop, 1.2.3.1, local test copies (user; log: guard refusals at 20:02:56, 20:07:28 and 20:10:35): the second copy was refused on the same
+database with the expected message and no Restore prompt, and opened a different database, as designed; a frozen first
+copy also blocked a second one, and after ending it, Restore was offered.
 
 ### S2 — The local copy fails after validation (item 4)
 *GregSurface, GregDeskTop, Mekler · R3 R4 · ~15 min*
@@ -359,7 +400,14 @@ For a section, meeting and course editor: type a change, don't Apply, then (a) F
 *GregSurface, Mekler · R4 · ~10 min*
 Black hole first. (a) File → New, pick a folder on the share. (b) With the M12 banner showing, **Save a Copy…** to a path on the share. (c) Wizard "existing database" via the suggestion click, not Browse….
 **Expect:** a network message within seconds, no freeze or "Not responding", and in (b) the banner still there with nothing changed.
-**Result:** ☐ pass ☐ fail / notes:
+**Result:** ☒ pass ☐ fail / notes: 2026-10-22, GregDeskTop, 1.2.3.1. (a) pass: "Cannot reach the database…" (user).
+(b) not run by hand (user's decision): Windows' Save dialog cannot show a black-holed share, so the destination can only
+be picked before the cut, which is fiddly. Covered by M1 Part A: the export's network steps are the guarded copy and
+rename the probe passed 18/18. **Observation (R4, recorded, not changed):** with the share already dead, clicking
+Save a Copy… showed nothing for about 45 s: Windows opens its Save dialog in the last folder used (here the share) and
+waits for it before appearing. Starting the dialog in a local folder would avoid it but would make normal use worse.
+(c) pass: the wizard's path box is read-only (Browse… only), so the file was picked with the network up, then the link
+was cut and Next clicked: "can't reach" message, no freeze (user).
 
 ### S7 — Remote database via the wizard and the UNC picker (items 1, 18)
 *The Windows 10 and the Windows 11 computer · ~20 min*
