@@ -2366,6 +2366,11 @@ loads. The focus decides what is **shown and offered**:
   button, every **Show all**, and the empty-state buttons (revised 2026-10-23).
 - **These stay global:** conflicts, room availability, the room chooser, Copy Semester, exports
   and imports.
+- **Grid overlays (Instructor, Room, Tag) ignore the focus**, as they already ignore the filter:
+  they show every matching section, so an instructor never looks free when they're teaching
+  outside the focus. Shared schedules, meetings and access watches are also outside the focus.
+  The filter's Subjects, Courses and Instructors lists (and so the instructor overlay list)
+  follow the focus; the instructor list uses the same rule as every other view (2026-10-23).
 - **Empty Semester (item 8)** keeps emptying the whole semester. Under a focus, its confirmation
   says so explicitly.
 - **Deferred to 1.2.4:** an explicit "Subjects taught" field on instructors. Adding it in 1.2.3
@@ -2388,7 +2393,7 @@ loads. The focus decides what is **shown and offered**:
 | 20.1 | `FocusService` + per-database setting: the section match, `IsInFocus(instructor)`, `IsCourseInFocus`, `CanChangeFocus`, `FocusChanged`; `InstructorFocusRule` over an all-years teaching history; 3-subject starting rule; demo always All. Desktop and demo DI. Unit tests only. |
 | 20.2 | Section-list Hide on load and every incremental path; rebuild on focus change; empty state. |
 | 20.3 | Focus picker (subjects / All / None), reusable indicator control; every focus-changing control bound to `CanChangeFocus`; tours set All on start. |
-| 20.4 | Grid applies the focus before the filter; the filter's Subjects / Courses / Instructors lists follow the focus. |
+| 20.4 | Grid applies the focus before the filter; overlays bypass the focus (Pass 2 still adds out-of-focus matches); the filter's Subjects / Courses / Instructors lists follow the focus, and selections outside a new focus are dropped. |
 | 20.5 | Editor choosers: courses filtered; instructors in focus first, then "Other instructors"; current instructors kept, with a test. |
 | 20.6 | Workload panel, Instructors flyout, Workload Mailer: focus plus "Show all instructors"; whole-load totals. |
 | 20.7 | Messages: Empty Semester wording under a focus; import summary's count of sections outside the focus. |

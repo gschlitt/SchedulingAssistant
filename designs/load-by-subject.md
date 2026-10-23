@@ -319,8 +319,10 @@ years are ordered by `StartYear`. A few thousand rows at dean's-office size.
 | **Schedule grid** | In-focus sections only; the ordinary filter narrows further. |
 | **Filter panel: Subjects list** | Focus subjects only. |
 | **Filter panel: Courses list** | Courses in focus subjects only. |
-| **Filter panel: Instructors list** | In-focus instructors only. |
+| **Filter panel: Instructors list** | In-focus instructors only, by `FocusService.IsInFocus` (the same rule every other view uses). |
 | **Filter panel: other lists** (rooms, campuses, types, tags, meeting types, levels) | Unchanged. |
+| **Filter bar: overlay pick lists** | The instructor overlay list follows the Instructors list above: it already shares its items (`NamedInstructors`). The room and tag overlay lists are unchanged. |
+| **Filter bar: summary** | Describes the ordinary filter only. The focus indicator sits next to it. |
 | **Section editor: course chooser** | Courses in focus subjects only. Under All, every course. |
 | **Section editor: instructor chooser** | In-focus instructors first, then **"Other instructors"** below a divider. The section's **current instructors are always listed**, so an untouched section can never save with its instructor blanked (the item 3 family of bug). |
 | **Workload panel** | In-focus instructors, with a "Show all instructors" switch. **Totals always count the whole load.** Sections outside the focus are listed but marked. |
@@ -334,6 +336,14 @@ years are ordered by `StartYear`. A few thousand rows at dean's-office size.
 - **Conflicts:** room and instructor conflicts are checked against the whole semester. A Biology
   card still warns about an English section in the same room.
 - **Rooms:** room availability and the room chooser show every room.
+- **Grid overlays (Instructor, Room, Tag) ignore the focus, as they already ignore the ordinary
+  filter (decided 2026-10-23).** An overlay shows *all* the matching sections, out-of-focus ones
+  included, plus an instructor's commitments. Its job is the whole picture: an Instructor overlay
+  that hid a Biology instructor's English section would make them look free when they're busy.
+  This is the same reason conflicts stay global.
+- **Also outside the focus:** shared schedules imported from other departments (other databases'
+  data, imported on purpose), meetings (they have no subject) and program access watches (a
+  conflict check).
 - **Whole-semester operations:** Copy Semester, the shared-schedule export, the Course History
   export and imports.
 - **Empty Semester (item 8)** empties the whole semester. When a focus is set, its confirmation
@@ -404,7 +414,14 @@ Steps 2–7 edit AXAML: warn the user before each so they can close the tab in V
      grid.
 4. **Grid and filter panel.**
    - The grid applies the focus before the ordinary filter.
-   - The filter's Subjects, Courses and Instructors lists follow the focus.
+   - Overlays bypass the focus: `BuildOverlayBlocks` (Pass 2) must still add out-of-focus
+     sections that match an Instructor / Room / Tag overlay, and commitments as today.
+   - The filter's Subjects, Courses and Instructors lists follow the focus (and so the instructor
+     overlay list). They are rebuilt on `FocusChanged` and when the viewed year changes.
+   - Shared-schedule blocks, meeting blocks and Room Availability ghosts are untouched.
+   - **A filter selection that falls outside a new focus** (for example a ticked Chemistry course
+     after the focus moves to Biology) is dropped when the lists rebuild, so the filter never
+     hides everything for a reason the user can't see.
 5. **Section editor choosers.**
    - The course chooser lists focus subjects only.
    - The instructor chooser shows in-focus instructors, then "Other instructors"; current
