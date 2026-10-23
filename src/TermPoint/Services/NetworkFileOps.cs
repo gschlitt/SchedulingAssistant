@@ -380,7 +380,17 @@ public static class NetworkFileOps
                     return true;
                 }
 
-                var writeTask = dst!.WriteAsync(buffer.AsMemory(0, read)).AsTask();
+                // The write is STARTED on a thread-pool thread, not inline, exactly like the close above. Windows
+                // sometimes performs an "asynchronous" write to a share synchronously: the call returns only once
+                // the bytes are written. On a black-holed share that blocks right here, before the race below has
+                // started, so no deadline fires and the copy waits out the whole outage with nothing logged
+                // (field test 2026-10-22, M1 "A1"; reproduced by tools/NetworkProbe, case copy-cm, 1 run in 3).
+                // Under Task.Run a write that blocks holds only a pool thread, and the race still fires after
+                // TimeoutMs. The buffer is safe to reuse: the success path awaits this write before the next read,
+                // and the stall path returns without reading again.
+                var target = dst!;
+                var chunk = buffer.AsMemory(0, read);
+                var writeTask = Task.Run(() => target.WriteAsync(chunk).AsTask());
                 if (await Task.WhenAny(writeTask, Task.Delay(TimeoutMs)).ConfigureAwait(false) != writeTask)
                 {
                     LogStall("CopyFile (write)");
@@ -402,11 +412,20 @@ public static class NetworkFileOps
     /// On stall, the abandoned read task is fault-observed so its eventual failure
     /// (e.g. "network path not found" after the SMB redirector gives up ~60s into a
     /// black-hole outage) cannot surface as an UnobservedTaskException.
+    ///
+    /// <para>The read is STARTED on a thread-pool thread, not inline, for the same reason as the copy's write
+    /// (<see cref="CopyCoreAsync"/>): Windows can perform an "asynchronous" read synchronously (a cached read that
+    /// misses the cache, for example), and on a black-holed share that would block before the race below starts, so
+    /// no deadline would fire. The copy's write was seen doing exactly that (field test 2026-10-22, M1 "A1",
+    /// reproduced by tools/NetworkProbe); the read follows the same pattern and gets the same protection.</para>
     /// </summary>
+    /// <param name="stream">The open stream to read from.</param>
+    /// <param name="buffer">Receives the bytes; not touched by the caller again after a stall.</param>
+    /// <param name="label">The step's name for the stall log line, e.g. "ComputeHash (read)".</param>
     /// <returns><c>(true, bytesRead)</c> on progress (0 = EOF); <c>(false, 0)</c> on stall.</returns>
     private static async Task<(bool Ok, int Read)> ReadChunkAsync(FileStream stream, byte[] buffer, string label)
     {
-        var readTask = stream.ReadAsync(buffer.AsMemory()).AsTask();
+        var readTask = Task.Run(() => stream.ReadAsync(buffer.AsMemory()).AsTask());
         if (await Task.WhenAny(readTask, Task.Delay(TimeoutMs)).ConfigureAwait(false) != readTask)
         {
             LogStall(label);
