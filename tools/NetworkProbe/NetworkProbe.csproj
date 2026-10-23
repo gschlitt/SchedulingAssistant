@@ -1,0 +1,40 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!--
+    Network probe: do TermPoint's real network file calls hand control back within their 5 s deadline when the SMB
+    connection goes dark? (designs/network-probe-spec.md). NOT part of TermPoint.sln and NOT built by CI: build and
+    run it by hand (see README.md), like tools/ScrollAnchorProbe.
+
+    It calls the REAL NetworkFileOps through a ProjectReference. Nothing under src/ is changed for it: the two internal
+    members it needs (FileAppLogger.LogDirectoryOverride and App's logger backing field) are reached by reflection.
+  -->
+
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <TargetFramework>net10.0</TargetFramework>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <AssemblyName>NetworkProbe</AssemblyName>
+    <RootNamespace>NetworkProbe</RootNamespace>
+
+    <!--
+      Keep the build output small. TermPoint's dependencies (Avalonia, SkiaSharp, SQLite) bring native libraries for
+      every platform, about 480 MB, and this tool only ever runs on the Windows computer it is built on, so build for
+      that computer's own runtime only (about 100 MB). Output goes to bin\Release\net10.0\win-x64\.
+    -->
+    <RuntimeIdentifier>$(NETCoreSdkRuntimeIdentifier)</RuntimeIdentifier>
+    <SelfContained>false</SelfContained>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <!--
+      src/TermPoint multi-targets net10.0;net10.0-browser. The browser build does not even contain NetworkFileOps, so
+      pin the reference to the desktop target explicitly instead of trusting the automatic choice.
+    -->
+    <ProjectReference Include="..\..\src\TermPoint\TermPoint.csproj" SetTargetFramework="TargetFramework=net10.0" />
+
+    <!-- Same version as src/TermPoint, for the small SQLite file the integrity case checks. -->
+    <PackageReference Include="Microsoft.Data.Sqlite" Version="10.0.12" />
+  </ItemGroup>
+
+</Project>
