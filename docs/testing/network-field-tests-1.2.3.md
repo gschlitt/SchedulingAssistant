@@ -7,37 +7,69 @@ Hand-run checklist, essential first. It re-runs the July protocol
 **Do the Must tier before release; Should and Nice only after.** Several Should/Nice scenarios test items that
 are not built yet (11, 13, 14, 15, 6, 7); each says what to record if so.
 
-## Current work list (from the network probe, 2026-10-22)
+## Status (updated 2026-10-22)
 
-Timed black holes from Mekler proved unreliable for M1 (a miss looks like a pass). Network-outage behaviour is now
-tested with `tools/NetworkProbe` (spec: `designs/network-probe-spec.md`), which self-checks its own cut.
+Two parts. **Scenarios** lists every scenario in this checklist, one row each, with what it needs: the details and the
+recorded results are in each scenario further down. **Open issues** lists what testing turned up that is not a
+scenario: fixes, things to watch for, and reminders.
 
-- [x] **A1 found and fixed:** a cut mid-copy could go unnoticed for the whole outage (no log line, no banner) because
-      the copy's chunk write could block before its 5 s timer started. Fix: the write runs under `Task.Run`
-      (`NetworkFileOps.CopyCoreAsync`). Probe before: 1 of 3 mid-copy runs failed; after: 10 of 10 passed. Full test
-      suite green. Committed b193eb8.
-- [x] **1. The hash's reads:** same pattern (`NetworkFileOps.ReadChunkAsync`); reads now start under `Task.Run`; full
-      suite green. The probe's `hash-cm` now cuts only after 1 MB has provably been read and counts a pass only if
-      caught in `ComputeHash (read)`. Probe 2026-10-22 18:58: hash-cm 5 of 5 caught in the read; copy-cm 5 of 5 (15 of
-      15 since the write fix). Committed b193eb8.
-- [x] **2. New MSIX test build** 1.2.3.1 with both fixes: installed on GregDeskTop 2026-10-22; the log stamps
-      `[v1.2.3.1]` (the window title shows only three parts, "v1.2.3"). Install it on GregSurface too (certificate
-      first, see "Before you start"); never on Mekler.
+### Scenarios
+
+"Needs": **one computer** = any single computer with TermPoint and a local database copy (the laptop on its own is
+enough); **share** = the database on Mekler's share; **both** = GregDeskTop and GregSurface together.
+
+| Scenario | Tier | Needs | Status |
+|---|---|---|---|
+| M1 Network cut mid-save | Must | one computer + share (Part A: probe on GregDeskTop) | ✅ pass (probe 18/18; three cuts in TermPoint) |
+| M2 Kill the writer | Must | one computer + share | ✅ pass |
+| M3 F1: X and Discard on "Restore?" | Must | one computer | ✅ pass |
+| M4 Two-user contention | Must | both + share | ☐ to do (block 2) |
+| M5 Stale-lock takeover | Must | both + share (+ a third computer for (6)) | ☐ to do (block 3) |
+| M6 F12: the laptop sleeps mid-save | Must | both + share | ☐ to do (block 3) |
+| M7 F4: an editor open across a lost lock | Must | one computer (Python + repo for the helper script) | ☐ to do |
+| M8 Mixed 1.2.2 and 1.2.3 | Must | both + share + a sideload 1.2.2 build | ☐ to do (block 5) |
+| M9 A colleague joins during an edit | Must | both + share | ☐ to do (block 2) |
+| M10 Exit save on a slow or dead link | Must | one computer + share | ✅ pass |
+| M11 Restore from backup | Must | (a) one computer + share; (b)–(d) both + share | ◐ (a) pass; (b)–(d) to do (block 2) |
+| M12 D changed by someone else | Must | one computer + share (Python + repo) | ✅ pass |
+| S1 Second copy on the same computer | Should | one computer | ✅ pass |
+| S2 Local copy fails after validation | Should | both + share | ☐ to do |
+| S3 Reader Refresh failures | Should | both + share | ☐ to do (item 11 not built) |
+| S4 Repeated X / edits during exit save | Should | one computer + share | ☐ to do (item 15 not built) |
+| S5 Unapplied editor changes at close/switch | Should | one computer | ☐ to do (item 14 not built) |
+| S6 New database / export with the share down | Should | one computer + share | ✅ pass ((b) covered by the probe) |
+| S7 Wizard and UNC picker | Should | share; a Windows 10 and a Windows 11 computer | ☐ to do |
+| S8 Windows 11 AutoCompleteBox crash test | Should | one computer on Windows 11 | ☐ to do |
+| S9 Cloud-synced folders | Should | one computer with OneDrive etc. (+ Mac) | ☐ to do (item 13 not built) |
+| S10 Section list: recycling test, default OFF | Should | one computer, ~800-section database | ☐ to do |
+| S11 macOS pass | Should | Mac | ☐ to do |
+| N1 Virtualization ON | Nice | one computer, ~800-section database | ☐ to do |
+| N2 Touch and trackpad | Nice | a touchscreen (GregSurface); Mac | ☐ to do |
+| N3 BugSnag | Nice | one computer | ☐ to do (items 6, 7 not built) |
+| N4 Store update link | Nice | a computer still on 1.2.2 | ☐ after Store certification |
+
+### Open issues
+
+- [x] **A1 found and fixed** (b193eb8): a cut mid-copy could go unnoticed for the whole outage (no log line, no
+      banner) because the copy's chunk write could block before its 5 s timer started; the hash's reads had the same
+      pattern. Both now start under `Task.Run` (`NetworkFileOps`). Probe before: 1 of 3 mid-copy cuts failed; after:
+      15 of 15 mid-copy and 5 of 5 mid-read, then 18 of 18 on the final code. Full test suite green.
+- [x] **Test build 1.2.3.1** with the fix, on GregDeskTop and GregSurface (the Store copy was removed from GregSurface).
+      The window title shows only three parts ("v1.2.3"); the log stamps `[v1.2.3.1]`.
+- [ ] **Probe: a TermPoint process left running with no window** after its main window closed (seen once,
+      GregDeskTop, PID 15416, during the restart after a restore at 21:44:48: "Managed teardown complete" but never
+      "Dispatcher loop exited", two hidden untitled windows, no lock or guard held). Suspected: the hidden-not-closed
+      database chooser or wizard refusing the app's own shutdown. Probe (one computer): open via the chooser, close with
+      the X, check Task Manager for a leftover TermPoint.exe.
+- [ ] **Watch for: the database chooser panel staying on screen** after a database opens (seen once on GregSurface).
+      If it does: do not press its buttons; drag its header, then minimise and restore the main window (does it come
+      back with it?), and note `winver`.
+- [ ] **Decide 1.2.3's scope** for the items not built yet (11, 15, 14, 13, 6, 7, 20); S3, S4, S5, S9 and N3 depend
+      on it.
+- [ ] **Later:** `BackupService` deletes a partial backup with plain, unguarded file calls when the backup folder's
+      share is dead (`BackupService.cs:286`); `tools/NetworkProbe/GAP-AUDIT.md` lists 24 more outside the save path.
+- [ ] **Your call:** show the fourth version number in the window title when it isn't 0.
 - [ ] **Before release:** set `<Version>` back to `1.2.3` in `src/TermPoint/TermPoint.csproj`; never commit 1.2.3.1.
-- [x] **3. Checklist updated:** M1 is now Part A (the probe, every network call) plus Part B (a few untimed cuts in real
-      TermPoint, to see the banner and recovery); M2 kills by watching "Saving…", not by the second; A1 recorded.
-- [x] **M1 Part A:** full probe run on the final code, 2026-10-22 19:35: 18 of 18 passed, controls OK.
-- [ ] **Watch for:** the database chooser panel staying on screen after a database opens (seen once on GregSurface,
-      1.2.3.1, 2026-10-22; could not make it happen again). If it does: do not press its buttons; drag its header, then
-      minimise and restore the main window (does it come back with it?), and note the Windows version (`winver`).
-- [ ] **Watch for / probe:** a TermPoint process left running with no window after its main window closed (seen once,
-      GregDeskTop, 2026-10-22: PID 15416 closed its main window at 21:44:48 during the restart after a restore, logged
-      "Managed teardown complete" but never "Dispatcher loop exited", and kept two hidden untitled windows). It held no
-      lock or guard. Suspected: the hidden-not-closed database chooser or wizard refusing the app's own shutdown. Probe:
-      open via the chooser, close with the X, check Task Manager for a leftover TermPoint.exe.
-- [ ] **4. Later:** `BackupService` deletes a partial backup with plain, unguarded file calls when the backup folder's
-      share is dead (`BackupService.cs:286`); see `tools/NetworkProbe/GAP-AUDIT.md` for the other 24.
-- [x] **Committed** 2026-10-22: b193eb8 (the fix), d06b8d0 (probe, spec, this checklist). Not pushed.
 
 ## The computers
 
@@ -131,7 +163,7 @@ versions, F1, F4, F8, F12). Nothing ships until every Must passes.*
 **Why it is in two parts (2026-10-22).** The first M1 runs aimed clumsy black holes from Mekler at chosen seconds of a save.
 Most missed (a save's steps took anywhere from 0.4 to 8.5 s, clumsy needs about 1 s to switch, and a miss looks exactly
 like a pass), but two runs (14:03, 14:48) exposed a real defect, **A1**: a cut during the copy could go unnoticed for the
-whole outage, with no log line, no banner and "Saving…" until the network came back. It is fixed (work list above). So
+whole outage, with no log line, no banner and "Saving…" until the network came back. It is fixed ("Open issues" above). So
 the steps are now tested by a rig that proves its own cut (Part A), and real TermPoint is only asked what the user sees
 (Part B).
 
