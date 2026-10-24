@@ -125,11 +125,11 @@ public partial class SectionMeetingViewModel : ViewModelBase
 
     // ── Time bound constants ──────────────────────────────────────────────────
 
-    /// <summary>Absolute earliest a meeting may start: 07:30 (450 min from midnight).</summary>
-    public const int MinStartMinutes = 7 * 60 + 30;   // 450
+    /// <summary>Absolute earliest a meeting may start: 07:30 (450 min from midnight). See <see cref="MeetingTimeLimits"/>.</summary>
+    public const int MinStartMinutes = MeetingTimeLimits.MinStartMinutes;
 
-    /// <summary>Absolute latest a meeting may end: 22:00 (1320 min from midnight).</summary>
-    public const int MaxEndMinutes   = 22 * 60;        // 1320
+    /// <summary>Absolute latest a meeting may end: 22:00 (1320 min from midnight). See <see cref="MeetingTimeLimits"/>.</summary>
+    public const int MaxEndMinutes   = MeetingTimeLimits.MaxEndMinutes;
 
     // ─────────────────────────────────────────────────────────────────────────
 
@@ -411,15 +411,8 @@ public partial class SectionMeetingViewModel : ViewModelBase
         if (CustomWeeksError is not null || string.IsNullOrWhiteSpace(CustomWeeksText))
             return null;
 
-        var tokens = CustomWeeksText
-            .Split(',', StringSplitOptions.TrimEntries | StringSplitOptions.RemoveEmptyEntries);
-        var weeks = new SortedSet<int>();
-        foreach (var token in tokens)
-        {
-            if (!int.TryParse(token, out var week)) return null;
-            weeks.Add(week);
-        }
-        return string.Join(",", weeks);
+        var parsed = ScheduleText.ParseWeekList(CustomWeeksText);
+        return parsed.IsValid ? parsed.Value : null;
     }
 
     // ── Change notifications ──────────────────────────────────────────────────
@@ -575,7 +568,8 @@ public partial class SectionMeetingViewModel : ViewModelBase
     // ── Validation ────────────────────────────────────────────────────────────
 
     /// <summary>
-    /// Validates <see cref="CustomWeeksText"/> as a comma-separated list of positive integers (≥ 1).
+    /// Validates <see cref="CustomWeeksText"/> as a comma-separated list of positive integers (≥ 1),
+    /// using the same rules the section importer applies (<see cref="ScheduleText.ParseWeekList"/>).
     /// Sets <see cref="CustomWeeksError"/> to a user-facing message on failure, or null on success.
     /// Does nothing when the Custom frequency option is not selected.
     /// </summary>
@@ -583,31 +577,7 @@ public partial class SectionMeetingViewModel : ViewModelBase
     {
         if (!IsCustomFrequency) { CustomWeeksError = null; return; }
 
-        if (string.IsNullOrWhiteSpace(CustomWeeksText))
-        {
-            CustomWeeksError = $"Enter week numbers, e.g. 1,3,5";
-            return;
-        }
-
-        var tokens = CustomWeeksText
-            .Split(',', StringSplitOptions.TrimEntries | StringSplitOptions.RemoveEmptyEntries);
-        var seen = new HashSet<int>();
-
-        foreach (var token in tokens)
-        {
-            if (!int.TryParse(token, out var week) || week < 1)
-            {
-                CustomWeeksError = "Each week must be a whole number ≥ 1";
-                return;
-            }
-            if (!seen.Add(week))
-            {
-                CustomWeeksError = "Duplicate week numbers";
-                return;
-            }
-        }
-
-        CustomWeeksError = null;
+        CustomWeeksError = ScheduleText.ParseWeekList(CustomWeeksText).Error;
     }
 
     // ── Commit commands ───────────────────────────────────────────────────────

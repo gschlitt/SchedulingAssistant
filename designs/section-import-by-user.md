@@ -469,7 +469,7 @@ user gives it one. The done message says so (Phase 3, step 4).
 | Field | Value |
 |---|---|
 | `Id` | new GUID |
-| `LastName`, `FirstName` | from `Last, First`, trimmed, as typed (case kept) |
+| `LastName`, `FirstName` | from `Last, First`, trimmed, as typed (case kept). **A last name is required** (the instructor editor won't save one without it): a new instructor with no last name (e.g. `, John`) is a problem on that row (added 2026-10-24) |
 | `Initials` | generated: first + last initial, then `2`, `3`… until unused. "Unused" counts the database **and** the initials given to instructors earlier in this import. Today's generator (`InstructorImportViewModel.ResolveInitials`) asks the database once per candidate and can't see same-import initials, so it is lifted into a shared pure helper that takes the set of taken initials. |
 | `IsActive` | true |
 | `Email`, `Notes`, `StaffTypeId` | empty / null |
@@ -550,7 +550,10 @@ The preview lists every new value. The warning points at the ones most likely to
 warning when, against an existing value **of the same kind** or another new one:
 - **subjects, section types, meeting types, tags, campuses:** one contains the other (`Lec` / `Lecture`), or they
   differ by at most two letters (a small edit-distance helper; `Writng` / `Writing`). Comparison ignores case, spaces
-  and punctuation, and names under four letters only get the contains check, so `LAB` vs `LAW` isn't flagged;
+  and punctuation, and names under four letters only get the contains check, so `LAB` vs `LAW` isn't flagged.
+  *Refined in step 24.1 (2026-10-24):* the contains check needs the shorter name to have at least 3 letters (so a
+  one-letter tag isn't flagged against everything), and **names with different numbers are never a near miss**
+  (`Lab 1` / `Lab 2`, `Year 1` / `Year 2`, `Lab` / `Lab 1`): numbers mark distinct things;
 - **rooms:** the **building** is new. Neighbouring room numbers differ by one character by nature, so comparing
   numbers would flag every room. A new building is rare and worth a look ("Will add building SCIENCE. SCI already
   exists.").
