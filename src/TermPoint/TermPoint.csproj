@@ -44,6 +44,7 @@
     <PackageReference Include="GroupBox.Avalonia" Version="12.0.0" />
     <PackageReference Include="Bugsnag" Version="4.1.0" />
     <PackageReference Include="Microsoft.Data.Sqlite" Version="10.0.12" />
+    <PackageReference Include="ExcelDataReader" Version="3.9.0" />
     <PackageReference Include="Velopack" Version="0.0.1298" />
     <PackageReference Condition="'$(Configuration)' == 'Debug'" Include="AvaloniaUI.DiagnosticsSupport" Version="2.2.1" />
     <PackageReference Condition="'$(Configuration)' == 'Debug'" Include="Newtonsoft.Json" Version="13.0.3" />
