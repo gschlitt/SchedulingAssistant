@@ -17,7 +17,7 @@ public static class MeetingTimeValidator
     /// <summary>
     /// Checks every row and returns the message for the first problem found, or null when all
     /// rows can be saved. Incomplete rows (a start time or a block length, but not both) are
-    /// reported before rows whose day is still "(any)".
+    /// reported before rows with no day chosen.
     /// </summary>
     /// <param name="rows">The editor's schedule rows.</param>
     /// <param name="singular">What the editor calls one row, e.g. "meeting" or "meeting time".</param>
@@ -37,7 +37,7 @@ public static class MeetingTimeValidator
                 ? $"One {singular} has a start time but no block length. Please complete it or delete it."
                 : $"One {singular} has a block length but no start time. Please complete it or delete it.";
 
-        // Day "(any)" (sentinel 0) is a placeholder for the Room Availability Browser to fill in;
+        // An unset day (sentinel 0) is a placeholder for the Room Availability Browser to fill in;
         // a row that would be saved must have a real day.
         var unassignedDay = list
             .Count(m => m.SelectedDay == 0 && (m.SelectedStartTime.HasValue || m.SelectedBlockLength.HasValue));

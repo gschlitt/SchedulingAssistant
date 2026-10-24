@@ -162,7 +162,7 @@ public partial class MeetingEditViewModel : ViewModelBase
         _allRooms        = allRooms;
         IsNew            = isNew;
 
-        var rtOpts = new List<RoomTypeOption> { new(null, "(none)") };
+        var rtOpts = new List<RoomTypeOption> { new(null, SectionMeetingViewModel.UnsetLabel) };
         rtOpts.AddRange(roomTypes.Select(rt => new RoomTypeOption(rt.Id, rt.Name)));
         rtOpts.Add(new RoomTypeOption(SectionDaySchedule.RemoteRoomTypeId, "Remote"));
         _roomTypeOptions = rtOpts;

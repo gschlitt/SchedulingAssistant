@@ -30,7 +30,16 @@ public partial class SectionMeetingViewModel : ViewModelBase
 
     // ── Schedule fields ───────────────────────────────────────────────────────
 
-    [ObservableProperty] private int _selectedDay;
+    /// <summary>
+    /// The label shown for a meeting-row dropdown (day, meeting type, room type, room) when no
+    /// choice has been made. It means "not specified": open for the Room Availability Browser to
+    /// fill in, or simply not assigned yet. The view greys it via the IsXxxUnset properties.
+    /// </summary>
+    public const string UnsetLabel = "—";
+
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(IsDayUnset))]
+    private int _selectedDay;
 
     /// <summary>
     /// The committed start time in minutes from midnight. Set by <see cref="CommitStartTime"/>
@@ -56,14 +65,38 @@ public partial class SectionMeetingViewModel : ViewModelBase
     /// <summary>Validation error message for the Length field. Null when valid.</summary>
     [ObservableProperty] private string? _blockLengthError;
 
-    [ObservableProperty] private string? _selectedMeetingTypeId;
-    [ObservableProperty] private string? _selectedRoomId;
-    [ObservableProperty] private RoomTypeOption? _selectedRoomType;
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(IsMeetingTypeUnset))]
+    private string? _selectedMeetingTypeId;
+
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(IsRoomUnset))]
+    private string? _selectedRoomId;
+
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(IsRoomTypeUnset))]
+    [NotifyPropertyChangedFor(nameof(IsRoomUnset))]
+    private RoomTypeOption? _selectedRoomType;
+
+    /// <summary>True while no day has been chosen (the "—" item, sentinel 0).</summary>
+    public bool IsDayUnset => SelectedDay == 0;
+
+    /// <summary>True while no meeting type has been chosen.</summary>
+    public bool IsMeetingTypeUnset => string.IsNullOrEmpty(SelectedMeetingTypeId);
+
+    /// <summary>True while no room type has been chosen ("Remote" counts as a choice).</summary>
+    public bool IsRoomTypeUnset => SelectedRoomType?.Id is null;
+
+    /// <summary>
+    /// True while no room has been chosen for an in-person meeting. False for a remote meeting,
+    /// whose room is not open for choosing (the Room dropdown is disabled).
+    /// </summary>
+    public bool IsRoomUnset => !IsRemote && string.IsNullOrEmpty(SelectedRoomId);
 
     public ObservableCollection<DayOption> AvailableDays { get; }
     public ObservableCollection<SchedulingEnvironmentValue> MeetingTypes { get; }
 
-    /// <summary>Room type options: "(none)", configured types, and "Remote".</summary>
+    /// <summary>Room type options: the unset item ("—"), configured types, and "Remote".</summary>
     public ObservableCollection<RoomTypeOption> RoomTypeOptions { get; }
 
     /// <summary>Master room list (unfiltered). Not bound to UI directly.</summary>
@@ -173,7 +206,7 @@ public partial class SectionMeetingViewModel : ViewModelBase
     /// <param name="includeSunday">Whether Sunday should appear as a day option.</param>
     /// <param name="meetingTypes">Available meeting type property values.</param>
     /// <param name="rooms">Available rooms for selection.</param>
-    /// <param name="roomTypeOptions">Room type options including "(none)" sentinel and "Remote".</param>
+    /// <param name="roomTypeOptions">Room type options: the unset item (Id null, label <see cref="UnsetLabel"/>) first, then types, then "Remote".</param>
     /// <param name="existing">If non-null, the form is populated from this existing schedule entry.</param>
     /// <param name="defaultBlockLength">
     /// Preferred block length from Settings. After the user commits a start time, the block
@@ -223,7 +256,7 @@ public partial class SectionMeetingViewModel : ViewModelBase
 
         var days = new List<DayOption>
         {
-            new(0, "(any)"),
+            new(0, UnsetLabel),
             new(1, "Monday"),
             new(2, "Tuesday"),
             new(3, "Wednesday"),
@@ -236,9 +269,9 @@ public partial class SectionMeetingViewModel : ViewModelBase
             days.Add(new(7, "Sunday"));
         AvailableDays = new ObservableCollection<DayOption>(days);
 
-        // Prepend a "(none)" sentinel so the user can clear the meeting type
+        // Prepend the unset item so the user can clear the meeting type
         var mtList = new List<SchedulingEnvironmentValue>
-            { new SchedulingEnvironmentValue { Id = "", Name = "(none)" } };
+            { new SchedulingEnvironmentValue { Id = "", Name = UnsetLabel } };
         mtList.AddRange(meetingTypes);
         MeetingTypes = new ObservableCollection<SchedulingEnvironmentValue>(mtList);
 
@@ -270,13 +303,14 @@ public partial class SectionMeetingViewModel : ViewModelBase
         }
         else
         {
-            _selectedDay = 0; // "(any)" — user picks a day or leaves it for the browser
-            // null (not "") so that Avalonia's SelectedValue+SelectedValueBinding resolution
-            // during ComboBox initialization does not fire a spurious PropertyChanged — which
-            // would otherwise consume the pattern-coupling slot before the user picks anything.
-            _selectedMeetingTypeId = null;
+            _selectedDay = 0; // unset — user picks a day or leaves it for the browser
+            // "" selects the unset item, so the dropdown shows "—" rather than nothing. (It was
+            // once null, so that Avalonia's SelectedValue resolution during ComboBox start-up
+            // could not fire a PropertyChanged that consumed the pattern-coupling slot; the
+            // coupling handler in SectionEditViewModel now ignores empty meeting types instead.)
+            _selectedMeetingTypeId = "";
             _selectedRoomId        = "";
-            _selectedRoomType      = roomTypeOptions[0]; // "(none)"
+            _selectedRoomType      = roomTypeOptions[0]; // unset
             RefreshFilteredRooms();
             _selectedFrequencyOption = "Weekly";
             // Populate suggestion lists immediately so the user can pick either field first.
@@ -289,6 +323,7 @@ public partial class SectionMeetingViewModel : ViewModelBase
 
     partial void OnSelectedRoomTypeChanged(RoomTypeOption? value)
     {
+        // IsRoomTypeUnset and IsRoomUnset are raised by [NotifyPropertyChangedFor] on the field.
         OnPropertyChanged(nameof(IsRemote));
         OnPropertyChanged(nameof(IsRoomEnabled));
         RefreshFilteredRooms();
@@ -319,7 +354,7 @@ public partial class SectionMeetingViewModel : ViewModelBase
 
     /// <summary>
     /// Rebuilds <see cref="FilteredRooms"/> based on the selected room type and the section's
-    /// campus. Shows all rooms when "(none)" room type is selected; disables when "Remote".
+    /// campus. Shows all rooms when no room type is chosen; disables when "Remote".
     /// When the section has a campus, the list is confined to rooms on that campus plus rooms
     /// with no campus assigned. The currently-selected room is always kept in the list so an
     /// existing (possibly off-campus) choice is never silently dropped.
@@ -327,7 +362,7 @@ public partial class SectionMeetingViewModel : ViewModelBase
     private void RefreshFilteredRooms()
     {
         FilteredRooms.Clear();
-        FilteredRooms.Add(new Room { Id = "", Building = "(none)", RoomNumber = "" });
+        FilteredRooms.Add(new Room { Id = "", Building = UnsetLabel, RoomNumber = "" });
 
         var typeId = SelectedRoomType?.Id;
         foreach (var room in _allRooms)

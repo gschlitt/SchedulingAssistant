@@ -538,8 +538,8 @@ public partial class SectionEditViewModel : ViewModelBase
         _includeSaturday = includeSaturday;
         _includeSunday = includeSunday;
 
-        // Build room type options: "(none)" + DB types + "Remote"
-        var rto = new List<RoomTypeOption> { new(null, "(none)") };
+        // Build room type options: unset ("—") + DB types + "Remote"
+        var rto = new List<RoomTypeOption> { new(null, SectionMeetingViewModel.UnsetLabel) };
         rto.AddRange(roomTypes.Select(v => new RoomTypeOption(v.Id, v.Name)));
         rto.Add(new RoomTypeOption(SectionDaySchedule.RemoteRoomTypeId, "Remote"));
         _roomTypeOptions = rto;
@@ -960,6 +960,13 @@ public partial class SectionEditViewModel : ViewModelBase
         _couplingHandler = (_, e) =>
         {
             if (e.PropertyName is null || !_couplingRemainingFields.Contains(e.PropertyName)) return;
+
+            // An empty meeting type is not a pick: new rows start on the unset item, and the
+            // ComboBox's SelectedValue binding can re-report it during start-up. The followers
+            // are empty too, so wait for a real meeting type before propagating and decoupling.
+            if (e.PropertyName == nameof(SectionMeetingViewModel.SelectedMeetingTypeId)
+                && string.IsNullOrEmpty(leader.SelectedMeetingTypeId))
+                return;
 
             // Decouple this field and propagate its current value to all followers.
             _couplingRemainingFields.Remove(e.PropertyName);

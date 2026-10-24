@@ -303,7 +303,7 @@ public class EditorFlowTests
         var saved = new StrongBox<bool>();
         var vm = MakeUnlockedSectionEditVm(saved);
         // Start time first: committing a start time clears a block length that isn't legal for
-        // it, and this editor has no legal start times configured. Day left at "(any)".
+        // it, and this editor has no legal start times configured. Day left unset.
         foreach (var start in new[] { 9 * 60, 13 * 60 })
         {
             vm.AddMeetingCommand.Execute(null);
@@ -483,7 +483,7 @@ public class EditorFlowTests
         var (vm, repo, _) = MakeMeetingEditVm();
         vm.Title = "Budget Review";
         // Start time first: committing a start time clears a block length that isn't legal for
-        // it, and this editor has no legal start times configured. Day left at 0, "(any)".
+        // it, and this editor has no legal start times configured. Day left unset (0).
         vm.AddSlotCommand.Execute(null);
         vm.Slots[0].SelectedStartTime   = 9 * 60;
         vm.Slots[0].SelectedBlockLength = 1.0;
@@ -680,7 +680,7 @@ public class EditorFlowTests
     {
         var (vm, _, _) = MakeMeetingEditVm();
         var slot = AddSlotWithDuration(vm, blockLengthHours: 1.0);
-        // Day left at 0 ("any"), start time and room left blank.
+        // Day left unset (0), start time and room left blank.
 
         Action<IReadOnlyList<SpecSolution>>? capturedAccept = null;
         vm.CreateRoomBrowser = (specs, accept, cancel) =>
@@ -858,7 +858,7 @@ public class EditorFlowTests
     {
         var vm = MakeSectionEditVm(new Section());
         var meeting = AddMeetingWithDuration(vm, blockLengthHours: 1.0);
-        // Day left at 0 ("any"), start time and room left blank.
+        // Day left unset (0), start time and room left blank.
 
         Action<IReadOnlyList<SpecSolution>>? capturedAccept = null;
         vm.CreateRoomBrowser = (specs, accept, cancel) =>
@@ -928,6 +928,86 @@ public class EditorFlowTests
         Assert.Equal(480, vm.Meetings[0].SelectedStartTime);
         Assert.Equal(600, vm.Meetings[1].SelectedStartTime);
         Assert.Equal(720, vm.Meetings[2].SelectedStartTime);
+    }
+
+    /// <summary>
+    /// New rows start on the unset meeting-type item (""), and the ComboBox's SelectedValue
+    /// binding can re-report empty values during start-up. Those must not use up the one-shot
+    /// meeting-type coupling: the first REAL meeting type on the lead row still propagates.
+    /// </summary>
+    [Fact]
+    public void SectionEdit_PatternCoupling_EmptyMeetingType_DoesNotConsumeCoupling()
+    {
+        var mwf = new BlockPattern { Id = "mwf", Name = "MWF", Days = new List<int> { 1, 3, 5 } };
+        var vm  = MakeSectionEditVm(new Section(), blockPatterns: new[] { mwf });
+        vm.ApplyPattern1Command.Execute(null);
+
+        // Simulated start-up re-reports: empty, then null, then empty again.
+        vm.Meetings[0].SelectedMeetingTypeId = null;
+        vm.Meetings[0].SelectedMeetingTypeId = "";
+
+        vm.Meetings[0].SelectedMeetingTypeId = "lecture";
+
+        Assert.All(vm.Meetings, m => Assert.Equal("lecture", m.SelectedMeetingTypeId));
+    }
+
+    // ══════════════════════════════════════════════════════════════════════════
+    // Meeting row — unset choices show "—" and report themselves as unset
+    // ══════════════════════════════════════════════════════════════════════════
+
+    [Fact]
+    public void MeetingRow_NewRow_EveryDropdownStartsOnTheUnsetItem()
+    {
+        var vm = MakeSectionEditVm(new Section());
+        vm.AddMeetingCommand.Execute(null);
+        var row = vm.Meetings[0];
+
+        Assert.Equal(SectionMeetingViewModel.UnsetLabel,
+            row.AvailableDays.Single(d => d.Day == row.SelectedDay).Name);
+        Assert.Equal(SectionMeetingViewModel.UnsetLabel,
+            row.MeetingTypes.Single(t => t.Id == row.SelectedMeetingTypeId).Name);
+        Assert.Equal(SectionMeetingViewModel.UnsetLabel, row.SelectedRoomType!.Name);
+        Assert.Equal(SectionMeetingViewModel.UnsetLabel,
+            row.FilteredRooms.Single(r => r.Id == row.SelectedRoomId).Building);
+
+        Assert.True(row.IsDayUnset);
+        Assert.True(row.IsMeetingTypeUnset);
+        Assert.True(row.IsRoomTypeUnset);
+        Assert.True(row.IsRoomUnset);
+    }
+
+    [Fact]
+    public void MeetingRow_ChoosingValues_ClearsUnsetFlags()
+    {
+        var vm = MakeSectionEditVm(new Section());
+        vm.AddMeetingCommand.Execute(null);
+        var row = vm.Meetings[0];
+
+        row.SelectedDay           = 2;
+        row.SelectedMeetingTypeId = "lecture";
+        row.SelectedRoomId        = "r1";
+
+        Assert.False(row.IsDayUnset);
+        Assert.False(row.IsMeetingTypeUnset);
+        Assert.False(row.IsRoomUnset);
+    }
+
+    [Fact]
+    public void MeetingRow_Remote_IsAChoice_AndRoomIsNotOpen()
+    {
+        var vm = MakeSectionEditVm(new Section());
+        vm.AddMeetingCommand.Execute(null);
+        var row = vm.Meetings[0];
+
+        var raised = new List<string?>();
+        row.PropertyChanged += (_, e) => raised.Add(e.PropertyName);
+
+        row.SelectedRoomType = row.RoomTypeOptions.First(o => o.Id == SectionDaySchedule.RemoteRoomTypeId);
+
+        Assert.False(row.IsRoomTypeUnset);
+        Assert.False(row.IsRoomUnset);   // no room, but none is wanted for a remote meeting
+        Assert.Contains(nameof(SectionMeetingViewModel.IsRoomTypeUnset), raised);
+        Assert.Contains(nameof(SectionMeetingViewModel.IsRoomUnset), raised);
     }
 
     // ══════════════════════════════════════════════════════════════════════════

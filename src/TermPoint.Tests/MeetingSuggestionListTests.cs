@@ -56,7 +56,7 @@ public class MeetingSuggestionListTests
             includeSunday:   false,
             meetingTypes:    new List<SchedulingEnvironmentValue>(),
             rooms:           new List<Room>(),
-            roomTypeOptions: new List<RoomTypeOption> { new(null, "(none)") },
+            roomTypeOptions: new List<RoomTypeOption> { new(null, SectionMeetingViewModel.UnsetLabel) },
             existing:        existing,
             defaultBlockLength: preferred,
             unit:            BlockLengthUnit.Hours);
