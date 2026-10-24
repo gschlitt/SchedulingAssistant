@@ -342,8 +342,11 @@ years are ordered by `StartYear`. A few thousand rows at dean's-office size.
   that hid a Biology instructor's English section would make them look free when they're busy.
   This is the same reason conflicts stay global.
 - **Also outside the focus:** shared schedules imported from other departments (other databases'
-  data, imported on purpose), meetings (they have no subject) and program access watches (a
-  conflict check).
+  data, imported on purpose) and meetings (they have no subject).
+- **Program access watches follow the focus (revised 2026-10-23).** They scan only the sections on
+  the grid (chosen subjects, then the ordinary filter). Scanning every subject reported clashes with
+  sections the user couldn't see, each one needing an investigation. Accepted trade-off: a clash
+  with a section in an unchosen subject isn't reported until that subject is chosen.
 - **Whole-semester operations:** Copy Semester, the shared-schedule export, the Course History
   export and imports.
 - **Empty Semester (item 8)** empties the whole semester. When a focus is set, its confirmation
@@ -415,8 +418,8 @@ Steps 2–7 edit AXAML: warn the user before each so they can close the tab in V
 > - **The editor's instructor chooser** lists in-focus instructors first, then an "Other
 >   instructors" heading and rule, then the rest in a lighter font (`TextOutOfFocus`). Nobody is
 >   dropped. Under All or None there is no grouping.
-> - **Program access watches** run on all filter-passing sections, not only in-focus ones (they
->   are a conflict check).
+> - **Program access watches** first ran on all filter-passing sections; reversed later the same
+>   day: they now scan only the chosen subjects (see "What stays global").
 > - **The detached Schedule View header** now wraps (a WrapPanel, like the inline header).
 > - **Still open:** what double-clicking an out-of-focus overlay tile should do (today: nothing);
 >   the filter lists (step 4); steps 6–8. The user is watching for "Focus" vs "Filter" confusion.

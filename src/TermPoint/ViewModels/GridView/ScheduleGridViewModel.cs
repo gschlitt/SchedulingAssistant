@@ -434,13 +434,11 @@ public partial class ScheduleGridViewModel : ViewModelBase
         IReadOnlyList<ProgramConflict> programConflicts = [];
         if (enabledWatches.Count > 0)
         {
-            // Program access watches are a conflict check, so they sit outside the subject focus (spec item 20):
-            // a Biology student's watch must still see an out-of-focus section that clashes. They still honour the
-            // ordinary filter, as before, so when the focus hides anything Pass 1 is rerun without it.
-            var watchBlocks = _focus.Current.Kind == FocusKind.All
-                ? filtered
-                : BuildFilteredBlocks(lookups.Sections, snap, lookups, overlayMatchedIds, isInFocus: null);
-            var visibleSectionIds = watchBlocks.OfType<SectionMeetingBlock>()
+            // Program access watches scan only the sections on the grid: Pass 1, which applies the chosen subjects
+            // and then the ordinary filter (spec item 20, decided 2026-10-23). Scanning out-of-subject sections
+            // reported clashes with sections the user couldn't see, each one a puzzle to track down. The trade-off,
+            // accepted: a clash with a section in an unchosen subject goes unreported until that subject is chosen.
+            var visibleSectionIds = filtered.OfType<SectionMeetingBlock>()
                 .Select(b => b.SectionId).ToHashSet();
             var visibleSections = lookups.Sections
                 .Where(s => visibleSectionIds.Contains(s.Id)).ToList();

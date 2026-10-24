@@ -2368,7 +2368,9 @@ loads. The focus decides what is **shown and offered**:
   and imports.
 - **Grid overlays (Instructor, Room, Tag) ignore the focus**, as they already ignore the filter:
   they show every matching section, so an instructor never looks free when they're teaching
-  outside the focus. Shared schedules, meetings and access watches are also outside the focus.
+  outside the focus. Shared schedules and meetings are also outside the focus. Program access
+  watches, by contrast, scan only the chosen subjects (revised 2026-10-23: clashes with unseen
+  sections were a puzzle each time).
   The filter's Subjects, Courses and Instructors lists (and so the instructor overlay list)
   follow the focus; the instructor list uses the same rule as every other view (2026-10-23).
 - **Empty Semester (item 8)** keeps emptying the whole semester. Under a focus, its confirmation
