@@ -12,6 +12,12 @@ namespace TermPoint.Services.SectionImport;
 /// <param name="SectionCode">The Section Code cell, trimmed.</param>
 public sealed record SectionKey(string Subject, string CourseNumber, string SectionCode)
 {
+    /// <summary>
+    /// The section as a message names it, from the key as typed: subject and course number run
+    /// together, then the section code (<c>CHEM101 A</c>).
+    /// </summary>
+    public string Label => $"{Subject}{CourseNumber} {SectionCode}";
+
     /// <summary>True when the other key names the same section after normalisation.</summary>
     /// <param name="other">The key to compare with. May be null.</param>
     /// <returns>True when all three parts match.</returns>

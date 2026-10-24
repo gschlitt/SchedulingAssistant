@@ -3,9 +3,11 @@ using TermPoint.Models;
 namespace TermPoint.Services.SectionImport;
 
 /// <summary>
-/// One execution of the section-import planner's first part (step 24.3): it groups the rows of a
+/// One execution of the section-import planner (steps 24.3 and 24.4): it groups the rows of a
 /// file into sections and resolves every value they name to an existing record, a new record, or a
-/// problem. Created by <see cref="SectionImportPlanner.Plan"/> for a single call and then discarded;
+/// problem, then validates each new section and computes its final values (<see cref="SectionValidator"/>,
+/// <see cref="MeetingRules"/>, <see cref="CourseTitleCheck"/>) and collects the grouped warnings
+/// (<see cref="ImportWarningCollector"/>). Those rules live in their own classes; this one resolves. Created by <see cref="SectionImportPlanner.Plan"/> for a single call and then discarded;
 /// it holds the state of that call (the registries of new records, the problems found so far) and
 /// touches nothing outside its two inputs.
 /// <para>
@@ -23,6 +25,7 @@ internal sealed class SectionImportPlanningRun
     private readonly List<ImportProblem> _problems = new();
     private readonly List<SectionDraft> _newSections = new();
     private readonly List<SectionDraft> _skippedSections = new();
+    private readonly SectionValidator _sectionValidator;
 
     // ── Registries: existing records, plus the new ones this run plans ───────
 
@@ -64,6 +67,7 @@ internal sealed class SectionImportPlanningRun
     {
         _sheet = sheet;
         _snapshot = snapshot;
+        _sectionValidator = new SectionValidator(snapshot, _problems);
 
         _subjects = new(snapshot.Subjects, s => s.CalendarAbbreviation, NameMatch.Comparer,
             SetupRef<Subject>.Existing);
@@ -112,9 +116,9 @@ internal sealed class SectionImportPlanningRun
     // ── The run ───────────────────────────────────────────────────────────────
 
     /// <summary>
-    /// Runs the planner and returns its report. Warnings are left empty (step 24.4 fills them).
+    /// Runs the planner and returns its report.
     /// </summary>
-    /// <returns>The report: problems, skipped sections and the plan.</returns>
+    /// <returns>The report: problems, grouped warnings, skipped sections and the plan.</returns>
     public ImportReport Execute()
     {
         var semesterWasEmpty = _snapshot.Sections.Count == 0;
@@ -132,6 +136,7 @@ internal sealed class SectionImportPlanningRun
             ResolveGroup(group);
 
         AssignCampusesToNewRooms();
+        CourseTitleCheck.Run(_newSections, _problems);
 
         var plan = new ImportPlan(
             _subjects.NewRefs, _campuses.NewRefs, _sectionTypes.NewRefs, _meetingTypes.NewRefs,
@@ -139,7 +144,8 @@ internal sealed class SectionImportPlanningRun
 
         // Stable sort: file-wide problems first, then by row, keeping the order found within a row.
         var problems = _problems.OrderBy(p => p.Row ?? 0).ToList();
-        return new ImportReport(problems, Array.Empty<ImportWarning>(), _skippedSections, plan, semesterWasEmpty);
+        var warnings = new ImportWarningCollector(_snapshot, plan).Collect();
+        return new ImportReport(problems, warnings, _skippedSections, plan, semesterWasEmpty);
     }
 
     // ── Rows: required cells and the semester ─────────────────────────────────
@@ -309,20 +315,33 @@ internal sealed class SectionImportPlanningRun
             return;
         }
 
+        var instructors = ResolveInstructors(group.Rows);
+        var sectionType = ResolveFirstNamed(group.Rows, SectionImportColumns.SectionType, _sectionTypes,
+            "section types", NewEnvironmentValue);
+        var campus = ResolveFirstNamed(group.Rows, SectionImportColumns.Campus, _campuses,
+            "campuses", NewCampus);
+        var tags = ResolveTags(group.Rows);
+        var meetingRows = group.Rows.Select(ResolveMeetingRow).ToList();
+
+        // Step 24.4: validate the section and compute its capacity, tag ids, level and meetings.
+        var values = _sectionValidator.Validate(group.Key, group.Rows, course, tags, meetingRows);
+
         _newSections.Add(new SectionDraft
         {
             Key = group.Key,
             RowNumbers = rowNumbers,
             Rows = group.Rows,
             Course = course,
-            Instructors = ResolveInstructors(group.Rows),
-            SectionType = ResolveFirstNamed(group.Rows, SectionImportColumns.SectionType, _sectionTypes,
-                "section types", NewEnvironmentValue),
-            Campus = ResolveFirstNamed(group.Rows, SectionImportColumns.Campus, _campuses,
-                "campuses", NewCampus),
-            Tags = ResolveTags(group.Rows),
+            Instructors = instructors,
+            SectionType = sectionType,
+            Campus = campus,
+            Tags = tags,
             RawCapacity = ImportRowText.FirstNonBlank(group.Rows, SectionImportColumns.Capacity)?.Text,
-            MeetingRows = group.Rows.Select(ResolveMeetingRow).ToList(),
+            MeetingRows = meetingRows,
+            Capacity = values.Capacity,
+            TagIds = values.TagIds,
+            Level = values.Level,
+            Meetings = values.Meetings,
         });
     }
 
@@ -402,7 +421,7 @@ internal sealed class SectionImportPlanningRun
         {
             var stored = match.Ambiguous.Select(c => c.CalendarCode).ToList();
             AddProblem(row, SectionImportColumns.CourseNumber,
-                $"There are {CountWord(stored.Count)} courses in TermPoint with the code {typedCode}: {JoinWithAnd(stored)}.");
+                $"There are {CountWord(stored.Count)} courses in TermPoint with the code {typedCode}: {ImportText.JoinWithAnd(stored)}.");
         }
 
         _courseResolutions[typedCode] = match.Ref;
@@ -627,7 +646,7 @@ internal sealed class SectionImportPlanningRun
 
     /// <summary>
     /// Resolves one row of a new section: its meeting type and its room, and keeps the raw days,
-    /// times and frequency text for step 24.4.
+    /// times and frequency text, which <see cref="MeetingRules"/> checks and expands.
     /// </summary>
     /// <param name="row">The row.</param>
     /// <returns>The meeting row draft.</returns>
@@ -794,14 +813,5 @@ internal sealed class SectionImportPlanningRun
         4 => "four",
         5 => "five",
         _ => count.ToString(),
-    };
-
-    /// <summary>Joins items as "A", "A and B" or "A, B and C".</summary>
-    /// <param name="items">The items.</param>
-    private static string JoinWithAnd(IReadOnlyList<string> items) => items.Count switch
-    {
-        0 => string.Empty,
-        1 => items[0],
-        _ => $"{string.Join(", ", items.Take(items.Count - 1))} and {items[^1]}",
     };
 }

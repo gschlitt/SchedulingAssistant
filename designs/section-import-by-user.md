@@ -505,12 +505,13 @@ All of these are brand-new objects whose types already derive from `PersistedRec
 existing record, so there is no extension data to carry (`WithExtensionDataFrom` doesn't apply).
 
 ### Warnings are grouped: one line per problem, not per row (added 2026-10-24)
+*Correction (2026-10-24, step 24.4): legal start times are edited in Configuration → Scheduling, not Academic Years (which only copies them when a year is created). The messages below say so.*
 
 The user must never be buried under warnings. A file where 30 meetings start at 10:45, and 10:45 isn't a legal start
 time, gets **one** warning, not 30:
 
 > 1045 isn't a legal start time for 1.5-hour meetings (30 meetings: rows 4, 9, 12, 15, 18 and 25 more). To make it
-> one, add it in Academic Years and check again.
+> one, add it in Configuration, under Scheduling, and check again.
 
 - **Grouping key:** the warning's kind plus the value(s) it is about. Rows whose warning would read the same, apart
   from the row number, share one line:
@@ -529,7 +530,7 @@ time, gets **one** warning, not 30:
 - **Rows:** listed in file order. The first five are named and the rest counted ("and 25 more"), so a line never
   grows long. The count says what's being counted ("30 meetings", "12 sections").
 - **A hint when there's a real fix:** the line says how to make the warning go away, where TermPoint can do it (add
-  the start time in Academic Years; reactivate the course in Courses), then check again.
+  the start time in Configuration, under Scheduling; reactivate the course in Courses), then check again.
 - **Order:** file-wide warnings first, then the rest by the first row they affect.
 - **What isn't grouped: problems (errors).** Each problem must be fixed in its own row, and Copy list gives one line
   per row (Row, Column, Problem) so the user can sort it and tick rows off in Excel. But a fault that isn't really
@@ -556,7 +557,7 @@ warning when, against an existing value **of the same kind** or another new one:
   (`Lab 1` / `Lab 2`, `Year 1` / `Year 2`, `Lab` / `Lab 1`): numbers mark distinct things;
 - **rooms:** the **building** is new. Neighbouring room numbers differ by one character by nature, so comparing
   numbers would flag every room. A new building is rare and worth a look ("Will add building SCIENCE. SCI already
-  exists.").
+  exists."). *Refined in step 24.4 (2026-10-24): only when the new building is a near miss of an existing (or another new) building. Warning about every new building would bury a first import into an empty database, and the preview already lists every new record.*
 
 The message names both values as typed: "Will add tag Writng. Writing already exists."
 
@@ -596,7 +597,7 @@ file. A warning on every row tells the user nothing and buries the warnings that
 problem). So:
 - no per-row legal-start-time warnings are produced;
 - the preview shows **one** warning, with no row number: "2026-2027 has no legal start times set up, so start times
-  weren't checked. You can add them in Academic Years.";
+  weren't checked. You can add them in Configuration, under Scheduling.";
 - nothing else changes. The 07:30–22:00 limits (D3) don't depend on legal start times and are always checked.
 
 The editor behaves the same way in that state: its Start list is empty and any time can be typed. "A length that

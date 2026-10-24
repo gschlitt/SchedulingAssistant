@@ -45,7 +45,7 @@ public sealed record ImportPlan(
 /// look, what will be skipped, and what will be created.
 /// </summary>
 /// <param name="Problems">Faults in the file; any problem means nothing is imported. Ordered by row (file-wide first).</param>
-/// <param name="Warnings">Grouped warnings that do not block the import. Empty until step 24.4.</param>
+/// <param name="Warnings">Grouped warnings that do not block the import, ordered file-wide first, then by first row.</param>
 /// <param name="SkippedSections">The sections already in the open semester, skipped whole.</param>
 /// <param name="Plan">What the import will create.</param>
 /// <param name="SemesterWasEmpty">True when the open semester had no sections before the import (for the "done" message).</param>

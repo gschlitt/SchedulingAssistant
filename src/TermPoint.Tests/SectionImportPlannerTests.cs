@@ -333,7 +333,7 @@ public class SectionImportPlannerTests
             Sheet(
                 Sec(2, "CHEM", "199", "A", (C.CourseTitle, "")),
                 Sec(3, "CHEM", "199", "B", (C.CourseTitle, "Topics")),
-                Sec(4, "CHEM", "199", "C", (C.CourseTitle, "Other"))),
+                Sec(4, "CHEM", "199", "C", (C.CourseTitle, "topics"))),
             Snapshot());
 
         Assert.Empty(report.Problems);

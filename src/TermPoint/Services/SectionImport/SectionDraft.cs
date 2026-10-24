@@ -24,8 +24,8 @@ public sealed record MeetingRowDraft(
 
 /// <summary>
 /// One section of the import file: all the rows that share a <see cref="SectionKey"/>, with every
-/// value they name resolved to an existing or a new record. Step 24.4 adds what is left (rows must
-/// agree, capacity, day-by-day meetings, and the warnings), reading the raw text kept here.
+/// value they name resolved to an existing or a new record, plus (step 24.4) its final capacity, tag
+/// ids, level and day-by-day meetings, computed from the raw text kept here.
 /// <para>
 /// A draft for a section that is already in the semester has <see cref="AlreadyExists"/> set and
 /// resolves nothing beyond its course: it is skipped whole and its other cells are never looked at.
@@ -72,6 +72,27 @@ public sealed class SectionDraft
 
     /// <summary>One entry per row, in file order; empty for a skipped section.</summary>
     public IReadOnlyList<MeetingRowDraft> MeetingRows { get; init; } = Array.Empty<MeetingRowDraft>();
+
+    /// <summary>
+    /// The section's final capacity (step 24.4, design D1): the file's number; when blank, the
+    /// course's capacity, else the default section capacity, else null.
+    /// </summary>
+    public int? Capacity { get; init; }
+
+    /// <summary>
+    /// The ids of the section's tags (design D2): the file's tags first, then the course's own tags
+    /// that are not already included, without repeats.
+    /// </summary>
+    public IReadOnlyList<string> TagIds { get; init; } = Array.Empty<string>();
+
+    /// <summary>The section's level, copied from its course as the editor does; empty for a new course.</summary>
+    public string Level { get; init; } = string.Empty;
+
+    /// <summary>
+    /// The section's meetings, one per day per valid <see cref="MeetingRows"/> entry. A row with a
+    /// problem makes none (the problem stops the import anyway).
+    /// </summary>
+    public IReadOnlyList<MeetingDraft> Meetings { get; init; } = Array.Empty<MeetingDraft>();
 
     /// <summary>
     /// The (row number, trimmed text) of one column across the section's rows, in file order,

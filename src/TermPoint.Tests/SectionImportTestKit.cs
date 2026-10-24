@@ -76,9 +76,45 @@ internal static class SectionImportTestKit
         IEnumerable<SchedulingEnvironmentValue>? meetingTypes = null,
         IEnumerable<SchedulingEnvironmentValue>? tags = null,
         IEnumerable<Campus>? campuses = null,
-        IEnumerable<Room>? rooms = null) =>
+        IEnumerable<Room>? rooms = null,
+        IEnumerable<LegalStartTime>? legalStartTimes = null,
+        int? defaultSectionCapacity = null,
+        bool includeSaturday = false,
+        bool includeSunday = false) =>
         new(OpenSemester, new AcademicYear { Id = "ay-1", Name = AcademicYearName },
-            subjects, courses, instructors, sections, sectionTypes, meetingTypes, tags, campuses, rooms);
+            subjects, courses, instructors, sections, sectionTypes, meetingTypes, tags, campuses, rooms,
+            legalStartTimes, defaultSectionCapacity, includeSaturday, includeSunday);
+
+    /// <summary>
+    /// Builds a row for a section that meets once: the key cells plus Meeting Days, Begin and End,
+    /// and any further cells.
+    /// </summary>
+    /// <param name="rowNumber">The row number.</param>
+    /// <param name="subject">Subject cell.</param>
+    /// <param name="number">Course Number cell.</param>
+    /// <param name="code">Section Code cell.</param>
+    /// <param name="days">Meeting Days cell.</param>
+    /// <param name="begin">Begin cell.</param>
+    /// <param name="end">End cell.</param>
+    /// <param name="cells">Further (column, value) pairs.</param>
+    public static ImportRow Mtg(int rowNumber, string subject, string number, string code,
+        string days, string begin, string end, params (string Column, string Value)[] cells)
+    {
+        var all = new List<(string Column, string Value)>
+        {
+            (SectionImportColumns.MeetingDays, days),
+            (SectionImportColumns.Begin, begin),
+            (SectionImportColumns.End, end),
+        };
+        all.AddRange(cells);
+        return Sec(rowNumber, subject, number, code, all.ToArray());
+    }
+
+    /// <summary>A legal start time entry for a block length, with start times given as HHMM numbers (1030 = 10:30).</summary>
+    /// <param name="hours">The block length in hours.</param>
+    /// <param name="hhmm">The start times, as HHMM numbers.</param>
+    public static LegalStartTime Legal(double hours, params int[] hhmm) =>
+        new() { BlockLength = hours, StartTimes = hhmm.Select(t => t / 100 * 60 + t % 100).ToList() };
 
     /// <summary>A subject record.</summary>
     public static Subject Subj(string abbreviation, string? name = null) =>
