@@ -395,6 +395,7 @@
                                             MinWidth="60"
                                             CornerRadius="4"
                                             FontSize="11"
+                                            Classes.unset="{Binding IsDayUnset}"
                                             ItemsSource="{Binding AvailableDays}"
                                             SelectedValue="{Binding SelectedDay}"
                                             SelectedValueBinding="{Binding Day}">
@@ -508,6 +509,7 @@
                                             CornerRadius="4"
                                             DisplayMemberBinding="{Binding Name}"
                                             FontSize="11"
+                                            Classes.unset="{Binding IsMeetingTypeUnset}"
                                             ItemsSource="{Binding MeetingTypes}"
                                             SelectedValue="{Binding SelectedMeetingTypeId}"
                                             SelectedValueBinding="{Binding Id}" />
@@ -522,6 +524,7 @@
                                             CornerRadius="4"
                                             DisplayMemberBinding="{Binding Name}"
                                             FontSize="11"
+                                            Classes.unset="{Binding IsRoomTypeUnset}"
                                             ItemsSource="{Binding RoomTypeOptions}"
                                             SelectedItem="{Binding SelectedRoomType}" />
 
@@ -535,6 +538,7 @@
                                             IsEnabled="{Binding IsRoomEnabled}"
                                             CornerRadius="4"
                                             FontSize="11"
+                                            Classes.unset="{Binding IsRoomUnset}"
                                             ItemsSource="{Binding FilteredRooms}"
                                             SelectedValue="{Binding SelectedRoomId}"
                                             SelectedValueBinding="{Binding Id}">
@@ -576,13 +580,14 @@
 
                     <!-- Room Availability Browser (compact inline controls) -->
                    
+                    <!--  No negative left margin: anything outside the editor's left edge is clipped.  -->
                     <Grid ColumnDefinitions="125,Auto,Auto,*" RowDefinitions="Auto,Auto" ShowGridLines="False"
-                          Margin="-2,6,0,0"
+                          Margin="0,6,0,0"
                           IsVisible="{Binding CreateRoomBrowser, Converter={x:Static ObjectConverters.IsNotNull}}" >
 
                       <!-- Row 0, Col 0: Room Browser button + help icon -->
                       <Panel Grid.Row="0" Grid.Column="0" HorizontalAlignment="Left">
-                        <Button Padding="2,2,2,2"
+                        <Button Padding="4,2"
                                 Command="{Binding OpenRoomBrowserCommand}"
                                 HorizontalAlignment="Left"
                                 Content="Room Browser"
@@ -989,9 +994,12 @@
                 </StackPanel>
                 <!--  End AreOtherFieldsEnabled gate  -->
 
-                <!--  Save / Cancel (bottom)  -->
+                <!--
+                    Save / Cancel (bottom). The 2 px bottom margin keeps the buttons' bottom border off
+                    the editor's bottom edge, where layout rounding of the fractional height can clip it.
+                -->
                 <StackPanel
-                    Margin="0,6,0,0"
+                    Margin="0,6,0,2"
                     Orientation="Horizontal"
                     Spacing="6">
                     <Button
