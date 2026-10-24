@@ -7,6 +7,7 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
+using System.Runtime.CompilerServices;
 using Xunit;
 
 namespace TermPoint.Tests;
@@ -232,6 +233,91 @@ public class EditorFlowTests
         Assert.NotNull(savedSection);
     }
 
+    /// <summary>
+    /// Builds a section editor that has passed the step-gate (course + validated section code),
+    /// so Save reaches the meeting-completeness checks. Records whether onSave ran.
+    /// </summary>
+    /// <param name="saved">Set to true by the editor's onSave callback.</param>
+    private static SectionEditViewModel MakeUnlockedSectionEditVm(StrongBox<bool> saved)
+    {
+        var vm = MakeSectionEditVm(
+            new Section(),
+            onSave: _ => { saved.Value = true; return Task.CompletedTask; });
+        vm.SelectedCourseId = "c-1";
+        vm.SectionCode      = "A";
+        vm.CommitSectionCode();
+        return vm;
+    }
+
+    [Fact]
+    public void SectionEdit_Save_MeetingWithStartTimeOnly_NamesMissingBlockLength()
+    {
+        var saved = new StrongBox<bool>();
+        var vm = MakeUnlockedSectionEditVm(saved);
+        vm.AddMeetingCommand.Execute(null);
+        vm.Meetings[0].SelectedDay       = 1;
+        vm.Meetings[0].SelectedStartTime = 9 * 60;
+
+        vm.SaveCommand.Execute(null);
+
+        Assert.False(saved.Value, "An incomplete meeting must block Save.");
+        Assert.Equal("One meeting has a start time but no block length. Please complete it or delete it.",
+            vm.LastErrorMessage);
+    }
+
+    [Fact]
+    public void SectionEdit_Save_MeetingWithBlockLengthOnly_NamesMissingStartTime()
+    {
+        var saved = new StrongBox<bool>();
+        var vm = MakeUnlockedSectionEditVm(saved);
+        var meeting = AddMeetingWithDuration(vm, blockLengthHours: 1.5);
+        meeting.SelectedDay = 1;
+
+        vm.SaveCommand.Execute(null);
+
+        Assert.False(saved.Value, "An incomplete meeting must block Save.");
+        Assert.Equal("One meeting has a block length but no start time. Please complete it or delete it.",
+            vm.LastErrorMessage);
+    }
+
+    [Fact]
+    public void SectionEdit_Save_TwoIncompleteMeetings_ReportsCount()
+    {
+        var saved = new StrongBox<bool>();
+        var vm = MakeUnlockedSectionEditVm(saved);
+        AddMeetingWithDuration(vm).SelectedDay = 1;   // length, no start
+        vm.AddMeetingCommand.Execute(null);
+        vm.Meetings[^1].SelectedDay       = 3;
+        vm.Meetings[^1].SelectedStartTime = 10 * 60;  // start, no length
+
+        vm.SaveCommand.Execute(null);
+
+        Assert.False(saved.Value, "Incomplete meetings must block Save.");
+        Assert.Equal("2 meetings are incomplete. Each needs both a start time and block length.",
+            vm.LastErrorMessage);
+    }
+
+    [Fact]
+    public void SectionEdit_Save_TwoCompleteMeetingsWithNoDay_ReportsCount()
+    {
+        var saved = new StrongBox<bool>();
+        var vm = MakeUnlockedSectionEditVm(saved);
+        // Start time first: committing a start time clears a block length that isn't legal for
+        // it, and this editor has no legal start times configured. Day left at "(any)".
+        foreach (var start in new[] { 9 * 60, 13 * 60 })
+        {
+            vm.AddMeetingCommand.Execute(null);
+            vm.Meetings[^1].SelectedStartTime   = start;
+            vm.Meetings[^1].SelectedBlockLength = 1.0;
+        }
+
+        vm.SaveCommand.Execute(null);
+
+        Assert.False(saved.Value, "Meetings with no day must block Save.");
+        Assert.Equal("2 meetings have no day assigned. Use Browse to assign days, or select days manually.",
+            vm.LastErrorMessage);
+    }
+
     // ══════════════════════════════════════════════════════════════════════════
     // MeetingEditViewModel — Title Gate & Save Behaviour
     // ══════════════════════════════════════════════════════════════════════════
@@ -352,6 +438,106 @@ public class EditorFlowTests
         Assert.True(completed, "EditCompleted must fire on cancel.");
         repo.Verify(r => r.Insert(It.IsAny<Meeting>()), Times.Never,
             "Cancel must not persist anything.");
+    }
+
+    // ── Meeting-time completeness checks on Save (shared with the section editor) ──
+
+    [Fact]
+    public void MeetingEdit_Save_SlotWithStartTimeOnly_RefusesAndNamesMissingBlockLength()
+    {
+        var (vm, repo, _) = MakeMeetingEditVm();
+        bool completed = false;
+        vm.EditCompleted += () => completed = true;
+        vm.Title = "Budget Review";
+        vm.AddSlotCommand.Execute(null);
+        vm.Slots[0].SelectedDay       = 2;
+        vm.Slots[0].SelectedStartTime = 9 * 60;
+
+        vm.SaveCommand.Execute(null);
+
+        repo.Verify(r => r.Insert(It.IsAny<Meeting>()), Times.Never,
+            "An incomplete meeting time must block Save.");
+        Assert.False(completed, "The editor must stay open so the user can fix the meeting time.");
+        Assert.Equal("One meeting time has a start time but no block length. Please complete it or delete it.",
+            vm.LastErrorMessage);
+    }
+
+    [Fact]
+    public void MeetingEdit_Save_SlotWithBlockLengthOnly_RefusesAndNamesMissingStartTime()
+    {
+        var (vm, repo, _) = MakeMeetingEditVm();
+        vm.Title = "Budget Review";
+        AddSlotWithDuration(vm).SelectedDay = 2;
+
+        vm.SaveCommand.Execute(null);
+
+        repo.Verify(r => r.Insert(It.IsAny<Meeting>()), Times.Never,
+            "An incomplete meeting time must block Save.");
+        Assert.Equal("One meeting time has a block length but no start time. Please complete it or delete it.",
+            vm.LastErrorMessage);
+    }
+
+    [Fact]
+    public void MeetingEdit_Save_CompleteSlotWithNoDay_RefusesAndAsksForDay()
+    {
+        var (vm, repo, _) = MakeMeetingEditVm();
+        vm.Title = "Budget Review";
+        // Start time first: committing a start time clears a block length that isn't legal for
+        // it, and this editor has no legal start times configured. Day left at 0, "(any)".
+        vm.AddSlotCommand.Execute(null);
+        vm.Slots[0].SelectedStartTime   = 9 * 60;
+        vm.Slots[0].SelectedBlockLength = 1.0;
+
+        vm.SaveCommand.Execute(null);
+
+        repo.Verify(r => r.Insert(It.IsAny<Meeting>()), Times.Never,
+            "A meeting time with no day must block Save.");
+        Assert.Equal("One meeting time has no day assigned. Use Browse to assign days, or select a day manually.",
+            vm.LastErrorMessage);
+    }
+
+    [Fact]
+    public void MeetingEdit_Save_CompleteSlot_SavesItAndClearsEarlierError()
+    {
+        Meeting? saved = null;
+        var repo = new Mock<IMeetingRepository>();
+        repo.Setup(r => r.Insert(It.IsAny<Meeting>())).Callback<Meeting>(m => saved = m);
+        var (vm, _, _) = MakeMeetingEditVm(meetingRepo: repo);
+        vm.Title = "Budget Review";
+        vm.AddSlotCommand.Execute(null);
+        var slot = vm.Slots[0];
+        slot.SelectedDay       = 2;
+        slot.SelectedStartTime = 9 * 60;
+
+        vm.SaveCommand.Execute(null);                 // refused: no block length yet
+        Assert.NotNull(vm.LastErrorMessage);
+
+        slot.SelectedBlockLength = 1.5;
+        vm.SaveCommand.Execute(null);
+
+        Assert.Null(vm.LastErrorMessage);
+        Assert.NotNull(saved);
+        var entry = Assert.Single(saved!.Schedule);
+        Assert.Equal(2, entry.Day);
+        Assert.Equal(9 * 60, entry.StartMinutes);
+        Assert.Equal(90, entry.DurationMinutes);
+    }
+
+    [Fact]
+    public void MeetingEdit_Save_UntouchedSlot_IsAllowedAndLeftOut()
+    {
+        Meeting? saved = null;
+        var repo = new Mock<IMeetingRepository>();
+        repo.Setup(r => r.Insert(It.IsAny<Meeting>())).Callback<Meeting>(m => saved = m);
+        var (vm, _, _) = MakeMeetingEditVm(meetingRepo: repo);
+        vm.Title = "Budget Review";
+        vm.AddSlotCommand.Execute(null);              // no day, start time or block length
+
+        vm.SaveCommand.Execute(null);
+
+        Assert.Null(vm.LastErrorMessage);
+        Assert.NotNull(saved);
+        Assert.Empty(saved!.Schedule);
     }
 
     // ══════════════════════════════════════════════════════════════════════════

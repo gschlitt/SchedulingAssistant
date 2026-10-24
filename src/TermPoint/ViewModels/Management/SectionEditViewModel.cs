@@ -1040,31 +1040,13 @@ public partial class SectionEditViewModel : ViewModelBase
             return;
         }
 
-        // Guard: validate all meetings have both start time and block length.
+        // Guard: every meeting needs both a start time and block length, and a real day.
         // The error is set on this VM's LastErrorMessage so it appears inside the editor,
         // close to where the user is working, rather than at the top of the section list.
-        var incomplete = Meetings
-            .Where(m => (m.SelectedStartTime.HasValue && !m.SelectedBlockLength.HasValue) ||
-                        (!m.SelectedStartTime.HasValue && m.SelectedBlockLength.HasValue))
-            .ToList();
-        if (incomplete.Any())
+        var meetingProblem = MeetingTimeValidator.Validate(Meetings, "meeting", "meetings");
+        if (meetingProblem is not null)
         {
-            LastErrorMessage = incomplete.Count == 1
-                ? "One meeting has a start time but no block length. Please complete it or delete it."
-                : $"{incomplete.Count} meetings are incomplete. Each needs both a start time and block length.";
-            return;
-        }
-
-        // Guard: meetings with day "(any)" (sentinel 0) cannot be saved — they are
-        // placeholders for the Room Availability Browser to fill in.
-        var unassignedDay = Meetings
-            .Where(m => m.SelectedDay == 0 && (m.SelectedStartTime.HasValue || m.SelectedBlockLength.HasValue))
-            .ToList();
-        if (unassignedDay.Any())
-        {
-            LastErrorMessage = unassignedDay.Count == 1
-                ? "One meeting has no day assigned. Use Browse to assign days, or select a day manually."
-                : $"{unassignedDay.Count} meetings have no day assigned. Use Browse to assign days, or select days manually.";
+            LastErrorMessage = meetingProblem;
             return;
         }
 
