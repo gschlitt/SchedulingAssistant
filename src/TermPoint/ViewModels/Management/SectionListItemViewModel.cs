@@ -15,6 +15,17 @@ public partial class SectionListItemViewModel : ObservableObject, ISectionListEn
 {
     public Section Section { get; }
     public string Heading { get; }
+
+    /// <summary>
+    /// Builds a section's heading the way every card shows it: "[CalendarCode] [SectionCode]" (for example
+    /// "HIST101 A"), or just the section code when the course is unknown. Shared with the messages that name a
+    /// section that has no card, so both always read the same.
+    /// </summary>
+    /// <param name="calendarCode">The course's calendar code, or null when the course is unknown.</param>
+    /// <param name="sectionCode">The section code.</param>
+    /// <returns>The heading text.</returns>
+    internal static string BuildHeading(string? calendarCode, string sectionCode) =>
+        calendarCode is not null ? $"{calendarCode} {sectionCode}".Trim() : sectionCode;
     public IReadOnlyList<string> ScheduleLines { get; }
 
     // New: meeting details with meeting type for expanded display
@@ -258,9 +269,7 @@ public partial class SectionListItemViewModel : ObservableObject, ISectionListEn
             ? course.CalendarCode
             : null;
 
-        Heading = calendarCode is not null
-            ? $"{calendarCode} {section.SectionCode}".Trim()
-            : section.SectionCode;
+        Heading = BuildHeading(calendarCode, section.SectionCode);
 
         ScheduleLines = section.Schedule
             .OrderBy(s => s.Day).ThenBy(s => s.StartMinutes)

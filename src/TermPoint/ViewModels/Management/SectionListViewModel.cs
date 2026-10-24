@@ -226,8 +226,8 @@ public partial class SectionListViewModel : ViewModelBase, IDisposable
     /// chosen focus has no sections in the loaded semesters. Only meaningful while <see cref="IsFocusEmpty"/> is true.
     /// </summary>
     public string FocusEmptyMessage => _focus.Current.Kind == FocusKind.None
-        ? "No subjects in focus. Choose the subjects you're working on to see their sections."
-        : "No sections in your focus in this semester.";
+        ? "No subjects chosen. Choose the subjects you're working on to see their sections."
+        : "No sections in the chosen subjects in this semester.";
 
     /// <summary>
     /// Recomputes <see cref="IsFocusEmpty"/> (and the message) from the current state and raises PropertyChanged.
@@ -1374,12 +1374,75 @@ public partial class SectionListViewModel : ViewModelBase, IDisposable
     /// async void is intentional: this method is assigned as an <see cref="Action{T}"/> delegate
     /// and must match that signature; exceptions are surfaced via the Avalonia dispatcher.
     /// </summary>
-    public async void EditSectionById(string sectionId)
+    public async void EditSectionById(string sectionId) => await EditSectionByIdAsync(sectionId);
+
+    /// <summary>
+    /// The awaitable body of <see cref="EditSectionById"/> (which must be <c>async void</c> to fit an
+    /// <see cref="Action{T}"/> delegate): opens the section's editor, or, when the section has no card because it is
+    /// outside the chosen subjects, offers to widen them first (see <see cref="EditSectionOutsideChosenSubjects"/>).
+    /// Tests await this directly.
+    /// </summary>
+    /// <param name="sectionId">The id of the double-clicked section.</param>
+    internal async Task EditSectionByIdAsync(string sectionId)
     {
-        var item = SectionItems.OfType<SectionListItemViewModel>()
-                               .FirstOrDefault(i => i.Section.Id == sectionId);
-        if (item is null) return;
+        var item = FindCard(sectionId);
+        if (item is null)
+        {
+            // No card: the section is outside the chosen subjects (a grid overlay can show it). Offer to widen them.
+            await EditSectionOutsideChosenSubjects(sectionId);
+            return;
+        }
         await EditItem(item);
+    }
+
+    /// <summary>The card showing the section with this id, or null when the list has none (outside the chosen subjects).</summary>
+    /// <param name="sectionId">The section id.</param>
+    private SectionListItemViewModel? FindCard(string sectionId) =>
+        SectionItems.OfType<SectionListItemViewModel>().FirstOrDefault(i => i.Section.Id == sectionId);
+
+    /// <summary>
+    /// Handles a double-click on a grid tile whose section has no card because its subject is not one of the
+    /// chosen subjects. A section the store does not hold is ignored, as before. An open editor is handled by the
+    /// usual guard, with no question asked. Otherwise the user is asked whether to add the section's subject to the
+    /// chosen subjects and edit it; Cancel changes nothing at all. When the section's subject cannot be worked out
+    /// (unknown course, or a course with no subject) the question offers to show all subjects instead.
+    /// <para>
+    /// Rule 3 (never lose unsaved work) holds because the focus service itself refuses a change while an editor is
+    /// open; if an editor appeared while the question was showing, nothing changes and the usual "finish editing
+    /// first" message is shown.
+    /// </para>
+    /// </summary>
+    /// <param name="sectionId">The id of the double-clicked section.</param>
+    private async Task EditSectionOutsideChosenSubjects(string sectionId)
+    {
+        var section = _sectionStore.Sections.FirstOrDefault(s => s.Id == sectionId);
+        if (section is null) return;
+
+        if (await IsEditorBusy()) return;
+
+        // Name the section the way its card would, and find its subject.
+        var course = section.CourseId is null ? null : _courseRepo.GetById(section.CourseId);
+        var heading = SectionListItemViewModel.BuildHeading(course?.CalendarCode, section.SectionCode);
+        var subject = string.IsNullOrEmpty(course?.SubjectId) ? null : _subjectRepo.GetById(course!.SubjectId);
+
+        var message = subject is null
+            ? $"{heading} isn't in any of your chosen subjects."
+            : $"{heading} is in {subject.Name}, which isn't one of your chosen subjects.";
+        var confirmLabel = subject is null ? "Show all subjects and edit" : $"Add {subject.Name} and edit";
+
+        if (!await _dialog.Confirm(message, confirmLabel)) return;
+
+        // The service refuses while an editor is open (one may have opened while the question was showing).
+        // A successful change rebuilds this list through FocusChanged before the next line runs.
+        var changed = subject is null ? _focus.SetFocus(SubjectFocus.All) : _focus.AddSubject(subject.Id);
+        if (!changed)
+        {
+            await IsEditorBusy();
+            return;
+        }
+
+        var item = FindCard(sectionId);
+        if (item is not null) await EditItem(item);
     }
 
     private void OpenEdit(Section section, bool isNew, SectionListItemViewModel? listItem)

@@ -28,6 +28,15 @@
 			<!--  Tallest the Focus picker's subject checklist grows before it scrolls  -->
 			<x:Double x:Key="FocusPickerListMaxHeight">220</x:Double>
 
+			<!--  Widest the top bar's Subjects button grows before its text is trimmed (the tooltip shows the full list)  -->
+			<x:Double x:Key="SubjectsButtonMaxWidth">220</x:Double>
+
+			<!--
+				Weight of the top bar's "where am I working" context: the Academic Year, Semester and Subjects labels and
+				their chosen values. Heavier than the static menu items, so the user's current context stands out.
+			-->
+			<FontWeight x:Key="TopBarContextWeight">SemiBold</FontWeight>
+
 			<!--  Converters  -->
 			<conv:MinutesToTimeConverter x:Key="MinutesToTimeConverter" />
 			<conv:MultiSemesterLeftBorderThicknessConverter x:Key="MultiSemesterLeftBorderThicknessConverter" />

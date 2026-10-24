@@ -420,6 +420,20 @@ Steps 2–7 edit AXAML: warn the user before each so they can close the tab in V
 > - **The detached Schedule View header** now wraps (a WrapPanel, like the inline header).
 > - **Still open:** what double-clicking an out-of-focus overlay tile should do (today: nothing);
 >   the filter lists (step 4); steps 6–8. The user is watching for "Focus" vs "Filter" confusion.
+>
+> **Naming and placement (decided 2026-10-23, prototype).** "Focus" read too much like "Filter".
+> The focus is a coordinate of *where you're working*, the same kind of setting as the semester:
+> picking Fall already hides Winter sections, and nobody calls that a filter. So:
+> - **A "Subjects:" picker in the top bar**, after Academic Year and Semester:
+>   `Academic Year: [2025-2026]  Semester: [Fall]  Subjects: [BIOL, CHEM]`. It reads "All", "Choose…"
+>   (None) or the abbreviations, trimmed at `SubjectsButtonMaxWidth` with the full list in a tooltip.
+> - **The word "Focus" is gone from user-visible text.** The empty state reads "No subjects chosen…",
+>   with [Choose subjects] / [All subjects]. Code names (`FocusService` and so on) are unchanged.
+> - **The header statements and the section panel's Focus button are commented out**, not deleted
+>   (MainView.axaml, SectionPanelContent.axaml, MainWindow.axaml.cs), in case they're wanted back.
+> - **The top bar's context stands out:** the Academic Year, Semester and Subjects labels and values
+>   use `TopBarContextWeight` (SemiBold) from App.axaml; the static menu items don't.
+> - In this document "focus" still names the concept; users see "Subjects".
 
 2. **Section-list Hide and empty state.**
    - Build cards only for in-focus sections, on load and in every incremental path, and rebuild on

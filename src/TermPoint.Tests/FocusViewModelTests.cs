@@ -156,6 +156,89 @@ public sealed class FocusViewModelTests : IDisposable
         Assert.False(vm.IsIndicatorVisible);
     }
 
+    // ── Subjects label (top-bar button) ────────────────────────────────────────
+
+    /// <summary>Under All the top-bar Subjects button reads "All".</summary>
+    [Fact]
+    public void SubjectsLabel_UnderAll_IsAll()
+    {
+        AddSubjects(4);
+        var (_, vm) = Make();
+
+        Assert.Equal("All", vm.SubjectsLabel);
+    }
+
+    /// <summary>Under None the button invites a choice.</summary>
+    [Fact]
+    public void SubjectsLabel_UnderNone_IsChoose()
+    {
+        AddSubjects(4);
+        var (svc, vm) = Make();
+
+        svc.SetFocus(SubjectFocus.None);
+
+        Assert.Equal("Choose…", vm.SubjectsLabel);
+    }
+
+    /// <summary>One chosen subject: just its abbreviation.</summary>
+    [Fact]
+    public void SubjectsLabel_OneSubject()
+    {
+        AddSubjects(4);
+        var biol = AddSubject("BIOL", "Biology");
+        var (svc, vm) = Make();
+
+        svc.SetFocus(SubjectFocus.ForSubjects([biol.Id]));
+
+        Assert.Equal("BIOL", vm.SubjectsLabel);
+    }
+
+    /// <summary>Two chosen subjects are listed sorted, whatever order they were ticked in.</summary>
+    [Fact]
+    public void SubjectsLabel_TwoSubjects_Sorted()
+    {
+        AddSubjects(4);
+        var chem = AddSubject("CHEM", "Chemistry");
+        var biol = AddSubject("BIOL", "Biology");
+        var (svc, vm) = Make();
+
+        svc.SetFocus(SubjectFocus.ForSubjects([chem.Id, biol.Id]));
+
+        Assert.Equal("BIOL, CHEM", vm.SubjectsLabel);
+    }
+
+    /// <summary>A subject with a blank abbreviation is named by its name instead.</summary>
+    [Fact]
+    public void SubjectsLabel_BlankAbbreviation_FallsBackToName()
+    {
+        AddSubjects(4);
+        var odd = AddSubject("", "Interdisciplinary");
+        var (svc, vm) = Make();
+
+        svc.SetFocus(SubjectFocus.ForSubjects([odd.Id]));
+
+        Assert.Equal("Interdisciplinary", vm.SubjectsLabel);
+    }
+
+    /// <summary>The label follows a change made elsewhere, and the tooltip names the subjects or says to finish editing.</summary>
+    [Fact]
+    public void SubjectsLabel_FollowsExternalChange_AndToolTipTracksGuard()
+    {
+        var list = AddSubjects(4);
+        var (svc, vm) = Make();
+
+        svc.SetFocus(SubjectFocus.ForSubjects([list[1].Id]));
+        Assert.Equal("S2", vm.SubjectsLabel);
+        Assert.Equal("Subjects: S2", vm.SubjectsToolTip);
+
+        svc.SetEditorOpen(true);
+        Assert.Equal("Finish editing first", vm.SubjectsToolTip);
+        svc.SetEditorOpen(false);
+
+        svc.SetFocus(SubjectFocus.All);
+        Assert.Equal("All", vm.SubjectsLabel);
+    }
+
     // ── Picker ─────────────────────────────────────────────────────────────────
 
     /// <summary>Opening the picker lists every subject sorted by abbreviation and opens the popup.</summary>

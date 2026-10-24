@@ -80,6 +80,7 @@ public sealed partial class FocusViewModel : ObservableObject, IDisposable
         _focus.PropertyChanged += OnFocusServicePropertyChanged;
 
         RefreshIndicator();
+        RefreshSubjectsLabel();
     }
 
     // ── Indicator ──────────────────────────────────────────────────────────────
@@ -110,6 +111,63 @@ public sealed partial class FocusViewModel : ObservableObject, IDisposable
     /// when the control is disabled.
     /// </summary>
     public string ChangeFocusToolTip => CanChangeFocus ? "Choose which subjects to work on" : FinishEditingFirst;
+
+    /// <summary>The top-bar Subjects button's text under All.</summary>
+    public const string SubjectsAllText = "All";
+
+    /// <summary>The top-bar Subjects button's text under None (nothing chosen yet).</summary>
+    public const string SubjectsNoneText = "Choose…";
+
+    /// <summary>
+    /// The text of the top-bar Subjects button, a peer of the Academic Year and Semester pickers: "All" under All,
+    /// "Choose…" under None, and the sorted labels ("BIOL, CHEM") under a Subjects focus (a blank abbreviation
+    /// falls back to the subject's name). Always non-empty, unlike <see cref="IndicatorText"/>.
+    /// </summary>
+    [ObservableProperty] private string _subjectsLabel = SubjectsAllText;
+
+    /// <summary>
+    /// The tooltip of the top-bar Subjects button: "Finish editing first" while an editor is open, otherwise the
+    /// full list of chosen subjects (the button itself may trim a long list) or the generic description.
+    /// </summary>
+    public string SubjectsToolTip => !CanChangeFocus
+        ? FinishEditingFirst
+        : _focus.Current.Kind == FocusKind.Subjects ? $"Subjects: {SubjectsLabel}" : ChangeFocusToolTip;
+
+    /// <summary>
+    /// Rebuilds <see cref="SubjectsLabel"/> from the current focus and the subjects in the database. A subject list
+    /// that cannot be read is logged and leaves a generic text.
+    /// </summary>
+    private void RefreshSubjectsLabel()
+    {
+        var focus = _focus.Current;
+        switch (focus.Kind)
+        {
+            case FocusKind.All:
+                SubjectsLabel = SubjectsAllText;
+                break;
+            case FocusKind.None:
+                SubjectsLabel = SubjectsNoneText;
+                break;
+            default:
+                try
+                {
+                    // Only subjects that still exist are named; a deleted one is pruned by the service.
+                    var labels = _subjectRepo.GetAll()
+                        .Where(s => focus.ContainsSubject(s.Id))
+                        .Select(LabelOf)
+                        .OrderBy(l => l, StringComparer.OrdinalIgnoreCase)
+                        .ToList();
+                    SubjectsLabel = labels.Count == 0 ? SubjectsNoneText : string.Join(", ", labels);
+                }
+                catch (Exception ex)
+                {
+                    App.Logger.LogInfo($"[FocusViewModel] Could not read subjects for the label: {ex.Message}");
+                    SubjectsLabel = "Some subjects";
+                }
+                break;
+        }
+        OnPropertyChanged(nameof(SubjectsToolTip));
+    }
 
     /// <summary>The short label of a subject: its calendar abbreviation, or its name when the abbreviation is blank.</summary>
     /// <param name="subject">The subject.</param>
@@ -247,6 +305,7 @@ public sealed partial class FocusViewModel : ObservableObject, IDisposable
     private void OnFocusChanged()
     {
         RefreshIndicator();
+        RefreshSubjectsLabel();
         OnPropertyChanged(nameof(CurrentFocus));
     }
 
@@ -260,6 +319,7 @@ public sealed partial class FocusViewModel : ObservableObject, IDisposable
 
         OnPropertyChanged(nameof(CanChangeFocus));
         OnPropertyChanged(nameof(ChangeFocusToolTip));
+        OnPropertyChanged(nameof(SubjectsToolTip));
         ShowAllCommand.NotifyCanExecuteChanged();
         AllCommand.NotifyCanExecuteChanged();
         NoneCommand.NotifyCanExecuteChanged();

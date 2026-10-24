@@ -274,11 +274,13 @@ public partial class ScheduleGridViewModel : ViewModelBase
         var section = _sectionRepo.GetById(sectionId);
         if (section is null) return;
 
-        var instructors = _instructorRepo.GetAll();
+        // Same grouping as the section editor's instructor chooser (spec item 20): in-focus instructors first, the
+        // rest dimmed under "Other instructors". Nobody is dropped.
+        var order       = _focus.OrderInstructorsForChooser(_instructorRepo.GetAll());
         var rooms       = _roomRepo.GetAll();
         var tags        = _propertyRepo.GetAll(SchedulingEnvironmentTypes.Tag);
 
-        ContextMenu.Load(section, day, startMinutes, instructors, rooms, tags);
+        ContextMenu.Load(section, day, startMinutes, order.Ordered, rooms, tags, order.OutOfFocusIds);
     }
 
     [RelayCommand]
@@ -588,6 +590,35 @@ public partial class ScheduleGridViewModel : ViewModelBase
     }
 
     /// <summary>
+    /// Narrows the lookups that feed the filter option lists to the subject focus (spec item 20, step 20.4): the
+    /// Subjects list keeps only focused subjects, the Courses list (the active courses) only courses of focused
+    /// subjects, and the Instructors list (the active instructors, which the overlay instructor list mirrors) only
+    /// instructors <see cref="FocusService.IsInFocus"/> accepts. Under None all three are empty. Under All the
+    /// lookups come back untouched. Every other list is left as it was. The full lookups used for tile display are
+    /// never narrowed; the narrowed copy is meant for <see cref="GridFilterViewModel.PopulateOptions"/> only.
+    /// </summary>
+    /// <param name="lookups">The full lookups built by <see cref="BuildLookups"/>.</param>
+    /// <param name="focus">The subject focus service.</param>
+    /// <returns>The lookups to pass to the filter, narrowed when the focus is not All.</returns>
+    internal static GridLookups NarrowFilterLookups(GridLookups lookups, FocusService focus)
+    {
+        if (focus.Current.Kind == FocusKind.All) return lookups;
+
+        return lookups with
+        {
+            Subjects = lookups.Subjects
+                .Where(kv => focus.Current.ContainsSubject(kv.Key))
+                .ToDictionary(kv => kv.Key, kv => kv.Value),
+            ActiveCourses = lookups.ActiveCourses
+                .Where(kv => focus.IsCourseInFocus(kv.Value))
+                .ToDictionary(kv => kv.Key, kv => kv.Value),
+            ActiveInstructors = lookups.ActiveInstructors
+                .Where(kv => focus.IsInFocus(kv.Value))
+                .ToDictionary(kv => kv.Key, kv => kv.Value),
+        };
+    }
+
+    /// <summary>
     /// Rebuilds all filter drop-down option lists from the current lookup data.
     /// Existing checkbox selections are preserved: <see cref="GridFilterViewModel.PopulateOptions"/>
     /// matches by entity ID rather than by list position.
@@ -596,9 +627,13 @@ public partial class ScheduleGridViewModel : ViewModelBase
     /// <see cref="TakeFilterSnapshot"/> so that the filter state is up-to-date before
     /// the snapshot is taken.
     /// </summary>
-    /// <param name="lookups">Entity lookups built by <see cref="BuildLookups"/>.</param>
-    private void PopulateFilterOptions(GridLookups lookups)
+    /// <param name="fullLookups">Entity lookups built by <see cref="BuildLookups"/> (narrowed here for the focus).</param>
+    private void PopulateFilterOptions(GridLookups fullLookups)
     {
+        // Under a Subjects focus (or None) the Subjects, Courses and Instructors lists offer only what is in the
+        // focus. A tick on an item that drops out is dropped by PopulateOptions (it re-ticks only items still listed).
+        var lookups = NarrowFilterLookups(fullLookups, _focus);
+
         Filter.PopulateOptions(
             lookups.ActiveInstructors,
             lookups.Rooms,

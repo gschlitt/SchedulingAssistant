@@ -1380,17 +1380,18 @@ public partial class MainWindow : Window, ILifecyclePrompts, ISessionHost
         // The detached header mirrors the inline one: the focus statement fills the width and the Events toggle
         // docks right. The statement shows in the Section View only (the wrapper Panel carries that condition,
         // because FocusIndicator's own DataContext is the FocusViewModel) and hides itself under focus All.
-        var focusPanel = new Panel
-        {
-            VerticalAlignment = VerticalAlignment.Center,
-            Children = { new FocusIndicator { DataContext = Vm.FocusVm } }
-        };
-        focusPanel.Bind(IsVisibleProperty, new Binding("IsShowingSections") { Source = Vm });
+        // Prototype 2026-10-23: subjects shown in the top bar instead; restore if the header statement is wanted back.
+        //var focusPanel = new Panel
+        //{
+        //    VerticalAlignment = VerticalAlignment.Center,
+        //    Children = { new FocusIndicator { DataContext = Vm.FocusVm } }
+        //};
+        //focusPanel.Bind(IsVisibleProperty, new Binding("IsShowingSections") { Source = Vm });
         toggleButton.Margin = new Thickness(6, 0, 0, 0);
         DockPanel.SetDock(toggleButton, Dock.Right);
         var headerContent = new DockPanel();
         headerContent.Children.Add(toggleButton);
-        headerContent.Children.Add(focusPanel);
+        //headerContent.Children.Add(focusPanel);
 
         // Null out PanelContent to prevent dual event firing while detached.
         slot.PanelContent = null;
@@ -1556,15 +1557,16 @@ public partial class MainWindow : Window, ILifecyclePrompts, ISessionHost
 
         // Subject focus (outermost layer, so before "Filtered by:"): separator + the shared statement control,
         // both hidden under focus All.
-        var focusSeparator = new Border
-        {
-            Width = 1,
-            Background = (IBrush)(this.FindResource("SeparatorLine") ?? Brushes.Gray),
-            Margin = new Thickness(0, 3)
-        };
-        focusSeparator.Bind(IsVisibleProperty, new Binding("IsIndicatorVisible") { Source = Vm.FocusVm });
-        stack.Children.Add(focusSeparator);
-        stack.Children.Add(new FocusIndicator { DataContext = Vm.FocusVm, VerticalAlignment = VerticalAlignment.Center });
+        // Prototype 2026-10-23: subjects shown in the top bar instead; restore if the header statement is wanted back.
+        //var focusSeparator = new Border
+        //{
+        //    Width = 1,
+        //    Background = (IBrush)(this.FindResource("SeparatorLine") ?? Brushes.Gray),
+        //    Margin = new Thickness(0, 3)
+        //};
+        //focusSeparator.Bind(IsVisibleProperty, new Binding("IsIndicatorVisible") { Source = Vm.FocusVm });
+        //stack.Children.Add(focusSeparator);
+        //stack.Children.Add(new FocusIndicator { DataContext = Vm.FocusVm, VerticalAlignment = VerticalAlignment.Center });
 
         // Filter separator
         var filterSeparator = new Border

@@ -57,27 +57,55 @@ public partial class SectionContextMenuViewModel : ObservableObject
         _lockService = lockService;
     }
 
+    /// <summary>
+    /// Fills the menu for the right-clicked tile: the section's instructors, the meeting's room, tags and flag.
+    /// </summary>
+    /// <param name="section">The section the tile belongs to.</param>
+    /// <param name="meetingDay">Day of the right-clicked meeting (identifies which meeting's room to edit).</param>
+    /// <param name="meetingStart">Start minutes of the right-clicked meeting.</param>
+    /// <param name="instructors">Every instructor, already in display order (in-focus first under chosen subjects).</param>
+    /// <param name="rooms">Every room.</param>
+    /// <param name="tags">Every tag.</param>
+    /// <param name="outOfFocusInstructorIds">
+    /// Ids of instructors outside the chosen subjects (shown dimmed under "Other instructors"); null or empty means
+    /// no grouping (All or None).
+    /// </param>
     public void Load(
         Section section,
         int meetingDay,
         int meetingStart,
         IEnumerable<Instructor> instructors,
         IEnumerable<Room> rooms,
-        IEnumerable<SchedulingEnvironmentValue> tags)
+        IEnumerable<SchedulingEnvironmentValue> tags,
+        IReadOnlySet<string>? outOfFocusInstructorIds = null)
     {
         _section      = section;
         _meetingDay   = meetingDay;
         _meetingStart = meetingStart;
         ActiveSubPanel = TileSubPanel.None;
 
-        // Instructors — multi-select, active only
+        // Instructors — multi-select: active instructors, plus any inactive instructor the section already has.
+        // Confirm rebuilds the assignments from the ticked rows, so an assigned instructor missing from the list
+        // would be silently unassigned (the item 3 family of bug); listing them, ticked, keeps them.
+        // Under chosen subjects (spec item 20) the caller has ordered the list in-focus first; out-of-focus rows are
+        // dimmed, with an "Other instructors" heading above the first of them when an in-focus row precedes it.
         Instructors.Clear();
         var assignedIds = section.InstructorIds.ToHashSet();
-        foreach (var inst in instructors.Where(i => i.IsActive))
+        var anyInFocusYet = false;
+        var headingShown = false;
+        foreach (var inst in instructors.Where(i => i.IsActive || assignedIds.Contains(i.Id)))
+        {
+            var outOfFocus = outOfFocusInstructorIds?.Contains(inst.Id) == true;
+            var heading = outOfFocus && anyInFocusYet && !headingShown;
+            headingShown |= heading;
+            anyInFocusYet |= !outOfFocus;
             Instructors.Add(new ContextMenuItemVm(
                 inst.Id,
                 $"{inst.FirstName} {inst.LastName}",
-                assignedIds.Contains(inst.Id)));
+                assignedIds.Contains(inst.Id),
+                outOfFocus,
+                heading));
+        }
 
         // Rooms — single-select; None at top
         Rooms.Clear();

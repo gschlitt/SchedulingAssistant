@@ -108,11 +108,32 @@ public sealed class SectionListFocusTests : IDisposable
     private FocusService NewFocus() =>
         new(_subjectRepo, _courseRepo, _sectionRepo, _semesterRepo, _ayRepo, _semesterContext, _sectionStore, null);
 
+    /// <summary>
+    /// A fake dialog service that records every question asked (message and confirm label) and answers each with
+    /// <see cref="Answer"/>.
+    /// </summary>
+    private sealed class RecordingDialog : IDialogService
+    {
+        /// <summary>What Confirm returns: true for the confirm button, false for Cancel.</summary>
+        public bool Answer { get; set; }
+
+        /// <summary>Every (message, confirmLabel) pair Confirm was called with, in order.</summary>
+        public List<(string Message, string ConfirmLabel)> Asked { get; } = new();
+
+        public Task<bool> Confirm(string message, string confirmLabel = "Delete")
+        {
+            Asked.Add((message, confirmLabel));
+            return Task.FromResult(Answer);
+        }
+
+        public Task ShowError(string message) => Task.CompletedTask;
+    }
+
     /// <summary>A real section list view model over the fixture, using <paramref name="focus"/>.</summary>
-    private SectionListViewModel NewList(FocusService focus) =>
+    private SectionListViewModel NewList(FocusService focus, IDialogService? dialog = null) =>
         new(_sectionRepo, _courseRepo, _subjectRepo, _instructorRepo, _roomRepo, _legalRepo, _semesterRepo,
             _blockPatternRepo, _codePatternRepo, _semesterContext, _sectionStore, _envRepo, _campusRepo,
-            _meetingRepo, new NullDialog(), _fx.Lock, focus);
+            _meetingRepo, dialog ?? new NullDialog(), _fx.Lock, focus);
 
     /// <summary>Inserts a section of the course into the semester and returns it.</summary>
     private Section AddSection(Course course, string semesterId, string code)
@@ -283,10 +304,10 @@ public sealed class SectionListFocusTests : IDisposable
 
         Assert.Empty(Cards(vm));
         Assert.True(vm.IsFocusEmpty);
-        Assert.Contains("No subjects in focus", vm.FocusEmptyMessage);
+        Assert.Contains("No subjects chosen", vm.FocusEmptyMessage);
     }
 
-    /// <summary>A Subjects focus matching nothing that is loaded shows the "no sections in your focus" message.</summary>
+    /// <summary>A Subjects focus matching nothing that is loaded shows the "no sections in the chosen subjects" message.</summary>
     [Fact]
     public void SubjectsFocus_MatchingNothing_ShowsEmptyState_WithOtherMessage()
     {
@@ -299,7 +320,7 @@ public sealed class SectionListFocusTests : IDisposable
 
         Assert.Empty(Cards(vm));
         Assert.True(vm.IsFocusEmpty);
-        Assert.Equal("No sections in your focus in this semester.", vm.FocusEmptyMessage);
+        Assert.Equal("No sections in the chosen subjects in this semester.", vm.FocusEmptyMessage);
     }
 
     /// <summary>An empty semester under All (or under a Subjects focus) is an ordinary empty semester, not a focus problem.</summary>
@@ -711,5 +732,217 @@ public sealed class SectionListFocusTests : IDisposable
         var before = section.InstructorAssignments
             .OrderBy(a => a.InstructorId).Select(a => (a.InstructorId, a.Workload)).ToArray();
         Assert.Equal(before, saved);
+    }
+
+    // ── Double-click on a tile whose section has no card (outside the chosen subjects) ─────────
+
+    /// <summary>
+    /// Sets up a Biology focus with a hidden Chemistry section (C1) and returns the pieces the tests need. The
+    /// dialog answers <paramref name="answer"/> to every question.
+    /// </summary>
+    private (FocusService Focus, SectionListViewModel List, RecordingDialog Dialog, Section Hidden) HiddenChemSetup(bool answer)
+    {
+        AddSection(_biolCourse, _fall, "B1");
+        var hidden = AddSection(_chemCourse, _fall, "C1");
+        var focus = NewFocus();
+        focus.SetFocus(SubjectFocus.ForSubjects([_biol.Id]));
+        var dialog = new RecordingDialog { Answer = answer };
+        var vm = NewList(focus, dialog);
+        Select(_fall);
+        Assert.Equal(["B1"], Codes(vm));
+        return (focus, vm, dialog, hidden);
+    }
+
+    /// <summary>Adds a course with no subject plus one section of it, and refreshes the store so it holds the section.</summary>
+    private Section AddOrphanSection()
+    {
+        var orphanCourse = new Course { Id = "c-orphan", SubjectId = string.Empty, CalendarCode = "ORPH100", Title = "Orphan" };
+        _courseRepo.Insert(orphanCourse);
+        var orphan = AddSection(orphanCourse, _fall, "O1");
+        _sectionStore.Reload(_sectionRepo, [_fall]);
+        return orphan;
+    }
+
+    /// <summary>A section that has a card opens its editor with no question asked (unchanged behaviour).</summary>
+    [Fact]
+    public async Task DoubleClick_SectionWithCard_OpensEditorWithoutAsking()
+    {
+        var (_, vm, dialog, _) = HiddenChemSetup(answer: true);
+        var card = Cards(vm).Single();
+
+        await vm.EditSectionByIdAsync(card.Section.Id);
+
+        Assert.Empty(dialog.Asked);
+        Assert.NotNull(vm.EditVm);
+        Assert.Equal(card.Section.Id, vm.ExpandedItem!.Section.Id);
+    }
+
+    /// <summary>A section the store does not hold is ignored: no question, no editor.</summary>
+    [Fact]
+    public async Task DoubleClick_UnknownSection_DoesNothing()
+    {
+        var (_, vm, dialog, _) = HiddenChemSetup(answer: true);
+
+        await vm.EditSectionByIdAsync("no-such-section");
+
+        Assert.Empty(dialog.Asked);
+        Assert.Null(vm.EditVm);
+    }
+
+    /// <summary>
+    /// No card: the question names the section and its subject, and offers "Add Chemistry and edit". Cancel changes
+    /// nothing at all: the focus, the saved sections, the list, and no editor opens.
+    /// </summary>
+    [Fact]
+    public async Task DoubleClick_NoCard_Cancel_ChangesNothing()
+    {
+        var (focus, vm, dialog, hidden) = HiddenChemSetup(answer: false);
+        var focusBefore = focus.Current;
+        var sectionsBefore = _sectionRepo.GetAll(_fall).Count;
+        var raised = 0;
+        focus.FocusChanged += () => raised++;
+
+        await vm.EditSectionByIdAsync(hidden.Id);
+
+        var asked = Assert.Single(dialog.Asked);
+        Assert.Equal("CHEM101 C1 is in Chemistry, which isn't one of your chosen subjects.", asked.Message);
+        Assert.Equal("Add Chemistry and edit", asked.ConfirmLabel);
+        Assert.Equal(focusBefore, focus.Current);
+        Assert.Equal(0, raised);
+        Assert.Equal(sectionsBefore, _sectionRepo.GetAll(_fall).Count);
+        Assert.Equal(["B1"], Codes(vm));
+        Assert.Null(vm.EditVm);
+        Assert.True(focus.CanChangeFocus);
+    }
+
+    /// <summary>
+    /// No card + confirm: the subject joins the chosen subjects, the card appears, and the editor opens for that
+    /// section.
+    /// </summary>
+    [Fact]
+    public async Task DoubleClick_NoCard_Confirm_AddsSubject_AndOpensEditor()
+    {
+        var (focus, vm, dialog, hidden) = HiddenChemSetup(answer: true);
+
+        await vm.EditSectionByIdAsync(hidden.Id);
+
+        Assert.Single(dialog.Asked);
+        Assert.Equal(SubjectFocus.ForSubjects([_biol.Id, _chem.Id]), focus.Current);
+        Assert.Equal(["B1", "C1"], Codes(vm));
+        Assert.NotNull(vm.EditVm);
+        Assert.Equal(hidden.Id, vm.ExpandedItem!.Section.Id);
+        Assert.False(focus.CanChangeFocus);   // an editor is open
+    }
+
+    /// <summary>Under None, confirming gives a one-subject focus on the section's subject and opens its editor.</summary>
+    [Fact]
+    public async Task DoubleClick_NoCard_Confirm_UnderNone_GivesOneSubjectFocus()
+    {
+        var hidden = AddSection(_chemCourse, _fall, "C1");
+        var focus = NewFocus();
+        focus.SetFocus(SubjectFocus.None);
+        var dialog = new RecordingDialog { Answer = true };
+        var vm = NewList(focus, dialog);
+        Select(_fall);
+        Assert.Empty(Cards(vm));
+
+        await vm.EditSectionByIdAsync(hidden.Id);
+
+        Assert.Equal(SubjectFocus.ForSubjects([_chem.Id]), focus.Current);
+        Assert.Equal(["C1"], Codes(vm));
+        Assert.Equal(hidden.Id, vm.ExpandedItem!.Section.Id);
+    }
+
+    /// <summary>
+    /// An open editor blocks the whole thing exactly as for any other edit request: no question is shown, the
+    /// focus does not change, the open editor survives and the usual "finish editing" message appears.
+    /// </summary>
+    [Fact]
+    public async Task DoubleClick_NoCard_WhileEditorOpen_IsBlocked_WithoutAsking()
+    {
+        var (focus, vm, dialog, hidden) = HiddenChemSetup(answer: true);
+        vm.SelectedItem = Cards(vm).Single();
+        vm.EditCommand.Execute(null);
+        var focusBefore = focus.Current;
+        var openEditor = vm.EditVm;
+        Assert.NotNull(openEditor);
+
+        await vm.EditSectionByIdAsync(hidden.Id);
+
+        Assert.Empty(dialog.Asked);
+        Assert.Equal(focusBefore, focus.Current);
+        Assert.Same(openEditor, vm.EditVm);
+        Assert.Contains("You are currently editing", vm.LastErrorMessage);
+    }
+
+    /// <summary>
+    /// A section whose course has no subject cannot be placed in one, so the question offers to show all subjects;
+    /// confirming sets All and opens the editor.
+    /// </summary>
+    [Fact]
+    public async Task DoubleClick_NoCard_UnknownSubject_ConfirmShowsAllSubjects()
+    {
+        var (focus, vm, dialog, _) = HiddenChemSetup(answer: true);
+        var orphan = AddOrphanSection();
+        Assert.Equal(["B1"], Codes(vm));
+
+        await vm.EditSectionByIdAsync(orphan.Id);
+
+        var asked = Assert.Single(dialog.Asked);
+        Assert.Equal("ORPH100 O1 isn't in any of your chosen subjects.", asked.Message);
+        Assert.Equal("Show all subjects and edit", asked.ConfirmLabel);
+        Assert.Equal(SubjectFocus.All, focus.Current);
+        Assert.Equal(["B1", "C1", "O1"], Codes(vm));
+        Assert.Equal(orphan.Id, vm.ExpandedItem!.Section.Id);
+    }
+
+    /// <summary>The unknown-subject question, answered Cancel, changes nothing.</summary>
+    [Fact]
+    public async Task DoubleClick_NoCard_UnknownSubject_Cancel_ChangesNothing()
+    {
+        var (focus, vm, dialog, _) = HiddenChemSetup(answer: false);
+        var orphan = AddOrphanSection();
+        var focusBefore = focus.Current;
+
+        await vm.EditSectionByIdAsync(orphan.Id);
+
+        Assert.Single(dialog.Asked);
+        Assert.Equal(focusBefore, focus.Current);
+        Assert.Equal(["B1"], Codes(vm));
+        Assert.Null(vm.EditVm);
+    }
+
+    /// <summary>
+    /// FocusService.AddSubject: joins an existing Subjects focus, becomes the only subject under None, is a no-op
+    /// under All, raises FocusChanged once per real change, and is refused while an editor is open.
+    /// </summary>
+    [Fact]
+    public void AddSubject_FollowsTheFocusRules()
+    {
+        var focus = NewFocus();
+        var raised = 0;
+        focus.FocusChanged += () => raised++;
+
+        Assert.True(focus.AddSubject(_biol.Id));                       // under All: nothing to add
+        Assert.Equal(SubjectFocus.All, focus.Current);
+        Assert.Equal(0, raised);
+
+        focus.SetFocus(SubjectFocus.None);
+        raised = 0;
+        Assert.True(focus.AddSubject(_biol.Id));                       // under None: just that subject
+        Assert.Equal(SubjectFocus.ForSubjects([_biol.Id]), focus.Current);
+        Assert.Equal(1, raised);
+
+        Assert.True(focus.AddSubject(_chem.Id));                       // joins the others
+        Assert.Equal(SubjectFocus.ForSubjects([_biol.Id, _chem.Id]), focus.Current);
+        Assert.Equal(2, raised);
+
+        Assert.True(focus.AddSubject(_chem.Id));                       // already there: no change, no event
+        Assert.Equal(2, raised);
+
+        focus.SetEditorOpen(true);
+        Assert.False(focus.AddSubject("subj-other"));                  // refused while an editor is open
+        Assert.Equal(SubjectFocus.ForSubjects([_biol.Id, _chem.Id]), focus.Current);
+        Assert.Equal(2, raised);
     }
 }

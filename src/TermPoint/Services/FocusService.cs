@@ -154,6 +154,26 @@ public sealed class FocusService : ObservableObject, IDisposable
     }
 
     /// <summary>
+    /// Adds one subject to the chosen subjects (used when the user agrees to edit a section outside them). Under a
+    /// Subjects focus the subject joins the others; under None the focus becomes just that subject; under All there
+    /// is nothing to add (every subject is already chosen), so it succeeds without a change. Like every focus change
+    /// it honours <see cref="CanChangeFocus"/>, saves, and raises <see cref="FocusChanged"/> once.
+    /// </summary>
+    /// <param name="subjectId">The id of the subject to add.</param>
+    /// <returns>True when the subject is now in focus; false when the change was refused (an editor is open).</returns>
+    public bool AddSubject(string subjectId)
+    {
+        if (!CanChangeFocus) return false;
+
+        return Current.Kind switch
+        {
+            FocusKind.All => true,
+            FocusKind.None => SetFocus(SubjectFocus.ForSubjects([subjectId])),
+            _ => SetFocus(SubjectFocus.ForSubjects(Current.SubjectIds.Append(subjectId))),
+        };
+    }
+
+    /// <summary>
     /// Drops focused subjects that no longer exist (re-reading <see cref="ISubjectRepository.GetAll"/>), so a
     /// subject deleted mid-session leaves the focus at once instead of lingering until the next database open. A
     /// Subjects focus left with none becomes None. Saves and raises <see cref="FocusChanged"/> only when something

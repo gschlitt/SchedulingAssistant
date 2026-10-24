@@ -185,6 +185,7 @@
 						<TextBlock
 							VerticalAlignment="Center"
 							FontSize="13"
+							FontWeight="{StaticResource TopBarContextWeight}"
 							Foreground="{StaticResource TextSemesterLabel}"
 							Text="Academic Year:" />
 						<!--
@@ -200,6 +201,7 @@
 							BorderThickness="0"
 							DisplayMemberBinding="{Binding Name}"
 							FontSize="13"
+							FontWeight="{StaticResource TopBarContextWeight}"
 							IsEnabled="{Binding SemesterContext.CanSwitchSemester}"
 							ItemsSource="{Binding SemesterContext.AcademicYears}"
 							SelectedItem="{Binding SemesterContext.SelectedAcademicYear}" />
@@ -207,6 +209,7 @@
 						<TextBlock
 							VerticalAlignment="Center"
 							FontSize="13"
+							FontWeight="{StaticResource TopBarContextWeight}"
 							Foreground="{StaticResource TextSemesterLabel}"
 							Text="Semester:" />
 						<Panel VerticalAlignment="Center">
@@ -219,7 +222,8 @@
 								Command="{Binding SemesterContext.ToggleSemesterPickerCommand}"
 								Content="{Binding SemesterContext.SelectedSemestersLabel}"
 								HorizontalContentAlignment="Left"
-								FontSize="13" />
+								FontSize="13"
+								FontWeight="{StaticResource TopBarContextWeight}" />
 							<Popup
 								IsLightDismissEnabled="True"
 								IsOpen="{Binding SemesterContext.IsSemesterPickerOpen, Mode=TwoWay}"
@@ -269,6 +273,44 @@
 											Text="Ctrl+click for multi-select" />
 									</StackPanel>
 								</Border>
+							</Popup>
+						</Panel>
+
+						<!--
+							Subjects picker (spec item 20): the subject focus as a coordinate of where the user is working, a
+							peer of Academic Year and Semester. The button shows "All", "Choose…" or the chosen abbreviations
+							("BIOL, CHEM"), trimmed at SubjectsButtonMaxWidth with the full list in the tooltip. Clicking opens
+							the picker popup below; the button is disabled (tooltip "Finish editing first") while a section
+							editor is open. FocusVm lives on MainWindowViewModel.
+						-->
+						<TextBlock
+							VerticalAlignment="Center"
+							FontSize="13"
+							FontWeight="{StaticResource TopBarContextWeight}"
+							Foreground="{StaticResource TextSemesterLabel}"
+							Text="Subjects:" />
+						<Panel VerticalAlignment="Center">
+							<Button
+								x:Name="SubjectsPickerButton"
+								Height="24"
+								MinWidth="50"
+								MaxWidth="{StaticResource SubjectsButtonMaxWidth}"
+								Padding="4,4"
+								VerticalAlignment="Center"
+								Command="{Binding FocusVm.OpenPickerCommand}"
+								HorizontalContentAlignment="Left"
+								FontSize="13"
+								FontWeight="{StaticResource TopBarContextWeight}"
+								ToolTip.ShowOnDisabled="True"
+								ToolTip.Tip="{Binding FocusVm.SubjectsToolTip}">
+								<TextBlock Text="{Binding FocusVm.SubjectsLabel}" TextTrimming="CharacterEllipsis" />
+							</Button>
+							<Popup
+								IsLightDismissEnabled="True"
+								IsOpen="{Binding FocusVm.IsPickerOpen, Mode=TwoWay}"
+								Placement="Bottom"
+								PlacementTarget="{Binding ElementName=SubjectsPickerButton}">
+								<panelViews:FocusPickerView DataContext="{Binding FocusVm}" />
 							</Popup>
 						</Panel>
 					</StackPanel>
@@ -573,9 +615,11 @@
 									FontSize="10"
 									Foreground="{StaticResource TextFaint}"
 									ToolTip.Tip="Switch between Section View and Events View" />
+								<!--  Prototype 2026-10-23: subjects shown in the top bar instead; restore if the header statement is wanted back.
 								<Panel VerticalAlignment="Center" IsVisible="{Binding IsShowingSections}">
 									<controls:FocusIndicator DataContext="{Binding FocusVm}" />
 								</Panel>
+								-->
 							</DockPanel>
 						</controls:DetachablePanel.HeaderContext>
 						<controls:DetachablePanel.PanelContent>
@@ -681,6 +725,7 @@
 								below (separator + statement), in its own colour. The statement hides itself under All; the separator
 								follows the same condition.
 							-->
+							<!--  Prototype 2026-10-23: subjects shown in the top bar instead; restore if the header statement is wanted back.
 							<Border
 								Width="1"
 								Margin="0,3,6,3"
@@ -690,6 +735,7 @@
 								Margin="0,0,6,0"
 								VerticalAlignment="Center"
 								DataContext="{Binding FocusVm}" />
+							-->
 
 							<Border
 								Width="1"

@@ -116,7 +116,9 @@
 					disabled (tooltip "Finish editing first") while a section editor is open. FocusVm lives on
 					MainWindowViewModel, not on this StackPanel's SectionListVm DataContext.
 				-->
+				<!--  Prototype 2026-10-23: subjects shown in the top bar instead; restore if the header statement is wanted back.
 				<controls:FocusButton DataContext="{Binding DataContext.FocusVm, RelativeSource={RelativeSource AncestorType=UserControl}}" />
+				-->
 			</StackPanel>
 
 			<!--  Event action buttons — shown when Events View is active  -->
@@ -190,7 +192,7 @@
 							MinHeight="0"
 							Padding="5,1"
 							Command="{Binding FocusVm.OpenPickerCommand}"
-							Content="Choose focus"
+							Content="Choose subjects"
 							FontSize="{StaticResource FontSizeNormal}"
 							ToolTip.ShowOnDisabled="True"
 							ToolTip.Tip="{Binding FocusVm.ChangeFocusToolTip}" />

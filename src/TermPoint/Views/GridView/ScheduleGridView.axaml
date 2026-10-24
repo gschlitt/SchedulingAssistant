@@ -342,12 +342,36 @@
 										IsVisible="{Binding ContextMenu.IsInstructorPanelVisible}"
 										ItemsSource="{Binding ContextMenu.Instructors}"
 										SelectionMode="Multiple">
+										<!--
+											Under chosen subjects (spec item 20) instructors outside them show lighter, under an
+											"Other instructors" heading, as in the section editor's chooser. The class sits on the
+											name's TextBlock so the CheckBox's own states cannot repaint it; this menu exists once,
+											so the class style is cheap.
+										-->
+										<ListBox.Styles>
+											<Style Selector="TextBlock.outOfFocus">
+												<Setter Property="Foreground" Value="{StaticResource TextOutOfFocus}" />
+											</Style>
+										</ListBox.Styles>
 										<ListBox.ItemTemplate>
 											<DataTemplate>
-												<CheckBox
-													Classes="CtxCheck"
-													Content="{Binding Label}"
-													IsChecked="{Binding IsChecked, Mode=TwoWay}" />
+												<StackPanel>
+													<!--  "Other instructors" heading and thin rule, on the first out-of-focus row only  -->
+													<Border
+														Margin="0,3,0,2"
+														Padding="2,2,0,0"
+														BorderBrush="{StaticResource SubduedBorder}"
+														BorderThickness="0,1,0,0"
+														IsVisible="{Binding ShowOthersHeading}">
+														<TextBlock
+															FontSize="{StaticResource FontSizeSmall}"
+															Foreground="{StaticResource TextDimLabel}"
+															Text="Other instructors" />
+													</Border>
+													<CheckBox Classes="CtxCheck" IsChecked="{Binding IsChecked, Mode=TwoWay}">
+														<TextBlock Classes.outOfFocus="{Binding IsOutOfFocus}" Text="{Binding Label}" />
+													</CheckBox>
+												</StackPanel>
 											</DataTemplate>
 										</ListBox.ItemTemplate>
 									</ListBox>

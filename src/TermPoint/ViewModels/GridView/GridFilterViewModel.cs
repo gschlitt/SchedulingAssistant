@@ -216,6 +216,19 @@ public partial class GridFilterViewModel : ViewModelBase
         SelectedOverlayId = null;
     }
 
+    /// <summary>
+    /// Whether the item the active overlay names (an instructor, room or tag) is still one of the options offered
+    /// in its list. Used after the lists are rebuilt to drop an overlay whose target has left its list.
+    /// </summary>
+    /// <returns>True when the overlay's target is still listed (or the overlay type is not one this class lists).</returns>
+    private bool OverlayTargetIsOffered() => OverlayType switch
+    {
+        "Instructor" => Instructors.Any(i => !i.IsSentinel && i.Id == SelectedOverlayId),
+        "Room"       => Rooms.Any(r => !r.IsSentinel && r.Id == SelectedOverlayId),
+        "Tag"        => Tags.Any(t => t.Id == SelectedOverlayId),
+        _            => true,
+    };
+
     private void RefreshOverlaySummary()
     {
         if (!HasOverlay)
@@ -315,6 +328,12 @@ public partial class GridFilterViewModel : ViewModelBase
         // Courses: all courses in the system, sorted by calendar code (e.g. "HIST101").
         RebuildList(Courses, courseLookup.Keys,
             id => courseLookup.TryGetValue(id, out var v) ? v.CalendarCode : null);
+
+        // An overlay whose instructor, room or tag is no longer offered is dropped, like a filter tick on an item
+        // that left its list (spec item 20: an instructor outside the newly chosen subjects, or one deactivated).
+        // Otherwise the overlay would keep drawing while its "Overlay: …" summary went blank and the item it names
+        // could no longer be clicked to turn it off.
+        if (HasOverlay && !OverlayTargetIsOffered()) ClearOverlayCore();
 
         RefreshInstructorMutualExclusion();
         RefreshRoomMutualExclusion();
