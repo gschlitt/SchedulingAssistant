@@ -36,6 +36,7 @@ will be verified.
 | 21 | Lightweight section card: ~93 → ~15–20 controls per card | Performance / memory | **Done** (~93 → ~27 controls per card; 800-section heap ~390 MB Release); CloneSection data-loss fixed |
 | 22 | AutoCompleteBox crash when revising a meeting's start time (BugSnag, Aug 21) | Bug (production, reproduced) | **Done** (folded into item 1) |
 | 23 | Section-list virtualization with scroll anchoring, opt-in (Preferences, default off; hidden in WASM) | Performance / memory | **Done** (user-tested on desktop 2026-10-10); field tests pending (touch, macOS trackpad, Win11). Also: room conflicts one per line |
+| 24 | **Section Import by User**: self-serve onboarding from an `.xlsx` template (Files → Import Sections…) | **New feature** | **Design complete 2026-10-24** (`designs/section-import-by-user.md`; 10 steps, 24.1–24.10). Not started |
 
 Item numbers are for reference only. The implementation order is below.
 
@@ -79,6 +80,8 @@ First look (2026-10-09):
 | 19                                                                          | 7: Handled-failure BugSnag events                                                      | Last of the reliability items, so it reports from the finished code of items 4, 9 and 15.                                                                                                                                                      |
 | **Phase 8**                                                                 |                                                                                        |                                                                                                                                                                                                                                                |
 | 20                                                                          | 20: Load by subject                                                                    | Design approved 2026-10-20. Last: touches many views, none of the persistence code.                                                                                                                                                            |
+| **Phase 9**                                                                 |                                                                                        |                                                                                            |
+| 21                                                                          | 24: Section Import by User                                                             | Design complete 2026-10-24. After item 20 (uses its focus); no persistence code.           |
 
 **Workflow.** Opus orchestrates and Sonnet writes the code, one step at a time. For each step:
 1. Opus writes a self-contained brief.
@@ -101,9 +104,12 @@ responsiveness and data loss"). File and line references are against `e8c7c1d`.
 
 Most items are independent and can go in any order. The exceptions:
 
-- **Item 20 goes last.** Its design was approved on 2026-10-20, after item 21 landed. It
+- **Item 20 goes after the reliability items.** Its design was approved on 2026-10-20, after item 21 landed. It
   touches many views (section list, grid, filter, editor, workload, Instructors flyout) but none
   of the save, lock or restore code.
+- **Item 24 comes after item 20** and is built on `1.2.3_new_features` (2026-10-24). It uses item 20's
+  `FocusService` for one done-message sentence. It writes only through repository `Insert`s, so it touches none of
+  the save, lock or restore code and can be built while the persistence items are field-tested.
 - **Item 3 has a release-order constraint, not a branch-order one.** Unknown-field preservation
   only protects data once every client in a department has it. Any release that adds a field to
   an existing entity must ship **after** a release containing item 3 has been deployed. Fields
@@ -2905,6 +2911,58 @@ committed values, and the field test above checks it.
 - **Fix:** `SectionListViewModel.ApplyRoomConflicts` now joins with `"\n"`.
 - **Test:** `RoomConflictMultiSemesterTests.SingleSemester_MultipleRoomConflicts_AreOnePerLine`.
   Three sections in one room and slot give two lines per card. The test fails with the old join.
+
+---
+
+## 24 — Section Import by User (new feature)
+
+> ### ✅ DESIGN COMPLETE (2026-10-24): all six phases locked
+> Full design: [designs/section-import-by-user.md](designs/section-import-by-user.md). Phases 1–3 locked
+> 2026-10-20 (c1ba192); Phases 4–6 and amendment A4 locked 2026-10-24. Built on `1.2.3_new_features`.
+
+**Problem.** A new department's first semester has to be entered before TermPoint is useful. Today that means typing
+every section, or Greg running the three-file CSV import from the hidden Dev Tools menu. Every new customer waits on
+Greg, so onboarding doesn't scale.
+
+**Feature.** A department administrator imports a semester's sections from a TermPoint template workbook (`.xlsx`,
+or a CSV with the same columns) via **Files → Import Sections…**:
+- **The template ships in the app** ("Save template…"): a Sections sheet (one row per meeting pattern) and an
+  Instructions sheet.
+- **Goes into the open semester.** Every row must name it; a file for another semester gets one problem.
+- **Creates what it names** if it doesn't exist yet: courses, instructors, and setup values (subjects, section types,
+  meeting types, tags, campuses, rooms). Everything new is listed in the preview (A4).
+- **Existing sections are skipped**, never changed, so a fixed file can simply be imported again.
+- **Checked first, all or nothing.** Problems are listed by row and column (Copy list → Excel); any problem means
+  nothing is written. Warnings don't block and are **grouped**: one line per problem, never one per row.
+- Desktop only; not in the WASM demo. Replaces the Dev Tools CSV import, which is retired as the last step.
+
+**Production notes.**
+- **Four rules:** the import is one transaction of repository `Insert`s into the open copy, saved by the normal save.
+  It never touches the shared database. A read-only session, or a lock lost mid-import, rolls back the whole
+  transaction (`MarkDirty` refuses first). Details: design, Phase 4 "The four rules".
+- **`MinimumVersionToWrite`: No.** Only ordinary records 1.2.2 already saves. Step 24.9 confirms it with a 1.2.2 round
+  trip.
+- **No migration, no schema change, no new table.** Rollback: hide the menu item; step 24.10 reverts on its own.
+- **Main risks:** a typo in a setup column creates a stray record (defence: the "New in TermPoint" list and near-miss
+  warnings, all before writing); new rooms lack capacity and type until filled in (the done message says so).
+- **Shipped behaviour touched:** the editor's custom-week check and time limits (24.1, messages unchanged), the main
+  view model (24.7), `MainView.axaml` (24.8), the Dev Tools removal (24.10).
+
+**Steps** (one Sonnet brief each; full "done when" criteria in the design, Phase 6; 24.8 and 24.10 edit AXAML, so
+warn the user first):
+
+| Step | Content |
+|---|---|
+| 24.1 | Shared helpers: `MeetingTimeLimits`, `ScheduleText` (days incl. compact runs, times, frequency), `NameMatch` (normalise, near-miss), `InstructorInitials.Generate`. The editor's custom-week check uses `ScheduleText.ParseFrequency`. Guard: `EditorFlowTests` unchanged. |
+| 24.2 | `ExcelDataReader` (desktop only); `SectionImportColumns`; `ImportFileReader` for `.csv` and `.xlsx` (headers, cell-to-text rules, limits 10 MB / 5,000 rows). Test workbooks made by a `tools/section-import/` script. |
+| 24.3 | Planner part 1: transient types, `ImportSetupSnapshot`, grouping, the whole-file semester check, matching or planning every value (existing / new / ambiguous). Pure unit tests. |
+| 24.4 | Planner part 2: every validation rule (incl. 07:30–22:00, weekend days, frequency, D1 capacity, D2 tags) and grouped warnings (incl. legal start times by length, one file-wide warning when there are none). Pure unit tests. |
+| 24.5 | `SectionImportWriter` (one transaction, `Insert` only) and `SectionImportService` (deadline-bounded read; re-check at Import, D4). Temporary-database tests: no existing row changes, re-import adds nothing, rollback, read-only refusal. |
+| 24.6 | Template workbook generated by `tools/section-import/make_template.py`; test that its headers match and its sample rows plan with no problems. |
+| 24.7 | `OutsideChosenSubjectsNote` (moved), `ImportAvailability`, `ImportSectionsViewModel`, the menu command and tooltip, DI. View-model tests of every stage and message. |
+| 24.8 | `ImportSectionsView.axaml` and Files → Import Sections… Run the app; screenshot each stage. |
+| 24.9 | Full suite; hand tests on a copy of real data (first import, re-import, corrected file, problems + Copy list, change between Check and Import, read-only, save and reopen); 1.2.2 round trip. |
+| 24.10 | Retire the Dev Tools CSV import (own commit); keep `CsvRecordReader` and `SharedScheduleCsvParser`. |
 
 ---
 

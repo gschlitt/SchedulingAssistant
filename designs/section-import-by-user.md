@@ -1,7 +1,7 @@
 # Section Import by User — Progressive Design Spec
 
 **Status:** Phases 1–3 LOCKED (2026-10-20); amended 2026-10-24 by A4 (setup values are created as needed, marked
-inline). Phase 4 (Data Design) LOCKED (2026-10-24). Phase 5 (Architecture) next.
+inline). Phase 4 (Data Design) LOCKED (2026-10-24). Phase 5 (Architecture) LOCKED (2026-10-24). Phase 6 (Implementation Plan) LOCKED (2026-10-24). **Design complete**; implementation is item 24 in `spec_version_1.2.3.md`.
 **Target release:** 1.2.3.
 
 ## Phase 1: Problem Statement
@@ -175,7 +175,7 @@ without the UI.
   either an existing record, or a "new" entry shared by every draft that names it.
 - **ImportReport:**
   - Errors: row, column, plain message.
-  - Warnings: row, message.
+  - Warnings: one per problem, with the rows it affects (none for a file-wide warning); grouped, not one per row (2026-10-24, Phase 4).
   - Skipped sections: already in the semester.
   - The plan: new setup values, new courses, new instructors and new sections, with counts.
 
@@ -231,7 +231,7 @@ without the UI.
   - one `SectionDaySchedule` per MeetingDraft. *(Corrected 2026-10-24: the meeting's RoomTypeId is not copied from the room. See Phase 4.)*
 - All are new objects of types that already derive from `PersistedRecord`, so there is no extension data to carry.
 
-### Warnings (shown in the preview; they don't block)
+### Warnings (shown in the preview; they don't block; one line per problem, not per row: see Phase 4, 2026-10-24)
 
 - An existing course's title differs from the file's (the existing title is kept).
 - A new instructor shares a last name with an existing one.
@@ -294,7 +294,7 @@ It opens like the other flyouts and works top to bottom.
      - *(2026-10-24, A4)* **New in TermPoint:** an expandable list of the subjects, section types, meeting types,
        tags, campuses and rooms that will be created, grouped by kind. It is always shown when non-empty, because a
        typo here creates a record. Its near-miss warnings sit with the other warnings.
-     - Warnings, if any, listed in amber. They don't block.
+     - Warnings, if any, listed in amber. They don't block. *(2026-10-24: one line per problem, listing the rows it affects; see Phase 4.)*
      - **Import** and **Cancel**.
    - **Nothing to add.** "Every section in this file is already in Fall 2026."
 4. **Done.** "Added 37 sections, 5 courses and 8 instructors to Fall 2026." The flyout stays open, so the next
@@ -426,7 +426,7 @@ record NewSetup<T>(T Record, int FirstRow) : SetupRef<T>(Record);
 
 class ImportReport {
     List<ImportProblem> Errors;     // Row, Column (may be null), Message
-    List<ImportProblem> Warnings;   // Row, Message
+    List<ImportWarning> Warnings;   // Kind, Rows (empty = file-wide), Message; one per problem (grouped)
     List<SectionDraft> Skipped;     // already in the semester
     ImportPlan Plan;                // NewSubjects, NewCampuses, NewSectionTypes, NewMeetingTypes, NewTags, NewRooms,
                                     // NewCourses, NewInstructors, NewSections
@@ -504,6 +504,46 @@ user gives it one. The done message says so (Phase 3, step 4).
 All of these are brand-new objects whose types already derive from `PersistedRecord`. Nothing is cloned from an
 existing record, so there is no extension data to carry (`WithExtensionDataFrom` doesn't apply).
 
+### Warnings are grouped: one line per problem, not per row (added 2026-10-24)
+
+The user must never be buried under warnings. A file where 30 meetings start at 10:45, and 10:45 isn't a legal start
+time, gets **one** warning, not 30:
+
+> 1045 isn't a legal start time for 1.5-hour meetings (30 meetings: rows 4, 9, 12, 15, 18 and 25 more). To make it
+> one, add it in Academic Years and check again.
+
+- **Grouping key:** the warning's kind plus the value(s) it is about. Rows whose warning would read the same, apart
+  from the row number, share one line:
+
+  | Warning | Grouped by |
+  |---|---|
+  | Begin isn't a legal start time | the time and the meeting length |
+  | An existing course's title differs | the course |
+  | A matched course or instructor is inactive | the course or instructor |
+  | A new setup value is close to an existing one | the new value (it is planned once anyway) |
+  | A new instructor shares a last name with an existing one | the new instructor (planned once anyway) |
+  | A room's campus differs from the section's campus | the room and the two campuses |
+  | Two meetings of one section overlap (D11) | the section (one line per section, naming its rows) |
+  | No legal start times at all | — (one file-wide line, no rows) |
+
+- **Rows:** listed in file order. The first five are named and the rest counted ("and 25 more"), so a line never
+  grows long. The count says what's being counted ("30 meetings", "12 sections").
+- **A hint when there's a real fix:** the line says how to make the warning go away, where TermPoint can do it (add
+  the start time in Academic Years; reactivate the course in Courses), then check again.
+- **Order:** file-wide warnings first, then the rest by the first row they affect.
+- **What isn't grouped: problems (errors).** Each problem must be fixed in its own row, and Copy list gives one line
+  per row (Row, Column, Problem) so the user can sort it and tick rows off in Excel. But a fault that isn't really
+  about rows is reported **once**, and stops the check there:
+  - **a missing column** (D9): "The Tags column is missing.";
+  - **the whole file names another semester** (A2): when every row's Academic Year and Term agree with each other but
+    not with the open semester, one problem: "This file is for Spring 2026 (2026-2027), but Fall 2026 is open. Open
+    Spring 2026 to import it, or correct the Academic Year and Term columns." Only rows that disagree with the rest
+    of the file are reported row by row.
+
+In the transient shapes this means warnings are their own type, `ImportWarning` (kind, `IReadOnlyList<int> Rows`
+empty for a file-wide warning, message), rather than one `ImportProblem` per row. The planner builds the groups; the
+view model only formats them.
+
 ### Near-miss warnings for new setup values (A4)
 
 The preview lists every new value. The warning points at the ones most likely to be typos. A new value gets a
@@ -536,7 +576,7 @@ reports an error.
 | Times are real clock times | `HHMM`, hours 0–23, minutes 0–59 | Same values. The import also accepts `10:00` and `10:00 AM` (Phase 1), and Excel time cells (Reading the file) |
 | Custom weeks: whole numbers ≥ 1, no repeats | Refuses a week < 1, a non-number, or a repeated week | **Error**, same three cases. Stored sorted, as the editor stores it |
 | Frequency words | Weekly / Odd weeks / Even weeks / Custom | Blank, `weekly`, `odd`, `even`, `odd weeks`, `even weeks` (any case), or week numbers. Anything else is an **error** |
-| Legal start time for the length | The Start list offers the start times configured for the meeting's length. For a length with no configured times, it offers every configured start time. Any time may still be typed | **Warning** (P1), by the same rule: Begin is checked against the start times for its length when that length is configured, else against all of them |
+| Legal start time for the length | The Start list offers the start times configured for the meeting's length. For a length with no configured times, it offers every configured start time. Any time may still be typed | **Warning** (P1), by the same rule: Begin is checked against the start times for its length when that length has any, else against all of them. **If the academic year has no legal start times at all**, nothing is checked per row; the preview shows one warning instead (2026-10-24, below) |
 | Two meetings of one section on the same day overlapping | **Not checked.** The editor allows it | **Warning**, not an error (D11). No warning when the two can't meet in the same week (odd vs even, or custom weeks with none in common) |
 
 The limits come from one place: `SectionMeetingViewModel.MinStartMinutes` / `MaxEndMinutes` move to a shared spot in
@@ -545,6 +585,20 @@ custom-week check, which today are copied across the editor, the Dev Tools impor
 
 *Correction (2026-10-24): an earlier draft checked the legal-start-time warning against every start time in the
 academic year. The editor narrows the list by meeting length, and the import now does the same.*
+
+**An academic year with no legal start times** (added 2026-10-24, after Phase 4 was locked). This happens when the
+user clears every block length in the startup wizard, or says No to copying start times when adding a new academic
+year (`AcademicYearListViewModel`; the year then starts empty). The rule above would then warn on every meeting in the
+file. A warning on every row tells the user nothing and buries the warnings that matter (rule 4: one message per
+problem). So:
+- no per-row legal-start-time warnings are produced;
+- the preview shows **one** warning, with no row number: "2026-2027 has no legal start times set up, so start times
+  weren't checked. You can add them in Academic Years.";
+- nothing else changes. The 07:30–22:00 limits (D3) don't depend on legal start times and are always checked.
+
+The editor behaves the same way in that state: its Start list is empty and any time can be typed. "A length that
+has start times" means a `LegalStartTime` entry with at least one time; an entry with an empty list counts as none,
+as in the editor's `ComputeStartTimeSuggestions`.
 
 ### The write
 
@@ -614,3 +668,204 @@ academic year. The editor narrows the list by meeting length, and the import now
 | D9 Missing columns | Every template column must be present; a missing one is a single error. Extra columns are ignored |
 | D10 Weekend day turned off | An error telling the user to turn the day on in Settings and check again |
 | D11 Overlapping meetings in one section | A warning, not an error, and none when the two never meet in the same week. Changes Phase 2's invariant 7 |
+
+## Phase 5: Architecture (LOCKED 2026-10-24)
+
+### Shape
+
+A pure core that knows nothing about the UI, a thin service that adds the database and the file system, and one
+flyout view model. Everything that decides what gets written can be unit-tested without Avalonia.
+
+```
+ Files → Import Sections…  (MainWindowViewModel: command + reason it's unavailable)
+        │
+        ▼
+ ImportSectionsViewModel ──── ImportSectionsView.axaml   (flyout; stages, lists, buttons)
+        │  pickers, clipboard: MainWindowReference (existing pattern)
+        ▼
+ SectionImportService       (orchestration: Check, Import; threading; deadline-bounded file IO)
+   ├─ ImportFileReader      (.xlsx via ExcelDataReader | .csv via CsvRecordReader + ParseCsvRow) → ImportSheet
+   ├─ ImportSetupSnapshot   (built from the repositories, UI thread)
+   ├─ SectionImportPlanner  (pure: Group → Resolve → Validate) → ImportReport
+   └─ SectionImportWriter   (one transaction through the repository Inserts)
+```
+
+New code goes in `Services/SectionImport/` (namespace `TermPoint.Services.SectionImport`), apart from the view model
+and view, which sit with the other flyouts in `ViewModels/Management` and `Views/Management`.
+
+### Components
+
+| Component | Kind | Job | Depends on |
+|---|---|---|---|
+| `SectionImportColumns` | static | **The one list of template columns:** name, level (section / meeting), required. Used by the reader (header check, D9), the planner, the Copy-list column names, and a test against the shipped workbook | — |
+| `ImportFileReader` | class, desktop only | Reads bytes into an `ImportSheet` (headers + `ImportRow`s), or a single file problem ("This file has no sheet named Sections."). `.xlsx`: ExcelDataReader, sheet "Sections", every cell turned into text (Phase 4 rules). `.csv`: `CsvRecordReader` + `SharedScheduleCsvParser.ParseCsvRow`, as today. Blank rows dropped. Enforces the size limits (E4) | ExcelDataReader |
+| `ImportSetupSnapshot` | record + `Build(...)` | Every lookup in Phase 4's table, read once from the repositories, indexed by normalised name. Holds no connection after it's built | repositories, `SemesterContext`, `AppSettings` |
+| `SectionImportPlanner` | static, pure | `Plan(ImportSheet, ImportSetupSnapshot) → ImportReport`. Groups rows into sections, resolves every value (existing / new / ambiguous), applies every rule in Phases 2 and 4, builds the new records (fresh ids), and produces the problems, warnings, skipped sections and plan | the shared helpers below |
+| `SectionImportWriter` | class | `Write(ImportPlan) → ImportCounts`. One transaction, Phase 4's order, repository `Insert`s only. Rolls back and rethrows on any failure | `IDatabaseContext`, the seven repositories |
+| `SectionImportService` | class (DI, transient) | `CheckAsync(path)`: reads the file off the UI thread with a deadline, then builds the snapshot and plans on the UI thread. `Import(sheet, shownReport)`: rebuilds the snapshot, re-plans, compares with what the user saw (D4), writes if equal. Returns either the counts or the new report | reader, snapshot, planner, writer |
+| `ImportSectionsViewModel` | VM (DI, transient) | The flyout. Stages, commands, the text of every message | service, `SemesterContext`, `FocusService`, `MainWindowViewModel` |
+| `ImportSectionsView` | AXAML | Lays out the stages. No code-behind beyond the generated constructor | — |
+
+"Compares with what the user saw" (D4) means: the same problems, warnings, skipped sections and planned new records
+(compared by their keys and names, not their fresh ids). If any line the user saw would read differently, it's a
+change.
+
+### Shared helpers (extracted, so the editor and the import can't drift)
+
+| Helper | From | Used by |
+|---|---|---|
+| `MeetingTimeLimits.MinStartMinutes` / `MaxEndMinutes` | `SectionMeetingViewModel` constants (which then refer to these) | editor, planner |
+| `ScheduleText.ParseDays` | the three copies of `DayMap` (Dev Tools import, shared-schedule parser, Dev Tools section VM) | planner. Adds the compact runs from P2 (`MWF`, `TR`, `TTh`): two-letter names (`Th`, `Tu`, `Sa`, `Su`) are tried before one-letter ones |
+| `ScheduleText.ParseTime` | editor's `ParseTime` (`HHMM`) + Dev Tools `h:mm tt` | planner. Accepts `1000`, `10:00`, `10:00 AM`. The editor keeps calling its own `HHMM`-only method, unchanged |
+| `ScheduleText.ParseFrequency` | editor's custom-weeks check + shared-schedule `IsValidFrequency` | planner and the editor's `ValidateCustomWeeks` (same rules, same messages) |
+| `NameMatch.Normalize` / `NameMatch.IsNearMiss` | new | planner. Normalisation rule and near-miss rule from Phase 4; a small edit-distance function |
+| `InstructorInitials.Generate(first, last, taken)` | `InstructorImportViewModel.ResolveInitials` (asks the database per candidate) | planner, with a set of taken initials (database + this import) |
+| `OutsideChosenSubjectsNote.Build(focus, courses, courseIds)` | `SectionImportViewModel.BuildOutsideChosenSubjectsNote` (Dev Tools, retiring) | new VM (D6). Its tests (`SectionImportFocusTests`) move with it |
+
+The shared-schedule parser keeps its own copies for now (E3).
+
+### Threading
+
+- **Reading the file:** `NetworkFileOps.RunAsync` around `File.ReadAllBytes`, off the UI thread, deadline-bounded
+  like every other file read (the lockup audit). A file on an unresponsive share gives "TermPoint couldn't read this
+  file. If it's on a network drive, copy it to your computer and try again." Parsing the bytes into an `ImportSheet`
+  runs on the same background task.
+- **Snapshot, planning, writing:** UI thread. The repositories share one SQLite connection, which isn't thread-safe.
+  The planner works on in-memory lists of at most a few thousand rows, and the Phase D baseline puts bulk database
+  work at ≤ 30 ms. "Checking…" shows during the read; the rest is too quick to need a spinner.
+- **Picker:** `await Task.Yield()` before `OpenFilePickerAsync`, as the existing imports do. The flyout is not a
+  window, so the picker-then-close deadlock (Avalonia 12) doesn't apply.
+
+### Wiring into the app
+
+- **Menu:** Files → **Import Sections…**, after Save, before the Recent Files separator.
+  `NavigateToImportSectionsCommand` opens the flyout with `OpenFlyout<ImportSectionsViewModel>("Import Sections")`.
+- **Availability:** one function, `ImportAvailability.WhyUnavailable(isWriteEnabled, semesterContext,
+  sectionListVm)`, returns null or the reason (Phase 3's three tooltips, in that order). It drives both the menu
+  item's `CanExecute` and tooltip (`ToolTip.ShowOnDisabled`) and the flyout's **Import** button, because any of the
+  three can change while the flyout is open (lost lock, another semester chosen, an editor opened from a detached
+  panel). Re-evaluated when `IsWriteEnabled`, `SemesterContext.SelectedSemesters` or `SectionListVm.IsEditing`
+  changes.
+  - **Why an open section editor blocks it:** the import ends with a section-list reload. A reload while an editor is
+    open would close it, and its unapplied changes would be lost (F3 in the persistence review).
+- **After a write:** `SectionListVm.ReloadFromDatabase()`, which is what the read-only Refresh button calls. It
+  reloads `SectionStore`, and `SectionsChanged` refreshes the list, grid and workload. The list rebuilds its course,
+  instructor and room lookups on load. The section editor, the subject picker and the management flyouts read their
+  lists from the repositories when opened. So nothing else needs telling.
+- **DI:** `SectionImportService`, `SectionImportWriter`, `ImportFileReader` and `ImportSectionsViewModel` are
+  registered transient in the desktop `ConfigureServices`, inside `#if !BROWSER` beside the registrations they
+  replace. Nothing is added to `ConfigureDemoServices`: the feature is desktop only, and the menu item is hidden in
+  the demo (`PlatformCapabilities.SupportsFileDialogs`).
+- **Package:** `ExcelDataReader` (MIT, read-only) in the existing desktop-only `ItemGroup` of `TermPoint.csproj`
+  (`Condition="'$(TargetFramework)' == 'net10.0'"`). Pin the latest stable 3.x version that's been out at least a few
+  weeks, and confirm its licence at implementation. `.xlsx` needs no code-page registration (that's only for old
+  `.xls`, which isn't accepted). Code that names ExcelDataReader sits under `#if !BROWSER`. The desktop build isn't
+  trimmed, so no trimming roots are needed.
+- **The template workbook:** `Assets/Templates/TermPoint Sections Template.xlsx`, already covered by the
+  `AvaloniaResource Include="Assets/**"` glob. **Save template…** opens it with `AssetLoader.Open`, asks where to
+  save (`SaveFilePickerAsync`), and writes it with `NetworkFileOps.RunAsync` (deadline-bounded). How the workbook is
+  made: E1.
+- **Colours and fonts:** the warning list uses the existing amber `NotificationWarning*` brushes, problems use
+  `TextError`, and sizes come from `App.axaml`. Nothing is hard-coded.
+
+### The view model's stages
+
+`Stage` is one enum, and the view shows one panel per stage (no class-toggling):
+
+| Stage | Shown | Commands enabled |
+|---|---|---|
+| `Ready to choose` | target line; **Save template…**, **Choose file…** | Save template, Choose file |
+| `Checking` | "Checking…" | — |
+| `Problems` | the problems list; **Copy list**, **Check again**, **Choose file…** | Copy list, Check again, Choose file |
+| `Ready to import` | the summary, the expandable lists (sections, courses, instructors, "New in TermPoint"), the warnings; **Import**, **Cancel** | Import (if available), Cancel |
+| `Nothing to add` | "Every section in this file is already in Fall 2026."; **Choose file…** | Choose file |
+| `Done` | the done message (with the D5 and D6 sentences and the new-rooms line when they apply); **Choose file…** | Choose file |
+
+- **Copy list:** tab-separated `Row`, `Column`, `Problem` with a header line, written with the window's clipboard
+  (`TopLevel.Clipboard`); confirm the exact Avalonia 12 call at implementation.
+- **D4 at Import:** if the service reports that the plan changed, the stage becomes `Problems` or `Ready to import`
+  again, showing the new report and its heading. Nothing is written.
+- **A failed write** (an exception from the writer, after the rollback): `WriteFailureText` decides the message, the
+  same way the editors do. A refused read-only write shows the one plain banner. Anything else shows "The sections
+  couldn't be added. Nothing was changed." The log gets the detail, the user doesn't.
+- **Closing the flyout** at any stage discards the report. Nothing has been written unless the stage is `Done`.
+
+### The four rules (architecture check)
+
+1. and 2. Unchanged from Phase 4: only `SectionImportWriter` writes, only through repository `Insert`s into the open
+   copy; the save pipeline is untouched.
+3. The writer's transaction is the only write. A failure rolls it back, so there's never a half-import to lose or
+   to mistake for real work.
+4. Every string the user can see is built in one place, the view model (with the planner's problem and warning
+   lines), and is plain: no paths in messages, no exception text, no "working copy".
+
+### Retiring the Dev Tools import (Q7)
+
+As the **last** implementation step, in a commit of its own so it can be reverted alone:
+- **Remove:** the Dev Tools "CSV Import…" menu item and command; `CsvImportViewModel`, `InstructorImportViewModel`,
+  `CourseImportViewModel`, `SectionImportViewModel`, their four views, `InstructorPreviewRow`,
+  `MappingEntryViewModel`, `CsvImportParser`, `CsvImportMatcher`, `CsvImportModels` (once nothing else uses them);
+  `CsvImportParserTests`, `CsvImportMatcherTests`; the DI registration.
+- **Keep:** `CsvRecordReader` (and its tests) and `SharedScheduleCsvParser`, which the shared-schedule overlay and the
+  new reader use.
+- **Move:** `SectionImportFocusTests` → tests of `OutsideChosenSubjectsNote`.
+
+### Decisions
+
+**Decided (2026-10-24), all as recommended:**
+
+| # | Decision |
+|---|---|
+| E1 Template workbook | Generated by a script in `tools/` (Python + openpyxl) from the column list and a plain-text Instructions file kept beside it. The `.xlsx` is checked in. A test reads the shipped workbook with `ImportFileReader`, checks its headers match `SectionImportColumns`, and checks its sample rows plan with no errors against a test database |
+| E2 Retiring the Dev Tools import | The last step of this feature, in 1.2.3, in its own commit |
+| E3 Shared-schedule parser | Keeps its own day and frequency rules for now; switched to `ScheduleText` in 1.2.4 |
+| E4 File limits | At most 10 MB and 5,000 data rows. Beyond that, one problem: "This file is larger than TermPoint can import at once. Split it by subject." |
+
+## Phase 6: Implementation Plan (LOCKED 2026-10-24)
+
+### How the steps are sized and checked
+
+- **One step = one session's work**, sized for Sonnet to code with Opus reviewing (the 1.2.3 practice). Each step
+  ends compiling (`dotnet build src/TermPoint/TermPoint.csproj -f net10.0 -t:Compile --no-restore -v q`) with its
+  own tests passing, and the full suite still green. Each is committed on its own.
+- **Nothing a user can see changes until step 8.** Steps 1–7 add code and tests behind no menu item, so the branch
+  stays releasable after every step.
+- **Shipped behaviour is touched in only four places:** the editor's custom-week check and time limits (step 1), the
+  main view model's new command (step 7), `MainView.axaml` (step 8), and the Dev Tools removal (step 10). Each of
+  those steps names the existing tests that guard it.
+- **AXAML:** steps 8 (new view, `MainView.axaml`) and 10 (deleting views) edit AXAML. Warn the user first, so the
+  files can be closed in Visual Studio.
+
+### Steps
+
+| Step | What | Done when | After |
+|---|---|---|---|
+| **1** | **Shared helpers.** `MeetingTimeLimits` (the editor's `MinStartMinutes` / `MaxEndMinutes` now refer to it); `ScheduleText.ParseDays` (day names + compact runs `MWF`, `TR`, `TTh`), `ParseTime` (`1000`, `10:00`, `10:00 AM`, Excel-style `HH:mm`), `ParseFrequency` (blank / weekly / odd / even / "odd weeks" / week numbers; editor's rules and messages); `NameMatch.Normalize` and `IsNearMiss` (contains, or edit distance ≤ 2, with the four-letter floor); `InstructorInitials.Generate(first, last, taken)`. The editor's `ValidateCustomWeeks` calls `ParseFrequency`. | Unit tests for each helper, including every day alias and compact run, ambiguous input (`S`), and the four-letter floor. **Guard:** `EditorFlowTests` and the meeting-row tests pass unchanged, and the editor shows the same custom-week messages word for word | — |
+| **2** | **Reading files.** Add `ExcelDataReader` (desktop-only `ItemGroup`). `SectionImportColumns`; `ImportSheet` / `ImportRow`; `ImportFileReader` for `.csv` (`CsvRecordReader` + `ParseCsvRow`) and `.xlsx` (sheet "Sections"): header matching, missing-column problem (D9), cell-to-text rules (whole numbers, Excel times, text), blank rows dropped, 10 MB / 5,000-row limits (E4), plain problems for an unreadable file or a missing sheet. A `tools/section-import/` script (openpyxl) makes the test workbooks, which are checked in and copied to the test output. | Reader tests over CSV and `.xlsx` fixtures: quoted fields with commas and line breaks, numeric and time cells, a header in another order, extra columns ignored, a missing column, a blank row in the middle, a file over each limit, no Sections sheet, a non-Excel file renamed `.xlsx` | — |
+| **3** | **Planner, part 1: group and resolve.** The transient types (Phase 4); `ImportSetupSnapshot` and `Build` from the repositories; `SectionImportPlanner`: group rows into sections; the file-wide semester check (one problem when the whole file names another semester); match or plan every subject, course, instructor, section type, meeting type, tag, campus and room (existing / new / two matches = error, D7); new-record rules (subject name = abbreviation, a new room needs a building, new course code, initials); skipped sections create nothing. | Pure unit tests with hand-built snapshots: each kind matched, created once though named on many rows, and ambiguous; course codes equal ignoring spaces; a new instructor sharing a name with nobody; two new instructors whose initials collide; a skipped section naming an unknown room creates nothing; a whole-file wrong semester gives exactly one problem | 1, 2 |
+| **4** | **Planner, part 2: validate and warn.** Required cells; a section's rows agree (invariant 4); a new course has one title; Capacity a whole number; every meeting-time rule in Phase 4's table (days, weekend days off D10, 07:30–22:00 D3, End after Begin, frequency, overlaps as warnings D11); section values (D1 capacity, D2 tags, Level). Warnings, **grouped** (one line per problem, five rows named then counted, fix hints): title differs, inactive, near-miss setup values, new instructor's last name, room campus, legal start times (by length, and the single file-wide warning when there are none). | Pure unit tests for every rule and both sides of each limit (07:29 / 07:30, 22:00 / 22:01); odd and even meetings at the same time give no warning; 30 meetings at an illegal time give one warning naming five rows; a year with no start times gives one file-wide warning; D1 and D2 values; a Saturday meeting with Saturday off | 3 |
+| **5** | **Writing.** `SectionImportWriter` (one transaction; setup values, courses, instructors, sections, in that order; `Insert` only). `SectionImportService.CheckAsync` (file read off the UI thread through `NetworkFileOps.RunAsync`) and `Import` (rebuild the snapshot, re-plan, compare with what the user saw (D4), write if unchanged). | Tests against a temporary database (`new DatabaseContext(path)`): everything planned is inserted and readable through the repositories; **no existing row's `data` changes**; importing the same file twice adds nothing the second time; a failure halfway rolls back everything; a read-only context (`readOnly: true`) refuses before writing anything; a change made between Check and Import (a section added) is detected and nothing is written; the readable columns (`course_code`, `semester_name`, …) are filled | 4 |
+| **6** | **The template workbook.** `tools/section-import/make_template.py` builds `Assets/Templates/TermPoint Sections Template.xlsx` from the column list and `instructions.txt` (Sections sheet with sample rows, including one section on two rows; Instructions sheet; code and time columns formatted as Text). | A test reads the shipped workbook with `ImportFileReader`: its headers equal `SectionImportColumns`, and its sample rows plan with **no problems** against a test database. Greg reads the Instructions sheet | 2, 4 |
+| **7** | **The flyout's view model and wiring.** Move `BuildOutsideChosenSubjectsNote` to `OutsideChosenSubjectsNote` (its tests move too); `ImportAvailability.WhyUnavailable`; `ImportSectionsViewModel` (stages, every message, Copy list text, Save template, the D4 / D5 / D6 sentences, the new-rooms line, `ReloadFromDatabase` after a write, `WriteFailureText` for failures); `NavigateToImportSectionsCommand` and its tooltip on `MainWindowViewModel`; DI registrations. File picking stays in the command; the work is in methods that take a path, so tests can drive them. | View-model tests with a temporary database and fixture files: each stage reached; the done message with and without the undo hint (semester empty before or not), the outside-the-focus sentence, and the new-rooms line; Copy list's tab-separated text; Import disabled with the right reason for each of the three conditions, including when one changes while the flyout is open | 5 |
+| **8** | **The view.** `ImportSectionsView.axaml` (one panel per stage; expandable lists; amber warnings; brushes and sizes from `AppColors.axaml` / `App.axaml`); Files → Import Sections… in `MainView.axaml`, hidden in the demo. **AXAML: warn first.** | Compile check, then run the app (desktop): screenshots of each stage with a fixture file; the menu item disabled with its tooltip in each unavailable state; nothing in the WASM build | 6, 7 |
+| **9** | **Verification on real data.** Full test suite (with a `.trx`). Then by hand, on a **copy** of a real database: first import into an empty semester; the same file again (nothing added); a corrected file (only the new sections); a file with problems, Copy list pasted into Excel; a change made from a detached panel between Check and Import; a read-only session; Save, close, reopen. **`MinimumVersionToWrite` check:** open the saved copy in 1.2.2, edit and save, reopen in 1.2.3, and confirm nothing was lost. | Every scenario passes; findings fixed or recorded | 8 |
+| **10** | **Retire the Dev Tools import** (E2), in its own commit: remove what Phase 5 lists; keep `CsvRecordReader` and `SharedScheduleCsvParser`. **AXAML: warn first** (four views deleted). | Compile check; full suite green; the shared-schedule overlay still imports a CSV (`SharedScheduleCsvParserTests`, and a quick hand check) | 9 |
+
+Steps 5 and 6 can run side by side, as can 6 and 7.
+
+### Release notes for this feature
+
+- **`MinimumVersionToWrite`: No** (Phase 4). Step 9 confirms it with a 1.2.2 round trip. The Store submission isn't
+  mandatory on this feature's account.
+- **Data migration:** none. No schema change, no new table, no change to any existing record's shape.
+- **Rollback:** the feature is self-contained. Removing the menu item hides it. Step 10 reverts on its own.
+- **User-facing:** a new Files menu item; the Dev Tools CSV import is gone (Dev Tools is hidden, so only Greg used
+  it).
+
+### Decisions
+
+**Decided (2026-10-24):**
+
+| # | Decision |
+|---|---|
+| F1 The 1.2.3 spec | Added to `spec_version_1.2.3.md` as item 24 (Items table, implementation order, a section with the step table pointing here). The 1.2.4 candidate list points to item 24 |

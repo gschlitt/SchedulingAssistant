@@ -17,7 +17,7 @@ usual treatment (problem, file:line refs, fix direction, production and data not
 | Ref | What | Where it stands |
 |---|---|---|
 | Item 20 | **Load by subject / focus:** work on chosen subjects only, at dean's-office scale | Design approved 2026-10-20 (approach B, filter-based focus, 8 steps): `designs/load-by-subject.md` |
-| — | **Section Import by User:** self-serve onboarding from an .xlsx template | Design phases 1–3 locked (c1ba192); resume at phase 4 (Data Design): `designs/section-import-by-user.md` |
+| Item 24 | **Section Import by User:** self-serve onboarding from an .xlsx template | Design complete 2026-10-24 (all six phases locked): `designs/section-import-by-user.md`. Now item 24 in `spec_version_1.2.3.md` (steps 24.1–24.10), not started |
 
 ## Data loss and recovery (design note section 3)
 | Ref | Issue | Notes |
@@ -61,6 +61,7 @@ usual treatment (problem, file:line refs, fix direction, production and data not
 | Item 4 (open) | Header-only check on D; possible 4f (working copy locked vs damaged) | |
 | P3 | Copy Semester doesn't carry meeting room types | Design question |
 | — | **Meeting room type: show the room's type when a room is chosen** (found 2026-10-24). Today a meeting's room type is the type it *needs*: it starts at "(none)", picking a room never fills it in, and a type given to a room later never reaches its meetings (`SectionMeetingViewModel.cs:290-345`). It looks odd to users. Fix direction: when a meeting has a room, the type box shows that room's type, read directly from the room. The stored value matters only for a meeting with no room, which is the only case the Room Browser uses it (`RoomAvailabilityService.cs:250-268`; a chosen room locks the meeting). Nothing to propagate and no bulk rewrite of sections | Decide: setting the type box narrows the room dropdown, so after picking a lab only labs are listed. Accept that, or show the room's type as a separate read-only label. If the editor starts *storing* the type when a room is picked, ask the `MinimumVersionToWrite` question (likely No: 1.2.2 already keeps the field). Makes P3 matter less for meetings that have a room. The section import (`designs/section-import-by-user.md`) leaves room type blank and is right either way |
+| — | **Shared-schedule parser: use the shared `ScheduleText` helpers** (deferred from the section import, decision E3, 2026-10-24). `SharedScheduleCsvParser` keeps its own `DayMap` and `IsValidFrequency`, which the section import replaces with `ScheduleText.ParseDays` / `ParseFrequency` | Its accepted input changes slightly (compact day runs such as `MWF`), so check existing shared-schedule files still parse. See `designs/section-import-by-user.md`, Phase 5 |
 | P4 | File an Avalonia bug report for the VirtualizingStackPanel item-growth jump | |
 | P6 | A section picked while the section list is hidden isn't scrolled into view when the list is shown | |
 | P7 | In-app updates for the Microsoft Store build | |
