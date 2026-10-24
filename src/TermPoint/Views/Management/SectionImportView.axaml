@@ -238,6 +238,27 @@
 					   Text="{Binding ImportSummary}" />
 		</StackPanel>
 
+		<!--
+			Second summary line (spec item 20, step 7): shown only when some of the sections just created are in
+			subjects the user has not chosen, with a button that sets the focus to All. The button is disabled, with
+			the "Finish editing first" tooltip, while a section editor is open.
+		-->
+		<StackPanel IsVisible="{Binding HasOutsideChosenSubjectsNote}"
+					Orientation="Vertical"
+					Spacing="4">
+			<TextBlock TextWrapping="Wrap"
+					   FontSize="{StaticResource FontSizeSmall}"
+					   Foreground="{StaticResource TextSecondary}"
+					   Text="{Binding OutsideChosenSubjectsNote}" />
+			<Button HorizontalAlignment="Left"
+					Command="{Binding ShowAllSubjectsCommand}"
+					Content="Show all subjects"
+					FontSize="{StaticResource FontSizeSmall}"
+					Padding="8,4"
+					ToolTip.ShowOnDisabled="True"
+					ToolTip.Tip="{Binding ShowAllSubjectsToolTip}" />
+		</StackPanel>
+
 	</StackPanel>
 
 </UserControl>

@@ -434,6 +434,22 @@ Steps 2–7 edit AXAML: warn the user before each so they can close the tab in V
 > - **The top bar's context stands out:** the Academic Year, Semester and Subjects labels and values
 >   use `TopBarContextWeight` (SemiBold) from App.axaml; the static menu items don't.
 > - In this document "focus" still names the concept; users see "Subjects".
+>
+> **Further progress (2026-10-23, later).** Step 4 finished (the filter lists follow the subjects;
+> ticks and overlays outside them are dropped; double-clicking an out-of-focus tile offers "Add
+> {subject} and edit"). Step 6 done, with these decisions:
+> - **Workload View:** only in-focus instructors get a row; each row lists the whole load, with
+>   out-of-subject sections dimmed; under None a hint. No "Show all instructors" switch anywhere:
+>   Subjects: All in the top bar does that job.
+> - **Instructors flyout and Workload Mailer:** the editor pattern (in-focus first, "Other
+>   instructors", the rest dimmed), sorted inside each group. The mailer ticks only in-focus
+>   instructors by default. The grid's right-click Instructors panel uses the same pattern.
+> - The instructor rule stays in one place (`InstructorFocusRule` behind `FocusService.IsInFocus`),
+>   so every list changes together if the rule changes.
+> Step 7 done: Empty Semester says it empties all subjects; the section import summary counts
+> sections outside the chosen subjects, with [Show all subjects]. Copy Semester may deserve a
+> similar note later. **Still open:** step 8's manual checks, and the memory check on a
+> 10-subject, ~800-section database (heap snapshots, Release, virtualization off).
 
 2. **Section-list Hide and empty state.**
    - Build cards only for in-focus sections, on load and in every incremental path, and rebuild on

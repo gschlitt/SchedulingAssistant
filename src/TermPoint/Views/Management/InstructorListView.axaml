@@ -170,41 +170,119 @@
 				BorderThickness="1"
 				CanUserSortColumns="True"
 				IsReadOnly="True"
-				ItemsSource="{Binding Instructors}"
-				SelectedItem="{Binding SelectedInstructor}"
+				ItemsSource="{Binding InstructorRows}"
+				SelectedItem="{Binding SelectedRow}"
 				Sorting="DataGrid_Sorting">
+					<!--
+					  Under a Subjects focus (spec item 20) the rows are the in-focus instructors first, then an
+					  "Other instructors" heading, then the rest in the lighter out-of-focus colour; nobody is hidden.
+					  The text columns are template columns (rather than DataGridTextColumn) so each cell can follow
+					  its row's IsOutOfFocus, as the section editor's instructor list does. The class sits on the
+					  cell's TextBlock; only a screenful of rows is realized, so the class style is cheap. The
+					  heading lives in the First column's cell of the first out-of-focus row, and every text cell is
+					  bottom-aligned so that row's text still lines up under the heading. SortMemberPath makes the
+					  header click raise Sorting (the handler reads the Tag, as before).
+					-->
+					<DataGrid.Styles>
+						<Style Selector="TextBlock.outOfFocus">
+							<Setter Property="Foreground" Value="{StaticResource TextOutOfFocus}" />
+						</Style>
+					</DataGrid.Styles>
 					<DataGrid.Columns>
-						<DataGridTextColumn
+						<DataGridTemplateColumn
 						Width="Auto"
-						Binding="{Binding FirstName}"
-						FontSize="12"
 						Header="First"
-						Tag="FirstName" />
-						<DataGridTextColumn
+						SortMemberPath="FirstName"
+						Tag="FirstName">
+							<DataGridTemplateColumn.CellTemplate>
+								<DataTemplate>
+									<StackPanel VerticalAlignment="Bottom">
+										<!--  "Other instructors" heading and thin rule, on the first out-of-focus row only  -->
+										<Border
+										Margin="0,3,0,2"
+										Padding="2,2,0,0"
+										BorderBrush="{StaticResource SubduedBorder}"
+										BorderThickness="0,1,0,0"
+										IsVisible="{Binding ShowOthersHeading}">
+											<TextBlock
+											FontSize="{StaticResource FontSizeSmall}"
+											Foreground="{StaticResource TextDimLabel}"
+											Text="Other instructors" />
+										</Border>
+										<TextBlock
+										Margin="12,0,12,8"
+										FontSize="12"
+										Classes.outOfFocus="{Binding IsOutOfFocus}"
+										Text="{Binding FirstName}" />
+									</StackPanel>
+								</DataTemplate>
+							</DataGridTemplateColumn.CellTemplate>
+						</DataGridTemplateColumn>
+						<DataGridTemplateColumn
 						Width="Auto"
 						MinWidth="20"
-						Binding="{Binding LastName}"
-						FontSize="12"
 						Header="Last"
-						Tag="LastName" />
-						<DataGridTextColumn
+						SortMemberPath="LastName"
+						Tag="LastName">
+							<DataGridTemplateColumn.CellTemplate>
+								<DataTemplate>
+									<TextBlock
+									Margin="12,0,12,8"
+									VerticalAlignment="Bottom"
+									FontSize="12"
+									Classes.outOfFocus="{Binding IsOutOfFocus}"
+									Text="{Binding LastName}" />
+								</DataTemplate>
+							</DataGridTemplateColumn.CellTemplate>
+						</DataGridTemplateColumn>
+						<DataGridTemplateColumn
 						MinWidth="40"
-						Binding="{Binding Initials}"
-						FontSize="12"
 						Header="Init"
-						Tag="Initials" />
-						<DataGridTextColumn
+						SortMemberPath="Initials"
+						Tag="Initials">
+							<DataGridTemplateColumn.CellTemplate>
+								<DataTemplate>
+									<TextBlock
+									Margin="12,0,12,8"
+									VerticalAlignment="Bottom"
+									FontSize="12"
+									Classes.outOfFocus="{Binding IsOutOfFocus}"
+									Text="{Binding Initials}" />
+								</DataTemplate>
+							</DataGridTemplateColumn.CellTemplate>
+						</DataGridTemplateColumn>
+						<DataGridTemplateColumn
 						Width="Auto"
-						Binding="{Binding StaffTypeName}"
-						FontSize="12"
 						Header="Type"
-						Tag="StaffType" />
-						<DataGridTextColumn
+						SortMemberPath="StaffTypeName"
+						Tag="StaffType">
+							<DataGridTemplateColumn.CellTemplate>
+								<DataTemplate>
+									<TextBlock
+									Margin="12,0,12,8"
+									VerticalAlignment="Bottom"
+									FontSize="12"
+									Classes.outOfFocus="{Binding IsOutOfFocus}"
+									Text="{Binding StaffTypeName}" />
+								</DataTemplate>
+							</DataGridTemplateColumn.CellTemplate>
+						</DataGridTemplateColumn>
+						<DataGridTemplateColumn
 						Width="Auto"
 						MinWidth="150"
-						Binding="{Binding Email}"
-						FontSize="12"
-						Header="Email" />
+						Header="Email"
+						SortMemberPath="Email">
+							<DataGridTemplateColumn.CellTemplate>
+								<DataTemplate>
+									<TextBlock
+									Margin="12,0,12,8"
+									VerticalAlignment="Bottom"
+									FontSize="12"
+									Classes.outOfFocus="{Binding IsOutOfFocus}"
+									Text="{Binding Email}" />
+								</DataTemplate>
+							</DataGridTemplateColumn.CellTemplate>
+						</DataGridTemplateColumn>
 						<DataGridCheckBoxColumn
 						Width="50"
 						Binding="{Binding IsActive}"

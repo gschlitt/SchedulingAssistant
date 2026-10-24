@@ -700,7 +700,9 @@ public partial class App : Application
                 sp.GetRequiredService<GridChangeNotifier>(),
                 sp.GetRequiredService<IDialogService>(),
                 sp.GetRequiredService<WriteLockService>(),
-                sp.GetRequiredService<WorkloadMailerViewModel>()));
+                sp.GetRequiredService<WorkloadMailerViewModel>(),
+                // A constructor dependency so FocusService is built, and subscribes to SectionsChanged, first.
+                sp.GetRequiredService<FocusService>()));
 
         services.AddTransient<RoomListViewModel>();
         services.AddTransient<AcademicYearListViewModel>();

@@ -192,7 +192,8 @@ public sealed class WriteLockReadOnlyTests : IDisposable
         new(_instructorRepo, _propertyRepo, _sectionRepo, _courseRepo, _releaseRepo,
             _commitmentRepo, _noteRepo, _semesterRepo, _ayRepo, _semesterContext, _changeNotifier,
             _dialog, _lock,
-            new WorkloadMailerViewModel(_ayRepo, _semesterRepo, _instructorRepo, _sectionRepo, _releaseRepo, _courseRepo));
+            new WorkloadMailerViewModel(_ayRepo, _semesterRepo, _instructorRepo, _sectionRepo, _releaseRepo, _courseRepo, FocusTestSupport.AllFocus()),
+            FocusTestSupport.AllFocus());
 
     /// <summary>Creates a fully-wired <see cref="RoomListViewModel"/> in reader mode.</summary>
     private RoomListViewModel CreateRoomListVm() =>
@@ -462,7 +463,7 @@ public sealed class WriteLockReadOnlyTests : IDisposable
     public void EmptySemester_EmptyCommand_CanExecuteIsFalseInReaderMode()
     {
         var vm = new EmptySemesterViewModel(_ayRepo, _semesterRepo, CreateContentsService(),
-            _semesterContext, _lock);
+            _semesterContext, _lock, FocusTestSupport.AllFocus(_semesterContext));
         Assert.False(vm.EmptyCommand.CanExecute(null));
     }
 

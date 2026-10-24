@@ -113,23 +113,50 @@
 					CornerRadius="3">
 					<ScrollViewer VerticalScrollBarVisibility="Auto">
 						<ItemsControl ItemsSource="{Binding InstructorItems}">
+							<!--
+								Out-of-focus instructors (spec item 20) show lighter, below an "Other instructors" heading,
+								as in the section editor's instructor list. The class sits on the TextBlocks (not the
+								CheckBox) so the CheckBox's own states cannot repaint them.
+							-->
+							<ItemsControl.Styles>
+								<Style Selector="TextBlock.outOfFocus">
+									<Setter Property="Foreground" Value="{StaticResource TextOutOfFocus}" />
+								</Style>
+							</ItemsControl.Styles>
 							<ItemsControl.ItemTemplate>
 								<DataTemplate>
-									<CheckBox
-										Padding="2,1"
-										FontSize="{StaticResource FontSizeSmall}"
-										IsChecked="{Binding IsSelected, Mode=TwoWay}"
-										IsEnabled="{Binding HasEmail}">
-										<CheckBox.Content>
-											<StackPanel Orientation="Horizontal" Spacing="6">
-												<TextBlock FontSize="{StaticResource FontSizeSmall}" Text="{Binding DisplayName}" />
-												<TextBlock
-													FontSize="{StaticResource FontSizeSmall}"
-													Foreground="{StaticResource TextPrimary}"
-													Text="{Binding EmailDisplay}" />
-											</StackPanel>
-										</CheckBox.Content>
-									</CheckBox>
+									<StackPanel>
+										<!--  "Other instructors" heading and thin rule, on the first out-of-focus row only  -->
+										<Border
+											Margin="0,3,0,2"
+											Padding="2,2,0,0"
+											BorderBrush="{StaticResource SubduedBorder}"
+											BorderThickness="0,1,0,0"
+											IsVisible="{Binding ShowOthersHeading}">
+											<TextBlock
+												FontSize="{StaticResource FontSizeSmall}"
+												Foreground="{StaticResource TextDimLabel}"
+												Text="Other instructors" />
+										</Border>
+										<CheckBox
+											Padding="2,1"
+											FontSize="{StaticResource FontSizeSmall}"
+											IsChecked="{Binding IsSelected, Mode=TwoWay}"
+											IsEnabled="{Binding HasEmail}">
+											<CheckBox.Content>
+												<StackPanel Orientation="Horizontal" Spacing="6">
+													<TextBlock
+														Classes.outOfFocus="{Binding IsOutOfFocus}"
+														FontSize="{StaticResource FontSizeSmall}"
+														Text="{Binding DisplayName}" />
+													<TextBlock
+														Classes.outOfFocus="{Binding IsOutOfFocus}"
+														FontSize="{StaticResource FontSizeSmall}"
+														Text="{Binding EmailDisplay}" />
+												</StackPanel>
+											</CheckBox.Content>
+										</CheckBox>
+									</StackPanel>
 								</DataTemplate>
 							</ItemsControl.ItemTemplate>
 						</ItemsControl>

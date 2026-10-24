@@ -536,5 +536,6 @@ public sealed class OrphanTolerantQueryTests : IDisposable
         new(_instructorRepo, _envRepo, _sectionRepo, _courseRepo, _releaseRepo,
             _commitmentRepo, _noteRepo, _semesterRepo, _ayRepo, _semesterContext, _changeNotifier,
             dialog, _fx.Lock,
-            new WorkloadMailerViewModel(_ayRepo, _semesterRepo, _instructorRepo, _sectionRepo, _releaseRepo, _courseRepo));
+            new WorkloadMailerViewModel(_ayRepo, _semesterRepo, _instructorRepo, _sectionRepo, _releaseRepo, _courseRepo, FocusTestSupport.AllFocus()),
+            FocusTestSupport.AllFocus());
 }

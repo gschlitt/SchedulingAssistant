@@ -23,6 +23,7 @@ public partial class InstructorListViewModel : ViewModelBase, IDisposable, IDism
     private readonly IDialogService _dialog;
     private readonly WriteLockService _lockService;
     private readonly GridChangeNotifier _gridChangeNotifier;
+    private readonly FocusService _focus;
 
     /// <summary>True when this instance holds the write lock; gates all write-capable buttons.</summary>
     public bool IsWriteEnabled => _lockService.IsWriter;
@@ -30,8 +31,39 @@ public partial class InstructorListViewModel : ViewModelBase, IDisposable, IDism
     /// <summary>Returns true when the current user holds the write lock. Used as a CanExecute predicate for all write commands.</summary>
     private bool CanWrite() => _lockService.IsWriter;
 
+    /// <summary>
+    /// The instructors listed, in list order: filtered by "Show only active", sorted by the chosen sort mode, and
+    /// under a Subjects focus split into the in-focus group followed by the rest (spec item 20, step 6), each group
+    /// keeping the sort order. Selection, edit and delete all work on these <see cref="Instructor"/> objects.
+    /// </summary>
     [ObservableProperty] private ObservableCollection<Instructor> _instructors = new();
+
+    /// <summary>
+    /// The same instructors as <see cref="Instructors"/>, in the same order, each wrapped in a row that carries the
+    /// presentation state the list needs (dimmed, "Other instructors" heading). The list binds to this; the
+    /// persisted <see cref="Instructor"/> model gets no display properties.
+    /// </summary>
+    [ObservableProperty] private ObservableCollection<InstructorRowViewModel> _instructorRows = new();
+
     [ObservableProperty] private Instructor? _selectedInstructor;
+
+    /// <summary>The list row behind <see cref="SelectedInstructor"/>; see <see cref="SelectedRow"/>.</summary>
+    private InstructorRowViewModel? _selectedRow;
+
+    /// <summary>
+    /// The row selected in the list (two-way bound to the DataGrid). A thin mirror of
+    /// <see cref="SelectedInstructor"/>, which stays the source of truth for everything else: setting this sets
+    /// that, and setting that finds the matching row here.
+    /// </summary>
+    public InstructorRowViewModel? SelectedRow
+    {
+        get => _selectedRow;
+        set
+        {
+            if (!SetProperty(ref _selectedRow, value)) return;
+            SelectedInstructor = value?.Value;
+        }
+    }
     [ObservableProperty] private InstructorEditViewModel? _editVm;
 
     /// <inheritdoc/>
@@ -99,7 +131,8 @@ public partial class InstructorListViewModel : ViewModelBase, IDisposable, IDism
         GridChangeNotifier changeNotifier,
         IDialogService dialog,
         WriteLockService lockService,
-        WorkloadMailerViewModel workloadMailerVm)
+        WorkloadMailerViewModel workloadMailerVm,
+        FocusService focus)
     {
         _repo = repo;
         _propertyRepo = propertyRepo;
@@ -114,6 +147,7 @@ public partial class InstructorListViewModel : ViewModelBase, IDisposable, IDism
         _dialog = dialog;
         _lockService = lockService;
         _gridChangeNotifier = changeNotifier;
+        _focus = focus;
         WorkloadMailerVm = workloadMailerVm;
         _lockService.LockStateChanged += OnLockStateChanged;
         _releaseVm = new ReleaseManagementViewModel(releaseRepo, lockService);
@@ -127,6 +161,10 @@ public partial class InstructorListViewModel : ViewModelBase, IDisposable, IDism
         _semesterContext.PropertyChanged += OnSemesterContextPropertyChanged;
         _releaseVm.ReleasesChanged += RefreshWorkload;
         _workloadVm.PropertyChanged += OnWorkloadVmPropertyChanged;
+
+        // The chosen subjects decide which instructors sit in the top group (FocusService is a constructor
+        // dependency, so its caches are already subscribed to the section store and are fresh when asked).
+        _focus.FocusChanged += OnFocusChanged;
     }
 
     /// <summary>
@@ -149,10 +187,45 @@ public partial class InstructorListViewModel : ViewModelBase, IDisposable, IDism
             // reset the local selection so it doesn't point to a semester from the old year.
             RebuildFlyoutSemesters(resetSelection: true);
         }
+        else if (e.PropertyName == nameof(SemesterContext.SelectedAcademicYear))
+        {
+            // Who is "in focus" depends on the academic year viewed (FocusService drops its history cache on this
+            // same change; it subscribed first), so regroup the list for the new year.
+            ReloadKeepingSelection();
+        }
+    }
+
+    /// <summary>
+    /// The chosen subjects changed: regroup the instructors list, and the Workload Mailer's list with it (its
+    /// default ticks follow the subjects too).
+    /// </summary>
+    private void OnFocusChanged()
+    {
+        ReloadKeepingSelection();
+        WorkloadMailerVm.RebuildInstructors();
+    }
+
+    /// <summary>
+    /// Rebuilds the list (<see cref="Load"/>) and puts the selection back on the same instructor, together with the
+    /// flyout's semester choice, so a regrouping does not make the user pick them again. If the instructor is no
+    /// longer listed the selection is simply cleared.
+    /// </summary>
+    private void ReloadKeepingSelection()
+    {
+        var selectedId = SelectedInstructor?.Id;
+        var semester = FlyoutSelectedSemester;
+
+        Load();
+        if (selectedId is null) return;
+
+        SelectedInstructor = Instructors.FirstOrDefault(i => i.Id == selectedId);
+        if (SelectedInstructor is not null && semester is not null && FlyoutSemesters.Contains(semester))
+            FlyoutSelectedSemester = semester;
     }
 
     public void Dispose()
     {
+        _focus.FocusChanged -= OnFocusChanged;
         _lockService.LockStateChanged -= OnLockStateChanged;
         _semesterContext.PropertyChanged -= OnSemesterContextPropertyChanged;
         ReleaseVm.ReleasesChanged -= RefreshWorkload;
@@ -183,7 +256,16 @@ public partial class InstructorListViewModel : ViewModelBase, IDisposable, IDism
                 .ThenBy(i => i.FirstName, StringComparer.CurrentCultureIgnoreCase)
                 .ToList();
 
-        Instructors = new ObservableCollection<Instructor>(filtered);
+        // Under a Subjects focus the in-focus instructors go first and the rest follow under an "Other instructors"
+        // heading, dimmed. This runs AFTER the active filter and the sort, and each group keeps the sort order, so
+        // sorting applies inside each group. Under All or None nothing is regrouped (FocusService returns the list
+        // as given with no one demoted). Nobody is hidden. Instructors added in the flyout have no sections yet, so
+        // the focus rule puts them in the top group under every focus.
+        var order = _focus.OrderInstructorsForChooser(filtered);
+        Instructors = new ObservableCollection<Instructor>(order.Ordered);
+        InstructorRows = new ObservableCollection<InstructorRowViewModel>(
+            order.Ordered.Select(i => new InstructorRowViewModel(
+                i, order.OutOfFocusIds.Contains(i.Id), i.Id == order.OthersHeadingInstructorId)));
     }
 
     /// <summary>
@@ -234,6 +316,14 @@ public partial class InstructorListViewModel : ViewModelBase, IDisposable, IDism
 
     partial void OnSelectedInstructorChanged(Instructor? value)
     {
+        // Keep the list's selected row in step (see SelectedRow); a no-op when the row set this selection.
+        var row = value is null ? null : InstructorRows.FirstOrDefault(r => ReferenceEquals(r.Value, value));
+        if (!ReferenceEquals(_selectedRow, row))
+        {
+            _selectedRow = row;
+            OnPropertyChanged(nameof(SelectedRow));
+        }
+
         OnPropertyChanged(nameof(SelectedFirstName));
         OnPropertyChanged(nameof(SelectedLastName));
         // Reset the flyout's local semester to the current global default when a new

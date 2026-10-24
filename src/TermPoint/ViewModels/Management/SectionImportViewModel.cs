@@ -20,7 +20,7 @@ namespace TermPoint.ViewModels.Management;
 /// campuses, meeting types), semester/course/instructor resolution, and
 /// transactional section import.
 /// </summary>
-public partial class SectionImportViewModel : ViewModelBase
+public partial class SectionImportViewModel : ViewModelBase, IDisposable
 {
     private readonly MainWindowViewModel _mainVm;
     private readonly ISectionRepository _sectionRepo;
@@ -35,6 +35,7 @@ public partial class SectionImportViewModel : ViewModelBase
     private readonly CsvImportParser _parser;
     private readonly CsvImportMatcher _matcher;
     private readonly Action<string> _addLog;
+    private readonly FocusService _focus;
 
     private List<SectionRow> _parsedRows = new();
 
@@ -84,6 +85,28 @@ public partial class SectionImportViewModel : ViewModelBase
     /// <summary>Summary text shown after import completes.</summary>
     [ObservableProperty] private string? _importSummary;
 
+    /// <summary>
+    /// Second line of the post-import summary (spec item 20, step 7): says how many of the sections just created are
+    /// in subjects the user has not chosen, so the section list and grid will not show them. Null when nothing
+    /// needs saying (the focus is All, or every created section is in the chosen subjects). Set by
+    /// <see cref="Import"/>; cleared when the user picks [Show all subjects].
+    /// </summary>
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(HasOutsideChosenSubjectsNote))]
+    private string? _outsideChosenSubjectsNote;
+
+    /// <summary>True when <see cref="OutsideChosenSubjectsNote"/> and its [Show all subjects] button should be shown.</summary>
+    public bool HasOutsideChosenSubjectsNote => !string.IsNullOrEmpty(OutsideChosenSubjectsNote);
+
+    /// <summary>Whether the focus may change right now (false while a section editor is open).</summary>
+    public bool CanChangeFocus => _focus.CanChangeFocus;
+
+    /// <summary>
+    /// Tooltip of the [Show all subjects] button: "Finish editing first" while an editor is open (the button is
+    /// disabled then), otherwise null (no tooltip).
+    /// </summary>
+    public string? ShowAllSubjectsToolTip => CanChangeFocus ? null : FocusViewModel.FinishEditingFirst;
+
     /// <summary>True when a file has been loaded and mapping tables are populated.</summary>
     [ObservableProperty]
     [NotifyCanExecuteChangedFor(nameof(ConfirmMappingsCommand))]
@@ -125,7 +148,8 @@ public partial class SectionImportViewModel : ViewModelBase
         IDatabaseContext db,
         CsvImportParser parser,
         CsvImportMatcher matcher,
-        Action<string> addLog)
+        Action<string> addLog,
+        FocusService focus)
     {
         _mainVm = mainVm;
         _sectionRepo = sectionRepo;
@@ -140,6 +164,34 @@ public partial class SectionImportViewModel : ViewModelBase
         _parser = parser;
         _matcher = matcher;
         _addLog = addLog;
+        _focus = focus;
+
+        // The [Show all subjects] button follows the focus guard, so it must hear CanChangeFocus change.
+        _focus.PropertyChanged += OnFocusServicePropertyChanged;
+    }
+
+    /// <summary>Unsubscribes from the focus service. Safe to call more than once.</summary>
+    public void Dispose() => _focus.PropertyChanged -= OnFocusServicePropertyChanged;
+
+    /// <summary>Re-evaluates the [Show all subjects] button when <see cref="FocusService.CanChangeFocus"/> changes.</summary>
+    private void OnFocusServicePropertyChanged(object? sender, System.ComponentModel.PropertyChangedEventArgs e)
+    {
+        if (e.PropertyName != nameof(FocusService.CanChangeFocus)) return;
+        OnPropertyChanged(nameof(CanChangeFocus));
+        OnPropertyChanged(nameof(ShowAllSubjectsToolTip));
+        ShowAllSubjectsCommand.NotifyCanExecuteChanged();
+    }
+
+    /// <summary>
+    /// Sets the focus to All, so sections created by the import that sit outside the chosen subjects become
+    /// visible. Like every focus change it honours the editor guard (disabled, with the "Finish editing first"
+    /// tooltip, while a section editor is open). Clears the note once the focus is All.
+    /// </summary>
+    [RelayCommand(CanExecute = nameof(CanChangeFocus))]
+    private void ShowAllSubjects()
+    {
+        if (_focus.SetFocus(SubjectFocus.All))
+            OutsideChosenSubjectsNote = null;
     }
 
     // ── ChooseFile ───────────────────────────────────────────────────────
@@ -739,6 +791,9 @@ public partial class SectionImportViewModel : ViewModelBase
         var skipped = 0;
         var rejected = 0;
 
+        // Course of every section created, to count the ones outside the chosen subjects afterwards.
+        var createdCourseIds = new List<string>();
+
         var (_, sectionTypeMap, campusMap, _) = _mappingLookups;
 
         void DoInserts(System.Data.Common.DbTransaction? tx)
@@ -782,6 +837,7 @@ public partial class SectionImportViewModel : ViewModelBase
 
                 _sectionRepo.Insert(section, tx);
                 created++;
+                createdCourseIds.Add(section.CourseId!);
             }
         }
 
@@ -808,6 +864,7 @@ public partial class SectionImportViewModel : ViewModelBase
 
             IsImported = true;
             ImportSummary = $"Imported {created} new, {rejected} rejected.";
+            OutsideChosenSubjectsNote = BuildOutsideChosenSubjectsNote(createdCourseIds);
             _addLog($"Section import complete: {created} created, {rejected} rejected.");
         }
         catch (Exception ex)
@@ -818,6 +875,45 @@ public partial class SectionImportViewModel : ViewModelBase
     }
 
     private bool CanImport() => IsMappingConfirmed && !IsImported;
+
+    /// <summary>
+    /// Builds the second summary line (spec item 20, step 7): how many of the sections just created are in subjects
+    /// the user has not chosen and so will not appear in the section list or grid. The sections are created either
+    /// way (an import is not scoped to the focus); this only makes sure the user is not left wondering where they
+    /// went. A course that cannot be found counts as outside (no view could show its section). Never throws: this
+    /// runs after the import has committed, so a failure to read the courses must not be reported as a failed import.
+    /// </summary>
+    /// <param name="createdCourseIds">The course id of each section created, one entry per section.</param>
+    /// <returns>
+    /// The sentence, or null when nothing needs saying: the focus is All, nothing was created, or every created
+    /// section is in the chosen subjects.
+    /// </returns>
+    private string? BuildOutsideChosenSubjectsNote(IReadOnlyList<string> createdCourseIds)
+    {
+        if (_focus.Current.Kind == FocusKind.All || createdCourseIds.Count == 0) return null;
+
+        int outside;
+        try
+        {
+            var courses = new Dictionary<string, Course>();
+            foreach (var course in _courseRepo.GetAll()) courses.TryAdd(course.Id, course);
+
+            outside = createdCourseIds.Count(id =>
+                !courses.TryGetValue(id, out var course) || !_focus.IsCourseInFocus(course));
+        }
+        catch (Exception ex)
+        {
+            App.Logger.LogInfo($"[SectionImport] Could not count sections outside the chosen subjects: {ex.Message}");
+            return null;
+        }
+
+        if (outside == 0) return null;
+        if (outside == createdCourseIds.Count)
+            return "None of them are in the subjects you've chosen, so they're not shown.";
+        return outside == 1
+            ? "1 of them is in a subject you haven't chosen, so it's not shown."
+            : $"{outside} of them are in subjects you haven't chosen, so they're not shown.";
+    }
 
     private void RecalculateCounts()
     {

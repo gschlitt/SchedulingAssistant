@@ -421,4 +421,23 @@ public sealed class FocusService : ObservableObject, IDisposable
 /// </summary>
 /// <param name="Ordered">Every instructor: in-focus ones first, then the rest, each group in input order.</param>
 /// <param name="OutOfFocusIds">Ids of the instructors in the second group.</param>
-public sealed record InstructorChooserOrder(IReadOnlyList<Instructor> Ordered, IReadOnlySet<string> OutOfFocusIds);
+public sealed record InstructorChooserOrder(IReadOnlyList<Instructor> Ordered, IReadOnlySet<string> OutOfFocusIds)
+{
+    /// <summary>
+    /// The id of the one instructor that carries the "Other instructors" heading and rule above it: the first
+    /// out-of-focus instructor, and only when at least one in-focus instructor precedes it. Null when nothing is
+    /// demoted, or when everyone is (a heading above the very first row would head nothing). The Instructors
+    /// flyout and the Workload Mailer place their heading by this, so the two agree with the section editor.
+    /// </summary>
+    public string? OthersHeadingInstructorId
+    {
+        get
+        {
+            if (OutOfFocusIds.Count == 0) return null;
+            for (var i = 1; i < Ordered.Count; i++)
+                if (OutOfFocusIds.Contains(Ordered[i].Id) && !OutOfFocusIds.Contains(Ordered[i - 1].Id))
+                    return Ordered[i].Id;
+            return null;
+        }
+    }
+}

@@ -188,9 +188,11 @@ public sealed class SemesterContentsScreensTests : IDisposable
     /// <summary>Builds an Empty Semester view model with the given semester picked in its two pickers.</summary>
     /// <param name="yearId">The academic year to pick.</param>
     /// <param name="semesterId">The semester to pick.</param>
-    private EmptySemesterViewModel NewEmptyVm(string yearId, string semesterId)
+    /// <param name="focus">The subject focus to use; a focus fixed at All when null.</param>
+    private EmptySemesterViewModel NewEmptyVm(string yearId, string semesterId, FocusService? focus = null)
     {
-        var vm = new EmptySemesterViewModel(_ayRepo, _semesterRepo, _service, _context, _fx.Lock);
+        var vm = new EmptySemesterViewModel(_ayRepo, _semesterRepo, _service, _context, _fx.Lock,
+            focus ?? FocusTestSupport.AllFocus(_context));
         vm.SelectedAcademicYear = vm.AcademicYears.Single(a => a.Id == yearId);
         vm.SelectedSemester = vm.Semesters.Single(s => s.Id == semesterId);
         return vm;
@@ -278,7 +280,7 @@ public sealed class SemesterContentsScreensTests : IDisposable
     {
         var vm = NewEmptyVm(_ay1, _fall);
         var asked = new List<(string Name, string Description)>();
-        vm.ConfirmEmpty = (name, description) =>
+        vm.ConfirmEmpty = (name, description, _) =>
         {
             asked.Add((name, description));
             return Task.FromResult(true);
@@ -314,7 +316,7 @@ public sealed class SemesterContentsScreensTests : IDisposable
     {
         var vm = NewEmptyVm(_ay1, _fall);
         var asked = 0;
-        vm.ConfirmEmpty = (_, _) => { asked++; return Task.FromResult(false); };
+        vm.ConfirmEmpty = (_, _, _) => { asked++; return Task.FromResult(false); };
 
         await vm.EmptyCommand.ExecuteAsync(null);
 
@@ -323,6 +325,55 @@ public sealed class SemesterContentsScreensTests : IDisposable
         Assert.Equal(FullContents, vm.Contents);
         Assert.Null(vm.StatusMessage);
         Assert.True(vm.CanEmpty);
+    }
+
+    /// <summary>
+    /// Runs the Empty Semester confirmation (declined, so nothing is deleted) under the given focus and returns the
+    /// extra sentence the view model handed to the confirmation, or null when it handed none.
+    /// </summary>
+    /// <param name="focus">The focus to run under.</param>
+    private async Task<string?> AskedSubjectsNoteAsync(FocusService focus)
+    {
+        var vm = NewEmptyVm(_ay1, _fall, focus);
+        string? note = "not asked";
+        vm.ConfirmEmpty = (_, _, subjectsNote) => { note = subjectsNote; return Task.FromResult(false); };
+
+        await vm.EmptyCommand.ExecuteAsync(null);
+
+        return note;
+    }
+
+    /// <summary>Under a Subjects focus the confirmation also says every subject is emptied, naming the year and semester.</summary>
+    [Fact]
+    public async Task EmptySemester_UnderASubjectsFocus_SaysAllSubjectsAreEmptied()
+    {
+        var focus = FocusTestSupport.AllFocus(_context);
+        focus.SetFocus(SubjectFocus.ForSubjects(["subj-biol"]));
+
+        var note = await AskedSubjectsNoteAsync(focus);
+
+        Assert.Equal("This empties all subjects in 2024-2025 Fall, not only the subjects you've chosen.", note);
+    }
+
+    /// <summary>Under None (nothing chosen, nothing shown) the same sentence appears.</summary>
+    [Fact]
+    public async Task EmptySemester_UnderNone_SaysAllSubjectsAreEmptied()
+    {
+        var focus = FocusTestSupport.AllFocus(_context);
+        focus.SetFocus(SubjectFocus.None);
+
+        var note = await AskedSubjectsNoteAsync(focus);
+
+        Assert.Equal("This empties all subjects in 2024-2025 Fall, not only the subjects you've chosen.", note);
+    }
+
+    /// <summary>Under All the confirmation is unchanged: no extra sentence.</summary>
+    [Fact]
+    public async Task EmptySemester_UnderAll_AddsNoSentence()
+    {
+        var note = await AskedSubjectsNoteAsync(FocusTestSupport.AllFocus(_context));
+
+        Assert.Null(note);
     }
 
     /// <summary>A semester with nothing in it has nothing to empty.</summary>
@@ -433,7 +484,7 @@ public sealed class SemesterContentsScreensTests : IDisposable
         var vm = NewEmptyVm(_ay2, _spring);
         var errors = new List<string>();
         vm.ShowError = message => { errors.Add(message); return Task.CompletedTask; };
-        vm.ConfirmEmpty = (_, _) =>
+        vm.ConfirmEmpty = (_, _, _) =>
         {
             Load(_ay2, _spring);            // loaded while the dialog is open
             return Task.FromResult(true);

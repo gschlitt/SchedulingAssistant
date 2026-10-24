@@ -10,7 +10,7 @@ namespace TermPoint.ViewModels.Management;
 /// Top-level flyout ViewModel for the CSV Import facility.
 /// Hosts three sub-ViewModels (Instructors, Courses, Sections) and a shared log.
 /// </summary>
-public partial class CsvImportViewModel : ViewModelBase
+public partial class CsvImportViewModel : ViewModelBase, IDisposable
 {
     /// <summary>Instructor import sub-VM: file selection, preview, matching, import.</summary>
     public InstructorImportViewModel InstructorVm { get; }
@@ -37,7 +37,8 @@ public partial class CsvImportViewModel : ViewModelBase
         IAcademicYearRepository academicYearRepo,
         IDatabaseContext db,
         CsvImportParser parser,
-        CsvImportMatcher matcher)
+        CsvImportMatcher matcher,
+        FocusService focus)
     {
         InstructorVm = new InstructorImportViewModel(
             mainVm, instructorRepo, db, parser, matcher, AddLog);
@@ -48,8 +49,11 @@ public partial class CsvImportViewModel : ViewModelBase
         SectionVm = new SectionImportViewModel(
             mainVm, sectionRepo, courseRepo, instructorRepo, roomRepo,
             campusRepo, schedEnvRepo, semesterRepo, academicYearRepo,
-            db, parser, matcher, AddLog);
+            db, parser, matcher, AddLog, focus);
     }
+
+    /// <summary>Releases what the section import holds on the focus service.</summary>
+    public void Dispose() => SectionVm.Dispose();
 
     private void AddLog(string message)
     {

@@ -56,6 +56,18 @@ public partial class MailerInstructorItem : ObservableObject
     /// <summary>Shows the email address, or "(no email)" as a placeholder.</summary>
     public string EmailDisplay => HasEmail ? Instructor.Email : "(no email)";
 
+    /// <summary>
+    /// True when the instructor is outside the chosen subjects (spec item 20): the row's text shows in the lighter
+    /// out-of-focus colour, under the "Other instructors" heading, and starts unticked. Set at construction.
+    /// </summary>
+    public bool IsOutOfFocus { get; init; }
+
+    /// <summary>
+    /// True on exactly one row, the first out-of-focus instructor that follows at least one in-focus one: the row
+    /// that carries the "Other instructors" heading and thin rule above it. Set at construction.
+    /// </summary>
+    public bool ShowOthersHeading { get; init; }
+
     [ObservableProperty]
     private bool _isSelected;
 }
@@ -82,6 +94,7 @@ public partial class WorkloadMailerViewModel : ViewModelBase
     private readonly ISectionRepository _sectionRepo;
     private readonly IReleaseRepository _releaseRepo;
     private readonly ICourseRepository _courseRepo;
+    private readonly FocusService _focus;
 
     // Resolved when BeginSending is called; used throughout the Sending step.
     private List<MailerInstructorItem> _queue = new();
@@ -173,13 +186,15 @@ public partial class WorkloadMailerViewModel : ViewModelBase
     /// <param name="sectionRepo">Repository for sections (used during sending).</param>
     /// <param name="releaseRepo">Repository for non-instructional releases (used during sending).</param>
     /// <param name="courseRepo">Repository for courses (used to resolve course codes during sending).</param>
+    /// <param name="focus">The subject focus: groups the instructor list and decides who starts ticked.</param>
     public WorkloadMailerViewModel(
         IAcademicYearRepository ayRepo,
         ISemesterRepository semRepo,
         IInstructorRepository instructorRepo,
         ISectionRepository sectionRepo,
         IReleaseRepository releaseRepo,
-        ICourseRepository courseRepo)
+        ICourseRepository courseRepo,
+        FocusService focus)
     {
         _ayRepo = ayRepo;
         _semRepo = semRepo;
@@ -187,6 +202,7 @@ public partial class WorkloadMailerViewModel : ViewModelBase
         _sectionRepo = sectionRepo;
         _releaseRepo = releaseRepo;
         _courseRepo = courseRepo;
+        _focus = focus;
 
         LoadSetupData();
     }
@@ -208,13 +224,36 @@ public partial class WorkloadMailerViewModel : ViewModelBase
         AcademicYears = new ObservableCollection<AcademicYear>(ays);
         SelectedAcademicYear = ays.FirstOrDefault();
 
-        // Load instructors (all, including inactive — admin may want to email an outgoing instructor)
-        var instructors = _instructorRepo.GetAll();
+        RebuildInstructors();
+    }
+
+    /// <summary>
+    /// (Re)builds the instructor checklist from the repository, using the subject focus as it is NOW. Called when
+    /// the view model is created and again by the Instructors flyout when the chosen subjects change.
+    /// <para>
+    /// Every instructor is listed (including inactive ones: the admin may want to email an outgoing instructor).
+    /// Under a Subjects focus the in-focus instructors come first and the rest follow under an "Other instructors"
+    /// heading, dimmed, each group in the repository's order. Only instructors who are active, have an email AND
+    /// are in focus start ticked; the others start unticked and can still be ticked by hand, or with the "All"
+    /// button. Under All or None nothing is grouped and the defaults are as they always were (active with an
+    /// email). This resets the ticks, which is intended when the subjects change. The emails themselves still
+    /// describe the instructor's whole load: the focus never reaches <see cref="BuildWorkloadBlock"/>.
+    /// </para>
+    /// </summary>
+    public void RebuildInstructors()
+    {
+        var order = _focus.OrderInstructorsForChooser(_instructorRepo.GetAll());
         InstructorItems = new ObservableCollection<MailerInstructorItem>(
-            instructors.Select(i => new MailerInstructorItem
+            order.Ordered.Select(i =>
             {
-                Instructor = i,
-                IsSelected = i.IsActive && !string.IsNullOrWhiteSpace(i.Email)
+                var outOfFocus = order.OutOfFocusIds.Contains(i.Id);
+                return new MailerInstructorItem
+                {
+                    Instructor = i,
+                    IsOutOfFocus = outOfFocus,
+                    ShowOthersHeading = i.Id == order.OthersHeadingInstructorId,
+                    IsSelected = i.IsActive && !string.IsNullOrWhiteSpace(i.Email) && !outOfFocus,
+                };
             }));
     }
 

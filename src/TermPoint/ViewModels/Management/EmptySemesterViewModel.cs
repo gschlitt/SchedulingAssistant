@@ -23,6 +23,7 @@ public partial class EmptySemesterViewModel : ViewModelBase, IDisposable
     private readonly SemesterContentsService _contentsService;
     private readonly SemesterContext _semesterContext;
     private readonly WriteLockService _lockService;
+    private readonly FocusService _focus;
 
     /// <summary>True when the current user holds the write lock; gates the Empty Semester button.</summary>
     public bool IsWriteEnabled => _lockService.IsWriter;
@@ -81,11 +82,12 @@ public partial class EmptySemesterViewModel : ViewModelBase, IDisposable
     public bool CanEmpty =>
         _lockService.IsWriter && SelectedSemester is not null && !IsCurrentlyLoaded && Contents is { IsEmpty: false };
 
-    /// <summary>Set by the view. Called before deletion with (semesterLabel, contentsDescription): the
-    /// label names the academic year and the semester (e.g. "2026-2027 Early Summer"), and the
-    /// description lists every kind about to be deleted (e.g. "12 sections, 3 meetings").
+    /// <summary>Set by the view. Called before deletion with (semesterLabel, contentsDescription, subjectsNote): the
+    /// label names the academic year and the semester (e.g. "2026-2027 Early Summer"), the
+    /// description lists every kind about to be deleted (e.g. "12 sections, 3 meetings"), and the note is the
+    /// extra sentence shown when a Subjects focus is in force (see <see cref="BuildSubjectsNote"/>), or null.
     /// Should return true if the user confirms, false to cancel.</summary>
-    public Func<string, string, Task<bool>>? ConfirmEmpty { get; set; }
+    public Func<string, string, string?, Task<bool>>? ConfirmEmpty { get; set; }
 
     /// <summary>Set by the view. Called when an error occurs.</summary>
     public Func<string, Task>? ShowError { get; set; }
@@ -95,18 +97,21 @@ public partial class EmptySemesterViewModel : ViewModelBase, IDisposable
     /// <param name="contentsService">Counts a semester's contents, knows which semesters are loaded, and does the empty.</param>
     /// <param name="semesterContext">Raises a change when the main view's loaded semesters change, so the guard stays current while this screen is open.</param>
     /// <param name="lockService">Write lock; gates the Empty Semester button.</param>
+    /// <param name="focus">The subject focus; Empty Semester always empties every subject, and says so when the focus is not All.</param>
     public EmptySemesterViewModel(
         IAcademicYearRepository ayRepo,
         ISemesterRepository semRepo,
         SemesterContentsService contentsService,
         SemesterContext semesterContext,
-        WriteLockService lockService)
+        WriteLockService lockService,
+        FocusService focus)
     {
         _ayRepo = ayRepo;
         _semRepo = semRepo;
         _contentsService = contentsService;
         _semesterContext = semesterContext;
         _lockService = lockService;
+        _focus = focus;
         _lockService.LockStateChanged += OnLockStateChanged;
         _semesterContext.PropertyChanged += OnSemesterContextChanged;
         Load();
@@ -214,7 +219,7 @@ public partial class EmptySemesterViewModel : ViewModelBase, IDisposable
         // Confirm deletion, naming the academic year and semester (semester names such as "Fall"
         // repeat every year) and listing every kind of row that will be removed.
         var label = SelectedAcademicYear is { } year ? $"{year.Name} {semester.Name}" : semester.Name;
-        if (ConfirmEmpty is null || !await ConfirmEmpty(label, contents.Describe()))
+        if (ConfirmEmpty is null || !await ConfirmEmpty(label, contents.Describe(), BuildSubjectsNote(label)))
             return;
 
         try
@@ -237,6 +242,20 @@ public partial class EmptySemesterViewModel : ViewModelBase, IDisposable
                 await ShowError(text);
         }
     }
+
+    /// <summary>
+    /// The extra sentence for the confirmation when the user has chosen subjects (spec item 20): Empty Semester is a
+    /// whole-semester operation, so it empties EVERY subject, not only the ones the section list shows. Without
+    /// this a user who sees only their own subjects could take "Empty Semester" to mean just those. The sentence
+    /// appears under a Subjects focus and under None (where the section list shows nothing at all) and not under
+    /// All, where what the user sees is already everything. The view only displays it.
+    /// </summary>
+    /// <param name="semesterLabel">The year and semester label the confirmation already uses, e.g. "2026-2027 Fall".</param>
+    /// <returns>The sentence, or null under All.</returns>
+    public string? BuildSubjectsNote(string semesterLabel) =>
+        _focus.Current.Kind == FocusKind.All
+            ? null
+            : $"This empties all subjects in {semesterLabel}, not only the subjects you've chosen.";
 
     [RelayCommand]
     private void Cancel()

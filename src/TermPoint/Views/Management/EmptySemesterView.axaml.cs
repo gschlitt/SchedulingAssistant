@@ -31,8 +31,12 @@ public partial class EmptySemesterView : UserControl
     /// </summary>
     /// <param name="semesterLabel">Academic year and semester about to be emptied, e.g. "2026-2027 Early Summer"; shown in bold.</param>
     /// <param name="contentsDescription">What it contains, e.g. "12 sections, 3 meetings" (from <c>SemesterContents.Describe()</c>).</param>
+    /// <param name="subjectsNote">
+    /// Extra sentence shown above "This cannot be undone." when the user has chosen subjects (it says the empty covers
+    /// every subject); null under All. The wording is built by <see cref="EmptySemesterViewModel.BuildSubjectsNote"/>.
+    /// </param>
     /// <returns>True if the user chose Delete Everything; false if they cancelled or the dialog could not be shown.</returns>
-    private async Task<bool> ShowConfirmEmptyAsync(string semesterLabel, string contentsDescription)
+    private async Task<bool> ShowConfirmEmptyAsync(string semesterLabel, string contentsDescription, string? subjectsNote)
     {
         var owner = TopLevel.GetTopLevel(this) as Window;
         if (owner is null) return false;
@@ -55,19 +59,30 @@ public partial class EmptySemesterView : UserControl
 
         // "Permanently delete everything in <b>2026-2027 Early Summer</b>: 12 sections, 3 meetings?"
         // The year + semester is bold so the user can see at a glance exactly what is about to go.
+        var inlines = new InlineCollection
+        {
+            new Run("Permanently delete everything in "),
+            new Run(semesterLabel) { FontWeight = FontWeight.Bold },
+            new Run($": {contentsDescription}?"),
+            new LineBreak(),
+            new LineBreak(),
+        };
+
+        // Under a Subjects focus (or None) say plainly that every subject goes, not only the chosen ones.
+        if (!string.IsNullOrEmpty(subjectsNote))
+        {
+            inlines.Add(new Run(subjectsNote));
+            inlines.Add(new LineBreak());
+            inlines.Add(new LineBreak());
+        }
+
+        inlines.Add(new Run("This cannot be undone."));
+
         var body = new TextBlock
         {
             TextWrapping = Avalonia.Media.TextWrapping.Wrap,
             FontSize = 13,
-            Inlines = new InlineCollection
-            {
-                new Run("Permanently delete everything in "),
-                new Run(semesterLabel) { FontWeight = FontWeight.Bold },
-                new Run($": {contentsDescription}?"),
-                new LineBreak(),
-                new LineBreak(),
-                new Run("This cannot be undone.")
-            }
+            Inlines = inlines
         };
 
         var deleteBtn = new Button { Content = "Delete Everything" };
