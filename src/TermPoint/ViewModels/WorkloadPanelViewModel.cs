@@ -7,8 +7,22 @@ using System.Collections.ObjectModel;
 
 namespace TermPoint.ViewModels;
 
+/// <summary>
+/// The Workload View (bottom-left panel): one row per instructor, listing that instructor's whole load for the
+/// selected semester(s). Under a subject focus (spec item 20, step 20.6) only the in-focus instructors get a row
+/// (decided by <see cref="FocusService.IsInFocus"/>, never re-implemented here); each row still lists and totals
+/// the instructor's WHOLE load, with sections outside the chosen subjects flagged
+/// <see cref="WorkloadItemViewModel.IsOutOfFocus"/> so the view can dim them.
+/// </summary>
 public partial class WorkloadPanelViewModel : ViewModelBase
 {
+    /// <summary>Hint shown instead of the rows when the focus is None (nothing chosen yet).</summary>
+    public const string NoSubjectsChosenMessage =
+        "No subjects chosen. Choose subjects in the top bar to see instructors' workloads.";
+
+    /// <summary>Hint shown when a Subjects focus matches no instructor at all.</summary>
+    public const string NoInstructorsInSubjectsMessage = "No instructors teach the chosen subjects.";
+
     private readonly IInstructorRepository _instructorRepo;
     private readonly ISectionRepository _sectionRepo;
     private readonly ICourseRepository _courseRepo;
@@ -17,9 +31,16 @@ public partial class WorkloadPanelViewModel : ViewModelBase
     private readonly ISemesterRepository _semesterRepo;
     private readonly SemesterContext _semesterContext;
     private readonly SectionStore _sectionStore;
+    private readonly FocusService _focus;
 
     [ObservableProperty] private ObservableCollection<WorkloadRowViewModel> _rows = new();
     [ObservableProperty] private string? _lastErrorMessage;
+
+    /// <summary>
+    /// Text shown in place of the (empty) row list because of the subject focus, or null when no hint applies
+    /// (including an empty list under All, which is simply "no instructors"). Recomputed by every load.
+    /// </summary>
+    [ObservableProperty] private string? _hintMessage;
     [ObservableProperty] private IReadOnlySet<string> _selectedSectionIds = new HashSet<string>();
 
     partial void OnSelectedSectionIdsChanged(IReadOnlySet<string> value) => UpdateItemSelection();
@@ -32,7 +53,8 @@ public partial class WorkloadPanelViewModel : ViewModelBase
         ISchedulingNoteRepository noteRepo,
         ISemesterRepository semesterRepo,
         SemesterContext semesterContext,
-        SectionStore sectionStore)
+        SectionStore sectionStore,
+        FocusService focus)
     {
         _instructorRepo = instructorRepo;
         _sectionRepo = sectionRepo;
@@ -42,6 +64,7 @@ public partial class WorkloadPanelViewModel : ViewModelBase
         _semesterRepo = semesterRepo;
         _semesterContext = semesterContext;
         _sectionStore = sectionStore;
+        _focus = focus;
 
         // Reload whenever sections change or the semester selection changes.
         // SectionStore.SectionsChanged fires for both cases: SectionListViewModel
@@ -50,6 +73,11 @@ public partial class WorkloadPanelViewModel : ViewModelBase
 
         // Keep SelectedSectionIds in sync with the store's single source of truth.
         _sectionStore.SelectionChanged += ids => SelectedSectionIds = ids;
+
+        // A different set of chosen subjects changes which instructors get a row and which sections are dimmed.
+        // FocusService is a constructor dependency, so it subscribed to SectionsChanged first and its caches are
+        // fresh when Load asks it questions.
+        _focus.FocusChanged += Load;
 
         Load();
     }
@@ -60,6 +88,7 @@ public partial class WorkloadPanelViewModel : ViewModelBase
     private void Load()
     {
         LastErrorMessage = null;
+        HintMessage = null;
         try
         {
             var selectedSemesters = _semesterContext.SelectedSemesters.ToList();
@@ -72,8 +101,9 @@ public partial class WorkloadPanelViewModel : ViewModelBase
             var isMultiSemester = _semesterContext.IsMultiSemesterMode;
             var academicYearId = selectedSemesters[0].Semester.AcademicYearId;
 
-            // Active instructors (repo returns them sorted by lastName, firstName)
-            var instructors = _instructorRepo.GetAll().Where(i => i.IsActive).ToList();
+            // Active instructors (repo returns them sorted by lastName, firstName), narrowed to the ones in focus
+            // BEFORE any row is built so out-of-focus instructors cost nothing. Under All everyone is in focus.
+            var instructors = _instructorRepo.GetAll().Where(i => i.IsActive && _focus.IsInFocus(i)).ToList();
 
             // Course code cache to avoid repeated DB hits
             var courseCache = new Dictionary<string, string>();
@@ -220,6 +250,12 @@ public partial class WorkloadPanelViewModel : ViewModelBase
             }
 
             Rows = new ObservableCollection<WorkloadRowViewModel>(rows);
+            HintMessage = rows.Count > 0 ? null : _focus.Current.Kind switch
+            {
+                FocusKind.None => NoSubjectsChosenMessage,
+                FocusKind.Subjects => NoInstructorsInSubjectsMessage,
+                _ => null,
+            };
         }
         catch (Exception ex)
         {
@@ -230,8 +266,11 @@ public partial class WorkloadPanelViewModel : ViewModelBase
 
     /// <summary>
     /// Builds the workload items (sections and releases) for a single instructor in a given set of sections and releases.
+    /// Every section the instructor teaches is listed, in focus or not; a section outside the chosen subjects
+    /// (<see cref="FocusService.Matches"/> false) is flagged <see cref="WorkloadItemViewModel.IsOutOfFocus"/>.
+    /// Releases are never flagged.
     /// </summary>
-    private static List<WorkloadItemViewModel> BuildItemsForInstructor(
+    private List<WorkloadItemViewModel> BuildItemsForInstructor(
         Models.Instructor instructor,
         IEnumerable<Models.Section> sections,
         IEnumerable<Models.Release> releases,
@@ -253,6 +292,7 @@ public partial class WorkloadPanelViewModel : ViewModelBase
                 Id = section.Id,
                 Label = $"{getCourseCode(section.CourseId)} {section.SectionCode} [{workload:0.##}]",
                 WorkloadValue = workload,
+                IsOutOfFocus = !_focus.Matches(section),
             });
         }
 

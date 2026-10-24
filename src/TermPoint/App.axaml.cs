@@ -682,7 +682,9 @@ public partial class App : Application
             sp.GetRequiredService<ISchedulingNoteRepository>(),
             sp.GetRequiredService<ISemesterRepository>(),
             sp.GetRequiredService<SemesterContext>(),
-            sp.GetRequiredService<SectionStore>()));
+            sp.GetRequiredService<SectionStore>(),
+            // A constructor dependency so FocusService is built, and subscribes to SectionsChanged, first.
+            sp.GetRequiredService<FocusService>()));
         services.AddTransient<InstructorListViewModel>(sp =>
             new InstructorListViewModel(
                 sp.GetRequiredService<IInstructorRepository>(),

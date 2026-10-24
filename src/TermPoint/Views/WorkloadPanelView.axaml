@@ -73,6 +73,15 @@
 			<Setter Property="Background" Value="{StaticResource CardHoverOverlay}" />
 		</Style>
 
+		<!--
+			Out-of-focus chip: a section outside the chosen subjects (still listed and counted) gets the lighter
+			text colour. Same class-toggle pattern as .release and .selected above; a chip is a Button, so one
+			extra class activator per chip is all it costs.
+		-->
+		<Style Selector="Button.chip.outOfFocus">
+			<Setter Property="Foreground" Value="{StaticResource TextOutOfFocus}" />
+		</Style>
+
 		<!--  Selected chip: violet border matching UserSelectedSectionBorderColor in other views  -->
 		<Style Selector="Button.chip.selected">
 			<Setter Property="BorderBrush" Value="{StaticResource UserSelectedSectionBorderColor}" />
@@ -170,6 +179,18 @@
 						TextWrapping="Wrap" />
 				</Border>
 
+				<!--
+					Subject-focus hint: shown instead of the (empty) card list when the focus is None, or when the
+					chosen subjects match no instructor. Null (hidden) otherwise, including an empty list under All.
+				-->
+				<TextBlock
+					Margin="4,6"
+					FontSize="{StaticResource FontSizeSmall}"
+					Foreground="{StaticResource TextFaint}"
+					IsVisible="{Binding HintMessage, Converter={x:Static ObjectConverters.IsNotNull}}"
+					Text="{Binding HintMessage}"
+					TextWrapping="Wrap" />
+
 				<!--  Instructor cards — same raised appearance as section cards  -->
 				<ItemsControl ItemsSource="{Binding Rows}">
 					<ItemsControl.ItemTemplate>
@@ -262,6 +283,7 @@
 														Margin="2,1"
 														Classes="chip"
 														Classes.release="{Binding IsRelease}"
+														Classes.outOfFocus="{Binding IsOutOfFocus}"
 														Classes.selected="{Binding IsSelected}"
 														Command="{Binding DataContext.HandleItemClickCommand, ElementName=Root}"
 														CommandParameter="{Binding}"
@@ -330,6 +352,7 @@
 																			Margin="2,1"
 																			Classes="chip"
 																			Classes.release="{Binding IsRelease}"
+																			Classes.outOfFocus="{Binding IsOutOfFocus}"
 																			Classes.selected="{Binding IsSelected}"
 																			Command="{Binding DataContext.HandleItemClickCommand, ElementName=Root}"
 																			CommandParameter="{Binding}"
