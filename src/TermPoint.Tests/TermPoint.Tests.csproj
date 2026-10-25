@@ -22,4 +22,10 @@
     <ProjectReference Include="..\TermPoint.LicenseFulfillment\TermPoint.LicenseFulfillment.csproj" />
   </ItemGroup>
 
+  <!-- The shipped section import template workbook, copied beside the tests so they can read it
+       whatever the output folder is (the tests find it relative to the test assembly). -->
+  <ItemGroup>
+    <None Include="..\TermPoint\Assets\Templates\TermPointSectionsTemplate.xlsx" Link="TestData\TermPointSectionsTemplate.xlsx" CopyToOutputDirectory="PreserveNewest" />
+  </ItemGroup>
+
 </Project>

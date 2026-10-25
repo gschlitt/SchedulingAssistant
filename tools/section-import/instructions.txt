@@ -1,0 +1,90 @@
+# What this file is for
+
+Use this workbook to give TermPoint all the sections of one semester at once, instead of typing them in one by one.
+
+- Go to the Sections sheet. It holds a few sample rows. Delete them and type or paste in your own.
+- Keep the column names in row 1 exactly as they are. You may leave a column empty, but please don't rename it or delete it. You can add columns of your own to the right (for notes, say). TermPoint ignores them.
+- Save the file as an Excel workbook (.xlsx).
+- In TermPoint, open the semester you are filling in. Then choose Files, then Import Sections…, and pick your file.
+
+# One row for each meeting pattern
+
+If a section meets at the same time on several days, use one row and list the days. For example, Meeting Days M,W,F with Begin 0900 and End 0950 means Monday, Wednesday and Friday, from 9:00 to 9:50.
+
+If a section meets at different times on different days, use one row for each set of times. Give every one of those rows the same Subject, Course Number and Section Code. TermPoint treats them as a single section. The section's details (Course Title, Section Type, Instructor(s), Tags, Capacity and Campus) are only needed on the first row. You can leave them empty on the other rows. If you do fill one in, it must be the same as on the first row. Academic Year and Term go on every row.
+
+If a section has no meeting time (an online section, for example), leave Meeting Days, Begin and End all empty.
+
+# The columns
+
+Every column must be in the file. A cell can be empty unless it says "required".
+
+- Academic Year (required): the academic year of the semester you are filling in, written as TermPoint shows it. Example: 2026-2027
+- Term (required): the semester's name. Example: Fall
+- Subject (required): the subject's short code. Example: CHEM
+- Course Number (required): the course's number. With the Subject, it names the course, so CHEM and 101 mean CHEM 101. Example: 101
+- Course Title: needed only when TermPoint doesn't have the course yet. If TermPoint already has the course, it keeps its own title. Example: Introductory Chemistry
+- Section Code (required): the section's code. Example: A
+- Section Type: the kind of section. Example: Lecture
+- Instructor(s): who teaches the section, written Last, First. Put a semicolon between several people. Leave it empty if nobody is assigned yet. Example: Smith, John; Lee, Ann
+- Tags: any tags for the section, with a semicolon between them. Example: Science; First Year
+- Capacity: the number of seats, as a whole number. If you leave it empty, TermPoint uses the course's capacity if it has one, and otherwise its default capacity. Example: 60
+- Meeting Days: the days of this meeting. Example: M,W,F
+- Begin: when the meeting starts. Example: 0900
+- End: when the meeting ends. Example: 0950
+- Frequency: which weeks the meeting happens. Empty means every week. Example: odd
+- Meeting Type: the kind of meeting. Example: Lab
+- Building: the building of the room. Example: SCI
+- Room: the room number. Give the Building and the Room together, or leave both empty for no room. Example: 210
+- Campus: the section's campus. Example: Main
+
+# Days, times, weeks and lists
+
+- Days: M, T, W, R, F, Sa and Su. T means Tuesday and R means Thursday (Th works too). Put a comma or a space between days (M,W,F), or run them together (MWF, TR). Full names such as Monday also work.
+- Times: write four digits, such as 0930 or 1045. TermPoint also understands 9:30 and 9:30 AM.
+- Times must fall between 0730 and 2200, and End must be later than Begin.
+- If Begin isn't one of your legal start times, TermPoint shows a warning. It doesn't stop the import. Legal start times are in Configuration, under Scheduling.
+- Frequency: leave it empty for every week. Write odd or even for odd-numbered or even-numbered weeks. Or write the week numbers, such as 1,6,7.
+- Instructors: write Last, First, with a semicolon between people. Example: Smith, John; Lee, Ann
+- Tags: put a semicolon between tags. Example: Science; First Year
+
+# What must be set up first
+
+Only the academic year and the semester must already be in TermPoint. They must be the ones you have open.
+
+Everything else the file names is added if TermPoint doesn't have it yet: subjects, courses, instructors, section types, meeting types, tags, campuses and rooms. So spell each name the way TermPoint already spells it. A misspelling such as "Lectrue" would add a new section type. Before anything is added, TermPoint shows you a list of everything new, and points out names that look like a misspelling of one it already has.
+
+Things added this way start out with only the details the file gives. A new subject has only its short code, and a new room has no capacity or type. You can fill in the rest afterwards in TermPoint.
+
+# Two people with the same name
+
+TermPoint treats the same name as the same person. If two different people share a name, tell them apart in the file, for example Smith, John A. and Smith, John B.
+
+# Weekend meetings
+
+Meetings on Saturday or Sunday need those days turned on first. Turn them on in Configuration, under Scheduling. Until then, TermPoint reports a weekend meeting as a problem.
+
+# Keeping leading zeros
+
+Codes such as 001 and times such as 0930 lose their leading zeros if Excel treats them as numbers. In this workbook the Course Number, Section Code, Begin and End columns are already set to Text, so what you type stays as you typed it. If you paste in data from somewhere else, paste it as values or text (in Excel, Paste Special, then Values). Then 001 stays 001 and 0930 stays 0930.
+
+# How checking works
+
+TermPoint checks the whole file before it adds anything. If it finds a problem, it adds nothing. It lists each problem with its row number, so you can find it. Fix the file, then choose it again.
+
+# Importing again is safe
+
+A section that is already in the semester is skipped and never changed. So you can import a corrected file, and TermPoint only adds the sections that are new. You can also split a semester into one file per subject and import them one after another.
+
+# Limits
+
+- A file goes into one semester: the semester that is open in TermPoint. The Academic Year and Term on every row must match it.
+- A file can have up to 5,000 rows. For more than that, split it into several files, for example one per subject.
+
+# Taking an import back
+
+TermPoint has no undo for an import. To take one back, switch to another semester in TermPoint. Then open Academic Years and use Empty semester on the semester you filled. Be careful: this removes every section in that semester, including ones you typed in yourself. New courses, instructors, rooms and other items that the import added stay in TermPoint. You can delete them if you don't want them.
+
+# CSV files
+
+A CSV file with the same columns in row 1 works too. If you save a CSV from Excel, the leading zeros are only kept if the cells were text when you saved.
