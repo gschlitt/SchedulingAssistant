@@ -1,0 +1,106 @@
+# Handoff: Section Import by User (item 24), 2026-10-25
+
+Written on the laptop at the end of a long session, for continuing on the dev machine with a new agent. Claude Code's
+memory and `CLAUDE.md` don't travel between machines (`CLAUDE.md` is gitignored), so everything a new agent needs is
+here or in the files this points to.
+
+**To start the new agent, say something like:** "Read `HANDOFF.md`, then let's continue item 24."
+
+## Where things are
+
+- **Branch:** `1.2.3_new_features`, pushed to `origin`. It holds item 20 (subject focus) and item 24 (this feature).
+- **The other 1.2.3 branch:** `Version_1.2.3` holds the persistence work. Greg still has its field testing to do. It
+  is 4 commits ahead of where `1.2.3_new_features` split off (meeting-time validation, meeting-row display, Room
+  Browser tests). The two branches are merged later; both already touch `App.axaml`, `AppColors.axaml`,
+  `SectionEditViewModel.cs` and `SectionListView.axaml`, so expect small conflicts there.
+- **Source of truth for the feature:** `designs/section-import-by-user.md` (all six design phases, locked, with dated
+  corrections inline). The implementation plan is Phase 6 there and item 24 in `spec_version_1.2.3.md`.
+
+## What item 24 is
+
+A department administrator fills in a TermPoint template workbook (`.xlsx`, or a CSV with the same columns) and
+imports a semester's sections with **Files → Import Sections…**. TermPoint checks the whole file first (all or
+nothing), creates any courses, instructors, subjects, section types, meeting types, tags, campuses and rooms it names
+that don't exist yet, skips sections already in the semester, and lists everything new before anything is written.
+It replaces the hidden Dev Tools CSV import.
+
+## Done: steps 24.1–24.8
+
+All committed and pushed. Full suite after 24.8: **3,600 passed, 0 failed, 79 skipped** (the skips are the
+`[FactRequiresLocalDb]` tests).
+
+| Step | Commit | What |
+|---|---|---|
+| 24.1 | 6cb6f7f | Shared helpers in `Services/`: `MeetingTimeLimits`, `ScheduleText` (days incl. `MWF`/`TTh`, times, week lists, frequencies), `NameMatch` (normalise, codes, near-miss), `InstructorInitials`. The meeting editor's custom-weeks check now uses `ScheduleText.ParseWeekList` (messages unchanged, pinned by a test). |
+| 24.2 | fe8d192 | `Services/SectionImport/`: `SectionImportColumns`, `ImportFileReader` (.xlsx via **ExcelDataReader 3.9.0**, .csv via `CsvRecordReader`), limits 10 MB / 5,000 rows. Tests build .xlsx in code (`TestSupport/XlsxTestWorkbook`). |
+| 24.3 | 62bbaf2 | Planner part 1: `ImportSetupSnapshot` (+ builder), grouping, matching or creating every value, the whole-file wrong-semester check. |
+| 24.4 | 288fe55 | Planner part 2: every validation rule, final section values (D1 capacity, D2 tags, Level), grouped warnings (one line per problem). |
+| 24.5 | ccf3c34 | `SectionImportWriter` (one transaction, insert only) and `SectionImportService` (deadline-bounded read that works while the file is open in Excel; re-check at Import, D4). Tests on real temporary databases. |
+| 24.6 | 3579bbd | Template: `tools/section-import/make_template.py` (openpyxl) builds `src/TermPoint/Assets/Templates/TermPointSectionsTemplate.xlsx` from `instructions.txt`. Guarded by `TemplateWorkbookTests`. |
+| 24.7 | 3231fb6 | `ImportSectionsViewModel` (desktop only), `ImportAvailability`, the main window's command, DI. Seams `IImportSectionsHost` / `IImportSectionsPlatform` keep it testable. |
+| 24.8 | 10665ac | `Views/Management/ImportSectionsView.axaml` and **Files → Import Sections...** in `MainView.axaml` (hidden in the WASM demo). |
+
+## Next
+
+1. **Greg tries the flyout in the running app** (not done yet; nothing has been seen on screen). Use a database where
+   nothing matters, or press Cancel rather than Import:
+   - Files → Import Sections… → **Save template…**, then **Choose file…** with that template. With Fall 2026-2027
+     open you get the Ready screen; with another semester open, one "This file is for Fall (2026-2027)…" problem.
+   - The menu item should grey out, with a tooltip, while a section is being edited or several semesters are shown.
+   - Report anything that looks off or reads wrong; fixes go to a Sonnet brief.
+2. **Step 24.9: hand check on a copy of a real database** (design Phase 6, step 9): first import into an empty
+   semester; the same file again (nothing added); a corrected file (only new sections); a file with problems, with
+   Copy list pasted into Excel; a change made from a detached panel between Check and Import; a read-only session;
+   Save, close, reopen. Then the **`MinimumVersionToWrite` check**: open the saved copy in 1.2.2, edit and save, reopen
+   in 1.2.3, confirm nothing was lost (expected answer: No raise needed).
+3. **Step 24.10: retire the Dev Tools CSV import** in its own commit (list in the design, Phase 5 "Retiring the Dev
+   Tools import"). It deletes four views, so warn Greg to close them in Visual Studio first. Keep `CsvRecordReader`
+   and `SharedScheduleCsvParser`. `SectionImportFocusTests` goes with the old view model (its helper,
+   `OutsideChosenSubjectsNote`, has its own tests).
+
+## Loose ends
+
+- **Instructions text:** Greg will revise `tools/section-import/instructions.txt`. Then regenerate with
+  `python tools/section-import/make_template.py` and commit the `.xlsx` with it. **openpyxl is needed on whichever
+  machine regenerates it** (`python -m pip install --user openpyxl`; the laptop has 3.1.5). The tests catch header
+  drift.
+- **1.2.4 list** (`spec_version_1.2.4.md`) got four entries this session: show a room's type in the meeting editor;
+  switch the shared-schedule parser to `ScheduleText`; one week-sharing rule (`FrequenciesOverlap` only knows weeks
+  1–18); a `FaultSeamTests` flake seen once.
+- **Item 20's row** in the 1.2.3 Items table still says "Not started" although its steps are committed on this
+  branch. Left for Greg.
+- **Not pushed, on purpose:** `exception.txt` (untracked, laptop only).
+
+## Facts learned this session (the design now says these; listed so they aren't rediscovered)
+
+- **Legal start times and the Saturday/Sunday switches** are edited in **Configuration → Scheduling**, not Academic
+  Years (which only copies start times when a year is created).
+- **A meeting's room type** (`SectionDaySchedule.RoomTypeId`) is the type the meeting *needs*, not a copy of its
+  room's; the Room Browser uses it only when no room is chosen. The import leaves it null.
+- **Empty semester refuses the open semester**, so the undo hint says to switch semesters first.
+- **ExcelDataReader needs `CodePagesEncodingProvider` registered even for .xlsx** (done in `ImportFileReader`'s static
+  constructor).
+- **The editor clamps times to 07:30–22:00**; the import refuses them instead (D3).
+- **Disk space on the laptop** fell because Visual Studio's Diagnostic Tools recording (`%TEMP%\dh`) grew to 2.4 GB
+  during a day-long debug session. Stopping debugging or switching the recording off avoids it.
+
+## Working agreements (from `CLAUDE.md` and Greg's standing preferences)
+
+- **Coding is done by a Sonnet subagent.** The main agent writes a self-contained brief, Sonnet implements (no
+  commits, no branches), the main agent reviews the diff and re-runs the compile check and the full suite, and Greg
+  decides when to commit. Don't implement spec steps directly.
+- **Commit only when Greg asks; never create branches; push only when asked.**
+- **Warn before editing any `.axaml` file** (Visual Studio doesn't reload it); ask Greg to close the tab first.
+- **Compile check:** `dotnet build src/TermPoint/TermPoint.csproj -f net10.0 -t:Compile --no-restore -v q` (also
+  `-f net10.0-browser` when shared code changes).
+- **Full suite:** `dotnet test src/TermPoint.Tests/TermPoint.Tests.csproj --nologo -v q`, with a `.trx` logger. If
+  `bin\Debug` is locked by Visual Studio, add `-o $env:TEMP/sa-build` and delete that folder afterwards.
+- **Never kill processes by image name** (`taskkill /IM`), only by PID.
+- **Production cautions:** the app is in production. Anything touching save, lock, restore or recovery is checked
+  against the four rules for the shared database first (in `CLAUDE.md`). Ask the `MinimumVersionToWrite` question for
+  every release.
+- **UI rules:** no hard-coded colours, font sizes or weights (use `AppColors.axaml` / `App.axaml`); reflection
+  bindings only (no `x:DataType` or compiled bindings); icons only as `Path`/`StreamGeometry`; MVVM with minimal
+  code-behind.
+- **Messages to users:** plain words, say what happened, whether their work is safe, and what to do next; no paths,
+  no exception text, no "working copy".

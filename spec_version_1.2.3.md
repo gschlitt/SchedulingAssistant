@@ -36,7 +36,7 @@ will be verified.
 | 21 | Lightweight section card: ~93 → ~15–20 controls per card | Performance / memory | **Done** (~93 → ~27 controls per card; 800-section heap ~390 MB Release); CloneSection data-loss fixed |
 | 22 | AutoCompleteBox crash when revising a meeting's start time (BugSnag, Aug 21) | Bug (production, reproduced) | **Done** (folded into item 1) |
 | 23 | Section-list virtualization with scroll anchoring, opt-in (Preferences, default off; hidden in WASM) | Performance / memory | **Done** (user-tested on desktop 2026-10-10); field tests pending (touch, macOS trackpad, Win11). Also: room conflicts one per line |
-| 24 | **Section Import by User**: self-serve onboarding from an `.xlsx` template (Files → Import Sections…) | **New feature** | **Design complete 2026-10-24** (`designs/section-import-by-user.md`; 10 steps, 24.1–24.10). Not started |
+| 24 | **Section Import by User**: self-serve onboarding from an `.xlsx` template (Files → Import Sections…) | **New feature** | **In progress:** design complete 2026-10-24; steps 24.1–24.8 done (6cb6f7f…10665ac, on `1.2.3_new_features`). Next: try the flyout, 24.9 hand check, 24.10. See `HANDOFF.md` |
 
 Item numbers are for reference only. The implementation order is below.
 
@@ -2917,6 +2917,9 @@ committed values, and the field test above checks it.
 ## 24 — Section Import by User (new feature)
 
 > ### ✅ DESIGN COMPLETE (2026-10-24): all six phases locked
+> **Progress (2026-10-25):** steps 24.1–24.8 committed (24.1 6cb6f7f, 24.2 fe8d192, 24.3 62bbaf2, 24.4 288fe55,
+> 24.5 ccf3c34, 24.6 3579bbd, 24.7 3231fb6, 24.8 10665ac). Remaining: 24.9 (hand check on a copy of real data) and
+> 24.10 (retire the Dev Tools import). Current state and next steps: `HANDOFF.md`.
 > Full design: [designs/section-import-by-user.md](designs/section-import-by-user.md). Phases 1–3 locked
 > 2026-10-20 (c1ba192); Phases 4–6 and amendment A4 locked 2026-10-24. Built on `1.2.3_new_features`.
 
