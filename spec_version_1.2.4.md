@@ -48,6 +48,7 @@ usual treatment (problem, file:line refs, fix direction, production and data not
 | 9.3c-2b | The regular heartbeat tick never discovers a takeover; only a save or the wake check does | Consider |
 | 9.3c-2b | `SavePrompt.SessionFileMissingMessage` doesn't say whether the unsaved work is kept (rule 4) | Message |
 | Harness | Flaky proof test `PauseProofTests.F16_ADemotionHeldWhileTheUserSwitches_FiresBothClausesOfI6` (about 2–7%; also at e7185f2) | The wake-check settle waits 5 × 8 ms of real time |
+| Harness | Flaky `FaultSeamTests.EveryNamedHelper_IsConsultedExactlyOnce_WithItsLabelAndPaths` (seen once in a full run, 2026-10-24, during step 24.5; passed on re-run and in isolation) | Its fault recorder caught a `File.ReadAllText` on a `B.lock` left running by an earlier `CheckoutFailedOpenTests` test (tests run serially, so it's a leftover background task). Settle that test's pending work in its `Dispose`, or make the recorder ignore paths outside its own folder |
 | Harness | Six `TheLockFileIsDeleted` cases during a held Close dropped out of the wide pause plan; cause not investigated | |
 | Not pursued | A switch overlapping a close can delete kept work (harness-only reach) | User decision 2026-10-21; recorded so it isn't rediscovered as new |
 
