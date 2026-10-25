@@ -797,6 +797,7 @@ public sealed class ImportSectionsViewModelTests : IDisposable
         Assert.Equal("Template saved.", s.Vm.StatusMessage);
         Assert.Null(s.Vm.LastErrorMessage);
         Assert.Equal("TermPoint Sections Template.xlsx", s.Platform.SuggestedFileName);
+        Assert.Equal(ImportMessages.TemplateSaveRequest, s.Platform.LastSaveRequest);
     }
 
     /// <summary>Cancelling the Save dialog writes nothing and says nothing.</summary>
@@ -841,6 +842,234 @@ public sealed class ImportSectionsViewModelTests : IDisposable
 
         Assert.Equal(ImportMessages.TemplateNotSaved, s.Vm.LastErrorMessage);
         Assert.False(File.Exists(Path.Combine(_files, "Template.xlsx")));
+    }
+
+    // ── Instructions: reading, showing ────────────────────────────────────────
+
+    /// <summary>The blocks come from the platform's text, are read once however often they are asked for, and nothing is "unavailable".</summary>
+    [Fact]
+    public void InstructionBlocks_ComeFromThePlatformText_AndAreReadOnce()
+    {
+        using var rig = new ImportRig();
+        var s = NewVm(rig);
+        Assert.Equal(0, s.Platform.InstructionsReadCount);   // lazy: nothing is read until asked for
+
+        var first = s.Vm.InstructionBlocks;
+        var second = s.Vm.InstructionBlocks;
+
+        var expected = ImportInstructions.Parse(FakeImportSectionsPlatform.ShippedInstructionsText());
+        Assert.NotEmpty(first);
+        Assert.Equal(expected.ToArray(), first.ToArray());
+        Assert.Same(first, second);
+        Assert.Null(s.Vm.InstructionsUnavailableText);
+        Assert.Equal(1, s.Platform.InstructionsReadCount);
+    }
+
+    /// <summary>
+    /// A read failure gives an empty list, the one "couldn't show" line, and a log line that names what failed
+    /// but holds neither a path nor the exception's text. It is tried once, not on every access, and the answer
+    /// is the same whichever property is read first.
+    /// </summary>
+    [Fact]
+    public void InstructionBlocks_WhenTheReadFails_AreEmpty_SayUnavailable_AndLogQuietly()
+    {
+        using var rig = new ImportRig();
+        var s = NewVm(rig);
+        s.Platform.InstructionsReadThrows = new FileNotFoundException(@"secret C:\Users\someone\missing.txt");
+
+        // Ask for the line first: it must load the instructions itself.
+        var text = s.Vm.InstructionsUnavailableText;
+        var blocks = s.Vm.InstructionBlocks;
+        _ = s.Vm.InstructionBlocks;
+
+        Assert.Equal(ImportMessages.InstructionsUnavailable, text);
+        Assert.Equal(
+            "TermPoint couldn't open its copy of the instructions. They're also on the Instructions sheet of the template.", text);
+        Assert.Empty(blocks);
+        Assert.Equal(1, s.Platform.InstructionsReadCount);
+        var line = Assert.Single(s.Logger.Lines, l => l.Contains("reading the instructions", StringComparison.Ordinal));
+        Assert.Contains("FileNotFoundException", line);
+        Assert.DoesNotContain("secret", line, StringComparison.Ordinal);
+        Assert.DoesNotContain("someone", line, StringComparison.Ordinal);
+        Assert.Empty(s.Logger.Errors);   // a quiet log line, not a logged error
+    }
+
+    /// <summary>The instructions start hidden, and the toggle flips both the flag and the button's text, telling the view.</summary>
+    [Fact]
+    public void ShowInstructions_StartsHidden_AndTheToggleFlipsTheTexts()
+    {
+        using var rig = new ImportRig();
+        var s = NewVm(rig);
+        var changed = new List<string?>();
+        s.Vm.PropertyChanged += (_, e) => changed.Add(e.PropertyName);
+
+        Assert.False(s.Vm.ShowInstructions);
+        Assert.Equal("Show instructions", s.Vm.InstructionsToggleText);
+        Assert.True(s.Vm.ToggleInstructionsCommand.CanExecute(null));
+
+        s.Vm.ToggleInstructionsCommand.Execute(null);
+
+        Assert.True(s.Vm.ShowInstructions);
+        Assert.Equal("Hide instructions", s.Vm.InstructionsToggleText);
+        Assert.Contains(nameof(ImportSectionsViewModel.InstructionsToggleText), changed);
+
+        s.Vm.ToggleInstructionsCommand.Execute(null);
+
+        Assert.False(s.Vm.ShowInstructions);
+        Assert.Equal("Show instructions", s.Vm.InstructionsToggleText);
+    }
+
+    /// <summary>Open instructions stay open when the stage changes, so the Problems screen shows what the first screen showed.</summary>
+    [Fact]
+    public async Task ShowInstructions_IsNotResetByAStageChange()
+    {
+        using var rig = new ImportRig();
+        var s = NewVm(rig);
+        s.Vm.ToggleInstructionsCommand.Execute(null);
+
+        await s.Vm.CheckFileAsync(Path.Combine(_files, "gone.csv"));
+
+        Assert.Equal(ImportStage.Problems, s.Vm.Stage);
+        Assert.True(s.Vm.ShowInstructions);
+        Assert.Equal("Hide instructions", s.Vm.InstructionsToggleText);
+    }
+
+    // ── Instructions: saving ──────────────────────────────────────────────────
+
+    /// <summary>Save instructions writes a UTF-8 web page of the instructions to the chosen path and confirms it.</summary>
+    [Fact]
+    public async Task SaveInstructions_WritesAUtf8WebPage()
+    {
+        using var rig = new ImportRig();
+        var s = NewVm(rig);
+        var path = Path.Combine(_files, "My Instructions.html");
+        s.Platform.PathToSave = path;
+
+        await s.Vm.SaveInstructionsCommand.ExecuteAsync(null);
+
+        // A strict decoder fails on bytes that are not valid UTF-8.
+        var html = new System.Text.UTF8Encoding(false, throwOnInvalidBytes: true).GetString(File.ReadAllBytes(path));
+        Assert.StartsWith("<!DOCTYPE html>", html);
+        Assert.Contains("<meta charset=\"utf-8\">", html);
+
+        // The page holds the shipped text. Check its first heading, and its first block with a non-ASCII
+        // character (such as the "\u2026" of "Import Sections\u2026") if it has one, without pinning their wording,
+        // so editing the instructions doesn't break this test.
+        var blocks = ImportInstructions.Parse(FakeImportSectionsPlatform.ShippedInstructionsText());
+        var firstHeading = blocks.First(b => b.IsHeading).Text;
+        Assert.Contains($"<h2>{System.Net.WebUtility.HtmlEncode(firstHeading)}</h2>", html);
+        var nonAscii = blocks.FirstOrDefault(b => b.Text.Any(c => c > 127));
+        if (nonAscii is not null)
+            Assert.Contains(System.Net.WebUtility.HtmlEncode(nonAscii.Text), html);   // survives the UTF-8 round trip
+        Assert.Equal("Instructions saved.", s.Vm.StatusMessage);
+        Assert.Null(s.Vm.LastErrorMessage);
+    }
+
+    /// <summary>The Save dialog is offered the instructions' name and the web page file type.</summary>
+    [Fact]
+    public async Task SaveInstructions_OffersTheInstructionsNameAndFileType()
+    {
+        using var rig = new ImportRig();
+        var s = NewVm(rig);
+        s.Platform.PathToSave = Path.Combine(_files, "Instructions.html");
+
+        await s.Vm.SaveInstructionsCommand.ExecuteAsync(null);
+
+        Assert.Equal("TermPoint Section Import Instructions.html", s.Platform.SuggestedFileName);
+        Assert.Equal(ImportMessages.InstructionsSaveRequest, s.Platform.LastSaveRequest);
+        Assert.Equal("html", s.Platform.LastSaveRequest!.DefaultExtension);
+        Assert.Equal("*.html", s.Platform.LastSaveRequest.Pattern);
+    }
+
+    /// <summary>Cancelling the Save dialog writes nothing and says nothing.</summary>
+    [Fact]
+    public async Task SaveInstructions_Cancelled_WritesNothing()
+    {
+        using var rig = new ImportRig();
+        var s = NewVm(rig);
+        s.Platform.PathToSave = null;
+
+        await s.Vm.SaveInstructionsCommand.ExecuteAsync(null);
+
+        Assert.Null(s.Vm.StatusMessage);
+        Assert.Null(s.Vm.LastErrorMessage);
+        Assert.Empty(Directory.GetFiles(_files));
+    }
+
+    /// <summary>A folder that doesn't exist gives the "try another folder" message, with no path in the log.</summary>
+    [Fact]
+    public async Task SaveInstructions_IntoAFolderThatDoesNotExist_SaysToTryAnotherFolder()
+    {
+        using var rig = new ImportRig();
+        var s = NewVm(rig);
+        var path = Path.Combine(_files, "no-such-folder", "Instructions.html");
+
+        await s.Vm.SaveInstructionsToAsync(path);
+
+        Assert.Equal("TermPoint couldn't save the instructions there. Try another folder, such as Documents.", s.Vm.LastErrorMessage);
+        Assert.Equal(ImportMessages.InstructionsNotSaved, s.Vm.LastErrorMessage);
+        Assert.Null(s.Vm.StatusMessage);
+        Assert.DoesNotContain(s.Logger.Lines, l => l.Contains("no-such-folder", StringComparison.Ordinal));
+    }
+
+    /// <summary>
+    /// When the instructions could not be loaded, saving writes no empty page and says the instructions couldn't
+    /// be opened (not "try another folder", which would not help).
+    /// </summary>
+    [Fact]
+    public async Task SaveInstructions_WhenTheInstructionsCannotBeLoaded_WritesNoPage()
+    {
+        using var rig = new ImportRig();
+        var s = NewVm(rig);
+        s.Platform.InstructionsReadThrows = new FileNotFoundException();
+        var path = Path.Combine(_files, "Instructions.html");
+
+        await s.Vm.SaveInstructionsToAsync(path);
+
+        Assert.Equal(ImportMessages.InstructionsUnavailable, s.Vm.LastErrorMessage);
+        Assert.Null(s.Vm.StatusMessage);
+        Assert.False(File.Exists(path));
+    }
+
+    /// <summary>A save clears the previous confirmation or error before it reports its own.</summary>
+    [Fact]
+    public async Task SaveInstructions_ClearsThePreviousStatusAndError()
+    {
+        using var rig = new ImportRig();
+        var s = NewVm(rig);
+
+        await s.Vm.SaveInstructionsToAsync(Path.Combine(_files, "no-such-folder", "a.html"));
+        Assert.NotNull(s.Vm.LastErrorMessage);
+
+        await s.Vm.SaveInstructionsToAsync(Path.Combine(_files, "b.html"));
+
+        Assert.Null(s.Vm.LastErrorMessage);
+        Assert.Equal(ImportMessages.InstructionsSaved, s.Vm.StatusMessage);
+    }
+
+    /// <summary>Save instructions runs on the first screen and is off on Problems (where Show instructions is the offer).</summary>
+    [Fact]
+    public async Task SaveInstructionsCommand_RunsOnReadyToChoose_NotOnProblems()
+    {
+        using var rig = new ImportRig();
+        var s = NewVm(rig);
+        Assert.True(s.Vm.SaveInstructionsCommand.CanExecute(null));
+
+        await s.Vm.CheckFileAsync(Path.Combine(_files, "gone.csv"));
+
+        Assert.Equal(ImportStage.Problems, s.Vm.Stage);
+        Assert.False(s.Vm.SaveInstructionsCommand.CanExecute(null));
+        Assert.True(s.Vm.ToggleInstructionsCommand.CanExecute(null));   // the toggle is on both screens
+
+        await s.Vm.CheckFileAsync(Csv(Sheet()));
+
+        Assert.Equal(ImportStage.ReadyToImport, s.Vm.Stage);
+        Assert.False(s.Vm.SaveInstructionsCommand.CanExecute(null));
+
+        s.Vm.CancelCommand.Execute(null);
+
+        Assert.Equal(ImportStage.ReadyToChoose, s.Vm.Stage);
+        Assert.True(s.Vm.SaveInstructionsCommand.CanExecute(null));
     }
 
     /// <summary>
@@ -897,5 +1126,17 @@ public sealed class ImportSectionsViewModelTests : IDisposable
         Assert.Equal("termpoint", uri.Host);   // System.Uri lower-cases the host, as it does for every avares:// address in the app
         Assert.Equal(FakeImportSectionsPlatform.TemplateFileName, Path.GetFileName(uri.AbsolutePath));
         Assert.True(File.Exists(Path.Combine(AppContext.BaseDirectory, "TestData", FakeImportSectionsPlatform.TemplateFileName)));
+    }
+
+    /// <summary>The real platform loads the instructions by the address of the shipped text file, whose copy the tests read.</summary>
+    [Fact]
+    public void TheRealPlatform_LoadsTheInstructionsByTheShippedFilesName()
+    {
+        var uri = AvaloniaImportSectionsPlatform.InstructionsAssetUri;
+
+        Assert.Equal("avares", uri.Scheme);
+        Assert.Equal("termpoint", uri.Host);
+        Assert.Equal(FakeImportSectionsPlatform.InstructionsFileName, Path.GetFileName(uri.AbsolutePath));
+        Assert.True(File.Exists(Path.Combine(AppContext.BaseDirectory, "TestData", FakeImportSectionsPlatform.InstructionsFileName)));
     }
 }

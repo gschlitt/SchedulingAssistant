@@ -11,8 +11,9 @@ namespace TermPoint.Tests;
 /// Guards the shipped section import template workbook
 /// (<c>Assets/Templates/TermPointSectionsTemplate.xlsx</c>, made by <c>tools/section-import/make_template.py</c>):
 /// its header row matches <see cref="SectionImportColumns"/>, its sample rows import cleanly and show every
-/// pattern, its code and time columns are Text, and it carries the Instructions sheet.
-/// The workbook is copied beside the test assembly by a linked item in the test project.
+/// pattern, its code and time columns are Text, and it carries the Instructions sheet, whose text matches the
+/// shipped instructions file. The workbook and the instructions file are copied beside the test assembly by
+/// linked items in the test project.
 /// </summary>
 public class TemplateWorkbookTests
 {
@@ -174,6 +175,40 @@ public class TemplateWorkbookTests
 
         Assert.NotEmpty(text);
         Assert.Contains(text, t => t!.Contains("Import Sections"));
+    }
+
+    /// <summary>
+    /// The Instructions sheet still holds the text of the shipped instructions file
+    /// (<c>Assets/Templates/SectionImportInstructions.txt</c>), which the flyout and "Save instructions…" also
+    /// show. The sheet's non-empty cells in column A, in order, must equal what <c>build_instructions_sheet</c>
+    /// writes for the parsed file: a heading's text, a bullet's text after the bullet and two spaces, a paragraph's
+    /// text. If the text was edited without regenerating the workbook, this fails.
+    /// </summary>
+    [Fact]
+    public void InstructionsSheet_Text_MatchesTheShippedInstructionsFile()
+    {
+        // make_template.py writes "•  " (a bullet and two spaces) before a bullet's text.
+        const string BulletPrefix = "•  ";
+        var expected = ImportInstructions.Parse(FakeImportSectionsPlatform.ShippedInstructionsText())
+            .Select(b => b.IsBullet ? BulletPrefix + b.Text : b.Text)
+            .ToList();
+
+        var actual = ReadRawRows("Instructions")
+            .Select(r => r.Length > 0 ? r[0] as string : null)
+            .Where(t => !string.IsNullOrEmpty(t))
+            .Select(t => t!)
+            .ToList();
+
+        int firstDifference = 0;
+        while (firstDifference < expected.Count && firstDifference < actual.Count
+               && expected[firstDifference] == actual[firstDifference])
+            firstDifference++;
+
+        Assert.True(
+            expected.Count == actual.Count && firstDifference == expected.Count,
+            "The workbook's Instructions sheet no longer matches SectionImportInstructions.txt "
+            + $"(they first differ at block {firstDifference + 1}; the sheet has {actual.Count} blocks, the file {expected.Count}). "
+            + "Re-run: python tools/section-import/make_template.py");
     }
 
     /// <summary>The Sections sheet comes first and the Instructions sheet second.</summary>

@@ -4,7 +4,9 @@ Builds the TermPoint section import template workbook.
 Writes src/TermPoint/Assets/Templates/TermPointSectionsTemplate.xlsx with two sheets:
   * Sections     - the 18 template columns, a few sample rows that show every pattern, and Text
                    formatting on the code and time columns so Excel keeps leading zeros.
-  * Instructions - built from instructions.txt (beside this script).
+  * Instructions - built from src/TermPoint/Assets/Templates/SectionImportInstructions.txt. That one
+                   file is also what the app's Import Sections flyout shows and what its "Save instructions..."
+                   button saves as a web page, so edit it there and re-run this script.
 
 Run from anywhere:   python tools/section-import/make_template.py
 Needs openpyxl:      python -m pip install --user openpyxl
@@ -31,7 +33,7 @@ from openpyxl.utils import get_column_letter
 
 SCRIPT_DIR = Path(__file__).resolve().parent
 REPO_ROOT = SCRIPT_DIR.parent.parent
-INSTRUCTIONS_PATH = SCRIPT_DIR / "instructions.txt"
+INSTRUCTIONS_PATH = REPO_ROOT / "src" / "TermPoint" / "Assets" / "Templates" / "SectionImportInstructions.txt"
 OUTPUT_PATH = REPO_ROOT / "src" / "TermPoint" / "Assets" / "Templates" / "TermPointSectionsTemplate.xlsx"
 
 # --------------------------------------------------------------------------------------
@@ -132,7 +134,7 @@ def build_sections_sheet(ws):
 
 def parse_instructions(text):
     """
-    Turns instructions.txt into a list of (kind, text) blocks.
+    Turns SectionImportInstructions.txt into a list of (kind, text) blocks.
 
     Markup: '# ' starts a heading; '- ' starts a bullet (one line each); blank lines separate
     paragraphs; consecutive plain lines are joined into one paragraph.

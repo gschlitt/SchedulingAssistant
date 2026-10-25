@@ -9,9 +9,68 @@
         only (it is not compiled into the browser build), and the other flyouts' reflection bindings are used here too.
         The flyout page already sits inside a ScrollViewer with a title bar (MainView), so this view adds neither;
         lists that can be long scroll in their own ScrollViewer, capped at ImportListMaxHeight (App.axaml).
+
+        The first screen (ReadyToChoose) is an introduction and four numbered steps. The text of the steps and the
+        instructions document is capped at ImportReadingMaxWidth and set in ImportReadingFontSize (both App.axaml),
+        because the flyout is as wide as the window. Step 2 can expand the instructions in place; the Problems
+        screen offers the same button. Both screens use the one ImportInstructionsTemplate below and the one
+        ShowInstructions property of the view model, so they cannot drift apart and open or close together.
     -->
 
     <UserControl.Resources>
+        <!-- One block of the instructions: a heading, a paragraph or a bullet. Each block has one of three
+             panels visible (IsHeading / IsParagraph / IsBullet); the other two are collapsed. -->
+        <DataTemplate x:Key="ImportInstructionBlockTemplate">
+            <Panel>
+                <TextBlock Margin="0,8,0,0"
+                           FontSize="{StaticResource ImportReadingFontSize}"
+                           FontWeight="{StaticResource FlyoutHeadingWeight}"
+                           IsVisible="{Binding IsHeading}"
+                           Text="{Binding Text}"
+                           TextWrapping="Wrap" />
+                <TextBlock Margin="0,3,0,0"
+                           FontSize="{StaticResource ImportReadingFontSize}"
+                           IsVisible="{Binding IsParagraph}"
+                           Text="{Binding Text}"
+                           TextWrapping="Wrap" />
+                <!-- The bullet sits in its own narrow column so wrapped lines align beside the text, not under the bullet.
+                     The bullet is a plain punctuation glyph in a TextBlock, not an icon. -->
+                <Grid Margin="8,3,0,0"
+                      ColumnDefinitions="Auto,*"
+                      IsVisible="{Binding IsBullet}">
+                    <TextBlock Margin="0,0,8,0"
+                               FontSize="{StaticResource ImportReadingFontSize}"
+                               Text="&#x2022;" />
+                    <TextBlock Grid.Column="1"
+                               FontSize="{StaticResource ImportReadingFontSize}"
+                               Text="{Binding Text}"
+                               TextWrapping="Wrap" />
+                </Grid>
+            </Panel>
+        </DataTemplate>
+
+        <!-- The instructions document, defined once for both screens. Its content is the view model itself
+             (Content="{Binding}"): a thin bordered box with the blocks, or the one "couldn't show" line when
+             the instructions could not be read. No ScrollViewer: the flyout page already scrolls. -->
+        <DataTemplate x:Key="ImportInstructionsTemplate">
+            <Panel HorizontalAlignment="Left"
+                   MaxWidth="{StaticResource ImportReadingMaxWidth}">
+                <Border BorderBrush="{StaticResource TextFaint}"
+                        BorderThickness="1"
+                        CornerRadius="4"
+                        IsVisible="{Binding InstructionsUnavailableText, Converter={x:Static ObjectConverters.IsNull}}"
+                        Padding="10,8">
+                    <ItemsControl ItemTemplate="{StaticResource ImportInstructionBlockTemplate}"
+                                  ItemsSource="{Binding InstructionBlocks}" />
+                </Border>
+                <TextBlock FontSize="{StaticResource FontSizeSmall}"
+                           Foreground="{StaticResource TextFaint}"
+                           IsVisible="{Binding InstructionsUnavailableText, Converter={x:Static ObjectConverters.IsNotNull}}"
+                           Text="{Binding InstructionsUnavailableText}"
+                           TextWrapping="Wrap" />
+            </Panel>
+        </DataTemplate>
+
         <!-- One line of a list (a section, course, instructor, setup value, problem or warning). -->
         <DataTemplate x:Key="ImportLineTemplate">
             <TextBlock FontSize="{StaticResource FontSizeSmall}"
@@ -43,6 +102,17 @@
     </UserControl.Styles>
 
     <StackPanel Margin="16,0" Spacing="8">
+
+        <!-- ReadyToChoose only: what the import is for -->
+        <TextBlock HorizontalAlignment="Left"
+                   FontSize="{StaticResource FontSizeNormal}"
+                   IsVisible="{Binding IsReadyToChoose}"
+                   MaxWidth="{StaticResource ImportReadingMaxWidth}"
+                   TextWrapping="Wrap">
+            <Run Text="TermPoint can add a whole semester's sections for you from a spreadsheet, so you don't have to type them in one by one. Any courses, instructors, rooms and other section parameters that the spreadsheet names but TermPoint doesn't have yet will be added too." />
+            <LineBreak />
+            <Run Text="The first step is to prepare spreadsheets (one per semester) containing your section data in a specified format." />
+        </TextBlock>
 
         <!-- Always: the target semester -->
         <TextBlock FontSize="{StaticResource FontSizeNormal}"
@@ -77,21 +147,104 @@
                    TextWrapping="Wrap" />
 
         <!-- Stage: ReadyToChoose -->
-        <StackPanel IsVisible="{Binding IsReadyToChoose}" Spacing="8">
-            <TextBlock FontSize="{StaticResource FontSizeSmall}"
+        <StackPanel IsVisible="{Binding IsReadyToChoose}" Spacing="10">
+
+            <!-- Step 1: the template -->
+            <Grid ColumnDefinitions="Auto,*">
+                <TextBlock Margin="0,0,10,0"
+                           FontSize="{StaticResource ImportReadingFontSize}"
+                           FontWeight="{StaticResource FlyoutHeadingWeight}"
+                           Text="1" />
+                <StackPanel Grid.Column="1" Spacing="6">
+                    <TextBlock HorizontalAlignment="Left"
+                               FontSize="{StaticResource ImportReadingFontSize}"
+                               MaxWidth="{StaticResource ImportReadingMaxWidth}"
+                               TextWrapping="Wrap">
+                        <Run FontWeight="{StaticResource FlyoutHeadingWeight}" Text="First get the template." />
+                        <Run Text=" An Excel workbook with the columns TermPoint needs and a few sample rows." />
+                    </TextBlock>
+                    <Button HorizontalAlignment="Left"
+                            Padding="10,5"
+                            Command="{Binding SaveTemplateCommand}"
+                            Content="Save template&#x2026;"
+                            FontSize="{StaticResource FontSizeNormal}" />
+                </StackPanel>
+            </Grid>
+
+            <!-- Step 2: fill it in; the instructions expand in place under the buttons -->
+            <Grid ColumnDefinitions="Auto,*">
+                <TextBlock Margin="0,0,10,0"
+                           FontSize="{StaticResource ImportReadingFontSize}"
+                           FontWeight="{StaticResource FlyoutHeadingWeight}"
+                           Text="2" />
+                <StackPanel Grid.Column="1" Spacing="6">
+                    <TextBlock HorizontalAlignment="Left"
+                               FontSize="{StaticResource ImportReadingFontSize}"
+                               MaxWidth="{StaticResource ImportReadingMaxWidth}"
+                               TextWrapping="Wrap">
+                        <Run FontWeight="{StaticResource FlyoutHeadingWeight}" Text="Fill it in according to the instructions below." />                        
+                    </TextBlock>
+                    <StackPanel Orientation="Horizontal" Spacing="8">
+                        <Button Padding="10,5"
+                                Command="{Binding ToggleInstructionsCommand}"
+                                Content="{Binding InstructionsToggleText}"
+                                FontSize="{StaticResource FontSizeNormal}" />
+                        <Button Padding="10,5"
+                                Command="{Binding SaveInstructionsCommand}"
+                                Content="Save instructions&#x2026;"
+                                FontSize="{StaticResource FontSizeNormal}" />
+                    </StackPanel>
+                    <ContentControl Content="{Binding}"
+                                    ContentTemplate="{StaticResource ImportInstructionsTemplate}"
+                                    IsVisible="{Binding ShowInstructions}" />
+                </StackPanel>
+            </Grid>
+
+            <!-- Step 3: choose the filled-in file -->
+            <Grid ColumnDefinitions="Auto,*">
+                <TextBlock Margin="0,0,10,0"
+                           FontSize="{StaticResource ImportReadingFontSize}"
+                           FontWeight="{StaticResource FlyoutHeadingWeight}"
+                           Text="3" />
+                <StackPanel Grid.Column="1" Spacing="6">
+                    <TextBlock HorizontalAlignment="Left"
+                               FontSize="{StaticResource ImportReadingFontSize}"
+                               MaxWidth="{StaticResource ImportReadingMaxWidth}"
+                               TextWrapping="Wrap">
+                        <Run FontWeight="{StaticResource FlyoutHeadingWeight}" Text="Choose your file." />
+                        <Run Text=" TermPoint checks the whole file before it adds anything. If something needs fixing, it lists the rows so you can correct them and try again." />
+                    </TextBlock>
+                    <Button HorizontalAlignment="Left"
+                            Padding="10,5"
+                            Command="{Binding ChooseFileCommand}"
+                            Content="Choose file&#x2026;"
+                            FontSize="{StaticResource FontSizeNormal}" />
+                </StackPanel>
+            </Grid>
+
+            <!-- Step 4: what happens next (no button: the Import button appears on the next screen) -->
+            <Grid ColumnDefinitions="Auto,*">
+                <TextBlock Margin="0,0,10,0"
+                           FontSize="{StaticResource ImportReadingFontSize}"
+                           FontWeight="{StaticResource FlyoutHeadingWeight}"
+                           Text="4" />
+                <TextBlock Grid.Column="1"
+                           HorizontalAlignment="Left"
+                           FontSize="{StaticResource ImportReadingFontSize}"
+                           MaxWidth="{StaticResource ImportReadingMaxWidth}"
+                           TextWrapping="Wrap">
+                    <Run FontWeight="{StaticResource FlyoutHeadingWeight}" Text="Review and import." />
+                    <Run Text=" You'll see everything that will be added. Nothing changes until you press Import." />
+                </TextBlock>
+            </Grid>
+
+            <!-- Footer: why a second import is safe -->
+            <TextBlock HorizontalAlignment="Left"
+                       FontSize="{StaticResource FontSizeSmall}"
                        Foreground="{StaticResource TextFaint}"
-                       Text="Choose a filled-in TermPoint template (.xlsx) or a CSV with the same columns."
+                       MaxWidth="{StaticResource ImportReadingMaxWidth}"
+                       Text="Sections already in the semester are skipped, so it's safe to import a corrected file again."
                        TextWrapping="Wrap" />
-            <StackPanel Orientation="Horizontal" Spacing="8">
-                <Button Padding="10,5"
-                        Command="{Binding SaveTemplateCommand}"
-                        Content="Save template&#x2026;"
-                        FontSize="{StaticResource FontSizeNormal}" />
-                <Button Padding="10,5"
-                        Command="{Binding ChooseFileCommand}"
-                        Content="Choose file&#x2026;"
-                        FontSize="{StaticResource FontSizeNormal}" />
-            </StackPanel>
         </StackPanel>
 
         <!-- Stage: Checking -->
@@ -128,7 +281,16 @@
                         Command="{Binding ChooseFileCommand}"
                         Content="Choose file&#x2026;"
                         FontSize="{StaticResource FontSizeNormal}" />
+                <Button Padding="10,5"
+                        Command="{Binding ToggleInstructionsCommand}"
+                        Content="{Binding InstructionsToggleText}"
+                        FontSize="{StaticResource FontSizeNormal}" />
             </StackPanel>
+
+            <!-- The same instructions document as step 2 of the first screen, below the buttons -->
+            <ContentControl Content="{Binding}"
+                            ContentTemplate="{StaticResource ImportInstructionsTemplate}"
+                            IsVisible="{Binding ShowInstructions}" />
         </StackPanel>
 
         <!-- Stage: ReadyToImport -->

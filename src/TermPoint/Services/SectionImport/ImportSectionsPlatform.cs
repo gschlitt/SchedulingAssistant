@@ -8,9 +8,10 @@ namespace TermPoint.Services.SectionImport;
 
 /// <summary>
 /// What the Import Sections flyout needs from the desktop platform: the two file pickers, the clipboard and
-/// the template workbook that ships inside the app. A narrow seam, so the flyout's view model never needs a
-/// window and its tests can fake all four (the real one is <see cref="AvaloniaImportSectionsPlatform"/>).
-/// Each method reports a refusal or a missing window as null or false and never throws for them.
+/// the two files that ship inside the app (the template workbook and the instructions text). A narrow seam,
+/// so the flyout's view model never needs a window and its tests can fake all of it (the real one is
+/// <see cref="AvaloniaImportSectionsPlatform"/>). The pickers and the clipboard report a refusal or a missing
+/// window as null or false and never throw for them.
 /// </summary>
 public interface IImportSectionsPlatform
 {
@@ -18,10 +19,13 @@ public interface IImportSectionsPlatform
     /// <returns>The chosen file's local path; null when the user cancelled or no window is available.</returns>
     Task<string?> PickFileToOpenAsync();
 
-    /// <summary>Asks the user where to save the template workbook ("Save template…").</summary>
-    /// <param name="suggestedFileName">The file name the dialog offers.</param>
+    /// <summary>
+    /// Asks the user where to save a file ("Save template…" and "Save instructions…"): the dialog's title, the
+    /// name it offers, the default extension and the file-type choice all come from the request.
+    /// </summary>
+    /// <param name="request">What differs between the saves; <see cref="ImportMessages.TemplateSaveRequest"/> or <see cref="ImportMessages.InstructionsSaveRequest"/>.</param>
     /// <returns>The chosen local path; null when the user cancelled or no window is available.</returns>
-    Task<string?> PickFileToSaveAsync(string suggestedFileName);
+    Task<string?> PickFileToSaveAsync(SaveFileRequest request);
 
     /// <summary>Puts text on the clipboard.</summary>
     /// <param name="text">The text.</param>
@@ -32,6 +36,14 @@ public interface IImportSectionsPlatform
     /// <returns>The bytes of the <c>.xlsx</c> file.</returns>
     /// <exception cref="IOException">The asset is missing or cannot be read.</exception>
     byte[] ReadTemplate();
+
+    /// <summary>
+    /// Reads the instructions text that ships inside the app (the same file the template workbook's Instructions
+    /// sheet is built from). Pass it to <see cref="ImportInstructions.Parse"/>.
+    /// </summary>
+    /// <returns>The text, decoded as UTF-8.</returns>
+    /// <exception cref="IOException">The asset is missing or cannot be read.</exception>
+    string ReadInstructions();
 }
 
 /// <summary>
@@ -47,6 +59,13 @@ public sealed class AvaloniaImportSectionsPlatform : IImportSectionsPlatform
     /// </summary>
     public static readonly Uri TemplateAssetUri =
         new("avares://TermPoint/Assets/Templates/TermPointSectionsTemplate.xlsx");
+
+    /// <summary>
+    /// The address of the instructions text in the app's resources (the same <c>Assets/**</c> glob). It is the
+    /// one source of the Instructions sheet, the flyout's instructions and the saved web page.
+    /// </summary>
+    public static readonly Uri InstructionsAssetUri =
+        new("avares://TermPoint/Assets/Templates/SectionImportInstructions.txt");
 
     private readonly MainWindowViewModel _mainVm;
 
@@ -78,7 +97,7 @@ public sealed class AvaloniaImportSectionsPlatform : IImportSectionsPlatform
     }
 
     /// <inheritdoc />
-    public async Task<string?> PickFileToSaveAsync(string suggestedFileName)
+    public async Task<string?> PickFileToSaveAsync(SaveFileRequest request)
     {
         var window = _mainVm.MainWindowReference;
         if (window is null) return null;
@@ -87,12 +106,12 @@ public sealed class AvaloniaImportSectionsPlatform : IImportSectionsPlatform
 
         var file = await window.StorageProvider.SaveFilePickerAsync(new FilePickerSaveOptions
         {
-            Title = "Save the template",
-            SuggestedFileName = suggestedFileName,
-            DefaultExtension = "xlsx",
+            Title = request.Title,
+            SuggestedFileName = request.SuggestedFileName,
+            DefaultExtension = request.DefaultExtension,
             FileTypeChoices = new[]
             {
-                new FilePickerFileType("Excel workbook (*.xlsx)") { Patterns = new[] { "*.xlsx" } },
+                new FilePickerFileType(request.FileTypeName) { Patterns = new[] { request.Pattern } },
             },
         });
 
@@ -116,6 +135,14 @@ public sealed class AvaloniaImportSectionsPlatform : IImportSectionsPlatform
         using var buffer = new MemoryStream();
         stream.CopyTo(buffer);
         return buffer.ToArray();
+    }
+
+    /// <inheritdoc />
+    public string ReadInstructions()
+    {
+        using var stream = AssetLoader.Open(InstructionsAssetUri);
+        using var reader = new StreamReader(stream, System.Text.Encoding.UTF8);
+        return reader.ReadToEnd();
     }
 }
 #endif

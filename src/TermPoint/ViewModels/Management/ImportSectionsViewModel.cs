@@ -1,4 +1,5 @@
 #if !BROWSER
+using System.Text;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using TermPoint.Data.Repositories;
@@ -13,7 +14,10 @@ namespace TermPoint.ViewModels.Management;
 /// </summary>
 public enum ImportStage
 {
-    /// <summary>Nothing chosen yet: the target line, Save template and Choose file.</summary>
+    /// <summary>
+    /// Nothing chosen yet: the introduction, the target line and the four steps (Save template; the
+    /// instructions, shown or saved; Choose file; what happens next).
+    /// </summary>
     ReadyToChoose,
 
     /// <summary>The file is being read and checked ("Checking…").</summary>
@@ -33,7 +37,8 @@ public enum ImportStage
 }
 
 /// <summary>
-/// The Import Sections flyout (Files, Import Sections…): lets the user save the template workbook, choose a
+/// The Import Sections flyout (Files, Import Sections…): explains the procedure, lets the user save the
+/// template workbook, read the instructions (here in the flyout, or saved as a web page), choose a
 /// filled-in <c>.xlsx</c> or <c>.csv</c>, see what importing it would do, and import it into the open
 /// semester. All the work is done by <see cref="SectionImportService"/>; this class owns the stages, the
 /// commands and the text of every message (<see cref="ImportMessages"/>).
@@ -42,8 +47,8 @@ public enum ImportStage
 /// <see cref="IImportSectionsHost"/> (write access, the shown semester, section editing, the reload after a
 /// write); the file pickers, the clipboard and the bundled template come through
 /// <see cref="IImportSectionsPlatform"/>. The real work sits in methods that take a path
-/// (<see cref="CheckFileAsync"/>, <see cref="SaveTemplateToAsync"/>), so tests drive every stage without a
-/// window.</para>
+/// (<see cref="CheckFileAsync"/>, <see cref="SaveTemplateToAsync"/>, <see cref="SaveInstructionsToAsync"/>), so
+/// tests drive every stage without a window.</para>
 ///
 /// <para><b>The four rules for the shared database.</b> The only write is
 /// <see cref="SectionImportService.Import"/>, one transaction of repository inserts into the open copy; the
@@ -89,7 +94,7 @@ public partial class ImportSectionsViewModel : ViewModelBase, IDisposable
     /// </summary>
     /// <param name="service">Reads, checks and imports the file.</param>
     /// <param name="host">The main window's facts: write access, shown semester, section editing, reload.</param>
-    /// <param name="platform">The pickers, the clipboard and the bundled template.</param>
+    /// <param name="platform">The pickers, the clipboard, the bundled template and the bundled instructions.</param>
     /// <param name="focus">The subject focus, for the "not shown" sentence after an import (decision D6).</param>
     /// <param name="courses">Read after a write to find which new sections are outside the chosen subjects.</param>
     /// <param name="logger">Where failures are logged (the app's logger).</param>
@@ -314,7 +319,7 @@ public partial class ImportSectionsViewModel : ViewModelBase, IDisposable
     private async Task SaveTemplate()
     {
         string? path;
-        try { path = await _platform.PickFileToSaveAsync(ImportMessages.TemplateFileName); }
+        try { path = await _platform.PickFileToSaveAsync(ImportMessages.TemplateSaveRequest); }
         catch (Exception ex)
         {
             LogQuietly("choosing where to save the template", ex);
@@ -355,6 +360,135 @@ public partial class ImportSectionsViewModel : ViewModelBase, IDisposable
 
         if (saved) StatusMessage = ImportMessages.TemplateSaved;
         else LastErrorMessage = ImportMessages.TemplateNotSaved;
+    }
+
+    // ── Instructions ──────────────────────────────────────────────────────────
+
+    /// <summary>Backing field of <see cref="InstructionBlocks"/>; null until the instructions are first needed.</summary>
+    private IReadOnlyList<InstructionBlock>? _instructionBlocks;
+
+    /// <summary>Backing field of <see cref="InstructionsUnavailableText"/>; set only if loading the instructions failed.</summary>
+    private string? _instructionsUnavailableText;
+
+    /// <summary>
+    /// The instructions as blocks (headings, paragraphs, bullets) for the view to draw. They are read from the
+    /// platform and parsed on the first access and kept, so the file is read at most once however often the
+    /// view asks. If reading fails the list is empty and <see cref="InstructionsUnavailableText"/> says so; it is
+    /// not retried.
+    /// </summary>
+    public IReadOnlyList<InstructionBlock> InstructionBlocks => _instructionBlocks ??= LoadInstructions();
+
+    /// <summary>
+    /// null when the instructions loaded; otherwise the one line the view shows in place of them
+    /// (<see cref="ImportMessages.InstructionsUnavailable"/>). Reading it loads the instructions if that has not
+    /// happened yet, so it is right whichever property the view reads first.
+    /// </summary>
+    public string? InstructionsUnavailableText
+    {
+        get
+        {
+            _ = InstructionBlocks;
+            return _instructionsUnavailableText;
+        }
+    }
+
+    /// <summary>
+    /// Reads and parses the instructions. A failure is logged without the path or the exception's text (rule 4),
+    /// leaves <see cref="InstructionsUnavailableText"/> set, and gives an empty list.
+    /// </summary>
+    /// <returns>The blocks; empty when the instructions could not be read.</returns>
+    private IReadOnlyList<InstructionBlock> LoadInstructions()
+    {
+        try
+        {
+            return ImportInstructions.Parse(_platform.ReadInstructions());
+        }
+        catch (Exception ex)
+        {
+            LogQuietly("reading the instructions", ex);
+            _instructionsUnavailableText = ImportMessages.InstructionsUnavailable;
+            return Array.Empty<InstructionBlock>();
+        }
+    }
+
+    /// <summary>
+    /// True while the instructions are shown in the flyout. The Ready-to-choose and Problems screens both bind
+    /// to this one property, so opening them on one screen leaves them open on the other. It is not reset when
+    /// the stage changes.
+    /// </summary>
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(InstructionsToggleText))]
+    private bool _showInstructions;
+
+    /// <summary>The label of the show/hide button: "Show instructions" while hidden, "Hide instructions" while shown.</summary>
+    public string InstructionsToggleText =>
+        ShowInstructions ? ImportMessages.HideInstructions : ImportMessages.ShowInstructions;
+
+    /// <summary>"Show instructions" / "Hide instructions": shows or hides the instructions in the flyout.</summary>
+    [RelayCommand]
+    private void ToggleInstructions() => ShowInstructions = !ShowInstructions;
+
+    // ── Save instructions ─────────────────────────────────────────────────────
+
+    /// <summary>"Save instructions…": asks where, then saves the instructions there as a web page.</summary>
+    /// <returns>A task that completes when the page is saved or the user cancelled.</returns>
+    [RelayCommand(CanExecute = nameof(CanSaveInstructions))]
+    private async Task SaveInstructions()
+    {
+        string? path;
+        try { path = await _platform.PickFileToSaveAsync(ImportMessages.InstructionsSaveRequest); }
+        catch (Exception ex)
+        {
+            LogQuietly("choosing where to save the instructions", ex);
+            LastErrorMessage = ImportMessages.InstructionsNotSaved;
+            return;
+        }
+
+        if (path is null) return;
+        await SaveInstructionsToAsync(path);
+    }
+
+    private bool CanSaveInstructions() => Stage == ImportStage.ReadyToChoose;
+
+    /// <summary>
+    /// Saves the instructions to <paramref name="path"/> as a web page (<see cref="ImportInstructionsHtml.Build"/>),
+    /// written as UTF-8 through <see cref="NetworkFileOps.RunAsync(Action, string)"/>, so a stalled network folder
+    /// cannot freeze the window. On success <see cref="StatusMessage"/> confirms it; when the write fails,
+    /// <see cref="ViewModelBase.LastErrorMessage"/> says to try another folder (no path, no exception text). When
+    /// the instructions themselves could not be loaded, no empty page is written and the error is
+    /// <see cref="ImportMessages.InstructionsUnavailable"/> instead, since another folder would not help.
+    /// </summary>
+    /// <param name="path">Where to write the <c>.html</c> file.</param>
+    /// <returns>A task that completes when the file is written or the attempt has failed.</returns>
+    public async Task SaveInstructionsToAsync(string path)
+    {
+        StatusMessage = null;
+        LastErrorMessage = null;
+
+        var blocks = InstructionBlocks;
+        if (blocks.Count == 0)
+        {
+            // The instructions could not be read: say so rather than writing an empty page.
+            LastErrorMessage = ImportMessages.InstructionsUnavailable;
+            return;
+        }
+
+        bool saved;
+        try
+        {
+            var html = ImportInstructionsHtml.Build(blocks);
+            saved = await NetworkFileOps.RunAsync(
+                () => File.WriteAllText(path, html, new UTF8Encoding(encoderShouldEmitUTF8Identifier: false)),
+                "section import save instructions");
+        }
+        catch (Exception ex)
+        {
+            LogQuietly("saving the instructions", ex);
+            saved = false;
+        }
+
+        if (saved) StatusMessage = ImportMessages.InstructionsSaved;
+        else LastErrorMessage = ImportMessages.InstructionsNotSaved;
     }
 
     // ── Choose file / Check again ─────────────────────────────────────────────
@@ -677,6 +811,7 @@ public partial class ImportSectionsViewModel : ViewModelBase, IDisposable
     private void RefreshCommands()
     {
         SaveTemplateCommand.NotifyCanExecuteChanged();
+        SaveInstructionsCommand.NotifyCanExecuteChanged();
         ChooseFileCommand.NotifyCanExecuteChanged();
         CheckAgainCommand.NotifyCanExecuteChanged();
         ImportCommand.NotifyCanExecuteChanged();

@@ -113,22 +113,28 @@ public sealed class FakeImportSectionsHost : IImportSectionsHost
 }
 
 /// <summary>
-/// A stand-in for the pickers, the clipboard and the bundled template: the paths the "user" will choose,
-/// whether the clipboard works, and what was put on it.
+/// A stand-in for the pickers, the clipboard and the bundled template and instructions: the paths the "user"
+/// will choose, whether the clipboard works, and what was put on it.
 /// </summary>
 public sealed class FakeImportSectionsPlatform : IImportSectionsPlatform
 {
     /// <summary>The template workbook's file name in the test output folder (copied there by the test project).</summary>
     public const string TemplateFileName = "TermPointSectionsTemplate.xlsx";
 
+    /// <summary>The instructions text's file name in the test output folder (copied there by the test project).</summary>
+    public const string InstructionsFileName = "SectionImportInstructions.txt";
+
     /// <summary>What "Choose file…" returns; null means the user cancelled.</summary>
     public string? PathToOpen { get; set; }
 
-    /// <summary>What "Save template…" returns; null means the user cancelled.</summary>
+    /// <summary>What a Save dialog ("Save template…" or "Save instructions…") returns; null means the user cancelled.</summary>
     public string? PathToSave { get; set; }
 
-    /// <summary>The file name the Save dialog was offered, or null if it has not been opened.</summary>
-    public string? SuggestedFileName { get; private set; }
+    /// <summary>The request the Save dialog was last opened with, or null if it has not been opened.</summary>
+    public SaveFileRequest? LastSaveRequest { get; private set; }
+
+    /// <summary>The file name the Save dialog was last offered, or null if it has not been opened.</summary>
+    public string? SuggestedFileName => LastSaveRequest?.SuggestedFileName;
 
     /// <summary>Whether the clipboard accepts text.</summary>
     public bool ClipboardWorks { get; set; } = true;
@@ -139,17 +145,27 @@ public sealed class FakeImportSectionsPlatform : IImportSectionsPlatform
     /// <summary>When set, reading the template throws it.</summary>
     public Exception? TemplateReadThrows { get; set; }
 
+    /// <summary>When set, reading the instructions throws it.</summary>
+    public Exception? InstructionsReadThrows { get; set; }
+
+    /// <summary>How many times <see cref="ReadInstructions"/> was called (the view model must read the file only once).</summary>
+    public int InstructionsReadCount { get; private set; }
+
     /// <summary>The template's bytes, read from the test output folder (the copy of the shipped asset).</summary>
     public static byte[] ShippedTemplateBytes() =>
         File.ReadAllBytes(Path.Combine(AppContext.BaseDirectory, "TestData", TemplateFileName));
+
+    /// <summary>The instructions text, read from the test output folder (the copy of the shipped asset).</summary>
+    public static string ShippedInstructionsText() =>
+        File.ReadAllText(Path.Combine(AppContext.BaseDirectory, "TestData", InstructionsFileName));
 
     /// <inheritdoc />
     public Task<string?> PickFileToOpenAsync() => Task.FromResult(PathToOpen);
 
     /// <inheritdoc />
-    public Task<string?> PickFileToSaveAsync(string suggestedFileName)
+    public Task<string?> PickFileToSaveAsync(SaveFileRequest request)
     {
-        SuggestedFileName = suggestedFileName;
+        LastSaveRequest = request;
         return Task.FromResult(PathToSave);
     }
 
@@ -163,6 +179,13 @@ public sealed class FakeImportSectionsPlatform : IImportSectionsPlatform
 
     /// <inheritdoc />
     public byte[] ReadTemplate() => TemplateReadThrows is null ? ShippedTemplateBytes() : throw TemplateReadThrows;
+
+    /// <inheritdoc />
+    public string ReadInstructions()
+    {
+        InstructionsReadCount++;
+        return InstructionsReadThrows is null ? ShippedInstructionsText() : throw InstructionsReadThrows;
+    }
 }
 
 /// <summary>An <see cref="IAppLogger"/> that remembers what was logged, so tests can see errors without a banner or a re-throw.</summary>

@@ -1,11 +1,11 @@
-# What this file is for
+# Spreadsheet format instructions
 
-Use this workbook to give TermPoint all the sections of one semester at once, instead of typing them in one by one.
-
-- Go to the Sections sheet. It holds a few sample rows. Delete them and type or paste in your own.
+- The sample template holds a few sample rows. Delete them and type or paste in your own, according to the format specified below
 - Keep the column names in row 1 exactly as they are. You may leave a column empty, but please don't rename it or delete it. You can add columns of your own to the right (for notes, say). TermPoint ignores them.
-- Save the file as an Excel workbook (.xlsx).
+- Save the file as an Excel workbook (.xlsx) with an appropriate name.
 - In TermPoint, open the semester you are filling in. Then choose Files, then Import Sections…, and pick your file.
+
+# Data Format:
 
 # One row for each meeting pattern
 
@@ -17,7 +17,7 @@ If a section has no meeting time (an online section, for example), leave Meeting
 
 # The columns
 
-Every column must be in the file. A cell can be empty unless it says "required".
+Every column must be in the file. A cell can be empty unless it is required, see below.
 
 - Academic Year (required): the academic year of the semester you are filling in, written as TermPoint shows it. Example: 2026-2027
 - Term (required): the semester's name. Example: Fall
@@ -52,7 +52,7 @@ Every column must be in the file. A cell can be empty unless it says "required".
 
 Only the academic year and the semester must already be in TermPoint. They must be the ones you have open.
 
-Everything else the file names is added if TermPoint doesn't have it yet: subjects, courses, instructors, section types, meeting types, tags, campuses and rooms. So spell each name the way TermPoint already spells it. A misspelling such as "Lectrue" would add a new section type. Before anything is added, TermPoint shows you a list of everything new, and points out names that look like a misspelling of one it already has.
+Everything else the file names is added if TermPoint doesn't have it yet: subjects, courses, instructors, section types, meeting types, tags, campuses and rooms. So if TermPoint already contains a name (e.g. a tag "FirstYr" or a section type "In Person") be sure to spell it the same way in your spreadsheet. A misspelling such as "Lectrue" would add a new section type. Before anything is added, TermPoint shows you a list of everything new, and points out names that look like a misspelling of one it already has.
 
 Things added this way start out with only the details the file gives. A new subject has only its short code, and a new room has no capacity or type. You can fill in the rest afterwards in TermPoint.
 

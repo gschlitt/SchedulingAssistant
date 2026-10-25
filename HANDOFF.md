@@ -39,11 +39,12 @@ All committed and pushed. Full suite after 24.8: **3,600 passed, 0 failed, 79 sk
 | 24.6 | 3579bbd | Template: `tools/section-import/make_template.py` (openpyxl) builds `src/TermPoint/Assets/Templates/TermPointSectionsTemplate.xlsx` from `instructions.txt`. Guarded by `TemplateWorkbookTests`. |
 | 24.7 | 3231fb6 | `ImportSectionsViewModel` (desktop only), `ImportAvailability`, the main window's command, DI. Seams `IImportSectionsHost` / `IImportSectionsPlatform` keep it testable. |
 | 24.8 | 10665ac | `Views/Management/ImportSectionsView.axaml` and **Files → Import Sections...** in `MainView.axaml` (hidden in the WASM demo). |
+| 24.8b | (after 0616ec3) | Friendlier first screen, after Greg first saw it (2026-10-25, dev machine): intro, four numbered steps, the instructions shown in the flyout (Show instructions, also on the Problems screen) and saved as a web page (Save instructions…). The instructions text moved to `Assets/Templates/SectionImportInstructions.txt`, the one source for the workbook sheet, the flyout and the page; `TemplateWorkbookTests` fails if the workbook falls behind it. Greg's first wording edits to the screen and the instructions are in; template regenerated. Full suite before Greg's edits: 3,637 passed, 0 failed, 79 skipped; import tests after them: 505/505. |
 
 ## Next
 
-1. **Greg tries the flyout in the running app** (not done yet; nothing has been seen on screen). Use a database where
-   nothing matters, or press Cancel rather than Import:
+1. **Greg tries the rest of the flyout in the running app** (the first screen was seen and reworked in 24.8b). Use a
+   database where nothing matters, or press Cancel rather than Import:
    - Files → Import Sections… → **Save template…**, then **Choose file…** with that template. With Fall 2026-2027
      open you get the Ready screen; with another semester open, one "This file is for Fall (2026-2027)…" problem.
    - The menu item should grey out, with a tooltip, while a section is being edited or several semesters are shown.
@@ -60,10 +61,14 @@ All committed and pushed. Full suite after 24.8: **3,600 passed, 0 failed, 79 sk
 
 ## Loose ends
 
-- **Instructions text:** Greg will revise `tools/section-import/instructions.txt`. Then regenerate with
-  `python tools/section-import/make_template.py` and commit the `.xlsx` with it. **openpyxl is needed on whichever
-  machine regenerates it** (`python -m pip install --user openpyxl`; the laptop has 3.1.5). The tests catch header
-  drift.
+- **Instructions text:** Greg will revise `src/TermPoint/Assets/Templates/SectionImportInstructions.txt` (moved
+  there from `tools/section-import/instructions.txt` on 2026-10-25, so the flyout and "Save instructions…" can use
+  it too). Then regenerate with `python tools/section-import/make_template.py` and commit the `.xlsx` with it.
+  **openpyxl is needed on whichever machine regenerates it** (`python -m pip install --user openpyxl`; the laptop
+  has 3.1.5). **On the dev machine use `py -3.11`** instead of `python` (plain `python` there is Inkscape's bundled
+  copy, with no pip); openpyxl 3.1.5 is installed for it, and it was checked to build byte-identical workbooks to
+  the laptop's. The tests catch header drift, and `TemplateWorkbookTests` fails if the Instructions sheet no longer
+  matches the text file.
 - **1.2.4 list** (`spec_version_1.2.4.md`) got four entries this session: show a room's type in the meeting editor;
   switch the shared-schedule parser to `ScheduleText`; one week-sharing rule (`FrequenciesOverlap` only knows weeks
   1–18); a `FaultSeamTests` flake seen once.

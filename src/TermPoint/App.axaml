@@ -40,6 +40,12 @@
 			<!--  Tallest a list in the Import Sections flyout (problems, sections, courses, warnings...) grows before it scrolls  -->
 			<x:Double x:Key="ImportListMaxHeight">200</x:Double>
 
+			<!--  Font size of the Import Sections flyout's reading text: the sentences of the numbered steps and the instructions document  -->
+			<x:Double x:Key="ImportReadingFontSize">12</x:Double>
+
+			<!--  Longest line, in pixels, of the Import Sections flyout's first screen text and instructions document. The flyout is as wide as the window, so longer lines would be hard to read  -->
+			<x:Double x:Key="ImportReadingMaxWidth">680</x:Double>
+
 			<!--  Weight of headings inside flyout bodies (the Import Sections problems heading and the "New in TermPoint" group headings)  -->
 			<FontWeight x:Key="FlyoutHeadingWeight">SemiBold</FontWeight>
 

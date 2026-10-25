@@ -101,6 +101,36 @@ public sealed class ImportMessagesTests
         Assert.Empty(ImportMessages.NewInTermPoint(ImportPlan.Empty));
     }
 
+    // ── Template and instructions: the saves and their messages ──────────────
+
+    /// <summary>The exact words of the template and instructions messages and buttons.</summary>
+    [Fact]
+    public void TemplateAndInstructionsMessages_HaveTheAgreedWording()
+    {
+        Assert.Equal("TermPoint Sections Template.xlsx", ImportMessages.TemplateFileName);
+        Assert.Equal("Template saved.", ImportMessages.TemplateSaved);
+        Assert.Equal("TermPoint couldn't save the template there. Try another folder, such as Documents.", ImportMessages.TemplateNotSaved);
+
+        Assert.Equal("TermPoint Section Import Instructions.html", ImportMessages.InstructionsFileName);
+        Assert.Equal("Instructions saved.", ImportMessages.InstructionsSaved);
+        Assert.Equal("TermPoint couldn't save the instructions there. Try another folder, such as Documents.", ImportMessages.InstructionsNotSaved);
+        Assert.Equal("TermPoint couldn't open its copy of the instructions. They're also on the Instructions sheet of the template.", ImportMessages.InstructionsUnavailable);
+        Assert.Equal("Show instructions", ImportMessages.ShowInstructions);
+        Assert.Equal("Hide instructions", ImportMessages.HideInstructions);
+    }
+
+    /// <summary>The two Save dialogs differ in exactly the five strings of their requests.</summary>
+    [Fact]
+    public void SaveRequests_NameTheDialogFileAndFileType()
+    {
+        Assert.Equal(
+            new SaveFileRequest("Save the template", "TermPoint Sections Template.xlsx", "xlsx", "Excel workbook (*.xlsx)", "*.xlsx"),
+            ImportMessages.TemplateSaveRequest);
+        Assert.Equal(
+            new SaveFileRequest("Save the instructions", "TermPoint Section Import Instructions.html", "html", "Web page (*.html)", "*.html"),
+            ImportMessages.InstructionsSaveRequest);
+    }
+
     // ── Problem lines and the copied list ─────────────────────────────────────
 
     /// <summary>A problem is "Row n, Column: message", "Row n: message", or just the message.</summary>

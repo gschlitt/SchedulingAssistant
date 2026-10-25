@@ -15,6 +15,20 @@ public sealed record ImportListGroup(string Heading, IReadOnlyList<string> Items
 }
 
 /// <summary>
+/// What a Save dialog of the Import Sections flyout needs to know: the two saves it offers (the template
+/// workbook and the instructions web page) differ only in these five strings, so one picker serves both
+/// (<c>IImportSectionsPlatform.PickFileToSaveAsync</c>, which exists in the desktop build only). The two real requests are
+/// <see cref="ImportMessages.TemplateSaveRequest"/> and <see cref="ImportMessages.InstructionsSaveRequest"/>.
+/// </summary>
+/// <param name="Title">The dialog's title, for example "Save the template".</param>
+/// <param name="SuggestedFileName">The file name the dialog offers, for example "TermPoint Sections Template.xlsx".</param>
+/// <param name="DefaultExtension">The extension added when the user types none, without the dot, for example "xlsx".</param>
+/// <param name="FileTypeName">The file-type choice's label, for example "Excel workbook (*.xlsx)".</param>
+/// <param name="Pattern">The file-type choice's pattern, for example "*.xlsx".</param>
+public sealed record SaveFileRequest(
+    string Title, string SuggestedFileName, string DefaultExtension, string FileTypeName, string Pattern);
+
+/// <summary>
 /// The wording of the Import Sections flyout: every sentence built from counts and names, and the display
 /// line of each new record. Pure functions with no window and no database, so the exact text, plurals
 /// included, is unit-tested. Every message names what happened and what it means for the user's work, and
@@ -64,6 +78,38 @@ public static class ImportMessages
 
     /// <summary>The file name the Save dialog suggests for the template.</summary>
     public const string TemplateFileName = "TermPoint Sections Template.xlsx";
+
+    /// <summary>The file name the Save dialog suggests for the instructions web page.</summary>
+    public const string InstructionsFileName = "TermPoint Section Import Instructions.html";
+
+    /// <summary>Confirms the instructions web page was saved.</summary>
+    public const string InstructionsSaved = "Instructions saved.";
+
+    /// <summary>Shown when the instructions web page could not be saved where the user chose.</summary>
+    public const string InstructionsNotSaved = "TermPoint couldn't save the instructions there. Try another folder, such as Documents.";
+
+    /// <summary>
+    /// Shown when TermPoint could not read its copy of the instructions: in place of the instructions in the
+    /// flyout, and as the error when "Save instructions…" can't save them for that reason (another folder would
+    /// not help, so the "try another folder" message would mislead). The same text is on the template's
+    /// Instructions sheet, so the user is not left without it.
+    /// </summary>
+    public const string InstructionsUnavailable =
+        "TermPoint couldn't open its copy of the instructions. They're also on the Instructions sheet of the template.";
+
+    /// <summary>The label of the button that shows the instructions.</summary>
+    public const string ShowInstructions = "Show instructions";
+
+    /// <summary>The label of the button that hides the instructions again.</summary>
+    public const string HideInstructions = "Hide instructions";
+
+    /// <summary>The "Save template…" dialog: an Excel workbook named <see cref="TemplateFileName"/>.</summary>
+    public static readonly SaveFileRequest TemplateSaveRequest = new(
+        "Save the template", TemplateFileName, "xlsx", "Excel workbook (*.xlsx)", "*.xlsx");
+
+    /// <summary>The "Save instructions…" dialog: a web page named <see cref="InstructionsFileName"/>.</summary>
+    public static readonly SaveFileRequest InstructionsSaveRequest = new(
+        "Save the instructions", InstructionsFileName, "html", "Web page (*.html)", "*.html");
 
     /// <summary>
     /// The target line: "Sections will be added to Fall 2026 (2026-2027)."
