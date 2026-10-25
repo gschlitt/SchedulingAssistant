@@ -1002,6 +1002,12 @@ public partial class MainWindowViewModel : ViewModelBase
         IsWriteEnabled, SemesterContext.SelectedSemesters.Count, SectionListVm.IsEditing);
 
     /// <summary>
+    /// True when the platform has file dialogs (never in the browser demo). The Files menu binds the visibility of
+    /// desktop-only items such as Import Sections… to it, as <see cref="Management.SharingViewModel"/> does.
+    /// </summary>
+    public bool SupportsFileDialogs => PlatformCapabilities.SupportsFileDialogs;
+
+    /// <summary>
     /// True when <see cref="NavigateToImportSectionsCommand"/> may run: the platform has file dialogs (never in
     /// the browser demo) and <see cref="ImportSectionsUnavailableReason"/> is null.
     /// </summary>

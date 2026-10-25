@@ -64,6 +64,12 @@
 							<MenuItem Command="{Binding OpenDatabaseCommand}" Header="Open..." />
 							<MenuItem Command="{Binding NewDatabaseCommand}" Header="New..." />
 							<MenuItem Command="{Binding SaveCommand}" Header="Save" />
+							<MenuItem
+								Command="{Binding NavigateToImportSectionsCommand}"
+								Header="Import Sections..."
+								IsVisible="{Binding SupportsFileDialogs}"
+								ToolTip.ShowOnDisabled="True"
+								ToolTip.Tip="{Binding ImportSectionsUnavailableReason}" />
 							<Separator IsVisible="{Binding RecentDatabases.Count}" />
 							<MenuItem
 								b:CloseMenuOnClickBehavior.IsEnabled="True"

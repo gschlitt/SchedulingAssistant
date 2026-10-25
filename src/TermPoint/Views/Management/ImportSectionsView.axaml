@@ -1,0 +1,273 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             x:Class="TermPoint.Views.Management.ImportSectionsView"
+             x:CompileBindings="False">
+
+    <!--
+        The Import Sections flyout (Files, Import Sections…). One panel per stage, each shown by the matching
+        Is... property of ImportSectionsViewModel. There is deliberately no x:DataType: the view model is desktop
+        only (it is not compiled into the browser build), and the other flyouts' reflection bindings are used here too.
+        The flyout page already sits inside a ScrollViewer with a title bar (MainView), so this view adds neither;
+        lists that can be long scroll in their own ScrollViewer, capped at ImportListMaxHeight (App.axaml).
+    -->
+
+    <UserControl.Resources>
+        <!-- One line of a list (a section, course, instructor, setup value, problem or warning). -->
+        <DataTemplate x:Key="ImportLineTemplate">
+            <TextBlock FontSize="{StaticResource FontSizeSmall}"
+                       Text="{Binding}"
+                       TextWrapping="Wrap" />
+        </DataTemplate>
+
+        <!-- One kind of new setup value: its heading with a count, then its lines. -->
+        <DataTemplate x:Key="ImportGroupTemplate">
+            <StackPanel Margin="0,0,0,6" Spacing="1">
+                <TextBlock FontSize="{StaticResource FontSizeSmall}"
+                           FontWeight="{StaticResource FlyoutHeadingWeight}">
+                    <Run Text="{Binding Heading}" />
+                    <Run Text="{Binding Count, StringFormat=' ({0})'}" />
+                </TextBlock>
+                <ItemsControl Margin="8,0,0,0"
+                              ItemTemplate="{StaticResource ImportLineTemplate}"
+                              ItemsSource="{Binding Items}" />
+            </StackPanel>
+        </DataTemplate>
+    </UserControl.Resources>
+
+    <UserControl.Styles>
+        <!-- The expandable lists fill the flyout's width and use the small list font in their headers. -->
+        <Style Selector="Expander">
+            <Setter Property="HorizontalAlignment" Value="Stretch" />
+            <Setter Property="FontSize" Value="{StaticResource FontSizeSmall}" />
+        </Style>
+    </UserControl.Styles>
+
+    <StackPanel Margin="16,0" Spacing="8">
+
+        <!-- Always: the target semester -->
+        <TextBlock FontSize="{StaticResource FontSizeNormal}"
+                   Text="{Binding TargetLine}"
+                   TextWrapping="Wrap" />
+
+        <!-- Always: a short confirmation ("Template saved.", "Copied.") -->
+        <TextBlock FontSize="{StaticResource FontSizeSmall}"
+                   Foreground="{StaticResource TextFaint}"
+                   IsVisible="{Binding HasStatusMessage}"
+                   Text="{Binding StatusMessage}"
+                   TextWrapping="Wrap" />
+
+        <!-- Always: the notice above a result ("something changed", "semester changed") -->
+        <Border Background="{StaticResource NotificationInfoBackground}"
+                BorderBrush="{StaticResource NotificationInfoBorder}"
+                BorderThickness="1"
+                CornerRadius="4"
+                IsVisible="{Binding HasNotice}"
+                Padding="8,6">
+            <TextBlock FontSize="{StaticResource FontSizeSmall}"
+                       Foreground="{StaticResource NotificationInfoText}"
+                       Text="{Binding Notice}"
+                       TextWrapping="Wrap" />
+        </Border>
+
+        <!-- Always: the inline error -->
+        <TextBlock FontSize="{StaticResource FontSizeSmall}"
+                   Foreground="{StaticResource TextError}"
+                   IsVisible="{Binding LastErrorMessage, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"
+                   Text="{Binding LastErrorMessage}"
+                   TextWrapping="Wrap" />
+
+        <!-- Stage: ReadyToChoose -->
+        <StackPanel IsVisible="{Binding IsReadyToChoose}" Spacing="8">
+            <TextBlock FontSize="{StaticResource FontSizeSmall}"
+                       Foreground="{StaticResource TextFaint}"
+                       Text="Choose a filled-in TermPoint template (.xlsx) or a CSV with the same columns."
+                       TextWrapping="Wrap" />
+            <StackPanel Orientation="Horizontal" Spacing="8">
+                <Button Padding="10,5"
+                        Command="{Binding SaveTemplateCommand}"
+                        Content="Save template&#x2026;"
+                        FontSize="{StaticResource FontSizeNormal}" />
+                <Button Padding="10,5"
+                        Command="{Binding ChooseFileCommand}"
+                        Content="Choose file&#x2026;"
+                        FontSize="{StaticResource FontSizeNormal}" />
+            </StackPanel>
+        </StackPanel>
+
+        <!-- Stage: Checking -->
+        <TextBlock FontSize="{StaticResource FontSizeNormal}"
+                   IsVisible="{Binding IsChecking}"
+                   Text="Checking&#x2026;" />
+
+        <!-- Stage: Problems -->
+        <StackPanel IsVisible="{Binding IsProblems}" Spacing="8">
+            <TextBlock FontSize="{StaticResource FontSizeNormal}"
+                       FontWeight="{StaticResource FlyoutHeadingWeight}"
+                       Text="{Binding ProblemsHeading}"
+                       TextWrapping="Wrap" />
+            <Border BorderBrush="{StaticResource TextFaint}"
+                    BorderThickness="1"
+                    CornerRadius="4"
+                    Padding="6">
+                <ScrollViewer MaxHeight="{StaticResource ImportListMaxHeight}"
+                              VerticalScrollBarVisibility="Auto">
+                    <ItemsControl ItemTemplate="{StaticResource ImportLineTemplate}"
+                                  ItemsSource="{Binding ProblemLines}" />
+                </ScrollViewer>
+            </Border>
+            <StackPanel Orientation="Horizontal" Spacing="8">
+                <Button Padding="10,5"
+                        Command="{Binding CopyListCommand}"
+                        Content="Copy list"
+                        FontSize="{StaticResource FontSizeNormal}" />
+                <Button Padding="10,5"
+                        Command="{Binding CheckAgainCommand}"
+                        Content="Check again"
+                        FontSize="{StaticResource FontSizeNormal}" />
+                <Button Padding="10,5"
+                        Command="{Binding ChooseFileCommand}"
+                        Content="Choose file&#x2026;"
+                        FontSize="{StaticResource FontSizeNormal}" />
+            </StackPanel>
+        </StackPanel>
+
+        <!-- Stage: ReadyToImport -->
+        <StackPanel IsVisible="{Binding IsReadyToImport}" Spacing="8">
+            <TextBlock FontSize="{StaticResource FontSizeNormal}"
+                       Text="{Binding SummaryText}"
+                       TextWrapping="Wrap" />
+            <TextBlock FontSize="{StaticResource FontSizeSmall}"
+                       Foreground="{StaticResource TextFaint}"
+                       IsVisible="{Binding HasSkippedText}"
+                       Text="{Binding SkippedText}"
+                       TextWrapping="Wrap" />
+
+            <!-- Expandable lists, collapsed by default -->
+            <Expander Header="{Binding NewSections.Count, StringFormat='Sections ({0})'}">
+                <ScrollViewer MaxHeight="{StaticResource ImportListMaxHeight}"
+                              VerticalScrollBarVisibility="Auto">
+                    <ItemsControl ItemTemplate="{StaticResource ImportLineTemplate}"
+                                  ItemsSource="{Binding NewSections}" />
+                </ScrollViewer>
+            </Expander>
+            <Expander Header="{Binding NewCourses.Count, StringFormat='New courses ({0})'}"
+                      IsVisible="{Binding HasNewCourses}">
+                <ScrollViewer MaxHeight="{StaticResource ImportListMaxHeight}"
+                              VerticalScrollBarVisibility="Auto">
+                    <ItemsControl ItemTemplate="{StaticResource ImportLineTemplate}"
+                                  ItemsSource="{Binding NewCourses}" />
+                </ScrollViewer>
+            </Expander>
+            <Expander Header="{Binding NewInstructors.Count, StringFormat='New instructors ({0})'}"
+                      IsVisible="{Binding HasNewInstructors}">
+                <ScrollViewer MaxHeight="{StaticResource ImportListMaxHeight}"
+                              VerticalScrollBarVisibility="Auto">
+                    <ItemsControl ItemTemplate="{StaticResource ImportLineTemplate}"
+                                  ItemsSource="{Binding NewInstructors}" />
+                </ScrollViewer>
+            </Expander>
+            <Expander Header="New in TermPoint"
+                      IsVisible="{Binding HasNewInTermPoint}">
+                <ScrollViewer MaxHeight="{StaticResource ImportListMaxHeight}"
+                              VerticalScrollBarVisibility="Auto">
+                    <ItemsControl ItemTemplate="{StaticResource ImportGroupTemplate}"
+                                  ItemsSource="{Binding NewInTermPoint}" />
+                </ScrollViewer>
+            </Expander>
+
+            <!-- Warnings (amber): they do not block the import -->
+            <Border Background="{StaticResource NotificationWarningBackground}"
+                    BorderBrush="{StaticResource NotificationWarningBorder}"
+                    BorderThickness="1"
+                    CornerRadius="4"
+                    IsVisible="{Binding HasWarnings}"
+                    Padding="8,6">
+                <ScrollViewer MaxHeight="{StaticResource ImportListMaxHeight}"
+                              VerticalScrollBarVisibility="Auto">
+                    <ItemsControl ItemsSource="{Binding Warnings}">
+                        <ItemsControl.ItemTemplate>
+                            <DataTemplate>
+                                <TextBlock Margin="0,0,0,4"
+                                           FontSize="{StaticResource FontSizeSmall}"
+                                           Foreground="{StaticResource NotificationWarningText}"
+                                           Text="{Binding}"
+                                           TextWrapping="Wrap" />
+                            </DataTemplate>
+                        </ItemsControl.ItemTemplate>
+                    </ItemsControl>
+                </ScrollViewer>
+            </Border>
+
+            <StackPanel Orientation="Horizontal" Spacing="8">
+                <Button Padding="10,5"
+                        Command="{Binding ImportCommand}"
+                        Content="Import"
+                        FontSize="{StaticResource FontSizeNormal}"
+                        ToolTip.ShowOnDisabled="True"
+                        ToolTip.Tip="{Binding UnavailableReason}" />
+                <Button Padding="10,5"
+                        Command="{Binding CancelCommand}"
+                        Content="Cancel"
+                        FontSize="{StaticResource FontSizeNormal}" />
+            </StackPanel>
+        </StackPanel>
+
+        <!-- Stage: NothingToAdd -->
+        <StackPanel IsVisible="{Binding IsNothingToAdd}" Spacing="8">
+            <TextBlock FontSize="{StaticResource FontSizeNormal}"
+                       Text="{Binding NothingToAddText}"
+                       TextWrapping="Wrap" />
+            <Border Background="{StaticResource NotificationWarningBackground}"
+                    BorderBrush="{StaticResource NotificationWarningBorder}"
+                    BorderThickness="1"
+                    CornerRadius="4"
+                    IsVisible="{Binding HasWarnings}"
+                    Padding="8,6">
+                <ScrollViewer MaxHeight="{StaticResource ImportListMaxHeight}"
+                              VerticalScrollBarVisibility="Auto">
+                    <ItemsControl ItemsSource="{Binding Warnings}">
+                        <ItemsControl.ItemTemplate>
+                            <DataTemplate>
+                                <TextBlock Margin="0,0,0,4"
+                                           FontSize="{StaticResource FontSizeSmall}"
+                                           Foreground="{StaticResource NotificationWarningText}"
+                                           Text="{Binding}"
+                                           TextWrapping="Wrap" />
+                            </DataTemplate>
+                        </ItemsControl.ItemTemplate>
+                    </ItemsControl>
+                </ScrollViewer>
+            </Border>
+            <Button HorizontalAlignment="Left"
+                    Padding="10,5"
+                    Command="{Binding ChooseFileCommand}"
+                    Content="Choose file&#x2026;"
+                    FontSize="{StaticResource FontSizeNormal}" />
+        </StackPanel>
+
+        <!-- Stage: Done -->
+        <StackPanel IsVisible="{Binding IsDone}" Spacing="8">
+            <TextBlock FontSize="{StaticResource FontSizeNormal}"
+                       Text="{Binding DoneMessage}"
+                       TextWrapping="Wrap" />
+            <ItemsControl IsVisible="{Binding HasDoneNotes}"
+                          ItemsSource="{Binding DoneNotes}">
+                <ItemsControl.ItemTemplate>
+                    <DataTemplate>
+                        <TextBlock Margin="0,0,0,4"
+                                   FontSize="{StaticResource FontSizeSmall}"
+                                   Foreground="{StaticResource TextSecondary}"
+                                   Text="{Binding}"
+                                   TextWrapping="Wrap" />
+                    </DataTemplate>
+                </ItemsControl.ItemTemplate>
+            </ItemsControl>
+            <Button HorizontalAlignment="Left"
+                    Padding="10,5"
+                    Command="{Binding ChooseFileCommand}"
+                    Content="Choose file&#x2026;"
+                    FontSize="{StaticResource FontSizeNormal}" />
+        </StackPanel>
+
+    </StackPanel>
+</UserControl>

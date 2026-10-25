@@ -37,6 +37,12 @@
 			-->
 			<FontWeight x:Key="TopBarContextWeight">SemiBold</FontWeight>
 
+			<!--  Tallest a list in the Import Sections flyout (problems, sections, courses, warnings...) grows before it scrolls  -->
+			<x:Double x:Key="ImportListMaxHeight">200</x:Double>
+
+			<!--  Weight of headings inside flyout bodies (the Import Sections problems heading and the "New in TermPoint" group headings)  -->
+			<FontWeight x:Key="FlyoutHeadingWeight">SemiBold</FontWeight>
+
 			<!--  Converters  -->
 			<conv:MinutesToTimeConverter x:Key="MinutesToTimeConverter" />
 			<conv:MultiSemesterLeftBorderThicknessConverter x:Key="MultiSemesterLeftBorderThicknessConverter" />
