@@ -864,7 +864,8 @@ public partial class SectionImportViewModel : ViewModelBase, IDisposable
 
             IsImported = true;
             ImportSummary = $"Imported {created} new, {rejected} rejected.";
-            OutsideChosenSubjectsNote = BuildOutsideChosenSubjectsNote(createdCourseIds);
+            OutsideChosenSubjectsNote = TermPoint.Services.SectionImport.OutsideChosenSubjectsNote.Build(
+                _focus, _courseRepo, createdCourseIds);
             _addLog($"Section import complete: {created} created, {rejected} rejected.");
         }
         catch (Exception ex)
@@ -875,45 +876,6 @@ public partial class SectionImportViewModel : ViewModelBase, IDisposable
     }
 
     private bool CanImport() => IsMappingConfirmed && !IsImported;
-
-    /// <summary>
-    /// Builds the second summary line (spec item 20, step 7): how many of the sections just created are in subjects
-    /// the user has not chosen and so will not appear in the section list or grid. The sections are created either
-    /// way (an import is not scoped to the focus); this only makes sure the user is not left wondering where they
-    /// went. A course that cannot be found counts as outside (no view could show its section). Never throws: this
-    /// runs after the import has committed, so a failure to read the courses must not be reported as a failed import.
-    /// </summary>
-    /// <param name="createdCourseIds">The course id of each section created, one entry per section.</param>
-    /// <returns>
-    /// The sentence, or null when nothing needs saying: the focus is All, nothing was created, or every created
-    /// section is in the chosen subjects.
-    /// </returns>
-    private string? BuildOutsideChosenSubjectsNote(IReadOnlyList<string> createdCourseIds)
-    {
-        if (_focus.Current.Kind == FocusKind.All || createdCourseIds.Count == 0) return null;
-
-        int outside;
-        try
-        {
-            var courses = new Dictionary<string, Course>();
-            foreach (var course in _courseRepo.GetAll()) courses.TryAdd(course.Id, course);
-
-            outside = createdCourseIds.Count(id =>
-                !courses.TryGetValue(id, out var course) || !_focus.IsCourseInFocus(course));
-        }
-        catch (Exception ex)
-        {
-            App.Logger.LogInfo($"[SectionImport] Could not count sections outside the chosen subjects: {ex.Message}");
-            return null;
-        }
-
-        if (outside == 0) return null;
-        if (outside == createdCourseIds.Count)
-            return "None of them are in the subjects you've chosen, so they're not shown.";
-        return outside == 1
-            ? "1 of them is in a subject you haven't chosen, so it's not shown."
-            : $"{outside} of them are in subjects you haven't chosen, so they're not shown.";
-    }
 
     private void RecalculateCounts()
     {

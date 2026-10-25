@@ -12,6 +12,7 @@ using TermPoint.Data;
 using TermPoint.Data.Repositories;
 using TermPoint.Data.Repositories.Demo;
 using TermPoint.Services;
+using TermPoint.Services.SectionImport;
 #if !BROWSER
 using TermPoint.Exceptions;
 #endif
@@ -494,6 +495,18 @@ public partial class App : Application
         services.AddTransient<DebugTestDataViewModel>();
         services.AddTransient<MigrationViewModel>();
         services.AddTransient<CsvImportViewModel>();
+
+        // Import Sections (spec item 24, desktop only: the demo has no file system and no Import Sections menu
+        // item, so ConfigureDemoServices registers none of these). The file reader, snapshot builder, writer and
+        // service are stateless over the singleton repositories; the host and platform are the flyout's narrow
+        // seams onto the main window (see IImportSectionsHost, IImportSectionsPlatform).
+        services.AddTransient<ImportFileReader>();
+        services.AddTransient<ImportSetupSnapshotBuilder>();
+        services.AddTransient<SectionImportWriter>();
+        services.AddTransient<SectionImportService>();
+        services.AddTransient<IImportSectionsHost, ImportSectionsHost>();
+        services.AddTransient<IImportSectionsPlatform, AvaloniaImportSectionsPlatform>();
+        services.AddTransient<ImportSectionsViewModel>();
     }
 #endif // !BROWSER
 

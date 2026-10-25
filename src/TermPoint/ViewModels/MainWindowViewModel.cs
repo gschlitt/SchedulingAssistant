@@ -4,6 +4,7 @@ using Microsoft.Extensions.DependencyInjection;
 using TermPoint.Data;
 using TermPoint.Models;
 using TermPoint.Services;
+using TermPoint.Services.SectionImport;
 using TermPoint.Views;
 using TermPoint.ViewModels.GridView;
 using TermPoint.ViewModels.Management;
@@ -706,9 +707,17 @@ public partial class MainWindowViewModel : ViewModelBase
 
         // Re-raise IsAnyPanelEditing when either child editor opens or closes.
         sectionListVm.PropertyChanged += (_, e) =>
-        { if (e.PropertyName == nameof(SectionListViewModel.IsEditing)) OnPropertyChanged(nameof(IsAnyPanelEditing)); };
+        {
+            if (e.PropertyName != nameof(SectionListViewModel.IsEditing)) return;
+            OnPropertyChanged(nameof(IsAnyPanelEditing));
+            RefreshImportSectionsAvailability();   // an open section editor blocks Import Sections
+        };
         meetingListVm.PropertyChanged += (_, e) =>
         { if (e.PropertyName == nameof(MeetingListViewModel.IsEditing)) OnPropertyChanged(nameof(IsAnyPanelEditing)); };
+
+        // Import Sections is unavailable while several semesters (or none) are shown.
+        semesterContext.PropertyChanged += (_, e) =>
+        { if (e.PropertyName == nameof(SemesterContext.SelectedSemesters)) RefreshImportSectionsAvailability(); };
 
         // React to lock state changes (e.g., writer released the lock while we are
         // in read-only mode) so the banner updates automatically.
@@ -773,6 +782,7 @@ public partial class MainWindowViewModel : ViewModelBase
             _lockBannerDismissed = false;
 
         OnPropertyChanged(nameof(IsWriteEnabled));
+        RefreshImportSectionsAvailability();
         OnPropertyChanged(nameof(ShowLockBanner));
         OnPropertyChanged(nameof(ShowReaderModeIndicator));
         OnPropertyChanged(nameof(LockStatusMessage));
@@ -981,6 +991,44 @@ public partial class MainWindowViewModel : ViewModelBase
 
     [RelayCommand]
     private void NavigateToEmptySemester() => OpenFlyout<EmptySemesterViewModel>("Empty Semester");
+
+    /// <summary>
+    /// Why Files, Import Sections… is unavailable right now (read-only, no semester shown, several shown, or a
+    /// section open for editing), or null when it is available. The menu item shows it as its tooltip while
+    /// disabled. The rule is <see cref="ImportAvailability"/>, the same one the flyout's Import button uses.
+    /// Re-raised whenever <see cref="IsWriteEnabled"/>, the shown semesters or <c>SectionListVm.IsEditing</c> change.
+    /// </summary>
+    public string? ImportSectionsUnavailableReason => ImportAvailability.WhyUnavailable(
+        IsWriteEnabled, SemesterContext.SelectedSemesters.Count, SectionListVm.IsEditing);
+
+    /// <summary>
+    /// True when <see cref="NavigateToImportSectionsCommand"/> may run: the platform has file dialogs (never in
+    /// the browser demo) and <see cref="ImportSectionsUnavailableReason"/> is null.
+    /// </summary>
+    private bool CanNavigateToImportSections() =>
+        PlatformCapabilities.SupportsFileDialogs && ImportSectionsUnavailableReason is null;
+
+    /// <summary>
+    /// Opens the Import Sections flyout (Files, Import Sections…). Desktop only: in the browser build the
+    /// command exists so the menu can bind to it, but it is never executable.
+    /// </summary>
+    [RelayCommand(CanExecute = nameof(CanNavigateToImportSections))]
+    private void NavigateToImportSections()
+    {
+#if !BROWSER
+        OpenFlyout<ImportSectionsViewModel>("Import Sections");
+#endif
+    }
+
+    /// <summary>
+    /// Re-evaluates <see cref="ImportSectionsUnavailableReason"/> and the command's enabled state. Called
+    /// whenever write access, the shown semesters or section editing changes.
+    /// </summary>
+    private void RefreshImportSectionsAvailability()
+    {
+        OnPropertyChanged(nameof(ImportSectionsUnavailableReason));
+        NavigateToImportSectionsCommand.NotifyCanExecuteChanged();
+    }
 
     [RelayCommand]
     private void NavigateToSchedulingEnvironment() => OpenFlyout<SchedulingEnvironmentViewModel>("Scheduling Environment");
