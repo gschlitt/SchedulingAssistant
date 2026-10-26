@@ -219,7 +219,10 @@ without the UI.
 
 ### What a write creates
 
-- **Course:** SubjectId, CalendarCode, Title, IsActive. Level, Capacity and Tags are left empty.
+- **Course:** SubjectId, CalendarCode, Title, IsActive, Level. Capacity and Tags are left empty. *(Changed
+  2026-10-25: Level was left empty, but the course editor shows a level suggested from the number when none is
+  stored, so the course looked levelled while its sections had none and the level filter never showed them. A new
+  course now gets the level the editor would suggest.)*
 - **Instructor:** LastName, FirstName, generated Initials (the existing collision-avoiding generator), IsActive.
   Email, notes and staff type are left empty.
 - **Setup values** (2026-10-24, A4): only the identifying fields the file gives (name; a subject's abbreviation; a
@@ -474,7 +477,8 @@ user gives it one. The done message says so (Phase 3, step 4).
 | `CalendarCode` | `{CalendarAbbreviation}{Course Number}`, no space (app convention) |
 | `Title` | Course Title |
 | `IsActive` | true |
-| `TagIds`, `Level`, `Capacity` | empty / `""` / null |
+| `Level` | `CourseLevelParser.ParseLevel` of the Course Number with spaces removed (`485` → `400`), or `""` when it has no clean three-digit block (added 2026-10-25) |
+| `TagIds`, `Capacity` | empty / null |
 
 **Instructor** (one per `NewInstructor`)
 
@@ -497,7 +501,7 @@ user gives it one. The done message says so (Phase 3, step 4).
 | `SectionTypeId`, `CampusId` | matched or new, or null when blank |
 | `TagIds` | the file's tags (matched or new), plus the course's tags (D2) |
 | `Capacity` | the file's number; if blank, the course's capacity, else the default section capacity (D1) |
-| `Level` | the course's `Level` (as the editor does) |
+| `Level` | the course's stored `Level` (as the editor does); for a new course, the level given above |
 | `InstructorAssignments` | one per instructor, in file order, `Workload = 1.0` (the editor's default) |
 | `Schedule` | one `SectionDaySchedule` per MeetingDraft |
 | `Notes`, `Reserves`, `ResourceIds`, `Flag` | empty / `None` |

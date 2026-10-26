@@ -274,7 +274,10 @@ public class SectionImportPlannerTests
         Assert.Empty(report.Plan.NewSections);
     }
 
-    /// <summary>A new course gets the app's conventions: no spaces in the code, active, no level, tags or capacity.</summary>
+    /// <summary>
+    /// A new course gets the app's conventions: no spaces in the code, active, no tags or capacity, and
+    /// the level the course editor would suggest from its number ("1 99" is 199, so "100").
+    /// </summary>
     [Fact]
     public void Course_New_IsFullyBuilt()
     {
@@ -291,10 +294,35 @@ public class SectionImportPlannerTests
         Assert.Equal("Special topics", course.Record.Title);
         Assert.Equal(chem.Id, course.Record.SubjectId);
         Assert.True(course.Record.IsActive);
-        Assert.Equal("", course.Record.Level);
+        Assert.Equal("100", course.Record.Level);
         Assert.Empty(course.Record.TagIds);
         Assert.Null(course.Record.Capacity);
         Assert.False(string.IsNullOrEmpty(course.Record.Id));
+    }
+
+    /// <summary>
+    /// A new course's level is read from its Course Number as the course editor suggests one: the
+    /// hundreds band of a clean three-digit block, spaces ignored; empty when there is no such block.
+    /// Without it, the level filter never shows the course's sections.
+    /// </summary>
+    /// <param name="number">The Course Number cell.</param>
+    /// <param name="expected">The level the new course should get.</param>
+    [Theory]
+    [InlineData("485", "400")]
+    [InlineData("485L", "400")]
+    [InlineData("485 L", "400")]
+    [InlineData("099", "0")]
+    [InlineData("4851", "")]
+    [InlineData("SEM", "")]
+    public void Course_New_LevelComesFromTheCourseNumber(string number, string expected)
+    {
+        var report = SectionImportPlanner.Plan(
+            Sheet(Sec(2, "CHBE", number, "A", (C.CourseTitle, "Process design"))),
+            Snapshot(subjects: new[] { Subj("CHBE") }));
+
+        Assert.Empty(report.Problems);
+        Assert.Equal(expected, Assert.Single(report.Plan.NewCourses).Record.Level);
+        Assert.Equal(expected, Assert.Single(report.Plan.NewSections).Level);
     }
 
     /// <summary>A new course named on many rows and sections is planned once and shared.</summary>

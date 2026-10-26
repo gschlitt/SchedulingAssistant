@@ -57,7 +57,7 @@ public sealed class SectionImportWriterTests
         Assert.Equal("Genetics", biol200.Title);
         Assert.True(biol200.IsActive);
         Assert.Empty(biol200.TagIds);
-        Assert.Equal(string.Empty, biol200.Level);
+        Assert.Equal("200", biol200.Level);
         Assert.Null(biol200.Capacity);
         var jones = Assert.Single(rig.Instructors.GetAll(), i => i.LastName == "Jones");
         Assert.Equal("Mary", jones.FirstName);
@@ -100,7 +100,7 @@ public sealed class SectionImportWriterTests
         Assert.Null(b.CampusId);
         Assert.Empty(b.TagIds);
         Assert.Equal(25, b.Capacity);
-        Assert.Equal(string.Empty, b.Level);
+        Assert.Equal("200", b.Level);   // the new course's level, read from its number
         Assert.Equal(jones.Id, Assert.Single(b.InstructorAssignments).InstructorId);
         Assert.Empty(b.Schedule);
 

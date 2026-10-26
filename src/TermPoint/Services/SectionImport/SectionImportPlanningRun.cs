@@ -416,7 +416,7 @@ internal sealed class SectionImportPlanningRun
         if (_courseResolutions.TryGetValue(typedCode, out var known))
             return known;
 
-        var match = _courses.Resolve(typedCode, _ => BuildNewCourse(subject, typedCode, row));
+        var match = _courses.Resolve(typedCode, _ => BuildNewCourse(subject, typedCode, courseNumber, row));
         if (match.Ref is null)
         {
             var stored = match.Ambiguous.Select(c => c.CalendarCode).ToList();
@@ -430,14 +430,17 @@ internal sealed class SectionImportPlanningRun
 
     /// <summary>
     /// Builds the reference to a new course. Its code has no spaces (the app's convention), its title is
-    /// the first non-blank Course Title of any of its rows, and it starts active with no level, tags
-    /// or capacity. A course with no title anywhere in the file is a problem on its first row.
+    /// the first non-blank Course Title of any of its rows, and it starts active with no tags or
+    /// capacity. Its level is read from the Course Number the way the course editor suggests one
+    /// ("485" gives "400"), and is empty when the number has no clean three-digit block. A course with
+    /// no title anywhere in the file is a problem on its first row.
     /// </summary>
     /// <param name="subject">The course's subject.</param>
     /// <param name="typedCode">The subject abbreviation plus the Course Number, as typed.</param>
+    /// <param name="courseNumber">The Course Number cell as typed (trimmed).</param>
     /// <param name="row">The course's first row.</param>
     /// <returns>The new course reference.</returns>
-    private CourseRef BuildNewCourse(SetupRef<Subject> subject, string typedCode, int row)
+    private CourseRef BuildNewCourse(SetupRef<Subject> subject, string typedCode, string courseNumber, int row)
     {
         var code = NameMatch.NormalizeCode(typedCode);
         if (!_courseTitles.TryGetValue(typedCode, out var title))
@@ -452,7 +455,9 @@ internal sealed class SectionImportPlanningRun
             CalendarCode = code,
             Title = title,
             IsActive = true,
-            Level = string.Empty,
+            // Spaces are removed first, as they are from the code: the editor parses the stored
+            // number, which has none, so "485 L" must give the same level as "485L".
+            Level = CourseLevelParser.ParseLevel(NameMatch.NormalizeCode(courseNumber)) ?? string.Empty,
             Capacity = null,
         };
         return new CourseRef(course, isNew: true, firstRow: row, subject: subject);

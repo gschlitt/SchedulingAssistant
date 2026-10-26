@@ -373,19 +373,25 @@ public class SectionImportPlannerValidationTests
         Assert.Empty(report.Plan.NewSections[1].TagIds);
     }
 
-    /// <summary>The section's level is its existing course's level; a new course has none.</summary>
+    /// <summary>
+    /// The section's level is its course's stored level, as the section editor copies it. An existing
+    /// course's level is used as it is, even when blank or unlike its number; a new course's level is
+    /// read from its number.
+    /// </summary>
     [Fact]
-    public void Level_IsTheCoursesLevel_AndEmptyForANewCourse()
+    public void Level_IsTheCoursesLevel_AndParsedForANewCourse()
     {
         var subject = Subj("CHEM");
-        var course = Crs(subject, "CHEM101");
-        course.Level = "100";
+        var set = Crs(subject, "CHEM101");
+        set.Level = "200";   // deliberately not what the number suggests
+        var blank = Crs(subject, "CHEM103");
 
         var report = SectionImportPlanner.Plan(
-            Sheet(Sec(2, "CHEM", "101", "A"), Sec(3, "CHEM", "102", "A")),
-            Snapshot(subjects: new[] { subject }, courses: new[] { course }));
+            Sheet(Sec(2, "CHEM", "101", "A"), Sec(3, "CHEM", "103", "A"), Sec(4, "CHEM", "302", "A")),
+            Snapshot(subjects: new[] { subject }, courses: new[] { set, blank }));
 
-        Assert.Equal("100", report.Plan.NewSections[0].Level);
+        Assert.Equal("200", report.Plan.NewSections[0].Level);
         Assert.Equal("", report.Plan.NewSections[1].Level);
+        Assert.Equal("300", report.Plan.NewSections[2].Level);
     }
 }
