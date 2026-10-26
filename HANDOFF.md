@@ -1,160 +1,95 @@
-# Handoff: Section Import by User (item 24), 2026-10-25
+# Handoff: TermPoint 1.2.3, 2026-10-26 (dev machine)
 
-Written on the laptop at the end of a long session, for continuing on the dev machine with a new agent. Claude Code's
-memory and `CLAUDE.md` don't travel between machines (`CLAUDE.md` is gitignored), so everything a new agent needs is
-here or in the files this points to.
+Written at the end of a long session so a fresh conversation can pick up. Claude Code's memory and `CLAUDE.md` don't
+travel between machines (`CLAUDE.md` is gitignored), so everything a new agent needs is here or in the files this
+points to.
 
-**To start the new agent, say something like:** "Read `HANDOFF.md`, then let's continue item 24."
+**To start the new agent, say:** "Read `HANDOFF.md`, then continue 1.2.3 with item 29."
 
 ## Where things are
 
-- **Branches merged (2026-10-26):** `Version_1.2.3` now holds everything: the persistence work, item 20 (subject
-  focus) and item 24 (this feature). `Version_1.2.3` was merged into `1.2.3_new_features` there (merge 7ecef94, no
-  conflicts), verified (full build, full suite 3,777 passed / 0 failed, Greg's hand check of the section and meeting
-  editors, Import Sections and the version), then `Version_1.2.3` was fast-forwarded to it (9775b1b, which also makes
-  the window title show the fourth version number). **Work and field testing continue on `Version_1.2.3`**;
-  `1.2.3_new_features` is finished and points at the same commit.
-- **Field testing:** resumes on `Version_1.2.3` at `<Version>` 1.2.3.1. Field tests already passed still count: the
-  merge brought nothing that touches saving, locking or recovery.
-- **Before the release build:** put `<Version>` back to three numbers. `build-msix.ps1` passes all four numbers to the
-  MSIX, the Store expects the fourth to be 0, and Velopack expects three-part versions. Consider numbering the release
-  1.2.4 so machines on 1.2.3.1 see it as an update.
-- **Source of truth for the feature:** `designs/section-import-by-user.md` (all six design phases, locked, with dated
-  corrections inline). The implementation plan is Phase 6 there and item 24 in `spec_version_1.2.3.md`.
+- **Branch: `Version_1.2.3`.** It now holds everything for 1.2.3. On 2026-10-26 `1.2.3_new_features` (items 20 and
+  24) was merged in (merge 7ecef94, verified first) and `Version_1.2.3` fast-forwarded; `1.2.3_new_features` is
+  finished. Check `git status -sb` for what is pushed (item 15's commit 1587c22 may not be).
+- **`<Version>` is 1.2.3.1** (a field-test build number). Before the Store/Velopack release build it must go back to
+  three numbers (the MSIX's fourth number must be 0; Velopack wants three parts); consider 1.2.4 so 1.2.3.1 test
+  machines see the release as an update.
+- **Sources of truth:**
+  - `spec_version_1.2.3.md`: the items table, **"Work remaining"** (right after the table) and the implementation
+    order (**Phase 10** = what is left to build, in order). Each item has its own section.
+  - `spec_version_1.2.4.md`: everything moved out of 1.2.3 (the scope review of 2026-10-26).
+  - `docs/testing/network-field-tests-1.2.3.md`: the field tests (M, S, N scenarios) with their status.
+  - `designs/data-persistence-review-2026-10.md`: persistence findings F1–F16 (section 3), the 1.2.4 redesign
+    (section 8), the test harness (section 9).
 
-## What item 24 is
+## Done (all on `Version_1.2.3`)
 
-A department administrator fills in a TermPoint template workbook (`.xlsx`, or a CSV with the same columns) and
-imports a semester's sections with **Files → Import Sections…**. TermPoint checks the whole file first (all or
-nothing), creates any courses, instructors, subjects, section types, meeting types, tags, campuses and rooms it names
-that don't exist yet, skips sections already in the semester, and lists everything new before anything is written.
-It replaces the hidden Dev Tools CSV import.
+- Items 1–5, 8, 9, 12, 16–24 and 10a, F1/F4/F8/F12 (before this session).
+- Item 24 (Section Import by User) complete, including stress tests, five importer fixes and retiring the Dev Tools
+  CSV import (24.10). `MinimumVersionToWrite`: No, confirmed by a 1.2.2 round trip.
+- **2026-10-26:** the scope review (every unbuilt item decided by Greg, one at a time), then:
+  - **item 27** (9d7c3bb): with virtualization on, adding a meeting no longer pushes the open editor out of view
+    (the anchoring now rebuilds a pinned card the panel virtualized away; `ScrollAnchorProbe` E9);
+  - **item 28** (a30df88): the message pass (F6 kept-changes promises, F13 lock file, F15 one sticky outage notice,
+    item 11's Refresh messages, item 13's cloud-folder warning);
+  - **item 15, 1.2.3 part** (1587c22): the exit guard (repeated X ignored while saving and closing, "Saving and
+    closing…" curtain, secondary windows hidden, 2-minute backstop, DEBUG switch `TERMPOINT_DEBUG_SLOW_EXIT_SAVE`).
+- Full suite at 1587c22: **3,868 passed, 0 failed, 81 skipped** (harness and local-DB skips).
 
-## Done: steps 24.1–24.8
+## Next: the rest of Phase 10, in this order
 
-All committed and pushed. Full suite after 24.8: **3,600 passed, 0 failed, 79 skipped** (the skips are the
-`[FactRequiresLocalDb]` tests).
+1. **Item 29, F5: skip a save when nothing changed.** The only 1.2.3 change inside the save code. First find what
+   relies on the first save (the version stamp? WAL checkpoint?). Two links: the harness still reports F6 in one
+   known case (a no-edit session rewrites the file, so a kept restore is refused) and item 29 should make that go away;
+   and item 28's sticky outage notice is cleared by a successful save or the heartbeat's lock check, so a skipped save
+   must not become the only way it could clear. Four-rules check required before the layout.
+2. **Item 30:** give the partial-backup delete after a stalled copy a deadline (`BackupService.cs` about line 286),
+   like other network calls.
+3. **Item 13:** SharePoint/Teams detection on Windows, warn only (`FolderAssessor`; the warning's wording was done
+   in item 28).
+4. **Item 25:** two per-user switches (rooms, instructors) in Preferences to turn off conflict detection, plus a note
+   on screen when a check is off. Still to settle in its brief: "not shown" vs "not computed", and the note's wording
+   and place (Greg approves user-facing wording).
+5. **Item 26:** a Help note on trying changes safely on a copy of the database (the feature is 1.2.4).
+6. **Item 6:** BugSnag scrubber, steps 6a–6c as planned in its section.
+7. **Item 7:** handled-failure and unclean-exit reports to BugSnag, after item 6.
 
-| Step | Commit | What |
-|---|---|---|
-| 24.1 | 6cb6f7f | Shared helpers in `Services/`: `MeetingTimeLimits`, `ScheduleText` (days incl. `MWF`/`TTh`, times, week lists, frequencies), `NameMatch` (normalise, codes, near-miss), `InstructorInitials`. The meeting editor's custom-weeks check now uses `ScheduleText.ParseWeekList` (messages unchanged, pinned by a test). |
-| 24.2 | fe8d192 | `Services/SectionImport/`: `SectionImportColumns`, `ImportFileReader` (.xlsx via **ExcelDataReader 3.9.0**, .csv via `CsvRecordReader`), limits 10 MB / 5,000 rows. Tests build .xlsx in code (`TestSupport/XlsxTestWorkbook`). |
-| 24.3 | 62bbaf2 | Planner part 1: `ImportSetupSnapshot` (+ builder), grouping, matching or creating every value, the whole-file wrong-semester check. |
-| 24.4 | 288fe55 | Planner part 2: every validation rule, final section values (D1 capacity, D2 tags, Level), grouped warnings (one line per problem). |
-| 24.5 | ccf3c34 | `SectionImportWriter` (one transaction, insert only) and `SectionImportService` (deadline-bounded read that works while the file is open in Excel; re-check at Import, D4). Tests on real temporary databases. |
-| 24.6 | 3579bbd | Template: `tools/section-import/make_template.py` (openpyxl) builds `src/TermPoint/Assets/Templates/TermPointSectionsTemplate.xlsx` from `instructions.txt`. Guarded by `TemplateWorkbookTests`. |
-| 24.7 | 3231fb6 | `ImportSectionsViewModel` (desktop only), `ImportAvailability`, the main window's command, DI. Seams `IImportSectionsHost` / `IImportSectionsPlatform` keep it testable. |
-| 24.8 | 10665ac | `Views/Management/ImportSectionsView.axaml` and **Files → Import Sections...** in `MainView.axaml` (hidden in the WASM demo). |
-| 24.8b | (after 0616ec3) | Friendlier first screen, after Greg first saw it (2026-10-25, dev machine): intro, four numbered steps, the instructions shown in the flyout (Show instructions, also on the Problems screen) and saved as a web page (Save instructions…). The instructions text moved to `Assets/Templates/SectionImportInstructions.txt`, the one source for the workbook sheet, the flyout and the page; `TemplateWorkbookTests` fails if the workbook falls behind it. Greg's first wording edits to the screen and the instructions are in; template regenerated. Full suite before Greg's edits: 3,637 passed, 0 failed, 79 skipped; import tests after them: 505/505. |
+**Then the field tests.** The remaining Musts (M4, M5, M6, M7, M8, M9, M11 (b)–(d)) are best run once items 15, 29
+and 30 have landed, so they test the shipping close/save code; plus S3 (Refresh messages), S4 (exit guard), S9
+(SharePoint/Teams), N3 (BugSnag), and a quick re-run of M10. **Then release housekeeping:** `<Version>`, the Avalonia
+12.1.4 decision, Store certification then N4.
 
-## Next
+## Working agreements (Greg's)
 
-*(Updated 2026-10-26.)* The flyout try-out and step 24.9's hand checks were done through the stress-test kit (below):
-first import into an empty semester, the same file again, a corrected file, problems with Copy list into Excel, a
-change from a detached panel between Check and Import, read-only, save/close/reopen, all on a copy of real data.
-**Step 24.10 (retire the Dev Tools CSV import) is done**, in its own commit: the four old views, their view models
-(and `CoursePreviewRow` / `SectionPreviewRow`), `CsvImportParser`, `CsvImportMatcher`, `Models/CsvImportModels.cs`,
-the menu item, the command, the DI registrations and their tests went; `CsvRecordReader` and the shared-schedule
-parser/exporter stay. `SectionImportFocusTests` went too: `OutsideChosenSubjectsNoteTests` already covered the helper.
+- **Opus orchestrates, Sonnet codes.** Opus diagnoses and writes a self-contained brief; Sonnet implements (no
+  commits, no branches); Opus reviews the diff, re-runs both compile checks and the full suite; Greg hand-checks;
+  commit and push **only when Greg asks**. Never create branches.
+- **Small briefs, one kind of change each** (Greg asked for this after item 28's bundled brief took about an hour).
+- **User-facing wording is approved by Greg** before coding. Plain words: what happened, whether work is safe, what
+  to do; no paths, raw exceptions, "working copy", "local copy" or "safe".
+- **Warn before editing any `.axaml` file** and ask Greg to close it in Visual Studio first.
+- **Persistence work** (save, lock, exit, switch, restore, recovery) is checked against the four rules in `CLAUDE.md`
+  before the layout; ask the `MinimumVersionToWrite` question for every release (1.2.3's features so far: No).
+- **Debugging:** with competing hypotheses, propose the cheapest probe and ask Greg to run it before theorising.
 
-**Item 24 is complete (2026-10-26).**
-- **`MinimumVersionToWrite`: No, confirmed.** Greg opened a database copy the new import had written to in 1.2.2,
-  edited and saved it, and reopened it in 1.2.3: nothing was lost.
-- **Large-import lag: accepted, not fixed** (Greg, 2026-10-26). The 5,000-row file is far beyond real use; the lag
-  eases after a while.
-- **Not item 24's to do, but noticed:** closing TermPoint saves without asking (Greg's separate 1.2.3 question), and
-  the 1.2.4 candidates listed under "Still open" below.
+## This machine (dev computer) — practical notes
 
-## Stress test (2026-10-25, dev machine; committed 3c60672)
-
-New tests: `SectionImportStressTests` (fresh databases), `SectionImportStressRealDataTests` (`[FactRequiresLocalDb]`,
-temp copy of BIOL-TT.db), helpers `TestSupport/Stress*.cs`. Import filter before the fixes below: 551 passed, 3
-skipped (2 findings + the opt-in kit writer); after: 671 passed, 1 skipped. Hand-test kit: set `TERMPOINT_IMPORT_STRESS_KIT` to a folder and run
-`--filter FullyQualifiedName~WriteImportStressKit`; it writes `BIOL-stress.db`, 35 numbered files and
-`CHECKLIST.md`. Not into Documents: Controlled Folder Access blocks the test runner there. The dev machine's kit is at
-`C:\Users\gregs\TermPoint import stress kit` (private data; never commit it).
-
-**Fixed the same day (Greg approved; design Phase 4 "Reading the file" and the Copy list note record the rules):**
-1. **Copy list** cells that began with `=`, `+`, `-` or `@` (Excel ran them as formulas) now get an apostrophe.
-2. **UTF-16 CSV** is read (byte-order mark), instead of refused as "no template header".
-3. **Excel error cells** (`#N/A`, `#REF!`, …) are problems, not blanks (they used to import sections silently
-   without their instructor, type or capacity).
-4. **A date in a text column** (Excel turned `1-2` into a date) is a problem, not the code `2026-01-02`.
-5. **Windows-1252 CSV** (Excel's default "CSV" on Windows) is decoded as 1252, not Latin-1, so `O’Brien` and `–`
-   come through. Import tests after the fixes: 671 passed, 1 skipped (the opt-in kit writer); no `FINDING:` skips left.
-   Full suite: 3,814 passed, 0 failed, 80 skipped (the usual 79 plus the kit writer).
-
-**Still open (1.2.4 candidates, design silent):**
-6. **Zero-width space** in a course number silently creates a second, identical-looking course.
-7. **Hidden or filtered-out rows** are imported.
-8. **Semicolon- or tab-separated CSV** gets the "no template header" message, which doesn't mention the separator.
-9. **Non-breaking spaces** match like spaces, but the first spelling (with the NBSP) is what gets stored.
-
-**Sizes and timings:** the 5,000-row file checks in about 0.6 s and imports in about 0.6 s in the tests. Over 10 MB
-is refused in under 20 ms. **Every row broken gives 13,333 problem lines**: by hand (Greg, 2026-10-25) they appeared
-in about 5 s and stayed responsive, so no cap is needed.
-
-**Greg's hand run of the kit (2026-10-25):** everything passed except as follows. Excel formats his Excel can't save
-(CSV UTF-8, Strict Open XML, encrypted, Unicode text) were skipped. **The 5,000-row file took 13 s to check and 10 s
-to import in the app, with the window unresponsive during the import**; switching back to that semester took up to
-8 s and a cold open 17 s. Unconfirmed whether that run was under the Visual Studio debugger; the next probe is a
-Ctrl+F5 (no debugger) timing of Check, Import and the semester switch. If it stays slow, most of it is the section
-list/grid/workload reload of 3,787 sections, not the write: then show an "Importing…" status before the work, and
-put large-semester slowness on the 1.2.4 list. **Closing without saving after an import keeps the import**:
-TermPoint saves on exit without asking (whether it should ask is a separate 1.2.3 question of Greg's).
-
-**Real-data round trip:** all 61 Fall 2025-2026 sections imported into Winter 2026-2027 with zero field
-differences, nothing new created, inserts only. The template doesn't carry section notes (13 of 61) or
-non-default workloads (28 of 61): imported instructors get workload 1.0. BIOL-TT.db's 80/110/170/230-minute legal
-start times belong to academic-year ids that no longer exist (the known AY-delete orphans).
-
-## Loose ends
-
-- **Instructions text:** Greg will revise `src/TermPoint/Assets/Templates/SectionImportInstructions.txt` (moved
-  there from `tools/section-import/instructions.txt` on 2026-10-25, so the flyout and "Save instructions…" can use
-  it too). Then regenerate with `python tools/section-import/make_template.py` and commit the `.xlsx` with it.
-  **openpyxl is needed on whichever machine regenerates it** (`python -m pip install --user openpyxl`; the laptop
-  has 3.1.5). **On the dev machine use `py -3.11`** instead of `python` (plain `python` there is Inkscape's bundled
-  copy, with no pip); openpyxl 3.1.5 is installed for it, and it was checked to build byte-identical workbooks to
-  the laptop's. The tests catch header drift, and `TemplateWorkbookTests` fails if the Instructions sheet no longer
-  matches the text file.
-- **1.2.4 list** (`spec_version_1.2.4.md`) got four entries this session: show a room's type in the meeting editor;
-  switch the shared-schedule parser to `ScheduleText`; one week-sharing rule (`FrequenciesOverlap` only knows weeks
-  1–18); a `FaultSeamTests` flake seen once.
-- **Item 20's row** in the 1.2.3 Items table still says "Not started" although its steps are committed on this
-  branch. Left for Greg.
-- **Not pushed, on purpose:** `exception.txt` (untracked, laptop only).
-
-## Facts learned this session (the design now says these; listed so they aren't rediscovered)
-
-- **Legal start times and the Saturday/Sunday switches** are edited in **Configuration → Scheduling**, not Academic
-  Years (which only copies start times when a year is created).
-- **A meeting's room type** (`SectionDaySchedule.RoomTypeId`) is the type the meeting *needs*, not a copy of its
-  room's; the Room Browser uses it only when no room is chosen. The import leaves it null.
-- **Empty semester refuses the open semester**, so the undo hint says to switch semesters first.
-- **ExcelDataReader needs `CodePagesEncodingProvider` registered even for .xlsx** (done in `ImportFileReader`'s static
-  constructor).
-- **The editor clamps times to 07:30–22:00**; the import refuses them instead (D3).
-- **Disk space on the laptop** fell because Visual Studio's Diagnostic Tools recording (`%TEMP%\dh`) grew to 2.4 GB
-  during a day-long debug session. Stopping debugging or switching the recording off avoids it.
-
-## Working agreements (from `CLAUDE.md` and Greg's standing preferences)
-
-- **Coding is done by a Sonnet subagent.** The main agent writes a self-contained brief, Sonnet implements (no
-  commits, no branches), the main agent reviews the diff and re-runs the compile check and the full suite, and Greg
-  decides when to commit. Don't implement spec steps directly.
-- **Commit only when Greg asks; never create branches; push only when asked.**
-- **Warn before editing any `.axaml` file** (Visual Studio doesn't reload it); ask Greg to close the tab first.
-- **Compile check:** `dotnet build src/TermPoint/TermPoint.csproj -f net10.0 -t:Compile --no-restore -v q` (also
-  `-f net10.0-browser` when shared code changes).
-- **Full suite:** `dotnet test src/TermPoint.Tests/TermPoint.Tests.csproj --nologo -v q`, with a `.trx` logger. If
-  `bin\Debug` is locked by Visual Studio, add `-o $env:TEMP/sa-build` and delete that folder afterwards.
-- **Never kill processes by image name** (`taskkill /IM`), only by PID.
-- **Production cautions:** the app is in production. Anything touching save, lock, restore or recovery is checked
-  against the four rules for the shared database first (in `CLAUDE.md`). Ask the `MinimumVersionToWrite` question for
-  every release.
-- **UI rules:** no hard-coded colours, font sizes or weights (use `AppColors.axaml` / `App.axaml`); reflection
-  bindings only (no `x:DataType` or compiled bindings); icons only as `Path`/`StreamGeometry`; MVVM with minimal
-  code-behind.
-- **Messages to users:** plain words, say what happened, whether their work is safe, and what to do next; no paths,
-  no exception text, no "working copy".
+- **C: is nearly full** (about 2 GB free). Greg often has TermPoint running from `bin\Debug`, which locks the normal
+  build output. Run tests with **`tools/run-tests-lowdisk.sh`** (hard-linked temp build, a free-space watchdog that
+  kills only its own PID, cleans up after itself); see its header for usage. Full suite about 3–4 minutes; the
+  persistence harness only runs with `TERMPOINT_HARNESS=1` (about 20 minutes).
+- **Compile check:** `dotnet build src/TermPoint/TermPoint.csproj -f net10.0 -t:Compile --no-restore -v q`, and the
+  same with `-f net10.0-browser`.
+- **Never kill processes by image name** (`taskkill /IM`); only by PID, and only your own.
+- `python` here is Inkscape's (no pip): use **`py -3.11`** (openpyxl 3.1.5 installed) for
+  `tools/section-import/make_template.py`.
+- **Controlled Folder Access** blocks test runners from writing into `Documents`; the item 24 hand-test kit lives in
+  `C:\Users\gregs\TermPoint import stress kit` (private data; never commit it).
+- `src/TermPoint/Properties/launchSettings.json` is local (untracked): it sets `TERMPOINT_DEBUG_DATE`; add
+  `TERMPOINT_DEBUG_SLOW_EXIT_SAVE` (seconds) to test the exit guard.
+- TermPoint's log: `%APPDATA%\TermPoint\Logs\app-YYYY-MM-DD.log`.
+- `tools/ScrollAnchorProbe` re-checks the section list's scroll anchoring (`dotnet run --project tools/ScrollAnchorProbe`,
+  add the hard-link properties from the test runner to save disk); re-run after every Avalonia upgrade and any change
+  to `ListScrollAnchorBehavior`.
+- Background Sonnet agents can die silently on usage limits: if one seems stuck, check `ListAgents`, file times and
+  `dotnet` processes before assuming.
