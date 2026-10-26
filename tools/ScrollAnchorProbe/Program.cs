@@ -17,6 +17,7 @@ Scenarios.RevealHelper();
 Scenarios.Keys();
 Scenarios.PanelSwitch();
 Scenarios.HiddenList();
+Scenarios.PinnedCardVirtualizedAway();
 Scenarios.Sweep();
 
 // Avalonia keeps background threads alive, so exit explicitly with the result.

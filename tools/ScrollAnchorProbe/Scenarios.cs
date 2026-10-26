@@ -530,6 +530,153 @@ static class Scenarios
 
     // ---------------------------------------------------------------------------------------------
 
+    /// <summary>One growth step of an E9 trial.</summary>
+    /// <param name="Growth">Pixels added to the card's height.</param>
+    /// <param name="ClickInside">True when, before the card grows, keyboard focus is put on the button inside it (the click on "Add meeting"); false when only the card itself is pressed (the click that opens the editor).</param>
+    private readonly record struct GrowthStep(double Growth, bool ClickInside);
+
+    /// <summary>What one <see cref="RunPinnedGrowth"/> trial measured.</summary>
+    /// <param name="CardIndex">Index of the pinned card.</param>
+    /// <param name="Pinned">The card's top (relative to the viewport) just before the last growth, i.e. where it was pinned.</param>
+    /// <param name="Final">The card's top once layout settled; null when it has no container.</param>
+    /// <param name="PassesWithoutContainer">Layout passes, during the growth steps, that left the card with no container (virtualized away).</param>
+    /// <param name="Offset">The scroll offset once layout settled.</param>
+    /// <param name="FocusInside">True when keyboard focus was on the card's button at every growth step (the situation the scenario is about).</param>
+    private readonly record struct PinTrial(int CardIndex, double Pinned, double? Final, int PassesWithoutContainer, double Offset, bool FocusInside)
+    {
+        /// <summary>True when the card's top is back within 1 px of where it was pinned.</summary>
+        public bool Held => Final.HasValue && Math.Abs(Final.Value - Pinned) <= 1;
+
+        /// <summary>True when the trial really tests the bug: the panel threw the card away at some pass.</summary>
+        public bool VirtualizedAway => PassesWithoutContainer > 0;
+    }
+
+    /// <summary>
+    /// One E9 trial: scroll to <paramref name="startOffset"/> the way a user does and pick a card near the
+    /// bottom of the viewport. Then, for each growth step: press the card (or select it by code), let
+    /// layout settle, put keyboard focus on the button inside it (the click on "Add meeting"), and grow the
+    /// card by that many pixels. Counts the layout passes that leave the card with no container, using a
+    /// handler that runs before the anchoring's own (see <see cref="Rig.Build"/>), so the count does not
+    /// depend on what the behavior does next.
+    /// <para>Why the button matters (measured, and consistent with the panel's code, whose <c>RecycleElement</c>
+    /// consults <c>KeyboardNavigation.GetTabOnceActiveElement</c>): a card that is the list's "tab once active
+    /// element" (the card itself, while only the card is focused or selected) was never recycled in the probe, so it survived
+    /// any drift and the bug did not occur. Once focus is on a control <em>inside</em> the card, as after a click
+    /// on a button in the editor, the card is an ordinary realized element and the panel throws it away as soon
+    /// as a re-estimate moves it out of the realized range.</para>
+    /// </summary>
+    /// <param name="startOffset">Where to scroll to before picking the card.</param>
+    /// <param name="steps">The growth steps, one after the other; two entries model "the editor opens, then a meeting row is added".</param>
+    /// <param name="selectByCode">True to select the card by code instead of pressing it (the anchor is then the selected card, not the pressed one).</param>
+    /// <returns>What was measured, or null when no suitable card was on screen or an earlier step already lost the card.</returns>
+    private static PinTrial? RunPinnedGrowth(double startOffset, GrowthStep[] steps, bool selectByCode = false)
+    {
+        Card? watched = null;
+        int withoutContainer = 0;
+        var r = Rig.Build(anchoring: true, cardsHaveButton: true, beforeAttached: list =>
+            list.LayoutUpdated += (_, _) => { if (watched is not null && list.ContainerFromItem(watched) is null) withoutContainer++; });
+        try
+        {
+            r.ScrollLikeAUser(startOffset);
+            var card = r.PickNearBottomViewportCard();
+            if (card is null) return null;
+            watched = card;
+
+            double pinned = 0;
+            bool focusInside = true;
+            foreach (var step in steps)
+            {
+                if (r.TopOf(card) is null) return null; // lost in an earlier step; not what this trial is about
+                if (selectByCode) r.List.SelectedItem = card; else r.Press(card);
+                r.Settle(12);
+                if (step.ClickInside)
+                {
+                    r.FocusButtonIn(card);
+                    r.Settle(4);
+                    focusInside &= r.IsFocusInside(card);
+                }
+                if (r.TopOf(card) is not double pinnedNow) return null;
+                pinned = pinnedNow;
+                card.Height += step.Growth;
+                r.SettleUntilStable(card, 80);
+            }
+
+            return new PinTrial(card.Index, pinned, r.TopOf(card), withoutContainer, r.Scroll!.Offset.Y, focusInside);
+        }
+        finally { r.Close(); }
+    }
+
+    /// <summary>
+    /// E9 (spec item 27): the pinned card is virtualized away by its own growth. The user has pressed (or
+    /// selected) a card near the bottom of the viewport and clicked a button inside it, and the card grows
+    /// by a lot (the editor opening, or a meeting row being added to an open editor). The panel re-estimates
+    /// the cards it has not built from an average that now includes the huge card, which moves the card's
+    /// estimated position outside the realized range, so the panel throws the card away in that same
+    /// layout pass. Without a container there is nothing to measure, and the anchoring used to fall back
+    /// to the first visible card and leave the editor far down the list. Success is the card's top back
+    /// within 1 px of where it was pinned. A trial only counts as testing the bug when the card really lost
+    /// its container at some pass (the check at the end insists on that for every case). A last check makes
+    /// sure the restoration does not undo a user's scroll away from a pinned card (negative control: it fails
+    /// when the <c>IsUserScrolling</c> guard is removed from the behavior).
+    /// </summary>
+    public static void PinnedCardVirtualizedAway()
+    {
+        Console.WriteLine();
+        Console.WriteLine("=== E9  the pinned card is virtualized away by its own growth; success = its top back within 1 px of where it was pinned");
+        Console.WriteLine("case                                   startOffset  card  pinnedTop  finalTop  noContainerPasses  offsetNow  focusInside  held");
+
+        var cases = new (string Name, GrowthStep[] Steps, bool SelectByCode)[]
+        {
+            ("click inside, +1500",                new[] { new GrowthStep(1500, true) }, false),
+            ("click inside, +4000",                new[] { new GrowthStep(4000, true) }, false),
+            ("open editor +500, click inside +900", new[] { new GrowthStep(500, false), new GrowthStep(900, true) }, false),
+            ("select by code, click inside +1500", new[] { new GrowthStep(1500, true) }, true),
+        };
+        double[] startOffsets = { 3000, 6000, 9000, 12000, 15000, 18000 };
+        foreach (var c in cases)
+        {
+            var trials = new List<PinTrial>();
+            foreach (double startOffset in startOffsets)
+            {
+                var t = RunPinnedGrowth(startOffset, c.Steps, c.SelectByCode);
+                if (t is not { } trial) { Console.WriteLine($"{c.Name,-37} {startOffset,11}  (no suitable card, or lost in an earlier step)"); continue; }
+                trials.Add(trial);
+                Console.WriteLine($"{c.Name,-37} {startOffset,11}  {trial.CardIndex,4}  {trial.Pinned,9:0.0}  {F(trial.Final),8}  {trial.PassesWithoutContainer,17}  {trial.Offset,9:0.0}  {trial.FocusInside,11}  {trial.Held}");
+            }
+
+            // A trial where the card kept its container is not a test of this bug, so it fails the first check.
+            bool complete = trials.Count == startOffsets.Length;
+            Report.Check(complete && trials.All(t => t.FocusInside && t.VirtualizedAway),
+                $"E9 ({c.Name}): the card is virtualized away at some pass in all {startOffsets.Length} trials (the case tests the bug)");
+            Report.Check(complete && trials.All(t => t.Held),
+                $"E9 ({c.Name}): the card's top is back within 1 px of where it was pinned in all {startOffsets.Length} trials");
+        }
+
+        // The restoration must not take the list away from a user who scrolls a pinned card off screen: with
+        // focus inside the card the panel really does recycle it then (nothing keeps it), and it must not be
+        // pulled back (the user-scroll rule; negative control: without the IsUserScrolling guard this fails).
+        {
+            var r = Rig.Build(anchoring: true, cardsHaveButton: true);
+            r.ScrollLikeAUser(9000);
+            var card = r.PickNearBottomViewportCard()!;
+            r.Press(card);
+            r.Settle(12);
+            r.FocusButtonIn(card);
+            r.Settle(4);
+            double off = r.Scroll!.Offset.Y;
+            r.Wheel();
+            r.Scroll.Offset = new Vector(0, off + 6000);
+            r.Settle(20);
+            Thread.Sleep((int)ListScrollAnchorBehavior.UserScrollGraceMs + 200); // past the user-scroll grace period
+            r.Settle(10);
+            Console.WriteLine($"  user scroll away from the pinned card: offset {off:0.0} + 6000 asked, now {r.Scroll.Offset.Y:0.0}; card built: {r.List.ContainerFromItem(card) != null}");
+            Report.Check(Math.Abs(r.Scroll.Offset.Y - (off + 6000)) <= 1, "E9: a user scroll of +6000 px away from the pinned card sticks (it is not pulled back)");
+            r.Close();
+        }
+    }
+
+    // ---------------------------------------------------------------------------------------------
+
     /// <summary>
     /// SWEEP (the pass criterion): press a card, then grow it by 500 px, at 17 start offsets reached the
     /// way a user gets there (wheel notches). Success is the card's top within 1 px of where it was.

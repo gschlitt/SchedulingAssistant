@@ -57,6 +57,17 @@ sealed class Rig
         </DataTemplate>
         """;
 
+    /// <summary>The same card with a button in it, standing in for the editor's "Add meeting" button (scenario E9): a control inside a card that can take keyboard focus.</summary>
+    private const string ItemWithButtonXaml = """
+        <DataTemplate xmlns="https://github.com/avaloniaui" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+          <Border Margin="0,2,0,2" BorderBrush="Red" BorderThickness="{Binding BorderThickness}" HorizontalAlignment="Left" MinWidth="300">
+            <Border Background="LightSteelBlue" Height="{Binding Height}">
+              <StackPanel><TextBlock Text="{Binding Name}" /><Button Content="Add meeting" /></StackPanel>
+            </Border>
+          </Border>
+        </DataTemplate>
+        """;
+
     /// <summary>True once any rig had to show its window to get a visual root.</summary>
     public static bool WindowWasShown { get; private set; }
 
@@ -82,7 +93,9 @@ sealed class Rig
     /// <param name="anchoring">Whether scroll anchoring is enabled.</param>
     /// <param name="count">Number of cards.</param>
     /// <param name="virtualized">True for the virtualizing panel, false for the classic one, null to leave the switch unset (a test then drives it, for example through a binding).</param>
-    public static Rig Build(bool anchoring, int count = 300, bool? virtualized = true)
+    /// <param name="cardsHaveButton">True to give every card a button (see <see cref="FocusButtonIn"/>), so keyboard focus can be inside a card.</param>
+    /// <param name="beforeAttached">Called with the list right after it is created, before anchoring is enabled and before the window is shown. A <c>LayoutUpdated</c> handler added here runs BEFORE the anchoring's own handler on every layout pass, so it sees the list as the layout left it, before the behavior reacts (scenario E9 uses this to see a card the panel has just virtualized away).</param>
+    public static Rig Build(bool anchoring, int count = 300, bool? virtualized = true, Action<ListBox>? beforeAttached = null, bool cardsHaveButton = false)
     {
         var cards = new ObservableCollection<Card>(
             Enumerable.Range(0, count).Select(i => new Card { Index = i, Height = 50 + (i * 37) % 90 }));
@@ -91,8 +104,9 @@ sealed class Rig
             ItemsSource = cards,
             SelectionMode = SelectionMode.Single,
             Margin = new Thickness(5, 0),
-            ItemTemplate = AvaloniaRuntimeXamlLoader.Parse<DataTemplate>(ItemXaml),
+            ItemTemplate = AvaloniaRuntimeXamlLoader.Parse<DataTemplate>(cardsHaveButton ? ItemWithButtonXaml : ItemXaml),
         };
+        beforeAttached?.Invoke(list);
         ScrollViewer.SetHorizontalScrollBarVisibility(list, ScrollBarVisibility.Disabled);
         list.Styles.Add(new Style(x => x.OfType<ListBoxItem>())
         {
@@ -195,6 +209,20 @@ sealed class Rig
         return null;
     }
 
+    /// <summary>
+    /// A realized card, not much taller than a normal one, whose top is in the lower part of the viewport:
+    /// where a user usually is when they open a section's editor and then click Add meeting.
+    /// </summary>
+    public Card? PickNearBottomViewportCard()
+    {
+        foreach (var c in List.GetRealizedContainers())
+        {
+            var top = TopOf(c);
+            if (top is >= 430 and <= 560 && c.Bounds.Height < 200 && List.ItemFromContainer(c) is Card card) return card;
+        }
+        return null;
+    }
+
     /// <summary>Raises a real left-button PointerPressed on the card's container, so the ListBox selects it.</summary>
     /// <param name="card">The card to press.</param>
     public void Press(Card card)
@@ -211,6 +239,20 @@ sealed class Rig
         source.RaiseEvent(e);
         if (List.SelectedItem != card) List.SelectedItem = card; // fallback if the synthetic press did not select
     }
+
+    /// <summary>Gives keyboard focus to the button inside a card (a rig built with <c>cardsHaveButton</c>), as clicking "Add meeting" does.</summary>
+    /// <param name="card">The card whose button to focus.</param>
+    /// <returns>True when the button took focus.</returns>
+    public bool FocusButtonIn(Card card) =>
+        List.ContainerFromItem(card) is Control c && c.GetVisualDescendants().OfType<Button>().FirstOrDefault() is { } b && b.Focus();
+
+    /// <summary>True when keyboard focus is on a control inside the card (not on the card itself).</summary>
+    /// <param name="card">The card to test.</param>
+    public bool IsFocusInside(Card card) =>
+        List.ContainerFromItem(card) is Control c
+        && TopLevel.GetTopLevel(List)?.FocusManager?.GetFocusedElement() is Visual focused
+        && !ReferenceEquals(focused, c)
+        && c.IsVisualAncestorOf(focused);
 
     /// <summary>Raises a real mouse-wheel event on the list (marks "the user is scrolling").</summary>
     public void Wheel()

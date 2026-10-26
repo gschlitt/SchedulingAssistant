@@ -39,7 +39,7 @@ will be verified.
 | 24 | **Section Import by User**: self-serve onboarding from an `.xlsx` template (Files → Import Sections…) | **New feature** | **Done** (2026-10-26) on `1.2.3_new_features`: steps 24.1–24.10, plus 24.8b and the stress-test fixes. `MinimumVersionToWrite`: No, confirmed by a 1.2.2 round trip. See `HANDOFF.md` |
 | 25 | Let the user switch off room-conflict and instructor-conflict detection | UX / settings | Added 2026-10-26 (Greg). **1.2.3** (decided 2026-10-26): two per-user switches in Preferences, with a note on screen when a check is off. Not started |
 | 26 | "Experimenting" isn't possible: TermPoint always saves on exit | Persistence / UX | Added 2026-10-26 (Greg). **Feature moved to 1.2.4** (needs Recovered Versions and item 14's close question); **1.2.3 adds a Help note** on trying changes safely on a copy of the database |
-| 27 | With section-list virtualization on, adding a meeting can push the open editor out of view | Bug (user-reported) | Added 2026-10-26 (Greg). Same family as the drift item 23's anchoring fixed for opening a section. **Decided 2026-10-26:** a time-boxed probe first; fix in 1.2.3 if small and clear, otherwise hide the switch in 1.2.3 and fix in 1.2.4 |
+| 27 | With section-list virtualization on, adding a meeting can push the open editor out of view | Bug (user-reported) | Added 2026-10-26 (Greg). Same family as the drift item 23's anchoring fixed for opening a section. **Done 2026-10-26:** probes found the cause (the pinned card is virtualized away in the growth pass); fixed in `ListScrollAnchorBehavior` (the card is rebuilt and re-pinned), proven by `ScrollAnchorProbe` E9 (fails before, passes after) and Greg's hand test |
 | 28 | Message pass: say truthfully what happens (rule 4) | UX / data integrity | **1.2.3** (decided 2026-10-26): F6's four restore promises, item 11's refresh messages, item 13's cloud-folder warning, F13, F15. Wording and notice behaviour only |
 | 29 | F5: skip a save when nothing changed | Data integrity | **1.2.3** (decided 2026-10-26). Small to medium; in the save code |
 | 30 | Backup cleanup on a dead share: give the partial-backup delete a deadline | Responsiveness | **1.2.3** (decided 2026-10-26). Small (`BackupService.cs:286`) |
@@ -71,8 +71,7 @@ Everything not yet done for 1.2.3, in one place. Field-test scenario codes (M, S
 - **Item 13, SharePoint/Teams detection** on Windows, warn only. Google Drive for desktop, Box and macOS moved to
   1.2.4.
 - **Item 26, a Help note:** how to try out changes safely on a copy of the database. The feature moved to 1.2.4.
-- **Item 27, probe first** (time-boxed): the three probes in its section. If the cause is small and clear, fix it in
-  1.2.3; otherwise hide the virtualization switch in 1.2.3 (virtualization off for everyone) and fix it in 1.2.4.
+- ~~**Item 27**~~ **done 2026-10-26:** the probes found the cause and it was fixed in 1.2.3 (see its section).
 - **Item 25, conflict-check switches:** two per-user switches (rooms, instructors) in Preferences, stored in the
   settings file (no `MinimumVersionToWrite` question), and a note on screen whenever a check is off (rule 4).
 - **Item 6, BugSnag scrubber:** steps 6a–6c as planned. No database or lock code.
@@ -151,7 +150,7 @@ First look (2026-10-09):
 | **Phase 9**                                                                 |                                                                                        |                                                                                            |
 | 21                                                                          | 24: Section Import by User                                                             | Design complete 2026-10-24. After item 20 (uses its focus); no persistence code.           |
 | **Phase 10: the rest of 1.2.3** (scope decided 2026-10-26)                  |                                                                                        |                                                                                            |
-| 22                                                                          | 27: Virtualization drift: time-boxed probe                                             | First: its outcome decides fix (1.2.3) or hide the switch.                                 |
+| 22                                                                          | 27: Virtualization drift — **done 2026-10-26**                                                | Fixed (anchor restore), E9 added to the probe tool.                                 |
 | 23                                                                          | 28: Message pass (F6, item 11's messages, item 13's warning, F13, F15)                 | Wording and notice behaviour only; no save code.                                           |
 | 24                                                                          | 15: Exit guard (repeated X ignored, "Saving and closing…")                             | In the window, not the save code. F2's counter moved to 1.2.4.                             |
 | 25                                                                          | 29: F5, skip a save when nothing changed                                               | The only 1.2.3 change inside the save code: check first what relies on the first save.     |
@@ -3122,8 +3121,25 @@ fixes the drift (12.1.3, 12.1.4); the local workaround notes are in `WORKAROUNDS
 **Decided (Greg, 2026-10-26):** run the probes first, time-boxed. Fix in 1.2.3 if the cause is small and clear;
 otherwise hide the virtualization switch in 1.2.3 and fix the drift in 1.2.4.
 
+**Diagnosis (2026-10-26, three probes on the dev computer, UBC1-TT database).**
+- Probe 1: no `[ScrollAnchor]` oscillation line in the log, so the limiter did not trip.
+- Probe 2 (temporary log lines): right after the click on Add meeting, the anchor changed **Pressed → FirstVisible**;
+  no correction was attempted or clamped.
+- Probe 3: at that pass the pressed (and selected) card, still in the list at index 113, had **no container**: the
+  re-estimate caused by the taller editor placed it outside the realized range, so the panel virtualized it away in
+  the same pass. With no container to measure, `ChooseAnchor` fell back to the first visible card, and the editor was
+  left wherever the estimates put it. Opening the editor makes the same kind of jump (2,566 px in the log) but is
+  corrected, because there the container survives the pass.
+- **Fix (small and clear, so in 1.2.3):** in `ListScrollAnchorBehavior` only. When the pinned card (pressed or
+  selected) is virtualized away while the user is not scrolling, keep it as the anchor, have the panel realize it
+  (`ListBox.ScrollIntoView` inside `SuppressPopupScrollBehavior.Bypass`, as `ScrollItemIntoView` does), and let the
+  next pass correct it back to its pinned top; the existing limiter bounds it. Proven by a new `ScrollAnchorProbe`
+  scenario that fails before the fix.
+
 **Rules for the fix.** Per `CLAUDE.md`, never scroll the section list's ScrollViewer directly: set `SelectedItem` or
 call `ListScrollAnchorBehavior.ScrollItemIntoView`. After any fix, re-run `dotnet run --project tools/ScrollAnchorProbe`.
+
+**Outcome (2026-10-26).** Fixed in `ListScrollAnchorBehavior` (`TryRestoreVirtualizedAnchor`, probe lines removed); new probe scenario E9 (24 trials: card near the viewport bottom, focus on a button inside it, grown +1500 / +4000 / +500 then +900, pressed or selected): before the fix the card was virtualized away in 24 of 24 and never came back (final top n/a after 81 passes, the app's symptom), after it the card's top is back at its pinned position (difference 0.0 px) in 24 of 24; the whole probe passes (39 checks) with E1-E8 and SWEEP unchanged.
 
 ---
 

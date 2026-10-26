@@ -30,6 +30,7 @@ layout passes and synthetic input. It compiles the **real** behaviour sources fr
 | `E6` | Keyboard. A PageDown key press scrolls a page and the scroll sticks (the same page scroll made through the API, with no key event, is undone, which is why the key is a user-scroll hint). An arrow key after a selection made by code leaves the newly selected card in place. The same after a click rather than a code selection (sub-case `c`) checks that the anchor survives the panel recycling every container (see below). |
 | `E7` | `ListVirtualizationBehavior` swaps the panel and the anchoring flag at run time, directly and through a binding, and the suppression is on whichever panel is active. |
 | `E8` | `ScrollItemIntoView` on a hidden list does not throw. |
+| `E9` | **The pinned card is virtualized away by its own growth** (spec item 27). The cards have a button. A card near the bottom of the viewport is pressed (or selected by code), keyboard focus goes to the button inside it, as clicking "Add meeting" does (that is what stops the panel keeping the card alive: it appears to protect only the list's "tab once active element", which is then the button, not the card), and the card grows by 1500 or 4000 px in one step, or by 500 and then 900 in two (the editor opens, then a meeting row is added), at 6 start offsets. In every trial the panel recycles the card in the pass of the growth (a layout handler that runs before the anchoring's own counts the passes with no container, so the case checks that it tests the bug). Without the restoration in `ListScrollAnchorBehavior` the card never comes back and the editor is left far down the list; with it the card's top is back within 1 px of where it was pinned. Also checked: a user's wheel scroll of +6000 px away from a pressed card with focus inside it sticks (the restoration is off while the user scrolls; this fails if that guard is removed). |
 | `SWEEP` | **The pass criterion.** Press a card, then grow it by 500 px, at 17 start offsets reached by wheel-sized steps. The card's top must stay within 1 px of where it was. |
 
 ## How to run
@@ -44,7 +45,9 @@ It takes about 20 seconds after the first build, and needs a desktop session (it
 window; on Windows it uses Win32 + Skia). The process exit code is 0 when every check passes and 1 otherwise.
 
 Disk: the build output is roughly 600 MB. Delete `tools/ScrollAnchorProbe/bin` and `obj` when you are
-done (they are git-ignored).
+done (they are git-ignored). On a nearly full disk, add `-p:CreateHardLinksForCopyLocalIfPossible=true
+-p:CreateHardLinksForCopyFilesToOutputDirectoryIfPossible=true` to the command: the NuGet files are then hard-linked
+into `bin` and the output costs almost no extra space.
 
 ## Expected output
 
@@ -56,7 +59,7 @@ The end of a passing run:
   [PASS] SWEEP: the pressed card holds within 1 px at all 17 start offsets
   [PASS] SWEEP: press + 500 px growth holds within 1 px at all 17 start offsets
 
-ALL 30 CHECKS PASSED
+ALL 39 CHECKS PASSED
 ```
 
 Reference numbers for 12.1.3, useful when something fails:
@@ -65,6 +68,7 @@ Reference numbers for 12.1.3, useful when something fails:
   `1569`, `2419`, `2823`, `4596`, `6364` for start offsets 3000, 6000, 9000, 12000, 15000.
 - `E3`: without the bypass the offset stays `0.0`; with it the offset becomes `22799.0` and the card's top is `576.0`.
 - `E4`: `offset changed in 1 passes; log lines written: 1`.
+- `E9`: in all 24 trials the card has no container at exactly one pass (the pass of the growth) and its final top equals the pinned top (`0.0` difference). Without the restoration it has no container for 81 passes (the whole 80-pass settle) and the final top is `n/a`.
 - `SWEEP`: `17/17` and `17/17`.
 
 ## Anchor identity (E6 sub-case c)

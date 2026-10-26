@@ -54,6 +54,16 @@ namespace TermPoint.Behaviors;
 ///         fixed and offset changes since our last write are not scrolls (the ScrollViewer coerces its
 ///         offset when the panel's extent estimate shrinks, and treating that as a scroll abandoned
 ///         the chase). Cost: a deliberate scroll that arrives together with a re-estimation is undone.</item>
+///   <item><b>Virtualized away</b> (spec_version_1.2.3.md, item 27): the pinned (pressed or selected)
+///         card has no container at all in a pass. A big growth, such as a meeting row added to the open
+///         editor, makes the panel re-estimate the cards it has not built, which moves the card's estimated
+///         position outside the realized range, and the panel recycles it in that same pass. There is
+///         nothing to measure, and falling back to another card would leave the card where the estimates
+///         put it, far down the list. So the baseline is kept, the panel is asked to build the card again
+///         (<c>ScrollIntoView</c> inside <see cref="SuppressPopupScrollBehavior.Bypass"/>), and the next pass
+///         corrects it back to its pinned top as for any drift. Not while the user is scrolling (a card
+///         scrolled out of the realized range is meant to be gone), nor while paused or suspended. Each
+///         restoration counts in the rate limiter, which bounds a panel that keeps throwing the card out.</item>
 ///   <item><b>Otherwise:</b> refresh the baseline, so sub-pixel movement never accumulates.</item>
 /// </list>
 ///
@@ -741,9 +751,10 @@ public static class ListScrollAnchorBehavior
 
         /// <summary>
         /// The heart of the behavior; runs after every layout pass of the visual root. See the
-        /// class summary for the rules. In short: pick the anchor; if it is new, or the offset
-        /// changed and the anchor moved with it (a scroll), just take a baseline; otherwise, if the
-        /// anchor's top is not where it should be (drift), scroll by the difference.
+        /// class summary for the rules. In short: if the pinned card was just virtualized away, ask the
+        /// panel for it back; otherwise pick the anchor; if it is new, or the offset changed and the
+        /// anchor moved with it (a scroll), just take a baseline; otherwise, if the anchor's top is not
+        /// where it should be (drift), scroll by the difference.
         /// </summary>
         /// <param name="sender">The ListBox.</param>
         /// <param name="e">Unused.</param>
@@ -751,9 +762,22 @@ public static class ListScrollAnchorBehavior
         {
             if (_correcting || _pauseDepth > 0) return;
 
-            // A hidden or not yet templated list has no meaningful geometry.
+            // A hidden or not yet templated list has no meaningful geometry (and must never be
+            // scrolled to restore a card, so this check comes before the restoration below).
             var scroll = Scroll;
-            if (scroll is null || !HasGeometry(scroll) || !TryChooseAnchor(scroll, out var choice, out double top))
+            if (scroll is null || !HasGeometry(scroll))
+            {
+                Reset();
+                return;
+            }
+
+            // The pinned card may have been virtualized away in this very pass. This has to be decided
+            // BEFORE the anchor is chosen: with no container to measure, TryChooseAnchor would not fail,
+            // it would quietly return the first visible card as a fallback, and the baseline would move
+            // to that card.
+            if (TryRestoreVirtualizedAnchor()) return;
+
+            if (!TryChooseAnchor(scroll, out var choice, out double top))
             {
                 Reset();
                 return;
@@ -817,11 +841,7 @@ public static class ListScrollAnchorBehavior
 
             if (_limiter.RegisterAndCheck(Environment.TickCount64))
             {
-                _suspended = true;
-                App.Logger.LogInfo(
-                    $"[ScrollAnchor] More than {MaxCorrectionsPerWindow} corrections within " +
-                    $"{OscillationWindowMs} ms on list '{_list.Name}'; scroll anchoring paused until " +
-                    "the next press, mouse-wheel tick or page key.");
+                SuspendForOscillation();
                 SetBaseline(choice, top, offsetY);
                 return;
             }
@@ -855,6 +875,85 @@ public static class ListScrollAnchorBehavior
             // verifies that the anchor got there.
             _lastOffsetY = actual;
             _inChain = true;
+        }
+
+        /// <summary>
+        /// Handles "the pinned card was virtualized away by a re-estimate" (spec item 27): the baseline's
+        /// anchor is the pressed or selected card, the card is still in the list, but the panel has no
+        /// container for it. This happens when the card grows a lot (a meeting row added to the open
+        /// editor): the panel re-estimates the cards it has not built from an average that now includes
+        /// the huge card, which moves the card's estimated position outside the realized range, so the
+        /// card is recycled in that same layout pass.
+        /// <para>Without this the anchor silently moved to another card and the editor was left wherever
+        /// the estimates put it. Instead the baseline (<see cref="_anchor"/>, <see cref="_anchorTop"/>) is
+        /// kept exactly as it is, the panel is asked to build the card again with
+        /// <c>ScrollIntoView</c> (inside <see cref="SuppressPopupScrollBehavior.Bypass"/>: the request to
+        /// bring the new container into view would otherwise be swallowed, see
+        /// <see cref="ScrollItemIntoView"/>), and the chase is marked (<see cref="_inChain"/>), so the next
+        /// pass, which finds the container, compares its top with the pinned <see cref="_anchorTop"/> and
+        /// corrects the difference through the ordinary drift code. If the card's new container lands far
+        /// off, that chase corrects it; if the panel throws the card out again, the next pass restores it
+        /// again, and the rate limiter (shared with the drift corrections) ends the loop.</para>
+        /// <para>Not done, so the ordinary flow runs: while the user is scrolling (a card scrolled away
+        /// by the user is legitimately recycled and must not be pulled back, and the user-scroll rules
+        /// then forget it), while anchoring is suspended, when the anchor is not the pressed or selected
+        /// card, or when the card is no longer in the list. The pressed item is deliberately kept
+        /// (<see cref="ClearPressed"/> is not called). The caller has already checked that the list
+        /// has geometry, so a hidden list is never scrolled.</para>
+        /// </summary>
+        /// <returns>
+        /// True when the panel was asked to build the card again and this pass is finished; false when the
+        /// ordinary flow should go on, because nothing needed restoring or because the rate limiter
+        /// tripped (anchoring is then suspended and the ordinary flow takes a fresh baseline).
+        /// </returns>
+        private bool TryRestoreVirtualizedAnchor()
+        {
+            if (_suspended || IsUserScrolling) return false;
+            if (_anchor is not { Kind: AnchorKind.Pressed or AnchorKind.Selected } pinned) return false;
+
+            // The anchor must still be the card the user is working with (a stale one would pull the
+            // list to a card nobody cares about), still be in the list, and really have no container.
+            object? current = pinned.Kind == AnchorKind.Pressed ? _pressedItem : _list.SelectedItem;
+            if (!ReferenceEquals(pinned.Item, current)) return false;
+            if (_list.ContainerFromItem(pinned.Item) is not null) return false;
+            if (_list.Items.IndexOf(pinned.Item) < 0) return false;
+
+            if (_limiter.RegisterAndCheck(Environment.TickCount64))
+            {
+                SuspendForOscillation();
+                return false;
+            }
+
+            // _correcting: the layout this call runs (and raises LayoutUpdated from) is ours, not a
+            // pass to react to.
+            _correcting = true;
+            try
+            {
+                using (SuppressPopupScrollBehavior.Bypass())
+                    _list.ScrollIntoView(pinned.Item);
+            }
+            finally
+            {
+                _correcting = false;
+            }
+
+            _inChain = true;
+            return true;
+        }
+
+        /// <summary>
+        /// Stops correcting after the rate limiter reported too many corrections within the window,
+        /// and logs that once. Anchoring resumes at the next press, mouse-wheel tick or page key
+        /// (see <see cref="Resume"/>). Shared by the drift correction and the restoration of a
+        /// virtualized-away card, so both end a layout that fights them the same way.
+        /// </summary>
+        private void SuspendForOscillation()
+        {
+            _suspended = true;
+            App.Logger.LogInfo(
+                $"[ScrollAnchor] More than {MaxCorrectionsPerWindow} corrections within " +
+                $"{OscillationWindowMs} ms on list '{_list.Name}'; scroll anchoring paused until " +
+                "the next press, mouse-wheel tick or page key.");
         }
 
         // ============================ Anchor choice and geometry ============================
