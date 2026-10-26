@@ -79,8 +79,11 @@ public partial class MainWindow : Window, ILifecyclePrompts, ISessionHost
     {
         InitializeComponent();
 
+        // The title shows Major.Minor.Patch ("TermPoint v1.2.3"), plus the fourth number when it isn't 0, so a
+        // field-test build such as 1.2.3.1 can be told apart from the release at a glance.
         var version = Assembly.GetExecutingAssembly().GetName().Version;
-        Title = $"TermPoint v{version?.Major}.{version?.Minor}.{version?.Build}";
+        var shown = version is null ? "0.0.0" : version.ToString(version.Revision > 0 ? 4 : 3);
+        Title = $"TermPoint v{shown}";
 
 
 
