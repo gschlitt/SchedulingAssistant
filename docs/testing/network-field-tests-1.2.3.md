@@ -34,13 +34,13 @@ enough); **share** = the database on Mekler's share; **both** = GregDeskTop and 
 | M12 D changed by someone else | Must | one computer + share (Python + repo) | ✅ pass |
 | S1 Second copy on the same computer | Should | one computer | ✅ pass |
 | S2 Local copy fails after validation | Should | both + share | ☐ to do |
-| S3 Reader Refresh failures | Should | both + share | ☐ to do (item 11 not built) |
-| S4 Repeated X / edits during exit save | Should | one computer + share | ☐ to do (item 15 not built) |
-| S5 Unapplied editor changes at close/switch | Should | one computer | ☐ to do (item 14 not built) |
+| S3 Reader Refresh failures | Should | one computer (the DEBUG switch) | ☐ to do (item 11's messages, built in item 28; the reconnection moved to 1.2.4) |
+| S4 Repeated X / edits during exit save | Should | one computer + share | ☐ to do (item 15's exit guard, not built yet) |
+| S5 Unapplied editor changes at close/switch | Should | one computer | — moved to 1.2.4 with item 14 |
 | S6 New database / export with the share down | Should | one computer + share | ✅ pass ((b) covered by the probe) |
 | S7 Wizard and UNC picker | Should | share; a Windows 10 and a Windows 11 computer | ☐ to do |
 | S8 Windows 11 AutoCompleteBox crash test | Should | one computer on Windows 11 | ☐ to do |
-| S9 Cloud-synced folders | Should | one computer with OneDrive etc. (+ Mac) | ☐ to do (item 13 not built) |
+| S9 Cloud-synced folders | Should | one computer with OneDrive and a SharePoint/Teams library | ☐ to do (item 13's SharePoint/Teams detection, not built yet; macOS and other providers moved to 1.2.4) |
 | S10 Section list: recycling test, default OFF | Should | one computer, ~800-section database | ☐ to do |
 | S11 macOS pass | Should | Mac | ☐ to do |
 | N1 Virtualization ON | Nice | one computer, ~800-section database | ☐ to do |
@@ -64,9 +64,11 @@ enough); **share** = the database on Mekler's share; **both** = GregDeskTop and 
 - [ ] **Watch for: the database chooser panel staying on screen** after a database opens (seen once on GregSurface).
       If it does: do not press its buttons; drag its header, then minimise and restore the main window (does it come
       back with it?), and note `winver`.
-- [ ] **Decide 1.2.3's scope** for the items not built yet (F16, 14, 15, 26, 11, 13, 6, 7, 25, 27, and the
-      persistence redesign steps 8.9.1–4); S3, S4, S5, S9 and N3 depend on it. Item 20 is built (2026-10-26). The full
-      list is in `spec_version_1.2.3.md`, "Work remaining".
+- [x] **1.2.3's scope for the persistence work, decided 2026-10-26** (Greg, item by item): in 1.2.3 are items 28
+      (message pass), 29 (F5), 30 (backup cleanup), item 15's exit guard, item 13's SharePoint/Teams detection and a
+      Help note for item 26; everything else moved to 1.2.4. S5 moved with item 14. Details: `spec_version_1.2.3.md`,
+      "Work remaining".
+- [ ] **Still to decide:** items 25, 27, 6 and 7 (N3 depends on 6 and 7).
 - [ ] **Later:** `BackupService` deletes a partial backup with plain, unguarded file calls when the backup folder's
       share is dead (`BackupService.cs:286`); `tools/NetworkProbe/GAP-AUDIT.md` lists 24 more outside the save path.
 - [x] **Done 2026-10-26** (9775b1b): the window title shows the fourth version number when it isn't 0

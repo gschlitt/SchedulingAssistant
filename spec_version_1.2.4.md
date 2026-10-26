@@ -11,26 +11,29 @@ usual treatment (problem, file:line refs, fix direction, production and data not
 - This file only points into those documents, with a one-line summary per entry.
 
 **Already fixed in 1.2.3 (for reference):** F1, F4, F8 and F12 (design note section 3), plus spec items 1–5, 8, 9,
-12, 16–19, 21–23 and 10a.
+12, 16–24 and 10a.
+
+**Scope review 2026-10-26 (Greg):** the unbuilt persistence work was decided item by item. Pulled into 1.2.3:
+F5 (item 29), F6/F13/F15 wording and the refresh/cloud-folder messages (item 28), item 15's exit guard, item 13's
+SharePoint/Teams detection, the backup-cleanup deadline (item 30) and a Help note for item 26. Everything else
+below stays here.
 
 ## User priorities
 | Ref | What | Where it stands |
 |---|---|---|
-| Item 20 | **Load by subject / focus:** work on chosen subjects only, at dean's-office scale | Design approved 2026-10-20 (approach B, filter-based focus, 8 steps): `designs/load-by-subject.md` |
-| Item 24 | **Section Import by User:** self-serve onboarding from an .xlsx template | Design complete 2026-10-24 (all six phases locked): `designs/section-import-by-user.md`. Now item 24 in `spec_version_1.2.3.md` (steps 24.1–24.10), not started |
+| Item 26 | **Experimenting without saving:** a way to try changes out without them reaching the shared database (Greg, 2026-10-26) | Moved from 1.2.3 (2026-10-26). Shapes A/B need Recovered Versions (redesign 8.9) and share item 14's close question; shape C is a "Save a Copy…" / work-on-a-copy command. 1.2.3 ships a Help note only. See `spec_version_1.2.3.md` item 26 |
+| Items 20, 24 | Load by subject; Section Import by User | **Done in 1.2.3** (2026-10-23 / 2026-10-26); left here as pointers |
 
 ## Data loss and recovery (design note section 3)
 | Ref | Issue | Notes |
 |---|---|---|
 | F3 / item 14 | Unapplied changes in an open editor are dropped on close or database switch | The likeliest remaining loss. Small version: "Apply / Discard / Cancel" at close and switch |
-| F2 / item 15 | An edit made while a save runs misses that save; a crash or the exit save then deletes it | Edit counter. The harness reproduces it (3 events) |
+| F2 / item 15 | An edit made while a save runs misses that save; a crash or the exit save then deletes it | Edit counter. The harness reproduces it (3 events). Item 15's exit guard (repeated X, "Saving and closing…") is in 1.2.3 |
 | F16 | A lost-lock demotion still running during a database switch leaves the new session read-only while it holds the lock | Tie a demotion to its session; refuse a switch until a running demotion ends. `CheckoutServiceTests.F16_...` is skipped until fixed |
-| F5, F6, F7 | Needless "Can't Restore" after any no-edit save; restore promises that can't be kept; "Restore?" asked before checking | The section 8.9 redesign, steps 1–4 (Recovered Versions; the open decides by itself) |
+| F7 + redesign | "Restore?" asked before checking; the section 8.9 redesign, steps 1–4 (Recovered Versions; the open decides by itself; the conflict banner; the M1–M6 messages) | Moved from 1.2.3 (2026-10-26). F5 (skip no-edit saves) and an honest-wording pass for F6 are in 1.2.3 (items 29, 28); the redesign's messages replace that wording |
 | F9 | Kept work lives in roaming AppData | Move to `%LocalAppData%`, with a migration that still finds 1.2.2/1.2.3 kept files |
 | F10 | Read-only (observer) mode never mentions unsaved changes waiting | Message |
-| F13 | A damaged lock file is reported as "removed", in jargon | Message |
 | F14 | Kept changes on another computer are invisible from this one | Probably a message only |
-| F15 | Outage messages: the banner clears itself while saves still fail, the advice is wrong, and the heartbeat adds a second "safe locally" message | One persistent "can't reach the database" state |
 | P2 | A demotion can orphan its own lock file | Latent, unreachable today |
 | P10 | macOS: if the local file is deleted mid-session, edits survive only in memory | Future |
 | 9.4 | The new assessment: section 2 of the design note redone against the redesign, then section 4's inventory | After the redesign (design note 9.5) |
@@ -57,8 +60,9 @@ usual treatment (problem, file:line refs, fix direction, production and data not
 |---|---|---|
 | Item 6 | Strip paths and usernames from BugSnag reports | Plan approved 2026-10-21 (6a–6c); go in 1.2.3 only if a day is spare |
 | Item 7 | Report handled save/lock failures and unclean exits to BugSnag | After item 6. Today none of the remaining findings reaches us from the field |
-| Item 11 | Reader Refresh: report failures honestly, recover the connection | Plan approved 2026-10-14 |
-| Item 13 | Detect databases in cloud-synced folders (OneDrive, Google Drive, Box, macOS CloudStorage) | |
+| Item 11 | Reader Refresh: recover the connection after a failed refresh | Plan approved 2026-10-14. The honest messages went into 1.2.3 (item 28) |
+| Item 13 | Detect databases in cloud-synced folders: Google Drive for desktop, Box, macOS CloudStorage | SharePoint/Teams detection on Windows and the reworded warning are in 1.2.3 |
+| GAP-AUDIT | The 24 unguarded network file calls outside the save path listed in `tools/NetworkProbe/GAP-AUDIT.md` | The backup-cleanup delete is fixed in 1.2.3 (item 30) |
 | Item 4 (open) | Header-only check on D; possible 4f (working copy locked vs damaged) | |
 | P3 | Copy Semester doesn't carry meeting room types | Design question |
 | — | **Meeting room type: show the room's type when a room is chosen** (found 2026-10-24). Today a meeting's room type is the type it *needs*: it starts at "(none)", picking a room never fills it in, and a type given to a room later never reaches its meetings (`SectionMeetingViewModel.cs:290-345`). It looks odd to users. Fix direction: when a meeting has a room, the type box shows that room's type, read directly from the room. The stored value matters only for a meeting with no room, which is the only case the Room Browser uses it (`RoomAvailabilityService.cs:250-268`; a chosen room locks the meeting). Nothing to propagate and no bulk rewrite of sections | Decide: setting the type box narrows the room dropdown, so after picking a lab only labs are listed. Accept that, or show the room's type as a separate read-only label. If the editor starts *storing* the type when a room is picked, ask the `MinimumVersionToWrite` question (likely No: 1.2.2 already keeps the field). Makes P3 matter less for meetings that have a room. The section import (`designs/section-import-by-user.md`) leaves room type blank and is right either way |

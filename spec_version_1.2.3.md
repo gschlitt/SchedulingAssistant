@@ -23,11 +23,11 @@ will be verified.
 | 8 | Empty / delete semester and academic year: consistent rules, no orphans | Bug / data integrity | **Done** (8a service, 8b screens, 8c orphan-tolerant queries); user-tested 2026-10-12 |
 | 9 | Make stale-lock takeover safe | Data integrity | **Done** (9a warning + click re-check, 9b clock-free staleness; user-tested on one machine 2026-10-13). 3-computer integration test pending |
 | 10 | "Save aborted" dead end: give a next step | UX | **Redesigned 2026-10-18**: see `designs/data-persistence-review-2026-10.md`, section 8. 10a (done 2026-10-16) is kept and reworked; 10b and the 10c outline are shelved (`tmp/shelved/`) |
-| 11 | Reader Refresh: report failures honestly and recover the connection | UX / reliability | Accepted; **plan approved 2026-10-14** |
+| 11 | Reader Refresh: report failures honestly and recover the connection | UX / reliability | **Split 2026-10-26:** the honest messages go into item 28 (1.2.3); the reconnection moved to 1.2.4. Plan approved 2026-10-14 |
 | 12 | Save-specific error banner for exceptions during save | UX | **Done** (2026-10-15, on the tests; no hand test). Plan approved 2026-10-14 |
-| 13 | Cloud-sync folder detection gaps | Data integrity / UX | Accepted |
-| 14 | Unapplied editor changes are lost on exit or database switch | Data loss | Accepted |
-| 15 | Exit-path hardening and the mid-save edit gap | Data loss | Accepted |
+| 13 | Cloud-sync folder detection gaps | Data integrity / UX | **1.2.3 (decided 2026-10-26):** SharePoint/Teams detection on Windows, warn only; the reworded warning is in item 28. Google Drive for desktop, Box and macOS moved to 1.2.4 |
+| 14 | Unapplied editor changes are lost on exit or database switch | Data loss | **Moved to 1.2.4** (decided 2026-10-26; already in 1.2.2) |
+| 15 | Exit-path hardening and the mid-save edit gap | Data loss | **Split 2026-10-26:** the exit guard (ignore repeated X, "Saving and closing…" screen blocking input) stays in 1.2.3; F2's edit counter moved to 1.2.4 |
 | 16 | Remaining network I/O on the UI thread | Responsiveness | **Done** (16a recovered-copy export: snapshot then place, never overwrite; 16b wizard failure-path probe on a deadline) |
 | 17 | CSV import blow-up on an unmatched quote | Responsiveness | **Done**, plus 2 latent row-loss bugs fixed |
 | 18 | Wizard Cancel: hide instead of close (defence in depth) | Hang | **Done: already covered by existing code** |
@@ -38,16 +38,43 @@ will be verified.
 | 23 | Section-list virtualization with scroll anchoring, opt-in (Preferences, default off; hidden in WASM) | Performance / memory | **Done** (user-tested on desktop 2026-10-10); field tests pending (touch, macOS trackpad, Win11). Also: room conflicts one per line |
 | 24 | **Section Import by User**: self-serve onboarding from an `.xlsx` template (Files → Import Sections…) | **New feature** | **Done** (2026-10-26) on `1.2.3_new_features`: steps 24.1–24.10, plus 24.8b and the stress-test fixes. `MinimumVersionToWrite`: No, confirmed by a 1.2.2 round trip. See `HANDOFF.md` |
 | 25 | Let the user switch off room-conflict and instructor-conflict detection | UX / settings | Added 2026-10-26 (Greg). Not designed |
-| 26 | "Experimenting" isn't possible: TermPoint always saves on exit | Persistence / UX | Added 2026-10-26 (Greg). Not designed; touches the exit path (items 14, 15) and the persistence redesign (section 8) |
+| 26 | "Experimenting" isn't possible: TermPoint always saves on exit | Persistence / UX | Added 2026-10-26 (Greg). **Feature moved to 1.2.4** (needs Recovered Versions and item 14's close question); **1.2.3 adds a Help note** on trying changes safely on a copy of the database |
 | 27 | With section-list virtualization on, adding a meeting can push the open editor out of view | Bug (user-reported) | Added 2026-10-26 (Greg). Same family as the drift item 23's anchoring fixed for opening a section |
+| 28 | Message pass: say truthfully what happens (rule 4) | UX / data integrity | **1.2.3** (decided 2026-10-26): F6's four restore promises, item 11's refresh messages, item 13's cloud-folder warning, F13, F15. Wording and notice behaviour only |
+| 29 | F5: skip a save when nothing changed | Data integrity | **1.2.3** (decided 2026-10-26). Small to medium; in the save code |
+| 30 | Backup cleanup on a dead share: give the partial-backup delete a deadline | Responsiveness | **1.2.3** (decided 2026-10-26). Small (`BackupService.cs:286`) |
 
 Item numbers are for reference only. The implementation order is below.
 
 ### Work remaining (updated 2026-10-26)
 
 Everything not yet done for 1.2.3, in one place. Field-test scenario codes (M, S, N) are in
-`docs/testing/network-field-tests-1.2.3.md`. **First decision: which of the unbuilt items are in 1.2.3's scope**;
-several field tests depend on it.
+`docs/testing/network-field-tests-1.2.3.md`. **The scope of the unbuilt persistence work was decided on 2026-10-26
+(Greg), one item at a time:** what stays is listed under "Still to build"; the rest moved to 1.2.4
+(`spec_version_1.2.4.md`). **Still to decide:** items 25, 27, 6 and 7.
+
+**Still to build for 1.2.3 (decided 2026-10-26)**
+- **Item 28, message pass** (rule 4; wording and notice behaviour only, no save code):
+  - F6: the four messages that promise a restore that may not happen (the lock-lost banner, "Unsaved Changes Kept",
+    both "Changes Not Saved") say truthfully what 1.2.3 does;
+  - item 11's refresh messages: the tooltip shows the last refresh that worked, a failure is one plain line in the
+    yellow row, and no log-text banner;
+  - item 13's cloud-folder warning: no "SQLite", no "corrupt"; says what actually happens;
+  - F13: a damaged lock file is no longer reported as "removed";
+  - F15: one "can't reach the database" notice that stays up until a save works, with one wording.
+- **Item 15, exit guard:** ignore repeated close requests while the exit save runs, and block input with a "Saving
+  and closing…" screen until it finishes. F2's edit counter moved to 1.2.4.
+- **Item 29, F5:** skip a save when nothing changed, so a session with no edits doesn't make someone else's kept
+  changes unrestorable. In the save code: check first what relies on the first save.
+- **Item 30, backup cleanup:** the partial-backup delete after a stalled copy (`BackupService.cs:286`) gets a
+  deadline like other network calls. The other 24 gaps in `tools/NetworkProbe/GAP-AUDIT.md` moved to 1.2.4.
+- **Item 13, SharePoint/Teams detection** on Windows, warn only. Google Drive for desktop, Box and macOS moved to
+  1.2.4.
+- **Item 26, a Help note:** how to try out changes safely on a copy of the database. The feature moved to 1.2.4.
+
+**Moved to 1.2.4 (decided 2026-10-26):** F16; item 14 (F3); item 15's F2 edit counter; item 26 (the feature); the
+persistence redesign steps 8.9.1–4 (with F7); item 11's reconnection; item 13's other providers and macOS; F9, F10
+and F14; the 24 gaps in `GAP-AUDIT.md`.
 
 **Data persistence: built, field tests outstanding**
 - **Item 4**, no direct opens of the shared database, startup order, single-instance guard: M9, S2, S11 (S1 passed).
@@ -59,26 +86,16 @@ several field tests depend on it.
   (M3 passed).
 - **F4** (c331eeb), read-only sessions refuse writes: M7.
 - **Two users editing:** M4.
+- **For the work still to build:** S3 (item 28's refresh messages, through the DEBUG switch on one computer), S4
+  (item 15's exit guard), S9 (SharePoint/Teams detection only). S5 moved to 1.2.4 with item 14.
 - Already passed: M1 (with fix b193eb8), M10, M12 (item 10a), S6 (item 16).
 
-**Data persistence: not built**
-- **F16:** a lost-lock demotion still running when the user switches database lands on the new session (read-only,
-  edits may not save at close). Small/medium; its test is skipped until fixed.
-- **Item 14 (F3):** unapplied editor changes lost on exit or switch. The hang review's likeliest real data loss.
-- **Item 15 (F2):** a second X kills the exit save; an edit during a save loses its marker.
-- **Item 26:** no way to experiment, because exit always saves. Shares the close sequence with 14 and 15; options A
-  and B need Recovered Versions.
-- **Persistence redesign steps 8.9.1–4** (`designs/data-persistence-review-2026-10.md`): Recovered Versions store and
-  list; the open decides by itself; the conflict banner moves; honest messages (F6, F7).
-- **Item 11:** Reader Refresh reports failures and reconnects (plan approved).
-- **Item 13:** cloud-synced folder detection (OneDrive/SharePoint, Google Drive, Box, macOS).
-- **Smaller findings:** F5, F9, F10, F13, F14, F15; `BackupService`'s unguarded partial-backup delete
-  (+24 gaps in `tools/NetworkProbe/GAP-AUDIT.md`).
-
-**Other items**
+**Other items (scope not yet decided)**
 - **Item 25:** switch off room- and instructor-conflict detection (not designed).
 - **Item 27:** with virtualization on, adding a meeting can push the open editor out of view (same drift as item 23).
 - **Items 6 then 7:** BugSnag scrubber (plan approved), then handled-failure reports.
+
+**Checks on work already built**
 - **Item 20:** step 8's manual checks and the 800-section memory check.
 - **Item 1:** manual checks of the UNC picker, macOS and a Windows 11 VM (S7, S8, S11).
 - **Item 23:** S10, N1, N2.
@@ -131,10 +148,16 @@ First look (2026-10-09):
 | 20                                                                          | 20: Load by subject                                                                    | Design approved 2026-10-20. Last: touches many views, none of the persistence code.                                                                                                                                                            |
 | **Phase 9**                                                                 |                                                                                        |                                                                                            |
 | 21                                                                          | 24: Section Import by User                                                             | Design complete 2026-10-24. After item 20 (uses its focus); no persistence code.           |
-| **Phase 10** (added 2026-10-26; order and scope to decide)                  |                                                                                        |                                                                                            |
-| 22                                                                          | 27: Virtualization drift when a meeting is added                                       | A bug in a shipped option (item 23); probe first.                                          |
-| 23                                                                          | 25: Switch off conflict detection                                                      | Settings and views only; no persistence code if per user.                                  |
-| 24                                                                          | 26: Experimenting without saving                                                       | Needs the close-sequence decisions of items 14 and 15, and Recovered Versions for A or B.  |
+| **Phase 10: the rest of 1.2.3** (scope decided 2026-10-26)                  |                                                                                        |                                                                                            |
+| 22                                                                          | 28: Message pass (F6, item 11's messages, item 13's warning, F13, F15)                 | Wording and notice behaviour only; no save code. One brief, or one per message group.      |
+| 23                                                                          | 15: Exit guard (repeated X ignored, "Saving and closing…")                             | In the window, not the save code. F2's counter moved to 1.2.4.                             |
+| 24                                                                          | 29: F5, skip a save when nothing changed                                               | The only 1.2.3 change inside the save code: check first what relies on the first save.     |
+| 25                                                                          | 30: Backup cleanup deadline                                                            | One unguarded delete; small.                                                               |
+| 26                                                                          | 13: SharePoint/Teams detection (Windows, warn only)                                    | Detection only; the warning's wording is in item 28.                                       |
+| 27                                                                          | 26: Help note on trying changes on a copy                                              | Documentation only.                                                                        |
+| **Phase 11** (scope to decide)                                              |                                                                                        |                                                                                            |
+| 28                                                                          | 27: Virtualization drift when a meeting is added                                       | A bug in a shipped option (item 23); probe first.                                          |
+| 29                                                                          | 25: Switch off conflict detection                                                      | Settings and views only; no persistence code if per user.                                  |
 
 **Workflow.** Opus orchestrates and Sonnet writes the code, one step at a time. For each step:
 1. Opus writes a self-contained brief.
