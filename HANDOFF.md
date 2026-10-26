@@ -8,11 +8,17 @@ here or in the files this points to.
 
 ## Where things are
 
-- **Branch:** `1.2.3_new_features`, pushed to `origin`. It holds item 20 (subject focus) and item 24 (this feature).
-- **The other 1.2.3 branch:** `Version_1.2.3` holds the persistence work. Greg still has its field testing to do. It
-  is 4 commits ahead of where `1.2.3_new_features` split off (meeting-time validation, meeting-row display, Room
-  Browser tests). The two branches are merged later; both already touch `App.axaml`, `AppColors.axaml`,
-  `SectionEditViewModel.cs` and `SectionListView.axaml`, so expect small conflicts there.
+- **Branches merged (2026-10-26):** `Version_1.2.3` now holds everything: the persistence work, item 20 (subject
+  focus) and item 24 (this feature). `Version_1.2.3` was merged into `1.2.3_new_features` there (merge 7ecef94, no
+  conflicts), verified (full build, full suite 3,777 passed / 0 failed, Greg's hand check of the section and meeting
+  editors, Import Sections and the version), then `Version_1.2.3` was fast-forwarded to it (9775b1b, which also makes
+  the window title show the fourth version number). **Work and field testing continue on `Version_1.2.3`**;
+  `1.2.3_new_features` is finished and points at the same commit.
+- **Field testing:** resumes on `Version_1.2.3` at `<Version>` 1.2.3.1. Field tests already passed still count: the
+  merge brought nothing that touches saving, locking or recovery.
+- **Before the release build:** put `<Version>` back to three numbers. `build-msix.ps1` passes all four numbers to the
+  MSIX, the Store expects the fourth to be 0, and Velopack expects three-part versions. Consider numbering the release
+  1.2.4 so machines on 1.2.3.1 see it as an update.
 - **Source of truth for the feature:** `designs/section-import-by-user.md` (all six design phases, locked, with dated
   corrections inline). The implementation plan is Phase 6 there and item 24 in `spec_version_1.2.3.md`.
 
