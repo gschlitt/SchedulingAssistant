@@ -64,12 +64,17 @@ enough); **share** = the database on Mekler's share; **both** = GregDeskTop and 
 - [ ] **Watch for: the database chooser panel staying on screen** after a database opens (seen once on GregSurface).
       If it does: do not press its buttons; drag its header, then minimise and restore the main window (does it come
       back with it?), and note `winver`.
-- [ ] **Decide 1.2.3's scope** for the items not built yet (11, 15, 14, 13, 6, 7, 20); S3, S4, S5, S9 and N3 depend
-      on it.
+- [ ] **Decide 1.2.3's scope** for the items not built yet (F16, 14, 15, 26, 11, 13, 6, 7, 25, 27, and the
+      persistence redesign steps 8.9.1–4); S3, S4, S5, S9 and N3 depend on it. Item 20 is built (2026-10-26). The full
+      list is in `spec_version_1.2.3.md`, "Work remaining".
 - [ ] **Later:** `BackupService` deletes a partial backup with plain, unguarded file calls when the backup folder's
       share is dead (`BackupService.cs:286`); `tools/NetworkProbe/GAP-AUDIT.md` lists 24 more outside the save path.
-- [ ] **Your call:** show the fourth version number in the window title when it isn't 0.
-- [ ] **Before release:** set `<Version>` back to `1.2.3` in `src/TermPoint/TermPoint.csproj`; never commit 1.2.3.1.
+- [x] **Done 2026-10-26** (9775b1b): the window title shows the fourth version number when it isn't 0
+      ("TermPoint v1.2.3.1").
+- [ ] **Before release:** `<Version>` 1.2.3.1 was committed (43a0336, 2026-10-25) and is on `Version_1.2.3`. Set it
+      back to three numbers in `src/TermPoint/TermPoint.csproj` before the Store and Velopack builds (the Store expects
+      the MSIX's fourth number to be 0; Velopack expects three-part versions). Consider 1.2.4 rather than 1.2.3, so
+      the test machines on 1.2.3.1 see the release as an update.
 
 ## The computers
 

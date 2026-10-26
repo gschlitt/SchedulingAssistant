@@ -32,13 +32,62 @@ will be verified.
 | 17 | CSV import blow-up on an unmatched quote | Responsiveness | **Done**, plus 2 latent row-loss bugs fixed |
 | 18 | Wizard Cancel: hide instead of close (defence in depth) | Hang | **Done: already covered by existing code** |
 | 19 | Mouse-wheel past the end of a dropdown scrolls the section list underneath it | UX bug (user-reported) | **Done** |
-| 20 | **Load by subject / focus**: work on chosen subjects only (dean's-office scale) | **New feature** | **Design approved 2026-10-20** (approach B, filter-based focus; 8 steps). Not started |
+| 20 | **Load by subject / focus**: work on chosen subjects only (dean's-office scale) | **New feature** | **Done** (steps 20.1–20.7, 2026-10-23, built on `1.2.3_new_features`, merged into this branch 2026-10-26). Open: step 8's manual checks, and the memory check on a 10-subject, ~800-section database (see `designs/load-by-subject.md`) |
 | 21 | Lightweight section card: ~93 → ~15–20 controls per card | Performance / memory | **Done** (~93 → ~27 controls per card; 800-section heap ~390 MB Release); CloneSection data-loss fixed |
 | 22 | AutoCompleteBox crash when revising a meeting's start time (BugSnag, Aug 21) | Bug (production, reproduced) | **Done** (folded into item 1) |
 | 23 | Section-list virtualization with scroll anchoring, opt-in (Preferences, default off; hidden in WASM) | Performance / memory | **Done** (user-tested on desktop 2026-10-10); field tests pending (touch, macOS trackpad, Win11). Also: room conflicts one per line |
 | 24 | **Section Import by User**: self-serve onboarding from an `.xlsx` template (Files → Import Sections…) | **New feature** | **Done** (2026-10-26) on `1.2.3_new_features`: steps 24.1–24.10, plus 24.8b and the stress-test fixes. `MinimumVersionToWrite`: No, confirmed by a 1.2.2 round trip. See `HANDOFF.md` |
+| 25 | Let the user switch off room-conflict and instructor-conflict detection | UX / settings | Added 2026-10-26 (Greg). Not designed |
+| 26 | "Experimenting" isn't possible: TermPoint always saves on exit | Persistence / UX | Added 2026-10-26 (Greg). Not designed; touches the exit path (items 14, 15) and the persistence redesign (section 8) |
+| 27 | With section-list virtualization on, adding a meeting can push the open editor out of view | Bug (user-reported) | Added 2026-10-26 (Greg). Same family as the drift item 23's anchoring fixed for opening a section |
 
 Item numbers are for reference only. The implementation order is below.
+
+### Work remaining (updated 2026-10-26)
+
+Everything not yet done for 1.2.3, in one place. Field-test scenario codes (M, S, N) are in
+`docs/testing/network-field-tests-1.2.3.md`. **First decision: which of the unbuilt items are in 1.2.3's scope**;
+several field tests depend on it.
+
+**Data persistence: built, field tests outstanding**
+- **Item 4**, no direct opens of the shared database, startup order, single-instance guard: M9, S2, S11 (S1 passed).
+- **Item 9**, stale-lock takeover: M5, including the three-computer test.
+- **Item 5**, safe Restore from backup: M11 (b)–(d) ((a) passed).
+- **Item 3**, unknown fields kept plus the `MinimumVersionToWrite` gate: M8 (1.2.2 and 1.2.3 on one share); N4 after
+  Store certification.
+- **F12, F8, F1** (7fc8b67), save re-checks before the rename, crash-after-save reporting, the X on "Restore?": M6
+  (M3 passed).
+- **F4** (c331eeb), read-only sessions refuse writes: M7.
+- **Two users editing:** M4.
+- Already passed: M1 (with fix b193eb8), M10, M12 (item 10a), S6 (item 16).
+
+**Data persistence: not built**
+- **F16:** a lost-lock demotion still running when the user switches database lands on the new session (read-only,
+  edits may not save at close). Small/medium; its test is skipped until fixed.
+- **Item 14 (F3):** unapplied editor changes lost on exit or switch. The hang review's likeliest real data loss.
+- **Item 15 (F2):** a second X kills the exit save; an edit during a save loses its marker.
+- **Item 26:** no way to experiment, because exit always saves. Shares the close sequence with 14 and 15; options A
+  and B need Recovered Versions.
+- **Persistence redesign steps 8.9.1–4** (`designs/data-persistence-review-2026-10.md`): Recovered Versions store and
+  list; the open decides by itself; the conflict banner moves; honest messages (F6, F7).
+- **Item 11:** Reader Refresh reports failures and reconnects (plan approved).
+- **Item 13:** cloud-synced folder detection (OneDrive/SharePoint, Google Drive, Box, macOS).
+- **Smaller findings:** F5, F9, F10, F13, F14, F15; `BackupService`'s unguarded partial-backup delete
+  (+24 gaps in `tools/NetworkProbe/GAP-AUDIT.md`).
+
+**Other items**
+- **Item 25:** switch off room- and instructor-conflict detection (not designed).
+- **Item 27:** with virtualization on, adding a meeting can push the open editor out of view (same drift as item 23).
+- **Items 6 then 7:** BugSnag scrubber (plan approved), then handled-failure reports.
+- **Item 20:** step 8's manual checks and the 800-section memory check.
+- **Item 1:** manual checks of the UNC picker, macOS and a Windows 11 VM (S7, S8, S11).
+- **Item 23:** S10, N1, N2.
+- **Probes:** a TermPoint process left running with no window; the database chooser staying on screen.
+
+**Release housekeeping**
+- `<Version>` back to three numbers (1.2.3.1 is committed); consider 1.2.4.
+- Decide on Avalonia 12.1.4 (release notes, #22394).
+- Store certification, then N4.
 
 ### Implementation order (decided 2026-10-09)
 
@@ -82,6 +131,10 @@ First look (2026-10-09):
 | 20                                                                          | 20: Load by subject                                                                    | Design approved 2026-10-20. Last: touches many views, none of the persistence code.                                                                                                                                                            |
 | **Phase 9**                                                                 |                                                                                        |                                                                                            |
 | 21                                                                          | 24: Section Import by User                                                             | Design complete 2026-10-24. After item 20 (uses its focus); no persistence code.           |
+| **Phase 10** (added 2026-10-26; order and scope to decide)                  |                                                                                        |                                                                                            |
+| 22                                                                          | 27: Virtualization drift when a meeting is added                                       | A bug in a shipped option (item 23); probe first.                                          |
+| 23                                                                          | 25: Switch off conflict detection                                                      | Settings and views only; no persistence code if per user.                                  |
+| 24                                                                          | 26: Experimenting without saving                                                       | Needs the close-sequence decisions of items 14 and 15, and Recovered Versions for A or B.  |
 
 **Workflow.** Opus orchestrates and Sonnet writes the code, one step at a time. For each step:
 1. Opus writes a self-contained brief.
@@ -2968,6 +3021,77 @@ warn the user first):
 | 24.8 | `ImportSectionsView.axaml` and Files → Import Sections… Run the app; screenshot each stage. |
 | 24.9 | Full suite; hand tests on a copy of real data (first import, re-import, corrected file, problems + Copy list, change between Check and Import, read-only, save and reopen); 1.2.2 round trip. |
 | 24.10 | Retire the Dev Tools CSV import (own commit); keep `CsvRecordReader` and `SharedScheduleCsvParser`. |
+
+---
+
+## 25 — Switch off room-conflict and instructor-conflict detection (added 2026-10-26)
+
+**Request (Greg).** Let a user turn off room-conflict and instructor-conflict detection.
+
+**Where it lives today.** `RoomConflictService` and `InstructorConflictService` feed the section cards (property
+lines, via `PropertyLinesBehavior` / `CardPropertyLine` / `SectionListItemViewModel`), the schedule grid
+(`ScheduleGridViewModel`) and the Workload panel. There is no setting; conflicts are always computed and shown.
+
+**To decide.**
+- One switch each (rooms, instructors), or one for both?
+- Per user (`AppSettings`, like the other display preferences) or per database? Per user needs no
+  `MinimumVersionToWrite` thought; per database would save something 1.2.2 doesn't know about.
+- Does "off" mean not shown, or not computed (a speed gain on large semesters)?
+- Where the switch lives (Preferences), and whether anything on screen says detection is off, so a user who
+  forgot doesn't trust a clean grid (rule 4).
+
+## 26 — "Experimenting" isn't possible: TermPoint always saves on exit (added 2026-10-26)
+
+**Request (Greg).** A user who wants to try something out ("what if this section moved to Tuesday?") can't: the
+changes are saved on exit, and by autosave before that.
+
+**What exists today.**
+- Autosave can already be switched off (`AppSettings.AutoSaveEnabled`, default every 10 minutes,
+  `AutoSaveIntervalMinutes`).
+- Exit always saves; there is no "close without saving". Confirmed in the item 24 hand test (2026-10-26).
+- Not in the persistence review's findings: section 8 decides that **kept** changes (left by a crash or lost lock)
+  are never asked about, which is a different question.
+
+**Constraints.**
+- **Rule 3** (never delete the only copy of someone's unsaved work): a plain "Discard my changes" deletes the only
+  copy. A version that **moves the session's work to Recovered Versions** (section 8.4, not built) instead of
+  deleting it would satisfy rule 3 and give the user a way back.
+- **Rule 4:** whatever the user chooses at exit must be one plain question, asked only when there is something to
+  lose.
+- Interacts with item 14 (unapplied editor changes at close) and item 15 (the exit sequence): one close sequence
+  should ask at most one question.
+
+**Possible shapes (to discuss).**
+- **A. "Close without saving"** at exit, offered only when autosave is off (otherwise most changes are already
+  saved), moving the session's work to Recovered Versions.
+- **B. An explicit "Try things out" mode:** autosave pauses, a banner says changes won't be saved, and at the end
+  the user chooses Keep or Throw away (to Recovered Versions).
+- **C. Work on a copy:** Save a Copy… then open the copy. Already possible; only needs to be easier to find and
+  explained. No persistence change.
+
+## 27 — Section-list virtualization misbehaves when a meeting is added (added 2026-10-26)
+
+**Report (Greg).** With virtualization on (item 23, Preferences, "Faster section list for large schedules",
+default off), in a full list and for certain sections, **adding a meeting makes the open editor disappear from view;
+it has to be found much further down the list.** Not yet seen with virtualization off.
+
+**Why it is probably the same bug.** This is the Avalonia 12.1.x `VirtualizingStackPanel` drift that item 23
+worked around: the panel estimates the heights of cards it hasn't built from the average of those it has, so when an
+on-screen card changes height the estimate above the viewport changes and different content slides under an
+unchanged scroll offset. Opening the inline editor used to trigger it; `ListScrollAnchorBehavior` fixed that by
+pinning the anchor card's top (anchor: the pressed card, then the selected one, then the first visible). Adding a
+meeting also grows the open editor's card, and for some sections the pin evidently doesn't hold. No Avalonia release
+fixes the drift (12.1.3, 12.1.4); the local workaround notes are in `WORKAROUNDS.md` section 4.
+
+**First questions (one probe each, before any theory).**
+- Which sections: near the top or bottom of the list, long cards, many meetings, or meetings added past the
+  bottom of the viewport?
+- Does the anchor change when "Add meeting" is clicked (the pressed item), or does adding a meeting replace the
+  section's list item (so the anchor, tracked by item, is lost)?
+- Does it happen with a pause after opening the editor (layout settled) as well as straight away?
+
+**Rules for the fix.** Per `CLAUDE.md`, never scroll the section list's ScrollViewer directly: set `SelectedItem` or
+call `ListScrollAnchorBehavior.ScrollItemIntoView`. After any fix, re-run `dotnet run --project tools/ScrollAnchorProbe`.
 
 ---
 
