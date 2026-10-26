@@ -16,6 +16,17 @@ public partial class WorkflowsView : UserControl
     private static readonly List<StickyNoteWindow> _openNotes = new();
 
     /// <summary>
+    /// Hides every open sticky note at once WITHOUT closing it, so the notes vanish from the screen the moment the
+    /// window starts its exit sequence. Hide, not Close: the notes stay in <see cref="_openNotes"/> and the
+    /// teardown still closes them later through <see cref="CloseAllNotes"/>, exactly as it always has.
+    /// </summary>
+    public static void HideAllNotes()
+    {
+        foreach (var note in _openNotes.ToArray())
+            note.Hide();
+    }
+
+    /// <summary>
     /// Closes every open sticky note. Called during app shutdown so no floating note keeps
     /// the process alive after the main window closes. Iterates a snapshot because each
     /// note's <c>Closed</c> handler removes itself from <see cref="_openNotes"/>.

@@ -27,7 +27,7 @@ will be verified.
 | 12 | Save-specific error banner for exceptions during save | UX | **Done** (2026-10-15, on the tests; no hand test). Plan approved 2026-10-14 |
 | 13 | Cloud-sync folder detection gaps | Data integrity / UX | **1.2.3 (decided 2026-10-26):** SharePoint/Teams detection on Windows, warn only; the reworded warning is in item 28. Google Drive for desktop, Box and macOS moved to 1.2.4 |
 | 14 | Unapplied editor changes are lost on exit or database switch | Data loss | **Moved to 1.2.4** (decided 2026-10-26; already in 1.2.2) |
-| 15 | Exit-path hardening and the mid-save edit gap | Data loss | **Split 2026-10-26:** the exit guard (ignore repeated X, "Saving and closing…" screen blocking input) stays in 1.2.3; F2's edit counter moved to 1.2.4 |
+| 15 | Exit-path hardening and the mid-save edit gap | Data loss | **Split 2026-10-26:** the exit guard (ignore repeated X, "Saving and closing…" screen blocking input) stays in 1.2.3; F2's edit counter moved to 1.2.4. **Exit guard done 2026-10-26** (hand-checked, incl. the DEBUG slow-exit switch and the 2-minute backstop) |
 | 16 | Remaining network I/O on the UI thread | Responsiveness | **Done** (16a recovered-copy export: snapshot then place, never overwrite; 16b wizard failure-path probe on a deadline) |
 | 17 | CSV import blow-up on an unmatched quote | Responsiveness | **Done**, plus 2 latent row-loss bugs fixed |
 | 18 | Wizard Cancel: hide instead of close (defence in depth) | Hang | **Done: already covered by existing code** |
@@ -62,7 +62,7 @@ Everything not yet done for 1.2.3, in one place. Field-test scenario codes (M, S
   - item 13's cloud-folder warning: no "SQLite", no "corrupt"; says what actually happens;
   - F13: a damaged lock file is no longer reported as "removed";
   - F15: one "can't reach the database" notice that stays up until a save works, with one wording.
-- **Item 15, exit guard:** ignore repeated close requests while the exit save runs, and block input with a "Saving
+- ~~**Item 15, exit guard:**~~ **done 2026-10-26:** ignore repeated close requests while the exit save runs, and block input with a "Saving
   and closing…" screen until it finishes. F2's edit counter moved to 1.2.4.
 - **Item 29, F5:** skip a save when nothing changed, so a session with no edits doesn't make someone else's kept
   changes unrestorable. In the save code: check first what relies on the first save.
@@ -152,7 +152,7 @@ First look (2026-10-09):
 | **Phase 10: the rest of 1.2.3** (scope decided 2026-10-26)                  |                                                                                        |                                                                                                                                                                                                                                                |
 | 22                                                                          | 27: Virtualization drift — **done 2026-10-26**                                         | Fixed (anchor restore), E9 added to the probe tool.                                                                                                                                                                                            |
 | 23                                                                          | 28: Message pass — **done 2026-10-26** (F6, item 11's messages, item 13's warning, F13, F15)                 | Wording and notice behaviour only; no save code.                                                                                                                                                                                               |
-| 24                                                                          | 15: Exit guard (repeated X ignored, "Saving and closing…")                             | In the window, not the save code. F2's counter moved to 1.2.4.                                                                                                                                                                                 |
+| 24                                                                          | 15: Exit guard — **done 2026-10-26** (repeated X ignored, "Saving and closing…")                             | In the window, not the save code. F2's counter moved to 1.2.4.                                                                                                                                                                                 |
 | 25                                                                          | 29: F5, skip a save when nothing changed                                               | The only 1.2.3 change inside the save code: check first what relies on the first save.                                                                                                                                                         |
 | 26                                                                          | 30: Backup cleanup deadline                                                            | One unguarded delete; small.                                                                                                                                                                                                                   |
 | 27                                                                          | 13: SharePoint/Teams detection (Windows, warn only)                                    | Detection only; the warning's wording is in item 28.                                                                                                                                                                                           |
@@ -2156,6 +2156,33 @@ lock → dispose container → cleanup must be preserved. No migration.
 - Unit tests: an edit between snapshot and marker delete leaves the marker and `SessionDirty` set.
 - Field (network test protocol): slow-link exit save; click X repeatedly; attempt edits during the
   save. Expect no early exit and no lost edits.
+
+**1.2.3 part (built 2026-10-26): the exit guard.** The edit counter (F2) is 1.2.4; this is only the exit.
+- `ExitCloseGuard` (`Services/ExitCloseGuard.cs`, pure, injectable `TimeProvider`) holds Open → ClosingInProgress →
+  ReadyToClose and answers each close request: first = start the teardown, later ones during the teardown = ignore
+  (one `LogInfo` line), after the teardown or after the **2-minute backstop** (measured from the start of the
+  teardown; exactly two minutes counts as passed) = let it close. The backstop is safe by rule 1 (D only ever
+  changes by one atomic rename of a checked copy) and by the kept working copy: an interrupted exit leaves the
+  changes for the next open's "Restore Unsaved Changes?".
+- `MainWindow.OnClosing`: the restore / save-conflict refusals still come first (for a new request). The first
+  request cancels the close, **hides** (never closes) the three detachable-panel windows and every sticky note so
+  nothing can be edited in them during the save, covers the window with the loading curtain (**"Saving and
+  closing…"** in write mode, **"Closing…"** otherwise; no lift armed, `DataContext` kept), moves keyboard focus onto
+  the curtain, disables the main view and blocks the window's Ctrl+S, then runs `TeardownForCloseAsync` unchanged and
+  always ends in `Close()` (the teardown's failure is caught and logged; the only skipped `Close()` is after the
+  backstop has already closed the window). The curtain's status text is now `CurtainStatusText`; every other
+  curtain path passes the default "Loading...". Message dialogs are separate Topmost windows owned by the main
+  window, so they still appear above the curtain.
+- DEBUG only: `TERMPOINT_DEBUG_SLOW_EXIT_SAVE=<seconds>` (whole seconds, 0–600; else ignored with one log line, read
+  once; `Services/SlowExitSave.cs`, wholly inside `#if DEBUG`) makes `TeardownForCloseAsync` wait just before the exit
+  save. Nothing of it exists in Release, and it is not in `CheckoutService`.
+- Tests: `ExitCloseGuardTests` (15), `SlowExitSaveTests` (parser, wait, read-once) and
+  `SlowExitSaveLifecycleTests` (wait sits just before the save). The window work (curtain, hidden windows) is not
+  unit-testable; hand checks: (1) local DB, X: "Saving and closing…" then closes, reopen with no restore prompt;
+  (2) read-only session, X: "Closing…"; (3) detach Sections, apply an edit, X: the panel disappears at once,
+  reopen: the edit is there; (4) `…SLOW_EXIT_SAVE=20`: X, click X again and try to click/type: nothing happens,
+  closes after ~20 s, no restore prompt; (5) `…=150`: X, wait over 2 minutes, X again: it closes, reopen offers
+  "Restore Unsaved Changes?" (if edits were made).
 
 ---
 

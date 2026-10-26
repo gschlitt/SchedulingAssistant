@@ -1447,6 +1447,8 @@ public sealed class SessionLifecycle
     /// windows, dispose the services and clean up the working copy (keeping it, and saying so, when the final
     /// save failed); then give back the single-instance guard, start the fresh copy of TermPoint after a
     /// confirmed restore, and log the shutdown checkpoint. The caller re-triggers the window close afterwards.
+    /// In DEBUG builds only, a hand-test wait (<c>SlowExitSave</c>, from the <c>TERMPOINT_DEBUG_SLOW_EXIT_SAVE</c>
+    /// variable) runs just before the exit save so the window's exit guard can be exercised; Release has no such code.
     ///
     /// <para>Never throws: the teardown's own failures are caught and logged so the window can always close.</para>
     /// </summary>
@@ -1468,6 +1470,14 @@ public sealed class SessionLifecycle
                 // Stop autosave and save D' → D (releases lock on success).
                 var wasWriteMode = _checkout.Mode == CheckoutMode.WriteAccess;
                 _checkout.StopAutoSave();
+
+#if DEBUG
+                // DEBUG only (TERMPOINT_DEBUG_SLOW_EXIT_SAVE=<seconds>): wait here, just before the exit save, so
+                // the exit guard can be hand-tested without a slow share. Compiled out of Release; a pure delay
+                // that touches no save, lock or release logic.
+                await SlowExitSave.WaitIfRequestedAsync(_logger());
+#endif
+
                 var saveOutcome = await _checkout.ReleaseAsync(saveFirst: wasWriteMode);
                 CrashPoints.Hit("Close.AfterRelease");
 

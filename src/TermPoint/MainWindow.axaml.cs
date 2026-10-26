@@ -90,6 +90,15 @@ public partial class MainWindow : Window, ILifecyclePrompts, ISessionHost
         // Ctrl+S is handled here to save editors in management views (works globally).
         KeyDown += (_, e) =>
         {
+            // Once the exit sequence has begun nothing may be applied or saved: an edit made now would be written
+            // after the exit save's snapshot and then deleted with the working copy. The curtain blocks the pointer;
+            // this blocks the keyboard shortcuts handled here.
+            if (_exitGuard.State != ExitCloseState.Open)
+            {
+                e.Handled = true;
+                return;
+            }
+
             if (e.Key == Key.S && (e.KeyModifiers.HasFlag(KeyModifiers.Control) || e.KeyModifiers.HasFlag(KeyModifiers.Meta)))
             {
                 if (DataContext is MainWindowViewModel vm)
@@ -169,48 +178,88 @@ public partial class MainWindow : Window, ILifecyclePrompts, ISessionHost
         return true;
     }
 
-    // Prevents double-close when OnClosing cancels itself to run async shutdown.
-    private bool _shuttingDown;
+    /// <summary>
+    /// The pure decision behind every close request (spec item 15): the first request starts the teardown, further
+    /// requests while it runs are ignored, and the window closes for real once the teardown has finished (or its
+    /// two-minute backstop has passed). Also read by the key handler, which blocks shortcuts once the exit has begun.
+    /// </summary>
+    private readonly ExitCloseGuard _exitGuard = new();
 
     /// <summary>
     /// Called whenever the window is about to close — whether via Files → Exit or the title-bar X.
-    /// Cancels the first close event to run async shutdown (save to D, release lock), then
-    /// re-triggers Close() once that work is done.
+    /// The first request cancels the close, hides the secondary windows, covers the window with the loading
+    /// curtain and runs the async shutdown (save to D, release lock); the teardown then calls Close() again, which
+    /// falls through. A further request while the teardown runs is ignored (it used to end the process mid-save);
+    /// only after <see cref="ExitCloseGuard.Backstop"/> is one let through. The decisions live in
+    /// <see cref="ExitCloseGuard"/>; this method only does the window work.
     /// </summary>
     /// <param name="e">Closing event args; set <c>e.Cancel = true</c> to defer the close.</param>
     protected override async void OnClosing(WindowClosingEventArgs e)
     {
         base.OnClosing(e);
 
-        if (_shuttingDown) return; // Second pass — let it close.
-
-        // A restore is saving the user's changes and replacing the database right now. Closing the window
-        // mid-way would race the restore with the exit save and teardown, so refuse; the restore closes the
-        // window itself when it is finished (or the user can close it once it has reported a failure).
-        if (Lifecycle.IsRestoreInProgress)
+        // The refusals apply only to a NEW close request. Once the exit has begun the guard decides, so the
+        // teardown's own final Close() (and a backstop close) is never refused by them.
+        if (_exitGuard.State == ExitCloseState.Open)
         {
-            e.Cancel = true;
-            App.Logger.LogInfo("MainWindow: close request ignored — a restore from backup is in progress.");
-            return;
+            // A restore is saving the user's changes and replacing the database right now. Closing the window
+            // mid-way would race the restore with the exit save and teardown, so refuse; the restore closes the
+            // window itself when it is finished (or the user can close it once it has reported a failure).
+            if (Lifecycle.IsRestoreInProgress)
+            {
+                e.Cancel = true;
+                App.Logger.LogInfo("MainWindow: close request ignored — a restore from backup is in progress.");
+                return;
+            }
+
+            // Same rule while the user's choice from the save-conflict banner is ending the session: the changes
+            // are being saved elsewhere or discarded, and a close now would race that teardown.
+            if (Lifecycle.IsSaveConflictResolutionInProgress)
+            {
+                e.Cancel = true;
+                App.Logger.LogInfo("MainWindow: close request ignored — a save-conflict resolution is in progress.");
+                return;
+            }
         }
 
-        // Same rule while the user's choice from the save-conflict banner is ending the session: the changes
-        // are being saved elsewhere or discarded, and a close now would race that teardown.
-        if (Lifecycle.IsSaveConflictResolutionInProgress)
+        switch (_exitGuard.OnCloseRequested())
         {
-            e.Cancel = true;
-            App.Logger.LogInfo("MainWindow: close request ignored — a save-conflict resolution is in progress.");
-            return;
+            case ExitCloseDecision.LetClose:
+                // The teardown's own Close(), or the backstop. Nothing to cancel: the window closes now.
+                if (_exitGuard.BackstopFired)
+                    App.Logger.LogInfo("MainWindow: the exit backstop let a close request through while saving and closing was still in progress; the changes stay kept for the next open.");
+                return;
+
+            case ExitCloseDecision.Ignore:
+                e.Cancel = true;
+                App.Logger.LogInfo("MainWindow: close request ignored — saving and closing is in progress.");
+                return;
         }
 
-        e.Cancel = true; // Defer: run async save first.
-        _shuttingDown = true;
+        // StartTeardown: the first request. Defer the close, take every window out of the user's hands, then run
+        // the teardown (the exit save, the release, closing the secondary windows, disposing).
+        e.Cancel = true;
+        try
+        {
+            HideSecondaryWindows();
+            CoverWindowForClose();
+        }
+        catch (Exception ex)
+        {
+            // Never let a window-side failure stop the save: the teardown below must run and end in Close().
+            App.Logger.LogError(ex, "MainWindow: could not hide the secondary windows or cover the window for the exit; continuing");
+        }
 
-        await Lifecycle.TeardownForCloseAsync();
+        var failure = await _exitGuard.RunTeardownAsync(Lifecycle.TeardownForCloseAsync);
+        if (failure is not null)
+            App.Logger.LogError(failure, "MainWindow: the exit teardown threw; closing the window anyway");
 
-        Close(); // Re-trigger OnClosing; _shuttingDown is now true so it falls through.
-    }   
-    
+        // The teardown always ends in Close(), even when it threw, so the window is never left open, covered and
+        // ignoring its X. The one exception: the backstop already let a close through, so the window has closed.
+        if (!_exitGuard.BackstopFired)
+            Close(); // Re-trigger OnClosing; the guard is now ReadyToClose, so it falls through.
+    }
+
     protected override async void OnOpened(EventArgs e)
     {
         base.OnOpened(e);
@@ -704,14 +753,22 @@ public partial class MainWindow : Window, ILifecyclePrompts, ISessionHost
         _curtainSafetyTimer.Start();
     }
 
+    /// <summary>The curtain's default status line, shown on every path except the window close (launch, database switch, no database).</summary>
+    private const string CurtainLoadingText = "Loading...";
+
     /// <summary>
     /// Makes the loading curtain fully opaque, visible and hit-testable, so it covers (and blocks input
-    /// to) everything beneath it. Does not touch the lift state — see <see cref="ArmCurtainLift"/> (which
-    /// arms a lift afterwards) and <see cref="CoverWindowForNoDatabase"/> (which disarms every lift).
+    /// to) everything beneath it, and sets its status line. Does not touch the lift state — see
+    /// <see cref="ArmCurtainLift"/> (which arms a lift afterwards), <see cref="CoverWindowForNoDatabase"/> and
+    /// <see cref="CoverWindowForClose"/> (which disarm every lift).
     /// </summary>
-    private void ShowCurtain()
+    /// <param name="statusText">The status line under the app name; <see cref="CurtainLoadingText"/> unless the window is closing. Always set, so a path that follows the close text shows "Loading..." again.</param>
+    private void ShowCurtain(string statusText = CurtainLoadingText)
     {
         if (LoadingCurtain is null) return;
+
+        if (CurtainStatusText is not null)
+            CurtainStatusText.Text = statusText;
 
         LoadingCurtain.IsVisible = true;
         LoadingCurtain.IsHitTestVisible = true;
@@ -719,20 +776,13 @@ public partial class MainWindow : Window, ILifecyclePrompts, ISessionHost
     }
 
     /// <summary>
-    /// Covers the window for the "no database open" state that follows a failed database switch (spec
-    /// item 4d), so nothing bound to the database that was just closed can be seen or clicked: clears
-    /// the stale <see cref="Window.DataContext"/> and raises the loading curtain — the same cover the
-    /// window wears at launch.
-    ///
-    /// <para>The curtain's pending lift is DISARMED (the grid's size-changed handler and the safety timer are
-    /// removed and <c>_curtainLifted</c> is set, which turns <see cref="LiftCurtainAsync"/> into a no-op), so
-    /// a late signal from the database that was just closed cannot uncover the window. The next successful
-    /// open re-arms everything through <see cref="ArmCurtainLift"/>. Idempotent.</para>
+    /// Disarms the curtain's pending lift: removes the grid's size-changed handler and the safety timer and sets
+    /// <c>_curtainLifted</c>, which turns <see cref="LiftCurtainAsync"/> into a no-op, so a late signal can
+    /// never uncover a window that is meant to stay covered. The next successful open re-arms everything through
+    /// <see cref="ArmCurtainLift"/>. Idempotent.
     /// </summary>
-    private void CoverWindowForNoDatabase()
+    private void DisarmCurtainLift()
     {
-        DataContext = null;
-
         _curtainSafetyTimer?.Stop();
         _curtainSafetyTimer = null;
 
@@ -742,7 +792,66 @@ public partial class MainWindow : Window, ILifecyclePrompts, ISessionHost
         _curtainGridHandler = null;
 
         _curtainLifted = true;
+    }
+
+    /// <summary>
+    /// Covers the window for the "no database open" state that follows a failed database switch (spec
+    /// item 4d), so nothing bound to the database that was just closed can be seen or clicked: clears
+    /// the stale <see cref="Window.DataContext"/> and raises the loading curtain — the same cover the
+    /// window wears at launch.
+    ///
+    /// <para>The curtain's pending lift is DISARMED (<see cref="DisarmCurtainLift"/>), so a late signal from the
+    /// database that was just closed cannot uncover the window. Idempotent.</para>
+    /// </summary>
+    private void CoverWindowForNoDatabase()
+    {
+        DataContext = null;
+        DisarmCurtainLift();
         ShowCurtain();
+    }
+
+    /// <summary>
+    /// Covers the window for the exit sequence (spec item 15): raises the loading curtain showing "Saving and
+    /// closing…" when the session is in write mode (<c>CheckoutMode.WriteAccess</c>) or "Closing…" otherwise, with
+    /// its lift disarmed so nothing can uncover it, and takes the main view out of the keyboard's reach (focus
+    /// moved onto the curtain, view disabled), because the curtain stops only the pointer. Unlike
+    /// <see cref="CoverWindowForNoDatabase"/> it does NOT clear <see cref="Window.DataContext"/>: the teardown
+    /// may still need the view models. The window is closed at the end of the exit sequence, so none of this is undone.
+    /// </summary>
+    private void CoverWindowForClose()
+    {
+        DisarmCurtainLift();
+        ShowCurtain(ExitCloseGuard.StatusText(App.Checkout.Mode == CheckoutMode.WriteAccess));
+
+        // Move keyboard focus onto the curtain (it is not a text input), so keystrokes cannot reach an editor
+        // that was focused underneath it, then disable the whole view.
+        if (LoadingCurtain is not null)
+        {
+            LoadingCurtain.Focusable = true;
+            LoadingCurtain.Focus();
+        }
+        if (MainViewControl is not null)
+            MainViewControl.IsEnabled = false;
+    }
+
+    /// <summary>
+    /// Hides every secondary window at once — the three detachable-panel windows and the floating workflow
+    /// sticky notes — so nothing can be edited in them while the exit save runs (an edit applied after the save's
+    /// snapshot would be written late and deleted with the working copy). Hide, not Close, per the Avalonia 12
+    /// dispose lessons: <see cref="CloseSecondaryWindows"/> still closes them later in the teardown, exactly as
+    /// before. Reattach is suppressed here too, because these windows will never rejoin a window that is closing.
+    /// Called when the exit sequence starts.
+    /// </summary>
+    private void HideSecondaryWindows()
+    {
+        foreach (var w in new[] { _sectionViewWindow, _workloadWindow, _scheduleGridWindow })
+        {
+            if (w is null) continue;
+            w.SuppressReattach = true;
+            w.Hide();
+        }
+
+        Views.Management.WorkflowsView.HideAllNotes();
     }
 
     /// <summary>

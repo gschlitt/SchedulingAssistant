@@ -39,7 +39,8 @@
 						   FontWeight="ExtraLight"
 						   Foreground="White"
 						   Text="TermPoint" />
-				<TextBlock HorizontalAlignment="Center"
+				<TextBlock x:Name="CurtainStatusText"
+						   HorizontalAlignment="Center"
 						   FontSize="{StaticResource FontSizeLarge}"
 						   Foreground="#99FFFFFF"
 						   Text="Loading..." />
