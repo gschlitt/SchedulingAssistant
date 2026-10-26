@@ -476,10 +476,26 @@ public sealed class CheckoutService : IDisposable
     /// manual save).</para>
     /// <para>A <see cref="SaveOutcome.SourceModified"/> refusal does NOT raise this event: it raises
     /// <see cref="SaveConflictDetected"/> instead, which the main window shows as its own persistent banner.</para>
+    /// <para><b>The outage notice</b> (spec item 28, finding F15): every "the database location isn't responding"
+    /// failure, from a save of any kind or from the heartbeat's lock check, raises this event with the one text
+    /// <see cref="SavePrompt.OutageNotice"/> and <c>autoDismiss: false</c>, so it stays up until the location responds
+    /// again. The window clears it on <see cref="SaveCompleted"/> (a save worked) or on
+    /// <see cref="LocationReachableAgain"/> (the heartbeat reached the lock file again); both clear only that notice
+    /// (<see cref="SavePrompt.IsOutageNotice"/>), never another banner.</para>
     /// Autosave stops after <see cref="SaveOutcome.LockLost"/> or <see cref="SaveOutcome.SourceModified"/>; it
     /// continues on <see cref="SaveOutcome.CopyError"/> (transient — worth retrying).
     /// </summary>
     public event Action<string, bool>? SaveFailed;
+
+    /// <summary>
+    /// Raised on the UI thread when the heartbeat's lock check reads the lock file again and finds it is still this
+    /// session's (<c>LockVerificationResult.Ours</c>): the database location responds. The window uses it to clear the
+    /// outage notice (<see cref="SavePrompt.IsOutageNotice"/>) that an earlier failed check or save raised, and only
+    /// that notice. Raised on EVERY such check, not just the first after an outage, so handlers must be idempotent
+    /// (clearing an outage notice that is not on screen does nothing). Carries no data and changes no state in this
+    /// class: it only reports a fact the heartbeat already found.
+    /// </summary>
+    public event Action? LocationReachableAgain;
 
     /// <summary>
     /// Raised on the UI thread when a save is refused with <see cref="SaveOutcome.SourceModified"/> (the shared
@@ -1405,7 +1421,9 @@ public sealed class CheckoutService : IDisposable
     /// When true, the save was triggered by the autosave timer rather than the user.
     /// Transient failures (<see cref="SaveOutcome.CopyError"/>) then raise
     /// <see cref="SaveFailed"/> with an auto-dismissing, "will retry automatically"
-    /// message, because the next autosave cycle will retry on its own.
+    /// message, because the next autosave cycle will retry on its own. The exception is "the
+    /// database location isn't responding": that failure always raises the one sticky outage notice
+    /// (<see cref="SavePrompt.OutageNotice"/>), whoever started the save.
     /// </param>
     /// <returns>
     /// A <see cref="SaveOutcome"/> describing the result. <b>This method does not throw</b> (spec item 4,
@@ -1475,11 +1493,32 @@ public sealed class CheckoutService : IDisposable
     /// automatically."; manual: "Try saving again in a moment."). The banner is marked auto-dismissing
     /// for an autosave (the next autosave cycle retries on its own) and stays until the next
     /// successful save for a manual one.
+    ///
+    /// <para>Not used for "the database location isn't responding": that failure has one notice of its own
+    /// (<see cref="RaiseLocationUnreachable"/>) that never auto-dismisses.</para>
     /// </summary>
     /// <param name="message">A transient <see cref="SavePrompt"/> text (one that ends "Your changes are kept.").</param>
     /// <param name="isAutoSave">Whether the originating save was an autosave.</param>
     private void RaiseTransientSaveError(string message, bool isAutoSave)
         => RaiseSaveError(SavePrompt.ForTransientFailure(message, isAutoSave), isAutoSave);
+
+    /// <summary>
+    /// Raises the ONE notice for "the database location isn't responding" (spec item 28, finding F15) through
+    /// <see cref="SaveFailed"/>, for a save of any kind (autosave, manual, the exit save) that timed out and for the
+    /// heartbeat's lock check. The text is <see cref="SavePrompt.OutageNotice"/>: with unsaved changes it says they are
+    /// kept and how they get saved (autosave retries; otherwise press Save), and with none it says so. The banner is
+    /// ALWAYS sticky (<c>autoDismiss: false</c>), even for an autosave: it stays up until the location responds again
+    /// (a save works, or the heartbeat reaches the lock file: <see cref="LocationReachableAgain"/>).
+    ///
+    /// <para>Only chooses the text and stickiness of a banner; it reads two facts and changes no state, so it cannot
+    /// affect any save, lock or recovery decision. "Unsaved changes" is <see cref="HasDirtyMarker"/>, the signal the
+    /// shutdown paths use; "autosave is on" is <see cref="IsAutoSaveRunning"/>, which in the app always equals the
+    /// <c>AppSettings.AutoSaveEnabled</c> switch (the window starts and stops the timer with it) and, unlike the
+    /// static setting, is a fact of this service, so "TermPoint will try again automatically" is true exactly when
+    /// the timer runs.</para>
+    /// </summary>
+    private void RaiseLocationUnreachable()
+        => RaiseSaveError(SavePrompt.OutageNotice(HasDirtyMarker, IsAutoSaveRunning), autoDismiss: false);
 
     /// <summary>
     /// The one place that dispatches <see cref="SaveFailed"/> for a failed save: raises it on the UI thread
@@ -1742,7 +1781,7 @@ public sealed class CheckoutService : IDisposable
                 {
                     _logger.LogInfo("CheckoutService: snapshot → D.tmp copy stalled — network unreachable");
                     await NetworkFileOps.DeleteAsync(tmpPath);
-                    RaiseTransientSaveError(SavePrompt.UnreachableMessage, isAutoSave);
+                    RaiseLocationUnreachable();
                     return SaveOutcome.CopyError;
                 }
             }
@@ -1796,7 +1835,7 @@ public sealed class CheckoutService : IDisposable
         {
             _logger.LogInfo("CheckoutService: D.tmp verification hash stalled — network unreachable");
             await NetworkFileOps.DeleteAsync(tmpPath);
-            RaiseTransientSaveError(SavePrompt.UnreachableMessage, isAutoSave);
+            RaiseLocationUnreachable();
             return SaveOutcome.CopyError;
         }
 
@@ -1878,7 +1917,7 @@ public sealed class CheckoutService : IDisposable
                     // restart — is recognized as ours instead of as a foreign write.
                     RecordPendingSaveHash(newSourceHash);
                     _logger.LogInfo("CheckoutService: D.tmp rename timed out — network unreachable");
-                    RaiseTransientSaveError(SavePrompt.UnreachableMessage, isAutoSave);
+                    RaiseLocationUnreachable();
                     return SaveOutcome.CopyError;
                 }
             }
@@ -2020,7 +2059,7 @@ public sealed class CheckoutService : IDisposable
         if (lockResult == LockVerificationResult.Unreachable)
         {
             _logger.LogInfo("CheckoutService: lock verification timed out — network unreachable");
-            RaiseTransientSaveError(SavePrompt.UnreachableMessage, isAutoSave);
+            RaiseLocationUnreachable();
             return (SaveOutcome.CopyError, null);
         }
 
@@ -2064,7 +2103,7 @@ public sealed class CheckoutService : IDisposable
         if (!statCompleted)
         {
             _logger.LogInfo("CheckoutService: source stat timed out — network unreachable");
-            RaiseTransientSaveError(SavePrompt.UnreachableMessage, isAutoSave);
+            RaiseLocationUnreachable();
             return (SaveOutcome.CopyError, null);
         }
 
@@ -2088,7 +2127,7 @@ public sealed class CheckoutService : IDisposable
         if (!hashCompleted)
         {
             _logger.LogInfo("CheckoutService: source hash timed out — network unreachable");
-            RaiseTransientSaveError(SavePrompt.UnreachableMessage, isAutoSave);
+            RaiseLocationUnreachable();
             return (SaveOutcome.CopyError, null);
         }
 
@@ -2499,7 +2538,13 @@ public sealed class CheckoutService : IDisposable
     /// Optional async callback invoked after D'' has been atomically overwritten with the fresh copy.
     /// Use this to reopen the <c>DatabaseContext</c> connection
     /// (e.g. call <c>DatabaseContext.ReinitializeConnection(WorkingPath)</c>).
-    /// Only called on success; never called when <see cref="RefreshOutcome.SourceUnavailable"/> is returned.
+    /// Called only when the overwrite worked; <b>not</b> called when the overwrite failed after
+    /// <paramref name="beforeOverwrite"/> had closed the connection, and a call that throws still returns
+    /// <see cref="RefreshOutcome.SourceUnavailable"/>. In 1.2.3 nothing here reopens the connection in those two
+    /// cases: a caller that supplied both callbacks can tell that the connection was lost by seeing that
+    /// <paramref name="beforeOverwrite"/> ran and <paramref name="afterOverwrite"/> did not complete
+    /// (<c>MainWindowViewModel.RefreshData</c> does, and says so: <see cref="RefreshPrompt.ConnectionLost"/>).
+    /// Every failure is logged with <c>LogInfo</c>, never <c>LogError</c>, so none puts a log-text banner on screen.
     /// </param>
     /// <exception cref="InvalidOperationException">Thrown when not in read-only mode or <see cref="ReadOnlyWorkingPath"/> is null.</exception>
     public async Task<RefreshOutcome> RefreshReadOnlySnapshotAsync(
@@ -2550,7 +2595,10 @@ public sealed class CheckoutService : IDisposable
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "CheckoutService: failed to copy D to D''.tmp during refresh");
+                // LogInfo, not LogError: LogError would also put a red log-text banner on screen (spec item 28); the
+                // view model shows one plain line instead. The exception's type and message stay in the log line.
+                _logger.LogInfo(
+                    $"CheckoutService: failed to copy D to D''.tmp during refresh ({ex.GetType().Name}: {ex.Message})");
                 TryDelete(tmpPath);
                 return RefreshOutcome.SourceUnavailable;
             }
@@ -2564,7 +2612,8 @@ public sealed class CheckoutService : IDisposable
                     try { await beforeOverwrite(); }
                     catch (Exception ex)
                     {
-                        _logger.LogError(ex, "CheckoutService: beforeOverwrite callback threw during refresh");
+                        _logger.LogInfo(
+                            $"CheckoutService: beforeOverwrite callback threw during refresh ({ex.GetType().Name}: {ex.Message})");
                         TryDelete(tmpPath);
                         return RefreshOutcome.SourceUnavailable;
                     }
@@ -2580,7 +2629,8 @@ public sealed class CheckoutService : IDisposable
                 }
                 catch (Exception ex)
                 {
-                    _logger.LogError(ex, "CheckoutService: failed to rename D''.tmp during refresh");
+                    _logger.LogInfo(
+                        $"CheckoutService: failed to rename D''.tmp during refresh ({ex.GetType().Name}: {ex.Message})");
                     TryDelete(tmpPath);
                     return RefreshOutcome.SourceUnavailable;
                 }
@@ -2595,7 +2645,8 @@ public sealed class CheckoutService : IDisposable
                     try { await afterOverwrite(); }
                     catch (Exception ex)
                     {
-                        _logger.LogError(ex, "CheckoutService: afterOverwrite callback threw during refresh");
+                        _logger.LogInfo(
+                            $"CheckoutService: afterOverwrite callback threw during refresh ({ex.GetType().Name}: {ex.Message})");
                         return RefreshOutcome.SourceUnavailable;
                     }
                 }
@@ -3504,9 +3555,7 @@ public sealed class CheckoutService : IDisposable
         _logger.LogInfo("CheckoutService: lock file was removed externally; re-acquired atomically — session continues.");
         _logger.LogBreadcrumb("Lock re-acquired after external removal");
         _dispatch(() => SaveFailed?.Invoke(
-            "The database lock file was removed by another program (possibly antivirus " +
-            "or cloud-sync software). TermPoint has restored it and your session " +
-            "continues normally.",
+            LockLossPrompt.LockFilePutBack,
             true)); // auto-dismiss — informational, nothing is wrong anymore
         return true;
     }
@@ -3566,12 +3615,15 @@ public sealed class CheckoutService : IDisposable
     ///   <item><see cref="LockVerificationResult.NotOurs"/> — genuine loss. Route through
     ///         <see cref="HandleLockLossAsync"/> (same as before W1).</item>
     ///   <item><see cref="LockVerificationResult.Unreachable"/> — transient network issue.
-    ///         Keep writer state; surface a transient, auto-dismissing warning via
-    ///         <see cref="SaveFailed"/> so the user knows saves are paused. The heartbeat
-    ///         timer continues; a successful renewal clears the warning naturally (the next
-    ///         autosave cycle succeeds and raises <see cref="SaveCompleted"/>).</item>
+    ///         Keep writer state; surface the one sticky outage notice
+    ///         (<see cref="RaiseLocationUnreachable"/>, the same notice a save that cannot reach
+    ///         the location raises) via <see cref="SaveFailed"/> so the user knows saves are
+    ///         paused. The heartbeat timer continues; the notice clears when the location
+    ///         responds again: a later save succeeds (<see cref="SaveCompleted"/>) or a later
+    ///         verification finds the lock file again (<see cref="LocationReachableAgain"/>).</item>
     ///   <item><see cref="LockVerificationResult.Ours"/> — false alarm (heartbeat write
-    ///         failed for a reason other than ownership loss). Force-renew immediately.</item>
+    ///         failed for a reason other than ownership loss). Raise
+    ///         <see cref="LocationReachableAgain"/>, then force-renew immediately.</item>
     /// </list></para>
     ///
     /// <para>A re-entrancy guard (<see cref="_heartbeatVerifyInFlight"/>) prevents stacking
@@ -3616,14 +3668,16 @@ public sealed class CheckoutService : IDisposable
 
                     case LockVerificationResult.Unreachable:
                         _logger.LogInfo("CheckoutService: heartbeat verify — share unreachable; keeping writer state.");
-                        _dispatch(() => SaveFailed?.Invoke(
-                            "Network connection interrupted — your changes are safe locally " +
-                            "but cannot be saved until the connection is restored.",
-                            true));
+                        // The same sticky notice a save that cannot reach the location raises (spec item 28, F15).
+                        RaiseLocationUnreachable();
                         break;
 
                     case LockVerificationResult.Ours:
                         _logger.LogInfo("CheckoutService: heartbeat verify — lock still ours; renewing.");
+                        // The lock file was just read: the location responds. Tell the window so it can clear the
+                        // outage notice (and only that notice). A report of a fact already found; the renewal below
+                        // is exactly as before.
+                        _dispatch(() => LocationReachableAgain?.Invoke());
                         await _lockService.ForceRenewHeartbeat();
                         break;
                 }
@@ -4669,15 +4723,6 @@ public enum SaveOutcome
     CopyError,
     /// <summary>Save was called while not in write mode.</summary>
     NotInWriteMode
-}
-
-/// <summary>Result of a <see cref="CheckoutService.RefreshReadOnlySnapshotAsync"/> call.</summary>
-public enum RefreshOutcome
-{
-    /// <summary>D'' was successfully re-copied from D.</summary>
-    Updated,
-    /// <summary>D could not be reached or the copy hash never matched; D'' is unchanged.</summary>
-    SourceUnavailable,
 }
 
 /// <summary>

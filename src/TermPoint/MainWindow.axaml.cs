@@ -568,6 +568,7 @@ public partial class MainWindow : Window, ILifecyclePrompts, ISessionHost
         // to avoid accumulation across database switches.
         App.Checkout.SaveCompleted   -= OnCheckoutSaveCompleted;
         App.Checkout.SaveFailed      -= OnCheckoutSaveFailed;
+        App.Checkout.LocationReachableAgain -= OnCheckoutLocationReachableAgain;
         App.Checkout.SaveConflictDetected -= OnCheckoutSaveConflictDetected;
         App.Checkout.WriteLockLost -= OnWriteLockLost;
         App.Checkout.BecameDirty     -= OnCheckoutBecameDirty;
@@ -576,6 +577,7 @@ public partial class MainWindow : Window, ILifecyclePrompts, ISessionHost
         App.Checkout.SaveAlreadyInProgress -= OnCheckoutSaveAlreadyInProgress;
         App.Checkout.SaveCompleted   += OnCheckoutSaveCompleted;
         App.Checkout.SaveFailed      += OnCheckoutSaveFailed;
+        App.Checkout.LocationReachableAgain += OnCheckoutLocationReachableAgain;
         App.Checkout.SaveConflictDetected += OnCheckoutSaveConflictDetected;
         App.Checkout.WriteLockLost += OnWriteLockLost;
         App.Checkout.BecameDirty     += OnCheckoutBecameDirty;
@@ -1134,6 +1136,17 @@ public partial class MainWindow : Window, ILifecyclePrompts, ISessionHost
     {
         if (DataContext is MainWindowViewModel vm)
             vm.SetSaveError(message, autoDismiss);
+    }
+
+    /// <summary>
+    /// Handles <see cref="CheckoutService.LocationReachableAgain"/>: the heartbeat's lock check reached the lock file
+    /// again. Clears the sticky "can't reach the database location" notice if (and only if) that is what the banner
+    /// shows; any other banner is left alone (<see cref="MainWindowViewModel.ClearOutageNotice"/>).
+    /// </summary>
+    private void OnCheckoutLocationReachableAgain()
+    {
+        if (DataContext is MainWindowViewModel vm)
+            vm.ClearOutageNotice();
     }
 
     /// <summary>

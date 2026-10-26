@@ -40,7 +40,7 @@ will be verified.
 | 25 | Let the user switch off room-conflict and instructor-conflict detection | UX / settings | Added 2026-10-26 (Greg). **1.2.3** (decided 2026-10-26): two per-user switches in Preferences, with a note on screen when a check is off. Not started |
 | 26 | "Experimenting" isn't possible: TermPoint always saves on exit | Persistence / UX | Added 2026-10-26 (Greg). **Feature moved to 1.2.4** (needs Recovered Versions and item 14's close question); **1.2.3 adds a Help note** on trying changes safely on a copy of the database |
 | 27 | With section-list virtualization on, adding a meeting can push the open editor out of view | Bug (user-reported) | Added 2026-10-26 (Greg). Same family as the drift item 23's anchoring fixed for opening a section. **Done 2026-10-26:** probes found the cause (the pinned card is virtualized away in the growth pass); fixed in `ListScrollAnchorBehavior` (the card is rebuilt and re-pinned), proven by `ScrollAnchorProbe` E9 (fails before, passes after) and Greg's hand test |
-| 28 | Message pass: say truthfully what happens (rule 4) | UX / data integrity | **1.2.3** (decided 2026-10-26): F6's four restore promises, item 11's refresh messages, item 13's cloud-folder warning, F13, F15. Wording and notice behaviour only |
+| 28 | Message pass: say truthfully what happens (rule 4) | UX / data integrity | **1.2.3** (decided 2026-10-26): F6's four restore promises, item 11's refresh messages, item 13's cloud-folder warning, F13, F15. Wording and notice behaviour only. **Done 2026-10-26** (see section 28; hand-checked: cloud-folder warning, Refresh tooltip; the outage and lock messages get checked in the field tests) |
 | 29 | F5: skip a save when nothing changed | Data integrity | **1.2.3** (decided 2026-10-26). Small to medium; in the save code |
 | 30 | Backup cleanup on a dead share: give the partial-backup delete a deadline | Responsiveness | **1.2.3** (decided 2026-10-26). Small (`BackupService.cs:286`) |
 
@@ -54,7 +54,7 @@ Everything not yet done for 1.2.3, in one place. Field-test scenario codes (M, S
 (`spec_version_1.2.4.md`). Items 25, 27, 6 and 7 were decided the same day; all are in the list below.
 
 **Still to build for 1.2.3 (decided 2026-10-26)**
-- **Item 28, message pass** (rule 4; wording and notice behaviour only, no save code):
+- ~~**Item 28, message pass**~~ **done 2026-10-26** (rule 4; wording and notice behaviour only, no save code):
   - F6: the four messages that promise a restore that may not happen (the lock-lost banner, "Unsaved Changes Kept",
     both "Changes Not Saved") say truthfully what 1.2.3 does;
   - item 11's refresh messages: the tooltip shows the last refresh that worked, a failure is one plain line in the
@@ -147,19 +147,20 @@ First look (2026-10-09):
 | 19                                                                          | 7: Handled-failure BugSnag events                                                      | Last of the reliability items, so it reports from the finished code of items 4, 9 and 15.                                                                                                                                                      |
 | **Phase 8**                                                                 |                                                                                        |                                                                                                                                                                                                                                                |
 | 20                                                                          | 20: Load by subject                                                                    | Design approved 2026-10-20. Last: touches many views, none of the persistence code.                                                                                                                                                            |
-| **Phase 9**                                                                 |                                                                                        |                                                                                            |
-| 21                                                                          | 24: Section Import by User                                                             | Design complete 2026-10-24. After item 20 (uses its focus); no persistence code.           |
-| **Phase 10: the rest of 1.2.3** (scope decided 2026-10-26)                  |                                                                                        |                                                                                            |
-| 22                                                                          | 27: Virtualization drift — **done 2026-10-26**                                                | Fixed (anchor restore), E9 added to the probe tool.                                 |
-| 23                                                                          | 28: Message pass (F6, item 11's messages, item 13's warning, F13, F15)                 | Wording and notice behaviour only; no save code.                                           |
-| 24                                                                          | 15: Exit guard (repeated X ignored, "Saving and closing…")                             | In the window, not the save code. F2's counter moved to 1.2.4.                             |
-| 25                                                                          | 29: F5, skip a save when nothing changed                                               | The only 1.2.3 change inside the save code: check first what relies on the first save.     |
-| 26                                                                          | 30: Backup cleanup deadline                                                            | One unguarded delete; small.                                                               |
-| 27                                                                          | 13: SharePoint/Teams detection (Windows, warn only)                                    | Detection only; the warning's wording is in item 28.                                       |
-| 28                                                                          | 25: Conflict-check switches                                                            | Settings and two views; per user, so no persistence question.                              |
-| 29                                                                          | 26: Help note on trying changes on a copy                                              | Documentation only.                                                                        |
-| 30                                                                          | 6: BugSnag scrubber (6a–6c)                                                            | Before item 7.                                                                             |
-| 31                                                                          | 7: Handled-failure and unclean-exit reports                                            | Last, so it reports from the finished code.                                                |
+| **Phase 9**                                                                 |                                                                                        |                                                                                                                                                                                                                                                |
+| 21                                                                          | 24: Section Import by User                                                             | Design complete 2026-10-24. After item 20 (uses its focus); no persistence code.                                                                                                                                                               |
+| **Phase 10: the rest of 1.2.3** (scope decided 2026-10-26)                  |                                                                                        |                                                                                                                                                                                                                                                |
+| 22                                                                          | 27: Virtualization drift — **done 2026-10-26**                                         | Fixed (anchor restore), E9 added to the probe tool.                                                                                                                                                                                            |
+| 23                                                                          | 28: Message pass — **done 2026-10-26** (F6, item 11's messages, item 13's warning, F13, F15)                 | Wording and notice behaviour only; no save code.                                                                                                                                                                                               |
+| 24                                                                          | 15: Exit guard (repeated X ignored, "Saving and closing…")                             | In the window, not the save code. F2's counter moved to 1.2.4.                                                                                                                                                                                 |
+| 25                                                                          | 29: F5, skip a save when nothing changed                                               | The only 1.2.3 change inside the save code: check first what relies on the first save.                                                                                                                                                         |
+| 26                                                                          | 30: Backup cleanup deadline                                                            | One unguarded delete; small.                                                                                                                                                                                                                   |
+| 27                                                                          | 13: SharePoint/Teams detection (Windows, warn only)                                    | Detection only; the warning's wording is in item 28.                                                                                                                                                                                           |
+| 28                                                                          | 25: Conflict-check switches                                                            | Settings and two views; per user, so no persistence question.                                                                                                                                                                                  |
+| 29                                                                          | 26: Help note on trying changes on a copy                                              | Documentation only.                                                                                                                                                                                                                            |
+| 30                                                                          | 6: BugSnag scrubber (6a–6c)                                                            | Before item 7.                                                                                                                                                                                                                                 |
+| 31                                                                          | 7: Handled-failure and unclean-exit reports                                            | Last, so it reports from the finished code.                                                                                                                                                                                                    |
+|                                                                             |                                                                                        |                                                                                                                                                                                                                                                |
 
 **Workflow.** Opus orchestrates and Sonnet writes the code, one step at a time. For each step:
 1. Opus writes a self-contained brief.
@@ -3140,6 +3141,80 @@ otherwise hide the virtualization switch in 1.2.3 and fix the drift in 1.2.4.
 call `ListScrollAnchorBehavior.ScrollItemIntoView`. After any fix, re-run `dotnet run --project tools/ScrollAnchorProbe`.
 
 **Outcome (2026-10-26).** Fixed in `ListScrollAnchorBehavior` (`TryRestoreVirtualizedAnchor`, probe lines removed); new probe scenario E9 (24 trials: card near the viewport bottom, focus on a button inside it, grown +1500 / +4000 / +500 then +900, pressed or selected): before the fix the card was virtualized away in 24 of 24 and never came back (final top n/a after 81 passes, the app's symptom), after it the card's top is back at its pinned position (difference 0.0 px) in 24 of 24; the whole probe passes (39 checks) with E1-E8 and SWEEP unchanged.
+
+---
+
+## 28 — Message pass (decided 2026-10-26)
+
+**Problem.** Several messages promised something 1.2.3 does not always do (rule 4, "never confuse the user"). Kept changes
+(left by a failed save, a lost lock, a failed exit save, a crash) are offered back at the next open for editing by "Restore
+Unsaved Changes?"; if the database changed meanwhile the user gets "Can't Restore Unsaved Changes" with **Save a Copy…** /
+Discard. The old texts said "TermPoint will offer to restore them" as if that always works (F6). Wording and notice
+behaviour only: no save, lock, release, demotion or recovery logic changes, and the restore flow and its prompts stay (they
+are replaced in 1.2.4). Findings F6, F13 and F15 of `designs/data-persistence-review-2026-10.md`; item 11's honest refresh
+messages; item 13's cloud-folder warning.
+
+**Where the texts live** (pure text, pinned verbatim by tests, no path / raw exception / "working copy" / "local copy" /
+"safe" / "D'" / "lock file" / "write access"):
+`KeptChangesPrompt` (the four kept-changes messages), `LockLossPrompt` (the lock-lost banner and the lock-put-back notice),
+`SavePrompt` (the outage notice), `RefreshPrompt` (the Refresh tooltip, the failure lines and the pure picker),
+`FolderAssessor.CloudSynced`. `RefreshOutcome` moved to its own file so `RefreshPrompt` compiles on both targets.
+
+**Approved texts (Greg, 2026-10-26).**
+
+- `KeptChangesPrompt.KeptSentence`: `They're kept on this computer.`
+- `KeptChangesPrompt.OfferToAdd`: `TermPoint will offer to add them to the database the next time you open it for editing. If someone else changes the database first, they can't be added, but you'll be able to save them as a separate copy.`
+- `KeptChangesPrompt.OfferToAddTo("name")`: `TermPoint will offer to add them to "name" the next time you open it for editing. If someone else changes it first, they can't be added, but you'll be able to save them as a separate copy.` (a C# class cannot hold a constant and a method of the same name, so the named form is `OfferToAddTo`.)
+- Lock lost (`LockLossPrompt.Banner`), first sentence: taken over, holder known: `{Username} on {Machine} has taken over editing this database, so it's read-only for you now.`; holder unknown: `Someone else has taken over editing this database, so it's read-only for you now.`; any other reason (the lock file was deleted **or is unreadable**, F13): `Another program removed or changed the file TermPoint uses to mark this database as in use (antivirus or cloud-sync software can do this), so it's read-only for you now.`
+  Then, with unsaved changes: ` Your changes since your last save are kept on this computer. ` + `OfferToAdd`; without: ` There were no unsaved changes at the time.`
+  Then, for a takeover: ` To edit again once they've finished, close TermPoint and open it again.`; otherwise: ` To edit again, close TermPoint and open it again.`
+- "Unsaved Changes Kept": `Someone else is editing this database right now, so your unsaved changes from last time can't be added yet. They're kept on this computer. ` + `OfferToAdd`
+- "Changes Not Saved", switching database: `Your latest changes to "{oldDbName}" couldn't be saved. They're kept on this computer. ` + `OfferToAddTo(oldDbName)`
+- "Changes Not Saved", closing: `Your latest changes couldn't be saved to the database. They're kept on this computer. ` + `OfferToAdd`
+- Lock file put back (F13; informational, auto-dismissing): `Another program removed the file TermPoint uses to mark this database as in use (antivirus or cloud-sync software can do this). TermPoint has put it back, and you can carry on as normal.`
+- Outage notice (F15), with unsaved changes: `TermPoint can't reach the database location. Your changes are kept on this computer.` + (autosave on) ` TermPoint will try again automatically.` or (autosave off) ` Press Save once the connection is back.`; with none: `TermPoint can't reach the database location right now. You have no unsaved changes.`
+- Cloud-folder warning (item 13; the detail line is unchanged): `This folder is kept in sync by {provider}. Sync services don't respect the way TermPoint marks a database as in use, so two people could edit at once and one person's changes could be lost. Choose a folder that isn't synced, such as a shared network drive.`
+- Refresh tooltip (item 11): after a refresh that worked: `Last refreshed at {h:mm tt}. Click to refresh again.`; before any: `Refresh to see changes made by the person editing this database.`
+- Refresh failure line (the yellow row): the database location did not respond (`RefreshOutcome.SourceUnavailable`): `Couldn't refresh: the database location isn't responding. Showing data from {h:mm tt}.` (or `… Showing data from when you opened the database.`); connection lost: `TermPoint couldn't refresh and lost its connection to the database. Close TermPoint and open it again.`; anything else: `Couldn't refresh just now. Showing data from {h:mm tt}. Try again in a moment.` (or `… Showing data from when you opened the database. Try again in a moment.`)
+
+**Behaviour change 1: one sticky outage notice (F15).** Every "the database location isn't responding" failure shows the
+same notice: a save of any kind (autosave, manual, the exit save) that times out, and the heartbeat's lock check
+(`LockVerificationResult.Unreachable`), which used to raise a second, differently worded message. It **never
+auto-dismisses** (an autosave's banner used to clear itself after 30 s while saves kept failing) and clears when the
+location responds again: a save succeeds (`SaveCompleted`, as before), or the heartbeat's lock check reaches the lock file
+again (`LockVerificationResult.Ours`, new event `CheckoutService.LocationReachableAgain`). The window clears only that
+notice: `SavePrompt.IsOutageNotice` recognises its three texts, so a lost-lock banner, another save failure or a refresh
+line is never cleared by it. Every other save failure keeps its text and behaviour. "Unsaved changes" is the dirty marker
+(`HasDirtyMarker`); "autosave on" is `IsAutoSaveRunning`, which in the app equals the Preferences switch.
+
+**Behaviour change 2: Refresh for read-only users (item 11's messages; its reconnection moved to 1.2.4).** The tooltip
+shows the time of the last refresh that **worked** (`_lastRefreshedAt` is set only then). A failure shows one line in the
+yellow row (sticky), does **not** reload the section list and does not touch the time; the next refresh that works clears
+that line only (the row's text is tracked, so no other notice is cleared). "Connection lost" is detected in the view model:
+its `BeforeOverwrite` callback ran (it closed the connection) and its `AfterOverwrite` did not complete (not called, or
+threw). The failure paths of `RefreshReadOnlySnapshotAsync` and `RefreshData` use `LogInfo` (type and message kept in the log
+line) instead of `LogError`, so no red log-text banner appears.
+
+**Harness.** The promise catalogue describes the new promises (`MessagePromises`, `PromiseTracker`): the four kept-changes
+messages promise "offered back at the next open for editing unless someone else changed the database; otherwise a separate
+copy can be saved", the outage notice promises "kept; retried automatically when autosave is on". Result (run with
+`TERMPOINT_HARNESS=1`, 695 passed, 2 skipped): no harness test failed. Two consequences, both deliberate:
+`Walk4_...` no longer shows F6 (its lock-lost banner now says the changes can't be added if someone else changes the
+database, Alice did change data, so "Can't Restore" with Save a Copy… is what was promised; F7, the question that is asked
+and then refused, remains and its expected set is now `F7` alone), and F6 stays on the known list through its F5 shape: when
+nobody changed any data (someone's no-edit session rewrote the file) the same refusal makes the new wording false. That route
+(`I5_ARestorePromisedForOneDatabase_IsJudgedAtTheNextOpenOfThatDatabase`, and the replayed known sequence) is found on
+every run until item 29 fixes F5. The harness cannot judge "You have no unsaved changes" (classified as information).
+
+**Limits worth knowing.**
+
+- The heartbeat's `Ours` branch runs only after three consecutive failed heartbeats, so once the network is back and
+  heartbeats succeed, nothing re-checks: the outage notice then stays until the next save works (autosave: at most one
+  interval; autosave off: the user presses Save, as the text says). For "no unsaved changes" the text says it clears when the
+  connection is back, which is true only through that branch or a later save. A signal from the successful heartbeat renewal
+  (in `WriteLockService`, lock code) would close the gap; it is outside this item.
+- Item 29 (skip a save when nothing changed) must keep this in mind: an autosave that skips its save no longer proves the
+  location responds, so it must not be the only thing that clears the notice.
 
 ---
 

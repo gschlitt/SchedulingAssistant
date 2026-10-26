@@ -337,6 +337,20 @@ public partial class MainWindowViewModel : ViewModelBase
         SaveErrorMessage = null;
     }
 
+    /// <summary>
+    /// Called by MainWindow when the heartbeat's lock check reaches the lock file again
+    /// (<c>CheckoutService.LocationReachableAgain</c>): the database location responds. Clears the banner ONLY when it
+    /// is the sticky "can't reach the database location" notice (<see cref="SavePrompt.IsOutageNotice"/>); any other
+    /// banner (a lost-lock banner, a failed save's text, a refresh failure, the crash-protection warning) is left
+    /// exactly as it is. A save that succeeds clears the notice through <see cref="ClearSaveError"/> as before.
+    /// Idempotent: with no outage notice on screen it does nothing.
+    /// </summary>
+    internal void ClearOutageNotice()
+    {
+        if (SavePrompt.IsOutageNotice(SaveErrorMessage))
+            ClearSaveError();
+    }
+
     /// <summary>Called by MainWindow when a save fails.</summary>
     /// <param name="message">Human-readable error message.</param>
     /// <param name="autoDismiss">
@@ -438,11 +452,22 @@ public partial class MainWindowViewModel : ViewModelBase
     // ── Write-lock properties ─────────────────────────────────────────────────
 
     /// <summary>
-    /// Timestamp of the last manual data refresh performed while in read-only mode.
+    /// Timestamp of the last manual data refresh that WORKED (the swap succeeded and the section list was reloaded).
     /// Shown in the banner tooltip rather than inline, to avoid being confused with
-    /// the lock heartbeat.  Null until the user clicks Refresh for the first time.
+    /// the lock heartbeat. Null until a refresh has worked for the first time; a failed refresh never touches it,
+    /// so the tooltip, and the failure line, always name the time of data the user really has.
     /// </summary>
     private DateTime? _lastRefreshedAt;
+
+#if !BROWSER
+    /// <summary>
+    /// The text of the refresh-failure line this view model last put in the save-error row, or null when it has put
+    /// none or has since cleared it. The next refresh that works clears the row only while it still shows exactly this
+    /// text, so a refresh never clears another kind of notice (a lost-lock banner, an outage notice). Desktop only:
+    /// the browser demo has no read-only snapshot to refresh.
+    /// </summary>
+    private string? _refreshErrorText;
+#endif
 
     /// <summary>
     /// Set to true when the user dismisses the lock banner. Reset to false when the
@@ -562,11 +587,10 @@ public partial class MainWindowViewModel : ViewModelBase
 
     /// <summary>
     /// Tooltip text for the Refresh button in the read-only banner.
-    /// Shows when data was last refreshed, or a prompt to refresh if it hasn't been yet.
+    /// Shows when data was last refreshed (by a refresh that worked), or a prompt to refresh if none has yet.
+    /// The wording is <see cref="RefreshPrompt.Tooltip"/>.
     /// </summary>
-    public string RefreshButtonTooltip => _lastRefreshedAt is { } t
-        ? $"Last refreshed at {t:h:mm tt}. Click to reload again."
-        : "Reload sections from the database to see changes made by the writer.";
+    public string RefreshButtonTooltip => RefreshPrompt.Tooltip(_lastRefreshedAt);
 
     /// <summary>
     /// True when a read-only instance has detected that the write lock is no longer
@@ -880,11 +904,100 @@ public partial class MainWindowViewModel : ViewModelBase
     internal static bool RefreshesReadOnlySnapshot(CheckoutMode mode) => mode == CheckoutMode.ReadOnly;
 #endif
 
+#if !BROWSER
+    /// <summary>
+    /// Re-copies D to D'' for a read-only session and works out what happened (spec item 28, from item 11). Gathers
+    /// the facts and hands them to <see cref="RefreshPrompt.FailureLine"/>, which picks the one line to show.
+    ///
+    /// <para><b>How "the connection was lost" is known.</b> The service calls <c>BeforeOverwrite</c> (here: close the
+    /// connection to D'') just before it swaps the file and <c>AfterOverwrite</c> (here: reopen it) just after. If the
+    /// swap, or the reopen, fails, the service returns without the reopen having completed. So the flags
+    /// <c>connectionClosed</c> (set only once the close has really happened) and <c>connectionReopened</c> (set only
+    /// once the reopen has returned without throwing) say exactly that: closed and not reopened means the connection is
+    /// gone and, in 1.2.3, nothing reopens it.</para>
+    ///
+    /// <para>A failure is logged with <c>LogInfo</c> (type and message of any exception), never <c>LogError</c>, so no
+    /// red log-text banner appears next to the plain line this method's caller shows.</para>
+    /// </summary>
+    /// <returns>The line for the yellow save-error row when the refresh failed, or null when it worked.</returns>
+    private async Task<string?> RefreshReadOnlySnapshotAsync()
+    {
+        var dbContext = _services.GetRequiredService<IDatabaseContext>() as DatabaseContext;
+
+        var connectionClosed   = false;
+        var connectionReopened = false;
+        RefreshOutcome? outcome = null;
+        var threw = false;
+
+        try
+        {
+            async Task BeforeOverwrite()
+            {
+                await Task.CompletedTask;
+                if (dbContext is null) return;
+                dbContext.CloseConnection();
+                connectionClosed = true;      // known to be closed only from here
+            }
+
+            async Task AfterOverwrite()
+            {
+                await Task.CompletedTask;
+                dbContext?.ReinitializeConnection(App.Checkout.WorkingPath, readOnly: true);
+                connectionReopened = true;    // reached only when the reopen did not throw
+            }
+
+            outcome = await App.Checkout.RefreshReadOnlySnapshotAsync(BeforeOverwrite, AfterOverwrite);
+        }
+        catch (Exception ex)
+        {
+            threw = true;
+            App.Logger.LogInfo($"MainWindowViewModel: refresh threw ({ex.GetType().Name}: {ex.Message})");
+        }
+
+        var connectionLost = connectionClosed && !connectionReopened;
+        var line = RefreshPrompt.FailureLine(outcome, connectionLost, threw, _lastRefreshedAt);
+        App.Logger.LogInfo(
+            $"MainWindowViewModel: refresh {(line is null ? "worked" : "failed")} " +
+            $"(outcome: {outcome?.ToString() ?? "none"}, connection lost: {connectionLost}).");
+        return line;
+    }
+
+    /// <summary>
+    /// Puts a refresh-failure line in the yellow save-error row (sticky: a read-only session never saves, so the row
+    /// is free) and remembers its text so only a later refresh that works clears it. Internal only so tests can
+    /// exercise the bookkeeping without a window.
+    /// </summary>
+    /// <param name="line">The line from <see cref="RefreshPrompt.FailureLine"/>.</param>
+    internal void ShowRefreshFailure(string line)
+    {
+        SetSaveError(line, autoDismiss: false);
+        _refreshErrorText = line;
+    }
+
+    /// <summary>
+    /// Clears the refresh-failure line after a refresh that worked, but only while the row still shows exactly that
+    /// line: another kind of notice that has replaced it is never cleared by a refresh. Internal only so tests can
+    /// exercise the bookkeeping without a window.
+    /// </summary>
+    internal void ClearRefreshFailure()
+    {
+        if (_refreshErrorText is not null && SaveErrorMessage == _refreshErrorText)
+            ClearSaveError();
+        _refreshErrorText = null;
+    }
+#endif
+
     /// <summary>
     /// Reloads all section data from the database. In read-only snapshot mode, first refreshes D'' from D,
     /// then reloads the UI from the updated snapshot. In write mode, just reloads from the current D'.
     /// Triggers a full <see cref="SectionStore"/> reload, which cascades to the schedule grid, section list,
     /// and workload panel via their <c>SectionsChanged</c> subscriptions.
+    ///
+    /// <para><b>A failed refresh</b> (the location did not respond, the swap failed, the connection was lost, an
+    /// exception) shows ONE plain line in the yellow save-error row (<see cref="RefreshPrompt.FailureLine"/>) and
+    /// stops there: the section list is NOT reloaded and <see cref="_lastRefreshedAt"/> (so the tooltip) is NOT
+    /// changed, so what is on screen is still exactly what the line says it is. The next refresh that works clears
+    /// the line (only its own line, never another notice).</para>
     /// </summary>
     [RelayCommand]
     private async Task RefreshData()
@@ -893,35 +1006,11 @@ public partial class MainWindowViewModel : ViewModelBase
         // If in read-only snapshot mode, re-copy D → D'' to fetch latest data (decided by Mode — see the helper).
         if (RefreshesReadOnlySnapshot(App.Checkout.Mode))
         {
-            var dbContext = _services.GetRequiredService<IDatabaseContext>() as DatabaseContext;
-
-            try
+            var failure = await RefreshReadOnlySnapshotAsync();
+            if (failure is not null)
             {
-                async Task BeforeOverwrite()
-                {
-                    await Task.CompletedTask;
-                    dbContext?.CloseConnection();
-                }
-
-                async Task AfterOverwrite()
-                {
-                    await Task.CompletedTask;
-                    dbContext?.ReinitializeConnection(App.Checkout.WorkingPath, readOnly: true);
-                }
-
-                var refreshOutcome = await App.Checkout.RefreshReadOnlySnapshotAsync(BeforeOverwrite, AfterOverwrite);
-
-                var msg = refreshOutcome switch
-                {
-                    RefreshOutcome.Updated           => "Data refreshed from source.",
-                    RefreshOutcome.SourceUnavailable => "Could not reach source — view may be stale.",
-                    _ => "Refresh completed."
-                };
-                App.Logger.LogInfo($"MainWindowViewModel: {msg}");
-            }
-            catch (Exception ex)
-            {
-                App.Logger.LogError(ex, "MainWindowViewModel: refresh failed");
+                ShowRefreshFailure(failure);
+                return;   // no list reload, no new "last refreshed" time
             }
         }
 #else
@@ -930,6 +1019,9 @@ public partial class MainWindowViewModel : ViewModelBase
 
         SectionListVm.ReloadFromDatabase();
         _lastRefreshedAt = DateTime.Now;
+#if !BROWSER
+        ClearRefreshFailure();
+#endif
         OnPropertyChanged(nameof(RefreshButtonTooltip));
     }
 

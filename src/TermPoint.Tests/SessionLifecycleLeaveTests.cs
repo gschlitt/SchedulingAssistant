@@ -28,7 +28,7 @@ namespace TermPoint.Tests;
 /// ordinary files (an external write to D, a lock file written over ours, a garbage "backup").</para>
 ///
 /// <para><b>Known-bad behaviour is pinned on purpose</b> and named with the finding id from
-/// <c>designs/data-persistence-review-2026-10.md</c> section 3 (for example <c>Pins_F6</c>).</para>
+/// <c>designs/data-persistence-review-2026-10.md</c> section 3 (for example <c>Pins_F10</c>; F6 was fixed by item 28, so its tests are named with the <c>_F6Fixed</c> suffix).</para>
 /// </summary>
 public sealed class SessionLifecycleLeaveTests : SessionLifecycleTestBase
 {
@@ -39,9 +39,9 @@ public sealed class SessionLifecycleLeaveTests : SessionLifecycleTestBase
 
     /// <summary>The "Changes Not Saved" message shown at close when the final save failed.</summary>
     private const string ChangesNotSavedAtClose =
-        "Your latest changes could not be saved to the database. " +
-        "They have been kept, and TermPoint will offer to restore them " +
-        "the next time you open this database.";
+        "Your latest changes couldn't be saved to the database. They're kept on this computer. " +
+        "TermPoint will offer to add them to the database the next time you open it for editing. " +
+        "If someone else changes the database first, they can't be added, but you'll be able to save them as a separate copy.";
 
     /// <summary>The context the teardown logs an unexpected exception under.</summary>
     private const string ShutdownErrorContext = "Error during shutdown — some changes may not have been saved";
@@ -189,14 +189,15 @@ public sealed class SessionLifecycleLeaveTests : SessionLifecycleTestBase
     }
 
     /// <summary>
-    /// F6: the final save fails (a transient copy error). The services are disposed, then "Changes Not Saved" is
-    /// shown with its promise that TermPoint "will offer to restore them" — the promise the review calls confusing.
+    /// F6 (fixed by item 28): the final save fails (a transient copy error). The services are disposed, then "Changes
+    /// Not Saved" is shown and says what really happens: the changes are kept on this computer, offered back at the
+    /// next open for editing, and savable as a separate copy if someone else changes the database first.
     /// D' and its marker are KEPT (the only copy of the edit), D is unchanged, and the lock file is left in place
     /// (parked, <see cref="WriteLockService.Suspend"/>) so nobody writes under the kept changes until it goes stale.
     /// The guard is still given back and the checkpoint still logged.
     /// </summary>
     [Fact]
-    public async Task Close_WriterWithUnsavedEdits_SaveFails_ChangesNotSaved_KeepsWorkingCopyAndParksLock_Pins_F6()
+    public async Task Close_WriterWithUnsavedEdits_SaveFails_ChangesNotSaved_KeepsWorkingCopyAndParksLock_F6Fixed()
     {
         var db = NewDb();
         await OpenCleanAsync(db);
@@ -360,11 +361,12 @@ public sealed class SessionLifecycleLeaveTests : SessionLifecycleTestBase
 
     /// <summary>
     /// A save conflict is pending (D was changed by someone else and a save was refused) and the user closes the
-    /// window: the exit save is refused again, so "Changes Not Saved" is shown (its restore promise: F6), D' and its
-    /// marker are kept, D keeps the colleague's content, and the lock is released (a refusal, not a copy error).
+    /// window: the exit save is refused again, so "Changes Not Saved" is shown (F6, fixed by item 28: its text names
+    /// both outcomes, "added next time" and "a separate copy if the database changed"), D' and its marker are kept,
+    /// D keeps the colleague's content, and the lock is released (a refusal, not a copy error).
     /// </summary>
     [Fact]
-    public async Task Close_WithASaveConflictPending_SaveRefusedAgain_ChangesNotSaved_KeepsTheWorkingCopy_Pins_F6()
+    public async Task Close_WithASaveConflictPending_SaveRefusedAgain_ChangesNotSaved_KeepsTheWorkingCopy_F6Fixed()
     {
         var db = NewDb();
         await OpenCleanAsync(db);
@@ -913,15 +915,16 @@ public sealed class SessionLifecycleLeaveTests : SessionLifecycleTestBase
     // ═════════════════════════════════════════════════════════════════════════
 
     /// <summary>
-    /// F6: another session's lock is written over ours while the user has unsaved edits; the next save notices
-    /// (<see cref="WriteLockLostReason.TakenOver"/>, naming the new holder). The banner names that holder and says the
-    /// changes are kept and that TermPoint "will offer to restore them" — the promise the review calls confusing. The
+    /// F6 (fixed by item 28): another session's lock is written over ours while the user has unsaved edits; the next
+    /// save notices (<see cref="WriteLockLostReason.TakenOver"/>, naming the new holder). The banner names that holder,
+    /// says the changes are kept on this computer and what happens to them next (offered back at the next open for
+    /// editing; a separate copy if someone else changes the database first), and how to edit again. The
     /// surface is used in this order: banner, then the connection is closed; D' and its marker are preserved and the
     /// read-only snapshot D'' is created; the connection is reopened on D''; the section list is reloaded. The
     /// foreign lock is left alone.
     /// </summary>
     [Fact]
-    public async Task LostLock_TakenOver_WithUnsavedEdits_BannerNamesTheHolder_ThenDemotesInPlace_Pins_F6()
+    public async Task LostLock_TakenOver_WithUnsavedEdits_BannerNamesTheHolder_ThenDemotesInPlace_F6Fixed()
     {
         var db = NewDb();
         await OpenCleanAsync(db);
@@ -948,10 +951,11 @@ public sealed class SessionLifecycleLeaveTests : SessionLifecycleTestBase
         Assert.NotEqual(working, snapshot);
         var banner = Assert.Single(_host.LockLossSurface.SaveErrors);
         Assert.Equal(
-            "Write access was taken over by other_user on OTHER-PC. " +
-            "Your unsaved changes have been kept — TermPoint will offer to restore " +
-            "them the next time you open this database with write access. " +
-            "You can regain write access by exiting and restarting TermPoint.",
+            "other_user on OTHER-PC has taken over editing this database, so it's read-only for you now. " +
+            "Your changes since your last save are kept on this computer. " +
+            "TermPoint will offer to add them to the database the next time you open it for editing. " +
+            "If someone else changes the database first, they can't be added, but you'll be able to save them as a separate copy. " +
+            "To edit again once they've finished, close TermPoint and open it again.",
             banner);
         AssertInOrder(_trace,
             "host:CaptureLockLossSurface",
@@ -972,8 +976,8 @@ public sealed class SessionLifecycleLeaveTests : SessionLifecycleTestBase
     }
 
     /// <summary>
-    /// The lock file is removed by another program and there are no unsaved edits: the banner says "removed by
-    /// another program" and "no unsaved changes"; D' is deleted (nothing to keep), the snapshot D'' is created, the
+    /// The lock file is removed by another program and there are no unsaved edits: the banner says "removed or
+    /// changed" by another program (F13: a damaged file is not "removed") and "no unsaved changes"; D' is deleted (nothing to keep), the snapshot D'' is created, the
     /// connection reopens on it and the sections reload.
     /// </summary>
     [Fact]
@@ -989,9 +993,10 @@ public sealed class SessionLifecycleLeaveTests : SessionLifecycleTestBase
 
         var snapshot = _checkout.WorkingPath;
         Assert.Equal(
-            "The database lock file was removed by another program (possibly antivirus or cloud sync software). " +
+            "Another program removed or changed the file TermPoint uses to mark this database as in use " +
+            "(antivirus or cloud-sync software can do this), so it's read-only for you now. " +
             "There were no unsaved changes at the time. " +
-            "You can regain write access by exiting and restarting TermPoint.",
+            "To edit again, close TermPoint and open it again.",
             Assert.Single(_host.LockLossSurface.SaveErrors));
         AssertInOrder(_trace,
             "host:CaptureLockLossSurface",
@@ -1072,7 +1077,7 @@ public sealed class SessionLifecycleLeaveTests : SessionLifecycleTestBase
         await _lifecycle.HandleWriteLockLostAsync(WriteLockLostReason.LockFileRemoved);
 
         Assert.Equal(2, _host.LockLossSurface.SaveErrors.Count);
-        Assert.StartsWith("The database lock file was removed by another program", _host.LockLossSurface.SaveErrors[0]);
+        Assert.StartsWith("Another program removed or changed the file TermPoint uses to mark this database as in use", _host.LockLossSurface.SaveErrors[0]);
         Assert.Equal(
             "The database connection could not be restored after losing write access. " +
             "Please close and reopen the database file.",

@@ -1325,11 +1325,20 @@ internal sealed class World : IDisposable
             var previous = calls.Take(calls.Count - 1).LastOrDefault(c => c.Kind == PromptKind.Choice);
             if (previous is { Title: HarnessTitles.RestoreUnsavedChanges, Answer: ChoiceAnswer.Affirmative })
             {
+                // Read now, while the kept working file is still on disk (the F5 and F8 rules both need it).
+                var dataUnchanged = DataUnchangedSinceKept(computer);
+                var allShared     = AllKeptEditsAreInShared(computer);
+
+                // The kept-changes messages promise "offered back unless someone else changes the database first, then a separate
+                // copy" (spec item 28): the promise tracker needs to know whether anybody really changed data, to tell the refusal
+                // the message named (someone else's data) from one it did not (F5 / F8: nobody's).
+                _promises.NoteRestoreRefused(computer, nobodyChangedData: dataUnchanged || allShared);
+
                 AddPending(new Violation
                 {
                     Step = _step, Invariant = "I5", Kind = ViolationKind.RestoreOfferedThenImpossible,
-                    DataUnchangedSinceKept = DataUnchangedSinceKept(computer),
-                    AllKeptEditsAlreadyShared = AllKeptEditsAreInShared(computer),
+                    DataUnchangedSinceKept = dataUnchanged,
+                    AllKeptEditsAlreadyShared = allShared,
                     Key = $"I5:F7:{_step}:{computer.Name}", Computer = computer.Name,
                     Reason = $"{computer.DisplayName} was asked \"{HarnessTitles.RestoreUnsavedChanges}\", chose Restore, and was then told " +
                              "\"Can't Restore Unsaved Changes\": the question should not have been asked",

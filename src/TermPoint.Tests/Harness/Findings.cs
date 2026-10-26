@@ -40,7 +40,7 @@ internal static class HarnessTitles
 /// <item><description><b>F5</b>: the same refusal as F7, but the shared database's set of edits had not changed since the
 /// computer's work was kept: nobody changed any data, only the file's bytes changed (every editing session rewrites the
 /// database at its first save, even with no edits).</description></item>
-/// <item><description><b>F6</b>: a "will offer to restore" promise was broken.</description></item>
+/// <item><description><b>F6</b>: a "will offer to add them" promise was broken (the kept-changes wording of spec item 28: offered back at the next open for editing, unless someone else changes the database first, then a separate copy can be saved). Broken means: no offer and the work not back; Restore chosen and the work did not come back; or "Can't Restore" although nobody changed any data (the shape of F5 and F8). A "Can't Restore" after someone else changed data is the promised alternative and is NOT F6 (it is F7, a separate finding about the question).</description></item>
 /// <item><description><b>F7</b>: "Restore Unsaved Changes?" was answered Restore and was followed by "Can't Restore Unsaved Changes" because someone changed data.</description></item>
 /// <item><description><b>F8</b> (fixed 2026-10-21, 1.2.3: the save records its fingerprint in the marker before the rename, so
 /// the rule stays as the regression detector): the same refusal, but every edit the computer made that sits in its kept working

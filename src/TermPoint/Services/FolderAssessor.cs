@@ -544,12 +544,19 @@ public record FolderWarning(WarningKind Kind, string Message, string? Detail = n
             "this application under Windows Security → Virus & threat protection → " +
             "Ransomware protection → Allow an app through Controlled folder access.");
 
-    /// <summary>The folder is inside a cloud-synced directory.</summary>
+    /// <summary>
+    /// The folder is inside a cloud-synced directory. The user-facing text (spec item 28, from item 13) says what
+    /// really happens, in plain words: a sync service does not respect the way TermPoint marks a database as in use,
+    /// so two people could edit at once and one person's changes could be lost. It names no database engine and does
+    /// not say "corrupt": the database is not damaged, a person's changes are.
+    /// </summary>
     /// <param name="provider">The cloud provider name (OneDrive, Dropbox, etc.).</param>
+    /// <returns>The warning: the text above as <see cref="Message"/>, and the provider as the detail line for IT.</returns>
     public static FolderWarning CloudSynced(string provider) =>
         new(WarningKind.CloudSynced,
-            $"This folder is synced by {provider}. Cloud sync services can corrupt SQLite " +
-            "databases by partially syncing internal files. Store the database in a non-synced folder.",
+            $"This folder is kept in sync by {provider}. Sync services don't respect the way TermPoint marks a " +
+            "database as in use, so two people could edit at once and one person's changes could be lost. " +
+            "Choose a folder that isn't synced, such as a shared network drive.",
             $"Cloud sync provider: {provider}");
 
     /// <summary>The application cannot create files in this folder.</summary>

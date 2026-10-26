@@ -382,8 +382,21 @@ public sealed class InvariantProofTests
         Assert.True(MessagePromises.Classify("Mystery", "Your work is safe with us.").IsUnclassifiedPromise);
         Assert.True(MessagePromises.Classify("", "Everything has been kept.").IsUnclassifiedPromise);
 
+        // The four kept-changes messages of spec item 28 (all carry "will offer to add them") are the "offered back" promise.
         Assert.Equal(new[] { PromiseKind.WillOfferRestore },
-            MessagePromises.Classify("Unsaved Changes Kept", "... TermPoint will offer to restore them ...").Kinds);
+            MessagePromises.Classify(KeptChangesPrompt.UnsavedChangesKeptTitle, KeptChangesPrompt.UnsavedChangesKeptMessage).Kinds);
+        Assert.Equal(new[] { PromiseKind.WillOfferRestore },
+            MessagePromises.Classify(KeptChangesPrompt.ChangesNotSavedTitle, KeptChangesPrompt.ChangesNotSavedOnSwitch("dept")).Kinds);
+        Assert.Equal(new[] { PromiseKind.WillOfferRestore },
+            MessagePromises.Classify(KeptChangesPrompt.ChangesNotSavedTitle, KeptChangesPrompt.ChangesNotSavedOnClose).Kinds);
+        Assert.Equal(new[] { PromiseKind.WillOfferRestore },
+            MessagePromises.Classify("", LockLossPrompt.Banner(takenOver: true, "alice", "ALICE-PC", hadUnsavedChanges: true)).Kinds);
+        Assert.Equal(new[] { PromiseKind.WillOfferRestore },
+            MessagePromises.Classify("", LockLossPrompt.Banner(takenOver: false, null, null, hadUnsavedChanges: true)).Kinds);
+
+        // The OLD wording is no longer in the catalogue: it mentions "restore" and "kept" and matches nothing, so it is caught as an
+        // unclassified promise instead of being judged against the new promise.
+        Assert.True(MessagePromises.Classify("Unsaved Changes Kept", "... TermPoint will offer to restore them ...").IsUnclassifiedPromise);
         Assert.Contains(PromiseKind.DatabaseUnchanged, MessagePromises.Classify("", SavePrompt.VerifyFailedMessage).Kinds);
         Assert.Contains(PromiseKind.ChangesKept, MessagePromises.Classify("", SavePrompt.VerifyFailedMessage).Kinds);
         Assert.False(MessagePromises.Classify("Network Unreachable", "Cannot reach the database.").IsUnclassifiedPromise);
@@ -391,20 +404,38 @@ public sealed class InvariantProofTests
     }
 
     /// <summary>
-    /// The texts step 9.3d added to the catalogue are classified and are not "unclassified promises" any more: the heartbeat banner (a
-    /// kept-changes promise, found by the first deep run) and three texts found by the sweep of every user-facing string in the save, lock,
+    /// The texts step 9.3d added to the catalogue are classified and are not "unclassified promises" any more: the outage notice (a
+    /// kept-changes promise; step 9.3d's first deep run met its old heartbeat wording, which spec item 28 replaced with the one
+    /// <see cref="SavePrompt.OutageNotice"/>) and three texts found by the sweep of every user-facing string in the save, lock,
     /// heartbeat, exit, switch, restore and recovery paths (each states a fact or admits a loss, and promises nothing to check). A plain
-    /// test: it needs no world. The banners that are inline in the service are pinned here as the harness met them; the heartbeat one is also
+    /// test: it needs no world. The banners that are inline in the service are pinned here as the harness met them; the outage notice is also
     /// shown by the real service in <see cref="I5_TheHeartbeatBannerDuringAnOutage_IsAKeptPromise_AndItHolds"/>.
     /// </summary>
     [Fact]
     public void I5_TheTextsFoundByStep93d_AreInTheCatalogue()
     {
-        const string heartbeat =
-            "Network connection interrupted — your changes are safe locally but cannot be saved until the connection is restored.";
-        var banner = MessagePromises.Classify("", heartbeat);
-        Assert.False(banner.IsUnclassifiedPromise);
-        Assert.Equal(new[] { PromiseKind.ChangesKept }, banner.Kinds);
+        // The outage notice with unsaved changes: kept (retried automatically when autosave is on; press Save when it is off).
+        foreach (var autoSave in new[] { true, false })
+        {
+            var banner = MessagePromises.Classify("", SavePrompt.OutageNotice(hasUnsavedChanges: true, autoSaveEnabled: autoSave));
+            Assert.False(banner.IsUnclassifiedPromise);
+            Assert.Equal(new[] { PromiseKind.ChangesKept }, banner.Kinds);
+        }
+
+        // ... and with none: it states a fact and promises nothing the harness judges.
+        var noChanges = MessagePromises.Classify("", SavePrompt.OutageNotice(hasUnsavedChanges: false, autoSaveEnabled: true));
+        Assert.False(noChanges.IsUnclassifiedPromise);
+        Assert.Equal(new[] { PromiseKind.Info }, noChanges.Kinds);
+
+        // The old heartbeat wording ("safe locally") is gone from the catalogue and is caught if it ever comes back.
+        Assert.True(MessagePromises.Classify("",
+            "Network connection interrupted — your changes are safe locally but cannot be saved until the connection is restored.")
+            .IsUnclassifiedPromise);
+
+        // The lock put back: a fact about the file TermPoint uses to mark the database as in use.
+        var putBack = MessagePromises.Classify("", LockLossPrompt.LockFilePutBack);
+        Assert.False(putBack.IsUnclassifiedPromise);
+        Assert.Equal(new[] { PromiseKind.Info }, putBack.Kinds);
 
         var missingFile = MessagePromises.Classify("", SavePrompt.SessionFileMissingMessage);
         Assert.False(missingFile.IsUnclassifiedPromise);
@@ -424,10 +455,11 @@ public sealed class InvariantProofTests
     }
 
     /// <summary>
-    /// The heartbeat banner is judged for truth (step 9.3d; its wording is finding F15, a wording finding, not a harness violation). Bob edits, the
-    /// share becomes unreachable and three heartbeats fail: the real checkout service raises its "changes are safe locally" banner. It is a
-    /// kept-changes promise, and it holds: bob-1 is still in his live session. Nothing is reported, and the first deep run's "unclassified
-    /// promise" for exactly this story is gone.
+    /// The outage notice the heartbeat raises is judged for truth (step 9.3d; since spec item 28 it is the one sticky notice of finding F15,
+    /// <see cref="SavePrompt.OutageNotice"/>, the same text a save that cannot reach the share raises). Bob edits, the
+    /// share becomes unreachable and three heartbeats fail: the real checkout service raises "TermPoint can't reach the database location.
+    /// Your changes are kept on this computer…". It is a kept-changes promise, and it holds: bob-1 is still in his live session. Nothing is
+    /// reported, and the first deep run's "unclassified promise" for exactly this story is gone.
     /// </summary>
     [HarnessFact]
     public async Task I5_TheHeartbeatBannerDuringAnOutage_IsAKeptPromise_AndItHolds()
@@ -553,9 +585,11 @@ public sealed class InvariantProofTests
     /// <summary>
     /// The promise about dept.db IS judged at Bob's next edit-access open of dept.db: once Alice has closed, Bob opens
     /// dept.db, is offered his kept changes and chooses Restore, and today "Can't Restore" follows (Alice's close rewrote
-    /// the file, F5). The promise is then false and reported ONCE (F6), at that open (not at the earlier open of
-    /// other.db), although two messages made it. This is also a genuine F6 route: a promise judged at a later open of the
-    /// same database where the restore cannot work.
+    /// the file, F5). Alice changed NO data, so the exception the message named ("unless someone else changes the database
+    /// first", spec item 28's wording) did not happen: the promise is false and reported ONCE (F6), at that open (not at the
+    /// earlier open of other.db), although two messages made it. This is the F6 route that survives the new wording; it goes
+    /// away when item 29 (skip a save when nothing changed) removes F5. See
+    /// <see cref="I5_ARestoreRefusedBecauseSomeoneElseChangedData_KeepsThePromise"/> for the case where Alice does change data.
     /// </summary>
     [HarnessFact]
     public async Task I5_ARestorePromisedForOneDatabase_IsJudgedAtTheNextOpenOfThatDatabase()
@@ -586,6 +620,48 @@ public sealed class InvariantProofTests
         Assert.Equal("F6", broken.FindingId);
         Assert.True(broken.Step > 6, "the promise is judged at the open of dept.db, after the open of other.db");
         Assert.Contains("Can't Restore", broken.Reason);
+        world.AssertAllScriptsConsumed();
+        world.Finish();
+    }
+
+    /// <summary>
+    /// Spec item 28: the kept-changes messages promise the changes will be offered back at the next open "unless someone else
+    /// changes the database first", in which case "they can't be added, but you'll be able to save them as a separate copy".
+    /// Here Alice really DOES change the database (she takes Bob's stale lock, edits and saves alice-1, then closes), so at Bob's
+    /// next open "Can't Restore" with Save a Copy… is exactly what he was told might happen: the promise is KEPT and nothing is
+    /// reported as F6 (this is the route that was F6 before the wording changed; compare
+    /// <see cref="I5_ARestorePromisedForOneDatabase_IsJudgedAtTheNextOpenOfThatDatabase"/>, where nobody changes data and the same
+    /// refusal does break it). The refusal itself is still F7 (the question "Restore?" is asked and then refused), a separate
+    /// finding that 1.2.4 replaces.
+    /// </summary>
+    [HarnessFact]
+    public async Task I5_ARestoreRefusedBecauseSomeoneElseChangedData_KeepsThePromise()
+    {
+        using var world = new World(_output, nameof(I5_ARestoreRefusedBecauseSomeoneElseChangedData_KeepsThePromise));
+        world.ExpectFindings("F7", "F16");   // F7: "Restore?" then "Can't Restore". F16: the harness-inline form of the switch race (see BobLeavesDeptAfterAliceTookOverAsync)
+        world.CreateDatabase();
+        var bob   = world.AddComputer("bob");
+        var alice = world.AddComputer("alice");
+
+        await BobLeavesDeptAfterAliceTookOverAsync(world, bob, alice);
+        Assert.True(world.HasPendingPromise(bob));
+
+        alice.Edit();
+        Assert.Equal(SaveOutcome.Success, await alice.SaveAsync());   // Alice changes DATA in dept.db
+        await alice.CloseAsync();
+
+        var export = Path.Combine(world.RootDir, "exports", "bob-recovered.db");
+        Directory.CreateDirectory(Path.GetDirectoryName(export)!);
+        bob.Prompts.ExpectChoice(HarnessTitles.RestoreUnsavedChanges, ChoiceAnswer.Affirmative)
+                   .ExpectChoice(HarnessTitles.CantRestore, ChoiceAnswer.Affirmative)
+                   .ExpectPick("Save Recovered Copy", export);
+        Assert.True(await bob.SwitchToAsync(world.DatabasePath));
+
+        Assert.False(world.HasPendingPromise(bob), "dept.db was opened for editing: the promise was judged");
+        Assert.DoesNotContain(world.Violations, v => v.Kind == ViolationKind.BrokenPromise);
+        Assert.Contains(world.Violations, v => v.FindingId == "F7");
+        Assert.Equal(new[] { "bob-1" }, world.EditsInFile(export));      // the separate copy the message promised holds Bob's work
+        Assert.Equal(new[] { "alice-1" }, world.EditsInDatabase());
         world.AssertAllScriptsConsumed();
         world.Finish();
     }

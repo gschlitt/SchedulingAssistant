@@ -36,7 +36,7 @@ namespace TermPoint.Tests;
 /// so the result never depends on the developer's own settings.</para>
 ///
 /// <para><b>Known-bad behaviour is pinned on purpose</b> and named with the finding id from
-/// <c>designs/data-persistence-review-2026-10.md</c> section 3 (for example <c>Pins_F6</c>): the test documents
+/// <c>designs/data-persistence-review-2026-10.md</c> section 3 (for example <c>Pins_F10</c>; F6 was fixed by item 28, so its tests are named with the <c>_F6Fixed</c> suffix): the test documents
 /// today's behaviour; the step that fixes the finding is expected to change it, and the test is then renamed with the
 /// <c>_F1Fixed</c> suffix style (finding F1 was fixed on 2026-10-21: the X re-asks and Discard asks for confirmation).</para>
 /// </summary>
@@ -527,12 +527,13 @@ public sealed class SessionLifecycleTests : SessionLifecycleTestBase
     }
 
     /// <summary>
-    /// F6: the user chooses Restore, but a live colleague holds the write lock, so the session can only be
-    /// read-only. "Unsaved Changes Kept" promises the restore will be offered next time — the promise the review
-    /// calls confusing. Pinned today: the message, a read-only open on D'', the kept files untouched, and no save.
+    /// F6 (fixed by item 28): the user chooses Restore, but a live colleague holds the write lock, so the session can
+    /// only be read-only. "Unsaved Changes Kept" says what really happens: the changes are kept on this computer,
+    /// offered back at the next open for editing, and savable as a separate copy if someone else changes the
+    /// database first. Pinned: the message, a read-only open on D'', the kept files untouched, and no save.
     /// </summary>
     [Fact]
-    public async Task Open_KeptChanges_Restore_ButLockHeldByLiveOther_UnsavedChangesKeptMessage_ReadOnly_Pins_F6()
+    public async Task Open_KeptChanges_Restore_ButLockHeldByLiveOther_UnsavedChangesKeptMessage_ReadOnly_F6Fixed()
     {
         var db = NewDb();
         var kept = await LeaveKeptChangesAsync(db, colleagueChangedD: false);
@@ -540,9 +541,10 @@ public sealed class SessionLifecycleTests : SessionLifecycleTestBase
         _prompts.ExpectChoice("Restore Unsaved Changes?", true)
                 .ExpectMessage(
                     "Unsaved Changes Kept",
-                    "Someone else is currently editing this database, so your unsaved changes " +
-                    "can't be restored right now. They have been kept, and TermPoint will offer " +
-                    "to restore them the next time you open this database with write access.");
+                    "Someone else is editing this database right now, so your unsaved changes from last time can't be added yet. " +
+                    "They're kept on this computer. " +
+                    "TermPoint will offer to add them to the database the next time you open it for editing. " +
+                    "If someone else changes the database first, they can't be added, but you'll be able to save them as a separate copy.");
 
         var next = await StartupAsync(db);
 
@@ -960,13 +962,14 @@ public sealed class SessionLifecycleTests : SessionLifecycleTestBase
     // ── 22. The old session cannot be saved ───────────────────────────────────
 
     /// <summary>
-    /// F6: the old session's final save fails (the network copy is lost between the copy and the verify): "Changes
-    /// Not Saved" promises the changes will be offered back — the promise the review calls confusing. Pinned today:
+    /// F6 (fixed by item 28): the old session's final save fails (the network copy is lost between the copy and the
+    /// verify): "Changes Not Saved" names the database and says what really happens (kept on this computer; offered
+    /// back at the next open for editing; a separate copy if someone else changes it first). Pinned:
     /// the message comes after the services are closed, A's working copy and marker are KEPT, A itself is unchanged,
     /// A's lock file is left in place (parked), and the switch still goes on to open B.
     /// </summary>
     [Fact]
-    public async Task Switch_OldSessionSaveFails_ChangesNotSavedMessage_KeepsTheOldWorkingCopy_ThenOpensTheNewOne_Pins_F6()
+    public async Task Switch_OldSessionSaveFails_ChangesNotSavedMessage_KeepsTheOldWorkingCopy_ThenOpensTheNewOne_F6Fixed()
     {
         var a = NewDb("a.db");
         var b = NewDb("b.db");
@@ -977,9 +980,9 @@ public sealed class SessionLifecycleTests : SessionLifecycleTestBase
         ResetRecords();
         _prompts.ExpectMessage(
             "Changes Not Saved",
-            "Your latest changes to \"a\" could not be saved. " +
-            "They have been kept, and TermPoint will offer to restore them " +
-            "the next time you open that database.");
+            "Your latest changes to \"a\" couldn't be saved. They're kept on this computer. " +
+            "TermPoint will offer to add them to \"a\" the next time you open it for editing. " +
+            "If someone else changes it first, they can't be added, but you'll be able to save them as a separate copy.");
 
         var opened = await _lifecycle.SwitchDatabaseAsync(b);
         _checkout.BeforeTmpVerifyAsync = null;

@@ -323,7 +323,29 @@ public class FolderAssessorTests
     {
         var warning = FolderWarning.CloudSynced("Google Drive");
         Assert.Contains("Google Drive", warning.Message);
-        Assert.Contains("corrupt", warning.Message, StringComparison.OrdinalIgnoreCase);
+    }
+
+    /// <summary>
+    /// Spec item 28 (from item 13): the cloud-folder warning says what really happens, in the approved wording, and
+    /// keeps its detail line for IT. It names no database engine and does not say "corrupt".
+    /// </summary>
+    [Fact]
+    public void CloudSynced_Warning_IsTheApprovedWording_AndKeepsItsDetail()
+    {
+        var warning = FolderWarning.CloudSynced("OneDrive");
+
+        Assert.Equal(WarningKind.CloudSynced, warning.Kind);
+        Assert.Equal(
+            "This folder is kept in sync by OneDrive. Sync services don't respect the way TermPoint marks a database as in use, " +
+            "so two people could edit at once and one person's changes could be lost. " +
+            "Choose a folder that isn't synced, such as a shared network drive.",
+            warning.Message);
+        Assert.Equal("Cloud sync provider: OneDrive", warning.Detail);
+        Assert.DoesNotContain("SQLite", warning.Message, StringComparison.OrdinalIgnoreCase);
+        Assert.DoesNotContain("corrupt", warning.Message, StringComparison.OrdinalIgnoreCase);
+        // The rules for every text of spec item 28 (rule 4 of the four rules for the shared database).
+        foreach (var forbidden in new[] { "working copy", "local copy", "safe", "D'", "lock file", "write access", "exception", ":\\" })
+            Assert.DoesNotContain(forbidden, warning.Message, StringComparison.OrdinalIgnoreCase);
     }
 
     [Fact]

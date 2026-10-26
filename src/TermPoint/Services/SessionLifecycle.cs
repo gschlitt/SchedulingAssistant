@@ -520,16 +520,17 @@ public sealed class SessionLifecycle
             LocalCopyCheckPrompt.TryAgainButton, LocalCopyCheckPrompt.CloseButton));
 
     /// <summary>
-    /// Tells the user their unsaved changes are kept but can't be restored right now
+    /// Tells the user their unsaved changes are kept but can't be added yet
     /// because this session did not get write access. Shown when a recovery-mode
     /// checkout lands in read-only (another writer holds the lock, or the user
-    /// declined a stale-lock takeover).
+    /// declined a stale-lock takeover). The text (<see cref="KeptChangesPrompt"/>) says what 1.2.3 really
+    /// does: they are kept on this computer, offered back at the next open for editing, and saved as a
+    /// separate copy if someone else changes the database first.
     /// </summary>
+    /// <returns>A task that completes when the user has dismissed the message.</returns>
     private Task ShowRecoveryDeferredMessageAsync()
-        => _prompts.ShowMessageAsync("Unsaved Changes Kept",
-            "Someone else is currently editing this database, so your unsaved changes " +
-            "can't be restored right now. They have been kept, and TermPoint will offer " +
-            "to restore them the next time you open this database with write access.");
+        => _prompts.ShowMessageAsync(KeptChangesPrompt.UnsavedChangesKeptTitle,
+            KeptChangesPrompt.UnsavedChangesKeptMessage);
 
     // ── Open-time integrity check of the local copy (spec item 5, step 5d) ─────
 
@@ -944,10 +945,8 @@ public sealed class SessionLifecycle
             }
             else if (wasWriteMode)
             {
-                await _prompts.ShowMessageAsync("Changes Not Saved",
-                    $"Your latest changes to \"{oldDbName}\" could not be saved. " +
-                    "They have been kept, and TermPoint will offer to restore them " +
-                    "the next time you open that database.");
+                await _prompts.ShowMessageAsync(KeptChangesPrompt.ChangesNotSavedTitle,
+                    KeptChangesPrompt.ChangesNotSavedOnSwitch(oldDbName));
             }
             CrashPoints.Hit("Switch.AfterOldCopyHandled");
 
@@ -1494,10 +1493,8 @@ public sealed class SessionLifecycle
                 }
                 else if (wasWriteMode)
                 {
-                    await _prompts.ShowMessageAsync("Changes Not Saved",
-                        "Your latest changes could not be saved to the database. " +
-                        "They have been kept, and TermPoint will offer to restore them " +
-                        "the next time you open this database.");
+                    await _prompts.ShowMessageAsync(KeptChangesPrompt.ChangesNotSavedTitle,
+                        KeptChangesPrompt.ChangesNotSavedOnClose);
                 }
                 CrashPoints.Hit("Close.AfterWorkingCopyCleanup");
             }
@@ -1954,37 +1951,23 @@ public sealed class SessionLifecycle
     }
 
     /// <summary>
-    /// Builds a user-facing banner string explaining why write access was lost,
-    /// using the <paramref name="reason"/> enum and the identity of the new holder
-    /// (if any) from <see cref="CheckoutService.LockLossNewHolder"/>.
+    /// Builds the user-facing lock-lost banner explaining why the session is read-only now, using the
+    /// <paramref name="reason"/> enum and the identity of the new holder (if any) from
+    /// <see cref="CheckoutService.LockLossNewHolder"/>. The wording lives in <see cref="LockLossPrompt.Banner"/>
+    /// (pure text, pinned by tests); this method only gathers the three facts it needs.
     /// </summary>
+    /// <param name="reason">Why the write lock was lost: a takeover, or the lock file was deleted or is unreadable.</param>
+    /// <returns>The banner text (sticky; the caller shows it before demotion starts).</returns>
     private string BuildLockLossBanner(WriteLockLostReason reason)
     {
-        var sb = new System.Text.StringBuilder();
-
-        if (reason == WriteLockLostReason.TakenOver)
-        {
-            var holder = _checkout.LockLossNewHolder;
-            if (holder is not null && !string.IsNullOrWhiteSpace(holder.Username))
-                sb.Append($"Write access was taken over by {holder.Username} on {holder.Machine}.");
-            else
-                sb.Append("Write access was taken over by another user.");
-        }
-        else
-        {
-            sb.Append(
-                "The database lock file was removed by another program " +
-                "(possibly antivirus or cloud sync software).");
-        }
+        var holder = _checkout.LockLossNewHolder;
 
         // Built BEFORE demotion runs, so HasDirtyMarker still reflects the write
         // session: DemoteToReadOnlyAsync preserves D' + marker exactly when it is true.
-        sb.Append(_checkout.HasDirtyMarker
-            ? " Your unsaved changes have been kept — TermPoint will offer to restore " +
-              "them the next time you open this database with write access."
-            : " There were no unsaved changes at the time.");
-        sb.Append(" You can regain write access by exiting and restarting TermPoint.");
-
-        return sb.ToString();
+        return LockLossPrompt.Banner(
+            takenOver:         reason == WriteLockLostReason.TakenOver,
+            holderUsername:    holder?.Username,
+            holderMachine:     holder?.Machine,
+            hadUnsavedChanges: _checkout.HasDirtyMarker);
     }
 }

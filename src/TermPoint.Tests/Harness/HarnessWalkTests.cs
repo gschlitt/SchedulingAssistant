@@ -249,12 +249,20 @@ public sealed class HarnessWalkTests
     /// edits and saves. Bob's network comes back and his next save finds Alice's lock: Bob is demoted in place — the
     /// banner names Alice, his working copy and marker are kept. Bob closes; Alice closes; Bob opens again and is
     /// offered his kept changes. Pinned as today: "Restore?" then "Can't Restore" (D changed), and he saves a copy.
+    ///
+    /// <para><b>Since item 28 this walk no longer shows F6.</b> The lock-lost banner used to promise that TermPoint "will offer
+    /// to restore" the changes, which "Can't Restore" then broke (F6). It now says the changes can't be added "if someone else
+    /// changes the database first" and can then be saved as a separate copy. Alice DID change the database (alice-1 is in it,
+    /// and Bob's kept file does not know it), so "Can't Restore" with Save a Copy… is exactly what was promised: the promise
+    /// tracker (<c>PromiseTracker.CheckOffer</c>) judges it kept. F7 stays: the question "Restore?" is still asked and then
+    /// refused; it is replaced in 1.2.4. The F5 shape (nobody changed any data) still breaks the promise: see
+    /// <c>I5_ARestorePromisedForOneDatabase_IsJudgedAtTheNextOpenOfThatDatabase</c>.</para>
     /// </summary>
     [HarnessFact]
     public async Task Walk4_BobsNetworkDrops_AliceTakesOver_BobIsDemoted_ThenOffersHisKeptChanges()
     {
         using var world = new World(_output, "Walk4_BobsNetworkDrops_AliceTakesOver_BobIsDemoted_ThenOffersHisKeptChanges");
-        world.ExpectFindings("F6", "F7");   // the lock-lost banner promises a restore that then cannot be done (F6); "Restore?" then "Can't Restore" (F7)
+        world.ExpectFindings("F7");   // "Restore?" is asked, then "Can't Restore" (F7). Item 28: the banner's promise is now kept here (someone else changed data), so no F6.
         world.CreateDatabase();
         var bob   = world.AddComputer("bob");
         var alice = world.AddComputer("alice");
@@ -295,10 +303,11 @@ public sealed class HarnessWalkTests
 
         var banner = Assert.Single(bob.Host.LockLossSurface.SaveErrors);
         Assert.Equal(
-            "Write access was taken over by alice on ALICE-PC. " +
-            "Your unsaved changes have been kept — TermPoint will offer to restore " +
-            "them the next time you open this database with write access. " +
-            "You can regain write access by exiting and restarting TermPoint.",
+            "alice on ALICE-PC has taken over editing this database, so it's read-only for you now. " +
+            "Your changes since your last save are kept on this computer. " +
+            "TermPoint will offer to add them to the database the next time you open it for editing. " +
+            "If someone else changes the database first, they can't be added, but you'll be able to save them as a separate copy. " +
+            "To edit again once they've finished, close TermPoint and open it again.",
             banner);
         Assert.Equal(CheckoutMode.ReadOnly, bob.Checkout.Mode);
         Assert.True(bob.HasWorkingFile, "D' is kept");

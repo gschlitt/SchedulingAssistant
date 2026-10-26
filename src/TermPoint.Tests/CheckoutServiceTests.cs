@@ -2223,6 +2223,63 @@ public sealed class CheckoutServiceTests : IDisposable
     }
 
     /// <summary>
+    /// Spec item 28 (from item 11): a refresh whose <c>beforeOverwrite</c> callback throws fails as
+    /// <see cref="RefreshOutcome.SourceUnavailable"/>, the connection is never reopened by the service (so
+    /// <c>afterOverwrite</c> is not called: the caller knows the connection was lost by seeing that "before" ran and
+    /// "after" did not complete), and the failure is logged with <c>LogInfo</c> (what failed, the exception's type and
+    /// message) and NEVER <c>LogError</c>, which would put a red log-text banner next to the plain line the window shows.
+    /// </summary>
+    [Fact]
+    public async Task ReadOnlyRefresh_WhenBeforeOverwriteThrows_IsSourceUnavailable_LogsInfoNotError_AndSkipsAfterOverwrite()
+    {
+        var db = DbPath("shared");
+        CreateSqliteDb(db);
+        var (writer, _) = CreateService();
+        await writer.CheckoutAsync(db);
+        var log = new RecordingAppLogger();
+        var (reader, _) = CreateService(logger: log);
+        await reader.CheckoutAsync(db);
+        var afterCalled = false;
+
+        var outcome = await reader.RefreshReadOnlySnapshotAsync(
+            beforeOverwrite: () => throw new InvalidOperationException("close failed"),
+            afterOverwrite:  () => { afterCalled = true; return Task.CompletedTask; });
+
+        Assert.Equal(RefreshOutcome.SourceUnavailable, outcome);
+        Assert.False(afterCalled);
+        Assert.Empty(log.Errors);
+        Assert.Contains(log.Infos, i => i.Contains("beforeOverwrite") && i.Contains("InvalidOperationException") && i.Contains("close failed"));
+    }
+
+    /// <summary>
+    /// Spec item 28 (from item 11): a refresh whose <c>afterOverwrite</c> callback (the reopen of the connection)
+    /// throws fails as <see cref="RefreshOutcome.SourceUnavailable"/> after <c>beforeOverwrite</c> had run, which is
+    /// exactly the "connection lost" state the window detects; the failure is logged with <c>LogInfo</c>, with the
+    /// exception's type and message, and never <c>LogError</c>.
+    /// </summary>
+    [Fact]
+    public async Task ReadOnlyRefresh_WhenAfterOverwriteThrows_IsSourceUnavailable_LogsInfoNotError()
+    {
+        var db = DbPath("shared");
+        CreateSqliteDb(db);
+        var (writer, _) = CreateService();
+        await writer.CheckoutAsync(db);
+        var log = new RecordingAppLogger();
+        var (reader, _) = CreateService(logger: log);
+        await reader.CheckoutAsync(db);
+        var beforeRan = false;
+
+        var outcome = await reader.RefreshReadOnlySnapshotAsync(
+            beforeOverwrite: () => { beforeRan = true; return Task.CompletedTask; },
+            afterOverwrite:  () => throw new InvalidOperationException("reopen failed"));
+
+        Assert.Equal(RefreshOutcome.SourceUnavailable, outcome);
+        Assert.True(beforeRan);
+        Assert.Empty(log.Errors);
+        Assert.Contains(log.Infos, i => i.Contains("afterOverwrite") && i.Contains("InvalidOperationException") && i.Contains("reopen failed"));
+    }
+
+    /// <summary>
     /// Crash recovery detection should skip read-only snapshot files (D'' with "_ro" suffix).
     /// </summary>
     [Fact]
@@ -2486,7 +2543,9 @@ public sealed class CheckoutServiceTests : IDisposable
     /// <summary>
     /// When the network share is unreachable (the cause of the heartbeat failure),
     /// HeartbeatFailed must NOT demote the session. The writer keeps their state,
-    /// and a transient warning is surfaced via <see cref="CheckoutService.SaveFailed"/>.
+    /// and the one outage notice (<see cref="SavePrompt.OutageNotice"/>, spec item 28 / F15) is surfaced via
+    /// <see cref="CheckoutService.SaveFailed"/>: sticky, never auto-dismissing. With no edits made, the session has no
+    /// unsaved changes, so it is the "no unsaved changes" text.
     /// This is the core W1 fix: a 2–4 minute WiFi/VPN interruption must not cause
     /// a false-positive demotion with unsaved data loss.
     /// </summary>
@@ -2502,8 +2561,8 @@ public sealed class CheckoutServiceTests : IDisposable
         var lockLostFired = false;
         svc.WriteLockLost += (_) => lockLostFired = true;
 
-        var saveFailedTcs = new TaskCompletionSource<string>(TaskCreationOptions.RunContinuationsAsynchronously);
-        svc.SaveFailed += (msg, _) => saveFailedTcs.TrySetResult(msg);
+        var saveFailedTcs = new TaskCompletionSource<(string Message, bool AutoDismiss)>(TaskCreationOptions.RunContinuationsAsynchronously);
+        svc.SaveFailed += (msg, autoDismiss) => saveFailedTcs.TrySetResult((msg, autoDismiss));
 
         // Delete the entire source directory — lock file AND source DB gone.
         // VerifyLockIsOursAsync: lock not found → directory probe fails → Unreachable.
@@ -2513,13 +2572,17 @@ public sealed class CheckoutServiceTests : IDisposable
         for (int i = 0; i < WriteLockService.HeartbeatFailureThreshold; i++)
             await lockSvc.ForceRenewHeartbeat();
 
-        // Wait for the transient warning
+        // Wait for the outage notice
         var completed = await Task.WhenAny(saveFailedTcs.Task, Task.Delay(10_000));
         Assert.True(completed == saveFailedTcs.Task,
-            "SaveFailed must fire with a transient network-interruption warning.");
+            "SaveFailed must fire with the outage notice.");
 
-        var message = saveFailedTcs.Task.Result;
-        Assert.Contains("Network connection interrupted", message);
+        var (message, autoDismiss) = saveFailedTcs.Task.Result;
+        Assert.Equal(SavePrompt.OutageNotice(hasUnsavedChanges: false, autoSaveEnabled: false), message);
+        Assert.Equal(
+            "TermPoint can't reach the database location right now. You have no unsaved changes.",
+            message);
+        Assert.False(autoDismiss, "the outage notice is sticky: it clears when the location responds, never by itself");
         Assert.Equal(CheckoutMode.WriteAccess, svc.Mode);
         Assert.False(lockLostFired,
             "WriteLockLost must NOT fire when the share is merely unreachable.");
@@ -2566,6 +2629,92 @@ public sealed class CheckoutServiceTests : IDisposable
             // Remove read-only so cleanup/Dispose can delete the file
             try { File.SetAttributes(lockPath, FileAttributes.Normal); } catch { }
             try { File.Delete(lockPath + ".tmp"); } catch { }
+        }
+    }
+
+    /// <summary>
+    /// Spec item 28 (F15): the heartbeat's lock check reaches the lock file again and finds it is still ours (the
+    /// heartbeat write failed for another reason), so it raises <see cref="CheckoutService.LocationReachableAgain"/>:
+    /// the one signal the window uses to clear the outage notice. The check's other effects are exactly as before
+    /// (no demotion, no <see cref="CheckoutService.SaveFailed"/> banner of its own).
+    /// </summary>
+    [Fact]
+    public async Task HeartbeatFailed_WhenLockStillOurs_RaisesLocationReachableAgain_AndNothingElse()
+    {
+        var (svc, lockSvc) = CreateService();
+        var db = DbPath();
+        CreateFile(db);
+        await svc.CheckoutAsync(db);
+
+        var lockLostFired = false;
+        svc.WriteLockLost += (_) => lockLostFired = true;
+        var banners = CaptureSaveBanners(svc);
+        var reachable = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        svc.LocationReachableAgain += () => reachable.TrySetResult();
+
+        var lockPath = Path.ChangeExtension(db, ".lock");
+        File.SetAttributes(lockPath, FileAttributes.ReadOnly);   // heartbeat writes fail, verification reads succeed
+        try
+        {
+            for (int i = 0; i < WriteLockService.HeartbeatFailureThreshold; i++)
+                await lockSvc.ForceRenewHeartbeat();
+
+            var completed = await Task.WhenAny(reachable.Task, Task.Delay(10_000));
+            Assert.True(completed == reachable.Task,
+                "LocationReachableAgain must fire when the heartbeat's lock check finds the lock still ours.");
+            Assert.False(lockLostFired);
+            Assert.Empty(banners);
+            Assert.Equal(CheckoutMode.WriteAccess, svc.Mode);
+        }
+        finally
+        {
+            try { File.SetAttributes(lockPath, FileAttributes.Normal); } catch { }
+            try { File.Delete(lockPath + ".tmp"); } catch { }
+        }
+    }
+
+    /// <summary>
+    /// Spec item 28 (F15): when the share is unreachable and the session HAS unsaved changes, the heartbeat raises the
+    /// same sticky outage notice a save raises, with the line that fits autosave being on ("TermPoint will try again
+    /// automatically"). It does not raise <see cref="CheckoutService.LocationReachableAgain"/> (the location is not
+    /// reachable) and does not demote.
+    /// </summary>
+    [Fact]
+    public async Task HeartbeatFailed_WhenShareUnreachable_WithUnsavedChangesAndAutoSaveOn_RaisesTheStickyOutageNotice()
+    {
+        var (svc, lockSvc) = CreateService();
+        var db = DbPath();
+        CreateFile(db);
+        await svc.CheckoutAsync(db);
+        svc.MarkDirty();                 // an unsaved change: the dirty marker exists
+        svc.StartAutoSave();             // autosave is on
+        try
+        {
+            var lockLostFired = false;
+            var reachableFired = false;
+            svc.WriteLockLost += (_) => lockLostFired = true;
+            svc.LocationReachableAgain += () => reachableFired = true;
+            var arrived = new TaskCompletionSource<(string Message, bool AutoDismiss)>(TaskCreationOptions.RunContinuationsAsynchronously);
+            svc.SaveFailed += (msg, autoDismiss) => arrived.TrySetResult((msg, autoDismiss));
+
+            Directory.Delete(_tempDir, recursive: true);   // lock file and database gone: the share is unreachable
+            for (int i = 0; i < WriteLockService.HeartbeatFailureThreshold; i++)
+                await lockSvc.ForceRenewHeartbeat();
+
+            Assert.Same(arrived.Task, await Task.WhenAny(arrived.Task, Task.Delay(10_000)));
+            var (message, autoDismiss) = arrived.Task.Result;
+            Assert.Equal(
+                "TermPoint can't reach the database location. Your changes are kept on this computer. " +
+                "TermPoint will try again automatically.",
+                message);
+            Assert.False(autoDismiss);
+            Assert.False(lockLostFired);
+            Assert.False(reachableFired);
+            Assert.Equal(CheckoutMode.WriteAccess, svc.Mode);
+        }
+        finally
+        {
+            svc.StopAutoSave();
         }
     }
 
@@ -3223,8 +3372,8 @@ public sealed class CheckoutServiceTests : IDisposable
         svc.WriteLockLost += (_) => lockLostFired = true;
 
         // The re-acquisition banner is the completion signal for the async handler.
-        var recoveredTcs = new TaskCompletionSource<string>(TaskCreationOptions.RunContinuationsAsynchronously);
-        svc.SaveFailed += (msg, _) => recoveredTcs.TrySetResult(msg);
+        var recoveredTcs = new TaskCompletionSource<(string Message, bool AutoDismiss)>(TaskCreationOptions.RunContinuationsAsynchronously);
+        svc.SaveFailed += (msg, autoDismiss) => recoveredTcs.TrySetResult((msg, autoDismiss));
 
         var lockPath = Path.ChangeExtension(db, ".lock");
         File.Delete(lockPath); // antivirus/cloud-sync deletion
@@ -3236,7 +3385,12 @@ public sealed class CheckoutServiceTests : IDisposable
 
         var completed = await Task.WhenAny(recoveredTcs.Task, Task.Delay(10_000));
         Assert.True(completed == recoveredTcs.Task, "Re-acquisition banner must fire.");
-        Assert.Contains("restored", recoveredTcs.Task.Result);
+        var (recoveredMessage, recoveredAutoDismiss) = recoveredTcs.Task.Result;
+        Assert.Equal(
+            "Another program removed the file TermPoint uses to mark this database as in use " +
+            "(antivirus or cloud-sync software can do this). TermPoint has put it back, and you can carry on as normal.",
+            recoveredMessage);
+        Assert.True(recoveredAutoDismiss, "the put-back notice is informational and clears itself");
         Assert.False(lockLostFired, "WriteLockLost must NOT fire for a healed removal.");
         Assert.True(lockSvc.IsWriter);
         Assert.True(File.Exists(lockPath), "Lock file must be re-created.");
@@ -6541,7 +6695,7 @@ public sealed class CheckoutServiceTests : IDisposable
         var outcome = await SaveWhileAsync(svc, () => FaultNextStatOf(db, NetworkFaultDecision.TimeOut));
 
         Assert.Equal(SaveOutcome.CopyError, outcome);
-        Assert.Equal((SavePrompt.ForTransientFailure(SavePrompt.UnreachableMessage, isAutoSave: false), false), Assert.Single(banners));
+        Assert.Equal((SavePrompt.OutageNotice(hasUnsavedChanges: true, autoSaveEnabled: false), false), Assert.Single(banners));   // the one sticky outage notice (spec item 28)
         Assert.Equal(before, DbFileTestHelpers.HashOf(db));
         Assert.False(File.Exists(db + ".tmp"));
         AssertSessionKept(svc, lockSvc);

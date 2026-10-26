@@ -25,7 +25,7 @@ internal static class KnownFindings
     {
         ["F2"]  = "An edit made while a save is running (after the save's snapshot) is not in the save, and what protected it is thrown away when the save ends: its unsaved-changes marker (a crash before the next save deletes the edit) or, for the exit or switch save, the whole working copy.",
         ["F5"]  = "A restore is refused although nobody changed any data: every editing session rewrites the shared database at its first save, even with no edits.",
-        ["F6"]  = "A message promises that TermPoint will offer to restore unsaved changes next time, and it does not (or cannot).",
+        ["F6"]  = "A kept-changes message promises that TermPoint will offer the changes back at the next open, unless someone else changes the database first, and the offer fails although nobody changed any data (the F5 shape), or is not made, or does not bring the work back.",
         ["F7"]  = "\"Restore Unsaved Changes?\" is asked, Restore is chosen, and then \"Can't Restore Unsaved Changes\" follows because someone changed data.",
         ["F16"] = "A lost-lock demotion still running when the user switches database lands on the NEW session: it copies the new database and leaves a session that holds the new lock read-only."
     };

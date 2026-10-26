@@ -7,13 +7,20 @@ namespace TermPoint.Tests.Harness;
 /// a banner) is looked up in the catalogue (<see cref="MessagePromises"/>); the promises it makes are remembered and
 /// checked when they become decidable:
 /// <list type="bullet">
-/// <item><description><b>WillOfferRestore</b> ("TermPoint will offer to restore them the next time..."): decidable at that
-/// computer's next edit-access open <i>of the same database</i> (production keeps unsaved changes per database, so
-/// opening a different one correctly offers nothing). If Restore is chosen the work must really come back: no "Can't Restore
-/// Unsaved Changes", and the promised edits in the shared database or the live session. If no restore is offered
-/// at all, the work must be back anyway. If the person answers Discard or the X, the promise is vacuous (the loss
-/// is invariant I2's business, and F1's). If the work is nowhere any more, I2 reports that and the promise is
-/// closed silently.</description></item>
+/// <item><description><b>WillOfferRestore</b> ("TermPoint will offer to add them to the database the next time you open it for
+/// editing. If someone else changes the database first, they can't be added, but you'll be able to save them as a separate
+/// copy", the wording of spec item 28): decidable at that computer's next edit-access open <i>of the same database</i>
+/// (production keeps unsaved changes per database, so opening a different one correctly offers nothing). The promise has two
+/// outcomes and both are checked. If Restore is chosen and the database did not change in the meantime the work must really
+/// come back: the promised edits in the shared database or the live session, and no "Can't Restore Unsaved Changes". If
+/// "Can't Restore" follows, the promise holds only when someone else changed DATA: the shared database holds an edit that the
+/// kept working file (the version the person's changes were made on) does not know (then the can't-restore question, with its
+/// Save a Copy…, is exactly what was promised). A refusal when nobody changed any data (the shape of findings F5 and F8: only
+/// the file's bytes changed, or the person's own save landed) breaks it. The world works that out at the moment the refusal is
+/// shown, while the kept file is still on disk, and tells the tracker (<see cref="NoteRestoreRefused"/>). If no restore is
+/// offered at all, the work must be back anyway. If the person answers Discard or the X, the promise is vacuous (the loss is
+/// invariant I2's business, and F1's). If the work is nowhere any more, I2 reports that and the promise is closed
+/// silently.</description></item>
 /// <item><description><b>SavedAs</b> ("Your version was saved as X"): decidable at the end of the step; the file X must hold
 /// the unsaved edits the computer had when the step began.</description></item>
 /// <item><description><b>DatabaseUnchanged</b> ("The database wasn't changed"): decidable at the end of the step; the shared
@@ -37,7 +44,7 @@ internal sealed class PromiseTracker
     /// <param name="Database">
     /// The database the message is about, normalised the way production names the working copy
     /// (<see cref="CheckoutService.NormalizeSourcePath"/>: full path, lower case); null when the owner's checkout had no
-    /// source yet. A "will offer to restore" promise is judged only at an edit-access open of this database.
+    /// source yet. A "will offer to add them" promise is judged only at an edit-access open of this database.
     /// </param>
     /// <param name="DatabaseName">The database's file name, for the story ("dept.db"); empty when <paramref name="Database"/> is null.</param>
     private sealed record Promise(
@@ -51,8 +58,28 @@ internal sealed class PromiseTracker
     /// <summary>Promises decidable at the end of the step they were made in.</summary>
     private readonly List<Promise> _thisStep = new();
 
-    /// <summary>"Will offer to restore" promises, waiting for the owner's next edit-access open.</summary>
+    /// <summary>"Will offer to add them" promises, waiting for the owner's next edit-access open.</summary>
     private readonly List<Promise> _pendingOffers = new();
+
+    /// <summary>
+    /// Per computer, for the step in progress: whether the "Can't Restore Unsaved Changes" refusal it was shown (after
+    /// choosing Restore) came although NOBODY changed any data (true: findings F5 and F8, the promise's exception does
+    /// not apply) or because someone else did (false: the case the promise names). Written by
+    /// <see cref="NoteRestoreRefused"/>, read when the promise is judged at the end of the step, and cleared there.
+    /// </summary>
+    private readonly Dictionary<Computer, bool> _refusalWithNoDataChange = new();
+
+    /// <summary>
+    /// Records how a "Can't Restore Unsaved Changes" refusal came about, at the moment it is shown (the kept working file
+    /// is read then, and is gone by the end of the step). Judged by <see cref="CheckOffer"/> when the owner's pending
+    /// "will offer to add them" promise falls due.
+    /// </summary>
+    /// <param name="owner">The computer that was refused.</param>
+    /// <param name="nobodyChangedData">True when no one's data changed (F5 / F8); false when someone else's edits are in the shared database.</param>
+    public void NoteRestoreRefused(Computer owner, bool nobodyChangedData)
+    {
+        lock (_gate) _refusalWithNoDataChange[owner] = nobodyChangedData;
+    }
 
     /// <summary>
     /// Looks up a message and remembers the promises it makes.
@@ -178,9 +205,16 @@ internal sealed class PromiseTracker
 
         foreach (var p in due)
         {
-            var reason = CheckOffer(world, p, now);
+            bool? refusedWithNoDataChange;
+            lock (_gate)
+                refusedWithNoDataChange = _refusalWithNoDataChange.TryGetValue(p.Owner, out var flag) ? flag : null;
+
+            var reason = CheckOffer(world, p, now, refusedWithNoDataChange);
             if (reason is not null) broken.Add(Broken(world, p, step, reason));
         }
+
+        // A refusal is judged in the step it is shown in, or not at all: never carry one into a later step.
+        lock (_gate) _refusalWithNoDataChange.Clear();
 
         return broken;
     }
@@ -208,7 +242,7 @@ internal sealed class PromiseTracker
         {
             return _pendingOffers
                 .Select(p => $"Promise still pending: {p.Owner.DisplayName} was told (step {p.Step}, \"{p.Title}\") that " +
-                             "TermPoint will offer to restore their unsaved changes next time they open " +
+                             "TermPoint will offer to add their unsaved changes next time they open " +
                              (p.Database is null ? "the database" : p.DatabaseName) +
                              " for editing; they have not done so since.")
                 .ToList();
@@ -251,10 +285,20 @@ internal sealed class PromiseTracker
     }
 
     /// <summary>
-    /// A "will offer to restore" promise at the owner's next edit-access open (see the class remarks for the rules).
+    /// A "will offer to add them" promise at the owner's next edit-access open (see the class remarks for the rules).
+    /// The promise has two outcomes: the work is offered back and comes back, OR someone else changed the database first, it
+    /// "can't be added" and the person can save a separate copy (the "Can't Restore Unsaved Changes" question). Only a
+    /// refusal that came although nobody changed any data, or a restore that did not bring the work back, breaks it.
     /// </summary>
+    /// <param name="world">The world (for the owner's dialogs this step).</param>
+    /// <param name="p">The promise.</param>
+    /// <param name="now">The ledger now.</param>
+    /// <param name="refusedWithNoDataChange">
+    /// What <see cref="NoteRestoreRefused"/> recorded for the owner this step: true when "Can't Restore" followed Restore although
+    /// nobody changed any data (F5 / F8), false when someone else did, null when no refusal was recorded.
+    /// </param>
     /// <returns>Why the promise is false, or null when it held or is vacuous.</returns>
-    private static string? CheckOffer(World world, Promise p, Ledger now)
+    private static string? CheckOffer(World world, Promise p, Ledger now, bool? refusedWithNoDataChange)
     {
         // Nothing was at stake, or the work is gone altogether (I2 reports that): nothing for this promise to judge.
         if (p.PromisedEdits.Count == 0 || p.PromisedEdits.All(e => !now.IsSafe(e))) return null;
@@ -272,17 +316,29 @@ internal sealed class PromiseTracker
         {
             return notBack.Count == 0
                 ? null
-                : $"{p.Owner.DisplayName} was told (step {p.Step}) that a restore would be offered at the next open, but at the next " +
+                : $"{p.Owner.DisplayName} was told (step {p.Step}) that the changes would be offered back at the next open, but at the next " +
                   $"open for editing no restore was offered and {string.Join(", ", notBack)} is not back";
         }
 
         if (offer.Answer != ChoiceAnswer.Affirmative) return null;   // Discard / X: the person's answer; I2 judges the loss
 
-        if (cantRestore || notBack.Count > 0)
+        if (cantRestore)
         {
-            return $"{p.Owner.DisplayName} was told (step {p.Step}) that a restore would be offered at the next open; at the next " +
-                   "open for editing Restore was chosen but " +
-                   (cantRestore ? "\"Can't Restore Unsaved Changes\" followed" : $"{string.Join(", ", notBack)} did not come back");
+            // The message said they can't be added "if someone else changes the database first" and that a separate copy can be
+            // saved. That is what "Can't Restore" (with Save a Copy…) is, so it keeps the promise, unless nobody changed any
+            // data: then the exception the message named did not happen, and the message was not true. No recorded refusal
+            // means the harness cannot tell, which is not a broken promise.
+            return refusedWithNoDataChange == true
+                ? $"{p.Owner.DisplayName} was told (step {p.Step}) that the changes would be offered back at the next open unless someone " +
+                  "else changed the database first; at the next open for editing Restore was chosen and \"Can't Restore Unsaved Changes\" " +
+                  "followed although nobody changed any data"
+                : null;
+        }
+
+        if (notBack.Count > 0)
+        {
+            return $"{p.Owner.DisplayName} was told (step {p.Step}) that the changes would be offered back at the next open; at the next " +
+                   $"open for editing Restore was chosen but {string.Join(", ", notBack)} did not come back";
         }
         return null;
     }

@@ -177,7 +177,7 @@ public sealed class FaultSeamTests : IDisposable
         Assert.Equal(SaveOutcome.CopyError, outcome);
         Assert.True(clock.ElapsedMilliseconds < NetworkFileOps.TimeoutMs / 2,
             $"A faulted timeout must not wait the deadline (took {clock.ElapsedMilliseconds} ms).");
-        Assert.Equal(SavePrompt.ForTransientFailure(SavePrompt.UnreachableMessage, isAutoSave: false), Assert.Single(banners));
+        Assert.Equal(SavePrompt.OutageNotice(hasUnsavedChanges: true, autoSaveEnabled: false), Assert.Single(banners));   // the one sticky outage notice (spec item 28)
         Assert.Equal(before, NetworkFileOps.ComputeHash(DbPath));
         Assert.False(File.Exists(DbPath + ".tmp"));
         Assert.True(File.Exists(svc.WorkingPath));
@@ -186,6 +186,78 @@ public sealed class FaultSeamTests : IDisposable
         NetworkFaults.Decide = null;
         Assert.Equal(SaveOutcome.Success, await svc.SaveAsync());
         Assert.Equal("unsaved-edit", ReadTestValue(DbPath));
+    }
+
+    /// <summary>
+    /// Spec item 28 (F15): an AUTOSAVE that cannot reach the share raises the same outage notice as a manual save, and
+    /// it is STICKY: <c>autoDismiss</c> is false although the save was an autosave (it used to clear itself after 30
+    /// seconds while saves kept failing). With autosave on, the text says TermPoint will try again automatically.
+    /// A second failing autosave raises the same notice again (the window shows it once); once the share answers, the
+    /// next autosave succeeds and raises <see cref="CheckoutService.SaveCompleted"/>, which is what clears the notice
+    /// in the window. D and D' are untouched by the failures, and the edit reaches D with the next successful save.
+    /// </summary>
+    [Fact]
+    public async Task AnAutoSaveThatTimesOut_RaisesTheStickyOutageNotice_AndTheNextSuccessfulAutoSaveCompletes()
+    {
+        var svc = await CheckoutWithUnsavedEditAsync(new RecordingLogger());
+        var banners = new List<(string Message, bool AutoDismiss)>();
+        svc.SaveFailed += (message, autoDismiss) => banners.Add((message, autoDismiss));
+        var completed = 0;
+        svc.SaveCompleted += () => completed++;
+        svc.StartAutoSave();   // autosave is on (the timer fires only every AutoSaveIntervalMinutes; the test drives ticks by hand)
+        try
+        {
+            NetworkFaults.Decide = r => r.Label == "ComputeHash" && r.Path == DbPath
+                ? NetworkFaultDecision.TimeOut
+                : NetworkFaultDecision.None;
+
+            await svc.TickAutoSaveAsync();
+            await svc.TickAutoSaveAsync();
+
+            var expected = (
+                "TermPoint can't reach the database location. Your changes are kept on this computer. " +
+                "TermPoint will try again automatically.",
+                false);
+            Assert.Equal(new[] { expected, expected }, banners);
+            Assert.Equal(0, completed);
+            Assert.Null(ReadTestValue(DbPath));
+            Assert.True(File.Exists(svc.WorkingPath + ".dirty"));
+
+            NetworkFaults.Decide = null;
+            await svc.TickAutoSaveAsync();
+
+            Assert.Equal(2, banners.Count);     // the third autosave raised no banner
+            Assert.Equal(1, completed);         // it completed: the window clears the notice on this event
+            Assert.Equal("unsaved-edit", ReadTestValue(DbPath));
+        }
+        finally
+        {
+            svc.StopAutoSave();
+            NetworkFaults.Decide = null;
+        }
+    }
+
+    /// <summary>
+    /// Spec item 28 (F15): with autosave OFF the outage notice for a failed save tells the user to press Save once the
+    /// connection is back (nothing retries by itself), and is sticky for a manual save as for an autosave.
+    /// </summary>
+    [Fact]
+    public async Task AManualSaveThatTimesOut_WithAutoSaveOff_SaysPressSaveOnceTheConnectionIsBack()
+    {
+        var svc = await CheckoutWithUnsavedEditAsync(new RecordingLogger());
+        var banners = new List<(string Message, bool AutoDismiss)>();
+        svc.SaveFailed += (message, autoDismiss) => banners.Add((message, autoDismiss));
+        Assert.False(svc.IsAutoSaveRunning);
+
+        NetworkFaults.Decide = r => r.Label == "ComputeHash" && r.Path == DbPath
+            ? NetworkFaultDecision.TimeOut
+            : NetworkFaultDecision.None;
+        Assert.Equal(SaveOutcome.CopyError, await svc.SaveAsync());
+
+        Assert.Equal(
+            ("TermPoint can't reach the database location. Your changes are kept on this computer. " +
+             "Press Save once the connection is back.", false),
+            Assert.Single(banners));
     }
 
     /// <summary>
@@ -218,7 +290,7 @@ public sealed class FaultSeamTests : IDisposable
         var outcome = await svc.SaveAsync();
 
         Assert.Equal(SaveOutcome.CopyError, outcome);
-        Assert.Equal(SavePrompt.ForTransientFailure(SavePrompt.UnreachableMessage, isAutoSave: false), Assert.Single(banners));
+        Assert.Equal(SavePrompt.OutageNotice(hasUnsavedChanges: true, autoSaveEnabled: false), Assert.Single(banners));   // the one sticky outage notice (spec item 28)
         Assert.Equal("unsaved-edit", ReadTestValue(DbPath));   // the abandoned rename landed
         Assert.False(File.Exists(DbPath + ".tmp"));
         var marker = JsonSerializer.Deserialize<DirtyMarkerData>(File.ReadAllText(svc.WorkingPath + ".dirty"));
