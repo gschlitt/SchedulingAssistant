@@ -9,9 +9,8 @@ namespace TermPoint.Services.SectionImport;
 /// left wondering where they went. The import is never scoped to the subject focus; this only explains
 /// why some of the new sections are not shown in the section list or grid.
 ///
-/// <para>Shared by the new Import Sections flyout (<c>ImportSectionsViewModel</c>) and the Dev Tools section
-/// import, which is retired in step 24.10. Moved here, with the same sentences, from the Dev Tools view
-/// model's <c>BuildOutsideChosenSubjectsNote</c>.</para>
+/// <para>Used by the Import Sections flyout (<c>ImportSectionsViewModel</c>). The sentences are the ones the
+/// retired Dev Tools section import used (step 24.10), moved here from its <c>BuildOutsideChosenSubjectsNote</c>.</para>
 /// </summary>
 public static class OutsideChosenSubjectsNote
 {

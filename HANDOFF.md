@@ -43,23 +43,20 @@ All committed and pushed. Full suite after 24.8: **3,600 passed, 0 failed, 79 sk
 
 ## Next
 
-1. **Greg tries the rest of the flyout in the running app** (the first screen was seen and reworked in 24.8b). Use a
-   database where nothing matters, or press Cancel rather than Import:
-   - Files → Import Sections… → **Save template…**, then **Choose file…** with that template. With Fall 2026-2027
-     open you get the Ready screen; with another semester open, one "This file is for Fall (2026-2027)…" problem.
-   - The menu item should grey out, with a tooltip, while a section is being edited or several semesters are shown.
-   - Report anything that looks off or reads wrong; fixes go to a Sonnet brief.
-2. **Step 24.9: hand check on a copy of a real database** (design Phase 6, step 9): first import into an empty
-   semester; the same file again (nothing added); a corrected file (only new sections); a file with problems, with
-   Copy list pasted into Excel; a change made from a detached panel between Check and Import; a read-only session;
-   Save, close, reopen. Then the **`MinimumVersionToWrite` check**: open the saved copy in 1.2.2, edit and save, reopen
-   in 1.2.3, confirm nothing was lost (expected answer: No raise needed).
-3. **Step 24.10: retire the Dev Tools CSV import** in its own commit (list in the design, Phase 5 "Retiring the Dev
-   Tools import"). It deletes four views, so warn Greg to close them in Visual Studio first. Keep `CsvRecordReader`
-   and `SharedScheduleCsvParser`. `SectionImportFocusTests` goes with the old view model (its helper,
-   `OutsideChosenSubjectsNote`, has its own tests).
+*(Updated 2026-10-26.)* The flyout try-out and step 24.9's hand checks were done through the stress-test kit (below):
+first import into an empty semester, the same file again, a corrected file, problems with Copy list into Excel, a
+change from a detached panel between Check and Import, read-only, save/close/reopen, all on a copy of real data.
+**Step 24.10 (retire the Dev Tools CSV import) is done**, in its own commit: the four old views, their view models
+(and `CoursePreviewRow` / `SectionPreviewRow`), `CsvImportParser`, `CsvImportMatcher`, `Models/CsvImportModels.cs`,
+the menu item, the command, the DI registrations and their tests went; `CsvRecordReader` and the shared-schedule
+parser/exporter stay. `SectionImportFocusTests` went too: `OutsideChosenSubjectsNoteTests` already covered the helper.
 
-## Stress test (2026-10-25, dev machine; tests uncommitted at time of writing)
+1. **Step 24.9's `MinimumVersionToWrite` check** (still to do): open a database copy the new import has written to in
+   1.2.2, edit and save, reopen in 1.2.3, confirm nothing was lost (expected answer: No raise needed).
+2. **Large-import lag: accepted, not fixed** (Greg, 2026-10-26). The 5,000-row file is far beyond real use; the lag
+   eases after a while.
+
+## Stress test (2026-10-25, dev machine; committed 3c60672)
 
 New tests: `SectionImportStressTests` (fresh databases), `SectionImportStressRealDataTests` (`[FactRequiresLocalDb]`,
 temp copy of BIOL-TT.db), helpers `TestSupport/Stress*.cs`. Import filter before the fixes below: 551 passed, 3

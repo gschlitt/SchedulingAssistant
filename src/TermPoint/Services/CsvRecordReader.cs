@@ -23,9 +23,8 @@ internal sealed record CsvRecord(int LineNumber, string Text);
 /// Thrown by <see cref="CsvRecordReader"/> when the input ends while a quoted field is still
 /// open, i.e. the file has an unmatched <c>"</c> (malformed, or truncated mid-field).
 /// <see cref="Exception.Message"/> is the end-user wording (<see cref="Reason"/>) and
-/// deliberately does <em>not</em> contain the line number: some callers' UI already prefixes
-/// "Line N:" (the CSV Import dialogs), others have no such prefix and add it themselves
-/// from <see cref="LineNumber"/>.
+/// deliberately does <em>not</em> contain the line number: each caller (<see cref="SharedScheduleCsvParser"/>
+/// and <c>ImportFileReader</c>) adds it to its own wording from <see cref="LineNumber"/>.
 /// </summary>
 internal sealed class CsvFormatException : FormatException
 {
@@ -54,8 +53,8 @@ internal sealed class CsvFormatException : FormatException
 
 /// <summary>
 /// Reads logical CSV records from a <see cref="TextReader"/>, joining physical lines when a
-/// quoted field contains an embedded newline. Shared by <see cref="CsvImportParser"/> and
-/// <see cref="SharedScheduleCsvParser"/>.
+/// quoted field contains an embedded newline. Shared by <see cref="SharedScheduleCsvParser"/> and the
+/// Import Sections file reader (<c>ImportFileReader</c>).
 ///
 /// <para>Work is linear in the size of the input: a small scanner state
 /// (<c>inQuotes</c>, <c>fieldStart</c>) is carried from one physical line to the next, and each

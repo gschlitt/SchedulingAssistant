@@ -1089,9 +1089,6 @@ public partial class MainWindowViewModel : ViewModelBase
 
 #if !BROWSER
     [RelayCommand]
-    private void NavigateToCsvImport() => OpenFlyout<CsvImportViewModel>("CSV Import");
-
-    [RelayCommand]
     private void OpenDebug() => OpenFlyout<DebugTestDataViewModel>("Debug: Generate Test Data");
 
     [RelayCommand]

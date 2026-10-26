@@ -443,8 +443,6 @@ public partial class App : Application
         services.AddSingleton<SharedScheduleService>();
         services.AddSingleton<SharedScheduleCsvParser>();
         services.AddSingleton<SharedScheduleCsvExporter>();
-        services.AddSingleton<CsvImportParser>();
-        services.AddSingleton<CsvImportMatcher>();
         services.AddSingleton<TourRunner>();
         services.AddTransient<IDialogService, DialogService>();
 
@@ -494,7 +492,6 @@ public partial class App : Application
 #endif
         services.AddTransient<DebugTestDataViewModel>();
         services.AddTransient<MigrationViewModel>();
-        services.AddTransient<CsvImportViewModel>();
 
         // Import Sections (spec item 24, desktop only: the demo has no file system and no Import Sections menu
         // item, so ConfigureDemoServices registers none of these). The file reader, snapshot builder, writer and
@@ -579,8 +576,6 @@ public partial class App : Application
         services.AddSingleton<SharedScheduleService>();
         services.AddSingleton<SharedScheduleCsvParser>();
         services.AddSingleton<SharedScheduleCsvExporter>();
-        services.AddSingleton<CsvImportParser>();
-        services.AddSingleton<CsvImportMatcher>();
         services.AddSingleton<TourRunner>();
         services.AddTransient<IDialogService, NullDialogService>();
 

@@ -8,9 +8,8 @@ using Xunit;
 namespace TermPoint.Tests;
 
 /// <summary>
-/// Tests of <see cref="OutsideChosenSubjectsNote.Build"/> (moved here from the Dev Tools section import, which
-/// keeps its own behaviour: <see cref="SectionImportFocusTests"/> still runs it through that view model until
-/// it is retired in step 24.10). The sentences are the ones the Dev Tools import has always used.
+/// Tests of <see cref="OutsideChosenSubjectsNote.Build"/>. They replace the ones that ran the same helper through
+/// the retired Dev Tools section import (step 24.10); the sentences are the ones that import always used.
 /// </summary>
 public sealed class OutsideChosenSubjectsNoteTests : IDisposable
 {

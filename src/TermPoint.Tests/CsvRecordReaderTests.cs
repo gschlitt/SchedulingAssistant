@@ -8,7 +8,7 @@ namespace TermPoint.Tests;
 
 /// <summary>
 /// Unit tests for <see cref="CsvRecordReader"/>, the logical-record reader shared by
-/// <see cref="CsvImportParser"/> and <see cref="SharedScheduleCsvParser"/>: quote-state
+/// <see cref="SharedScheduleCsvParser"/> and the Import Sections file reader (<c>ImportFileReader</c>): quote-state
 /// tracking across physical lines, physical line numbering, and fail-fast behaviour on
 /// an unterminated quote.
 /// </summary>

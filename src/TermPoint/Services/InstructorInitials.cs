@@ -3,7 +3,7 @@ namespace TermPoint.Services;
 /// <summary>
 /// Generates initials for a new instructor from their name, avoiding initials already in use.
 /// Pure logic with no database access: the caller supplies the set of initials that are taken.
-/// This is the shared form of the logic the Dev Tools instructor import uses.
+/// This is the shared form of the logic the retired Dev Tools instructor import (step 24.10) used.
 /// </summary>
 public static class InstructorInitials
 {
@@ -19,7 +19,7 @@ public static class InstructorInitials
     /// The base is the first letter of the first name plus the first letter of the last name,
     /// upper-cased. With no first name it is the first two letters of the last name (or the single
     /// letter when the last name has only one). With neither name it is "XX". A first name without a
-    /// last name also gives "XX", as the Dev Tools import does. If the base is free it is returned;
+    /// last name also gives "XX", as the retired Dev Tools import did. If the base is free it is returned;
     /// otherwise 2, 3, ... 99 is appended until a free value is found, and as a last resort four
     /// characters of a new GUID.
     /// </para>
