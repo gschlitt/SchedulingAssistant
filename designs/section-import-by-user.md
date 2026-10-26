@@ -895,7 +895,8 @@ Steps 5 and 6 can run side by side, as can 6 and 7.
 
 ### Release notes for this feature
 
-- **`MinimumVersionToWrite`: No** (Phase 4). Step 9 confirms it with a 1.2.2 round trip. The Store submission isn't
+- **`MinimumVersionToWrite`: No** (Phase 4). *(Confirmed 2026-10-26: Greg opened a database the import had written
+  to in 1.2.2, edited and saved it, and reopened it in 1.2.3 with nothing lost.)* The Store submission isn't
   mandatory on this feature's account.
 - **Data migration:** none. No schema change, no new table, no change to any existing record's shape.
 - **Rollback:** the feature is self-contained. Removing the menu item hides it. Step 10 reverts on its own.

@@ -36,7 +36,7 @@ will be verified.
 | 21 | Lightweight section card: ~93 → ~15–20 controls per card | Performance / memory | **Done** (~93 → ~27 controls per card; 800-section heap ~390 MB Release); CloneSection data-loss fixed |
 | 22 | AutoCompleteBox crash when revising a meeting's start time (BugSnag, Aug 21) | Bug (production, reproduced) | **Done** (folded into item 1) |
 | 23 | Section-list virtualization with scroll anchoring, opt-in (Preferences, default off; hidden in WASM) | Performance / memory | **Done** (user-tested on desktop 2026-10-10); field tests pending (touch, macOS trackpad, Win11). Also: room conflicts one per line |
-| 24 | **Section Import by User**: self-serve onboarding from an `.xlsx` template (Files → Import Sections…) | **New feature** | **In progress:** design complete 2026-10-24; steps 24.1–24.10 done on `1.2.3_new_features` (plus 24.8b and the stress-test fixes, 2026-10-26). Left: the 1.2.2 `MinimumVersionToWrite` round trip. See `HANDOFF.md` |
+| 24 | **Section Import by User**: self-serve onboarding from an `.xlsx` template (Files → Import Sections…) | **New feature** | **Done** (2026-10-26) on `1.2.3_new_features`: steps 24.1–24.10, plus 24.8b and the stress-test fixes. `MinimumVersionToWrite`: No, confirmed by a 1.2.2 round trip. See `HANDOFF.md` |
 
 Item numbers are for reference only. The implementation order is below.
 
@@ -2920,8 +2920,8 @@ committed values, and the field test above checks it.
 > **Progress (2026-10-25):** steps 24.1–24.8 committed (24.1 6cb6f7f, 24.2 fe8d192, 24.3 62bbaf2, 24.4 288fe55,
 > 24.5 ccf3c34, 24.6 3579bbd, 24.7 3231fb6, 24.8 10665ac). **(2026-10-26):** 24.8b friendlier first screen
 > (6d98e0f); stress tests and five importer fixes (3c60672); 24.9 hand checks done through the stress-test kit on a
-> copy of real data; 24.10 Dev Tools CSV import retired (own commit). Remaining: 24.9's 1.2.2 `MinimumVersionToWrite`
-> round trip. Current state and next steps: `HANDOFF.md`.
+> copy of real data; 24.10 Dev Tools CSV import retired (4302fbf); 24.9's 1.2.2 round trip done by Greg:
+> `MinimumVersionToWrite` stays No. **Item 24 complete.** Details: `HANDOFF.md`.
 > Full design: [designs/section-import-by-user.md](designs/section-import-by-user.md). Phases 1–3 locked
 > 2026-10-20 (c1ba192); Phases 4–6 and amendment A4 locked 2026-10-24. Built on `1.2.3_new_features`.
 

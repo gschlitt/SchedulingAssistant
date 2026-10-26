@@ -51,10 +51,13 @@ change from a detached panel between Check and Import, read-only, save/close/reo
 the menu item, the command, the DI registrations and their tests went; `CsvRecordReader` and the shared-schedule
 parser/exporter stay. `SectionImportFocusTests` went too: `OutsideChosenSubjectsNoteTests` already covered the helper.
 
-1. **Step 24.9's `MinimumVersionToWrite` check** (still to do): open a database copy the new import has written to in
-   1.2.2, edit and save, reopen in 1.2.3, confirm nothing was lost (expected answer: No raise needed).
-2. **Large-import lag: accepted, not fixed** (Greg, 2026-10-26). The 5,000-row file is far beyond real use; the lag
-   eases after a while.
+**Item 24 is complete (2026-10-26).**
+- **`MinimumVersionToWrite`: No, confirmed.** Greg opened a database copy the new import had written to in 1.2.2,
+  edited and saved it, and reopened it in 1.2.3: nothing was lost.
+- **Large-import lag: accepted, not fixed** (Greg, 2026-10-26). The 5,000-row file is far beyond real use; the lag
+  eases after a while.
+- **Not item 24's to do, but noticed:** closing TermPoint saves without asking (Greg's separate 1.2.3 question), and
+  the 1.2.4 candidates listed under "Still open" below.
 
 ## Stress test (2026-10-25, dev machine; committed 3c60672)
 
