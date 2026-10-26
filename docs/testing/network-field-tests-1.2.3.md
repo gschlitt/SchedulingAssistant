@@ -45,7 +45,7 @@ enough); **share** = the database on Mekler's share; **both** = GregDeskTop and 
 | S11 macOS pass | Should | Mac | ☐ to do |
 | N1 Virtualization ON | Nice | one computer, ~800-section database | ☐ to do |
 | N2 Touch and trackpad | Nice | a touchscreen (GregSurface); Mac | ☐ to do |
-| N3 BugSnag | Nice | one computer | ☐ to do (items 6, 7 not built) |
+| N3 BugSnag | Nice | one computer | ☐ to do (items 6, 7 in 1.2.3, not built yet) |
 | N4 Store update link | Nice | a computer still on 1.2.2 | ☐ after Store certification |
 
 ### Open issues
@@ -68,7 +68,8 @@ enough); **share** = the database on Mekler's share; **both** = GregDeskTop and 
       (message pass), 29 (F5), 30 (backup cleanup), item 15's exit guard, item 13's SharePoint/Teams detection and a
       Help note for item 26; everything else moved to 1.2.4. S5 moved with item 14. Details: `spec_version_1.2.3.md`,
       "Work remaining".
-- [ ] **Still to decide:** items 25, 27, 6 and 7 (N3 depends on 6 and 7).
+- [x] **Decided 2026-10-26:** items 25, 6 and 7 are in 1.2.3; item 27 gets a time-boxed probe, then is fixed in
+      1.2.3 or the virtualization switch is hidden in 1.2.3 (then S10, N1 and N2 wait for 1.2.4).
 - [ ] **Later:** `BackupService` deletes a partial backup with plain, unguarded file calls when the backup folder's
       share is dead (`BackupService.cs:286`); `tools/NetworkProbe/GAP-AUDIT.md` lists 24 more outside the save path.
 - [x] **Done 2026-10-26** (9775b1b): the window title shows the fourth version number when it isn't 0

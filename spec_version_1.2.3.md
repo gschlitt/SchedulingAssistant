@@ -18,8 +18,8 @@ will be verified.
 | 3 | Preserve unknown JSON fields across app versions, with a minimum-version gate | Data integrity | **Done** (3a unknown-field catch-all; 3b `MinimumVersionToWrite` gate). Field test: the Store link once 1.2.3 is certified |
 | 4 | Stop opening the shared DB directly; fix startup ordering; single-instance guard | Data integrity | **Done** (4a, 4e, 4d, 4b, 4c; user-tested 2026-10-13). Open: header-only check on D (kept as built), possible 4f (working copy locked vs damaged). Field tests: Mac guard, clumsy |
 | 5 | Make Restore from backup safe | Data integrity | **Done** (5a shared routine, 5b Save & Backup, 5c chooser, 5d open-time local-copy check, 5e damage reporting to BugSnag). Field test: clumsy mid-restore. Follow-up: version-gate re-run after a locked/damaged local copy (item 3) |
-| 6 | Strip paths and usernames from BugSnag reports | Privacy | Accepted; **plan approved 2026-10-21** (6a text scrubber, 6b delivery filter, 6c sources + PRIVACY.md). Not started |
-| 7 | Report handled save/lock failures and unclean exits to BugSnag | Observability | Accepted |
+| 6 | Strip paths and usernames from BugSnag reports | Privacy | **1.2.3** (decided 2026-10-26): steps 6a–6c as planned (6a text scrubber, 6b delivery filter, 6c sources + PRIVACY.md; plan approved 2026-10-21). Not started |
+| 7 | Report handled save/lock failures and unclean exits to BugSnag | Observability | **1.2.3** (decided 2026-10-26), after item 6, as the last reliability item. Not started |
 | 8 | Empty / delete semester and academic year: consistent rules, no orphans | Bug / data integrity | **Done** (8a service, 8b screens, 8c orphan-tolerant queries); user-tested 2026-10-12 |
 | 9 | Make stale-lock takeover safe | Data integrity | **Done** (9a warning + click re-check, 9b clock-free staleness; user-tested on one machine 2026-10-13). 3-computer integration test pending |
 | 10 | "Save aborted" dead end: give a next step | UX | **Redesigned 2026-10-18**: see `designs/data-persistence-review-2026-10.md`, section 8. 10a (done 2026-10-16) is kept and reworked; 10b and the 10c outline are shelved (`tmp/shelved/`) |
@@ -37,9 +37,9 @@ will be verified.
 | 22 | AutoCompleteBox crash when revising a meeting's start time (BugSnag, Aug 21) | Bug (production, reproduced) | **Done** (folded into item 1) |
 | 23 | Section-list virtualization with scroll anchoring, opt-in (Preferences, default off; hidden in WASM) | Performance / memory | **Done** (user-tested on desktop 2026-10-10); field tests pending (touch, macOS trackpad, Win11). Also: room conflicts one per line |
 | 24 | **Section Import by User**: self-serve onboarding from an `.xlsx` template (Files → Import Sections…) | **New feature** | **Done** (2026-10-26) on `1.2.3_new_features`: steps 24.1–24.10, plus 24.8b and the stress-test fixes. `MinimumVersionToWrite`: No, confirmed by a 1.2.2 round trip. See `HANDOFF.md` |
-| 25 | Let the user switch off room-conflict and instructor-conflict detection | UX / settings | Added 2026-10-26 (Greg). Not designed |
+| 25 | Let the user switch off room-conflict and instructor-conflict detection | UX / settings | Added 2026-10-26 (Greg). **1.2.3** (decided 2026-10-26): two per-user switches in Preferences, with a note on screen when a check is off. Not started |
 | 26 | "Experimenting" isn't possible: TermPoint always saves on exit | Persistence / UX | Added 2026-10-26 (Greg). **Feature moved to 1.2.4** (needs Recovered Versions and item 14's close question); **1.2.3 adds a Help note** on trying changes safely on a copy of the database |
-| 27 | With section-list virtualization on, adding a meeting can push the open editor out of view | Bug (user-reported) | Added 2026-10-26 (Greg). Same family as the drift item 23's anchoring fixed for opening a section |
+| 27 | With section-list virtualization on, adding a meeting can push the open editor out of view | Bug (user-reported) | Added 2026-10-26 (Greg). Same family as the drift item 23's anchoring fixed for opening a section. **Decided 2026-10-26:** a time-boxed probe first; fix in 1.2.3 if small and clear, otherwise hide the switch in 1.2.3 and fix in 1.2.4 |
 | 28 | Message pass: say truthfully what happens (rule 4) | UX / data integrity | **1.2.3** (decided 2026-10-26): F6's four restore promises, item 11's refresh messages, item 13's cloud-folder warning, F13, F15. Wording and notice behaviour only |
 | 29 | F5: skip a save when nothing changed | Data integrity | **1.2.3** (decided 2026-10-26). Small to medium; in the save code |
 | 30 | Backup cleanup on a dead share: give the partial-backup delete a deadline | Responsiveness | **1.2.3** (decided 2026-10-26). Small (`BackupService.cs:286`) |
@@ -51,7 +51,7 @@ Item numbers are for reference only. The implementation order is below.
 Everything not yet done for 1.2.3, in one place. Field-test scenario codes (M, S, N) are in
 `docs/testing/network-field-tests-1.2.3.md`. **The scope of the unbuilt persistence work was decided on 2026-10-26
 (Greg), one item at a time:** what stays is listed under "Still to build"; the rest moved to 1.2.4
-(`spec_version_1.2.4.md`). **Still to decide:** items 25, 27, 6 and 7.
+(`spec_version_1.2.4.md`). Items 25, 27, 6 and 7 were decided the same day; all are in the list below.
 
 **Still to build for 1.2.3 (decided 2026-10-26)**
 - **Item 28, message pass** (rule 4; wording and notice behaviour only, no save code):
@@ -71,6 +71,13 @@ Everything not yet done for 1.2.3, in one place. Field-test scenario codes (M, S
 - **Item 13, SharePoint/Teams detection** on Windows, warn only. Google Drive for desktop, Box and macOS moved to
   1.2.4.
 - **Item 26, a Help note:** how to try out changes safely on a copy of the database. The feature moved to 1.2.4.
+- **Item 27, probe first** (time-boxed): the three probes in its section. If the cause is small and clear, fix it in
+  1.2.3; otherwise hide the virtualization switch in 1.2.3 (virtualization off for everyone) and fix it in 1.2.4.
+- **Item 25, conflict-check switches:** two per-user switches (rooms, instructors) in Preferences, stored in the
+  settings file (no `MinimumVersionToWrite` question), and a note on screen whenever a check is off (rule 4).
+- **Item 6, BugSnag scrubber:** steps 6a–6c as planned. No database or lock code.
+- **Item 7, handled-failure reports:** after item 6, as the last reliability item, so it reports from the finished
+  code.
 
 **Moved to 1.2.4 (decided 2026-10-26):** F16; item 14 (F3); item 15's F2 edit counter; item 26 (the feature); the
 persistence redesign steps 8.9.1–4 (with F7); item 11's reconnection; item 13's other providers and macOS; F9, F10
@@ -89,11 +96,6 @@ and F14; the 24 gaps in `GAP-AUDIT.md`.
 - **For the work still to build:** S3 (item 28's refresh messages, through the DEBUG switch on one computer), S4
   (item 15's exit guard), S9 (SharePoint/Teams detection only). S5 moved to 1.2.4 with item 14.
 - Already passed: M1 (with fix b193eb8), M10, M12 (item 10a), S6 (item 16).
-
-**Other items (scope not yet decided)**
-- **Item 25:** switch off room- and instructor-conflict detection (not designed).
-- **Item 27:** with virtualization on, adding a meeting can push the open editor out of view (same drift as item 23).
-- **Items 6 then 7:** BugSnag scrubber (plan approved), then handled-failure reports.
 
 **Checks on work already built**
 - **Item 20:** step 8's manual checks and the 800-section memory check.
@@ -149,15 +151,16 @@ First look (2026-10-09):
 | **Phase 9**                                                                 |                                                                                        |                                                                                            |
 | 21                                                                          | 24: Section Import by User                                                             | Design complete 2026-10-24. After item 20 (uses its focus); no persistence code.           |
 | **Phase 10: the rest of 1.2.3** (scope decided 2026-10-26)                  |                                                                                        |                                                                                            |
-| 22                                                                          | 28: Message pass (F6, item 11's messages, item 13's warning, F13, F15)                 | Wording and notice behaviour only; no save code. One brief, or one per message group.      |
-| 23                                                                          | 15: Exit guard (repeated X ignored, "Saving and closing…")                             | In the window, not the save code. F2's counter moved to 1.2.4.                             |
-| 24                                                                          | 29: F5, skip a save when nothing changed                                               | The only 1.2.3 change inside the save code: check first what relies on the first save.     |
-| 25                                                                          | 30: Backup cleanup deadline                                                            | One unguarded delete; small.                                                               |
-| 26                                                                          | 13: SharePoint/Teams detection (Windows, warn only)                                    | Detection only; the warning's wording is in item 28.                                       |
-| 27                                                                          | 26: Help note on trying changes on a copy                                              | Documentation only.                                                                        |
-| **Phase 11** (scope to decide)                                              |                                                                                        |                                                                                            |
-| 28                                                                          | 27: Virtualization drift when a meeting is added                                       | A bug in a shipped option (item 23); probe first.                                          |
-| 29                                                                          | 25: Switch off conflict detection                                                      | Settings and views only; no persistence code if per user.                                  |
+| 22                                                                          | 27: Virtualization drift: time-boxed probe                                             | First: its outcome decides fix (1.2.3) or hide the switch.                                 |
+| 23                                                                          | 28: Message pass (F6, item 11's messages, item 13's warning, F13, F15)                 | Wording and notice behaviour only; no save code.                                           |
+| 24                                                                          | 15: Exit guard (repeated X ignored, "Saving and closing…")                             | In the window, not the save code. F2's counter moved to 1.2.4.                             |
+| 25                                                                          | 29: F5, skip a save when nothing changed                                               | The only 1.2.3 change inside the save code: check first what relies on the first save.     |
+| 26                                                                          | 30: Backup cleanup deadline                                                            | One unguarded delete; small.                                                               |
+| 27                                                                          | 13: SharePoint/Teams detection (Windows, warn only)                                    | Detection only; the warning's wording is in item 28.                                       |
+| 28                                                                          | 25: Conflict-check switches                                                            | Settings and two views; per user, so no persistence question.                              |
+| 29                                                                          | 26: Help note on trying changes on a copy                                              | Documentation only.                                                                        |
+| 30                                                                          | 6: BugSnag scrubber (6a–6c)                                                            | Before item 7.                                                                             |
+| 31                                                                          | 7: Handled-failure and unclean-exit reports                                            | Last, so it reports from the finished code.                                                |
 
 **Workflow.** Opus orchestrates and Sonnet writes the code, one step at a time. For each step:
 1. Opus writes a self-contained brief.
@@ -3055,7 +3058,10 @@ warn the user first):
 lines, via `PropertyLinesBehavior` / `CardPropertyLine` / `SectionListItemViewModel`), the schedule grid
 (`ScheduleGridViewModel`) and the Workload panel. There is no setting; conflicts are always computed and shown.
 
-**To decide.**
+**Decided (Greg, 2026-10-26):** in 1.2.3; two switches (rooms, instructors), per user, with a note on screen when a
+check is off. Still to settle in the brief: not shown vs not computed, and the note's wording and place.
+
+**To decide (original list).**
 - One switch each (rooms, instructors), or one for both?
 - Per user (`AppSettings`, like the other display preferences) or per database? Per user needs no
   `MinimumVersionToWrite` thought; per database would save something 1.2.2 doesn't know about.
@@ -3112,6 +3118,9 @@ fixes the drift (12.1.3, 12.1.4); the local workaround notes are in `WORKAROUNDS
 - Does the anchor change when "Add meeting" is clicked (the pressed item), or does adding a meeting replace the
   section's list item (so the anchor, tracked by item, is lost)?
 - Does it happen with a pause after opening the editor (layout settled) as well as straight away?
+
+**Decided (Greg, 2026-10-26):** run the probes first, time-boxed. Fix in 1.2.3 if the cause is small and clear;
+otherwise hide the virtualization switch in 1.2.3 and fix the drift in 1.2.4.
 
 **Rules for the fix.** Per `CLAUDE.md`, never scroll the section list's ScrollViewer directly: set `SelectedItem` or
 call `ListScrollAnchorBehavior.ScrollItemIntoView`. After any fix, re-run `dotnet run --project tools/ScrollAnchorProbe`.
