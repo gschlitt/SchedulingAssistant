@@ -76,6 +76,14 @@
                         FontSize="11" />
                 </StackPanel>
 
+                <!--  Inline validation error — e.g. an incomplete meeting time blocked Apply, or Room Browser can't open  -->
+                <TextBlock
+                    FontSize="10"
+                    Foreground="{StaticResource TextError}"
+                    IsVisible="{Binding LastErrorMessage, Converter={x:Static ObjectConverters.IsNotNull}}"
+                    Text="{Binding LastErrorMessage}"
+                    TextWrapping="Wrap" />
+
                 <!--  Title  -->
                 <StackPanel Spacing="1">
                     <TextBlock
@@ -168,6 +176,7 @@
                                         HorizontalAlignment="Stretch"
                                         CornerRadius="4"
                                         FontSize="11"
+                                        Classes.unset="{Binding IsDayUnset}"
                                         ItemsSource="{Binding AvailableDays}"
                                         SelectedValue="{Binding SelectedDay}"
                                         SelectedValueBinding="{Binding Day}">
@@ -261,6 +270,7 @@
                                         CornerRadius="4"
                                         DisplayMemberBinding="{Binding Name}"
                                         FontSize="11"
+                                        Classes.unset="{Binding IsMeetingTypeUnset}"
                                         ItemsSource="{Binding MeetingTypes}"
                                         SelectedValue="{Binding SelectedMeetingTypeId}"
                                         SelectedValueBinding="{Binding Id}" />
@@ -275,6 +285,7 @@
                                         CornerRadius="4"
                                         DisplayMemberBinding="{Binding Name}"
                                         FontSize="11"
+                                        Classes.unset="{Binding IsRoomTypeUnset}"
                                         ItemsSource="{Binding RoomTypeOptions}"
                                         SelectedItem="{Binding SelectedRoomType}" />
 
@@ -288,6 +299,7 @@
                                         IsEnabled="{Binding IsRoomEnabled}"
                                         CornerRadius="4"
                                         FontSize="11"
+                                        Classes.unset="{Binding IsRoomUnset}"
                                         ItemsSource="{Binding FilteredRooms}"
                                         SelectedValue="{Binding SelectedRoomId}"
                                         SelectedValueBinding="{Binding Id}">

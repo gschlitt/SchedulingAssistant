@@ -162,7 +162,7 @@ public partial class MeetingEditViewModel : ViewModelBase
         _allRooms        = allRooms;
         IsNew            = isNew;
 
-        var rtOpts = new List<RoomTypeOption> { new(null, "(none)") };
+        var rtOpts = new List<RoomTypeOption> { new(null, SectionMeetingViewModel.UnsetLabel) };
         rtOpts.AddRange(roomTypes.Select(rt => new RoomTypeOption(rt.Id, rt.Name)));
         rtOpts.Add(new RoomTypeOption(SectionDaySchedule.RemoteRoomTypeId, "Remote"));
         _roomTypeOptions = rtOpts;
@@ -428,10 +428,26 @@ public partial class MeetingEditViewModel : ViewModelBase
 
     // ── Save / Cancel ─────────────────────────────────────────────────────────
 
-    /// <summary>Saves the meeting to the repository and reloads the store.</summary>
+    /// <summary>
+    /// Saves the meeting to the repository and reloads the store. Refuses to save, setting
+    /// <see cref="ViewModelBase.LastErrorMessage"/> instead, while any meeting time is incomplete
+    /// or has no day; nothing on the meeting is changed in that case.
+    /// </summary>
     [RelayCommand(CanExecute = nameof(CanSave))]
     private void Save()
     {
+        // Clear any prior advisory so it does not persist across save attempts.
+        LastErrorMessage = null;
+
+        // Guard: every meeting time needs both a start time and block length, and a real day.
+        // Without this, an incomplete slot would be silently dropped by ToSchedule() below.
+        var slotProblem = MeetingTimeValidator.Validate(Slots, "meeting time", "meeting times");
+        if (slotProblem is not null)
+        {
+            LastErrorMessage = slotProblem;
+            return;
+        }
+
         _meeting.Title  = Title.Trim();
         _meeting.Notes  = Notes.Trim();
 

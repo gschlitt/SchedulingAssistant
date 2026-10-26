@@ -164,6 +164,19 @@
 			<Setter Property="Background" Value="{StaticResource UserInteractionBrush}" />
 		</Style>
 
+		<!--
+			Meeting-row dropdown with nothing chosen (it shows "—"). Each dropdown binds Classes.unset
+			to its row's IsXxxUnset property. Grey like a text placeholder, with a tooltip saying the
+			choice hasn't been made. Items in the open dropdown keep the normal text colour.
+		-->
+		<Style Selector="ComboBox.unset">
+			<Setter Property="Foreground" Value="{StaticResource UnsetChoiceText}" />
+			<Setter Property="ToolTip.Tip" Value="Not specified" />
+		</Style>
+		<Style Selector="ComboBox.unset ComboBoxItem">
+			<Setter Property="Foreground" Value="{StaticResource TextPrimary}" />
+		</Style>
+
 	</Application.Styles>
 
 	<Application.DataTemplates>

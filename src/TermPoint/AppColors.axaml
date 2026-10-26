@@ -160,6 +160,9 @@
 	<SolidColorBrush x:Key="TextSubtle" Color="#4A5568" />
 	<SolidColorBrush x:Key="TextLabel" Color="Black" />
 	<SolidColorBrush x:Key="TextDimLabel" Color="#64748B" />
+	<!--  Unset choice: a meeting-row dropdown with nothing chosen ("—"). 50% black, the same as the
+	      Simple theme's TextBox placeholder (e.g. "HHMM"), so unset dropdowns and empty fields match.  -->
+	<SolidColorBrush x:Key="UnsetChoiceText" Color="#80000000" />
 	<SolidColorBrush x:Key="TextSemesterLabel" Color="#475569" />
 	<SolidColorBrush x:Key="TextValidationError" Color="#C53030" />
 	<SolidColorBrush x:Key="TextError" Color="#C53030" />

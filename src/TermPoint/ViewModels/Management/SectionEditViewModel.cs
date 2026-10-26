@@ -544,8 +544,8 @@ public partial class SectionEditViewModel : ViewModelBase
         _includeSaturday = includeSaturday;
         _includeSunday = includeSunday;
 
-        // Build room type options: "(none)" + DB types + "Remote"
-        var rto = new List<RoomTypeOption> { new(null, "(none)") };
+        // Build room type options: unset ("—") + DB types + "Remote"
+        var rto = new List<RoomTypeOption> { new(null, SectionMeetingViewModel.UnsetLabel) };
         rto.AddRange(roomTypes.Select(v => new RoomTypeOption(v.Id, v.Name)));
         rto.Add(new RoomTypeOption(SectionDaySchedule.RemoteRoomTypeId, "Remote"));
         _roomTypeOptions = rto;
@@ -975,6 +975,13 @@ public partial class SectionEditViewModel : ViewModelBase
         {
             if (e.PropertyName is null || !_couplingRemainingFields.Contains(e.PropertyName)) return;
 
+            // An empty meeting type is not a pick: new rows start on the unset item, and the
+            // ComboBox's SelectedValue binding can re-report it during start-up. The followers
+            // are empty too, so wait for a real meeting type before propagating and decoupling.
+            if (e.PropertyName == nameof(SectionMeetingViewModel.SelectedMeetingTypeId)
+                && string.IsNullOrEmpty(leader.SelectedMeetingTypeId))
+                return;
+
             // Decouple this field and propagate its current value to all followers.
             _couplingRemainingFields.Remove(e.PropertyName);
             foreach (var follower in _couplingFollowers)
@@ -1054,31 +1061,13 @@ public partial class SectionEditViewModel : ViewModelBase
             return;
         }
 
-        // Guard: validate all meetings have both start time and block length.
+        // Guard: every meeting needs both a start time and block length, and a real day.
         // The error is set on this VM's LastErrorMessage so it appears inside the editor,
         // close to where the user is working, rather than at the top of the section list.
-        var incomplete = Meetings
-            .Where(m => (m.SelectedStartTime.HasValue && !m.SelectedBlockLength.HasValue) ||
-                        (!m.SelectedStartTime.HasValue && m.SelectedBlockLength.HasValue))
-            .ToList();
-        if (incomplete.Any())
+        var meetingProblem = MeetingTimeValidator.Validate(Meetings, "meeting", "meetings");
+        if (meetingProblem is not null)
         {
-            LastErrorMessage = incomplete.Count == 1
-                ? "One meeting has a start time but no block length. Please complete it or delete it."
-                : $"{incomplete.Count} meetings are incomplete. Each needs both a start time and block length.";
-            return;
-        }
-
-        // Guard: meetings with day "(any)" (sentinel 0) cannot be saved — they are
-        // placeholders for the Room Availability Browser to fill in.
-        var unassignedDay = Meetings
-            .Where(m => m.SelectedDay == 0 && (m.SelectedStartTime.HasValue || m.SelectedBlockLength.HasValue))
-            .ToList();
-        if (unassignedDay.Any())
-        {
-            LastErrorMessage = unassignedDay.Count == 1
-                ? "One meeting has no day assigned. Use Browse to assign days, or select a day manually."
-                : $"{unassignedDay.Count} meetings have no day assigned. Use Browse to assign days, or select days manually.";
+            LastErrorMessage = meetingProblem;
             return;
         }
 
