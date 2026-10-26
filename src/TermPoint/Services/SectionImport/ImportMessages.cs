@@ -111,14 +111,35 @@ public static class ImportMessages
     public static readonly SaveFileRequest InstructionsSaveRequest = new(
         "Save the instructions", InstructionsFileName, "html", "Web page (*.html)", "*.html");
 
+    /// <summary>The first sentence of the target line, whatever is selected: the rule for where sections go.</summary>
+    public const string TargetRule =
+        "Sections are imported one semester at a time, to the currently selected semester.";
+
+    /// <summary>The target line's second sentence when no semester is selected.</summary>
+    public const string NoSemesterSelected = "No semester is selected. Select one to import sections into it.";
+
+    /// <summary>The target line's second sentence when more than one semester is selected.</summary>
+    public const string SeveralSemestersSelected =
+        "Several semesters are selected. Select just one to import sections into it.";
+
     /// <summary>
-    /// The target line: "Sections will be added to Fall 2026 (2026-2027)."
+    /// The target line when one semester is selected: "Sections are imported one semester at a time, to the
+    /// currently selected semester. The current semester is Fall 2026 (2026-2027)."
     /// </summary>
     /// <param name="term">The semester's name.</param>
     /// <param name="academicYear">The academic year's name.</param>
-    /// <returns>The sentence.</returns>
+    /// <returns>The two sentences.</returns>
     public static string TargetLine(string term, string academicYear) =>
-        $"Sections will be added to {Where(term, academicYear)}.";
+        $"{TargetRule} The current semester is {Where(term, academicYear)}.";
+
+    /// <summary>
+    /// The target line when there is no semester to import into: the same rule, then what to do about it
+    /// (<see cref="NoSemesterSelected"/> or <see cref="SeveralSemestersSelected"/>).
+    /// </summary>
+    /// <param name="selectedSemesterCount">How many semesters are selected; 0 or 1 gives the "no semester" sentence (1 only if its details couldn't be read), more gives the "several" one.</param>
+    /// <returns>The two sentences.</returns>
+    public static string NoTargetLine(int selectedSemesterCount) =>
+        $"{TargetRule} {(selectedSemesterCount > 1 ? SeveralSemestersSelected : NoSemesterSelected)}";
 
     /// <summary>"Fall 2026 (2026-2027)", or just the term when the year's name is unknown.</summary>
     /// <param name="term">The semester's name.</param>
@@ -225,6 +246,24 @@ public static class ImportMessages
     /// <param name="room">The room the import will create.</param>
     /// <returns>The display line.</returns>
     public static string RoomLine(Room room) => $"{room.Building} {room.RoomNumber}".Trim();
+
+    /// <summary>
+    /// The problem for a cell the file reader could not use (see <see cref="CellIssue"/>): an Excel error cell
+    /// ("This cell shows an Excel error (#N/A). Fix the formula in Excel, or type the value instead.") or a cell
+    /// Excel turned into a date ("Excel has turned this into a date (2 Jan 2026). Format the column as Text in
+    /// Excel and type the value again."). Each says what happened to the cell and what to do about it. An error
+    /// the reader cannot name (no text for <see cref="CellIssue.Shown"/>) is worded without the brackets.
+    /// </summary>
+    /// <param name="issue">The issue the reader recorded for the cell.</param>
+    /// <returns>The message, one or two sentences with no row or column (the problem carries those).</returns>
+    public static string CellIssueProblem(CellIssue issue) => issue.Kind switch
+    {
+        CellIssueKind.Date =>
+            $"Excel has turned this into a date ({issue.Shown}). Format the column as Text in Excel and type the value again.",
+        _ => string.IsNullOrEmpty(issue.Shown)
+            ? "This cell shows an Excel error. Fix the formula in Excel, or type the value instead."
+            : $"This cell shows an Excel error ({issue.Shown}). Fix the formula in Excel, or type the value instead.",
+    };
 
     /// <summary>
     /// The "New in TermPoint" lists: the subjects, section types, meeting types, tags, campuses and rooms the

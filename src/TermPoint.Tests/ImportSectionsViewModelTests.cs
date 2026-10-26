@@ -168,7 +168,7 @@ public sealed class ImportSectionsViewModelTests : IDisposable
         Assert.Equal(new[] { "Jones, Mary (MJ)" }, vm.NewInstructors.ToArray());
         Assert.True(vm.HasNewCourses);
         Assert.True(vm.HasNewInstructors);
-        Assert.Equal("Sections will be added to Fall (2026-2027).", vm.TargetLine);
+        Assert.Equal("Sections are imported one semester at a time, to the currently selected semester. The current semester is Fall (2026-2027).", vm.TargetLine);
         Assert.Equal(ImportStage.ReadyToImport, vm.Stage);
         Assert.True(vm.ImportCommand.CanExecute(null));
         Assert.True(vm.CancelCommand.CanExecute(null));
@@ -665,17 +665,23 @@ public sealed class ImportSectionsViewModelTests : IDisposable
     {
         using var rig = new ImportRig();
         var s = NewVm(rig);
-        Assert.Equal("Sections will be added to Fall (2026-2027).", s.Vm.TargetLine);
+        Assert.Equal("Sections are imported one semester at a time, to the currently selected semester. The current semester is Fall (2026-2027).", s.Vm.TargetLine);
 
         s.Host.ShowOtherSemester(new ImportTarget("sem-2", "Winter", "2026-2027"));
-        Assert.Equal("Sections will be added to Winter (2026-2027).", s.Vm.TargetLine);
+        Assert.Equal("Sections are imported one semester at a time, to the currently selected semester. The current semester is Winter (2026-2027).", s.Vm.TargetLine);
 
         s.Host.Change(shownSemesterCount: 2);
-        Assert.Equal(ImportAvailability.SeveralSemestersReason, s.Vm.TargetLine);
+        Assert.Equal(
+            "Sections are imported one semester at a time, to the currently selected semester. "
+            + "Several semesters are selected. Select just one to import sections into it.",
+            s.Vm.TargetLine);
         Assert.False(s.Vm.ChooseFileCommand.CanExecute(null));
 
         s.Host.Change(shownSemesterCount: 0);
-        Assert.Equal(ImportAvailability.NoSemesterReason, s.Vm.TargetLine);
+        Assert.Equal(
+            "Sections are imported one semester at a time, to the currently selected semester. "
+            + "No semester is selected. Select one to import sections into it.",
+            s.Vm.TargetLine);
     }
 
     /// <summary>
@@ -1109,7 +1115,7 @@ public sealed class ImportSectionsViewModelTests : IDisposable
         _vms.Add(vm);
 
         Assert.Equal(ImportStage.ReadyToChoose, vm.Stage);
-        Assert.Equal("Sections will be added to Fall (2026-2027).", vm.TargetLine);
+        Assert.Equal("Sections are imported one semester at a time, to the currently selected semester. The current semester is Fall (2026-2027).", vm.TargetLine);
     }
 
     /// <summary>

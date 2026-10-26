@@ -60,6 +60,33 @@ internal static class SectionImportTestKit
         return Row(rowNumber, all.ToArray());
     }
 
+    /// <summary>
+    /// A copy of a row in which some cells are bad: each named column gets the issue and reads as blank, as a
+    /// cell the file reader flagged does (an Excel error, or a date where text was meant).
+    /// </summary>
+    /// <param name="row">The row.</param>
+    /// <param name="issues">(Column, issue) pairs.</param>
+    /// <returns>The row with the issues recorded and those cells' text emptied.</returns>
+    public static ImportRow WithIssues(this ImportRow row, params (string Column, CellIssue Issue)[] issues)
+    {
+        var cells = new Dictionary<string, string>(row.Cells, NameMatch.Comparer);
+        var map = new Dictionary<string, CellIssue>(NameMatch.Comparer);
+        foreach (var (column, issue) in issues)
+        {
+            cells[column] = string.Empty;
+            map[column] = issue;
+        }
+        return row with { Cells = cells, Issues = map };
+    }
+
+    /// <summary>An Excel error cell's issue.</summary>
+    /// <param name="shown">The error as Excel shows it.</param>
+    public static CellIssue ErrorIssue(string? shown = "#N/A") => new(CellIssueKind.ExcelError, shown);
+
+    /// <summary>A date cell's issue.</summary>
+    /// <param name="shown">The date as the message shows it.</param>
+    public static CellIssue DateIssue(string shown = "2 Jan 2026") => new(CellIssueKind.Date, shown);
+
     /// <summary>Builds a sheet from rows.</summary>
     /// <param name="rows">The rows in file order.</param>
     public static ImportSheet Sheet(params ImportRow[] rows) => new("test.csv", rows);

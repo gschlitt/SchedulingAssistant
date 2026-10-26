@@ -168,9 +168,9 @@ public partial class ImportSectionsViewModel : ViewModelBase, IDisposable
     public string ProblemsHeading => ImportMessages.ProblemsHeading;
 
     /// <summary>
-    /// The always-visible target line, "Sections will be added to Fall 2026 (2026-2027).", from the shown
-    /// semester. When no semester, or several, are shown it says what to do instead (the same sentence as
-    /// the menu item's tooltip).
+    /// The always-visible target line, from the shown semester: "Sections are imported one semester at a time,
+    /// to the currently selected semester. The current semester is Fall 2026 (2026-2027)." When no semester, or
+    /// several, are shown, the second sentence says so and what to do instead (<see cref="ImportMessages.NoTargetLine"/>).
     /// </summary>
     public string TargetLine
     {
@@ -178,7 +178,7 @@ public partial class ImportSectionsViewModel : ViewModelBase, IDisposable
         {
             var target = _host.Target;
             return target is null
-                ? ImportAvailability.WhyUnavailable(true, _host.ShownSemesterCount, false) ?? string.Empty
+                ? ImportMessages.NoTargetLine(_host.ShownSemesterCount)
                 : ImportMessages.TargetLine(target.TermName, target.AcademicYearName);
         }
     }

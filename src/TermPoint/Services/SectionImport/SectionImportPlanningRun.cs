@@ -15,6 +15,12 @@ namespace TermPoint.Services.SectionImport;
 /// then, section by section in order of first appearance, subject, course, the already-exists check
 /// and the section's and meetings' values. Every problem found is collected, not just the first.
 /// </para>
+/// <para>
+/// A cell the file reader flagged (an Excel error, or a date where text was meant: <see cref="CellIssue"/>)
+/// is one problem. In a key (always-required) column it is checked on every row, like a blank key cell; in any
+/// other column it is checked only for the rows of a section that will be added, because a section already in
+/// the semester is skipped without looking at its other cells.
+/// </para>
 /// </summary>
 internal sealed class SectionImportPlanningRun
 {
@@ -48,6 +54,20 @@ internal sealed class SectionImportPlanningRun
 
     /// <summary>Initials in use: every existing instructor's plus those generated earlier in this run.</summary>
     private readonly HashSet<string> _takenInitials;
+
+    /// <summary>
+    /// The message reported for each bad cell (an Excel error or a date, see <see cref="CellIssue"/>) so far,
+    /// by row number and column name. Used at the end to drop any other problem on the same cell, so that one
+    /// bad cell is one problem.
+    /// </summary>
+    private readonly Dictionary<(int Row, string Column), string> _badCellMessages = new();
+
+    /// <summary>
+    /// The template columns a bad cell is reported in only for a section that will be added: every column that is
+    /// not always required. (The always-required columns are the key columns, checked on every row.)
+    /// </summary>
+    private static readonly string[] NonKeyColumns =
+        SectionImportColumns.All.Where(c => !c.AlwaysRequired).Select(c => c.Name).ToArray();
 
     /// <summary>The first non-blank Course Title of each course code, over all usable rows.</summary>
     private readonly Dictionary<string, string> _courseTitles = new(NameMatch.CodeComparer);
@@ -142,8 +162,10 @@ internal sealed class SectionImportPlanningRun
             _subjects.NewRefs, _campuses.NewRefs, _sectionTypes.NewRefs, _meetingTypes.NewRefs,
             _tags.NewRefs, _rooms.NewRefs, _courses.NewRefs, _instructors.NewRefs, _newSections);
 
-        // Stable sort: file-wide problems first, then by row, keeping the order found within a row.
-        var problems = _problems.OrderBy(p => p.Row ?? 0).ToList();
+        // Stable sort: file-wide problems first, then by row, keeping the order found within a row. A bad cell
+        // (an Excel error or a date) reads as blank, so its other consequences ("is empty", "has no Room") are
+        // dropped here: the cell is one problem, and the message about the cell is the one the user needs.
+        var problems = WithoutProblemsOnBadCells(_problems).OrderBy(p => p.Row ?? 0).ToList();
         var warnings = new ImportWarningCollector(_snapshot, plan).Collect();
         return new ImportReport(problems, warnings, _skippedSections, plan, semesterWasEmpty);
     }
@@ -189,10 +211,20 @@ internal sealed class SectionImportPlanningRun
         {
             var usableRow = true;
 
-            foreach (var column in required.Where(c => row.Cell(c).Length == 0))
+            // A key cell that is an Excel error or a date is one problem (its own message, not "is empty");
+            // a bad Academic Year or Term reads as blank, so it is not also reported as a wrong semester below.
+            foreach (var column in required)
             {
-                AddProblem(row.RowNumber, column, $"{column} is empty.");
-                usableRow = false;
+                if (row.Issue(column) is { } issue)
+                {
+                    AddBadCellProblem(row, column, issue);
+                    usableRow = false;
+                }
+                else if (row.Cell(column).Length == 0)
+                {
+                    AddProblem(row.RowNumber, column, $"{column} is empty.");
+                    usableRow = false;
+                }
             }
 
             var academicYear = row.Cell(SectionImportColumns.AcademicYear);
@@ -314,6 +346,9 @@ internal sealed class SectionImportPlanningRun
             });
             return;
         }
+
+        // The section will be added, so every cell of its rows has to be usable (key cells were checked above).
+        ReportBadCells(group.Rows);
 
         var instructors = ResolveInstructors(group.Rows);
         var sectionType = ResolveFirstNamed(group.Rows, SectionImportColumns.SectionType, _sectionTypes,
@@ -790,6 +825,52 @@ internal sealed class SectionImportPlanningRun
     /// <param name="message">The plain-English message.</param>
     private void AddProblem(int? row, string? column, string message) =>
         _problems.Add(new ImportProblem(row, column, message));
+
+    /// <summary>
+    /// Records the problem for a bad cell (an Excel error, or a date where text was meant) and remembers it, so
+    /// that <see cref="WithoutProblemsOnBadCells"/> can drop any other problem on the same cell.
+    /// </summary>
+    /// <param name="row">The row.</param>
+    /// <param name="column">The template column of the cell.</param>
+    /// <param name="issue">What the file reader found wrong with the cell.</param>
+    private void AddBadCellProblem(ImportRow row, string column, CellIssue issue)
+    {
+        var message = ImportMessages.CellIssueProblem(issue);
+        _badCellMessages[(row.RowNumber, column)] = message;
+        AddProblem(row.RowNumber, column, message);
+    }
+
+    /// <summary>
+    /// Reports the bad cells in the non-key columns of a section's rows, one problem per cell, in file order and
+    /// template column order. Called only for a section that will be added: a section already in the semester is
+    /// skipped and, like every other cell of its rows, its non-key cells are not looked at (its key cells were
+    /// checked with every other row's, in <see cref="SelectUsableRows"/>).
+    /// </summary>
+    /// <param name="rows">The section's rows in file order.</param>
+    private void ReportBadCells(IEnumerable<ImportRow> rows)
+    {
+        foreach (var row in rows.Where(r => r.Issues is not null))
+        {
+            foreach (var column in NonKeyColumns)
+            {
+                if (row.Issue(column) is { } issue)
+                    AddBadCellProblem(row, column, issue);
+            }
+        }
+    }
+
+    /// <summary>
+    /// Drops every problem that sits on a bad cell other than the bad-cell problem itself. A bad cell reads as
+    /// blank, so it can also cause the problems a blank cell causes ("Meeting Days is empty", "Building X has no
+    /// Room", "needs a Course Title"); the user needs one message per problem, and the one about the cell says
+    /// what to do.
+    /// </summary>
+    /// <param name="problems">All the problems found.</param>
+    /// <returns>The problems without the duplicates on bad cells, in the same order.</returns>
+    private List<ImportProblem> WithoutProblemsOnBadCells(IEnumerable<ImportProblem> problems) =>
+        problems.Where(p => p.Row is not { } row || p.Column is null
+                || !_badCellMessages.TryGetValue((row, p.Column), out var badCellMessage)
+                || p.Message == badCellMessage).ToList();
 
     /// <summary>
     /// Splits a semicolon-separated cell into trimmed, non-empty entries.

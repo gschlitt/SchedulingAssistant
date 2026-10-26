@@ -9,7 +9,10 @@ namespace TermPoint.Services.SectionImport;
 /// Reads a section import file (an <c>.xlsx</c> workbook or a <c>.csv</c>) into an
 /// <see cref="ImportSheet"/>: checks the header row against <see cref="SectionImportColumns"/>,
 /// turns every cell into text so both formats look the same to the planner, drops blank rows and
-/// enforces the file limits.
+/// enforces the file limits. A cell that shows an Excel error, or that Excel turned into a date, is not
+/// turned into text: it is recorded on its row as a <see cref="CellIssue"/> for the planner to report,
+/// because reading it as blank (or as a date's text) would let a section be imported without something the
+/// user meant it to have.
 ///
 /// <para>The class is pure: the caller reads the file's bytes (off the UI thread, with a deadline)
 /// and this class does no file I/O and keeps no state, so it can be registered in DI and shared.
@@ -55,8 +58,28 @@ public sealed class ImportFileReader
     private static readonly DateTime ExcelTimeOnlyDate1 = new(1899, 12, 30);
     private static readonly DateTime ExcelTimeOnlyDate2 = new(1899, 12, 31);
 
-    /// <summary>One row as read from the file, before the header is applied: its row number and every cell as text.</summary>
-    private readonly record struct RawRow(int RowNumber, IReadOnlyList<string> Cells);
+    /// <summary>
+    /// The errors Excel shows in a cell, spelled as Excel spells them. A CSV saved from Excel holds an error cell
+    /// as exactly this text, so a CSV cell whose whole trimmed text is one of them (in any case) is an error cell
+    /// (see <see cref="CsvCellIssue"/>). Maps any casing to the canonical spelling, which is what the user is shown.
+    /// </summary>
+    private static readonly Dictionary<string, string> ExcelErrorLiterals = new[]
+    {
+        "#N/A", "#REF!", "#DIV/0!", "#NAME?", "#NULL!", "#NUM!", "#VALUE!",
+        "#SPILL!", "#CALC!", "#FIELD!", "#BLOCKED!", "#CONNECT!", "#UNKNOWN!",
+    }.ToDictionary(text => text, text => text, StringComparer.OrdinalIgnoreCase);
+
+    /// <summary>
+    /// One row as read from the file, before the header is applied: its row number, every cell as text and, when
+    /// a cell cannot be used (an Excel error, a date), what is wrong with it.
+    /// </summary>
+    /// <param name="RowNumber">The row number as the user sees it.</param>
+    /// <param name="Cells">Every cell as text; a cell with an issue is an empty string.</param>
+    /// <param name="Issues">
+    /// The issue of each cell, at the same position as in <paramref name="Cells"/> (null for a cell that is
+    /// fine); null for the whole row when no cell has one, which is nearly every row.
+    /// </param>
+    private readonly record struct RawRow(int RowNumber, IReadOnlyList<string> Cells, IReadOnlyList<CellIssue?>? Issues = null);
 
     /// <summary>
     /// Registers the Windows code pages once per process. ExcelDataReader's configuration object looks up
@@ -127,7 +150,10 @@ public sealed class ImportFileReader
             if (!found)
                 return ImportReadResult.Failure(NoSectionsSheetMessage);
 
-            return BuildSheet(EnumerateWorksheetRows(reader), displayName);
+            // The library cannot see an error it has no name for (it reads such a cell as empty); the sheet's own
+            // XML lists every error cell, so those the library lost are found there.
+            var errorCells = XlsxErrorCells.Find(content, reader.Name);
+            return BuildSheet(EnumerateWorksheetRows(reader, errorCells), displayName);
         }
         catch (Exception)
         {
@@ -137,23 +163,81 @@ public sealed class ImportFileReader
 
     /// <summary>
     /// Lazily yields the rows of the sheet the reader is positioned on, each cell turned into text by
-    /// <see cref="CellToText"/>. ExcelDataReader yields an empty row for every row number Excel does not
-    /// store, so counting calls to <c>Read()</c> gives the row number Excel shows (the header is row 1).
+    /// <see cref="ReadCell"/> (which also flags an Excel error cell and a date cell). ExcelDataReader yields an
+    /// empty row for every row number Excel does not store, so counting calls to <c>Read()</c> gives the row
+    /// number Excel shows (the header is row 1).
     /// </summary>
     /// <param name="reader">An open reader positioned on the sheet to read.</param>
+    /// <param name="errorCells">
+    /// The sheet's error cells as (row, zero-based column), from <see cref="XlsxErrorCells"/>: used to catch an
+    /// error the library does not report.
+    /// </param>
     /// <returns>The rows in sheet order.</returns>
-    private static IEnumerable<RawRow> EnumerateWorksheetRows(IExcelDataReader reader)
+    private static IEnumerable<RawRow> EnumerateWorksheetRows(IExcelDataReader reader, HashSet<(int Row, int Column)> errorCells)
     {
         int rowNumber = 0;
         while (reader.Read())
         {
             rowNumber++;
             var cells = new string[reader.FieldCount];
+            CellIssue?[]? issues = null;   // allocated only for the rare row that has a bad cell
             for (int i = 0; i < cells.Length; i++)
-                cells[i] = CellToText(reader.GetValue(i));
-            yield return new RawRow(rowNumber, cells);
+            {
+                var (text, issue) = ReadCell(reader.GetValue(i), reader.GetCellError(i),
+                    errorCells.Count > 0 && errorCells.Contains((rowNumber, i)));
+                cells[i] = text;
+                if (issue is not null)
+                    (issues ??= new CellIssue?[cells.Length])[i] = issue;
+            }
+            yield return new RawRow(rowNumber, cells, issues);
         }
     }
+
+    /// <summary>
+    /// Reads one worksheet cell: its text (see <see cref="CellToText"/>) and, when the cell cannot be used as a
+    /// value, what is wrong with it. A cell that shows an Excel error is an <see cref="CellIssueKind.ExcelError"/>
+    /// (shown the way Excel shows it, or with no text when the library cannot name the error). A date (any date
+    /// except Excel's time-only dates, which are times such as 09:00) is a <see cref="CellIssueKind.Date"/>,
+    /// shown as <c>2 Jan 2026</c>: it is what Excel makes of a section code like <c>1-2</c> typed into a column
+    /// that is not formatted as Text. A cell with an issue has empty text, so nothing downstream reads an error or
+    /// a date as something the user typed.
+    /// </summary>
+    /// <param name="value">The value ExcelDataReader returned for the cell; may be null.</param>
+    /// <param name="error">The cell's Excel error from <see cref="IExcelDataReader.GetCellError"/>; null when it holds none.</param>
+    /// <param name="isMarkedAsError">
+    /// True when the sheet's own XML marks the cell as an error (see <see cref="XlsxErrorCells"/>). The library gives
+    /// a null value and no error for an error it has no name for (<c>#SPILL!</c>), so a null value together with this
+    /// mark is an error the library lost; it is reported without a name.
+    /// </param>
+    /// <returns>The cell's text (never null) and its issue (null when the cell is fine).</returns>
+    internal static (string Text, CellIssue? Issue) ReadCell(object? value, CellError? error, bool isMarkedAsError = false)
+    {
+        if (error is { } code)
+            return (string.Empty, new CellIssue(CellIssueKind.ExcelError, ErrorText(code)));
+        if (isMarkedAsError && value is null)
+            return (string.Empty, new CellIssue(CellIssueKind.ExcelError, null));
+        if (value is DateTime dateTime && !IsTimeOnlyDate(dateTime))
+            return (string.Empty, new CellIssue(CellIssueKind.Date, dateTime.ToString("d MMM yyyy", CultureInfo.InvariantCulture)));
+        return (CellToText(value), null);
+    }
+
+    /// <summary>
+    /// The text Excel shows for an error the library names.
+    /// </summary>
+    /// <param name="error">The error.</param>
+    /// <returns>The text, such as <c>#N/A</c>; null for an error this method does not know.</returns>
+    private static string? ErrorText(CellError error) => error switch
+    {
+        CellError.NULL => "#NULL!",
+        CellError.DIV0 => "#DIV/0!",
+        CellError.VALUE => "#VALUE!",
+        CellError.REF => "#REF!",
+        CellError.NAME => "#NAME?",
+        CellError.NUM => "#NUM!",
+        CellError.NA => "#N/A",
+        CellError.GETTING_DATA => "#GETTING_DATA",
+        _ => null,
+    };
 
     // ── .csv ──────────────────────────────────────────────────────────────────
 
@@ -180,16 +264,27 @@ public sealed class ImportFileReader
     }
 
     /// <summary>
-    /// Decodes CSV bytes as UTF-8 (a byte-order mark is honoured and removed). Bytes that are not valid
-    /// UTF-8 are decoded as Latin-1 instead: Excel's plain "CSV" save uses the Windows code page, and
-    /// Latin-1 keeps accented names readable without the code-pages package.
+    /// Decodes CSV bytes into text. A byte-order mark decides first: <c>FF FE</c> is UTF-16 little-endian (what
+    /// Excel's "Unicode Text" writes) and <c>FE FF</c> is UTF-16 big-endian; a UTF-8 mark (<c>EF BB BF</c>) is
+    /// removed and the rest read as UTF-8. With no mark the bytes are read as UTF-8, and when they are not valid
+    /// UTF-8 as Windows-1252 instead: Excel's plain "CSV (Comma delimited)" on Windows writes that code page, so
+    /// its typographic apostrophes, quotation marks and dashes (bytes 0x80 to 0x9F, which Latin-1 would turn into
+    /// invisible control characters) come through as the characters the user typed. The mark is never part of
+    /// the returned text. Bad bytes are replaced rather than thrown on, so this never throws for bad input.
     /// </summary>
     /// <param name="content">The CSV bytes.</param>
     /// <returns>The decoded text.</returns>
     internal static string DecodeCsv(byte[] content)
     {
         ReadOnlySpan<byte> bytes = content;
+        ReadOnlySpan<byte> utf16LittleEndianBom = [0xFF, 0xFE];
+        ReadOnlySpan<byte> utf16BigEndianBom = [0xFE, 0xFF];
         ReadOnlySpan<byte> utf8Bom = [0xEF, 0xBB, 0xBF];
+
+        if (bytes.StartsWith(utf16LittleEndianBom))
+            return Encoding.Unicode.GetString(bytes[utf16LittleEndianBom.Length..]);
+        if (bytes.StartsWith(utf16BigEndianBom))
+            return Encoding.BigEndianUnicode.GetString(bytes[utf16BigEndianBom.Length..]);
         if (bytes.StartsWith(utf8Bom))
             bytes = bytes[utf8Bom.Length..];
 
@@ -199,20 +294,49 @@ public sealed class ImportFileReader
         }
         catch (DecoderFallbackException)
         {
-            return Encoding.Latin1.GetString(bytes);
+            // Code page 1252 is available because the static constructor registered the code-pages provider.
+            return Encoding.GetEncoding(1252).GetString(bytes);
         }
     }
 
     /// <summary>
-    /// Lazily yields the records of a CSV as rows. Throws <see cref="CsvFormatException"/> while being
-    /// enumerated when a quoted field is never closed.
+    /// Lazily yields the records of a CSV as rows, flagging any cell whose whole text is an Excel error
+    /// (<see cref="CsvCellIssue"/>). Throws <see cref="CsvFormatException"/> while being enumerated when a
+    /// quoted field is never closed.
     /// </summary>
     /// <param name="reader">The record reader over the decoded text.</param>
     /// <returns>The records in file order; each row number is the line the record starts on.</returns>
     private static IEnumerable<RawRow> EnumerateCsvRows(CsvRecordReader reader)
     {
         while (reader.ReadRecord() is { } record)
-            yield return new RawRow(record.LineNumber, SharedScheduleCsvParser.ParseCsvRow(record.Text));
+        {
+            var cells = SharedScheduleCsvParser.ParseCsvRow(record.Text);
+            CellIssue?[]? issues = null;   // allocated only for the rare record that has an error cell
+            for (int i = 0; i < cells.Length; i++)
+            {
+                if (CsvCellIssue(cells[i]) is not { } issue)
+                    continue;
+                (issues ??= new CellIssue?[cells.Length])[i] = issue;
+                cells[i] = string.Empty;   // a cell with an issue reads as empty, as in a workbook
+            }
+            yield return new RawRow(record.LineNumber, cells, issues);
+        }
+    }
+
+    /// <summary>
+    /// The issue of one CSV field: Excel writes a cell that shows an error into a CSV as its literal text, so a
+    /// field whose whole trimmed text is one of Excel's error literals (compared ignoring case) is an
+    /// <see cref="CellIssueKind.ExcelError"/>. Text that merely contains such a literal is not. A CSV holds only
+    /// text, so it can never have a date issue.
+    /// </summary>
+    /// <param name="field">The field's text.</param>
+    /// <returns>The issue, or null when the field is not an error literal.</returns>
+    private static CellIssue? CsvCellIssue(string field)
+    {
+        var text = field.Trim();
+        return text.Length > 1 && text[0] == '#' && ExcelErrorLiterals.TryGetValue(text, out var shown)
+            ? new CellIssue(CellIssueKind.ExcelError, shown)
+            : null;
     }
 
     // ── Shared: header check and row building ─────────────────────────────────
@@ -239,14 +363,14 @@ public sealed class ImportFileReader
         while (enumerator.MoveNext())
         {
             var raw = enumerator.Current;
-            if (IsBlank(raw.Cells, sourceIndexes))
+            if (IsBlank(raw, sourceIndexes))
                 continue;
 
             // Stop reading the moment the limit is passed; the rest of the file is never looked at.
             if (rows.Count >= MaxDataRows)
                 return ImportReadResult.Failure(TooLargeMessage);
 
-            rows.Add(new ImportRow(raw.RowNumber, ToCellMap(raw.Cells, sourceIndexes)));
+            rows.Add(new ImportRow(raw.RowNumber, ToCellMap(raw.Cells, sourceIndexes), ToIssueMap(raw, sourceIndexes)));
         }
 
         return ImportReadResult.Success(new ImportSheet(displayName, rows));
@@ -323,14 +447,18 @@ public sealed class ImportFileReader
     }
 
     /// <summary>
-    /// True when every template-column cell of the row is empty or whitespace. Cells in the user's own
-    /// columns are ignored, so a row holding only a note is blank.
+    /// True when every template-column cell of the row is empty or whitespace and none has an issue. Cells in
+    /// the user's own columns are ignored, so a row holding only a note is blank. A cell showing an Excel error
+    /// or a date has empty text but is not blank: it is content the user has to deal with, so a row holding only
+    /// such cells is kept (and reported) rather than silently dropped.
     /// </summary>
-    /// <param name="cells">The row's cells.</param>
+    /// <param name="raw">The row.</param>
     /// <param name="sourceIndexes">The template columns' positions, from <see cref="MapHeaders"/>.</param>
     /// <returns>True when the row has no content in any template column.</returns>
-    private static bool IsBlank(IReadOnlyList<string> cells, int[] sourceIndexes) =>
-        sourceIndexes.All(index => index >= cells.Count || string.IsNullOrWhiteSpace(cells[index]));
+    private static bool IsBlank(RawRow raw, int[] sourceIndexes) =>
+        sourceIndexes.All(index =>
+            index >= raw.Cells.Count
+            || (string.IsNullOrWhiteSpace(raw.Cells[index]) && raw.Issues?[index] is null));
 
     /// <summary>
     /// Builds the canonical-name-to-text map of one row. A row shorter than the header gets empty strings
@@ -351,7 +479,39 @@ public sealed class ImportFileReader
         return map;
     }
 
+    /// <summary>
+    /// Collects the issues of one row's template-column cells, keyed by canonical template column name (the
+    /// user's own columns are never read, so their issues are ignored).
+    /// </summary>
+    /// <param name="raw">The row.</param>
+    /// <param name="sourceIndexes">The template columns' positions, from <see cref="MapHeaders"/>.</param>
+    /// <returns>The map, or null when no template-column cell of the row has an issue.</returns>
+    private static Dictionary<string, CellIssue>? ToIssueMap(RawRow raw, int[] sourceIndexes)
+    {
+        if (raw.Issues is null)
+            return null;
+
+        var columns = SectionImportColumns.All;
+        Dictionary<string, CellIssue>? map = null;
+        for (int c = 0; c < columns.Count; c++)
+        {
+            int index = sourceIndexes[c];
+            if (index < raw.Issues.Count && raw.Issues[index] is { } issue)
+                (map ??= new Dictionary<string, CellIssue>(NameMatch.Comparer))[columns[c].Name] = issue;
+        }
+        return map;
+    }
+
     // ── Cell to text ──────────────────────────────────────────────────────────
+
+    /// <summary>
+    /// True when a date-time is one of Excel's time-only dates: what Excel gives a cell that holds a time with
+    /// no date (a time of day such as 09:00). Any other date is a calendar date.
+    /// </summary>
+    /// <param name="dateTime">The cell's date-time.</param>
+    /// <returns>True for a time with no date.</returns>
+    private static bool IsTimeOnlyDate(DateTime dateTime) =>
+        dateTime.Date == ExcelTimeOnlyDate1 || dateTime.Date == ExcelTimeOnlyDate2;
 
     /// <summary>
     /// Turns one worksheet cell value into the text a CSV would hold for it, so .xlsx and CSV look the same
@@ -362,7 +522,8 @@ public sealed class ImportFileReader
     /// after rounding to the nearest second, since Excel's binary fractions can give 09:59:59.9999);
     /// any other date becomes <c>yyyy-MM-dd</c> (plus <c> HH:mm</c> when it has a time of day); a boolean
     /// becomes <c>TRUE</c> or <c>FALSE</c>. Everything else uses invariant <see cref="Convert.ToString(object, IFormatProvider)"/>.
-    /// All numbers and dates are formatted with the invariant culture.
+    /// All numbers and dates are formatted with the invariant culture. (The reader itself never turns a calendar
+    /// date into text: <see cref="ReadCell"/> records it as an issue first, so only times reach the date rules here.)
     /// </summary>
     /// <param name="value">The value ExcelDataReader returned for the cell; may be null.</param>
     /// <returns>The cell's text; never null.</returns>
@@ -404,7 +565,7 @@ public sealed class ImportFileReader
     /// <returns>The invariant text.</returns>
     private static string DateTimeToText(DateTime dateTime)
     {
-        if (dateTime.Date == ExcelTimeOnlyDate1 || dateTime.Date == ExcelTimeOnlyDate2)
+        if (IsTimeOnlyDate(dateTime))
         {
             // A time with no date. Work in whole seconds, wrapping at midnight, so 23:59:59.9999 becomes 00:00.
             long totalSeconds = (dateTime.TimeOfDay.Ticks + TimeSpan.TicksPerSecond / 2) / TimeSpan.TicksPerSecond;

@@ -288,6 +288,10 @@ import**; a faint footer says re-importing a corrected file is safe. The Problem
 sharing one show/hide setting with the first screen.)*
 
 1. **Target.** "Sections will be added to **Fall 2026** (2026-2027)." The open semester, always visible.
+   *(2026-10-25, Greg: now "Sections are imported one semester at a time, to the currently selected semester. The
+   current semester is Fall 2026 (2026-2027)." With no semester selected, the second sentence is "No semester is
+   selected. Select one to import sections into it."; with several, "Several semesters are selected. Select just
+   one to import sections into it.")*
 2. **Choose file…** It reads and checks the file, showing "Checking…" while it works. No changes are made.
 3. **Result**, one of three:
    - **Problems.** "This file can't be imported yet. Nothing has been changed." Then a list:
@@ -322,7 +326,7 @@ Messages name rows, columns and values as the user typed them; no internal terms
 ### When it's unavailable (shown disabled, with the reason as a tooltip)
 
 - The database is read-only (licence, older version, or another user is editing it).
-- Several semesters are shown: "Show one semester to import into it."
+- Several semesters are shown: "Select just one semester to import sections into it."
 - A section is open for editing: "Finish editing the section first."
 
 ### Decisions
@@ -408,6 +412,20 @@ without a building when several buildings have it. The editors mostly prevent th
 - **Leading zeros can't be recovered.** Excel turns a typed `001` into the number 1. The sample workbook formats
   Course Number, Section Code, Begin and End as **Text** so this doesn't happen, and the Instructions sheet says why.
   The import can't tell `1` from a lost `001`, so it doesn't guess.
+- *(Added 2026-10-25, after the stress test; Greg approved.)* **Cells that can't be read as typed** are problems,
+  never blanks. The reader records them on the row (`ImportRow.Issues`, a `CellIssue` per template column) and the
+  cell reads as empty; the planner reports one problem per such cell, under the same rule as other problems (key
+  columns on every row; other columns only for sections that will be added), and drops the knock-on problems a
+  blank would cause on that cell ("is empty", "has no Room"):
+  - **An Excel error** (`#N/A`, `#REF!`, `#DIV/0!`, …): "This cell shows an Excel error (#N/A). Fix the formula in
+    Excel, or type the value instead." In `.xlsx` from ExcelDataReader's `GetCellError`, plus a scan of the sheet
+    XML for error cells the library can't name (`XlsxErrorCells`; those messages leave out the name). In a CSV, a
+    cell whose whole text is one of Excel's error literals.
+  - **A date** in any template column (Excel turned `1-2` into 2 January): "Excel has turned this into a date
+    (2 Jan 2026). Format the column as Text in Excel and type the value again." Times in Begin and End are unchanged.
+- *(Added 2026-10-25.)* **CSV encodings:** a UTF-16 byte-order mark (LE or BE) is honoured; otherwise strict UTF-8,
+  falling back to **Windows-1252** (Excel's default "CSV" on Windows), not Latin-1, so `’`, `–` and `…` come through.
+  A semicolon- or tab-separated file is still refused with the missing-header problem (1.2.4 candidate).
 
 ### Transient shapes (live on the flyout's view model; dropped when it closes)
 
@@ -802,7 +820,9 @@ The shared-schedule parser keeps its own copies for now (E3).
 | `Done` | the done message (with the D5 and D6 sentences and the new-rooms line when they apply); **Choose file…** | Choose file |
 
 - **Copy list:** tab-separated `Row`, `Column`, `Problem` with a header line, written with the window's clipboard
-  (`TopLevel.Clipboard`); confirm the exact Avalonia 12 call at implementation.
+  (`TopLevel.Clipboard`); confirm the exact Avalonia 12 call at implementation. *(Added 2026-10-25, after the
+  stress test: a cell that begins with `=`, `+`, `-` or `@`, which Excel would run as a formula when pasted, gets
+  an apostrophe in front, Excel's own "this is text" marker; `ImportProblemText.CopyText` does it for every cell.)*
 - **D4 at Import:** if the service reports that the plan changed, the stage becomes `Problems` or `Ready to import`
   again, showing the new report and its heading. Nothing is written.
 - **A failed write** (an exception from the writer, after the rollback): `WriteFailureText` decides the message, the

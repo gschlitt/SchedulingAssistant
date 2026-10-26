@@ -170,6 +170,86 @@ public sealed class ImportRig : IDisposable
     }
 
     /// <summary>
+    /// For every table that has both an <c>id</c> and a <c>data</c> column, every row's id mapped to its
+    /// <c>data</c> text. Used to prove that no existing record was changed by an import (compare a snapshot
+    /// taken before with one taken after: every id of the first must be in the second with identical text),
+    /// which is a sharper statement than a row count.
+    /// </summary>
+    /// <returns>Table name to (id to data).</returns>
+    public Dictionary<string, Dictionary<string, string>> SnapshotIdToData()
+    {
+        var result = new Dictionary<string, Dictionary<string, string>>();
+        var tables = new List<string>();
+        using (var cmd = Db.Connection.CreateCommand())
+        {
+            cmd.CommandText = "SELECT name FROM sqlite_master WHERE type = 'table' AND name NOT LIKE 'sqlite_%' ORDER BY name";
+            using var reader = cmd.ExecuteReader();
+            while (reader.Read())
+                tables.Add(reader.GetString(0));
+        }
+
+        foreach (var table in tables)
+        {
+            var columns = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+            using (var cmd = Db.Connection.CreateCommand())
+            {
+                cmd.CommandText = $"PRAGMA table_info(\"{table}\")";
+                using var reader = cmd.ExecuteReader();
+                while (reader.Read())
+                    columns.Add(reader.GetString(1));
+            }
+            if (!columns.Contains("id") || !columns.Contains("data"))
+                continue;
+
+            var rows = new Dictionary<string, string>();
+            using var select = Db.Connection.CreateCommand();
+            select.CommandText = $"SELECT id, data FROM \"{table}\"";
+            using var rows2 = select.ExecuteReader();
+            while (rows2.Read())
+                rows[rows2.GetString(0)] = rows2.IsDBNull(1) ? "<null>" : rows2.GetString(1);
+            result[table] = rows;
+        }
+        return result;
+    }
+
+    /// <summary>
+    /// Compares two <see cref="SnapshotIdToData"/> snapshots and describes how the second differs from the
+    /// first, treating anything other than an insert as a violation: a row that vanished, or a row whose
+    /// <c>data</c> text changed.
+    /// </summary>
+    /// <param name="before">The earlier snapshot.</param>
+    /// <param name="after">The later snapshot.</param>
+    /// <param name="inserted">How many rows were added, per table (tables with none are left out).</param>
+    /// <returns>One line per violation; empty when the second snapshot is the first plus inserts.</returns>
+    public static List<string> FindNonInserts(
+        Dictionary<string, Dictionary<string, string>> before,
+        Dictionary<string, Dictionary<string, string>> after,
+        out Dictionary<string, int> inserted)
+    {
+        var violations = new List<string>();
+        inserted = new Dictionary<string, int>();
+        foreach (var (table, oldRows) in before)
+        {
+            if (!after.TryGetValue(table, out var newRows))
+            {
+                violations.Add($"{table}: table missing after");
+                continue;
+            }
+            foreach (var (id, data) in oldRows)
+            {
+                if (!newRows.TryGetValue(id, out var newData))
+                    violations.Add($"{table}: row {id} was removed");
+                else if (!string.Equals(data, newData, StringComparison.Ordinal))
+                    violations.Add($"{table}: row {id} data changed");
+            }
+            int added = newRows.Keys.Count(id => !oldRows.ContainsKey(id));
+            if (added > 0)
+                inserted[table] = added;
+        }
+        return violations;
+    }
+
+    /// <summary>
     /// Runs a query that returns one row and reads its columns as text.
     /// </summary>
     /// <param name="sql">The query; must return exactly one row.</param>

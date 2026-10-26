@@ -109,9 +109,9 @@
                    IsVisible="{Binding IsReadyToChoose}"
                    MaxWidth="{StaticResource ImportReadingMaxWidth}"
                    TextWrapping="Wrap">
-            <Run Text="TermPoint can add a whole semester's sections for you from a spreadsheet, so you don't have to type them in one by one. Any courses, instructors, rooms and other section parameters that the spreadsheet names but TermPoint doesn't have yet will be added too." />
+            <Run Text="If you have semester schedules from previous years in spreadsheets, TermPoint can add import them for you.  In addition to sections, any courses, instructors, rooms and other section parameters that the spreadsheet names but TermPoint doesn't have yet will be added too." />
             <LineBreak />
-            <Run Text="The first step is to prepare spreadsheets (one per semester) containing your section data in a specified format." />
+            <Run Text="The first step is to prepare the spreadsheets (one per semester) containing your section data in a specified format." />
         </TextBlock>
 
         <!-- Always: the target semester -->

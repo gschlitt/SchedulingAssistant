@@ -39,9 +39,9 @@ public sealed class ImportMessagesTests
     [Fact]
     public void TargetAndNothingToAdd_NameTheTermAndYear()
     {
-        Assert.Equal("Sections will be added to Fall 2026 (2026-2027).", ImportMessages.TargetLine("Fall 2026", "2026-2027"));
+        Assert.Equal("Sections are imported one semester at a time, to the currently selected semester. The current semester is Fall 2026 (2026-2027).", ImportMessages.TargetLine("Fall 2026", "2026-2027"));
         Assert.Equal("Every section in this file is already in Fall 2026 (2026-2027).", ImportMessages.NothingToAdd("Fall 2026", "2026-2027"));
-        Assert.Equal("Sections will be added to Fall 2026.", ImportMessages.TargetLine("Fall 2026", ""));
+        Assert.Equal("Sections are imported one semester at a time, to the currently selected semester. The current semester is Fall 2026.", ImportMessages.TargetLine("Fall 2026", ""));
     }
 
     // ── Done ──────────────────────────────────────────────────────────────────
@@ -164,4 +164,90 @@ public sealed class ImportMessagesTests
             + "15\t\tTwo lines in one.",
             text);
     }
+
+    /// <summary>
+    /// A cell that begins with <c>=</c>, <c>+</c>, <c>-</c> or <c>@</c> would be run as a formula when pasted into
+    /// Excel, so each gets a leading apostrophe (Excel's text marker); this applies to the Row, Column and Problem cells alike.
+    /// </summary>
+    [Theory]
+    [InlineData("=1+1 is a new course, so it needs a Course Title.")]
+    [InlineData("+1 has a different Section Type than row 2.")]
+    [InlineData("-Smith, Pat is listed twice in Instructor(s).")]
+    [InlineData("@dup is listed twice in Tags.")]
+    public void CopyText_PutsAnApostropheBeforeAFormulaCharacter(string message)
+    {
+        var text = ImportProblemText.CopyText(new[] { new ImportProblem(7, "Tags", message) });
+
+        Assert.Equal($"Row\tColumn\tProblem\r\n7\tTags\t'{message}", text);
+    }
+
+    /// <summary>The apostrophe is added to a Column cell too, and to every cell in one place (so a later message is covered).</summary>
+    [Fact]
+    public void CopyText_ProtectsEveryCell_NotOnlyTheMessage()
+    {
+        var text = ImportProblemText.CopyText(new[] { new ImportProblem(3, "=Room", "-5 isn't a capacity.") });
+
+        Assert.Equal("Row\tColumn\tProblem\r\n3\t'=Room\t'-5 isn't a capacity.", text);
+    }
+
+    /// <summary>Text that does not begin with one of the four characters is untouched, as are a plain row number, empty cells and characters in the middle.</summary>
+    [Fact]
+    public void CopyText_LeavesOtherTextAlone()
+    {
+        var text = ImportProblemText.CopyText(new[]
+        {
+            new ImportProblem(12, "Capacity", "Capacity must be a whole number, like 30 (not -5 or =A1 or @x)."),
+            new ImportProblem(null, null, "This file has no sections."),
+            new ImportProblem(40, null, "'quoted' text already starting with an apostrophe."),
+            new ImportProblem(41, null, "#N/A looks like an error but is not a formula start."),
+        });
+
+        Assert.Equal(
+            "Row\tColumn\tProblem\r\n"
+            + "12\tCapacity\tCapacity must be a whole number, like 30 (not -5 or =A1 or @x).\r\n"
+            + "\t\tThis file has no sections.\r\n"
+            + "40\t\t'quoted' text already starting with an apostrophe.\r\n"
+            + "41\t\t#N/A looks like an error but is not a formula start.",
+            text);
+    }
+
+    /// <summary>The apostrophe goes in front of the flattened text, so a cell whose first character was a line break is judged by what follows it.</summary>
+    [Fact]
+    public void CopyText_JudgesTheFlattenedText()
+    {
+        var text = ImportProblemText.CopyText(new[] { new ImportProblem(5, null, "=cmd\r\nsecond line") });
+
+        Assert.Equal("Row\tColumn\tProblem\r\n5\t\t'=cmd second line", text);
+    }
+
+    /// <summary>The problem lines shown on screen are not changed by the copy rule.</summary>
+    [Fact]
+    public void ProblemLine_IsNotAffectedByTheCopyRule() =>
+        Assert.Equal("Row 4, Tags: =1+1 is listed twice.", ImportProblemText.Line(new ImportProblem(4, "Tags", "=1+1 is listed twice.")));
+
+    // ── Cell issues (Excel error and date cells) ──────────────────────────────
+
+    /// <summary>The Excel error message is exactly the agreed wording, with the error as Excel shows it.</summary>
+    [Fact]
+    public void CellIssueProblem_ExcelError_HasTheAgreedWording()
+    {
+        Assert.Equal("This cell shows an Excel error (#N/A). Fix the formula in Excel, or type the value instead.",
+            ImportMessages.CellIssueProblem(new CellIssue(CellIssueKind.ExcelError, "#N/A")));
+        Assert.Equal("This cell shows an Excel error (#DIV/0!). Fix the formula in Excel, or type the value instead.",
+            ImportMessages.CellIssueProblem(new CellIssue(CellIssueKind.ExcelError, "#DIV/0!")));
+    }
+
+    /// <summary>An error the reader cannot name is worded without the brackets.</summary>
+    [Theory]
+    [InlineData(null)]
+    [InlineData("")]
+    public void CellIssueProblem_UnnamedExcelError_HasNoBrackets(string? shown) =>
+        Assert.Equal("This cell shows an Excel error. Fix the formula in Excel, or type the value instead.",
+            ImportMessages.CellIssueProblem(new CellIssue(CellIssueKind.ExcelError, shown)));
+
+    /// <summary>The date message is exactly the agreed wording, with the date as written by the reader.</summary>
+    [Fact]
+    public void CellIssueProblem_Date_HasTheAgreedWording() =>
+        Assert.Equal("Excel has turned this into a date (2 Jan 2026). Format the column as Text in Excel and type the value again.",
+            ImportMessages.CellIssueProblem(new CellIssue(CellIssueKind.Date, "2 Jan 2026")));
 }

@@ -26,7 +26,7 @@ public sealed class ImportAvailabilityTests
     [Fact]
     public void NoSemester_GivesTheOpenASemesterReason()
     {
-        Assert.Equal("Open a semester to import into it.", ImportAvailability.WhyUnavailable(true, 0, false));
+        Assert.Equal("Select a semester to import sections into it.", ImportAvailability.WhyUnavailable(true, 0, false));
     }
 
     /// <summary>Several semesters shown asks the user to show one.</summary>
@@ -35,7 +35,7 @@ public sealed class ImportAvailabilityTests
     [InlineData(5)]
     public void SeveralSemesters_GivesTheShowOneSemesterReason(int count)
     {
-        Assert.Equal("Show one semester to import into it.", ImportAvailability.WhyUnavailable(true, count, false));
+        Assert.Equal("Select just one semester to import sections into it.", ImportAvailability.WhyUnavailable(true, count, false));
     }
 
     /// <summary>A section open for editing asks the user to finish first.</summary>

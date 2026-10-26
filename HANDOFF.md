@@ -59,6 +59,49 @@ All committed and pushed. Full suite after 24.8: **3,600 passed, 0 failed, 79 sk
    and `SharedScheduleCsvParser`. `SectionImportFocusTests` goes with the old view model (its helper,
    `OutsideChosenSubjectsNote`, has its own tests).
 
+## Stress test (2026-10-25, dev machine; tests uncommitted at time of writing)
+
+New tests: `SectionImportStressTests` (fresh databases), `SectionImportStressRealDataTests` (`[FactRequiresLocalDb]`,
+temp copy of BIOL-TT.db), helpers `TestSupport/Stress*.cs`. Import filter before the fixes below: 551 passed, 3
+skipped (2 findings + the opt-in kit writer); after: 671 passed, 1 skipped. Hand-test kit: set `TERMPOINT_IMPORT_STRESS_KIT` to a folder and run
+`--filter FullyQualifiedName~WriteImportStressKit`; it writes `BIOL-stress.db`, 35 numbered files and
+`CHECKLIST.md`. Not into Documents: Controlled Folder Access blocks the test runner there. The dev machine's kit is at
+`C:\Users\gregs\TermPoint import stress kit` (private data; never commit it).
+
+**Fixed the same day (Greg approved; design Phase 4 "Reading the file" and the Copy list note record the rules):**
+1. **Copy list** cells that began with `=`, `+`, `-` or `@` (Excel ran them as formulas) now get an apostrophe.
+2. **UTF-16 CSV** is read (byte-order mark), instead of refused as "no template header".
+3. **Excel error cells** (`#N/A`, `#REF!`, …) are problems, not blanks (they used to import sections silently
+   without their instructor, type or capacity).
+4. **A date in a text column** (Excel turned `1-2` into a date) is a problem, not the code `2026-01-02`.
+5. **Windows-1252 CSV** (Excel's default "CSV" on Windows) is decoded as 1252, not Latin-1, so `O’Brien` and `–`
+   come through. Import tests after the fixes: 671 passed, 1 skipped (the opt-in kit writer); no `FINDING:` skips left.
+   Full suite: 3,814 passed, 0 failed, 80 skipped (the usual 79 plus the kit writer).
+
+**Still open (1.2.4 candidates, design silent):**
+6. **Zero-width space** in a course number silently creates a second, identical-looking course.
+7. **Hidden or filtered-out rows** are imported.
+8. **Semicolon- or tab-separated CSV** gets the "no template header" message, which doesn't mention the separator.
+9. **Non-breaking spaces** match like spaces, but the first spelling (with the NBSP) is what gets stored.
+
+**Sizes and timings:** the 5,000-row file checks in about 0.6 s and imports in about 0.6 s in the tests. Over 10 MB
+is refused in under 20 ms. **Every row broken gives 13,333 problem lines**: by hand (Greg, 2026-10-25) they appeared
+in about 5 s and stayed responsive, so no cap is needed.
+
+**Greg's hand run of the kit (2026-10-25):** everything passed except as follows. Excel formats his Excel can't save
+(CSV UTF-8, Strict Open XML, encrypted, Unicode text) were skipped. **The 5,000-row file took 13 s to check and 10 s
+to import in the app, with the window unresponsive during the import**; switching back to that semester took up to
+8 s and a cold open 17 s. Unconfirmed whether that run was under the Visual Studio debugger; the next probe is a
+Ctrl+F5 (no debugger) timing of Check, Import and the semester switch. If it stays slow, most of it is the section
+list/grid/workload reload of 3,787 sections, not the write: then show an "Importing…" status before the work, and
+put large-semester slowness on the 1.2.4 list. **Closing without saving after an import keeps the import**:
+TermPoint saves on exit without asking (whether it should ask is a separate 1.2.3 question of Greg's).
+
+**Real-data round trip:** all 61 Fall 2025-2026 sections imported into Winter 2026-2027 with zero field
+differences, nothing new created, inserts only. The template doesn't carry section notes (13 of 61) or
+non-default workloads (28 of 61): imported instructors get workload 1.0. BIOL-TT.db's 80/110/170/230-minute legal
+start times belong to academic-year ids that no longer exist (the known AY-delete orphans).
+
 ## Loose ends
 
 - **Instructions text:** Greg will revise `src/TermPoint/Assets/Templates/SectionImportInstructions.txt` (moved

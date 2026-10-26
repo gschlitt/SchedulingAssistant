@@ -5,7 +5,7 @@ using TermPoint.ViewModels.Management;
 namespace TermPoint.Services.SectionImport;
 
 /// <summary>
-/// The semester an import is aimed at, as the flyout names it: "Sections will be added to Fall 2026 (2026-2027)."
+/// The semester an import is aimed at, as the flyout names it: "The current semester is Fall 2026 (2026-2027)."
 /// </summary>
 /// <param name="SemesterId">The id of the semester the sections are added to.</param>
 /// <param name="TermName">The semester's name, as the picker shows it.</param>

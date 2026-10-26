@@ -32,9 +32,22 @@ public static class ImportProblemText
     }
 
     /// <summary>
+    /// The characters that make Excel run a pasted cell as a formula when the cell begins with one of them.
+    /// </summary>
+    private static readonly char[] FormulaStarts = { '=', '+', '-', '@' };
+
+    /// <summary>
     /// The problems as tab-separated text: <see cref="CopyHeader"/>, then one line per problem with the row
     /// (blank for a file-wide problem), the column (blank when none) and the message. Tabs and line breaks
     /// inside a cell become spaces, so one problem is always one line of three cells. No trailing line break.
+    ///
+    /// <para>The text is meant to be pasted into Excel, which runs any cell that begins with <c>=</c>, <c>+</c>,
+    /// <c>-</c> or <c>@</c> as a formula. Many messages begin with the user's own value (a section label, a
+    /// person's name, a tag), so a value such as <c>=1+1</c> or <c>-Smith, Pat</c> would be evaluated instead of
+    /// shown. Every cell is therefore passed through <see cref="Cell"/>, which puts Excel's own "this is text"
+    /// marker (a single apostrophe, which Excel hides on paste) in front of such a cell. It is done for every
+    /// cell in that one place so that messages written later are covered too. The lines shown on screen
+    /// (<see cref="Line"/>) are not changed.</para>
     /// </summary>
     /// <param name="problems">The problems, in the order shown.</param>
     /// <returns>The text for the clipboard.</returns>
@@ -42,8 +55,21 @@ public static class ImportProblemText
     {
         var lines = new List<string> { CopyHeader };
         foreach (var p in problems)
-            lines.Add(string.Join('\t', p.Row?.ToString() ?? string.Empty, Flatten(p.Column), Flatten(p.Message)));
+            lines.Add(string.Join('\t', Cell(p.Row?.ToString()), Cell(p.Column), Cell(p.Message)));
         return string.Join(CopyLineBreak, lines);
+    }
+
+    /// <summary>
+    /// One cell of the copied list: the text flattened onto one line (<see cref="Flatten"/>) and, when it begins
+    /// with a formula character (<c>=</c>, <c>+</c>, <c>-</c> or <c>@</c>), with an apostrophe in front so
+    /// Excel keeps it as text.
+    /// </summary>
+    /// <param name="text">The cell's text; null is treated as empty.</param>
+    /// <returns>The text for the cell; an empty cell stays empty and a plain row number is unchanged.</returns>
+    private static string Cell(string? text)
+    {
+        var flat = Flatten(text);
+        return flat.Length > 0 && Array.IndexOf(FormulaStarts, flat[0]) >= 0 ? "'" + flat : flat;
     }
 
     /// <summary>Replaces tabs and line breaks with spaces so a value stays inside its spreadsheet cell.</summary>

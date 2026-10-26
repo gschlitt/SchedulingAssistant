@@ -356,18 +356,138 @@ public class ImportFileReaderTests
         Assert.Equal("2026-2027", sheet.Rows.Single().Cells[SectionImportColumns.AcademicYear]);
     }
 
-    /// <summary>Bytes that are not valid UTF-8 are read as Latin-1, so an accented name stays readable.</summary>
+    /// <summary>The Windows ANSI code page (Excel's plain "CSV" on a Western Windows machine).</summary>
+    private static Encoding Windows1252 => Encoding.GetEncoding(1252);
+
+    /// <summary>
+    /// Bytes that are not valid UTF-8 are read as Windows-1252, so an accented name stays readable (the
+    /// accented letters are the same bytes as in Latin-1).
+    /// </summary>
     [Fact]
-    public void Csv_Latin1Bytes_AreDecodedAsLatin1()
+    public void Csv_NonUtf8Bytes_AreDecodedAsWindows1252()
     {
         var text = string.Join("\r\n", CsvLine(Headers),
             CsvLine(MakeRow((SectionImportColumns.Instructors, "Côté, Jean")))) + "\r\n";
-        var bytes = Encoding.Latin1.GetBytes(text);
+        var bytes = Windows1252.GetBytes(text);
         Assert.Throws<DecoderFallbackException>(() => new UTF8Encoding(false, true).GetString(bytes));   // really not UTF-8
 
-        var sheet = Ok(_reader.Read(bytes, "latin1.csv"));
+        var sheet = Ok(_reader.Read(bytes, "ansi.csv"));
 
         Assert.Equal("Côté, Jean", sheet.Rows.Single().Cells[SectionImportColumns.Instructors]);
+    }
+
+    /// <summary>
+    /// Excel's plain "CSV" saves a typographic apostrophe, quotation marks, a dash, an ellipsis and a euro sign
+    /// in Windows-1252's 0x80 to 0x9F range: they must come through as those characters, not as the invisible
+    /// control characters Latin-1 would give.
+    /// </summary>
+    [Fact]
+    public void Csv_Windows1252Punctuation_ComesThroughAsTheCharactersTyped()
+    {
+        var text = string.Join("\r\n", CsvLine(Headers), CsvLine(MakeRow(
+            (SectionImportColumns.Instructors, "O’Brien, Pat"),
+            (SectionImportColumns.CourseTitle, "Intro – “Part 1”… 5€")))) + "\r\n";
+        var bytes = Windows1252.GetBytes(text);
+        Assert.Contains((byte)0x92, bytes);   // the apostrophe is the single byte 0x92 in this code page
+        Assert.Contains((byte)0x96, bytes);   // and the en dash is 0x96
+
+        var cells = Ok(_reader.Read(bytes, "ansi.csv")).Rows.Single().Cells;
+
+        Assert.Equal("O’Brien, Pat", cells[SectionImportColumns.Instructors]);
+        Assert.Equal("Intro – “Part 1”… 5€", cells[SectionImportColumns.CourseTitle]);
+    }
+
+    /// <summary>A UTF-16 little-endian CSV with its byte-order mark (Excel's "Unicode Text" kind) is read, names exactly as written.</summary>
+    [Fact]
+    public void Csv_Utf16LittleEndian_IsRead()
+    {
+        var text = string.Join("\r\n", CsvLine(Headers),
+            CsvLine(MakeRow((SectionImportColumns.Instructors, "Dvořák, Antonín")))) + "\r\n";
+        var bytes = Encoding.Unicode.GetPreamble().Concat(Encoding.Unicode.GetBytes(text)).ToArray();
+
+        var sheet = Ok(_reader.Read(bytes, "utf16.csv"));
+
+        Assert.Equal("Dvořák, Antonín", sheet.Rows.Single().Cells[SectionImportColumns.Instructors]);
+        Assert.Equal("2026-2027", sheet.Rows.Single().Cells[SectionImportColumns.AcademicYear]);   // the mark is not part of the first header
+    }
+
+    /// <summary>A UTF-16 big-endian CSV with its byte-order mark is read too.</summary>
+    [Fact]
+    public void Csv_Utf16BigEndian_IsRead()
+    {
+        var text = string.Join("\r\n", CsvLine(Headers),
+            CsvLine(MakeRow((SectionImportColumns.Instructors, "Dvořák, Antonín")))) + "\r\n";
+        var bytes = Encoding.BigEndianUnicode.GetPreamble().Concat(Encoding.BigEndianUnicode.GetBytes(text)).ToArray();
+
+        var sheet = Ok(_reader.Read(bytes, "utf16be.csv"));
+
+        Assert.Equal("Dvořák, Antonín", sheet.Rows.Single().Cells[SectionImportColumns.Instructors]);
+    }
+
+    /// <summary>A tab-separated file is still refused with the not-a-template-header message, UTF-16 or not (a separate, later item).</summary>
+    [Fact]
+    public void Csv_TabSeparatedUtf16_IsStillRefusedAsHavingNoTemplateHeader()
+    {
+        var text = string.Join("\r\n", string.Join('\t', Headers), string.Join('\t', MakeRow().Select(c => c?.ToString()))) + "\r\n";
+        var bytes = Encoding.Unicode.GetPreamble().Concat(Encoding.Unicode.GetBytes(text)).ToArray();
+
+        Assert.Equal(ImportFileReader.NoTemplateHeaderMessage, Problem(_reader.Read(bytes, "tabs.csv")));
+    }
+
+    // ── DecodeCsv ─────────────────────────────────────────────────────────────
+
+    /// <summary>A UTF-16 little-endian mark (FF FE) selects UTF-16 LE and is dropped.</summary>
+    [Fact]
+    public void DecodeCsv_Utf16LittleEndianBom_DecodesAndDropsTheMark()
+    {
+        var bytes = new byte[] { 0xFF, 0xFE }.Concat(Encoding.Unicode.GetBytes("Ané,€")).ToArray();
+
+        Assert.Equal("Ané,€", ImportFileReader.DecodeCsv(bytes));
+    }
+
+    /// <summary>A UTF-16 big-endian mark (FE FF) selects UTF-16 BE and is dropped.</summary>
+    [Fact]
+    public void DecodeCsv_Utf16BigEndianBom_DecodesAndDropsTheMark()
+    {
+        var bytes = new byte[] { 0xFE, 0xFF }.Concat(Encoding.BigEndianUnicode.GetBytes("Ané,€")).ToArray();
+
+        Assert.Equal("Ané,€", ImportFileReader.DecodeCsv(bytes));
+    }
+
+    /// <summary>A UTF-8 mark (EF BB BF) is dropped and the rest read as UTF-8.</summary>
+    [Fact]
+    public void DecodeCsv_Utf8Bom_DecodesAndDropsTheMark()
+    {
+        var bytes = new byte[] { 0xEF, 0xBB, 0xBF }.Concat(new UTF8Encoding(false).GetBytes("Ané,€")).ToArray();
+
+        Assert.Equal("Ané,€", ImportFileReader.DecodeCsv(bytes));
+    }
+
+    /// <summary>Valid UTF-8 with no mark is read as UTF-8 (the 1252 fallback is only for bytes that are not UTF-8).</summary>
+    [Fact]
+    public void DecodeCsv_Utf8WithoutBom_IsReadAsUtf8() =>
+        Assert.Equal("Ané,€ ’ –", ImportFileReader.DecodeCsv(new UTF8Encoding(false).GetBytes("Ané,€ ’ –")));
+
+    /// <summary>
+    /// Bytes that are not UTF-8 are Windows-1252: 0x92 is the right single quotation mark and 0x96 the en dash
+    /// (Latin-1 would give the control characters U+0092 and U+0096).
+    /// </summary>
+    [Fact]
+    public void DecodeCsv_Windows1252Bytes_GiveTheTypographicCharacters()
+    {
+        var bytes = new byte[] { (byte)'O', 0x92, (byte)'B', (byte)' ', 0x96, (byte)' ', 0x80, (byte)' ', 0xE9 };
+
+        Assert.Equal("O’B – € é", ImportFileReader.DecodeCsv(bytes));
+    }
+
+    /// <summary>No bytes decode to no text (and a lone mark to no text either).</summary>
+    [Fact]
+    public void DecodeCsv_EmptyOrOnlyAMark_IsEmpty()
+    {
+        Assert.Equal("", ImportFileReader.DecodeCsv(Array.Empty<byte>()));
+        Assert.Equal("", ImportFileReader.DecodeCsv(new byte[] { 0xFF, 0xFE }));
+        Assert.Equal("", ImportFileReader.DecodeCsv(new byte[] { 0xFE, 0xFF }));
+        Assert.Equal("", ImportFileReader.DecodeCsv(new byte[] { 0xEF, 0xBB, 0xBF }));
     }
 
     /// <summary>Valid UTF-8 with accents is read as UTF-8, not Latin-1.</summary>
@@ -631,6 +751,297 @@ public class ImportFileReaderTests
         var cells = sheet.Rows.Single().Cells;
         Assert.Equal("TRUE", cells[SectionImportColumns.Tags]);
         Assert.Equal("  Main  ", cells[SectionImportColumns.Campus]);
+    }
+
+    // ── Cell issues: Excel error cells and date cells ─────────────────────────
+
+    /// <summary>The issue recorded on a row for a column, or null.</summary>
+    private static CellIssue? IssueOf(ImportRow row, string column) => row.Issue(column);
+
+    /// <summary>
+    /// A cell showing an Excel error in a workbook is recorded on its row as an error issue (the error as Excel
+    /// shows it) and reads as empty text, in a required and in an optional column alike.
+    /// </summary>
+    [Theory]
+    [InlineData("#N/A")]
+    [InlineData("#REF!")]
+    [InlineData("#DIV/0!")]
+    [InlineData("#NAME?")]
+    [InlineData("#NULL!")]
+    [InlineData("#NUM!")]
+    [InlineData("#VALUE!")]
+    public void Xlsx_ErrorCell_IsRecordedOnTheRow_AndReadsAsEmpty(string code)
+    {
+        var sheet = Ok(ReadBuilt(Format.Xlsx,
+            MakeRow(
+                (SectionImportColumns.SectionCode, new XlsxTestWorkbook.ErrorCell(code)),
+                (SectionImportColumns.Instructors, new XlsxTestWorkbook.ErrorCell(code)))));
+
+        var row = sheet.Rows.Single();
+        Assert.Equal(new CellIssue(CellIssueKind.ExcelError, code), IssueOf(row, SectionImportColumns.SectionCode));
+        Assert.Equal(new CellIssue(CellIssueKind.ExcelError, code), IssueOf(row, SectionImportColumns.Instructors));
+        Assert.Equal("", row.Cells[SectionImportColumns.SectionCode]);
+        Assert.Equal("", row.Cells[SectionImportColumns.Instructors]);
+        Assert.Equal(2, row.Issues!.Count);
+        Assert.Null(IssueOf(row, SectionImportColumns.Subject));   // the other cells are fine
+        Assert.Equal("CHEM", row.Cells[SectionImportColumns.Subject]);
+    }
+
+    /// <summary>
+    /// An error the library has no name for (a newer Excel error such as #SPILL!, which ExcelDataReader 3.9.0 reads as
+    /// a null value with no error, just like an empty cell) is still an error issue, found from the sheet's own XML: the
+    /// cell is never read as blank, and the issue has no error text to show.
+    /// </summary>
+    [Theory]
+    [InlineData("#SPILL!")]
+    [InlineData("#CALC!")]
+    [InlineData("#BLOCKED!")]
+    public void Xlsx_NewerErrorCell_IsStillAnErrorIssue_WithNoNameToShow(string code)
+    {
+        var sheet = Ok(ReadBuilt(Format.Xlsx,
+            MakeRow((SectionImportColumns.Capacity, new XlsxTestWorkbook.ErrorCell(code)))));
+
+        var row = sheet.Rows.Single();
+        Assert.Equal(new CellIssue(CellIssueKind.ExcelError, null), IssueOf(row, SectionImportColumns.Capacity));
+        Assert.Equal("", row.Cells[SectionImportColumns.Capacity]);
+        Assert.Single(row.Issues!);
+    }
+
+    /// <summary>
+    /// The error is found in the right column even when the data does not start in column A: the sheet's XML refers to
+    /// cells by their lettered position, and the reader's column numbers must agree with it.
+    /// </summary>
+    [Fact]
+    public void Xlsx_NewerErrorCell_IsFoundInTheRightColumn_WhenTheDataStartsAfterColumnA()
+    {
+        var header = new object?[] { null, null }.Concat(Headers).ToArray();
+        var data = MakeRow((SectionImportColumns.Instructors, new XlsxTestWorkbook.ErrorCell("#SPILL!")));
+        var bytes = new XlsxTestWorkbook().Sheet("Sections", s => s.Row(header).Row(new object?[] { null, null }.Concat(data).ToArray())).ToBytes();
+
+        var row = Ok(_reader.Read(bytes, "offset.xlsx")).Rows.Single();
+
+        Assert.Equal(new[] { SectionImportColumns.Instructors }, row.Issues!.Keys.ToArray());
+        Assert.Equal("CHEM", row.Cells[SectionImportColumns.Subject]);
+    }
+
+    /// <summary>An error cell on another sheet of the workbook does not touch the Sections sheet's rows.</summary>
+    [Fact]
+    public void Xlsx_ErrorCellsOnAnotherSheet_AreIgnored()
+    {
+        var bytes = new XlsxTestWorkbook()
+            .Sheet("Notes", s => s.Row(new XlsxTestWorkbook.ErrorCell("#SPILL!"), new XlsxTestWorkbook.ErrorCell("#N/A")))
+            .Sheet("Sections", s => s.Row(Headers.Cast<object?>().ToArray()).Row(MakeRow()))
+            .ToBytes();
+
+        Assert.All(Ok(_reader.Read(bytes, "two-sheets.xlsx")).Rows, r => Assert.Null(r.Issues));
+    }
+
+    /// <summary>An error cell in one of the user's own columns is ignored, as that column is.</summary>
+    [Fact]
+    public void Xlsx_ErrorCellInANonTemplateColumn_IsIgnored()
+    {
+        var headers = Headers.Append("My notes").Select(h => (string?)h).ToArray();
+        var row = MakeRow().Append(new XlsxTestWorkbook.ErrorCell("#REF!")).ToArray();
+        var (bytes, name) = Build(Format.Xlsx, headers, new[] { row });
+
+        var read = Ok(_reader.Read(bytes, name)).Rows.Single();
+
+        Assert.Null(read.Issues);
+    }
+
+    /// <summary>
+    /// A row whose only content is an error cell is not a blank row: it is kept, so that the planner reports it
+    /// instead of the row vanishing.
+    /// </summary>
+    [Fact]
+    public void Xlsx_RowHoldingOnlyAnErrorCell_IsKept()
+    {
+        var onlyError = new object?[Headers.Length];
+        onlyError[Array.IndexOf(Headers, SectionImportColumns.Instructors)] = new XlsxTestWorkbook.ErrorCell("#N/A");
+
+        var sheet = Ok(ReadBuilt(Format.Xlsx, onlyError, MakeRow()));
+
+        Assert.Equal(new[] { 2, 3 }, sheet.Rows.Select(r => r.RowNumber));
+        Assert.NotNull(IssueOf(sheet.Rows[0], SectionImportColumns.Instructors));
+    }
+
+    /// <summary>
+    /// A cell Excel turned into a date (the user typed <c>1-2</c> as a section code) is recorded as a date issue
+    /// showing the date as <c>2 Jan 2026</c> (a time of day on it is not shown), and reads as empty text.
+    /// </summary>
+    [Fact]
+    public void Xlsx_DateCell_IsRecordedAsADateIssue_AndReadsAsEmpty()
+    {
+        var sheet = Ok(ReadBuilt(Format.Xlsx,
+            MakeRow(
+                (SectionImportColumns.SectionCode, new DateTime(2026, 1, 2)),
+                (SectionImportColumns.Capacity, new DateTime(2025, 12, 31, 14, 30, 0)))));
+
+        var row = sheet.Rows.Single();
+        Assert.Equal(new CellIssue(CellIssueKind.Date, "2 Jan 2026"), IssueOf(row, SectionImportColumns.SectionCode));
+        Assert.Equal(new CellIssue(CellIssueKind.Date, "31 Dec 2025"), IssueOf(row, SectionImportColumns.Capacity));
+        Assert.Equal("", row.Cells[SectionImportColumns.SectionCode]);
+        Assert.Equal("", row.Cells[SectionImportColumns.Capacity]);
+    }
+
+    /// <summary>The date is shown the same way whatever the machine's culture.</summary>
+    [Fact]
+    public void ReadCell_Date_IsShownInInvariantCulture()
+    {
+        var saved = CultureInfo.CurrentCulture;
+        try
+        {
+            CultureInfo.CurrentCulture = new CultureInfo("fr-FR");
+            var (text, issue) = ImportFileReader.ReadCell(new DateTime(2026, 2, 3), null);
+
+            Assert.Equal("", text);
+            Assert.Equal(new CellIssue(CellIssueKind.Date, "3 Feb 2026"), issue);
+        }
+        finally
+        {
+            CultureInfo.CurrentCulture = saved;
+        }
+    }
+
+    /// <summary>Times in Begin and End (Excel's time-only dates) are not date issues: they read as HH:mm as before.</summary>
+    [Fact]
+    public void Xlsx_TimeCells_AreNotDateIssues()
+    {
+        var sheet = Ok(ReadBuilt(Format.Xlsx,
+            MakeRow(
+                (SectionImportColumns.Begin, TimeSpan.FromHours(9)),
+                (SectionImportColumns.End, new XlsxTestWorkbook.TimeFraction(0.41666666665)))));
+
+        var row = sheet.Rows.Single();
+        Assert.Null(row.Issues);
+        Assert.Equal("09:00", row.Cells[SectionImportColumns.Begin]);
+        Assert.Equal("10:00", row.Cells[SectionImportColumns.End]);
+    }
+
+    /// <summary>A date cell in one of the user's own columns is ignored.</summary>
+    [Fact]
+    public void Xlsx_DateCellInANonTemplateColumn_IsIgnored()
+    {
+        var headers = Headers.Append("Printed on").Select(h => (string?)h).ToArray();
+        var row = MakeRow().Append(new DateTime(2026, 1, 2)).ToArray();
+        var (bytes, name) = Build(Format.Xlsx, headers, new[] { row });
+
+        Assert.Null(Ok(_reader.Read(bytes, name)).Rows.Single().Issues);
+    }
+
+    /// <summary>A workbook of ordinary cells has no issues on any row.</summary>
+    [Fact]
+    public void Xlsx_OrdinaryCells_HaveNoIssues()
+    {
+        var sheet = Ok(ReadBuilt(Format.Xlsx,
+            MakeRow((SectionImportColumns.Capacity, 30.0), (SectionImportColumns.Tags, true))));
+
+        Assert.All(sheet.Rows, r => Assert.Null(r.Issues));
+    }
+
+    /// <summary>
+    /// A CSV cell whose whole trimmed text is an Excel error literal (any case) is an error issue, and reads as
+    /// empty; the literal is shown the way Excel spells it.
+    /// </summary>
+    [Theory]
+    [InlineData("#N/A", "#N/A")]
+    [InlineData("#REF!", "#REF!")]
+    [InlineData("#DIV/0!", "#DIV/0!")]
+    [InlineData("#NAME?", "#NAME?")]
+    [InlineData("#NULL!", "#NULL!")]
+    [InlineData("#NUM!", "#NUM!")]
+    [InlineData("#VALUE!", "#VALUE!")]
+    [InlineData("#SPILL!", "#SPILL!")]
+    [InlineData("#n/a", "#N/A")]
+    [InlineData("  #Div/0!  ", "#DIV/0!")]
+    public void Csv_ErrorLiteral_IsAnErrorIssue_AndReadsAsEmpty(string cell, string shown)
+    {
+        var sheet = Ok(_reader.Read(
+            CsvBytes(CsvLine(Headers), CsvLine(MakeRow(
+                (SectionImportColumns.SectionCode, cell), (SectionImportColumns.Instructors, cell)))),
+            "errors.csv"));
+
+        var row = sheet.Rows.Single();
+        Assert.Equal(new CellIssue(CellIssueKind.ExcelError, shown), IssueOf(row, SectionImportColumns.SectionCode));
+        Assert.Equal(new CellIssue(CellIssueKind.ExcelError, shown), IssueOf(row, SectionImportColumns.Instructors));
+        Assert.Equal("", row.Cells[SectionImportColumns.SectionCode]);
+        Assert.Equal("", row.Cells[SectionImportColumns.Instructors]);
+        Assert.Equal("CHEM", row.Cells[SectionImportColumns.Subject]);
+    }
+
+    /// <summary>Text that only contains or starts like an error literal is ordinary text, not an issue.</summary>
+    [Theory]
+    [InlineData("#N/A in the file")]
+    [InlineData("Section #REF!")]
+    [InlineData("#")]
+    [InlineData("#hashtag")]
+    [InlineData("#N/A!")]
+    [InlineData("N/A")]
+    public void Csv_TextThatIsNotWhollyAnErrorLiteral_IsNotAnIssue(string cell)
+    {
+        var sheet = Ok(_reader.Read(
+            CsvBytes(CsvLine(Headers), CsvLine(MakeRow((SectionImportColumns.Instructors, cell)))), "text.csv"));
+
+        var row = sheet.Rows.Single();
+        Assert.Null(row.Issues);
+        Assert.Equal(cell, row.Cells[SectionImportColumns.Instructors]);
+    }
+
+    /// <summary>An error literal in one of the user's own CSV columns is ignored, and a CSV never has a date issue.</summary>
+    [Fact]
+    public void Csv_ErrorLiteralInANonTemplateColumn_IsIgnored_AndDatesAreJustText()
+    {
+        var headers = Headers.Append("My notes").ToArray();
+        var line = CsvLine(MakeRow((SectionImportColumns.SectionCode, "1-2"), (SectionImportColumns.Campus, "2026-01-02"))) + ",#REF!";
+
+        var row = Ok(_reader.Read(CsvBytes(CsvLine(headers), line), "extra.csv")).Rows.Single();
+
+        Assert.Null(row.Issues);
+        Assert.Equal("1-2", row.Cells[SectionImportColumns.SectionCode]);
+        Assert.Equal("2026-01-02", row.Cells[SectionImportColumns.Campus]);
+    }
+
+    /// <summary>A CSV row whose only content is an error literal is kept, like the same row in a workbook.</summary>
+    [Fact]
+    public void Csv_RowHoldingOnlyAnErrorLiteral_IsKept()
+    {
+        var onlyError = new object?[Headers.Length];
+        onlyError[Array.IndexOf(Headers, SectionImportColumns.Capacity)] = "#N/A";
+
+        var sheet = Ok(_reader.Read(CsvBytes(CsvLine(Headers), CsvLine(onlyError)), "only.csv"));
+
+        Assert.Equal(new[] { 2 }, sheet.Rows.Select(r => r.RowNumber));
+        Assert.NotNull(IssueOf(sheet.Rows.Single(), SectionImportColumns.Capacity));
+    }
+
+    /// <summary>Every error the library names has the text Excel shows; an unknown one has none.</summary>
+    [Theory]
+    [InlineData(ExcelDataReader.CellError.NULL, "#NULL!")]
+    [InlineData(ExcelDataReader.CellError.DIV0, "#DIV/0!")]
+    [InlineData(ExcelDataReader.CellError.VALUE, "#VALUE!")]
+    [InlineData(ExcelDataReader.CellError.REF, "#REF!")]
+    [InlineData(ExcelDataReader.CellError.NAME, "#NAME?")]
+    [InlineData(ExcelDataReader.CellError.NUM, "#NUM!")]
+    [InlineData(ExcelDataReader.CellError.NA, "#N/A")]
+    [InlineData((ExcelDataReader.CellError)200, null)]
+    public void ReadCell_Error_IsShownAsExcelShowsIt(ExcelDataReader.CellError error, string? shown)
+    {
+        var (text, issue) = ImportFileReader.ReadCell(null, error);
+
+        Assert.Equal("", text);
+        Assert.Equal(new CellIssue(CellIssueKind.ExcelError, shown), issue);
+    }
+
+    /// <summary>An error wins over whatever value came with it, and an ordinary value has no issue.</summary>
+    [Fact]
+    public void ReadCell_OrdinaryValues_HaveNoIssue()
+    {
+        Assert.Equal(("abc", (CellIssue?)null), ImportFileReader.ReadCell("abc", null));
+        Assert.Equal(("101", (CellIssue?)null), ImportFileReader.ReadCell(101.0, null));
+        Assert.Equal(("", (CellIssue?)null), ImportFileReader.ReadCell(null, null));
+        Assert.Equal(("10:00", (CellIssue?)null), ImportFileReader.ReadCell(new DateTime(1899, 12, 30, 10, 0, 0), null));
+        Assert.Equal(("", new CellIssue(CellIssueKind.ExcelError, "#N/A")),
+            ImportFileReader.ReadCell("stale text", ExcelDataReader.CellError.NA));
     }
 
     // ── CellToText ────────────────────────────────────────────────────────────

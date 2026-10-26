@@ -17,10 +17,10 @@ public static class ImportAvailability
     public const string ReadOnlyReason = "TermPoint is read-only right now, so sections can't be imported.";
 
     /// <summary>Tooltip when no semester is shown.</summary>
-    public const string NoSemesterReason = "Open a semester to import into it.";
+    public const string NoSemesterReason = "Select a semester to import sections into it.";
 
     /// <summary>Tooltip when more than one semester is shown.</summary>
-    public const string SeveralSemestersReason = "Show one semester to import into it.";
+    public const string SeveralSemestersReason = "Select just one semester to import sections into it.";
 
     /// <summary>Tooltip when a section is open for editing.</summary>
     public const string EditingReason = "Finish editing the section first.";

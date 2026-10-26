@@ -81,7 +81,7 @@
                     <TextBlock
                         FontSize="{DynamicResource FontSizeSmall}"
                         Foreground="{StaticResource ForegroundMuted}"
-                        Text="[Placeholder — backup location guidance.]"
+                        Text="Choose a location on a drive different from your database location"
                         TextWrapping="Wrap" />
                     <Grid ColumnDefinitions="*,8,Auto">
                         <TextBox

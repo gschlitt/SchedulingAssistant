@@ -16,6 +16,15 @@ public static class ImportRowText
         row.Cells.TryGetValue(column, out var text) ? (text ?? string.Empty).Trim() : string.Empty;
 
     /// <summary>
+    /// The issue the file reader recorded for one cell (an Excel error, or a date where text was meant).
+    /// </summary>
+    /// <param name="row">The row.</param>
+    /// <param name="column">A template column name (see <see cref="SectionImportColumns"/>).</param>
+    /// <returns>The issue, or null when the cell is fine (or the row has no issues at all).</returns>
+    public static CellIssue? Issue(this ImportRow row, string column) =>
+        row.Issues is not null && row.Issues.TryGetValue(column, out var issue) ? issue : null;
+
+    /// <summary>
     /// Finds the first row, in the order given, whose cell in <paramref name="column"/> is not blank.
     /// </summary>
     /// <param name="rows">The rows to look through, in file order.</param>
