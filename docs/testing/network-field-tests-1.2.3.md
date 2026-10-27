@@ -4,10 +4,12 @@ Hand-run checklist, essential first. It re-runs the July protocol
 ([degraded-network-field-tests-2026-07-04.md](degraded-network-field-tests-2026-07-04.md): A, B1–B5, C1–C3) against the
 1.2.3 release build and adds the 1.2.3 scenarios of the spec's "Release testing: network field tests"
 (`spec_version_1.2.3.md`) and the fixes F1, F4, F8 and F12 ([review §3](../../designs/data-persistence-review-2026-10.md)).
-**Do the Must tier before release; Should and Nice only after.** Several Should/Nice scenarios test items that
-are not built yet (11, 13, 14, 15, 6, 7); each says what to record if so.
+**Do the Must tier before release; Should and Nice only after.** Every 1.2.3 item is now built (2026-10-26) and
+committed on `Version_1.2.3`; scenarios for work moved to 1.2.4 (item 14 / S5, item 11's reconnection, item 13's
+other providers and macOS) say so. **Test on a build made from `Version_1.2.3` at or after 2210817**: the 1.2.3.1
+build on the test computers predates items 6, 7, 13, 15's exit guard, 25, 28, 30 and 31.
 
-## Status (updated 2026-10-22)
+## Status (updated 2026-10-27)
 
 Two parts. **Scenarios** lists every scenario in this checklist, one row each, with what it needs: the details and the
 recorded results are in each scenario further down. **Open issues** lists what testing turned up that is not a
@@ -35,7 +37,7 @@ enough); **share** = the database on Mekler's share; **both** = GregDeskTop and 
 | S1 Second copy on the same computer | Should | one computer | ✅ pass |
 | S2 Local copy fails after validation | Should | both + share | ☐ to do |
 | S3 Reader Refresh failures | Should | one computer (the DEBUG switch) | ☐ to do (item 11's messages, built in item 28; the reconnection moved to 1.2.4) |
-| S4 Repeated X / edits during exit save | Should | one computer + share | ☐ to do (item 15's exit guard, not built yet) |
+| S4 Repeated X / edits during exit save | Should | one computer + share | ☐ to do (item 15's exit guard, built 2026-10-26) |
 | S5 Unapplied editor changes at close/switch | Should | one computer | — moved to 1.2.4 with item 14 |
 | S6 New database / export with the share down | Should | one computer + share | ✅ pass ((b) covered by the probe) |
 | S7 Wizard and UNC picker | Should | share; a Windows 10 and a Windows 11 computer | ☐ to do |
@@ -45,7 +47,7 @@ enough); **share** = the database on Mekler's share; **both** = GregDeskTop and 
 | S11 macOS pass | Should | Mac | ☐ to do |
 | N1 Virtualization ON | Nice | one computer, ~800-section database | ☐ to do |
 | N2 Touch and trackpad | Nice | a touchscreen (GregSurface); Mac | ☐ to do |
-| N3 BugSnag | Nice | one computer | ☐ to do (items 6, 7 in 1.2.3, not built yet) |
+| N3 BugSnag | Nice | one computer | ☐ to do (items 6, 7 built 2026-10-26) |
 | N4 Store update link | Nice | a computer still on 1.2.2 | ☐ after Store certification |
 
 ### Open issues
@@ -56,6 +58,9 @@ enough); **share** = the database on Mekler's share; **both** = GregDeskTop and 
       15 of 15 mid-copy and 5 of 5 mid-read, then 18 of 18 on the final code. Full test suite green.
 - [x] **Test build 1.2.3.1** with the fix, on GregDeskTop and GregSurface (the Store copy was removed from GregSurface).
       The window title shows only three parts ("v1.2.3"); the log stamps `[v1.2.3.1]`.
+- [ ] **First: a new field-test build** from `Version_1.2.3` at or after 2210817, on GregDeskTop and GregSurface (and
+      the Mac for S11). The 1.2.3.1 build there lacks items 6, 7, 13, 15's exit guard, 25, 28, 30 and 31. Consider
+      `<Version>` 1.2.3.2 so the window title and the log tell the two builds apart.
 - [ ] **Probe: a TermPoint process left running with no window** after its main window closed (seen once,
       GregDeskTop, PID 15416, during the restart after a restore at 21:44:48: "Managed teardown complete" but never
       "Dispatcher loop exited", two hidden untitled windows, no lock or guard held). Suspected: the hidden-not-closed
@@ -419,19 +424,18 @@ copy also blocked a second one, and after ending it, Restore was offered.
 **Log:** `read-only setup copy timed out — network unreachable`.
 **Result:** ☐ pass ☐ fail / notes:
 
-### S3 — Reader Refresh failures (item 11; not built, plan approved)
+### S3 — Reader Refresh failures (item 11's messages, built in item 28; the reconnection moved to 1.2.4)
 *GregDeskTop (reader), GregSurface (writer), Mekler · R4 · ~15 min*
-- **(a) Share down.** Black hole, click **Refresh View**. **Expect:** "Couldn't refresh — the database location isn't responding. Showing data from h:mm AM/PM."; the tooltip shows the last *successful* refresh; network back and Refresh clears the message.
-- **(b) File locked.** Hold GregDeskTop's local snapshot (newest `*_ro*.db` under `%AppData%\TermPoint\`) open with `$f=[IO.File]::Open('<path>','Open','Read','ReadWrite')`, then Refresh. **Expect:** "Couldn't refresh just now. Showing data from … Try again in a moment."; the data stays readable; `$f.Close()` and Refresh works.
+- **(a) Share down.** Black hole, click **Refresh View**. **Expect** (item 28's approved text): "Couldn't refresh: the database location isn't responding. Showing data from h:mm AM/PM." in the yellow row; the tooltip still shows the last refresh that *worked*; the section list isn't reloaded; network back and Refresh clears that line only.
+- **(b) File locked.** Hold GregDeskTop's local snapshot (newest `*_ro*.db` under `%AppData%\TermPoint\`) open with `$f=[IO.File]::Open('<path>','Open','Read','ReadWrite')`, then Refresh. **Expect:** "Couldn't refresh just now. Showing data from h:mm AM/PM. Try again in a moment." (or "TermPoint couldn't refresh and lost its connection to the database. Close TermPoint and open it again." if the swap got as far as closing the connection: record which); the data stays readable; `$f.Close()` and Refresh works.
+- No red log-text banner in either case.
+**Result:** ☐ pass ☐ fail / notes:
 
-If item 11 isn't in the build: today a failure is only logged and the tooltip claims a refresh just happened. Record what you see.
-**Result:** ☐ pass ☐ fail / ☐ not built / notes:
-
-### S4 — Repeated X and edits during the exit save (item 15; not built)
+### S4 — Repeated X and edits during the exit save (item 15's exit guard, built 2026-10-26)
 *GregSurface, Mekler · R3 · ~15 min*
-Degraded link. Add `ZZZT-701 S`, click **X**, then click X three more times while "Saving…" shows. Separately: during the exit save, add `ZZZT-702 S` (the window stays editable).
-**Expect if built:** extra clicks ignored, a clear "saving and closing" state, no edit lost. **Known today:** a second X ends the process mid-save and the next launch offers Restore (or the copy offer if the rename landed); an edit made during the save is deleted with its working files (F2). The edit made *before* the save must never vanish without an offer: that is a fail either way.
-**Result:** ☐ pass ☐ fail / ☐ not built / notes:
+Degraded link (or the DEBUG switch `TERMPOINT_DEBUG_SLOW_EXIT_SAVE=<seconds>` on a Debug build). Add `ZZZT-701 S`, click **X**, then click X three more times while the exit save runs. Then try to add `ZZZT-702 S` during the save.
+**Expect:** a "Saving and closing…" screen covers the window at the first X and blocks input (no edit can be made during the save); detached panels and sticky notes are hidden; the extra X clicks are ignored (one log line each); the window closes when the save ends, or after the 2-minute backstop. `ZZZT-701 S` is in the database at the next open (or, if the save failed, offered back). The edit made *before* the save must never vanish without an offer: that is a fail. (F2's edit counter, for an edit landing mid-save in other ways, is 1.2.4.)
+**Result:** ☐ pass ☐ fail / notes:
 
 ### S5 — Unapplied editor changes at close and switch (item 14; not built)
 *GregSurface · R3 · ~10 min*
@@ -514,10 +518,15 @@ Clicks (click, then double-click a mid-list card: the editor opens on it, no jum
 A touchscreen flick through a large semester doesn't snag after the finger lifts. macOS trackpad momentum scrolling doesn't snap back.
 **Result:** ☐ pass ☐ fail / notes:
 
-### N3 — BugSnag (items 6, 7; 6 not started, 7 accepted)
-*GregSurface, Mekler · ~15 min*
-Provoke a handled save failure (M1), a lost lock (M5 (3)) and "previous session ended uncleanly" (M2, relaunch). **Expect if built:** the events arrive, with usernames and paths scrubbed. Record whether anything arrives.
-**Result:** ☐ pass ☐ fail / ☐ not built / notes:
+### N3 — BugSnag (items 6, 7; built 2026-10-26)
+*GregSurface, Mekler · ~15 min · a Release build (release stage "production"), or a Debug build reporting as "development"*
+Provoke: a save that times out (M1); a lost lock (M5 (3)); a killed TermPoint, then relaunch (M2); and a backup with the backup folder pointed at a disconnected share. In BugSnag, open each event.
+**Expect** (each kind once per run):
+- "Save failed: the database location did not respond"; "Write lock lost: taken over by another session" with metadata `newHolder: other`; "The previous session ended without exiting normally" (metadata `count`, `previousVersion`), sent at the relaunch; "Backup skipped: the backup folder was not available".
+- **Nothing private anywhere in an event:** no Windows user name, computer name, database or folder name, path or email (paths appear only as tags such as `<drive H: path>` / `<unc path>`, names as `<user>` / `<machine>`); the Device tab has no host name; breadcrumb holders read `self` / `other` / …, never a name.
+- The User tab shows the install ID (the same on every event from this computer).
+- On screen: the backup failure shows one plain banner per run ("TermPoint couldn't make a backup because the backup folder isn't responding…"), with no path.
+**Result:** ☐ pass ☐ fail / notes:
 
 ### N4 — Store update link (item 3) — after Store certification, so it can't gate release
 *A computer still on 1.2.2 · ~5 min*
