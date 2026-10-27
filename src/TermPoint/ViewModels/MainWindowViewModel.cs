@@ -959,6 +959,13 @@ public partial class MainWindowViewModel : ViewModelBase
         App.Logger.LogInfo(
             $"MainWindowViewModel: refresh {(line is null ? "worked" : "failed")} " +
             $"(outcome: {outcome?.ToString() ?? "none"}, connection lost: {connectionLost}).");
+
+        // Spec item 7: the two refresh failures the developers count, once per run each (the "anything else" line is
+        // not reported). Fully qualified: this file is also built for the browser, which has no TermPoint.Exceptions.
+        if (connectionLost)
+            HandledEventReporter.Report(TermPoint.Exceptions.HandledEvent.RefreshConnectionLost, App.Logger);
+        else if (line is not null && outcome == RefreshOutcome.SourceUnavailable)
+            HandledEventReporter.Report(TermPoint.Exceptions.HandledEvent.RefreshNotResponding, App.Logger);
         return line;
     }
 

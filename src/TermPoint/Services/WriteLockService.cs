@@ -558,7 +558,7 @@ public sealed class WriteLockService : IDisposable
                 CrashPoints.Hit("Lock.AfterDeleted");
             }
             else
-                App.Logger.LogInfo($"[WriteLockService] Release: lock-file delete timed out — abandoning {path} (stale-lock takeover will reclaim it).");
+                App.Logger.LogInfo($"[WriteLockService] Release: lock-file delete didn't complete (timed out or refused; see the line above) — abandoning {path} (stale-lock takeover will reclaim it).");
         }
         catch (Exception ex)
         {

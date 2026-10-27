@@ -656,6 +656,7 @@ public sealed class CheckoutService : IDisposable
         if (!exists && recoverWorkingCopy)
         {
             _logger.LogBreadcrumb("Checkout: RecoveryConflict (source missing)", new() { ["path"] = sourcePath });
+            HandledEventReporter.Report(HandledEvent.RecoveryConflictSourceMissing, _logger);
             return CheckoutOutcome.RecoveryConflict;
         }
 
@@ -1008,6 +1009,8 @@ public sealed class CheckoutService : IDisposable
         if (copyHash != HashAtCheckout)
         {
             _logger.LogInfo("CheckoutService: ForceCheckout hash mismatch — aborting.");
+            HandledEventReporter.Report(HandledEvent.CheckoutCopyMismatch, _logger,
+                new Dictionary<string, string> { ["stage"] = "take over" });
             _lockService.Release();
             DeleteDirtyMarker();
             TryDelete(WorkingPath);
@@ -1098,6 +1101,7 @@ public sealed class CheckoutService : IDisposable
             // automatic recovery would risk trampling D. Hand back to the caller.
             _lockService.Release();
             _logger.LogBreadcrumb("Recovery: conflict (no verifiable marker or missing D')");
+            HandledEventReporter.Report(HandledEvent.RecoveryConflictNoVerifiableMarker, _logger);
             return CheckoutOutcome.RecoveryConflict;
         }
 
@@ -1132,6 +1136,7 @@ public sealed class CheckoutService : IDisposable
             // are based on a stale D and cannot be applied automatically.
             _lockService.Release();
             _logger.LogBreadcrumb("Recovery: conflict (source modified since crash)");
+            HandledEventReporter.Report(HandledEvent.RecoveryConflictSourceChanged, _logger);
             return CheckoutOutcome.RecoveryConflict;
         }
 
@@ -1521,6 +1526,20 @@ public sealed class CheckoutService : IDisposable
         => RaiseSaveError(SavePrompt.OutageNotice(HasDirtyMarker, IsAutoSaveRunning), autoDismiss: false);
 
     /// <summary>
+    /// A save gave up because the database location did not respond: reports it to the developers once per run
+    /// (<see cref="HandledEvent.SaveLocationNotResponding"/>, spec item 7), then raises the one outage notice exactly
+    /// as <see cref="RaiseLocationUnreachable"/> does. The heartbeat's lock check, which raises the same notice, is not
+    /// a save and calls <see cref="RaiseLocationUnreachable"/> directly.
+    /// </summary>
+    /// <param name="isAutoSave">Whether the save was an autosave (goes into the report's metadata).</param>
+    private void RaiseSaveLocationUnreachable(bool isAutoSave)
+    {
+        HandledEventReporter.Report(HandledEvent.SaveLocationNotResponding, _logger,
+            new Dictionary<string, string> { ["autoSave"] = isAutoSave.ToString() });
+        RaiseLocationUnreachable();
+    }
+
+    /// <summary>
     /// The one place that dispatches <see cref="SaveFailed"/> for a failed save: raises it on the UI thread
     /// with <paramref name="text"/> exactly as given.
     /// </summary>
@@ -1781,7 +1800,7 @@ public sealed class CheckoutService : IDisposable
                 {
                     _logger.LogInfo("CheckoutService: snapshot → D.tmp copy stalled — network unreachable");
                     await NetworkFileOps.DeleteAsync(tmpPath);
-                    RaiseLocationUnreachable();
+                    RaiseSaveLocationUnreachable(isAutoSave);
                     return SaveOutcome.CopyError;
                 }
             }
@@ -1835,7 +1854,7 @@ public sealed class CheckoutService : IDisposable
         {
             _logger.LogInfo("CheckoutService: D.tmp verification hash stalled — network unreachable");
             await NetworkFileOps.DeleteAsync(tmpPath);
-            RaiseLocationUnreachable();
+            RaiseSaveLocationUnreachable(isAutoSave);
             return SaveOutcome.CopyError;
         }
 
@@ -1843,6 +1862,8 @@ public sealed class CheckoutService : IDisposable
         {
             _logger.LogInfo("CheckoutService: D.tmp does not match the local snapshot — torn transfer; aborting save.");
             _logger.LogBreadcrumb("Save: TornTransfer");
+            HandledEventReporter.Report(HandledEvent.SaveTornTransfer, _logger,
+                new Dictionary<string, string> { ["autoSave"] = isAutoSave.ToString() });
             await NetworkFileOps.DeleteAsync(tmpPath);
             RaiseTransientSaveError(SavePrompt.VerifyFailedMessage, isAutoSave);
             return SaveOutcome.CopyError;
@@ -1917,7 +1938,7 @@ public sealed class CheckoutService : IDisposable
                     // restart — is recognized as ours instead of as a foreign write.
                     RecordPendingSaveHash(newSourceHash);
                     _logger.LogInfo("CheckoutService: D.tmp rename timed out — network unreachable");
-                    RaiseLocationUnreachable();
+                    RaiseSaveLocationUnreachable(isAutoSave);
                     return SaveOutcome.CopyError;
                 }
             }
@@ -2059,7 +2080,7 @@ public sealed class CheckoutService : IDisposable
         if (lockResult == LockVerificationResult.Unreachable)
         {
             _logger.LogInfo("CheckoutService: lock verification timed out — network unreachable");
-            RaiseLocationUnreachable();
+            RaiseSaveLocationUnreachable(isAutoSave);
             return (SaveOutcome.CopyError, null);
         }
 
@@ -2103,7 +2124,7 @@ public sealed class CheckoutService : IDisposable
         if (!statCompleted)
         {
             _logger.LogInfo("CheckoutService: source stat timed out — network unreachable");
-            RaiseLocationUnreachable();
+            RaiseSaveLocationUnreachable(isAutoSave);
             return (SaveOutcome.CopyError, null);
         }
 
@@ -2127,7 +2148,7 @@ public sealed class CheckoutService : IDisposable
         if (!hashCompleted)
         {
             _logger.LogInfo("CheckoutService: source hash timed out — network unreachable");
-            RaiseLocationUnreachable();
+            RaiseSaveLocationUnreachable(isAutoSave);
             return (SaveOutcome.CopyError, null);
         }
 
@@ -2152,6 +2173,11 @@ public sealed class CheckoutService : IDisposable
             {
                 _logger.LogInfo("CheckoutService: source hash mismatch — the database was modified outside this session; save refused.");
                 _logger.LogBreadcrumb("Save: SourceModified");
+                HandledEventReporter.Report(HandledEvent.SaveRefusedDatabaseChanged, _logger, new Dictionary<string, string>
+                {
+                    ["autoSave"]   = isAutoSave.ToString(),
+                    ["finalCheck"] = isFinalCheck.ToString(),
+                });
                 // A genuine conflict the user must resolve (spec item 10, step 10a). Not a SaveFailed
                 // banner: the sticky state is HasSaveConflict, and the main window shows its own
                 // persistent banner (Save a Copy… / Discard Changes) when SaveConflictDetected fires.
@@ -3587,12 +3613,16 @@ public sealed class CheckoutService : IDisposable
         var reason = LockLossNewHolder is not null
             ? WriteLockLostReason.TakenOver
             : WriteLockLostReason.LockFileRemoved;
+        // The holder's relation to this user, never their name (spec item 6, step 6c).
+        var newHolder = _lockService.DescribeHolder(LockLossNewHolder);
         _logger.LogBreadcrumb("Lock lost", new()
         {
             ["reason"] = reason.ToString(),
-            // The holder's relation to this user, never their name (spec item 6, step 6c).
-            ["newHolder"] = _lockService.DescribeHolder(LockLossNewHolder),
+            ["newHolder"] = newHolder,
         });
+        HandledEventReporter.Report(
+            reason == WriteLockLostReason.TakenOver ? HandledEvent.LockLostTakenOver : HandledEvent.LockLostFileRemoved,
+            _logger, new Dictionary<string, string> { ["newHolder"] = newHolder });
         _dispatch(() => WriteLockLost?.Invoke(reason));
         return Task.CompletedTask;
     }
@@ -4267,6 +4297,8 @@ public sealed class CheckoutService : IDisposable
             if (roCopyHash != roSourceHash)
             {
                 _logger.LogInfo("CheckoutService: D'' hash mismatch on retry — aborting.");
+                HandledEventReporter.Report(HandledEvent.CheckoutCopyMismatch, _logger,
+                    new Dictionary<string, string> { ["stage"] = "read-only copy" });
                 TryDelete(roTmpPath);
                 return null;
             }
@@ -4480,6 +4512,8 @@ public sealed class CheckoutService : IDisposable
         if (ComputeHash(destPath) != expectedHash)
         {
             _logger.LogInfo($"CheckoutService: {stage} — hash mismatch on retry, giving up.");
+            HandledEventReporter.Report(HandledEvent.CheckoutCopyMismatch, _logger,
+                new Dictionary<string, string> { ["stage"] = stage });
             TryDelete(destPath);
             return CopyVerifyOutcome.Failed;
         }

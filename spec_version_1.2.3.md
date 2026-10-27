@@ -19,7 +19,7 @@ will be verified.
 | 4 | Stop opening the shared DB directly; fix startup ordering; single-instance guard | Data integrity | **Done** (4a, 4e, 4d, 4b, 4c; user-tested 2026-10-13). Open: header-only check on D (kept as built), possible 4f (working copy locked vs damaged). Field tests: Mac guard, clumsy |
 | 5 | Make Restore from backup safe | Data integrity | **Done** (5a shared routine, 5b Save & Backup, 5c chooser, 5d open-time local-copy check, 5e damage reporting to BugSnag). Field test: clumsy mid-restore. Follow-up: version-gate re-run after a locked/damaged local copy (item 3) |
 | 6 | Strip paths and usernames from BugSnag reports | Privacy | **1.2.3** (decided 2026-10-26): steps 6a–6c as planned (6a text scrubber, 6b delivery filter, 6c sources + PRIVACY.md; plan approved 2026-10-21). **Done 2026-10-26** (6a `PrivacyScrubber`; 6b `ScrubbingDelivery`, which also stamps the install ID; 6c holder markers, holder names registered, PRIVACY.md). Field test N3 |
-| 7 | Report handled save/lock failures and unclean exits to BugSnag | Observability | **1.2.3** (decided 2026-10-26), after item 6, as the last reliability item. Not started |
+| 7 | Report handled save/lock failures and unclean exits to BugSnag | Observability | **Done 2026-10-26** (7a reporter + backup banner once per run + delete logging; 7b handled outcomes; 7c "running" file for unclean exits). Field test N3 |
 | 8 | Empty / delete semester and academic year: consistent rules, no orphans | Bug / data integrity | **Done** (8a service, 8b screens, 8c orphan-tolerant queries); user-tested 2026-10-12 |
 | 9 | Make stale-lock takeover safe | Data integrity | **Done** (9a warning + click re-check, 9b clock-free staleness; user-tested on one machine 2026-10-13). 3-computer integration test pending |
 | 10 | "Save aborted" dead end: give a next step | UX | **Redesigned 2026-10-18**: see `designs/data-persistence-review-2026-10.md`, section 8. 10a (done 2026-10-16) is kept and reworked; 10b and the 10c outline are shelved (`tmp/shelved/`) |
@@ -78,8 +78,8 @@ Everything not yet done for 1.2.3, in one place. Field-test scenario codes (M, S
 - ~~**Item 6, BugSnag scrubber:**~~ **done 2026-10-26** (6a–6c as planned, plus the install-ID stamp). Field test N3.
 - ~~**Item 31**~~ (added 2026-10-26) **built:** the grid's Tags filter matches all or any of the checked tags. Hand
   check pending.
-- **Item 7, handled-failure reports:** after item 6, as the last reliability item, so it reports from the finished
-  code.
+- ~~**Item 7, handled-failure reports:**~~ **done 2026-10-26** (7a–7c). **All 1.2.3 building is finished**; next are
+  the hand checks (items 25, 31), the field tests and release housekeeping.
 
 **Moved to 1.2.4 (decided 2026-10-26):** item 29 (F5, after its design and risk review); F16; item 14 (F3); item 15's F2 edit counter; item 26 (the feature); the
 persistence redesign steps 8.9.1–4 (with F7); item 11's reconnection; item 13's other providers and macOS; F9, F10
@@ -162,7 +162,7 @@ First look (2026-10-09):
 | 28                                                                          | 25: Conflicts in full or as flags — **built 2026-10-26**                               | Settings and two views; per user, so no persistence question.                                                                                                                                                                                  |
 | 29                                                                          | ~~26: Help note on trying changes on a copy~~ — **moved to 1.2.4** (2026-10-26)         | Greg prefers a real Save As command over instructions (1.2.4).                                                                                                                                                                                 |
 | 30                                                                          | 6: BugSnag scrubber (6a–6c) — **done 2026-10-26**                                      | Before item 7.                                                                                                                                                                                                                                 |
-| 31                                                                          | 7: Handled-failure and unclean-exit reports                                            | Last, so it reports from the finished code.                                                                                                                                                                                                    |
+| 31                                                                          | 7: Handled-failure and unclean-exit reports — **done 2026-10-26**                      | Last, so it reports from the finished code.                                                                                                                                                                                                    |
 |                                                                             |                                                                                        |                                                                                                                                                                                                                                                |
 
 **Workflow.** Opus orchestrates and Sonnet writes the code, one step at a time. For each step:
@@ -1511,6 +1511,55 @@ rejects or shows unnamed.
   from an I/O error, and log the exception message.
 
 **Depends on:** item 6.
+
+**Plan (Greg approved 2026-10-26).** Three steps, one brief each. All reports go through `IAppLogger.ReportHandled`
+(handled, warning severity, no banner) and 6b's scrubber; each kind is sent once per run.
+- **7a, plumbing and the leftovers.** `HandledEventException` (fixed text per kind, never an original message or inner
+  exception; the `SaveFailedException` pattern) and a reporter that sends each kind once per run. The two remaining
+  `LogError(null, …)` calls (`BackupService`: folder unavailable, copy stalled) become named reports, and their banner,
+  which showed the backup folder's path, becomes **one plain banner per run** (wording approved): "TermPoint couldn't
+  make a backup because the backup folder isn't responding. Your schedule itself isn't affected. You can check the
+  backup folder in Save and Backup." The panel's status line still shows each failure. `NetworkFileOps.DeleteAsync`
+  logs a failed delete's exception type and message locally (it was swallowed and callers logged "timed out");
+  `WriteLockService.Release`'s line says "didn't complete".
+- **7b, handled outcomes** (list approved): save refused because the database changed elsewhere; lock lost (taken over,
+  lock file removed); recovery conflict (source missing, no verifiable marker, source changed); torn transfer at save;
+  save location not responding; checkout copy never matched after its retry; reader refresh failed (not responding,
+  connection lost). No new user messages.
+- **7c, unclean exit at startup** (Greg chose the "running" file): a small file per TermPoint process (process id,
+  start time, app version) in AppData, written at startup and deleted when `Main` returns normally. At the next start,
+  a file whose process is gone means a crash, a force-quit of a hung app or a power loss: one report, file deleted.
+  Not the dirty marker or a reclaimed lock: both also follow clean exits (a failed exit save, a lost lock). Limit: an
+  exit through the exit guard's 2-minute backstop counts as normal.
+- Four rules not involved (reports and a local file; no database, lock or save logic changes). `MinimumVersionToWrite`:
+  No.
+
+**Built 2026-10-26 (7a–7c).**
+- **7a.** `Exceptions/HandledEventException.cs` (`HandledEvent` enum, 14 kinds for 7a–7c, fixed message each) and
+  `Services/HandledEventReporter.Report(kind, logger, metadata)`: once per kind per logger (so once per run), through
+  `ReportHandled` (context = the fixed message, tab "event", grouping key `handled-event:{kind}`), a real stack trace,
+  never throws. Both desktop only. `BackupService`: folder unavailable / copy stalled now write a local line (with the
+  path), a named report (reason "missing" or "not responding") and the banner once per run
+  (`ShowBackupFailureNoticeOnce`; `BackupFolderNotRespondingNotice` is the approved text).
+  A folder that answers but no longer exists gets the variant `BackupFolderMissingNotice` ("…because the backup
+  folder can't be found. …"), since "isn't responding" would be untrue there (wording approved by Greg 2026-10-27).
+  `NetworkFileOps.DeleteAsync` logs a failed delete's exception type and message; `WriteLockService.Release`'s line
+  says "didn't complete (timed out or refused; see the line above)".
+- **7b.** Reports at: the save's database-changed refusal (`autoSave`, `finalCheck`); `HandleLockLossAsync` (taken over
+  / file removed, `newHolder` marker); the three recovery-conflict refusals; the torn transfer; every save timeout
+  (new `RaiseSaveLocationUnreachable(isAutoSave)` = report + the same outage notice; the heartbeat keeps
+  `RaiseLocationUnreachable`); the checkout copy that never matched (`stage`: checkout, fresh local copy, take over,
+  read-only copy); the reader Refresh in `MainWindowViewModel` (connection lost; not responding).
+- **7c.** `Services/SessionRunMarker.cs` (desktop only): `%APPDATA%\TermPoint\running\<pid>.run` (process id, start
+  time, version). `Program.Main` starts it before Avalonia (stale files of gone processes → one report with `count` and
+  `previousVersion`, files deleted; a live process's file is kept; an unreadable file is deleted, not counted) and ends
+  it after the dispatcher loop. Updates are applied at the next launch and the restore relaunch exits normally, so
+  neither leaves a false file. A debugger stop does (development builds only).
+- Tests: `HandledEventReportTests` (reporter: once per kind per logger, name, key, tab, never throws, every kind's
+  message distinct and path-free; sites: database changed, save timeout, torn transfer, restore refused, lock taken
+  over), `SessionRunMarkerTests` (first start, gone vs running processes, unreadable file, the real check on this
+  process), `BackupServiceStalledCopyTests` (+2: one report and one notice per run; missing folder). Both compile
+  checks pass; full suite 3,955 passed, 0 failed, 81 skipped.
 
 ---
 

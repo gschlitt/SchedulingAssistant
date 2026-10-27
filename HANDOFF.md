@@ -4,7 +4,7 @@ Written at the end of a long session so a fresh conversation can pick up. Claude
 travel between machines (`CLAUDE.md` is gitignored), so everything a new agent needs is here or in the files this
 points to.
 
-**To start the new agent, say:** "Read `HANDOFF.md`, then continue 1.2.3 with item 7."
+**To start the new agent, say:** "Read `HANDOFF.md`, then continue 1.2.3 with the field tests."
 
 ## Where things are
 
@@ -62,7 +62,11 @@ points to.
    (`WriteLockService.ParseLockFile`), doc comments, PRIVACY.md (approved). **Item 6 is complete.**
    **Item 31 (added 2026-10-26) built (hand check pending):** the grid's Tags filter can match all
    (default) or any of the checked tags, chosen at the top of the Tags popup. See spec section 31.
-7. **Item 7:** handled-failure and unclean-exit reports to BugSnag, after item 6.
+7. ~~**Item 7**~~ **done 2026-10-26:** handled-event reports once per run (`HandledEventReporter`,
+   `HandledEventException`), the backup banner once per run without the path (both variants approved), failed deletes
+   logged, and a "running" file (`SessionRunMarker`) that reports a previous session that ended unexpectedly.
+
+**All 1.2.3 building is finished** (2026-10-26). Hand checks pending: items 25 and 31.
 
 **Then the field tests.** The remaining Musts (M4, M5, M6, M7, M8, M9, M11 (b)–(d)) are best run once items 15 and
 30 have landed, so they test the shipping close/save code; plus S3 (Refresh messages), S4 (exit guard), S9

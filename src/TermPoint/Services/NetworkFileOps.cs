@@ -505,18 +505,25 @@ public static class NetworkFileOps
         => RunAsync(() => MoveWithRetry(source, dest, overwrite), "File.Move", source, dest);
 
     /// <summary>
-    /// Timeout-aware <see cref="File.Delete(string)"/>. Non-throwing on timeout — cleanup
-    /// operations should not block the caller if the network is down.
+    /// Timeout-aware <see cref="File.Delete(string)"/>. Never throws — cleanup operations should not block or fail the
+    /// caller if the network is down or the file is held.
+    ///
+    /// <para><b>The local log tells the two failures apart</b> (spec item 7): a timeout is logged by
+    /// <see cref="RunAsync{T}(Func{T}, string, string?, string?)"/> ("timed out after …"), and a delete that failed with
+    /// an exception (a sharing violation, access denied, a vanished folder) is logged here with the exception's type
+    /// and message. Before, the exception was swallowed and callers logged every false as a timeout.</para>
     /// </summary>
-    /// <returns><c>true</c> when the delete completed within the deadline; <c>false</c> on timeout.</returns>
+    /// <returns><c>true</c> when the delete completed within the deadline; <c>false</c> on a timeout or a failure.</returns>
     public static async Task<bool> DeleteAsync(string path)
     {
         try
         {
             return await RunAsync(() => File.Delete(path), "File.Delete", path, null).ConfigureAwait(false);
         }
-        catch
+        catch (Exception ex)
         {
+            try { App.Logger.LogInfo($"NetworkFileOps: File.Delete failed ({ex.GetType().Name}: {ex.Message})"); }
+            catch { /* logging must not make a cleanup throw */ }
             return false;
         }
     }

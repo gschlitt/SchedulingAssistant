@@ -46,6 +46,7 @@ public sealed class BackupServiceStalledCopyTests : IDisposable
 
         _savedBackupFolder = AppSettings.Current.BackupFolderPath;
         AppSettings.Current.BackupFolderPath = _backupDir;
+        BackupService.ResetBackupFailureNoticeForTests();
     }
 
     /// <summary>Resets the injector and the setting, and deletes both folders (best effort).</summary>
@@ -139,5 +140,50 @@ public sealed class BackupServiceStalledCopyTests : IDisposable
         Assert.Single(BackupFiles());
         Assert.Contains(logger.Infos, line => line.Contains("could not be removed in time"));
         Assert.False(File.Exists(WorkingCopy + ".backuptmp"));
+    }
+
+    // ── Spec item 7: the named report and one plain banner per run ──────────────
+
+    /// <summary>
+    /// A stalled backup sends one named report (no exception-less LogError any more, so no banner with the folder's
+    /// path) and shows the plain "isn't responding" notice once; a second failure in the same run adds neither.
+    /// </summary>
+    [Fact]
+    public async Task AStalledCopy_ReportsOnce_AndShowsThePlainNoticeOncePerRun()
+    {
+        StallTheCopy(NetworkFaultDecision.None);
+        var logger = new RecordingAppLogger();
+        var service = CreateService(logger);
+
+        await service.PerformBackupAsync();
+        await service.PerformBackupAsync();
+
+        var report = Assert.Single(logger.Handled);
+        Assert.Equal(TermPoint.Exceptions.HandledEvent.BackupCopyStalled,
+            Assert.IsType<TermPoint.Exceptions.HandledEventException>(report.Exception).Kind);
+        Assert.Equal(new[] { BackupService.BackupFolderNotRespondingNotice }, logger.UserNotices);
+        Assert.Empty(logger.Errors);
+        Assert.DoesNotContain(_backupDir, BackupService.BackupFolderNotRespondingNotice);
+    }
+
+    /// <summary>
+    /// A backup folder that no longer exists is reported (reason "missing") with the "can't be found" notice, not
+    /// "isn't responding", which would be untrue.
+    /// </summary>
+    [Fact]
+    public async Task AMissingFolder_IsReportedAsMissing_WithTheCantBeFoundNotice()
+    {
+        AppSettings.Current.BackupFolderPath = Path.Combine(_backupDir, "gone");
+        var logger = new RecordingAppLogger();
+
+        var result = await CreateService(logger).PerformBackupAsync();
+
+        Assert.False(result.Success);
+        var report = Assert.Single(logger.Handled);
+        Assert.Equal(TermPoint.Exceptions.HandledEvent.BackupFolderUnavailable,
+            Assert.IsType<TermPoint.Exceptions.HandledEventException>(report.Exception).Kind);
+        Assert.Equal("missing", report.Metadata!["reason"]);
+        Assert.Equal(new[] { BackupService.BackupFolderMissingNotice }, logger.UserNotices);
+        Assert.Empty(logger.Errors);
     }
 }

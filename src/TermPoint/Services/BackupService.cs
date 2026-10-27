@@ -3,6 +3,7 @@ using System.Text;
 using Microsoft.Data.Sqlite;
 using TermPoint.Data;
 using TermPoint.Data.Repositories;
+using TermPoint.Exceptions;
 using TermPoint.Models;
 using TermPoint.ViewModels.Management;
 
@@ -235,7 +236,13 @@ public class BackupService : IDisposable
         if (!dirCheckCompleted || !dirExists)
         {
             var r = BackupResult.FolderUnavailable(folder);
-            _logger.LogError(null, $"Backup folder unavailable: {folder}");
+            // Spec item 7: a local line with the path, a named report without it, and one plain banner per run
+            // (this used to be LogError(null, …), which sent BugSnag a report with no exception and put the path in
+            // the banner).
+            _logger.LogInfo($"Backup folder unavailable ({(dirCheckCompleted ? "missing" : "not responding")}): {folder}");
+            HandledEventReporter.Report(HandledEvent.BackupFolderUnavailable, _logger,
+                new Dictionary<string, string> { ["reason"] = dirCheckCompleted ? "missing" : "not responding" });
+            ShowBackupFailureNoticeOnce(dirCheckCompleted ? BackupFolderMissingNotice : BackupFolderNotRespondingNotice);
             LastBackupResult = r;
             FireBackupCompleted();
             return r;
@@ -283,7 +290,10 @@ public class BackupService : IDisposable
             var copyCompleted = await NetworkFileOps.CopyAsync(localTmp, dbDest);
             if (!copyCompleted)
             {
-                _logger.LogError(null, $"Backup copy to {dbDest} stalled — backup folder unreachable.");
+                // Spec item 7: as for an unavailable folder above (local line with the path, named report, one banner).
+                _logger.LogInfo($"Backup copy to {dbDest} stalled — backup folder unreachable.");
+                HandledEventReporter.Report(HandledEvent.BackupCopyStalled, _logger);
+                ShowBackupFailureNoticeOnce(BackupFolderNotRespondingNotice);
 
                 // Remove the partial file under the same network deadline as the copy (spec item 30). The backup
                 // folder has just stopped responding, so a plain File.Exists / File.Delete here could hold this
@@ -347,6 +357,40 @@ public class BackupService : IDisposable
         FireBackupCompleted();
         return result;
     }
+
+    /// <summary>
+    /// What the user is told, once per run, when a backup can't be made because the backup folder doesn't respond
+    /// (spec item 7; wording approved by Greg 2026-10-26). No path: the Save and Backup panel shows the folder.
+    /// </summary>
+    public const string BackupFolderNotRespondingNotice =
+        "TermPoint couldn't make a backup because the backup folder isn't responding. Your schedule itself isn't " +
+        "affected. You can check the backup folder in Save and Backup.";
+
+    /// <summary>
+    /// The same notice when the backup folder answered but no longer exists (deleted, renamed, or a drive that is no
+    /// longer mapped): "isn't responding" would be untrue there (spec item 7; wording approved by Greg 2026-10-27).
+    /// </summary>
+    public const string BackupFolderMissingNotice =
+        "TermPoint couldn't make a backup because the backup folder can't be found. Your schedule itself isn't " +
+        "affected. You can check the backup folder in Save and Backup.";
+
+    /// <summary>1 once a backup-failure notice has been shown in this run; the banner is shown once per run.</summary>
+    private static int _backupFailureNoticeShown;
+
+    /// <summary>
+    /// Shows <paramref name="notice"/> as a banner, unless a backup-failure banner was already shown in this run: backups
+    /// run every 30 minutes, and a dead folder would otherwise raise the same banner each time. The Save and Backup
+    /// panel's status line still shows every failure. Thread-safe.
+    /// </summary>
+    /// <param name="notice">The notice text (one of the backup-folder notices).</param>
+    private void ShowBackupFailureNoticeOnce(string notice)
+    {
+        if (Interlocked.Exchange(ref _backupFailureNoticeShown, 1) == 0)
+            _logger.NotifyUser(notice);
+    }
+
+    /// <summary>Lets the next backup failure show its banner again. For tests.</summary>
+    internal static void ResetBackupFailureNoticeForTests() => Interlocked.Exchange(ref _backupFailureNoticeShown, 0);
 
     /// <summary>What the user is told when the backup snapshot fails its integrity check (no path, no technical detail).</summary>
     public const string SnapshotFailedIntegrityNotice =
