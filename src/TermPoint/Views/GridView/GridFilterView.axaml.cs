@@ -74,7 +74,7 @@ public partial class GridFilterView : UserControl
         SetHeader(SubjectToggle,     SubjectPanel,     "Subject",      _vm.Subjects);
         SetHeader(CampusToggle,      CampusPanel,      "Campus",       _vm.Campuses);
         SetHeader(SectionTypeToggle, SectionTypePanel, "Section Type", _vm.SectionTypes);
-        SetHeader(TagsToggle,        TagsPanel,        "Tags",         _vm.Tags);
+        SetHeader(TagsToggle,        TagsPanel,        "Tags",         _vm.Tags, _vm.TagsMatchAny ? "any of " : null);
         SetHeader(MeetingTypeToggle, MeetingTypePanel, "Meeting Type", _vm.MeetingTypes);
         SetHeader(LevelToggle,       LevelPanel,       "Level",        _vm.Levels);
         SetHeader(CourseToggle,      CoursePanel,      "Course",       _vm.Courses);
@@ -97,16 +97,21 @@ public partial class GridFilterView : UserControl
     /// <param name="panel">The Panel containing the toggle (controls IsVisible).</param>
     /// <param name="dimensionName">Human-readable label for this filter dimension.</param>
     /// <param name="items">The filter items for this dimension.</param>
+    /// <param name="countPrefix">
+    /// Words put before the count, e.g. "any of " so the Tags label reads "Tags (any of 2)" while the Tags filter
+    /// matches any checked tag (spec item 31): a forgotten "any" can't make the grid look wrong. Null for none.
+    /// </param>
     private static void SetHeader(
         ToggleButton toggle,
         Panel panel,
         string dimensionName,
-        IEnumerable<FilterItemViewModel> items)
+        IEnumerable<FilterItemViewModel> items,
+        string? countPrefix = null)
     {
         panel.IsVisible = true;
         var list = items.ToList();
         int selected = list.Count(i => i.IsSelected);
-        toggle.Content    = selected > 0 ? $"{dimensionName} ({selected})" : dimensionName;
+        toggle.Content    = selected > 0 ? $"{dimensionName} ({countPrefix}{selected})" : dimensionName;
         toggle.Foreground = selected > 0 ? ActiveFilterHeaderBrush : InactiveFilterHeaderBrush;
         toggle.FontWeight = selected > 0 ? FontWeight.Bold : FontWeight.Normal;
     }

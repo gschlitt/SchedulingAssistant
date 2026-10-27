@@ -43,6 +43,7 @@ will be verified.
 | 28 | Message pass: say truthfully what happens (rule 4) | UX / data integrity | **1.2.3** (decided 2026-10-26): F6's four restore promises, item 11's refresh messages, item 13's cloud-folder warning, F13, F15. Wording and notice behaviour only. **Done 2026-10-26** (see section 28; hand-checked: cloud-folder warning, Refresh tooltip; the outage and lock messages get checked in the field tests) |
 | 29 | F5: skip a save when nothing changed | Data integrity | **Moved to 1.2.4** (Greg, 2026-10-26, after the design and its risk review: too much risk in the save code for what is mainly a performance gain and a better chance of restoring after a crash). The probe-backed design is kept in section 29 for 1.2.4 |
 | 30 | Backup cleanup on a dead share: give the partial-backup delete a deadline | Responsiveness | **Done 2026-10-26**: the delete goes through `NetworkFileOps.DeleteAsync`; 2 tests. See section 30 |
+| 31 | Grid Tags filter: match all or any of the checked tags | UX / filter | Added 2026-10-26 (Greg: "one last thing to cram into 1.2.3"). **Built 2026-10-26**: a "Show sections with: all / any of the checked tags" choice at the top of the Tags popup; grid filter only. Hand check pending. See section 31 |
 
 Item numbers are for reference only. The implementation order is below.
 
@@ -3541,6 +3542,43 @@ tests: 182 passed, 1 skipped (local-DB). Both compile checks pass. Full suite: 3
 
 **Not in this item** (moved to 1.2.4 with the rest of GAP-AUDIT): the sections CSV write (A2), rotation's listing
 and deletes (A3, which still use the plain `TryDelete`), and the backup list (A4).
+
+---
+
+## 31 — Grid Tags filter: match all or any of the checked tags (added 2026-10-26)
+
+**Request (Greg, 2026-10-26):** "boolean logic on custom tags. Should be simple."
+
+**Today:** the schedule grid's Tags filter is AND only: a section must carry every checked tag
+(`ScheduleGridViewModel`, the filter pass). Access watches are AND too (`ProgramConflictService`); the tag overlay is
+one tag.
+
+**Decided (Greg, 2026-10-26):**
+- **Grid filter only.** Watches are saved in the database, so an OR watch would be something 1.2.2 can't read
+  correctly (a `MinimumVersionToWrite` raise); they stay AND.
+- **All / Any, inside the Tags dropdown** (Greg asked for the selector inside the dropdown), no "exclude".
+- Wording approved: at the top of the Tags popup, "Show sections with:" (•) "all of the checked tags" (default) /
+  ( ) "any of the checked tags". While "any" is chosen the toggle reads "Tags (any of N)" and the filter summary
+  "Tags (any): …", so a forgotten "any" can't make the grid look wrong. Not saved (like the tag selections); Clear
+  resets it to "all".
+
+**Built 2026-10-26** (hand check pending):
+- `FilterSnapshot.TagsMatchAny` (last parameter, default false) and `FilterSnapshot.PassesTagFilter(sectionTagIds)`:
+  no tags checked → pass; "all" → `IsSubsetOf`; "any" → `Overlaps`. The grid's filter pass calls it.
+- `GridFilterViewModel.TagsMatchAll` / `TagsMatchAny`: a radio pair whose setters act only on true (the pattern that
+  avoids the grouped-radio hang); a real change updates both, the summary, the grid (`FilterChanged`) and the toggle
+  label (`HeadersChanged`). `ClearFiltersAndOverlay` resets it to "all".
+- `GridFilterView.axaml`: the choice in a `DockPanel` at the top of the Tags popup, above the scrolling tag list, with a
+  thin separator; `GridFilterView.axaml.cs` `SetHeader` gained an optional count prefix ("any of ").
+- The section list's filter highlighting follows automatically (it uses the grid's filter result).
+- No database, settings or persistence change; the four rules and `MinimumVersionToWrite` are not involved.
+- Tests: `GridTagLogicTests` (the rule for all/any with and without checked tags; a snapshot built without the flag
+  matches "all"; the radio pair, one grid refresh, the summary; "all" summary unchanged; Clear resets). Both compile
+  checks pass and the full build compiled the AXAML; full suite 3,932 passed, 0 failed, 81 skipped.
+
+**Hand check (Greg).** Check two tags in the Tags filter: the grid shows only sections with both; choose "any": the
+toggle reads "Tags (any of 2)" and the grid adds sections with either one; the section list highlights the same
+sections; Clear: both tags unchecked and "all" chosen again.
 
 ---
 

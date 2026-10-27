@@ -684,7 +684,8 @@ public partial class ScheduleGridViewModel : ViewModelBase
             UnroomedSelected:           unroomed,
             HasOverlay:         Filter.HasOverlay,
             OverlayType:        Filter.OverlayType,
-            SelectedOverlayId:  Filter.SelectedOverlayId);
+            SelectedOverlayId:  Filter.SelectedOverlayId,
+            TagsMatchAny:       Filter.TagsMatchAny);
     }
 
     /// <summary>
@@ -914,8 +915,8 @@ public partial class ScheduleGridViewModel : ViewModelBase
             if (snap.FilterSectionType && !snap.SectionTypeIds.Contains(section.SectionTypeId ?? string.Empty))
                 continue;
 
-            // Tags use AND logic: the section must carry ALL selected tags to pass.
-            if (snap.FilterTag && !snap.TagIds.IsSubsetOf(section.TagIds))
+            // Tags: by default the section must carry ALL selected tags; with "any" (spec item 31) one is enough.
+            if (!snap.PassesTagFilter(section.TagIds))
                 continue;
 
             // ── Build display label (DRY helper used by all three passes) ──────────

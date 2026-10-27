@@ -100,6 +100,51 @@ public partial class GridFilterViewModel : ViewModelBase
         FilterChanged?.Invoke();
     }
 
+    // ── Tag logic (spec item 31) ──────────────────────────────────────────────
+
+    /// <summary>
+    /// How the Tags filter combines the checked tags: false (the default) = a section must carry all of them; true =
+    /// any one of them is enough. Not saved: each start, and each Clear, begins at "all".
+    /// </summary>
+    private bool _tagsMatchAny;
+
+    /// <summary>
+    /// True when the Tags filter shows sections carrying ANY of the checked tags. Bound to the "any of the checked tags"
+    /// radio button in the Tags popup; like every radio pair in TermPoint, setting it acts only on <c>true</c> (the
+    /// group un-checking the other button changes nothing), so the two buttons can never fight.
+    /// </summary>
+    public bool TagsMatchAny
+    {
+        get => _tagsMatchAny;
+        set { if (value) SetTagsMatchAny(true); }
+    }
+
+    /// <summary>
+    /// True when the Tags filter shows only sections carrying ALL of the checked tags (the default). Bound to the
+    /// "all of the checked tags" radio button; acts only on <c>true</c>, as <see cref="TagsMatchAny"/>.
+    /// </summary>
+    public bool TagsMatchAll
+    {
+        get => !_tagsMatchAny;
+        set { if (value) SetTagsMatchAny(false); }
+    }
+
+    /// <summary>
+    /// Changes the tag logic and, when it really changed, updates both radio buttons, the summary, the grid
+    /// (<see cref="FilterChanged"/>) and the Tags toggle's label (<see cref="HeadersChanged"/>).
+    /// </summary>
+    /// <param name="any">True for "any of the checked tags", false for "all".</param>
+    private void SetTagsMatchAny(bool any)
+    {
+        if (_tagsMatchAny == any) return;
+        _tagsMatchAny = any;
+        OnPropertyChanged(nameof(TagsMatchAny));
+        OnPropertyChanged(nameof(TagsMatchAll));
+        RefreshDerived();
+        FilterChanged?.Invoke();
+        HeadersChanged?.Invoke();
+    }
+
     // ── Active state ──────────────────────────────────────────────────────────
 
     [ObservableProperty] private bool _isActive;
@@ -545,6 +590,14 @@ public partial class GridFilterViewModel : ViewModelBase
         {
             FilterChanged = handler;
         }
+
+        // A clean slate includes the tag logic: back to "all of the checked tags" (spec item 31).
+        if (_tagsMatchAny)
+        {
+            _tagsMatchAny = false;
+            OnPropertyChanged(nameof(TagsMatchAny));
+            OnPropertyChanged(nameof(TagsMatchAll));
+        }
         RefreshDerived();
         if (clearOverlay)
         {
@@ -635,7 +688,7 @@ public partial class GridFilterViewModel : ViewModelBase
         AppendSummaryPart(parts, "Subject",       Subjects);
         AppendSummaryPart(parts, "Campus",        Campuses);
         AppendSummaryPart(parts, "Type",          SectionTypes);
-        AppendSummaryPart(parts, "Tags",          Tags);
+        AppendSummaryPart(parts, _tagsMatchAny ? "Tags (any)" : "Tags", Tags);
         AppendSummaryPart(parts, "Meeting Type",  MeetingTypes);
         AppendSummaryPart(parts, "Level",         Levels);
         AppendSummaryPart(parts, "Course",        Courses);

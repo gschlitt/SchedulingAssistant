@@ -58,6 +58,8 @@ points to.
    `Services/PrivacyScrubber.cs` (`ScrubText`, `RegisterSensitive`), used by `DatabaseDamageReporter.Sanitize`.
    **6b done 2026-10-26:** `Services/ScrubbingDelivery.cs`, every BugSnag payload goes through it
    (`App.CreateBugsnagClient`); it also stamps the install ID. Next: 6c.
+   **Item 31 (added 2026-10-26) built (hand check pending):** the grid's Tags filter can match all
+   (default) or any of the checked tags, chosen at the top of the Tags popup. See spec section 31.
 7. **Item 7:** handled-failure and unclean-exit reports to BugSnag, after item 6.
 
 **Then the field tests.** The remaining Musts (M4, M5, M6, M7, M8, M9, M11 (b)–(d)) are best run once items 15 and

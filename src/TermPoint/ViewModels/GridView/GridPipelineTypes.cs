@@ -148,8 +148,8 @@ internal record FilterSnapshot(
     HashSet<string> SectionTypeIds,
 
     /// <summary>
-    /// Tag property-value IDs selected in the filter.
-    /// Tag filtering uses AND logic: a section must carry ALL selected tags to pass.
+    /// Tag property-value IDs selected in the filter. How they combine is <see cref="TagsMatchAny"/>: by default a
+    /// section must carry ALL of them; with "any", one is enough (see <see cref="PassesTagFilter"/>).
     /// </summary>
     HashSet<string> TagIds,
 
@@ -195,8 +195,23 @@ internal record FilterSnapshot(
     /// The database ID of the specific entity being highlighted by the overlay
     /// (an instructor ID, a room ID, or a tag ID). <c>null</c> when no overlay is active.
     /// </summary>
-    string? SelectedOverlayId)
+    string? SelectedOverlayId,
+
+    /// <summary>
+    /// How the selected <see cref="TagIds"/> combine (spec item 31): false (the default) = the section must carry all of
+    /// them; true = carrying any one of them is enough. Mirrors <see cref="GridFilterViewModel.TagsMatchAny"/>.
+    /// </summary>
+    bool TagsMatchAny = false)
 {
+    /// <summary>
+    /// Whether a section with the given tags passes the Tags filter (spec item 31): always when no tag is selected;
+    /// otherwise it must carry every selected tag, or, with <see cref="TagsMatchAny"/>, at least one of them.
+    /// </summary>
+    /// <param name="sectionTagIds">The section's own tag IDs.</param>
+    /// <returns>True when the section passes the Tags filter.</returns>
+    public bool PassesTagFilter(IEnumerable<string> sectionTagIds)
+        => !FilterTag || (TagsMatchAny ? TagIds.Overlaps(sectionTagIds) : TagIds.IsSubsetOf(sectionTagIds));
+
     // ── Derived "is this dimension active?" flags ──────────────────────────────────
     // Computed properties so callers do not need to repeat "Count > 0 || sentinel"
     // throughout the pipeline. Each returns true when at least one criterion is active
@@ -218,8 +233,7 @@ internal record FilterSnapshot(
     public bool FilterSectionType => SectionTypeIds.Count > 0;
 
     /// <summary>
-    /// True when one or more tags are selected.
-    /// A section must carry ALL selected tags (AND logic) to pass the tag filter.
+    /// True when one or more tags are selected. Whether a section passes is <see cref="PassesTagFilter"/>.
     /// </summary>
     public bool FilterTag => TagIds.Count > 0;
 
