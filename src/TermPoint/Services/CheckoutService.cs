@@ -721,7 +721,7 @@ public sealed class CheckoutService : IDisposable
             // Remember exactly what was judged inactive: ForceCheckoutAsync re-reads the lock file
             // at click time and only breaks it if it is still this session with this heartbeat.
             _staleHolderAtDetection = CurrentHolder;
-            _logger.LogBreadcrumb("Checkout: StaleHolder", new() { ["path"] = sourcePath, ["holder"] = CurrentHolder?.Username ?? "?" });
+            _logger.LogBreadcrumb("Checkout: StaleHolder", new() { ["path"] = sourcePath, ["holder"] = _lockService.DescribeHolder(CurrentHolder) });
             return CheckoutOutcome.StaleHolder;
         }
 
@@ -732,7 +732,7 @@ public sealed class CheckoutService : IDisposable
             HolderIsLiveSameMachine = _lockService.HolderIsLiveSameMachine;
             var d2 = await SetupReadOnlySnapshotAsync();
             var outcome = d2 is not null ? CheckoutOutcome.ReadOnly : CheckoutOutcome.Failed;
-            _logger.LogBreadcrumb($"Checkout: {outcome}", new() { ["path"] = sourcePath, ["holder"] = CurrentHolder?.Username ?? "?" });
+            _logger.LogBreadcrumb($"Checkout: {outcome}", new() { ["path"] = sourcePath, ["holder"] = _lockService.DescribeHolder(CurrentHolder) });
             return outcome;
         }
 
@@ -935,7 +935,7 @@ public sealed class CheckoutService : IDisposable
             // ForceAcquire deleted and created nothing, and no D' has been touched, so (in recovery
             // mode) the crashed session's D' and dirty marker are exactly as they were.
             CurrentHolder = _lockService.CurrentHolder;
-            _logger.LogBreadcrumb("ForceCheckout: HolderActiveAgain", new() { ["holder"] = CurrentHolder?.Username ?? "?" });
+            _logger.LogBreadcrumb("ForceCheckout: HolderActiveAgain", new() { ["holder"] = _lockService.DescribeHolder(CurrentHolder) });
             return CheckoutOutcome.HolderActiveAgain;
         }
 
@@ -3590,7 +3590,8 @@ public sealed class CheckoutService : IDisposable
         _logger.LogBreadcrumb("Lock lost", new()
         {
             ["reason"] = reason.ToString(),
-            ["newHolder"] = LockLossNewHolder?.Username ?? "(none)",
+            // The holder's relation to this user, never their name (spec item 6, step 6c).
+            ["newHolder"] = _lockService.DescribeHolder(LockLossNewHolder),
         });
         _dispatch(() => WriteLockLost?.Invoke(reason));
         return Task.CompletedTask;
@@ -4035,7 +4036,7 @@ public sealed class CheckoutService : IDisposable
 
         try
         {
-            var data = JsonSerializer.Deserialize<LockFileData>(json ?? "");
+            var data = WriteLockService.ParseLockFile(json);
             if (data?.SessionGuid == _lockService.SessionGuid)
                 return LockVerificationResult.Ours;
 

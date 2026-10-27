@@ -1,6 +1,6 @@
 # TermPoint — Privacy Statement
 
-*Last updated: June 2026*
+*Last updated: October 2026*
 
 ## Overview
 
@@ -17,10 +17,11 @@ Application preferences (window settings, recent file paths, display options) ar
 TermPoint uses **BugSnag** (https://www.bugsnag.com) to collect crash and error reports so we can identify and fix problems. When an error occurs, the following information may be sent to BugSnag's servers:
 
 - **Stack trace** — the sequence of function calls that led to the error
+- **Error message** — the text of the error. Before it is sent, TermPoint removes file paths, email addresses, database file names, and the names of people and computers it knows about, replacing each with a short label that says only what kind of item it was (for example, a path on drive H: or on a network share).
 - **App version** and **release stage** (production or development)
-- **Operating system** name and version
+- **Operating system** name and version, **locale** (e.g. en-US) and **time zone**
 - **Anonymous install identifier** — a randomly generated ID stored locally, used to group errors from the same installation. This ID cannot be linked back to you or your institution.
-- **Breadcrumbs** — a short log of recent application events leading up to the error (e.g. "opened database", "switched semester", "saved changes"). These contain operational context only, never scheduling data or personal information.
+- **Breadcrumbs** — a short log of recent application events leading up to the error (e.g. "opened database", "switched semester", "saved changes"). These contain operational context only, never scheduling data or personal information. File paths and names in them are removed in the same way.
 - **Session data** — whether the app session experienced a crash, used to calculate a stability score
 
 **What is NOT sent to BugSnag:**
@@ -28,6 +29,8 @@ TermPoint uses **BugSnag** (https://www.bugsnag.com) to collect crash and error 
 - Institution name or any institutional data
 - Scheduling data (sections, instructors, rooms, courses, or student information)
 - File paths to your database
+- Your computer's name
+- The names of people whose computers are using a database at the same time
 - Any content you enter into the application
 
 BugSnag's own privacy policy is available at https://smartbear.com/privacy/.

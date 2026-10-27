@@ -33,6 +33,11 @@ public interface IAppLogger
     /// read-only), found anywhere in the exception chain, is only written to the local log: no remote report, no
     /// <see cref="ErrorLogged"/> banner and no <see cref="ThrowOnError"/> re-throw. The caller shows the one plain
     /// message itself (<see cref="WriteFailureText"/>).</para>
+    ///
+    /// <para><b>Privacy.</b> Where the implementation has a remote sink (<c>FileAppLogger</c> and BugSnag), the
+    /// exception's message (and its inner exceptions') and <paramref name="context"/> are sent off the machine after
+    /// the report passes <c>ScrubbingDelivery</c> (spec item 6), which replaces paths, email addresses, database file
+    /// names and known user and computer names with tags. The local log keeps them in full.</para>
     /// </summary>
     /// <param name="ex">The exception to log.</param>
     /// <param name="context">Short human-readable description shown in the notification banner.</param>
@@ -56,7 +61,11 @@ public interface IAppLogger
     /// without BugSnag (e.g. WASM).
     /// </summary>
     /// <param name="message">Short human-readable description of the event (e.g. "Checkout: WriteAccess").</param>
-    /// <param name="metadata">Optional key-value pairs with additional context (e.g. path, outcome).</param>
+    /// <param name="metadata">
+    /// Optional key-value pairs with additional context (e.g. path, outcome). A path is sent only as its shape
+    /// (<c>ScrubbingDelivery</c>, spec item 6). Never pass a person's name: a lock holder is recorded as its relation to
+    /// this user (<see cref="WriteLockService.DescribeHolder"/>).
+    /// </param>
     void LogBreadcrumb(string message, Dictionary<string, string>? metadata = null);
 
     /// <summary>
@@ -73,7 +82,10 @@ public interface IAppLogger
     ///
     /// <para><b>Privacy.</b> Everything passed here is sent off the machine by implementations that have a remote
     /// sink: <paramref name="context"/>, <paramref name="metadata"/> and <paramref name="groupingKey"/> must carry
-    /// no paths, file names, user names or user data. Callers are responsible for that.</para>
+    /// no paths, file names, user names or user data. Callers are responsible for that. As a safety net,
+    /// <c>FileAppLogger</c>'s BugSnag client scrubs every report (<c>ScrubbingDelivery</c>, spec item 6: paths, email
+    /// addresses, database file names and known user and computer names become tags), but it can only recognise what
+    /// it knows: a name it was never told about would get through.</para>
     ///
     /// <para>The default implementation only writes the local log line, so a logger that has no remote sink (and
     /// every test logger) needs no code for it.</para>

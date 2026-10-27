@@ -4,7 +4,7 @@ Written at the end of a long session so a fresh conversation can pick up. Claude
 travel between machines (`CLAUDE.md` is gitignored), so everything a new agent needs is here or in the files this
 points to.
 
-**To start the new agent, say:** "Read `HANDOFF.md`, then continue 1.2.3 with item 6."
+**To start the new agent, say:** "Read `HANDOFF.md`, then continue 1.2.3 with item 7."
 
 ## Where things are
 
@@ -57,7 +57,9 @@ points to.
 6. **Item 6:** BugSnag scrubber, steps 6a–6c as planned in its section. **6a done 2026-10-26:**
    `Services/PrivacyScrubber.cs` (`ScrubText`, `RegisterSensitive`), used by `DatabaseDamageReporter.Sanitize`.
    **6b done 2026-10-26:** `Services/ScrubbingDelivery.cs`, every BugSnag payload goes through it
-   (`App.CreateBugsnagClient`); it also stamps the install ID. Next: 6c.
+   (`App.CreateBugsnagClient`); it also stamps the install ID. **6c done 2026-10-26:** holder breadcrumbs record the
+   holder's relation (`WriteLockService.DescribeHolder`), lock-file reads register holder names
+   (`WriteLockService.ParseLockFile`), doc comments, PRIVACY.md (approved). **Item 6 is complete.**
    **Item 31 (added 2026-10-26) built (hand check pending):** the grid's Tags filter can match all
    (default) or any of the checked tags, chosen at the top of the Tags popup. See spec section 31.
 7. **Item 7:** handled-failure and unclean-exit reports to BugSnag, after item 6.

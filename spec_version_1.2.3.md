@@ -18,7 +18,7 @@ will be verified.
 | 3 | Preserve unknown JSON fields across app versions, with a minimum-version gate | Data integrity | **Done** (3a unknown-field catch-all; 3b `MinimumVersionToWrite` gate). Field test: the Store link once 1.2.3 is certified |
 | 4 | Stop opening the shared DB directly; fix startup ordering; single-instance guard | Data integrity | **Done** (4a, 4e, 4d, 4b, 4c; user-tested 2026-10-13). Open: header-only check on D (kept as built), possible 4f (working copy locked vs damaged). Field tests: Mac guard, clumsy |
 | 5 | Make Restore from backup safe | Data integrity | **Done** (5a shared routine, 5b Save & Backup, 5c chooser, 5d open-time local-copy check, 5e damage reporting to BugSnag). Field test: clumsy mid-restore. Follow-up: version-gate re-run after a locked/damaged local copy (item 3) |
-| 6 | Strip paths and usernames from BugSnag reports | Privacy | **1.2.3** (decided 2026-10-26): steps 6a–6c as planned (6a text scrubber, 6b delivery filter, 6c sources + PRIVACY.md; plan approved 2026-10-21). **6a, 6b done 2026-10-26** (`PrivacyScrubber`; `ScrubbingDelivery`, which also stamps the install ID); 6c next |
+| 6 | Strip paths and usernames from BugSnag reports | Privacy | **1.2.3** (decided 2026-10-26): steps 6a–6c as planned (6a text scrubber, 6b delivery filter, 6c sources + PRIVACY.md; plan approved 2026-10-21). **Done 2026-10-26** (6a `PrivacyScrubber`; 6b `ScrubbingDelivery`, which also stamps the install ID; 6c holder markers, holder names registered, PRIVACY.md). Field test N3 |
 | 7 | Report handled save/lock failures and unclean exits to BugSnag | Observability | **1.2.3** (decided 2026-10-26), after item 6, as the last reliability item. Not started |
 | 8 | Empty / delete semester and academic year: consistent rules, no orphans | Bug / data integrity | **Done** (8a service, 8b screens, 8c orphan-tolerant queries); user-tested 2026-10-12 |
 | 9 | Make stale-lock takeover safe | Data integrity | **Done** (9a warning + click re-check, 9b clock-free staleness; user-tested on one machine 2026-10-13). 3-computer integration test pending |
@@ -75,7 +75,9 @@ Everything not yet done for 1.2.3, in one place. Field-test scenario codes (M, S
 - ~~**Item 27**~~ **done 2026-10-26:** the probes found the cause and it was fixed in 1.2.3 (see its section).
 - ~~**Item 25, conflict-check switches:**~~ **reframed and built 2026-10-26:** one per-user Preferences choice to show
   section-card conflicts in full or as flags (list on hover). Hand check pending.
-- **Item 6, BugSnag scrubber:** steps 6a–6c as planned. No database or lock code.
+- ~~**Item 6, BugSnag scrubber:**~~ **done 2026-10-26** (6a–6c as planned, plus the install-ID stamp). Field test N3.
+- ~~**Item 31**~~ (added 2026-10-26) **built:** the grid's Tags filter matches all or any of the checked tags. Hand
+  check pending.
 - **Item 7, handled-failure reports:** after item 6, as the last reliability item, so it reports from the finished
   code.
 
@@ -159,7 +161,7 @@ First look (2026-10-09):
 | 27                                                                          | 13: SharePoint/Teams detection (Windows, warn only) — **done 2026-10-26**              | Detection only; the warning's wording is in item 28.                                                                                                                                                                                           |
 | 28                                                                          | 25: Conflicts in full or as flags — **built 2026-10-26**                               | Settings and two views; per user, so no persistence question.                                                                                                                                                                                  |
 | 29                                                                          | ~~26: Help note on trying changes on a copy~~ — **moved to 1.2.4** (2026-10-26)         | Greg prefers a real Save As command over instructions (1.2.4).                                                                                                                                                                                 |
-| 30                                                                          | 6: BugSnag scrubber (6a–6c)                                                            | Before item 7.                                                                                                                                                                                                                                 |
+| 30                                                                          | 6: BugSnag scrubber (6a–6c) — **done 2026-10-26**                                      | Before item 7.                                                                                                                                                                                                                                 |
 | 31                                                                          | 7: Handled-failure and unclean-exit reports                                            | Last, so it reports from the finished code.                                                                                                                                                                                                    |
 |                                                                             |                                                                                        |                                                                                                                                                                                                                                                |
 
@@ -1450,8 +1452,27 @@ DefaultDelivery.Instance, () => AppSettings.Current.InstallId, message => Logger
   line; an unknown payload is dropped. Session batches are routed through the client's delivery (survey, 2026-10-21);
   the test feeds a `BatchedSessions` to the gate directly, because the tracker sends them on its own timer.
 - Both compile checks pass; full suite 3,921 passed, 0 failed, 81 skipped.
-- Remaining for item 6: **6c** (holder markers at the four holder sites, `WriteLockService` registers holder names and
-  machines, doc comments, PRIVACY.md).
+
+**6c built 2026-10-26 (item 6 complete).**
+- **Holder markers:** the four holder breadcrumbs (`Checkout: StaleHolder`, `Checkout: {outcome}`,
+  `ForceCheckout: HolderActiveAgain`, `Lock lost`'s `newHolder`) now record `WriteLockService.DescribeHolder(holder)`:
+  `none`, `unreadable` (an unreadable or nameless lock file), `self`, `self-other-computer` or `other`.
+- **Holder names registered:** every lock-file read (five in `WriteLockService`, one in `CheckoutService`) goes through
+  the new `WriteLockService.ParseLockFile(json)`, which registers the holder's user name and machine with
+  `PrivacyScrubber` (behaviour for bad files unchanged: invalid text throws `JsonException`, `null` gives null).
+- The `["path"]` breadcrumbs stay; the delivery turns them into shape tags.
+- **Doc comments:** `IAppLogger.LogError` (what is sent, after scrubbing), `LogBreadcrumb` (paths sent as their shape;
+  never a person's name), `ReportHandled` (callers still pass no private data; the scrubber is a safety net that only
+  knows the names it has been told).
+- **PRIVACY.md** (wording approved by Greg 2026-10-26): sent now lists the error message (with paths, emails, database
+  file names and known names replaced by tags), locale and time zone, and says breadcrumbs are scrubbed the same way; not
+  sent adds the computer's name and the names of people using a database at the same time. Last updated October 2026.
+  The example tag was replaced by plain words after Greg saw the entity codes in the raw file ("a short label that
+  says only what kind of item it was (for example, a path on drive H: or on a network share)"): PRIVACY.md is read
+  as plain text as often as rendered, so it carries no angle brackets or HTML entities.
+- Tests: `LockHolderPrivacyTests` (the five markers, case-insensitive; parsing registers the names and keeps the old
+  bad-file behaviour; a checkout blocked by a colleague records `other`, never the name, and the name is scrubbed).
+  Both compile checks pass; full suite 3,941 passed, 0 failed, 81 skipped.
 
 **Risks.**
 - **Diagnostics:** BugSnag shows only a path's shape, not which file failed. The local log still has it; ask the

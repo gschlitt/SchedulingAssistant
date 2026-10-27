@@ -545,7 +545,7 @@ public sealed class WriteLockService : IDisposable
                 return;
             }
 
-            var data = JsonSerializer.Deserialize<LockFileData>(json!);
+            var data = ParseLockFile(json);
             if (data?.SessionGuid != SessionGuid)
             {
                 App.Logger.LogInfo($"[WriteLockService] Release: lock file at {path} is no longer ours; skipping delete.");
@@ -1076,7 +1076,7 @@ public sealed class WriteLockService : IDisposable
         try
         {
             var json = File.ReadAllText(_lockFilePath!);
-            CurrentHolder = JsonSerializer.Deserialize<LockFileData>(json);
+            CurrentHolder = ParseLockFile(json);
         }
         catch (JsonException ex)
         {
@@ -1117,6 +1117,61 @@ public sealed class WriteLockService : IDisposable
         Acquired  = DateTime.MinValue,
         Heartbeat = DateTime.MinValue,
     };
+
+    /// <summary>
+    /// Turns a lock file's text into its holder, and registers the holder's user name and machine name with
+    /// <see cref="PrivacyScrubber"/> so they are removed from anything sent in an error report (spec item 6, step 6c).
+    /// Every read of a lock file, here and in <see cref="CheckoutService"/>, goes through this one method, so no
+    /// holder's name can be missed.
+    /// </summary>
+    /// <param name="json">The lock file's text.</param>
+    /// <returns>The holder; null for a file holding the JSON literal <c>null</c>.</returns>
+    /// <exception cref="JsonException">The text is not valid lock-file JSON (also for empty text).</exception>
+    internal static LockFileData? ParseLockFile(string? json)
+    {
+        var holder = JsonSerializer.Deserialize<LockFileData>(json ?? string.Empty);
+        if (holder is not null)
+        {
+            PrivacyScrubber.RegisterSensitive(holder.Username, PrivacyScrubber.UserLabel);
+            PrivacyScrubber.RegisterSensitive(holder.Machine,  PrivacyScrubber.MachineLabel);
+        }
+        return holder;
+    }
+
+    /// <summary>Holder marker: nobody holds the lock (or no holder is known).</summary>
+    internal const string HolderNone = "none";
+
+    /// <summary>Holder marker: the lock file couldn't be read, or names nobody.</summary>
+    internal const string HolderUnreadable = "unreadable";
+
+    /// <summary>Holder marker: this user, on this computer.</summary>
+    internal const string HolderSelf = "self";
+
+    /// <summary>Holder marker: this user's name, on another computer.</summary>
+    internal const string HolderSelfOtherComputer = "self-other-computer";
+
+    /// <summary>Holder marker: someone else.</summary>
+    internal const string HolderOther = "other";
+
+    /// <summary>
+    /// What a breadcrumb records about a lock holder instead of their name (spec item 6, step 6c; decided 2026-10-21):
+    /// how the holder relates to this user, which is what diagnosis needs, and identifies nobody.
+    /// </summary>
+    /// <param name="holder">The holder, or null.</param>
+    /// <returns><see cref="HolderNone"/>, <see cref="HolderUnreadable"/>, <see cref="HolderSelf"/>,
+    /// <see cref="HolderSelfOtherComputer"/> or <see cref="HolderOther"/>.</returns>
+    internal string DescribeHolder(LockFileData? holder)
+    {
+        if (holder is null)
+            return HolderNone;
+        if (string.IsNullOrWhiteSpace(holder.Username) || holder.Username == CorruptedHolderLabel)
+            return HolderUnreadable;
+        if (!string.Equals(holder.Username, _identity.UserName, StringComparison.OrdinalIgnoreCase))
+            return HolderOther;
+        return string.Equals(holder.Machine, _identity.MachineName, StringComparison.OrdinalIgnoreCase)
+            ? HolderSelf
+            : HolderSelfOtherComputer;
+    }
 
     /// <summary>The verdict of <see cref="RecheckStaleHolder"/>.</summary>
     private enum StaleRecheck
@@ -1167,7 +1222,7 @@ public sealed class WriteLockService : IDisposable
             return StaleRecheck.Changed;
         }
 
-        try { current = JsonSerializer.Deserialize<LockFileData>(json) ?? CreateCorruptedHolder(); }
+        try { current = ParseLockFile(json) ?? CreateCorruptedHolder(); }
         catch (JsonException) { current = CreateCorruptedHolder(); }
 
         return string.Equals(expected.SessionGuid, current.SessionGuid, StringComparison.Ordinal)
@@ -1272,7 +1327,7 @@ public sealed class WriteLockService : IDisposable
                 var (readCompleted, json) = await NetworkFileOps.ReadAllTextAsync(path).ConfigureAwait(false);
                 if (readCompleted)
                 {
-                    var data = JsonSerializer.Deserialize<LockFileData>(json!) ?? new LockFileData();
+                    var data = ParseLockFile(json) ?? new LockFileData();
                     data.Heartbeat = _time.GetUtcNow().UtcDateTime;
 
                     // Write to a temp file first, then atomically replace. This ensures
@@ -1550,7 +1605,7 @@ public sealed class WriteLockService : IDisposable
             LockFileData? data;
             try
             {
-                data = JsonSerializer.Deserialize<LockFileData>(json ?? "");
+                data = ParseLockFile(json);
                 CurrentHolder = data;
             }
             catch (JsonException)
