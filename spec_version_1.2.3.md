@@ -42,7 +42,7 @@ will be verified.
 | 27 | With section-list virtualization on, adding a meeting can push the open editor out of view | Bug (user-reported) | Added 2026-10-26 (Greg). Same family as the drift item 23's anchoring fixed for opening a section. **Done 2026-10-26:** probes found the cause (the pinned card is virtualized away in the growth pass); fixed in `ListScrollAnchorBehavior` (the card is rebuilt and re-pinned), proven by `ScrollAnchorProbe` E9 (fails before, passes after) and Greg's hand test |
 | 28 | Message pass: say truthfully what happens (rule 4) | UX / data integrity | **1.2.3** (decided 2026-10-26): F6's four restore promises, item 11's refresh messages, item 13's cloud-folder warning, F13, F15. Wording and notice behaviour only. **Done 2026-10-26** (see section 28; hand-checked: cloud-folder warning, Refresh tooltip; the outage and lock messages get checked in the field tests) |
 | 29 | F5: skip a save when nothing changed | Data integrity | **Moved to 1.2.4** (Greg, 2026-10-26, after the design and its risk review: too much risk in the save code for what is mainly a performance gain and a better chance of restoring after a crash). The probe-backed design is kept in section 29 for 1.2.4 |
-| 30 | Backup cleanup on a dead share: give the partial-backup delete a deadline | Responsiveness | **1.2.3** (decided 2026-10-26). Small (`BackupService.cs:286`) |
+| 30 | Backup cleanup on a dead share: give the partial-backup delete a deadline | Responsiveness | **Done 2026-10-26**: the delete goes through `NetworkFileOps.DeleteAsync`; 2 tests. See section 30 |
 
 Item numbers are for reference only. The implementation order is below.
 
@@ -65,8 +65,8 @@ Everything not yet done for 1.2.3, in one place. Field-test scenario codes (M, S
 - ~~**Item 15, exit guard:**~~ **done 2026-10-26:** ignore repeated close requests while the exit save runs, and block input with a "Saving
   and closing…" screen until it finishes. F2's edit counter moved to 1.2.4.
 - ~~**Item 29, F5:**~~ **moved to 1.2.4** (Greg, 2026-10-26): its design and probe findings are in section 29.
-- **Item 30, backup cleanup:** the partial-backup delete after a stalled copy (`BackupService.cs:286`) gets a
-  deadline like other network calls. The other 24 gaps in `tools/NetworkProbe/GAP-AUDIT.md` moved to 1.2.4.
+- ~~**Item 30, backup cleanup:**~~ **done 2026-10-26:** the partial-backup delete after a stalled copy now has the
+  same network deadline as the copy. The other 24 gaps in `tools/NetworkProbe/GAP-AUDIT.md` moved to 1.2.4.
 - **Item 13, SharePoint/Teams detection** on Windows, warn only. Google Drive for desktop, Box and macOS moved to
   1.2.4.
 - **Item 26, a Help note:** how to try out changes safely on a copy of the database. The feature moved to 1.2.4.
@@ -153,7 +153,7 @@ First look (2026-10-09):
 | 23                                                                          | 28: Message pass — **done 2026-10-26** (F6, item 11's messages, item 13's warning, F13, F15)                 | Wording and notice behaviour only; no save code.                                                                                                                                                                                               |
 | 24                                                                          | 15: Exit guard — **done 2026-10-26** (repeated X ignored, "Saving and closing…")                             | In the window, not the save code. F2's counter moved to 1.2.4.                                                                                                                                                                                 |
 | 25                                                                          | ~~29: F5, skip a save when nothing changed~~ — **moved to 1.2.4** (2026-10-26)         | Designed and risk-reviewed (section 29), then deferred: 1.2.3 ships with no change inside the save code.                                                                                                                                       |
-| 26                                                                          | 30: Backup cleanup deadline                                                            | One unguarded delete; small.                                                                                                                                                                                                                   |
+| 26                                                                          | 30: Backup cleanup deadline — **done 2026-10-26**                                      | One unguarded delete; small.                                                                                                                                                                                                                   |
 | 27                                                                          | 13: SharePoint/Teams detection (Windows, warn only)                                    | Detection only; the warning's wording is in item 28.                                                                                                                                                                                           |
 | 28                                                                          | 25: Conflict-check switches                                                            | Settings and two views; per user, so no persistence question.                                                                                                                                                                                  |
 | 29                                                                          | 26: Help note on trying changes on a copy                                              | Documentation only.                                                                                                                                                                                                                            |
@@ -3374,6 +3374,37 @@ an old file" event copies raw bytes. So F5 should no longer be found, and with i
 
 **Hand check (Greg).** Open a database that was just created or restored from a backup, change nothing, close: D's
 modified time in Explorer doesn't change. Open again, edit, close: the edit is in D.
+
+---
+
+## 30 — Backup cleanup on a dead share (decided 2026-10-26)
+
+**Status: done 2026-10-26.** Finding A1 of `tools/NetworkProbe/GAP-AUDIT.md`, its strongest.
+
+**Problem.** When the copy of a backup to the backup folder stalls (`NetworkFileOps.CopyAsync` reports the folder
+stopped responding), `PerformBackupAsync` deleted the partial file with a plain `File.Exists` + `File.Delete`
+(`TryDelete`). That runs exactly when the share is known to be dead, so it could hold the thread for the full SMB
+timeout (about a minute), and the thread is the UI thread when the backup runs at lock acquisition
+(`StartSessionAsync`) or from the Save and Backup panel's own backup command (`SaveAndBackupViewModel`).
+
+**Fix.** That one delete now goes through `NetworkFileOps.DeleteAsync` (the deadline-bounded, never-throwing delete
+the save already uses for `D.tmp`). If the folder still doesn't answer in time, the partial file stays and one local
+log line says so. A leftover is harmless: it has a normal backup name, so rotation deletes it in time, and a restore
+refuses it because it fails the integrity check (item 5). The rest of the backup is unchanged: the failure message
+("Database backup failed: the backup folder did not respond."), the local snapshot cleanup, rotation and the CSV.
+
+**Four rules.** Not involved: the backup folder is not the shared database, and the partial file is not anyone's
+unsaved work (the working copy is untouched). No message changes, no `MinimumVersionToWrite` question (nothing saved
+differently).
+
+**Tests.** `BackupServiceStalledCopyTests` (2), driving the real `PerformBackupAsync` with the network fault injector:
+the copy stalls → the backup fails with "did not respond", the partial file is gone, and the fault injector was asked
+about the delete (a plain `File.Delete` never asks it, so this proves the deadline-bounded path); the copy stalls and the
+delete also times out → the same failure, the partial file stays, one log line, nothing throws. Backup and fault-seam
+tests: 182 passed, 1 skipped (local-DB). Both compile checks pass. Full suite: 3,870 passed, 0 failed, 81 skipped.
+
+**Not in this item** (moved to 1.2.4 with the rest of GAP-AUDIT): the sections CSV write (A2), rotation's listing
+and deletes (A3, which still use the plain `TryDelete`), and the backup list (A4).
 
 ---
 

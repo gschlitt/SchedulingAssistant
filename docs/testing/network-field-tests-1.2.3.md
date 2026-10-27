@@ -71,8 +71,9 @@ enough); **share** = the database on Mekler's share; **both** = GregDeskTop and 
       for 1.2.3. Details: `spec_version_1.2.3.md`, "Work remaining".
 - [x] **Decided 2026-10-26:** items 25, 6 and 7 are in 1.2.3; item 27 gets a time-boxed probe, then is fixed in
       1.2.3 or the virtualization switch is hidden in 1.2.3 (then S10, N1 and N2 wait for 1.2.4).
-- [ ] **Later:** `BackupService` deletes a partial backup with plain, unguarded file calls when the backup folder's
-      share is dead (`BackupService.cs:286`); `tools/NetworkProbe/GAP-AUDIT.md` lists 24 more outside the save path.
+- [x] **Done 2026-10-26 (item 30):** `BackupService` no longer deletes a partial backup with plain, unguarded file
+      calls when the backup folder's share is dead; the delete has the copy's network deadline.
+      `tools/NetworkProbe/GAP-AUDIT.md` lists 24 more outside the save path (1.2.4).
 - [x] **Done 2026-10-26** (9775b1b): the window title shows the fourth version number when it isn't 0
       ("TermPoint v1.2.3.1").
 - [ ] **Before release:** `<Version>` 1.2.3.1 was committed (43a0336, 2026-10-25) and is on `Version_1.2.3`. Set it

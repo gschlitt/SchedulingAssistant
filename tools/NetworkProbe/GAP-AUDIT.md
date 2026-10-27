@@ -56,6 +56,9 @@ Ordered by how close they are to the database and by how likely they are to run 
 
 ### A1. Backup folder: delete of a partial backup after a stalled copy
 
+**Fixed in 1.2.3 (spec item 30, 2026-10-26):** the delete now goes through `NetworkFileOps.DeleteAsync`. The row below
+is kept as found.
+
 | file:line | call | path | note |
 |---|---|---|---|
 | `BackupService.cs:287` calling `:1107` | `TryDelete(dbDest)`: `File.Exists` then `File.Delete` | `dbDest` in the backup folder (a share, when the user points backups at one) | Runs **right after** `NetworkFileOps.CopyAsync` (`:283`) reported a stall, i.e. exactly when the share is dead. The `await` on `:283` has no `ConfigureAwait(false)`, and `StartSessionAsync` awaits `PerformBackupAsync` "from the UI thread at write-lock acquisition" (comment at `:267` to `:269`), as does the Save and Backup panel's own backup command (`SaveAndBackupViewModel.cs:168`). **The strongest finding in this audit.** |

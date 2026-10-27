@@ -284,7 +284,15 @@ public class BackupService : IDisposable
             if (!copyCompleted)
             {
                 _logger.LogError(null, $"Backup copy to {dbDest} stalled — backup folder unreachable.");
-                TryDelete(dbDest); // remove the partial file
+
+                // Remove the partial file under the same network deadline as the copy (spec item 30). The backup
+                // folder has just stopped responding, so a plain File.Exists / File.Delete here could hold this
+                // thread for the full SMB timeout — and this method runs on the UI thread when the backup starts
+                // at lock acquisition or from the Save and Backup panel. Best effort: if the folder is still dead
+                // the partial file stays; it has a normal backup name, so rotation deletes it in time, and a
+                // restore refuses it because it fails the integrity check.
+                if (!await NetworkFileOps.DeleteAsync(dbDest))
+                    _logger.LogInfo("Backup: the partial backup file could not be removed in time; rotation will remove it later.");
                 var stalled = BackupResult.Failed("Database backup failed: the backup folder did not respond.");
                 LastBackupResult = stalled;
                 FireBackupCompleted();
