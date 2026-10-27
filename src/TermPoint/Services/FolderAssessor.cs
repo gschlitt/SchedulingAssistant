@@ -3,7 +3,9 @@ using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Runtime.CompilerServices;
+using System.Runtime.Versioning;
 using System.Threading;
+using Microsoft.Win32;
 
 namespace TermPoint.Services;
 
@@ -367,6 +369,12 @@ public class FolderAssessor
             }
         }
 
+        // SharePoint and Teams libraries synced through OneDrive (spec item 13). OneDrive puts them in a folder named
+        // after the organisation (C:\Users\<you>\<Organisation>\<Site> - Documents), outside the OneDrive folder the
+        // environment variables name, so only OneDrive's own registry entries reveal them. Windows only, best effort.
+        if (OperatingSystem.IsWindows())
+            roots.AddRange(OneDriveRegistryRoots(ReadOneDriveRegistryFolders(), roots));
+
         // Dropbox: info.json in %APPDATA%\Dropbox contains sync root paths.
         try
         {
@@ -406,6 +414,137 @@ public class FolderAssessor
         return roots
             .GroupBy(r => r.RootPath, StringComparer.OrdinalIgnoreCase)
             .Select(g => g.First())
+            .ToList();
+    }
+
+    /// <summary>
+    /// The provider name the cloud-folder warning uses for a SharePoint or Teams library that OneDrive syncs (spec item
+    /// 13; wording approved by Greg 2026-10-26). It fills the approved sentence: "This folder is kept in sync by OneDrive
+    /// (a SharePoint or Teams library)."
+    /// </summary>
+    internal const string SharePointLibraryProvider = "OneDrive (a SharePoint or Teams library)";
+
+    /// <summary>
+    /// Turns the folders OneDrive's registry entries name into cloud sync roots (spec item 13). Pure: no file system or
+    /// registry access, so the labelling rules can be tested with made-up input.
+    /// <list type="bullet">
+    ///   <item>A folder that is the user's own OneDrive becomes a plain "OneDrive" root.</item>
+    ///   <item>A SharePoint or Teams library becomes a <see cref="SharePointLibraryProvider"/> root, unless it lies at or
+    ///   under a OneDrive folder already known (from <paramref name="knownRoots"/> or this input): a library shortcut
+    ///   added to "My files" is inside the OneDrive folder, and that folder's own root already covers it.</item>
+    ///   <item>Empty and unparseable paths are skipped.</item>
+    /// </list>
+    /// Duplicates are left in; <see cref="DiscoverCloudSyncRoots"/> removes them, keeping the first.
+    /// </summary>
+    /// <param name="folders">The folders read from OneDrive's registry entries (<see cref="ReadOneDriveRegistryFolders"/>).</param>
+    /// <param name="knownRoots">Roots found so far (the OneDrive environment variables); only their OneDrive entries are used.</param>
+    /// <returns>The new roots: the user's own OneDrive folders first, then the libraries.</returns>
+    internal static IReadOnlyList<CloudSyncRoot> OneDriveRegistryRoots(
+        IEnumerable<OneDriveSyncedFolder> folders, IReadOnlyList<CloudSyncRoot> knownRoots)
+    {
+        static string? FullPathOrNull(string? path)
+        {
+            if (string.IsNullOrWhiteSpace(path)) return null;
+            try { return Path.GetFullPath(path); }
+            catch { return null; }
+        }
+
+        var list = folders.ToList();
+
+        var ownFolders = list
+            .Where(f => !f.IsLibrary)
+            .Select(f => FullPathOrNull(f.Path))
+            .OfType<string>()
+            .Select(p => new CloudSyncRoot("OneDrive", p))
+            .ToList();
+
+        var oneDriveRoots = knownRoots
+            .Where(r => r.Provider == "OneDrive")
+            .Select(r => r.RootPath)
+            .Concat(ownFolders.Select(r => r.RootPath))
+            .ToList();
+
+        var libraries = list
+            .Where(f => f.IsLibrary)
+            .Select(f => FullPathOrNull(f.Path))
+            .OfType<string>()
+            .Where(p => !oneDriveRoots.Any(root => IsAtOrUnder(p, root)))
+            .Select(p => new CloudSyncRoot(SharePointLibraryProvider, p));
+
+        return ownFolders.Concat(libraries).ToList();
+    }
+
+    /// <summary>
+    /// Decides whether an entry under <c>HKCU\Software\SyncEngines\Providers\OneDrive</c> is a SharePoint or Teams
+    /// library rather than the user's own OneDrive: its <c>LibraryType</c> is <c>teamsite</c>, or its
+    /// <c>UrlNamespace</c> is on a SharePoint host other than the personal "-my" host that OneDrive for Business uses.
+    /// </summary>
+    /// <param name="libraryType">The entry's <c>LibraryType</c> value, or null.</param>
+    /// <param name="urlNamespace">The entry's <c>UrlNamespace</c> value (the library's web address), or null.</param>
+    /// <returns>True for a SharePoint or Teams library.</returns>
+    internal static bool IsSharePointLibrary(string? libraryType, string? urlNamespace)
+    {
+        if (string.Equals(libraryType, "teamsite", StringComparison.OrdinalIgnoreCase))
+            return true;
+        if (!Uri.TryCreate(urlNamespace, UriKind.Absolute, out var url))
+            return false;
+        return url.Host.EndsWith(".sharepoint.com", StringComparison.OrdinalIgnoreCase)
+            && !url.Host.EndsWith("-my.sharepoint.com", StringComparison.OrdinalIgnoreCase);
+    }
+
+    /// <summary>
+    /// Reads, from the current user's registry, the local folders the OneDrive client syncs (spec item 13). The layout is
+    /// OneDrive's own and undocumented, so two places are read and each is best effort (a missing key or any error just
+    /// adds nothing):
+    /// <list type="bullet">
+    ///   <item><c>HKCU\Software\SyncEngines\Providers\OneDrive\&lt;id&gt;</c>: one key per synced location, with its folder
+    ///   in <c>MountPoint</c>; <see cref="IsSharePointLibrary"/> tells a library from the user's own OneDrive.</item>
+    ///   <item><c>HKCU\Software\Microsoft\OneDrive\Accounts\&lt;account&gt;</c>: <c>UserFolder</c> is the account's own
+    ///   OneDrive folder, and the value NAMES under <c>Tenants\&lt;organisation&gt;</c> are the folders of synced libraries.</item>
+    /// </list>
+    /// Only folders that exist are returned. All local registry and disk reads; nothing touches the network.
+    /// </summary>
+    /// <returns>The folders found, each marked as a library or the user's own OneDrive.</returns>
+    [SupportedOSPlatform("windows")]
+    private static IReadOnlyList<OneDriveSyncedFolder> ReadOneDriveRegistryFolders()
+    {
+        var found = new List<OneDriveSyncedFolder>();
+
+        try
+        {
+            using var providers = Registry.CurrentUser.OpenSubKey(@"Software\SyncEngines\Providers\OneDrive");
+            foreach (var name in providers?.GetSubKeyNames() ?? Array.Empty<string>())
+            {
+                using var entry = providers!.OpenSubKey(name);
+                if (entry?.GetValue("MountPoint") is string mountPoint)
+                    found.Add(new OneDriveSyncedFolder(mountPoint,
+                        IsSharePointLibrary(entry.GetValue("LibraryType") as string, entry.GetValue("UrlNamespace") as string)));
+            }
+        }
+        catch { /* best effort */ }
+
+        try
+        {
+            using var accounts = Registry.CurrentUser.OpenSubKey(@"Software\Microsoft\OneDrive\Accounts");
+            foreach (var accountName in accounts?.GetSubKeyNames() ?? Array.Empty<string>())
+            {
+                using var account = accounts!.OpenSubKey(accountName);
+                if (account?.GetValue("UserFolder") is string userFolder)
+                    found.Add(new OneDriveSyncedFolder(userFolder, IsLibrary: false));
+
+                using var tenants = account?.OpenSubKey("Tenants");
+                foreach (var tenantName in tenants?.GetSubKeyNames() ?? Array.Empty<string>())
+                {
+                    using var tenant = tenants!.OpenSubKey(tenantName);
+                    foreach (var folder in tenant?.GetValueNames() ?? Array.Empty<string>())
+                        found.Add(new OneDriveSyncedFolder(folder, IsLibrary: true));
+                }
+            }
+        }
+        catch { /* best effort */ }
+
+        return found
+            .Where(f => { try { return Directory.Exists(f.Path); } catch { return false; } })
             .ToList();
     }
 
@@ -590,6 +729,14 @@ public enum WarningKind
 /// <param name="Provider">The cloud provider name (e.g. "OneDrive", "Dropbox", "Google Drive", "iCloud").</param>
 /// <param name="RootPath">The resolved absolute path of the sync root.</param>
 public record CloudSyncRoot(string Provider, string RootPath);
+
+/// <summary>
+/// One local folder the OneDrive client syncs, as its registry entries describe it (spec item 13; see
+/// <see cref="FolderAssessor.OneDriveRegistryRoots"/>).
+/// </summary>
+/// <param name="Path">The local folder, exactly as the registry gives it.</param>
+/// <param name="IsLibrary">True for a SharePoint or Teams library; false for the user's own OneDrive folder.</param>
+internal readonly record struct OneDriveSyncedFolder(string Path, bool IsLibrary);
 
 /// <summary>
 /// A suggested database folder location, pre-assessed as suitable.

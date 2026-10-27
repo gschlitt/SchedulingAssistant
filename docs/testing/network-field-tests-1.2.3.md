@@ -40,7 +40,7 @@ enough); **share** = the database on Mekler's share; **both** = GregDeskTop and 
 | S6 New database / export with the share down | Should | one computer + share | ✅ pass ((b) covered by the probe) |
 | S7 Wizard and UNC picker | Should | share; a Windows 10 and a Windows 11 computer | ☐ to do |
 | S8 Windows 11 AutoCompleteBox crash test | Should | one computer on Windows 11 | ☐ to do |
-| S9 Cloud-synced folders | Should | one computer with OneDrive and a SharePoint/Teams library | ☐ to do (item 13's SharePoint/Teams detection, not built yet; macOS and other providers moved to 1.2.4) |
+| S9 Cloud-synced folders | Should | one computer with OneDrive and a SharePoint/Teams library | ☐ to do (item 13's SharePoint/Teams detection built 2026-10-26; this is its first check on a real library. macOS, other providers and a File → Open warning moved to 1.2.4) |
 | S10 Section list: recycling test, default OFF | Should | one computer, ~800-section database | ☐ to do |
 | S11 macOS pass | Should | Mac | ☐ to do |
 | N1 Virtualization ON | Nice | one computer, ~800-section database | ☐ to do |
@@ -465,10 +465,21 @@ was cut and Next clicked: "can't reach" message, no freeze (user).
 In the section editor and in the Meetings flyout, click a Start Time suggestion and a Length suggestion; wait 10 s after each. Also run item 1's meeting-time entry checks. **Expect:** no crash.
 **Result:** ☐ pass ☐ fail / notes:
 
-### S9 — Cloud-synced folders (item 13; not built)
-*GregSurface, Mac · R2 · ~15 min*
-Put a copy of `FT.db` in each of: OneDrive, a SharePoint/Teams library synced through OneDrive, Google Drive for desktop, Box, and (Mac) `~/Library/CloudStorage/…`. Open it through the wizard and File → Open. **Expect:** a clear warning (not a block) that the folder is synced and why that is a risk. **Known today:** OneDrive and Google Drive are detected in some forms; SharePoint, Box and macOS are the gaps. Record each provider.
-**Result:** ☐ pass ☐ fail / ☐ not built / notes (per provider):
+### S9 — Cloud-synced folders (item 13; built 2026-10-26)
+*A Windows computer that syncs a SharePoint or Teams library through OneDrive · R2 · ~15 min*
+The detection reads OneDrive's registry entries, and their layout was never seen on a real library during development, so this is its first real check.
+1. In the wizard, point at a database (or a new database folder) inside the synced SharePoint/Teams library (the folder named after the organisation, e.g. `C:\Users\<you>\University of the Fraser Valley\<Site> - Documents`). **Expect:** a warning, not a block: "This folder is kept in sync by OneDrive (a SharePoint or Teams library). Sync services don't respect…".
+2. The same inside your OneDrive folder. **Expect:** the same warning naming plain "OneDrive".
+3. File → New Database with a folder inside the library. **Expect:** the same warning as step 1.
+4. **If step 1 or 3 shows no warning,** run this read-only PowerShell and keep its output for the fix (it changes nothing):
+   ```powershell
+   $p='HKCU:\Software\SyncEngines\Providers\OneDrive'
+   '== SyncEngines'; if(Test-Path $p){Get-ChildItem $p|ForEach-Object{$v=Get-ItemProperty $_.PSPath;"{0} | {1} | {2}" -f $v.MountPoint,$v.LibraryType,$v.UrlNamespace}}else{'(none)'}
+   '== Tenants'; Get-ChildItem 'HKCU:\Software\Microsoft\OneDrive\Accounts' -ErrorAction SilentlyContinue|ForEach-Object{$t="$($_.PSPath)\Tenants"; if(Test-Path $t){Get-ChildItem $t|ForEach-Object{"tenant: $($_.PSChildName)"; (Get-Item $_.PSPath).Property|ForEach-Object{"  $_"}}}}
+   '== Env'; 'OneDrive','OneDriveCommercial'|ForEach-Object{"$_ = "+[Environment]::GetEnvironmentVariable($_)}
+   ```
+**Not in 1.2.3 (don't record as failures):** File → Open and Recent show no cloud-folder warning for any provider (1.2.4); Google Drive for desktop, Box and macOS `~/Library/CloudStorage/…` (1.2.4).
+**Result:** ☐ pass ☐ fail / notes (steps 1–3; probe output if needed):
 
 ### S10 — Section list: editor-recycling data test, and default OFF (item 23)
 *GregSurface · ~15 min*
@@ -481,7 +492,7 @@ Put a copy of `FT.db` in each of: OneDrive, a SharePoint/Teams library synced th
 *Mac · R3 R4 · ~30 min*
 - **Guard (item 4).** A second copy on the same database is refused; a copy ended with `kill -9 <pid>` doesn't block a relaunch (it offers Restore); a frozen copy (`kill -STOP <pid>`) does block, with the message above.
 - **Takeover (item 9).** Make the Mac the third computer in M5 (6), or stand in for GregDeskTop in M5 (3).
-- **Cloud folders (item 13).** `~/Library/CloudStorage/…` warns (S9).
+- **Cloud folders (item 13).** macOS detection (`~/Library/CloudStorage/…`) moved to 1.2.4: a database there gives no warning in 1.2.3; note it, don't record a failure.
 - **Dialog layering.** "Database Lock Is Inactive", "Couldn't Open the Database" and the restore prompts appear above the main window ("paints but ignores clicks" means one is hidden).
 - **Popup wheel (item 19).** Scroll the mouse wheel past the end of a dropdown: the section list underneath doesn't move.
 

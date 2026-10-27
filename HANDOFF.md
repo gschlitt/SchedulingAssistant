@@ -4,7 +4,7 @@ Written at the end of a long session so a fresh conversation can pick up. Claude
 travel between machines (`CLAUDE.md` is gitignored), so everything a new agent needs is here or in the files this
 points to.
 
-**To start the new agent, say:** "Read `HANDOFF.md`, then continue 1.2.3 with item 13."
+**To start the new agent, say:** "Read `HANDOFF.md`, then continue 1.2.3 with item 25."
 
 ## Where things are
 
@@ -45,8 +45,10 @@ points to.
    F6's F5-shaped route as known.
 2. ~~**Item 30**~~ **done 2026-10-26:** the partial-backup delete after a stalled copy goes through
    `NetworkFileOps.DeleteAsync`; `BackupServiceStalledCopyTests` (2). See spec section 30.
-3. **Item 13:** SharePoint/Teams detection on Windows, warn only (`FolderAssessor`; the warning's wording was done
-   in item 28).
+3. ~~**Item 13**~~ **done 2026-10-26 (uncommitted):** SharePoint/Teams libraries synced through OneDrive are detected
+   from OneDrive's registry entries (`FolderAssessor`), warn only, label "OneDrive (a SharePoint or Teams library)"
+   (approved). Not yet seen on a real library: field test S9 confirms it (probe included there). File → Open warning
+   moved to 1.2.4.
 4. **Item 25:** two per-user switches (rooms, instructors) in Preferences to turn off conflict detection, plus a note
    on screen when a check is off. Still to settle in its brief: "not shown" vs "not computed", and the note's wording
    and place (Greg approves user-facing wording).

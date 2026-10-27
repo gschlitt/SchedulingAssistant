@@ -25,7 +25,7 @@ will be verified.
 | 10 | "Save aborted" dead end: give a next step | UX | **Redesigned 2026-10-18**: see `designs/data-persistence-review-2026-10.md`, section 8. 10a (done 2026-10-16) is kept and reworked; 10b and the 10c outline are shelved (`tmp/shelved/`) |
 | 11 | Reader Refresh: report failures honestly and recover the connection | UX / reliability | **Split 2026-10-26:** the honest messages go into item 28 (1.2.3); the reconnection moved to 1.2.4. Plan approved 2026-10-14 |
 | 12 | Save-specific error banner for exceptions during save | UX | **Done** (2026-10-15, on the tests; no hand test). Plan approved 2026-10-14 |
-| 13 | Cloud-sync folder detection gaps | Data integrity / UX | **1.2.3 (decided 2026-10-26):** SharePoint/Teams detection on Windows, warn only; the reworded warning is in item 28. Google Drive for desktop, Box and macOS moved to 1.2.4 |
+| 13 | Cloud-sync folder detection gaps | Data integrity / UX | **1.2.3 part done 2026-10-26:** SharePoint/Teams libraries synced through OneDrive are detected on Windows (warn only), from OneDrive's registry entries; to be confirmed on a real Teams library in S9. The reworded warning is in item 28. Google Drive for desktop, Box, macOS and a warning at File → Open moved to 1.2.4 |
 | 14 | Unapplied editor changes are lost on exit or database switch | Data loss | **Moved to 1.2.4** (decided 2026-10-26; already in 1.2.2) |
 | 15 | Exit-path hardening and the mid-save edit gap | Data loss | **Split 2026-10-26:** the exit guard (ignore repeated X, "Saving and closing…" screen blocking input) stays in 1.2.3; F2's edit counter moved to 1.2.4. **Exit guard done 2026-10-26** (hand-checked, incl. the DEBUG slow-exit switch and the 2-minute backstop) |
 | 16 | Remaining network I/O on the UI thread | Responsiveness | **Done** (16a recovered-copy export: snapshot then place, never overwrite; 16b wizard failure-path probe on a deadline) |
@@ -67,8 +67,8 @@ Everything not yet done for 1.2.3, in one place. Field-test scenario codes (M, S
 - ~~**Item 29, F5:**~~ **moved to 1.2.4** (Greg, 2026-10-26): its design and probe findings are in section 29.
 - ~~**Item 30, backup cleanup:**~~ **done 2026-10-26:** the partial-backup delete after a stalled copy now has the
   same network deadline as the copy. The other 24 gaps in `tools/NetworkProbe/GAP-AUDIT.md` moved to 1.2.4.
-- **Item 13, SharePoint/Teams detection** on Windows, warn only. Google Drive for desktop, Box and macOS moved to
-  1.2.4.
+- ~~**Item 13, SharePoint/Teams detection**~~ **done 2026-10-26** (Windows, warn only; S9 confirms it on a real
+  Teams library). Google Drive for desktop, Box, macOS and a warning at File → Open moved to 1.2.4.
 - **Item 26, a Help note:** how to try out changes safely on a copy of the database. The feature moved to 1.2.4.
 - ~~**Item 27**~~ **done 2026-10-26:** the probes found the cause and it was fixed in 1.2.3 (see its section).
 - **Item 25, conflict-check switches:** two per-user switches (rooms, instructors) in Preferences, stored in the
@@ -154,7 +154,7 @@ First look (2026-10-09):
 | 24                                                                          | 15: Exit guard — **done 2026-10-26** (repeated X ignored, "Saving and closing…")                             | In the window, not the save code. F2's counter moved to 1.2.4.                                                                                                                                                                                 |
 | 25                                                                          | ~~29: F5, skip a save when nothing changed~~ — **moved to 1.2.4** (2026-10-26)         | Designed and risk-reviewed (section 29), then deferred: 1.2.3 ships with no change inside the save code.                                                                                                                                       |
 | 26                                                                          | 30: Backup cleanup deadline — **done 2026-10-26**                                      | One unguarded delete; small.                                                                                                                                                                                                                   |
-| 27                                                                          | 13: SharePoint/Teams detection (Windows, warn only)                                    | Detection only; the warning's wording is in item 28.                                                                                                                                                                                           |
+| 27                                                                          | 13: SharePoint/Teams detection (Windows, warn only) — **done 2026-10-26**              | Detection only; the warning's wording is in item 28.                                                                                                                                                                                           |
 | 28                                                                          | 25: Conflict-check switches                                                            | Settings and two views; per user, so no persistence question.                                                                                                                                                                                  |
 | 29                                                                          | 26: Help note on trying changes on a copy                                              | Documentation only.                                                                                                                                                                                                                            |
 | 30                                                                          | 6: BugSnag scrubber (6a–6c)                                                            | Before item 7.                                                                                                                                                                                                                                 |
@@ -2093,6 +2093,36 @@ access. The save hash check turns that into stranded work rather than corruption
 
 **Open decisions.** Warn or block. Recommendation: warn, because false positives on legitimate
 network shares would lock people out.
+
+**1.2.3 part (built 2026-10-26): SharePoint and Teams libraries on Windows, warn only.**
+- **The gap.** OneDrive syncs a SharePoint or Teams library into a folder named after the organisation
+  (`C:\Users\<you>\<Organisation>\<Site> - Documents`), outside the OneDrive folder that the `OneDrive` /
+  `OneDriveCommercial` environment variables name, so a database there got no warning.
+- **Detection.** `FolderAssessor.DiscoverCloudSyncRoots` also reads the folders OneDrive syncs from the current user's
+  registry (`ReadOneDriveRegistryFolders`, Windows only, guarded by `OperatingSystem.IsWindows()` because the file is
+  also built for the browser; each read is best effort). Two places, because the layout is OneDrive's own and
+  undocumented: `HKCU\Software\SyncEngines\Providers\OneDrive\<id>` (`MountPoint`; `IsSharePointLibrary` uses
+  `LibraryType` = `teamsite`, or a SharePoint `UrlNamespace` that isn't the personal "-my" host), and
+  `HKCU\Software\Microsoft\OneDrive\Accounts\<account>` (`UserFolder` = the user's own OneDrive; the value names under
+  `Tenants\<organisation>` = library folders). Only folders that exist count. The pure `OneDriveRegistryRoots` turns
+  them into roots: the user's own OneDrive is a plain "OneDrive" root; a library is a root labelled
+  `SharePointLibraryProvider`, unless it is inside a OneDrive folder already known (a shortcut added to "My files",
+  covered by that folder).
+- **Wording (approved by Greg 2026-10-26):** the approved item 28 sentence with the label "OneDrive (a SharePoint or
+  Teams library)": "This folder is kept in sync by OneDrive (a SharePoint or Teams library). Sync services don't
+  respect…". Detail line: "Cloud sync provider: OneDrive (a SharePoint or Teams library)".
+- **Where it shows (unchanged):** the wizard (existing database path, new database folder) and File → New Database;
+  the wizard's suggested locations skip these folders like any synced one. **File → Open and Recent don't check the
+  folder at all, for any provider** (found 2026-10-26); Greg kept item 13 to detection, and that warning is on the
+  1.2.4 list.
+- **Not verified on a real library:** the development computer has no work OneDrive, so the registry layout is from
+  OneDrive's known behaviour; field test S9 confirms it (Greg chose to build first and check there). The read-only
+  PowerShell probe that prints what OneDrive records is in S9.
+- **Four rules:** not involved (a warning only; no database or lock code). `MinimumVersionToWrite`: No.
+- **Tests:** in `FolderAssessorTests`: `IsSharePointLibrary` (8 cases), `OneDriveRegistryRoots` (labelling, a library
+  inside a known OneDrive folder, other providers and bad paths), a folder inside a library warns in the approved wording
+  with the library label, and the real discovery on the test machine never throws and lists each folder once. Both
+  compile checks pass; full suite 3,883 passed, 0 failed, 81 skipped.
 
 ---
 

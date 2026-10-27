@@ -354,4 +354,120 @@ public class FolderAssessorTests
         var warning = FolderWarning.NotWritable();
         Assert.Contains("permissions", warning.Message, StringComparison.OrdinalIgnoreCase);
     }
+
+    // ── SharePoint / Teams libraries synced through OneDrive (spec item 13) ──
+
+    private static readonly string FakeLibrary =
+        Path.GetFullPath(@"C:\Users\TestUser\University of Example\BIOL Dept - Documents");
+
+    /// <summary>
+    /// A library entry under SyncEngines is recognised by its LibraryType ("teamsite", any case) or by a SharePoint web
+    /// address that is not the personal "-my" host; the user's own OneDrive (business or personal) and an entry with
+    /// nothing to go on are not libraries.
+    /// </summary>
+    [Theory]
+    [InlineData("teamsite", null, true)]
+    [InlineData("TeamSite", null, true)]
+    [InlineData(null, "https://example.sharepoint.com/sites/BIOL/Shared Documents/", true)]
+    [InlineData("mysite", "https://example-my.sharepoint.com/personal/test_example_ca/Documents/", false)]
+    [InlineData(null, "https://example-my.sharepoint.com/personal/test_example_ca/Documents/", false)]
+    [InlineData(null, "https://d.docs.live.net/0123456789abcdef/", false)]
+    [InlineData(null, "not a web address", false)]
+    [InlineData(null, null, false)]
+    public void IsSharePointLibrary_TellsALibraryFromTheUsersOwnOneDrive(string? libraryType, string? url, bool expected)
+        => Assert.Equal(expected, FolderAssessor.IsSharePointLibrary(libraryType, url));
+
+    /// <summary>
+    /// A synced library outside the OneDrive folder becomes a root with the library label; the user's own OneDrive
+    /// folder from the registry becomes a plain "OneDrive" root, listed first.
+    /// </summary>
+    [Fact]
+    public void OneDriveRegistryRoots_LabelsLibrariesAndTheUsersOwnFolder()
+    {
+        var roots = FolderAssessor.OneDriveRegistryRoots(new[]
+        {
+            new OneDriveSyncedFolder(FakeLibrary, IsLibrary: true),
+            new OneDriveSyncedFolder(FakeOneDrive, IsLibrary: false),
+        }, Array.Empty<CloudSyncRoot>());
+
+        Assert.Equal(new[]
+        {
+            new CloudSyncRoot("OneDrive", FakeOneDrive),
+            new CloudSyncRoot(FolderAssessor.SharePointLibraryProvider, FakeLibrary),
+        }, roots);
+    }
+
+    /// <summary>
+    /// A library inside a OneDrive folder already known (a shortcut added to "My files") is left to that folder's own
+    /// root, whether the folder came from the environment variables or from the registry itself.
+    /// </summary>
+    [Fact]
+    public void OneDriveRegistryRoots_LibraryInsideAKnownOneDriveFolder_IsCoveredByThatFolder()
+    {
+        var shortcut = Path.Combine(FakeOneDrive, "BIOL Dept - Documents");
+
+        var fromEnvironment = FolderAssessor.OneDriveRegistryRoots(
+            new[] { new OneDriveSyncedFolder(shortcut, IsLibrary: true) },
+            new[] { new CloudSyncRoot("OneDrive", FakeOneDrive) });
+        Assert.Empty(fromEnvironment);
+
+        var fromRegistry = FolderAssessor.OneDriveRegistryRoots(new[]
+        {
+            new OneDriveSyncedFolder(FakeOneDrive, IsLibrary: false),
+            new OneDriveSyncedFolder(shortcut, IsLibrary: true),
+        }, Array.Empty<CloudSyncRoot>());
+        Assert.Equal(new[] { new CloudSyncRoot("OneDrive", FakeOneDrive) }, fromRegistry);
+    }
+
+    /// <summary>A Dropbox (or any other non-OneDrive) root never hides a library, and empty or unparseable paths are skipped.</summary>
+    [Fact]
+    public void OneDriveRegistryRoots_IgnoresOtherProvidersAndBadPaths()
+    {
+        var roots = FolderAssessor.OneDriveRegistryRoots(new[]
+        {
+            new OneDriveSyncedFolder(FakeLibrary, IsLibrary: true),
+            new OneDriveSyncedFolder("   ", IsLibrary: true),
+            new OneDriveSyncedFolder("bad\0path", IsLibrary: false),
+        }, new[] { new CloudSyncRoot("Dropbox", Path.GetFullPath(@"C:\Users\TestUser")) });
+
+        Assert.Equal(new[] { new CloudSyncRoot(FolderAssessor.SharePointLibraryProvider, FakeLibrary) }, roots);
+    }
+
+    /// <summary>
+    /// A database folder inside a synced library gets the cloud-folder warning (warn only, never a block), in the
+    /// approved wording with the library label, and its detail line names it for IT.
+    /// </summary>
+    [Fact]
+    public void Assess_PathInsideASyncedLibrary_WarnsWithTheLibraryLabel()
+    {
+        var assessor = MakeAssessor(cloudRoots: new[]
+        {
+            new CloudSyncRoot("OneDrive", FakeOneDrive),
+            new CloudSyncRoot(FolderAssessor.SharePointLibraryProvider, FakeLibrary),
+        });
+
+        var result = assessor.Assess(Path.Combine(FakeLibrary, "TermPoint"));
+
+        var warning = Assert.Single(result.Warnings, w => w.Kind == WarningKind.CloudSynced);
+        Assert.Equal(
+            "This folder is kept in sync by OneDrive (a SharePoint or Teams library). Sync services don't respect the way " +
+            "TermPoint marks a database as in use, so two people could edit at once and one person's changes could be lost. " +
+            "Choose a folder that isn't synced, such as a shared network drive.",
+            warning.Message);
+        Assert.Equal("Cloud sync provider: OneDrive (a SharePoint or Teams library)", warning.Detail);
+        Assert.True(result.IsWritable);
+    }
+
+    /// <summary>
+    /// The real discovery, on whatever machine runs the tests (with or without OneDrive and its registry entries): it never
+    /// throws, every root it finds exists, and no folder is listed twice.
+    /// </summary>
+    [Fact]
+    public void DiscoverCloudSyncRoots_OnThisMachine_DoesNotThrow_AndListsEachFolderOnce()
+    {
+        var roots = FolderAssessor.DiscoverCloudSyncRoots();
+
+        Assert.All(roots, r => Assert.True(Directory.Exists(r.RootPath), $"{r.Provider} root does not exist: {r.RootPath}"));
+        Assert.Equal(roots.Count, roots.Select(r => r.RootPath).Distinct(StringComparer.OrdinalIgnoreCase).Count());
+    }
 }
