@@ -38,7 +38,7 @@ will be verified.
 | 23 | Section-list virtualization with scroll anchoring, opt-in (Preferences, default off; hidden in WASM) | Performance / memory | **Done** (user-tested on desktop 2026-10-10); field tests pending (touch, macOS trackpad, Win11). Also: room conflicts one per line |
 | 24 | **Section Import by User**: self-serve onboarding from an `.xlsx` template (Files → Import Sections…) | **New feature** | **Done** (2026-10-26) on `1.2.3_new_features`: steps 24.1–24.10, plus 24.8b and the stress-test fixes. `MinimumVersionToWrite`: No, confirmed by a 1.2.2 round trip. See `HANDOFF.md` |
 | 25 | Section cards: show room and instructor conflicts in full or as flags | UX / settings | Added 2026-10-26 (Greg). **Reframed and built 2026-10-26** (it is about vertical space): one per-user Preferences choice, "In full" (default) or "As a flag" with the list on hover; door and person icons. Hand check pending |
-| 26 | "Experimenting" isn't possible: TermPoint always saves on exit | Persistence / UX | Added 2026-10-26 (Greg). **Feature moved to 1.2.4** (needs Recovered Versions and item 14's close question); **1.2.3 adds a Help note** on trying changes safely on a copy of the database |
+| 26 | "Experimenting" isn't possible: TermPoint always saves on exit | Persistence / UX | Added 2026-10-26 (Greg). **Feature moved to 1.2.4** (needs Recovered Versions and item 14's close question). **The 1.2.3 Help note moved to 1.2.4 too** (Greg, 2026-10-26, after seeing the draft: rather than instructions for an improvised "save as", 1.2.4 gets a real Save As / Save a Copy… command) |
 | 27 | With section-list virtualization on, adding a meeting can push the open editor out of view | Bug (user-reported) | Added 2026-10-26 (Greg). Same family as the drift item 23's anchoring fixed for opening a section. **Done 2026-10-26:** probes found the cause (the pinned card is virtualized away in the growth pass); fixed in `ListScrollAnchorBehavior` (the card is rebuilt and re-pinned), proven by `ScrollAnchorProbe` E9 (fails before, passes after) and Greg's hand test |
 | 28 | Message pass: say truthfully what happens (rule 4) | UX / data integrity | **1.2.3** (decided 2026-10-26): F6's four restore promises, item 11's refresh messages, item 13's cloud-folder warning, F13, F15. Wording and notice behaviour only. **Done 2026-10-26** (see section 28; hand-checked: cloud-folder warning, Refresh tooltip; the outage and lock messages get checked in the field tests) |
 | 29 | F5: skip a save when nothing changed | Data integrity | **Moved to 1.2.4** (Greg, 2026-10-26, after the design and its risk review: too much risk in the save code for what is mainly a performance gain and a better chance of restoring after a crash). The probe-backed design is kept in section 29 for 1.2.4 |
@@ -69,7 +69,8 @@ Everything not yet done for 1.2.3, in one place. Field-test scenario codes (M, S
   same network deadline as the copy. The other 24 gaps in `tools/NetworkProbe/GAP-AUDIT.md` moved to 1.2.4.
 - ~~**Item 13, SharePoint/Teams detection**~~ **done 2026-10-26** (Windows, warn only; S9 confirms it on a real
   Teams library). Google Drive for desktop, Box, macOS and a warning at File → Open moved to 1.2.4.
-- **Item 26, a Help note:** how to try out changes safely on a copy of the database. The feature moved to 1.2.4.
+- ~~**Item 26, a Help note:**~~ **moved to 1.2.4** (Greg, 2026-10-26): instead of instructions, 1.2.4 gets a real
+  Save As / Save a Copy… command. The feature (experimenting without saving) was already 1.2.4.
 - ~~**Item 27**~~ **done 2026-10-26:** the probes found the cause and it was fixed in 1.2.3 (see its section).
 - ~~**Item 25, conflict-check switches:**~~ **reframed and built 2026-10-26:** one per-user Preferences choice to show
   section-card conflicts in full or as flags (list on hover). Hand check pending.
@@ -156,7 +157,7 @@ First look (2026-10-09):
 | 26                                                                          | 30: Backup cleanup deadline — **done 2026-10-26**                                      | One unguarded delete; small.                                                                                                                                                                                                                   |
 | 27                                                                          | 13: SharePoint/Teams detection (Windows, warn only) — **done 2026-10-26**              | Detection only; the warning's wording is in item 28.                                                                                                                                                                                           |
 | 28                                                                          | 25: Conflicts in full or as flags — **built 2026-10-26**                               | Settings and two views; per user, so no persistence question.                                                                                                                                                                                  |
-| 29                                                                          | 26: Help note on trying changes on a copy                                              | Documentation only.                                                                                                                                                                                                                            |
+| 29                                                                          | ~~26: Help note on trying changes on a copy~~ — **moved to 1.2.4** (2026-10-26)         | Greg prefers a real Save As command over instructions (1.2.4).                                                                                                                                                                                 |
 | 30                                                                          | 6: BugSnag scrubber (6a–6c)                                                            | Before item 7.                                                                                                                                                                                                                                 |
 | 31                                                                          | 7: Handled-failure and unclean-exit reports                                            | Last, so it reports from the finished code.                                                                                                                                                                                                    |
 |                                                                             |                                                                                        |                                                                                                                                                                                                                                                |
@@ -3195,6 +3196,21 @@ changes are saved on exit, and by autosave before that.
   the user chooses Keep or Throw away (to Recovered Versions).
 - **C. Work on a copy:** Save a Copy… then open the copy. Already possible; only needs to be easier to find and
   explained. No persistence change.
+
+**1.2.3 Help note: moved to 1.2.4 (Greg, 2026-10-26).** Drafting it showed that shape C is *not* "already possible"
+in the app: there is no general Save As / Save a Copy… command. The Files menu has Open…, New…, Save, Import
+Sections…, Recent Files, Print… and Exit; "Save a Copy…" exists only inside the save-conflict banner and the
+"Can't Restore" flow. The draft therefore had to tell users to copy the file in File Explorer or Finder, choose a
+suitable folder, open the copy, and switch back via Recent Files. Greg: "It seems a little goofy to have to lay out
+instructions for an effective save-as; perhaps there should just be one." So 1.2.4 builds the command, and any Help
+text follows from it. Findings for 1.2.4:
+- The top bar shows the open database's name (path in its tooltip), so a user can see which one is open.
+- The conflict flows' export, `CheckoutService.ExportRecoveredCopyAsync` (item 16a: snapshot the working file locally,
+  then place it, never overwriting; it returns a `NewDatabaseResult`), is a natural base for Save a Copy….
+- Things the command (or its Help) must handle: the copy should not land beside the shared database, where colleagues
+  could open it by mistake, nor in a synced folder or Documents/Desktop (Controlled Folder Access; `FolderAssessor`
+  already warns about both); "Always open the most recent database at startup" would reopen the copy next time; and
+  changes made in a copy can't be brought back into the real database.
 
 ## 27 — Section-list virtualization misbehaves when a meeting is added (added 2026-10-26)
 

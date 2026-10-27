@@ -66,7 +66,7 @@ enough); **share** = the database on Mekler's share; **both** = GregDeskTop and 
       back with it?), and note `winver`.
 - [x] **1.2.3's scope for the persistence work, decided 2026-10-26** (Greg, item by item): in 1.2.3 are items 28
       (message pass), 30 (backup cleanup), item 15's exit guard, item 13's SharePoint/Teams detection and a
-      Help note for item 26; everything else moved to 1.2.4. S5 moved with item 14. Item 29 (F5) was in at first, then
+      Help note for item 26 (later moved to 1.2.4 as a real Save As command); everything else moved to 1.2.4. S5 moved with item 14. Item 29 (F5) was in at first, then
       moved to 1.2.4 the same day after its design and risk review, so the save code the field tests exercise is final
       for 1.2.3. Details: `spec_version_1.2.3.md`, "Work remaining".
 - [x] **Decided 2026-10-26:** items 25, 6 and 7 are in 1.2.3; item 27 gets a time-boxed probe, then is fixed in

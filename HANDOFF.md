@@ -4,7 +4,7 @@ Written at the end of a long session so a fresh conversation can pick up. Claude
 travel between machines (`CLAUDE.md` is gitignored), so everything a new agent needs is here or in the files this
 points to.
 
-**To start the new agent, say:** "Read `HANDOFF.md`, then continue 1.2.3 with item 26."
+**To start the new agent, say:** "Read `HANDOFF.md`, then continue 1.2.3 with item 6."
 
 ## Where things are
 
@@ -52,7 +52,8 @@ points to.
 4. ~~**Item 25**~~ **built 2026-10-26 (hand check pending):** reframed by Greg as a vertical-space fix.
    One Preferences choice shows section-card conflicts "In full" (default) or "As a flag" (door / person icon +
    "Room conflict" / "Instructor conflict", full list on hover). See spec section 25 for the hand check.
-5. **Item 26:** a Help note on trying changes safely on a copy of the database (the feature is 1.2.4).
+5. ~~**Item 26**~~ **moved to 1.2.4** (Greg, 2026-10-26): instead of a Help note explaining how to copy the database
+   file by hand, 1.2.4 gets a real Save As / Save a Copy… command. Findings in spec item 26.
 6. **Item 6:** BugSnag scrubber, steps 6a–6c as planned in its section.
 7. **Item 7:** handled-failure and unclean-exit reports to BugSnag, after item 6.
 
