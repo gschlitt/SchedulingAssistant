@@ -65,9 +65,10 @@ enough); **share** = the database on Mekler's share; **both** = GregDeskTop and 
       If it does: do not press its buttons; drag its header, then minimise and restore the main window (does it come
       back with it?), and note `winver`.
 - [x] **1.2.3's scope for the persistence work, decided 2026-10-26** (Greg, item by item): in 1.2.3 are items 28
-      (message pass), 29 (F5), 30 (backup cleanup), item 15's exit guard, item 13's SharePoint/Teams detection and a
-      Help note for item 26; everything else moved to 1.2.4. S5 moved with item 14. Details: `spec_version_1.2.3.md`,
-      "Work remaining".
+      (message pass), 30 (backup cleanup), item 15's exit guard, item 13's SharePoint/Teams detection and a
+      Help note for item 26; everything else moved to 1.2.4. S5 moved with item 14. Item 29 (F5) was in at first, then
+      moved to 1.2.4 the same day after its design and risk review, so the save code the field tests exercise is final
+      for 1.2.3. Details: `spec_version_1.2.3.md`, "Work remaining".
 - [x] **Decided 2026-10-26:** items 25, 6 and 7 are in 1.2.3; item 27 gets a time-boxed probe, then is fixed in
       1.2.3 or the virtualization switch is hidden in 1.2.3 (then S10, N1 and N2 wait for 1.2.4).
 - [ ] **Later:** `BackupService` deletes a partial backup with plain, unguarded file calls when the backup folder's
@@ -288,7 +289,7 @@ Dry run of the prompt on one computer: `python tmp/handtest_lock.py stale <copy>
    Log (GregSurface): `wake check — lock is no longer ours. Timing out session.`, `DemoteToReadOnly — preserving D' and dirty marker (unsaved changes kept for recovery).`
    Close TermPoint on GregDeskTop. Restart it on GregSurface: "Restore Unsaved Changes?" → Restore → "Can't Restore Unsaved Changes" → **Save a Copy…** (suggests `FT (recovered).db`). The copy has `ZZZT-302 S`; D has `ZZZT-303 D` and not `ZZZT-302 S`.
    **F1 angle:** on "Can't Restore", X re-asks; Discard asks "Discard Unsaved Changes?" before deleting.
-4. **(4) Nobody changed D.** As (3), but GregDeskTop takes over and closes without edits. GregSurface restarts: Restore. **Expect:** its change restores into D. **Known (review F5):** a session that closes without edits can still rewrite D, which turns this into "Can't Restore" → Save a Copy…. Either way the work is offered back: record which.
+4. **(4) Nobody changed D.** As (3), but GregDeskTop takes over and closes without edits. GregSurface restarts: Restore. **Expect:** its change restores into D. **Known (review F5, fix moved to 1.2.4):** a session that closes without edits can still rewrite D, which turns this into "Can't Restore" → Save a Copy…. It happens only when D was last written by something other than a TermPoint save (a new database, a restored backup, a 1.2.2 direct open, or the first session after the SQLite update in 1.2.3); otherwise expect the restore to work. Either way the work is offered back: record which, and what last wrote D.
 5. **(5) Reader waits.** GregSurface asleep 4 min, GregDeskTop opens → **Open read-only**. Open GregSurface's lid, let it resume, then exit it cleanly. **Expect:** GregDeskTop's **Take over as writer** appears within ~60 s and works.
 6. **(6) No double takeover (needs a third computer; skip and say so if you have none).** GregSurface asleep 4 min. GregDeskTop opens (prompt, leave it open), then the third computer opens (prompt too). GregDeskTop takes over; then the third computer clicks Take over. **Expect:** it gets "Database Is In Use Again" naming GregDeskTop and is read-only; never two writers (check the lock file's holder and each banner).
 7. **(7) Clock skew.** Turn off auto time sync on GregSurface and set its clock 10 min **behind**; it stays active as writer. GregDeskTop opens. **Expect:** a prompt may show (the clock is only a hint), but Take over ends in "Database Is In Use Again" and GregSurface never loses the lock. Then its clock 10 min **ahead**, hard-killed: GregDeskTop's polling finds the dead lock after ~180 s. **Restore the clock afterwards.**

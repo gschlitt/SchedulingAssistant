@@ -41,7 +41,7 @@ will be verified.
 | 26 | "Experimenting" isn't possible: TermPoint always saves on exit | Persistence / UX | Added 2026-10-26 (Greg). **Feature moved to 1.2.4** (needs Recovered Versions and item 14's close question); **1.2.3 adds a Help note** on trying changes safely on a copy of the database |
 | 27 | With section-list virtualization on, adding a meeting can push the open editor out of view | Bug (user-reported) | Added 2026-10-26 (Greg). Same family as the drift item 23's anchoring fixed for opening a section. **Done 2026-10-26:** probes found the cause (the pinned card is virtualized away in the growth pass); fixed in `ListScrollAnchorBehavior` (the card is rebuilt and re-pinned), proven by `ScrollAnchorProbe` E9 (fails before, passes after) and Greg's hand test |
 | 28 | Message pass: say truthfully what happens (rule 4) | UX / data integrity | **1.2.3** (decided 2026-10-26): F6's four restore promises, item 11's refresh messages, item 13's cloud-folder warning, F13, F15. Wording and notice behaviour only. **Done 2026-10-26** (see section 28; hand-checked: cloud-folder warning, Refresh tooltip; the outage and lock messages get checked in the field tests) |
-| 29 | F5: skip a save when nothing changed | Data integrity | **1.2.3** (decided 2026-10-26). Small to medium; in the save code |
+| 29 | F5: skip a save when nothing changed | Data integrity | **Moved to 1.2.4** (Greg, 2026-10-26, after the design and its risk review: too much risk in the save code for what is mainly a performance gain and a better chance of restoring after a crash). The probe-backed design is kept in section 29 for 1.2.4 |
 | 30 | Backup cleanup on a dead share: give the partial-backup delete a deadline | Responsiveness | **1.2.3** (decided 2026-10-26). Small (`BackupService.cs:286`) |
 
 Item numbers are for reference only. The implementation order is below.
@@ -64,8 +64,7 @@ Everything not yet done for 1.2.3, in one place. Field-test scenario codes (M, S
   - F15: one "can't reach the database" notice that stays up until a save works, with one wording.
 - ~~**Item 15, exit guard:**~~ **done 2026-10-26:** ignore repeated close requests while the exit save runs, and block input with a "Saving
   and closing…" screen until it finishes. F2's edit counter moved to 1.2.4.
-- **Item 29, F5:** skip a save when nothing changed, so a session with no edits doesn't make someone else's kept
-  changes unrestorable. In the save code: check first what relies on the first save.
+- ~~**Item 29, F5:**~~ **moved to 1.2.4** (Greg, 2026-10-26): its design and probe findings are in section 29.
 - **Item 30, backup cleanup:** the partial-backup delete after a stalled copy (`BackupService.cs:286`) gets a
   deadline like other network calls. The other 24 gaps in `tools/NetworkProbe/GAP-AUDIT.md` moved to 1.2.4.
 - **Item 13, SharePoint/Teams detection** on Windows, warn only. Google Drive for desktop, Box and macOS moved to
@@ -78,7 +77,7 @@ Everything not yet done for 1.2.3, in one place. Field-test scenario codes (M, S
 - **Item 7, handled-failure reports:** after item 6, as the last reliability item, so it reports from the finished
   code.
 
-**Moved to 1.2.4 (decided 2026-10-26):** F16; item 14 (F3); item 15's F2 edit counter; item 26 (the feature); the
+**Moved to 1.2.4 (decided 2026-10-26):** item 29 (F5, after its design and risk review); F16; item 14 (F3); item 15's F2 edit counter; item 26 (the feature); the
 persistence redesign steps 8.9.1–4 (with F7); item 11's reconnection; item 13's other providers and macOS; F9, F10
 and F14; the 24 gaps in `GAP-AUDIT.md`.
 
@@ -153,7 +152,7 @@ First look (2026-10-09):
 | 22                                                                          | 27: Virtualization drift — **done 2026-10-26**                                         | Fixed (anchor restore), E9 added to the probe tool.                                                                                                                                                                                            |
 | 23                                                                          | 28: Message pass — **done 2026-10-26** (F6, item 11's messages, item 13's warning, F13, F15)                 | Wording and notice behaviour only; no save code.                                                                                                                                                                                               |
 | 24                                                                          | 15: Exit guard — **done 2026-10-26** (repeated X ignored, "Saving and closing…")                             | In the window, not the save code. F2's counter moved to 1.2.4.                                                                                                                                                                                 |
-| 25                                                                          | 29: F5, skip a save when nothing changed                                               | The only 1.2.3 change inside the save code: check first what relies on the first save.                                                                                                                                                         |
+| 25                                                                          | ~~29: F5, skip a save when nothing changed~~ — **moved to 1.2.4** (2026-10-26)         | Designed and risk-reviewed (section 29), then deferred: 1.2.3 ships with no change inside the save code.                                                                                                                                       |
 | 26                                                                          | 30: Backup cleanup deadline                                                            | One unguarded delete; small.                                                                                                                                                                                                                   |
 | 27                                                                          | 13: SharePoint/Teams detection (Windows, warn only)                                    | Detection only; the warning's wording is in item 28.                                                                                                                                                                                           |
 | 28                                                                          | 25: Conflict-check switches                                                            | Settings and two views; per user, so no persistence question.                                                                                                                                                                                  |
@@ -3231,7 +3230,7 @@ database, Alice did change data, so "Can't Restore" with Save a Copy… is what 
 and then refused, remains and its expected set is now `F7` alone), and F6 stays on the known list through its F5 shape: when
 nobody changed any data (someone's no-edit session rewrote the file) the same refusal makes the new wording false. That route
 (`I5_ARestorePromisedForOneDatabase_IsJudgedAtTheNextOpenOfThatDatabase`, and the replayed known sequence) is found on
-every run until item 29 fixes F5. The harness cannot judge "You have no unsaved changes" (classified as information).
+every run until item 29 fixes F5 (moved to 1.2.4, so 1.2.3 ships with it). The harness cannot judge "You have no unsaved changes" (classified as information).
 
 **Limits worth knowing.**
 
@@ -3242,6 +3241,139 @@ every run until item 29 fixes F5. The harness cannot judge "You have no unsaved 
   (in `WriteLockService`, lock code) would close the gap; it is outside this item.
 - Item 29 (skip a save when nothing changed) must keep this in mind: an autosave that skips its save no longer proves the
   location responds, so it must not be the only thing that clears the notice.
+
+---
+
+## 29 — F5: skip a save when nothing changed (moved to 1.2.4)
+
+**Status: moved to 1.2.4** (Greg, 2026-10-26). The design below and its risk review were done in 1.2.3; nothing was
+built. Greg's reasoning: the change sits inside the save code and could go very wrong, while what it brings is mainly
+a performance gain (less network traffic, especially with autosave on) and a better chance that a restore works after
+a crash. Kept here so 1.2.4 starts from it.
+
+**For 1.2.4, from the risk review (2026-10-26):**
+- Add a second, independent guard: skip only when there is also **no unsaved-changes marker**. A false skip then needs
+  the marker and the content check to be wrong at once, and a skipped save deletes nothing (no marker to delete). The
+  step-6 marker handling in the skipped branch below then goes away.
+- Add 29b's "open, no edit, save, compare" test to `CLAUDE.md`'s after-every-upgrade checklist (an SQLite update could
+  change which header bytes a backup rewrites; that can only bring F5 back, never lose data).
+- Run the no-edit test against the real local database as well (`[FactRequiresLocalDb]`), not only a fresh one.
+- Land it before that release's network field tests, which exercise the save code.
+
+**Problem (F5, `designs/data-persistence-review-2026-10.md`).** An editing session that changes nothing can still
+rewrite the shared database at its first save (autosave or the exit save). The bytes change although the data does not,
+so anyone's kept changes from a crash or a lost lock can no longer be restored ("Can't Restore" → Save a Copy…), and
+item 28's wording ("unless someone else changes the database first") becomes untrue in that case.
+
+**What the probe found (2026-10-26, in TermPoint itself).** A throwaway test ran seven open/save sessions on a real
+database: `NewDatabaseFile`, then the app's own `DatabaseContext` on D', then `SaveAsync`, comparing D byte by byte.
+- When D was last written by TermPoint's own save, a no-edit save writes back exactly D's bytes. Nothing to fix there.
+- F5 happens only when D was last written some other way: a **new database**, a **restored backup** (VACUUM INTO), a
+  **direct open in WAL mode** (a 1.2.2 colleague), or **another SQLite version** (1.2.3 ships item 2's engine update, so
+  the first no-edit session after updating rewrites each department's database once). Then the next session's first
+  save rewrites D.
+- In every one of those cases **only header bytes differ**: the journal-mode bytes (18–19), the change counter (24–27),
+  the schema cookie (40–43), version-valid-for (92–95) and the SQLite version number (96–99). Every page is identical.
+  Comparing with those fields read as zeros, all four cases come out "unchanged", and a real edit comes out "changed".
+- So F5 is narrower than the review assumed, but it strikes right after the events that tend to come before a recovery
+  (a restore, IT replacing the file, an update).
+
+**What relies on the first save** (the HANDOFF question).
+- **The version stamp raise:** dormant in 1.2.3 (`ThisReleaseRequires` is null). It writes into D' at checkout, which
+  changes a page, so under this design the first save still carries it (the comparison point is taken before the gate).
+  Unchanged.
+- **The WAL checkpoint:** the save's snapshot is made with SQLite's backup (which reads through the WAL) and set back to
+  rollback mode. Nothing relies on the save for a checkpoint.
+- **`SessionDirty`:** set true at checkout, but never read by the app (tests only). Not usable as the signal.
+- **Writes that don't mark the session dirty:** `DatabaseContext` creates missing tables, migrates `user_version < 1`
+  databases and seeds defaults without `MarkDirty`, and its WAL switch rewrites page 1. So "no marker" does not mean
+  "nothing to save", and the marker cannot be the signal. Under this design those writes change pages, so they are
+  saved as today.
+- **D's last-write time:** read only by the save's own final check (F12). Readers and polling don't use it.
+- **The outage notice (item 28):** cleared by `SaveCompleted`. The skip comes after the lock and database checks, which
+  reach the database location, so a `SaveCompleted` after a skip still truthfully means "the location responded".
+- **Callers that act on `Success`:** the exit (`ReleaseAsync`, then the teardown deletes D'), the switch, and Restore's
+  save-first. All are correct when D already holds everything.
+
+**Design.**
+- **A skipped save** runs steps 1–2 (the lock is ours, D is unchanged) and 3a (the local snapshot) exactly as today. If
+  the snapshot holds the same data as D, steps 3c–5 (upload, verify, final check, rename) are skipped. Step 6 then runs
+  without changing the fingerprint: `SessionDirty = false`, `BeforeDirtyMarkerDeleted` then delete the marker (step 6's
+  order), lock released if `releaseLockAfter`, one log line and the breadcrumb "Save: Unchanged", `SaveCompleted`,
+  return `Success`. `HashAtCheckout` and the pending hash are untouched. No D.tmp is written, and D's bytes and
+  last-write time do not change. There is no new `SaveOutcome` (every caller tests `== Success`). The local snapshot is
+  deleted on every path, as today.
+- **"Same data as D":** a *content fingerprint* is the SHA-256 of the file with the five header fields above read as
+  zeros. None of them holds data (SQLite file format): a schema change also changes the `sqlite_master` page, and a data
+  change changes a page. It comes from a new pure helper, `SqliteContentHash.Compute(path)` (Services). The helper
+  streams the file and never opens it with SQLite.
+- **`ContentHashAtCheckout`** (string?, on `CheckoutService`, internal getter for tests) holds the content fingerprint
+  of D as of the last checkout or save. Null means "not known", which means never skip.
+  - Set by the two fresh-copy checkouts (`CheckoutAsync`, `ForceCheckoutAsync`) from D', right after the copy is
+    verified byte-identical to D: before the version gate and before `DatabaseContext` opens it (a local file, a few
+    milliseconds). Also set by `RefreshWriterCopyAsync` once its fresh copy is in place.
+  - Null at a crash-recovery checkout (D' holds the kept edits, and D's content fingerprint isn't known without another
+    network read; that first save is a real one anyway). Also null whenever step 2 adopts a pending hash (ghost-rename
+    self-heal), at the start of every checkout, and in `ResetAfterFailedOpenAsync`.
+  - Updated at step 6 of a real save (including the "rename timed out but D already matches" path) to the snapshot's
+    content fingerprint.
+- **Skip only when all hold:** `ContentHashAtCheckout` is not null; `_pendingSaveHash` is null (no unconfirmed rename);
+  the snapshot's content fingerprint equals `ContentHashAtCheckout`.
+- **Not changed:** every other step and its order; the lock, conflict and outage handling; all messages (no new
+  wording); `MarkDirty`; `DatabaseContext`.
+
+**Against the four rules.**
+1. *The shared database only changes by one atomic rename of a checked copy.* A skipped save doesn't change D at all; a
+   real save is unchanged. D is written less often, never differently.
+2. *Never write it unless the lock is ours and it is exactly as we last saw it.* The skip comes after the same two
+   checks (lock, then D's fingerprint) and writes nothing. At exit the lock is released only after the check confirmed
+   it is ours, as a successful save does today.
+3. *Never delete the only copy of unsaved work until a copy exists elsewhere.* The skip deletes the marker (and the
+   exit's teardown then deletes D') only when the snapshot's content equals D's, page for page. Then D already holds
+   every change: D is the copy elsewhere. The guarantee comes from the data layer, not from a flag or a dialog. The
+   snapshot is made by the SQLite engine and holds every committed write, whichever code path made it, so a write that
+   skipped `MarkDirty` is still caught. An edit that lands after the snapshot isn't in it, so the next save (autosave or
+   the exit save) sees a different snapshot and saves it. When the starting point isn't known (recovery, an adopted
+   ghost rename), nothing is skipped. F2's crash case (the marker deleted while an edit lands mid-save) is exactly as
+   for a real save today; it stays in 1.2.4.
+4. *Never confuse the user.* No new messages. A skipped save shows as saved, which is true. The outage notice still
+   clears only when the location has responded, because the skip runs after the checks that reach it. Restores after a
+   crash or a lost lock now succeed when nobody changed any data, so item 28's wording is true in more cases.
+
+**`MinimumVersionToWrite`:** No. This release saves less, never different content, and the (dormant) stamp still
+travels with the first save that carries data.
+
+**Risks (production).**
+- **A false "unchanged"** would leave edits out of D, and the exit would then delete D'. Guarded three ways: an
+  engine-made snapshot is compared with D's exact bytes, minus five metadata fields; the starting point exists only when
+  D' was proven byte-identical to D or the snapshot was just renamed onto D; anything uncertain means no skip. Tests pin
+  the masked fields and the "uncertain" cases.
+- **A no-edit session no longer repairs D's header** (for example the journal-mode bytes after a 1.2.2 direct open) until
+  the next real save. Harmless: TermPoint never opens D with SQLite (item 4), and D' is opened in WAL mode either way.
+- No migration, no file-format change, no settings.
+
+**Harness (expected, to be confirmed by a full run with `TERMPOINT_HARNESS=1`).** Every F5 route starts with a no-edit
+save rewriting D's header: the harness creates D with `NewDatabaseFile` plus a direct schema write, and its "IT restores
+an old file" event copies raw bytes. So F5 should no longer be found, and with it the F6 route that has the F5 shape.
+- `KnownFindings`: F5 comes off. F6 comes off too, unless the run finds another route (decided from the run, not
+  assumed). `Generated_RediscoversKnownFindings`' F6 check follows that decision.
+- `KnownSequences`: the "F6: judged at the next open of the same database" sequence comes off.
+- `Replay_OfANoEditSession_IsClassifiedAsF5_NotF7` and `I5_ARestorePromisedForOneDatabase_IsJudgedAtTheNextOpenOfThatDatabase`
+  become proof tests that Bob's restore now works (as was done for F1, F8 and F12).
+
+**Steps (one brief each).**
+- **29a:** `SqliteContentHash` plus unit tests (pure; no save code).
+- **29b:** the skip in `CheckoutService`, plus unit tests. A no-edit save of a not-yet-normalised D (new database,
+  VACUUM INTO copy, WAL-header D, other SQLite version) leaves D's bytes and last-write time unchanged and writes no
+  D.tmp (the review's missing F5 probe test). A real edit is saved. An edit made after a skipped save is saved by the next
+  one. A write that bypasses `MarkDirty` (raw SQL on D') is saved. A recovery checkout never skips; neither does a save
+  with a pending hash. `ReleaseAsync(saveFirst: true)` with no edits releases the lock and returns `Success`. Lock lost,
+  D changed, or the location unreachable before the skip all give today's outcomes and banners.
+- **29c:** the harness bookkeeping above, after a full harness run; then field test scenario (4) in
+  `docs/testing/network-field-tests-1.2.3.md` and F5's row in the review get their notes updated.
+
+**Hand check (Greg).** Open a database that was just created or restored from a backup, change nothing, close: D's
+modified time in Explorer doesn't change. Open again, edit, close: the edit is in D.
 
 ---
 

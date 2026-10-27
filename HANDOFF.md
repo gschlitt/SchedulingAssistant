@@ -4,7 +4,7 @@ Written at the end of a long session so a fresh conversation can pick up. Claude
 travel between machines (`CLAUDE.md` is gitignored), so everything a new agent needs is here or in the files this
 points to.
 
-**To start the new agent, say:** "Read `HANDOFF.md`, then continue 1.2.3 with item 29."
+**To start the new agent, say:** "Read `HANDOFF.md`, then continue 1.2.3 with item 30."
 
 ## Where things are
 
@@ -38,11 +38,11 @@ points to.
 
 ## Next: the rest of Phase 10, in this order
 
-1. **Item 29, F5: skip a save when nothing changed.** The only 1.2.3 change inside the save code. First find what
-   relies on the first save (the version stamp? WAL checkpoint?). Two links: the harness still reports F6 in one
-   known case (a no-edit session rewrites the file, so a kept restore is refused) and item 29 should make that go away;
-   and item 28's sticky outage notice is cleared by a successful save or the heartbeat's lock check, so a skipped save
-   must not become the only way it could clear. Four-rules check required before the layout.
+1. ~~**Item 29, F5**~~ **moved to 1.2.4** (Greg, 2026-10-26), after its design, probe and risk review: a risky change
+   inside the save code for what is mainly a performance gain and a better chance of restoring after a crash. 1.2.3
+   ships with no change inside the save code. The design (with the risk review's additions) is kept in
+   `spec_version_1.2.3.md` section 29 and listed in `spec_version_1.2.4.md`. So the harness keeps reporting F5 and
+   F6's F5-shaped route as known.
 2. **Item 30:** give the partial-backup delete after a stalled copy a deadline (`BackupService.cs` about line 286),
    like other network calls.
 3. **Item 13:** SharePoint/Teams detection on Windows, warn only (`FolderAssessor`; the warning's wording was done
@@ -54,8 +54,8 @@ points to.
 6. **Item 6:** BugSnag scrubber, steps 6a–6c as planned in its section.
 7. **Item 7:** handled-failure and unclean-exit reports to BugSnag, after item 6.
 
-**Then the field tests.** The remaining Musts (M4, M5, M6, M7, M8, M9, M11 (b)–(d)) are best run once items 15, 29
-and 30 have landed, so they test the shipping close/save code; plus S3 (Refresh messages), S4 (exit guard), S9
+**Then the field tests.** The remaining Musts (M4, M5, M6, M7, M8, M9, M11 (b)–(d)) are best run once items 15 and
+30 have landed, so they test the shipping close/save code; plus S3 (Refresh messages), S4 (exit guard), S9
 (SharePoint/Teams), N3 (BugSnag), and a quick re-run of M10. **Then release housekeeping:** `<Version>`, the Avalonia
 12.1.4 decision, Store certification then N4.
 

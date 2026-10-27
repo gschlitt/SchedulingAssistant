@@ -14,9 +14,10 @@ usual treatment (problem, file:line refs, fix direction, production and data not
 12, 16–24 and 10a.
 
 **Scope review 2026-10-26 (Greg):** the unbuilt persistence work was decided item by item. Pulled into 1.2.3:
-F5 (item 29), F6/F13/F15 wording and the refresh/cloud-folder messages (item 28), item 15's exit guard, item 13's
+F6/F13/F15 wording and the refresh/cloud-folder messages (item 28), item 15's exit guard, item 13's
 SharePoint/Teams detection, the backup-cleanup deadline (item 30) and a Help note for item 26. Everything else
-below stays here.
+below stays here. F5 (item 29) was pulled in too, then moved back here the same day after its design and risk
+review, so 1.2.3 ships with no change inside the save code.
 
 ## User priorities
 | Ref | What | Where it stands |
@@ -30,7 +31,8 @@ below stays here.
 | F3 / item 14 | Unapplied changes in an open editor are dropped on close or database switch | The likeliest remaining loss. Small version: "Apply / Discard / Cancel" at close and switch |
 | F2 / item 15 | An edit made while a save runs misses that save; a crash or the exit save then deletes it | Edit counter. The harness reproduces it (3 events). Item 15's exit guard (repeated X, "Saving and closing…") is in 1.2.3 |
 | F16 | A lost-lock demotion still running during a database switch leaves the new session read-only while it holds the lock | Tie a demotion to its session; refuse a switch until a running demotion ends. `CheckoutServiceTests.F16_...` is skipped until fixed |
-| F7 + redesign | "Restore?" asked before checking; the section 8.9 redesign, steps 1–4 (Recovered Versions; the open decides by itself; the conflict banner; the M1–M6 messages) | Moved from 1.2.3 (2026-10-26). F5 (skip no-edit saves) and an honest-wording pass for F6 are in 1.2.3 (items 29, 28); the redesign's messages replace that wording |
+| F5 / item 29 | A session with no edits can still rewrite the shared database at its first save, so someone's kept changes can no longer be restored | Moved from 1.2.3 (Greg, 2026-10-26: risky save-code change for mainly a performance gain and a better restore chance). **Designed, probed and risk-reviewed:** `spec_version_1.2.3.md` section 29. Happens only when D was last written by something other than TermPoint's save (new database, restored backup, 1.2.2 direct open, other SQLite version); only five header fields differ. Design: skip the upload when the save's snapshot matches D with those fields ignored, plus a no-marker guard (risk review). Steps 29a–29c |
+| F7 + redesign | "Restore?" asked before checking; the section 8.9 redesign, steps 1–4 (Recovered Versions; the open decides by itself; the conflict banner; the M1–M6 messages) | Moved from 1.2.3 (2026-10-26). An honest-wording pass for F6 is in 1.2.3 (item 28); the redesign's messages replace that wording |
 | F9 | Kept work lives in roaming AppData | Move to `%LocalAppData%`, with a migration that still finds 1.2.2/1.2.3 kept files |
 | F10 | Read-only (observer) mode never mentions unsaved changes waiting | Message |
 | F14 | Kept changes on another computer are invisible from this one | Probably a message only |
