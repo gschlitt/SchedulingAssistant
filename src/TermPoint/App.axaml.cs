@@ -43,15 +43,36 @@ public partial class App : Application
 #if !BROWSER
     public static IAppLogger Logger { get; private set; } = new FileAppLogger
     {
-        BugsnagClient = new Bugsnag.Client(new Configuration("0433a4d8b6fc7e95c43cbb6a87935c31")
+        BugsnagClient = CreateBugsnagClient()
+    };
+
+    /// <summary>
+    /// Builds the BugSnag client. Every error report and session batch it sends goes through
+    /// <see cref="ScrubbingDelivery"/> (spec item 6, step 6b), which removes paths, email addresses and known user and
+    /// computer names, takes out the computer's name, stamps the anonymous install ID, and drops anything it can't check.
+    /// </summary>
+    /// <returns>The configured client.</returns>
+    private static Bugsnag.Client CreateBugsnagClient()
+    {
+        var configuration = new Configuration("0433a4d8b6fc7e95c43cbb6a87935c31")
         {
             ReleaseStage = DetectReleaseStage(),
             NotifyReleaseStages = new[] { "production", "development" },
             AppVersion = System.Reflection.Assembly.GetExecutingAssembly()
                              .GetName().Version?.ToString() ?? "0.0.0",
             ProjectNamespaces = new[] { "TermPoint" },
-        })
-    };
+        };
+
+        // The real delivery takes its settings from the configuration; with a delivery of our own in front of it, make
+        // sure it has them (configuring it twice is harmless).
+        DefaultDelivery.Instance.Configure(configuration);
+        var delivery = new ScrubbingDelivery(
+            DefaultDelivery.Instance,
+            installId:  () => AppSettings.Current.InstallId,
+            logLocally: message => Logger.LogInfo(message));
+
+        return new Bugsnag.Client(configuration, delivery);
+    }
 
     /// <summary>
     /// Returns "development" for debug builds, "production" for release builds.
@@ -253,18 +274,11 @@ public partial class App : Application
 
 #if !BROWSER
         // Start a BugSnag session so errors during this run contribute to the
-        // per-release stability score (% crash-free sessions).
-        // Attach the anonymous install ID so errors can be grouped by install.
+        // per-release stability score (% crash-free sessions). The anonymous install ID
+        // is stamped on every report by ScrubbingDelivery (see CreateBugsnagClient), so
+        // reports from before this point carry it too.
         if (Logger is FileAppLogger { BugsnagClient: { } bugsnag })
-        {
             bugsnag.SessionTracking.CreateSession();
-
-            var installId = AppSettings.Current.InstallId;
-            bugsnag.BeforeNotify(report =>
-            {
-                report.Event.User = new Bugsnag.Payload.User { Id = installId };
-            });
-        }
 
         if (ApplicationLifetime is IClassicDesktopStyleApplicationLifetime desktop)
         {

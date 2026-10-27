@@ -62,6 +62,7 @@
     <Compile Remove="Migration\**\*.cs" />
     <Compile Remove="ViewModels\MigrationViewModel.cs" />
     <Compile Remove="Services\FileAppLogger.cs" />
+    <Compile Remove="Services\ScrubbingDelivery.cs" />
     <Compile Remove="Services\CheckoutService.cs" />
     <Compile Remove="Services\BackupService.cs" />
     <Compile Remove="Services\UpdateService.cs" />

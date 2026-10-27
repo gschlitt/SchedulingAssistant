@@ -18,7 +18,7 @@ will be verified.
 | 3 | Preserve unknown JSON fields across app versions, with a minimum-version gate | Data integrity | **Done** (3a unknown-field catch-all; 3b `MinimumVersionToWrite` gate). Field test: the Store link once 1.2.3 is certified |
 | 4 | Stop opening the shared DB directly; fix startup ordering; single-instance guard | Data integrity | **Done** (4a, 4e, 4d, 4b, 4c; user-tested 2026-10-13). Open: header-only check on D (kept as built), possible 4f (working copy locked vs damaged). Field tests: Mac guard, clumsy |
 | 5 | Make Restore from backup safe | Data integrity | **Done** (5a shared routine, 5b Save & Backup, 5c chooser, 5d open-time local-copy check, 5e damage reporting to BugSnag). Field test: clumsy mid-restore. Follow-up: version-gate re-run after a locked/damaged local copy (item 3) |
-| 6 | Strip paths and usernames from BugSnag reports | Privacy | **1.2.3** (decided 2026-10-26): steps 6a–6c as planned (6a text scrubber, 6b delivery filter, 6c sources + PRIVACY.md; plan approved 2026-10-21). **6a done 2026-10-26** (`PrivacyScrubber`); 6b, 6c next |
+| 6 | Strip paths and usernames from BugSnag reports | Privacy | **1.2.3** (decided 2026-10-26): steps 6a–6c as planned (6a text scrubber, 6b delivery filter, 6c sources + PRIVACY.md; plan approved 2026-10-21). **6a, 6b done 2026-10-26** (`PrivacyScrubber`; `ScrubbingDelivery`, which also stamps the install ID); 6c next |
 | 7 | Report handled save/lock failures and unclean exits to BugSnag | Observability | **1.2.3** (decided 2026-10-26), after item 6, as the last reliability item. Not started |
 | 8 | Empty / delete semester and academic year: consistent rules, no orphans | Bug / data integrity | **Done** (8a service, 8b screens, 8c orphan-tolerant queries); user-tested 2026-10-12 |
 | 9 | Make stale-lock takeover safe | Data integrity | **Done** (9a warning + click re-check, 9b clock-free staleness; user-tested on one machine 2026-10-13). 3-computer integration test pending |
@@ -1421,6 +1421,36 @@ that pushes known-sensitive values through the scrubber.
   case, names under 3 characters ignored, this computer's names, a name inside a path, unchanged plain text, the
   timeout); `DatabaseDamageReporterTests` moved from `<path>` to the shape tags and gained the withheld-on-timeout case.
   Both compile checks pass; full suite 3,915 passed, 0 failed, 81 skipped. Nothing is wired to BugSnag yet: that is 6b.
+- **For 6b (Greg asked 2026-10-26 whether reports can be grouped by user):** they already can, by BugSnag's user ID,
+  which is the anonymous `AppSettings.InstallId` (one per Windows user per computer; survives updates). It is attached by
+  a `BeforeNotify` set at the end of startup (`App.axaml.cs:262`), so a report from before then goes without it. Proposed:
+  the 6b delivery also stamps the install ID, so every report carries it. **Greg: yes (built in 6b).**
+
+**6b built 2026-10-26.** `Services/ScrubbingDelivery.cs` (desktop only; excluded from the browser build like
+`FileAppLogger.cs`), wired in `App.CreateBugsnagClient` as `new Client(configuration, new ScrubbingDelivery(
+DefaultDelivery.Instance, () => AppSettings.Current.InstallId, message => Logger.LogInfo(message)))`;
+`DefaultDelivery.Instance.Configure(configuration)` is called explicitly. The old `BeforeNotify` install-ID stamp in
+`OnFrameworkInitializationCompleted` is gone (the gate stamps every report, including ones from before startup ends).
+- **Error report:** context and grouping key scrubbed; each exception's `message` scrubbed in place (error class and
+  stack frames untouched: grouping); breadcrumbs replaced by scrubbed copies (name and metadata; type and timestamp kept),
+  so the client's own buffer is untouched; every metadata tab replaced by a scrubbed copy at any depth (strings scrubbed,
+  dictionaries and lists copied, numbers/booleans/dates/enums kept, anything else becomes its scrubbed text); the
+  device replaced by a copy without `hostname`; the user replaced by `{ id: install ID }` (no user when it can't be read).
+- **Session batch:** the device replaced by a copy without `hostname`.
+- **Found by the tests:** Bugsnag's `new Device()` fills in the host name, locale, time zone and OS by itself, so the
+  copy is cleared before the other fields are copied in (the first version leaked the host name; the tests caught it).
+- **Fails closed:** any exception (a pattern timeout included), a total of more than 1 s (`TotalDeadline`), or a payload
+  of an unknown kind drops the payload; one local log line (`DroppedMessage`) says so. Nothing is retried.
+- **Tests:** `ScrubbingDeliveryTests` (a real `Bugsnag.Client` on the gate on a capturing delivery): a report with
+  private values in the context, the message, an inner exception, two breadcrumbs and a metadata tab loses every one of
+  them (and this computer's name and the host name) and keeps the error class, the context's words, the tags, the
+  metadata keys and the install ID; the client's breadcrumb buffer keeps its originals; the install ID is stamped, and
+  an unreadable one leaves no user; a session batch loses the host name; a failing scrubber sends nothing and logs one
+  line; an unknown payload is dropped. Session batches are routed through the client's delivery (survey, 2026-10-21);
+  the test feeds a `BatchedSessions` to the gate directly, because the tracker sends them on its own timer.
+- Both compile checks pass; full suite 3,921 passed, 0 failed, 81 skipped.
+- Remaining for item 6: **6c** (holder markers at the four holder sites, `WriteLockService` registers holder names and
+  machines, doc comments, PRIVACY.md).
 
 **Risks.**
 - **Diagnostics:** BugSnag shows only a path's shape, not which file failed. The local log still has it; ask the

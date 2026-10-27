@@ -55,8 +55,9 @@ points to.
 5. ~~**Item 26**~~ **moved to 1.2.4** (Greg, 2026-10-26): instead of a Help note explaining how to copy the database
    file by hand, 1.2.4 gets a real Save As / Save a Copy… command. Findings in spec item 26.
 6. **Item 6:** BugSnag scrubber, steps 6a–6c as planned in its section. **6a done 2026-10-26:**
-   `Services/PrivacyScrubber.cs` (`ScrubText`, `RegisterSensitive`), used by `DatabaseDamageReporter.Sanitize`. Next:
-   6b (`ScrubbingDelivery : IDelivery`, wired at `App.axaml.cs:45`), then 6c.
+   `Services/PrivacyScrubber.cs` (`ScrubText`, `RegisterSensitive`), used by `DatabaseDamageReporter.Sanitize`.
+   **6b done 2026-10-26:** `Services/ScrubbingDelivery.cs`, every BugSnag payload goes through it
+   (`App.CreateBugsnagClient`); it also stamps the install ID. Next: 6c.
 7. **Item 7:** handled-failure and unclean-exit reports to BugSnag, after item 6.
 
 **Then the field tests.** The remaining Musts (M4, M5, M6, M7, M8, M9, M11 (b)–(d)) are best run once items 15 and
