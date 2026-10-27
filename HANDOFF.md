@@ -49,7 +49,7 @@ points to.
    from OneDrive's registry entries (`FolderAssessor`), warn only, label "OneDrive (a SharePoint or Teams library)"
    (approved). Not yet seen on a real library: field test S9 confirms it (probe included there). File → Open warning
    moved to 1.2.4.
-4. ~~**Item 25**~~ **built 2026-10-26 (hand check pending):** reframed by Greg as a vertical-space fix.
+4. ~~**Item 25**~~ **built 2026-10-26, hand-checked 2026-10-27:** reframed by Greg as a vertical-space fix.
    One Preferences choice shows section-card conflicts "In full" (default) or "As a flag" (door / person icon +
    "Room conflict" / "Instructor conflict", full list on hover). See spec section 25 for the hand check.
 5. ~~**Item 26**~~ **moved to 1.2.4** (Greg, 2026-10-26): instead of a Help note explaining how to copy the database
@@ -60,13 +60,14 @@ points to.
    (`App.CreateBugsnagClient`); it also stamps the install ID. **6c done 2026-10-26:** holder breadcrumbs record the
    holder's relation (`WriteLockService.DescribeHolder`), lock-file reads register holder names
    (`WriteLockService.ParseLockFile`), doc comments, PRIVACY.md (approved). **Item 6 is complete.**
-   **Item 31 (added 2026-10-26) built (hand check pending):** the grid's Tags filter can match all
+   **Item 31 (added 2026-10-26) built, hand-checked 2026-10-27:** the grid's Tags filter can match all
    (default) or any of the checked tags, chosen at the top of the Tags popup. See spec section 31.
 7. ~~**Item 7**~~ **done 2026-10-26:** handled-event reports once per run (`HandledEventReporter`,
    `HandledEventException`), the backup banner once per run without the path (both variants approved), failed deletes
    logged, and a "running" file (`SessionRunMarker`) that reports a previous session that ended unexpectedly.
 
-**All 1.2.3 building is finished** (2026-10-26). Hand checks pending: items 25 and 31.
+**All 1.2.3 building is finished** (2026-10-26), and items 25 and 31 were hand-checked (2026-10-27). Next: the
+field tests.
 
 **Then the field tests.** The remaining Musts (M4, M5, M6, M7, M8, M9, M11 (b)–(d)) are best run once items 15 and
 30 have landed, so they test the shipping close/save code; plus S3 (Refresh messages), S4 (exit guard), S9

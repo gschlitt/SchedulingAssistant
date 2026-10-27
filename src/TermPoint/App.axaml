@@ -24,6 +24,8 @@
 			<x:Double x:Key="FontSizeLarge">16</x:Double>
 			<x:Double x:Key="FontSizeXLarge">18</x:Double>
 			<x:Double x:Key="FontSizeSplash">72</x:Double>
+			<!--  The schedule grid's filter popups: their checkbox lists and the Tags filter's all/any choice  -->
+			<x:Double x:Key="FontSizeFilterPopup">11</x:Double>
 
 			<!--  Tallest the Focus picker's subject checklist grows before it scrolls  -->
 			<x:Double x:Key="FocusPickerListMaxHeight">220</x:Double>

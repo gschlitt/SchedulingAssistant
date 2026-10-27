@@ -37,13 +37,13 @@ will be verified.
 | 22 | AutoCompleteBox crash when revising a meeting's start time (BugSnag, Aug 21) | Bug (production, reproduced) | **Done** (folded into item 1) |
 | 23 | Section-list virtualization with scroll anchoring, opt-in (Preferences, default off; hidden in WASM) | Performance / memory | **Done** (user-tested on desktop 2026-10-10); field tests pending (touch, macOS trackpad, Win11). Also: room conflicts one per line |
 | 24 | **Section Import by User**: self-serve onboarding from an `.xlsx` template (Files → Import Sections…) | **New feature** | **Done** (2026-10-26) on `1.2.3_new_features`: steps 24.1–24.10, plus 24.8b and the stress-test fixes. `MinimumVersionToWrite`: No, confirmed by a 1.2.2 round trip. See `HANDOFF.md` |
-| 25 | Section cards: show room and instructor conflicts in full or as flags | UX / settings | Added 2026-10-26 (Greg). **Reframed and built 2026-10-26** (it is about vertical space): one per-user Preferences choice, "In full" (default) or "As a flag" with the list on hover; door and person icons. Hand check pending |
+| 25 | Section cards: show room and instructor conflicts in full or as flags | UX / settings | Added 2026-10-26 (Greg). **Done**: reframed and built 2026-10-26 (it is about vertical space): one per-user Preferences choice, "In full" (default) or "As a flag" with the list on hover; door and person icons. Hand-checked 2026-10-27 |
 | 26 | "Experimenting" isn't possible: TermPoint always saves on exit | Persistence / UX | Added 2026-10-26 (Greg). **Feature moved to 1.2.4** (needs Recovered Versions and item 14's close question). **The 1.2.3 Help note moved to 1.2.4 too** (Greg, 2026-10-26, after seeing the draft: rather than instructions for an improvised "save as", 1.2.4 gets a real Save As / Save a Copy… command) |
 | 27 | With section-list virtualization on, adding a meeting can push the open editor out of view | Bug (user-reported) | Added 2026-10-26 (Greg). Same family as the drift item 23's anchoring fixed for opening a section. **Done 2026-10-26:** probes found the cause (the pinned card is virtualized away in the growth pass); fixed in `ListScrollAnchorBehavior` (the card is rebuilt and re-pinned), proven by `ScrollAnchorProbe` E9 (fails before, passes after) and Greg's hand test |
 | 28 | Message pass: say truthfully what happens (rule 4) | UX / data integrity | **1.2.3** (decided 2026-10-26): F6's four restore promises, item 11's refresh messages, item 13's cloud-folder warning, F13, F15. Wording and notice behaviour only. **Done 2026-10-26** (see section 28; hand-checked: cloud-folder warning, Refresh tooltip; the outage and lock messages get checked in the field tests) |
 | 29 | F5: skip a save when nothing changed | Data integrity | **Moved to 1.2.4** (Greg, 2026-10-26, after the design and its risk review: too much risk in the save code for what is mainly a performance gain and a better chance of restoring after a crash). The probe-backed design is kept in section 29 for 1.2.4 |
 | 30 | Backup cleanup on a dead share: give the partial-backup delete a deadline | Responsiveness | **Done 2026-10-26**: the delete goes through `NetworkFileOps.DeleteAsync`; 2 tests. See section 30 |
-| 31 | Grid Tags filter: match all or any of the checked tags | UX / filter | Added 2026-10-26 (Greg: "one last thing to cram into 1.2.3"). **Built 2026-10-26**: a "Show sections with: all / any of the checked tags" choice at the top of the Tags popup; grid filter only. Hand check pending. See section 31 |
+| 31 | Grid Tags filter: match all or any of the checked tags | UX / filter | Added 2026-10-26 (Greg: "one last thing to cram into 1.2.3"). **Done**: built 2026-10-26, a "Show sections with: all / any of the checked tags" choice at the top of the Tags popup; grid filter only. Hand-checked 2026-10-27 (font size matched to the tag list). See section 31 |
 
 Item numbers are for reference only. The implementation order is below.
 
@@ -74,10 +74,10 @@ Everything not yet done for 1.2.3, in one place. Field-test scenario codes (M, S
   Save As / Save a Copy… command. The feature (experimenting without saving) was already 1.2.4.
 - ~~**Item 27**~~ **done 2026-10-26:** the probes found the cause and it was fixed in 1.2.3 (see its section).
 - ~~**Item 25, conflict-check switches:**~~ **reframed and built 2026-10-26:** one per-user Preferences choice to show
-  section-card conflicts in full or as flags (list on hover). Hand check pending.
+  section-card conflicts in full or as flags (list on hover). Hand-checked 2026-10-27.
 - ~~**Item 6, BugSnag scrubber:**~~ **done 2026-10-26** (6a–6c as planned, plus the install-ID stamp). Field test N3.
-- ~~**Item 31**~~ (added 2026-10-26) **built:** the grid's Tags filter matches all or any of the checked tags. Hand
-  check pending.
+- ~~**Item 31**~~ (added 2026-10-26) **built:** the grid's Tags filter matches all or any of the checked tags.
+  Hand-checked 2026-10-27.
 - ~~**Item 7, handled-failure reports:**~~ **done 2026-10-26** (7a–7c). **All 1.2.3 building is finished**; next are
   the hand checks (items 25, 31), the field tests and release housekeeping.
 
@@ -3273,6 +3273,8 @@ dropdown on the flag to expand it). Decisions:
   both modes, only kinds with conflicts get a flag, the redraw). The behavior's drawing has no automated test (no
   headless Avalonia), so it is in the hand check.
 
+**Hand check: passed (Greg, 2026-10-27).**
+
 **Hand check (Greg).** On a semester with co-taught courses: Preferences → "As a flag": the cards' conflict lines
 become one line with a door flag "Room conflict" and/or a person flag "Instructor conflict" in the warning colour,
 at once, without reopening; resting the pointer anywhere on a flag shows that kind's full list; a card with only one
@@ -3632,7 +3634,7 @@ one tag.
   "Tags (any): …", so a forgotten "any" can't make the grid look wrong. Not saved (like the tag selections); Clear
   resets it to "all".
 
-**Built 2026-10-26** (hand check pending):
+**Built 2026-10-26** (hand-checked 2026-10-27):
 - `FilterSnapshot.TagsMatchAny` (last parameter, default false) and `FilterSnapshot.PassesTagFilter(sectionTagIds)`:
   no tags checked → pass; "all" → `IsSubsetOf`; "any" → `Overlaps`. The grid's filter pass calls it.
 - `GridFilterViewModel.TagsMatchAll` / `TagsMatchAny`: a radio pair whose setters act only on true (the pattern that
@@ -3645,6 +3647,13 @@ one tag.
 - Tests: `GridTagLogicTests` (the rule for all/any with and without checked tags; a snapshot built without the flag
   matches "all"; the radio pair, one grid refresh, the summary; "all" summary unchanged; Clear resets). Both compile
   checks pass and the full build compiled the AXAML; full suite 3,932 passed, 0 failed, 81 skipped.
+
+**Hand check (Greg, 2026-10-27): works; one change asked for, made.** The all/any text and radio buttons were larger
+than the tag list (they had no style, so they took the theme's 14 pt and 32 px minimum height). Now the heading and
+both radio buttons use the tag checkboxes' size and spacing: a new `FontSizeFilterPopup` resource (11) in `App.axaml`,
+which the popup's existing checkbox style now uses too (it was a hard-coded 11), and a `RadioButton.FilterChoice` style
+in `GridFilterView.axaml` (padding 6,3, no minimum height; the circles keep the theme's 20 px, the size of the
+checkboxes' boxes). Greg confirmed it looks right (2026-10-27): **item 31 hand-checked.**
 
 **Hand check (Greg).** Check two tags in the Tags filter: the grid shows only sections with both; choose "any": the
 toggle reads "Tags (any of 2)" and the grid adds sections with either one; the section list highlights the same
