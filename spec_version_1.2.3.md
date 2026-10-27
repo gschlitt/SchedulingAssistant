@@ -18,7 +18,7 @@ will be verified.
 | 3 | Preserve unknown JSON fields across app versions, with a minimum-version gate | Data integrity | **Done** (3a unknown-field catch-all; 3b `MinimumVersionToWrite` gate). Field test: the Store link once 1.2.3 is certified |
 | 4 | Stop opening the shared DB directly; fix startup ordering; single-instance guard | Data integrity | **Done** (4a, 4e, 4d, 4b, 4c; user-tested 2026-10-13). Open: header-only check on D (kept as built), possible 4f (working copy locked vs damaged). Field tests: Mac guard, clumsy |
 | 5 | Make Restore from backup safe | Data integrity | **Done** (5a shared routine, 5b Save & Backup, 5c chooser, 5d open-time local-copy check, 5e damage reporting to BugSnag). Field test: clumsy mid-restore. Follow-up: version-gate re-run after a locked/damaged local copy (item 3) |
-| 6 | Strip paths and usernames from BugSnag reports | Privacy | **1.2.3** (decided 2026-10-26): steps 6a–6c as planned (6a text scrubber, 6b delivery filter, 6c sources + PRIVACY.md; plan approved 2026-10-21). Not started |
+| 6 | Strip paths and usernames from BugSnag reports | Privacy | **1.2.3** (decided 2026-10-26): steps 6a–6c as planned (6a text scrubber, 6b delivery filter, 6c sources + PRIVACY.md; plan approved 2026-10-21). **6a done 2026-10-26** (`PrivacyScrubber`); 6b, 6c next |
 | 7 | Report handled save/lock failures and unclean exits to BugSnag | Observability | **1.2.3** (decided 2026-10-26), after item 6, as the last reliability item. Not started |
 | 8 | Empty / delete semester and academic year: consistent rules, no orphans | Bug / data integrity | **Done** (8a service, 8b screens, 8c orphan-tolerant queries); user-tested 2026-10-12 |
 | 9 | Make stale-lock takeover safe | Data integrity | **Done** (9a warning + click re-check, 9b clock-free staleness; user-tested on one machine 2026-10-13). 3-computer integration test pending |
@@ -1403,6 +1403,24 @@ that pushes known-sensitive values through the scrubber.
   - The `["path"]` breadcrumbs (L2, L3) stay as they are: the filter turns them into shape tags.
   - Update the "no paths or user names" doc comments on `ReportHandled` and `LogError`.
   - **PRIVACY.md:** add the error message (with paths and names removed), locale and time zone to what is sent.
+
+**6a built 2026-10-26.** `Services/PrivacyScrubber.cs` (compiles on both targets):
+- `ScrubText(text)` applies, in order: Windows drive path → `<drive C: path>` (drive letter upper-cased), UNC →
+  `<unc path>`, `~/` → `<home path>`, Unix absolute → `<unix path>`, email → `<email>`, bare database file name →
+  `<file>`, then each registered name → its label. Paths end at a line break or quote, never at a space (a user folder
+  with a space goes whole), and names come after paths so a name inside a path goes with the path. Every pattern has a
+  250 ms timeout; on a timeout `ScrubText` throws `RegexMatchTimeoutException` and never returns unchecked text.
+- `RegisterSensitive(name, label)` (labels `UserLabel` "&lt;user&gt;" / `MachineLabel` "&lt;machine&gt;"): whole-word,
+  case-insensitive, names of 3+ characters, thread-safe, never throws, duplicates ignored, longest matched first. This
+  computer's `Environment.UserName` and `MachineName` are registered when the class is first used (6c adds lock holders).
+- `DatabaseDamageReporter.Sanitize` keeps its length cap and "withheld" text and now calls `ScrubText`; its regex table
+  moved to the scrubber (no copy left behind).
+- Test seam `BeforeScrubForTests` (null in the app) makes a timeout testable without a slow input.
+- Tests: `PrivacyScrubberTests` (the plan's list: a user folder with spaces, UNC, mapped drive, forward slashes, Unix
+  and home paths, line-break and quote ends, emails including `mailto:`, file names, registered names whole-word in any
+  case, names under 3 characters ignored, this computer's names, a name inside a path, unchanged plain text, the
+  timeout); `DatabaseDamageReporterTests` moved from `<path>` to the shape tags and gained the withheld-on-timeout case.
+  Both compile checks pass; full suite 3,915 passed, 0 failed, 81 skipped. Nothing is wired to BugSnag yet: that is 6b.
 
 **Risks.**
 - **Diagnostics:** BugSnag shows only a path's shape, not which file failed. The local log still has it; ask the

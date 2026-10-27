@@ -162,7 +162,10 @@ public sealed class DatabaseDamageReporterTests
         }
     }
 
-    /// <summary>The three example paths from the specification, in one summary: none of them survives.</summary>
+    /// <summary>
+    /// The three example paths from the specification, in one summary: none of them survives, and each becomes its
+    /// shape tag (spec item 6: the summary goes through the shared <see cref="PrivacyScrubber"/>).
+    /// </summary>
     [Fact]
     public void Sanitize_RemovesTheThreeKindsOfPath()
     {
@@ -175,8 +178,24 @@ public sealed class DatabaseDamageReporterTests
         Assert.DoesNotContain("a.db", clean);
         Assert.DoesNotContain("b.db", clean);
         Assert.DoesNotContain("c.db", clean);
-        Assert.Equal(3, clean.Split('\n').Length);                    // the line structure is kept
-        Assert.StartsWith("a <path>", clean);
+        Assert.Equal("a <drive C: path>\nb <unc path>\nc <unix path>", clean);   // the line structure is kept
+    }
+
+    /// <summary>A summary the scrubber cannot check in time is withheld, never sent unchecked.</summary>
+    [Fact]
+    public void Sanitize_WhenTheScrubberTimesOut_WithholdsTheSummary()
+    {
+        PrivacyScrubber.BeforeScrubForTests = _ => throw new System.Text.RegularExpressions.RegexMatchTimeoutException();
+        try
+        {
+            var clean = DatabaseDamageReporter.Sanitize(@"see C:\Users\alice\dept.db");
+
+            Assert.Equal("(summary withheld: it could not be checked for private details)", clean);
+        }
+        finally
+        {
+            PrivacyScrubber.BeforeScrubForTests = null;
+        }
     }
 
     /// <summary>

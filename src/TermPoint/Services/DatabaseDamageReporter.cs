@@ -204,44 +204,12 @@ public static class DatabaseDamageReporter
 
     // ── Sanitizing ────────────────────────────────────────────────────────────
 
-    /// <summary>How long a pattern may take on a summary before it is given up on.</summary>
-    private static readonly TimeSpan PatternTimeout = TimeSpan.FromMilliseconds(250);
-
-    /// <summary>
-    /// Characters that end a path in free text: line breaks and quotes (SQLite quotes its messages). Spaces do NOT
-    /// end a path — a user folder such as "John Smith" would otherwise leak half its name — so a path is redacted
-    /// up to the end of its line or its closing quote.
-    /// </summary>
-    private const string PathEnd = @"\r\n'""<>|*?";
-
-    /// <summary>The redactions, applied in order: what to look for, and what to put in its place.</summary>
-    private static readonly (Regex Pattern, string Replacement)[] Redactions =
-    {
-        // Windows drive path: C:\Users\x\a.db, C:/Users/x/a.db
-        (Make(@"(?<![A-Za-z0-9])[A-Za-z]:[\\/][^" + PathEnd + "]*"), "<path>"),
-        // UNC path: \\server\share\b.db
-        (Make(@"\\\\[^" + PathEnd + "]+"), "<path>"),
-        // Home-relative path: ~/x/c.db
-        (Make(@"~[\\/][^" + PathEnd + "]*"), "<path>"),
-        // Unix absolute path: /Users/x/c.db  (not the "/" in "1/2" or "and / or")
-        (Make(@"(?<![\w.\-])/(?=[\w.~\-])[^" + PathEnd + "]*"), "<path>"),
-        // A bare database file name: backup_2026-10-14.db, my.db-wal
-        (Make(@"[^\s\\/'""<>|*?:]+\.(?:db|sqlite3?|bak|tmp|backuptmp|journal|wal|shm)(?:-wal|-shm|-journal)?\b",
-              RegexOptions.IgnoreCase), "<file>")
-    };
-
-    /// <summary>Compiles one redaction pattern with the shared timeout.</summary>
-    /// <param name="pattern">The regular expression.</param>
-    /// <param name="options">Extra options.</param>
-    /// <returns>The compiled pattern.</returns>
-    private static Regex Make(string pattern, RegexOptions options = RegexOptions.None)
-        => new(pattern, options | RegexOptions.CultureInvariant, PatternTimeout);
-
     /// <summary>
     /// Makes SQLite's summary safe to send. SQLite's own text names pages and tables and should contain no paths at
-    /// all, so this is a defence in depth: anything shaped like a Windows, UNC or Unix path, or like a database file
-    /// name, is replaced by "&lt;path&gt;" / "&lt;file&gt;", and the result is cut to <see cref="MaxSummaryLength"/>
-    /// characters. A summary that cannot be checked in time is withheld rather than sent unchecked.
+    /// all, so this is a defence in depth: the shared <see cref="PrivacyScrubber.ScrubText"/> replaces anything shaped
+    /// like a path, an email address, a database file name or a registered name by its tag (for example
+    /// "&lt;drive C: path&gt;", "&lt;file&gt;"), and the result is cut to <see cref="MaxSummaryLength"/> characters.
+    /// A summary that cannot be checked in time is withheld rather than sent unchecked.
     /// </summary>
     /// <param name="summary">The raw summary, or null.</param>
     /// <returns>The text to send; never null or empty, never longer than <see cref="MaxSummaryLength"/>.</returns>
@@ -252,11 +220,7 @@ public static class DatabaseDamageReporter
 
         try
         {
-            var text = summary;
-            foreach (var (pattern, replacement) in Redactions)
-                text = pattern.Replace(text, replacement);
-
-            text = text.Trim();
+            var text = PrivacyScrubber.ScrubText(summary).Trim();
             if (text.Length == 0)
                 return NoSummary;
 
