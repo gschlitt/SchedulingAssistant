@@ -25,19 +25,19 @@ enough); **share** = the database on Mekler's share; **both** = GregDeskTop and 
 | M1 Network cut mid-save | Must | one computer + share (Part A: probe on GregDeskTop) | ✅ pass (probe 18/18; three cuts in TermPoint) |
 | M2 Kill the writer | Must | one computer + share | ✅ pass |
 | M3 F1: X and Discard on "Restore?" | Must | one computer | ✅ pass |
-| M4 Two-user contention | Must | both + share | ☐ to do (block 2) |
-| M5 Stale-lock takeover | Must | both + share (+ a third computer for (6)) | ☐ to do (block 3) |
-| M6 F12: the laptop sleeps mid-save | Must | both + share | ☐ to do (block 3) |
-| M7 F4: an editor open across a lost lock | Must | one computer (Python + repo for the helper script) | ☐ to do |
+| M4 Two-user contention | Must | both + share | ✅ pass (B1, B2, B3) |
+| M5 Stale-lock takeover | Must | both + share (+ a third computer for (6)) | ◐ (1), (2), (4), (5) pass; (3) and (4) ✗ on waking (A8, twice; D safe); (6) not run; (7) to do |
+| M6 F12: the laptop sleeps mid-save | Must | both + share | ✅ pass (window hit; final check refused; work kept); A8, A11 seen |
+| M7 F4: an editor open across a lost lock | Must | one computer (Python + repo for the helper script) | ✅ pass (nothing written after the loss); found A2–A5 |
 | M8 Mixed 1.2.2 and 1.2.3 | Must | both + share + a sideload 1.2.2 build | ☐ to do (block 5) |
-| M9 A colleague joins during an edit | Must | both + share | ☐ to do (block 2) |
-| M10 Exit save on a slow or dead link | Must | one computer + share | ✅ pass |
-| M11 Restore from backup | Must | (a) one computer + share; (b)–(d) both + share | ◐ (a) pass; (b)–(d) to do (block 2) |
+| M9 A colleague joins during an edit | Must | both + share | ✅ pass |
+| M10 Exit save on a slow or dead link | Must | one computer + share | ✅ pass (re-run on 1.2.3.2, 2026-10-27) |
+| M11 Restore from backup | Must | (a) one computer + share; (b)–(d) both + share | ✅ pass ((a)–(d)); the restart after (b) left a stuck process (see Open issues) |
 | M12 D changed by someone else | Must | one computer + share (Python + repo) | ✅ pass |
 | S1 Second copy on the same computer | Should | one computer | ✅ pass |
 | S2 Local copy fails after validation | Should | both + share | ☐ to do |
 | S3 Reader Refresh failures | Should | one computer (the DEBUG switch) | ☐ to do (item 11's messages, built in item 28; the reconnection moved to 1.2.4) |
-| S4 Repeated X / edits during exit save | Should | one computer + share | ☐ to do (item 15's exit guard, built 2026-10-26) |
+| S4 Repeated X / edits during exit save | Should | one computer + share | ✅ pass (with M10; detached panels and the 2-minute backstop not tried) |
 | S5 Unapplied editor changes at close/switch | Should | one computer | — moved to 1.2.4 with item 14 |
 | S6 New database / export with the share down | Should | one computer + share | ✅ pass ((b) covered by the probe) |
 | S7 Wizard and UNC picker | Should | share; a Windows 10 and a Windows 11 computer | ☐ to do |
@@ -58,14 +58,102 @@ enough); **share** = the database on Mekler's share; **both** = GregDeskTop and 
       15 of 15 mid-copy and 5 of 5 mid-read, then 18 of 18 on the final code. Full test suite green.
 - [x] **Test build 1.2.3.1** with the fix, on GregDeskTop and GregSurface (the Store copy was removed from GregSurface).
       The window title shows only three parts ("v1.2.3"); the log stamps `[v1.2.3.1]`.
-- [ ] **First: a new field-test build** from `Version_1.2.3` at or after 2210817, on GregDeskTop and GregSurface (and
-      the Mac for S11). The 1.2.3.1 build there lacks items 6, 7, 13, 15's exit guard, 25, 28, 30 and 31. Consider
-      `<Version>` 1.2.3.2 so the window title and the log tell the two builds apart.
-- [ ] **Probe: a TermPoint process left running with no window** after its main window closed (seen once,
+- [x] **Test build 1.2.3.2** (2026-10-27), from 5b4c3bc with `<Version>` 1.2.3.2, on GregDeskTop and GregSurface; the
+      log stamps `[v1.2.3.2]`. Still to do: the Mac for S11.
+- [ ] **A2 (found in M7; already on the 1.2.4 list as "9.3c-2b", now with the second effect added; decide whether it
+      stays there): the heartbeat renews whoever's lock is in the file.**
+      `WriteLockService.RenewHeartbeatAsync` reads the lock file, sets a new heartbeat and writes it back without
+      checking the `SessionGuid`; the ownership check (`heartbeat verify`) runs only after three heartbeat *failures*.
+      So after a takeover the old writer goes on acting as writer until its next save, autosave or wake, and until then
+      keeps the new holder's lock looking alive (a crash of the new holder is hidden from other computers' stale
+      check). D stays safe: every save checks ownership first (R2 holds). Seen in M7: Alice's lock rewritten with our
+      heartbeat at 12:29:13 and 12:32:13. Not a regression: the heartbeat has worked this way since multi-user
+      (4451a96, March). Likely real-world trigger: the writer's own link down for 4+ minutes while the other computer
+      still reaches the share; the takeover happens, the link returns, the next heartbeat succeeds and nothing checks.
+- [ ] **A3 (M7; 1.2.4, with item 14): the section editor closes when TermPoint goes read-only**, and its unapplied
+      change is dropped without a word: the reload after the demotion runs `SectionListViewModel.LoadCore`, which calls
+      `CollapseEditor()` first. Nothing could have been saved anyway; the user just isn't told. (It also means the F4
+      hazard can't arise from a section editor.)
+- [ ] **A4 (M7; 1.2.4): the refused-write message waits behind any notice already showing** (in M7 a license notice
+      left on screen hid it), and each refused Apply queues another copy (R4: one message per problem).
+- [ ] **A5 (M7; small, logging only): the choice on "Restore Unsaved Changes?" is not logged.** A kept edit vanished
+      between 12:33 and 12:39 and the log could not say whether Restore or Discard had been chosen (most likely
+      Discard; the probe at 12:47–12:49 showed Restore working). One INFO line per choice would settle such questions.
+- [ ] **A6 (M10; measure, then decide): a slow link stops the open.** With clumsy's Lag 110 ms (in and out, so about
+      +220 ms a round trip) every open stopped at `DatabaseValidator`'s `PRAGMA integrity_check` of D on the share
+      ("CheckIntegrity timed out after 5000ms", 14:16:24, 14:20:28, 14:21:10; also M2 on 2026-10-22): the check reads
+      every page across the share within one 5 s step limit. Saves at the same lag work. Ordinary home VPNs add far less
+      than 220 ms; worth finding the latency at which opening starts to fail (and what the user is told) before deciding.
+- [ ] **A8 (M5 (3), Must; decide: fix in 1.2.3 or accept): after a takeover, the waking computer can stay
+      writer.** GregSurface slept with `ZZZT-302 S` unsaved; GregDeskTop took over and saved; on waking (15:33:53, gap
+      483 s) GregSurface's wake check read the lock and found it NOT ours, then re-read 200 ms later "to rule out a
+      transient heartbeat-rename overlap", and that re-read hit a sharing violation (almost certainly GregSurface's own
+      heartbeat, which fires at the same moment after a wake). `VerifyLockIsOursAtAsync` returns the re-read's result,
+      so the verdict became Unreachable and the wake check "kept current state", with no second check. GregSurface
+      then acted as writer for 8 minutes, no banner, its heartbeat renewing GregDeskTop's lock (A2), until its next
+      Save (15:41:37) found NotOurs twice, refused, demoted with the right banner and kept `ZZZT-302 S`. **D never
+      changed** (hash `4E30C00C…` before and after; R1–R3 held); R4 did not. With autosave on (default 10 min) the
+      window is at most one autosave interval. **Reproduced in M5 (4)** (16:05:00, after a suspended process rather
+      than sleep): the same three log lines, so it looks systematic after a takeover, not a rare race: at wake the
+      heartbeat and the wake check run together, and the heartbeat's rename is what the re-read collides with. Also
+      seen then: the waking computer's heartbeat rewrites the new holder's lock every minute (A2). **And in M6** (16:41:17)
+      the same collision hit the exit save's final check before the rename: the refusal was classed as "location did
+      not respond" (a misleading BugSnag report too), so the save treated the lock as still its own and deleted the
+      `.tmp` ("D.tmp discarded"). Harmless there, but with per-writer `.tmp` sharing (A11) it could delete the new
+      holder's save in progress: a write to the share without the lock (R2). Fix directions: (a) a lock that parses and names another session is
+      proof by itself (our own rename can only ever show our own session), so the re-read is needed only for a missing
+      or unreadable file; (b) on Unreachable, the wake check tries again shortly instead of giving up; (c) A2's
+      heartbeat ownership check would also catch it within a minute.
+- [ ] **A11 (M6; on the 1.2.4 list as F12's "one `.tmp` name for every writer"): a writer asleep mid-save blocks
+      the new writer's saves.** GregSurface's frozen TermPoint held `BIOL-TT.db.tmp` open, so for 6 minutes every save
+      on GregDeskTop failed ("…in use by another program or can't be accessed…"). No data risk (D untouched, the
+      changes kept), but the message blames "another program", and a Surface in Modern Standby keeps its network, so
+      real sleep can do this too. Per-session temporary names would remove it.
+- [ ] **A9 (M5 (3), M10; 1.2.4 with F5): a save with no edits right after "Can't Restore".** `SessionLifecycle`
+      keeps `recoverUnsaved` (line 137) set after the open falls back to a normal checkout (Save a Copy… or Discard on
+      "Can't Restore"), so the "save restored changes at once" step (line 222) saves a session that restored nothing
+      (seen 14:09:46 and 15:45:39). It rewrites D for nothing and, like F5, can turn someone else's later Restore into
+      "Can't Restore". Fix: run that save only when the checkout really adopted the kept changes.
+- [ ] **A10 (M5 (3); 1.2.4, small): the suggested name for Save a Copy… can already be taken.**
+      `RecoveryConflictPrompt` always suggests "<name> (recovered).db", even when that file exists; suggest the next
+      free name ("(recovered-2)", …).
+- [ ] **A7 (M11; a retention question for Greg): backups turn over fast.** GregDeskTop made a backup at every open
+      and keeps five, so five opens in a row deleted every older backup: in M11 the 14:22:08 backup
+      was gone by 14:40, and the 14:24:54 backup just restored was gone at the next open. A user troubleshooting a bad
+      edit by restarting a few times would lose the backups from before it. Worth a look at count versus age (for
+      example, always keep the newest backup from each of the last few days).
+- [x] **Moved to 1.2.4 (Greg, 2026-10-27; `spec_version_1.2.4.md`, "Item 5 (M11)"). Probe: a TermPoint process left running with no window** after its main window closed (seen once,
       GregDeskTop, PID 15416, during the restart after a restore at 21:44:48: "Managed teardown complete" but never
       "Dispatcher loop exited", two hidden untitled windows, no lock or guard held). Suspected: the hidden-not-closed
       database chooser or wizard refusing the app's own shutdown. Probe (one computer): open via the chooser, close with
       the X, check Task Manager for a leftover TermPoint.exe.
+      **Reproduced 2026-10-27** on GregDeskTop, 1.2.3.2, again on the restart after a Save & Backup restore: PID 20824
+      logged "Managed teardown complete" at 14:33:40 and never "Dispatcher loop exited"; it had already released the
+      lock and the guard and started the new copy. Its only windows are Avalonia's three hidden helper windows, which a
+      healthy TermPoint has too; no main window and **no hidden chooser**, so the chooser theory is ruled out. Idle
+      (14 s of CPU, 265 MB), its `running\20824.run` file still present. Plain closes all day (including from the
+      chooser, 14:06:39 and 14:43:13) and the chooser restore (no restart) exited normally, so the restart after a
+      restore (`SessionLifecycle` → `RelaunchApplication`) is the path to study.
+      **Stack and heap (dotnet-stack, dotnet-dump; dump deleted afterwards):** nothing is hung. The main thread is idle
+      in Avalonia's message loop (`Dispatcher.MainLoop`), the only other activity is BugSnag's idle delivery queue and
+      .NET's own threads. Avalonia's `ClassicDesktopStyleApplicationLifetime`: `ShutdownMode` = OnMainWindowClose,
+      `MainWindow` = the TermPoint main window, `_isShuttingDown` = false, and its window list is **empty** (six windows
+      opened and six closed; no chooser, dialog or panel object left). So the shutdown that closing the main window
+      should trigger either never ran or was abandoned at that moment. Avalonia 12.1.3 abandons it silently when any
+      window is still registered after it has closed the windows that have no owner; it skips owned windows (the
+      chooser is owned by the main window and refuses every close; the restore's dialogs are owned too). Ordinary
+      closes of chooser-opened sessions exit cleanly, so the chooser alone doesn't explain it. **Probe (14:58–14:59):**
+      with "Always open the most recent database at startup" on, TermPoint (PID 11056) opened BIOL-TT with no chooser
+      window ever created (checked); a Save & Backup restore then left PID 11056 stuck exactly like 20824 ("Managed
+      teardown complete" 14:59:36, no "Dispatcher loop exited", no TermPoint windows, idle). **The chooser is not the
+      cause; the Save & Backup restore path is.** Its dialogs (confirm, "Restoring the Backup", the result message)
+      each finish closing before the code moves on, so the remaining suspects are the relaunch (the new copy is started
+      just before the old main window closes) and the stale-session teardown (`EndSessionAfterRestoreAsync`); telling
+      them apart needs a test build. A defensive fix works whatever the cause: once the main window has closed, ask
+      Avalonia for a forced shutdown. Also worth doing with it: pass the restored database to the relaunched copy, so it
+      reopens it instead of showing the chooser. **Impact:** no
+      data risk (lock and guard already released, connection disposed, working copy cleaned); an invisible process
+      holds memory, can make an MSIX update ask to close the app, and its `running` file reports an unclean end later.
 - [ ] **Watch for: the database chooser panel staying on screen** after a database opens (seen once on GregSurface).
       If it does: do not press its buttons; drag its header, then minimise and restore the main window (does it come
       back with it?), and note `winver`.
@@ -126,7 +214,9 @@ instead: it can't be installed over 1.2.3 (lower version), so uninstall 1.2.3 fi
 - **Clumsy** (on Mekler, which degrades both users; or on one user's computer to degrade only that one). Filter
   `tcp.DstPort == 445 or tcp.SrcPort == 445`: SMB rides IPv6, so `ip.DstAddr` filters miss it. Type it into clumsy's
   Filtering box instead of picking a preset; it matches IPv4 and IPv6 alike. Tick the row of each effect you want (Lag, Drop)
-  with Inbound and Outbound ticked, then press Start. *Degraded* = Lag 80–150 ms + Drop 3–5 %. *Black hole* = Drop 100 %.
+  with Inbound and Outbound ticked, then press Start. *Degraded* = Lag 80–150 ms + Drop about 2 % (at 4 % some saves give
+up on this link, M4 2026-10-27). *Black hole* = Drop 100 %. Ping is not a check: it is ICMP, which the port-445 filter
+does not touch; time a file write to the share instead.
   Don't go above about 150 ms of lag: at 300 ms TermPoint's 5 s step limits trip with no black hole at all. Never aim a
   black hole at a particular second of a save: the steps vary too much and clumsy needs ~1 s to switch (see M1).
 - **A true crash.** Find the PID in Task Manager → Details, then `taskkill /F /PID <pid>` (or End task on the Details tab).
@@ -279,7 +369,22 @@ confirmation adds "To keep them, go back and choose Save a Copy…".
   ~3 min, then (3–4 min) is offered takeover (log `Poll: lock heartbeat unchanged for …s — write access available.`); accept, edit, save.
   Relaunch GregSurface: "Restore Unsaved Changes?" → Restore → "Unsaved Changes Kept" (someone else is editing; offered again at its next write-access open).
 
-**Result:** ☐ pass ☐ fail / notes (B1, B2, B3):
+**Result:** ☒ pass ☐ fail / notes (B1, B2, B3): 2026-10-27, 1.2.3.2 on both, `BIOL-TT.db` on Mekler (user; hashes,
+lock file, GregDeskTop's log and copies of D and the kept changes checked by Claude). **B1:** GregSurface writer,
+GregDeskTop reader, clumsy on Mekler from about 13:22 to 13:32. At Lag 110 + Drop 4 % a 1 MB write to the share took
+25–28 s and some of GregSurface's saves gave up ("TermPoint can't reach the database location right now…", one notice,
+cleared by the next good save); at Drop ~2 % the saves landed (last 13:31:49). The reader skipped two poll cycles on
+timeouts (13:22:46 `File.Exists`, 13:23:46 `ReadAllText`) and was never offered write access; GregSurface's lock kept
+the same session and a fresh heartbeat throughout. Refresh on GregDeskTop (13:36:31) showed every saved edit. B5 not
+run separately. **B2:** GregSurface closed normally; 13:38:41 `Poll: lock file gone — write access available.`;
+GregDeskTop took over at 13:39:08 and its saves landed (13:39:26, 13:39:31); GregSurface reopened read-only naming
+GREGDESKTOP, with the edit. **B3** (roles swapped: GregDeskTop writer; a first run was redone because both computers had
+edited the same section): GregDeskTop applied `ZZZT-901 D` (marker 13:54:54, edit confirmed in the working copy) and
+was killed about 13:55; its lock stayed; GregSurface was offered the takeover, took the lock at 13:59:34 and saved
+`ZZT-902 S` (14:00:08). GregDeskTop's relaunch (14:00:17) reported the unclean end (item 7), offered Restore, then said
+someone else was editing, and opened read-only naming GREGSURFACE. D holds `ZZT-902 S` and not `ZZZT-901 D`; the kept
+copy holds `ZZZT-901 D` with its marker unchanged. **Clumsy setting:** the doc's "degraded" Drop of 3–5 % is too harsh
+for this link (saves give up at 4 %); use Lag 110 + Drop about 2 %.
 
 ### M5 — Stale-lock takeover (spec item 9)
 *GregSurface (sleeps), GregDeskTop, Mekler; a third computer for (6) · R2 R3 · ~90 min*
@@ -300,7 +405,35 @@ Dry run of the prompt on one computer: `python tmp/handtest_lock.py stale <copy>
 6. **(6) No double takeover (needs a third computer; skip and say so if you have none).** GregSurface asleep 4 min. GregDeskTop opens (prompt, leave it open), then the third computer opens (prompt too). GregDeskTop takes over; then the third computer clicks Take over. **Expect:** it gets "Database Is In Use Again" naming GregDeskTop and is read-only; never two writers (check the lock file's holder and each banner).
 7. **(7) Clock skew.** Turn off auto time sync on GregSurface and set its clock 10 min **behind**; it stays active as writer. GregDeskTop opens. **Expect:** a prompt may show (the clock is only a hint), but Take over ends in "Database Is In Use Again" and GregSurface never loses the lock. Then its clock 10 min **ahead**, hard-killed: GregDeskTop's polling finds the dead lock after ~180 s. **Restore the clock afterwards.**
 
-**Result:** ☐ pass ☐ fail / notes ((1)…(7); which computer was the third):
+**Result:** ☐ pass ☐ fail / notes ((1)…(7); which computer was the third): 2026-10-27, 1.2.3.2 on both,
+`BIOL-TT.db` on Mekler reset from the master; GregSurface (a Surface: no lid, so Start → Sleep; its heartbeat was
+watched on the share and stopped each time, e.g. last beat 15:14:58, then nothing for 5 minutes) (user; lock file,
+hashes, both logs and copies checked by Claude). **(1) ☒ pass:** "gregs on GREGSURFACE hasn't been active in this
+database for 6 minutes. Their computer may be asleep or disconnected. If you take over, changes they haven't saved yet
+can't go into the database - they'll only be able to save them as a separate copy", Take over / Open read-only;
+GregDeskTop log 15:21:07 `Stale lock detected for gregs@GREGSURFACE`. **(2) ☒ pass:** GregSurface woke (`Wake detected
+— gap was 472s`, `wake check — lock confirmed`, heartbeat 15:23:20); GregDeskTop's Take over then got "gregs is active
+again…" and opened read-only, log 15:23:55 `ForceAcquire: lock changed since it was judged stale — leaving it alone`;
+GregSurface kept the lock and its save landed (15:25:02). **(3) ☒ fail on waking, the rest pass:** GregDeskTop took
+over (15:32:20, after the confirmation wait) and saved `ZZZT-303 D`; GregSurface woke at 15:33:53 but stayed writer
+with no banner for 8 minutes (A8) until a Save at 15:41:37 refused, demoted with the right banner ("gregs on GREGDESKTOP
+has taken over editing…") and kept `ZZZT-302 S`; D's hash unchanged throughout. Then GregDeskTop closed; GregSurface's
+restart offered Restore → "Can't Restore Unsaved Changes" (X re-asked; Discard asked first; Go Back) → Save a Copy… →
+`BIOL-TT (recovered-3).db` (the suggested name was taken: A10). The copy holds `ZZZT-301 S` and `ZZZT-302 S`; D holds
+`ZZZT-301 S` and `ZZZT-303 D`, not `ZZZT-302 S`; both pass the integrity check. D was rewritten at 15:45:39 by a save
+with no edits right after the reopen (A9; the bytes came out identical, hash `4E30C00C…` unchanged).
+**(4) ☒ pass (the restore went in), A8 seen again:** GregSurface's sleep was cut short by a Modern Standby self-wake
+(15:55:12, its wake check found the lock still its own and renewed it, so no takeover was possible); the test then
+froze TermPoint instead (Resource Monitor → Suspend Process; last heartbeat 15:56:35). GregDeskTop took over at
+16:04:10 and made no edits. On resume GregSurface hit A8 exactly as in (3) (16:05:00: `NotOurs`, the re-read
+contended, `network unreachable, keeping current state`) and stayed writer; its heartbeat then rewrote GregDeskTop's
+lock every minute (A2: heartbeats at 16:09:00 on GregSurface's rhythm). A Save on GregSurface refused and kept
+`ZZZT-304 S`; GregDeskTop closed with no edits (its exit save left D's bytes unchanged); GregSurface's restart offered
+Restore and `ZZZT-304 S` went straight into D (saved 16:12:09; D holds `ZZZT-301 S`, `ZZZT-303 D`, `ZZZT-304 S`;
+integrity ok). **(5) ☒ pass:** TermPoint on GregSurface frozen (last heartbeat 16:14:09); GregDeskTop opened at
+16:20:13 (stale-lock prompt) → Open read-only (16:20:15); GregSurface resumed and exited cleanly; 16:22:15 `Poll: lock
+file gone — write access available`; Take over as writer worked (lock acquired 16:22:26). No offer appeared before
+GregSurface came back (the reader's own 180 s had not run out). **(6)** not run (no third computer).
 
 ### M6 — F12: the laptop sleeps mid-save
 *GregSurface (sleeps), GregDeskTop, Mekler · R1 R2 R3 · ~30 min, a race: allow a retry*
@@ -314,21 +447,53 @@ Dry run of the prompt on one computer: `python tmp/handtest_lock.py stale <copy>
 **Expect:** GregDeskTop's save survives and GregSurface's rename never lands over it (R1, R2). GregSurface tells the user its changes weren't saved but were kept ("Changes Not Saved … They have been kept, and TermPoint will offer to restore them the next time you open this database.", or the lock-lost banner). Its work is offered back (R3).
 **Log (GregSurface):** `the final check before the rename refused the save — lock lost, D.tmp left for the new holder's cleanup.` (or the `wake check — lock is no longer ours` lines).
 **FAIL:** `ZZZT-402 D` is missing from D, or `ZZZT-401 S` isn't offered back. If GregSurface's SMB session simply died on wake and the save failed early, the end state still passes but the F12 window wasn't hit: retry with the lid closed a little later.
-**Result:** ☐ pass ☐ fail / notes (was the window hit?):
+**Result:** ☒ pass ☐ fail / notes (was the window hit?): 2026-10-27, 1.2.3.2 on both, `BIOL-TT.db` on Mekler (user;
+share files, both logs and copies checked by Claude). **Window hit:** instead of sleep (a Surface self-wakes, see M5
+(4)), TermPoint on GregSurface was frozen (Resource Monitor → Suspend Process) about 7 s into a 15 s exit save under
+clumsy Lag 110 ms on GregSurface: `BIOL-TT.db.tmp` was complete on the share (16:30:41), D not yet replaced. GregDeskTop
+took over at 16:36:21 (`ForceAcquire`), but could not delete the leftover `.tmp` nor save: six attempts 16:36:50–16:38:52
+failed `D.tmp copy failed — file in use` because the frozen process still held `.tmp` open ("TermPoint couldn't save
+because the database file is in use by another program or can't be accessed…"; A11). Unfrozen at 16:41:16 (gap 652 s),
+GregSurface's **final check before the rename refused the save** and D was not replaced; it showed "Changes Not Saved —
+Your latest changes couldn't be saved to the database. They're kept on this computer…" and closed (16:42:28). Its
+re-read hit A8's collision, so the refusal was classed as "location did not respond" and it deleted its own `.tmp`
+("D.tmp discarded") instead of leaving it for the new holder: harmless here, but see A8. GregDeskTop's next save landed
+(16:42:39): D holds `ZZZT-402 D`, not `ZZZT-401 S`. GregDeskTop closed; GregSurface's restart → Restore → "Can't
+Restore" → Save a Copy… `BIOL-TT (recovered-4).db`, which holds `ZZZT-401 S`. Both pass the integrity check.
 
 ### M7 — F4: an editor open across a lost lock
 *GregSurface; any computer with Python for the script · R3 R4 · ~10 min*
-**Setup:** GregSurface writer on a copy of `FT.db`.
-1. Open a section's editor and change a field. Do **not** Apply.
+**Setup:** writer on a copy of `FT.db` (any computer; a local copy is enough). Dismiss any notice already showing (a
+license reminder, say): the refusal message queues behind it (A4). In Save & Backup type **1** in the auto-save interval
+and keep the toolbar's Auto-save ticked.
+1. Open a **course** in the Courses flyout and change a field. Do **not** Apply, and don't press Ctrl+S: inside an
+   editor Ctrl+S is that editor's Apply. (A section editor won't do: the reload after the demotion closes it, A3.)
 2. Run `python tmp/handtest_lock.py takeover <path to the copy>` (Alice takes the lock; if it reports a sharing error, run it again).
-3. Wait for the lock-lost banner (≤ ~60 s, or click Save to provoke it): "Write access was taken over by Alice on ALICE-PC. …". GregSurface is read-only; the editor is still open.
+3. Wait up to a minute for autosave to find Alice's lock. The heartbeat alone never notices (A2); clicking Save also
+   works, but only with the flyout closed. Expect the banner "Alice on ALICE-PC has taken over editing this database,
+   so it's read-only for you now. …" and the standing read-only row "Read-only — held by Alice on ALICE-PC since …"
+   (that row is every read-only session's status, not a second message). The course editor is still open.
 4. In the still-open editor click **Apply**.
 5. Cancel the editor. Optionally try another write (an Instructors note, focus-loss save).
-6. Close TermPoint; `python tmp/handtest_lock.py clear <copy>`; reopen: the change isn't in the database.
+6. Close TermPoint; `python tmp/handtest_lock.py clear <copy>`; reopen: the change isn't in the database. Set the
+   auto-save interval back to 10.
 
-**Expect:** exactly **one** message, "You no longer have write access, so this change wasn't saved."; no second banner, no red or log-text banner, nothing written.
-**Log:** `heartbeat verify — lock genuinely lost; demoting.`, no error entry for the refused write.
-**Result:** ☐ pass ☐ fail / notes:
+**Expect:** exactly **one** message per Apply, "You no longer have write access, so this change wasn't saved."; no red
+or log-text banner, nothing written.
+**Log:** `lock verification returned NotOurs`, `mid-session write-lock loss (reason=TakenOver) — demoting to read-only
+in place.`, then one WARN line `You no longer have write access, so this change wasn't saved.` per Apply.
+**Result:** ☒ pass ☐ fail / notes: 2026-10-27, GregDeskTop, 1.2.3.2, local copy `tmp\m7-test` (user; log and file
+checks by Claude). **Nothing was written after the lock was lost:** the course editor's Apply was refused three times
+(12:39:32, 12:39:46, 12:41:05, one WARN line each with the plain sentence) and the database stayed byte-identical to
+the master throughout; each demotion that had unsaved changes kept them (12:33:10, 12:48:18). Not as first written:
+in runs 1–2 the section editor was closed by the reload after the demotion (A3), so step 4 moved to a course editor;
+the heartbeat never noticed the takeover (A2), so detection came from Save (12:15:40, 12:18:50, 12:33:09) or autosave
+(12:39:09); the plain message was hidden behind a license notice left showing (A4). **Restore probe** (12:47–12:49):
+Apply wrote the marker; the lost lock kept the working copy and marker; both survived the close; Restore brought the
+edit back and saved it at once (12:49:32), the save then removing the marker. A kept edit that vanished between 12:33
+and 12:39 was most likely an unlogged Discard (A5). Incidental: the stale-lock prompt and its confirmation wait worked
+(Alice's 5-minute-old lock, 12:24:03 → taken over 12:25:13); BugSnag got "Write lock lost: taken over by another
+session" with `newHolder=other` (N3, item 7).
 
 ### M8 — Mixed 1.2.2 and 1.2.3 on one share
 *GregDeskTop (1.2.3), GregSurface (temporarily 1.2.2), Mekler · R2 R4 · ~30 min, plus reinstalling 1.2.3*
@@ -349,12 +514,18 @@ Dry run of the prompt on one computer: `python tmp/handtest_lock.py stale <copy>
 3. Hash D again, then GregSurface: Save.
 
 **Expect:** GregDeskTop never touches D (hash unchanged); GregSurface's save succeeds with no conflict banner.
-**Result:** ☐ pass ☐ fail / notes:
+**Result:** ☒ pass ☐ fail / notes: 2026-10-27, 1.2.3.2 on both, `BIOL-TT.db` on Mekler reset from the master (user; hashes
+and GregDeskTop's log by Claude). GregDeskTop reached the wizard from the startup chooser (Create new → Start Setup
+Wizard → existing database), no settings reset needed. D's hash `925AD29A…` (= the master) at 13:00:36 with
+GregSurface writing and `ZZZT-801 S` applied, and the same at 13:03:19 after GregDeskTop joined; GregSurface's lock
+untouched and still beating. GregDeskTop's log: `Read-only mode; lock held by gregs@GREGSURFACE`, `read-only setup —
+D'' created`. GregSurface's Save landed at 13:03:44 (new hash, no `.tmp` left), no banner.
 
 ### M10 — Exit save on a slow or dead link
 *GregSurface, Mekler · R3 · ~15 min*
 - **(a) Degraded.** Add `ZZZT-501 S`, click **X** once. **Expect:** "Saving…" in the footer, the window closes after the save (≤ ~1 min), the lock is gone (log `Released write lock: …`, `[Shutdown] Managed teardown complete; closing main window.`); reopen: the edit is present, no prompt.
-- **(b) Black hole.** Add `ZZZT-502 S`, set Drop to 100 %, click **X** once. **Expect:** after the stall, "Changes Not Saved": "Your latest changes could not be saved to the database. They have been kept, and TermPoint will offer to restore them the next time you open this database." Network back, relaunch: "Restore Unsaved Changes?" → Restore → the edit is present and saves.
+- **(b) Black hole.** Add `ZZZT-502 S`, set Drop to 100 %, click **X** once. **Expect:** after the stall, "Changes Not Saved": "Your latest changes couldn't be saved to the database. They're kept on this computer. TermPoint will offer to add them to the database the next time you open it for editing. If someone else changes the database first, they can't be added, but you'll be able to save them as a separate copy." (item 28's wording). Network back, relaunch: "Restore Unsaved Changes?" → Restore → the edit is present and saves.
+- Open TermPoint **before** starting clumsy: with Lag 110 ms the open stops at the integrity check of D (A6).
 - Repeated X and edits during the exit save are S4.
 
 **Result:** ☒ pass ☐ fail / notes (a, b): 2026-10-22, GregDeskTop, 1.2.3.1, both parts as expected (user). Log check
@@ -362,6 +533,16 @@ Dry run of the prompt on one computer: `python tmp/handtest_lock.py stale <copy>
 ("lock verification timed out"), lock deliberately left in place ("Suspended"), changes kept; two launches while the link
 was still dead stopped at the integrity check without touching the kept changes; at 20:44:51 the relaunch reclaimed its own
 lock at once, Restore was offered, and the restored edit saved at 20:45:00.
+**Re-run on 1.2.3.2** (☒ pass), 2026-10-27, GregDeskTop, `BIOL-TT.db` on Mekler reset from the master (user; log and
+copies of D checked by Claude). (a) Lag 110 ms only, started after the open: `ZZZT-921 D`, X; "Saving and closing…"
+covered the window; three more X clicks ignored (14:23:08–09, one log line each, S4); exit save landed 14:23:20, lock
+released 14:23:21, no TermPoint process left; reopened with no prompt. (b) `ZZZT 922 D2`, Drop 100 %, X: 14:28:39 `lock
+verification timed out` → save refused, lock deliberately left (`Suspended`), working copy and marker kept; the user saw
+the "Changes Not Saved" text above. Network back: 14:30:39 the relaunch reclaimed its own lock at once, Restore was
+offered, and the restored edit saved at 14:30:40. D then held `ZZZT-921 D`, `ZZZT-922 D` (an earlier try whose exit
+save landed before the cut) and `ZZZT 922 D2`. An earlier (a) try at Lag 110 + Drop 2 % failed its exit save at the
+D.tmp check (14:12:41) and behaved like (b); its edit reached D after Restore. Two opens with clumsy already on stopped
+at the integrity check (14:20:28, 14:21:10: A6).
 
 ### M11 — Restore from backup (item 5)
 *GregSurface, GregDeskTop, Mekler · R1 R2 R3 · ~30 min*
@@ -380,7 +561,22 @@ location unreachable (database unchanged)" and the chooser showed "Cannot reach 
 that notice is Windows' file dialog on a dead share (as in S6). Also seen: the session left open with the S6(b) banner
 stayed up through the whole S6(b)/(c) black hole (20:56 to 21:27, about 30 minutes, deliberate), retrying its heartbeat
 every minute and keeping its writer state ("share unreachable; keeping writer state"); once the network was back the
-banner's Discard Changes worked and the database reopened (21:27:48). (b), (c), (d): block 2.
+banner's Discard Changes worked and the database reopened (21:27:48). (c) ☒ pass and (d) ☒ pass, 2026-10-27, 1.2.3.2,
+`BIOL-TT.db` on Mekler, GregSurface writing (user; hashes and GregDeskTop's log by Claude): (c) GregDeskTop, read-only,
+Save & Backup offered no restore ("Only the person editing this database can restore it."); (d) GregDeskTop's startup
+chooser refused the restore naming GregSurface, log 14:06:07 `RestoreIntoAsync — the database is locked by someone
+else; nothing was touched.` D's hash `C277C0EF…` was the same before (14:02:22) and after (14:06:40); GregSurface's lock
+untouched. Closing GregDeskTop from the chooser afterwards (14:06:39) left no TermPoint process running (one data
+point for the "process left running with no window" probe in Open issues). (b) ☒ pass, 2026-10-27, GregDeskTop
+writer, 1.2.3.2 (user; copies of D, the backups and the kept copies checked by Claude). **Save & Backup:** restored
+`BIOL-TT_2026-10-27_14-30-39.db` (GregDeskTop's backups go to its Downloads folder, one per open); 14:33:28 the save
+before it landed, 14:33:29 `DatabaseRestore: Restored`; D became byte-identical to that backup; `BIOL-TT (before restore
+2026-10-27 14-33).db` beside it passes the integrity check; lock released; TermPoint restarted to the startup chooser
+(the "always open the most recent database" preference is off: by design) and the restored database then opened
+(14:37:46). The old process stayed alive with no windows (Open issues). **Chooser variant:** restored the 14:24:54 backup
+onto D; D then held only `ZZZT-921 D`, as that backup does, and lost `ZZZT-922 D` and `ZZZT 922 D2`, which `BIOL-TT
+(before restore 2026-10-27 14-44).db` kept; both pass the integrity check; the database opened in the same process
+(14:44:45), no restart and no stuck process.
 
 ### M12 — D changed by someone else (item 10, "Save aborted")
 *GregSurface; any computer with Python for the script · R2 R3 R4 · ~15 min*
@@ -435,7 +631,11 @@ copy also blocked a second one, and after ending it, Restore was offered.
 *GregSurface, Mekler · R3 · ~15 min*
 Degraded link (or the DEBUG switch `TERMPOINT_DEBUG_SLOW_EXIT_SAVE=<seconds>` on a Debug build). Add `ZZZT-701 S`, click **X**, then click X three more times while the exit save runs. Then try to add `ZZZT-702 S` during the save.
 **Expect:** a "Saving and closing…" screen covers the window at the first X and blocks input (no edit can be made during the save); detached panels and sticky notes are hidden; the extra X clicks are ignored (one log line each); the window closes when the save ends, or after the 2-minute backstop. `ZZZT-701 S` is in the database at the next open (or, if the save failed, offered back). The edit made *before* the save must never vanish without an offer: that is a fail. (F2's edit counter, for an edit landing mid-save in other ways, is 1.2.4.)
-**Result:** ☐ pass ☐ fail / notes:
+**Result:** ☒ pass ☐ fail / notes: 2026-10-27, GregDeskTop, 1.2.3.2, run with M10 (a) (user; log by Claude). The screen
+covered the window at the first X, so no edit could be started; the extra X clicks were ignored (14:12:14–15,
+14:15:04, 14:23:08–09, one log line each); the window closed when the save ended (about 50 s at 14:15, 12 s at 14:23).
+Every edit made before X reached D, directly or through Restore. Not tried: detached panels and sticky notes, and the
+2-minute backstop (`TERMPOINT_DEBUG_SLOW_EXIT_SAVE` on a Debug build).
 
 ### S5 — Unapplied editor changes at close and switch (item 14; not built)
 *GregSurface · R3 · ~10 min*
