@@ -32,7 +32,8 @@ public class SectionCardPropertyLinesTests
     /// <param name="tags">Give the section two tags ("Honours", "Lab").</param>
     /// <param name="reserves">Give the section one reserve, which formats as "Nursing:5".</param>
     /// <param name="resources">Give the section two resources ("Projector", "Whiteboard").</param>
-    private static SectionListItemViewModel MakeCard(bool tags = false, bool reserves = false, bool resources = false)
+    /// <remarks>Internal so <see cref="SectionConflictDisplayTests"/> builds its cards the same way.</remarks>
+    internal static SectionListItemViewModel MakeCard(bool tags = false, bool reserves = false, bool resources = false)
     {
         var section = new Section { CourseId = "c-1", SectionCode = "A" };
         var tagLookup      = new Dictionary<string, SchedulingEnvironmentValue>();

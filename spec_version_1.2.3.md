@@ -37,7 +37,7 @@ will be verified.
 | 22 | AutoCompleteBox crash when revising a meeting's start time (BugSnag, Aug 21) | Bug (production, reproduced) | **Done** (folded into item 1) |
 | 23 | Section-list virtualization with scroll anchoring, opt-in (Preferences, default off; hidden in WASM) | Performance / memory | **Done** (user-tested on desktop 2026-10-10); field tests pending (touch, macOS trackpad, Win11). Also: room conflicts one per line |
 | 24 | **Section Import by User**: self-serve onboarding from an `.xlsx` template (Files → Import Sections…) | **New feature** | **Done** (2026-10-26) on `1.2.3_new_features`: steps 24.1–24.10, plus 24.8b and the stress-test fixes. `MinimumVersionToWrite`: No, confirmed by a 1.2.2 round trip. See `HANDOFF.md` |
-| 25 | Let the user switch off room-conflict and instructor-conflict detection | UX / settings | Added 2026-10-26 (Greg). **1.2.3** (decided 2026-10-26): two per-user switches in Preferences, with a note on screen when a check is off. Not started |
+| 25 | Section cards: show room and instructor conflicts in full or as flags | UX / settings | Added 2026-10-26 (Greg). **Reframed and built 2026-10-26** (it is about vertical space): one per-user Preferences choice, "In full" (default) or "As a flag" with the list on hover; door and person icons. Hand check pending |
 | 26 | "Experimenting" isn't possible: TermPoint always saves on exit | Persistence / UX | Added 2026-10-26 (Greg). **Feature moved to 1.2.4** (needs Recovered Versions and item 14's close question); **1.2.3 adds a Help note** on trying changes safely on a copy of the database |
 | 27 | With section-list virtualization on, adding a meeting can push the open editor out of view | Bug (user-reported) | Added 2026-10-26 (Greg). Same family as the drift item 23's anchoring fixed for opening a section. **Done 2026-10-26:** probes found the cause (the pinned card is virtualized away in the growth pass); fixed in `ListScrollAnchorBehavior` (the card is rebuilt and re-pinned), proven by `ScrollAnchorProbe` E9 (fails before, passes after) and Greg's hand test |
 | 28 | Message pass: say truthfully what happens (rule 4) | UX / data integrity | **1.2.3** (decided 2026-10-26): F6's four restore promises, item 11's refresh messages, item 13's cloud-folder warning, F13, F15. Wording and notice behaviour only. **Done 2026-10-26** (see section 28; hand-checked: cloud-folder warning, Refresh tooltip; the outage and lock messages get checked in the field tests) |
@@ -71,8 +71,8 @@ Everything not yet done for 1.2.3, in one place. Field-test scenario codes (M, S
   Teams library). Google Drive for desktop, Box, macOS and a warning at File → Open moved to 1.2.4.
 - **Item 26, a Help note:** how to try out changes safely on a copy of the database. The feature moved to 1.2.4.
 - ~~**Item 27**~~ **done 2026-10-26:** the probes found the cause and it was fixed in 1.2.3 (see its section).
-- **Item 25, conflict-check switches:** two per-user switches (rooms, instructors) in Preferences, stored in the
-  settings file (no `MinimumVersionToWrite` question), and a note on screen whenever a check is off (rule 4).
+- ~~**Item 25, conflict-check switches:**~~ **reframed and built 2026-10-26:** one per-user Preferences choice to show
+  section-card conflicts in full or as flags (list on hover). Hand check pending.
 - **Item 6, BugSnag scrubber:** steps 6a–6c as planned. No database or lock code.
 - **Item 7, handled-failure reports:** after item 6, as the last reliability item, so it reports from the finished
   code.
@@ -155,7 +155,7 @@ First look (2026-10-09):
 | 25                                                                          | ~~29: F5, skip a save when nothing changed~~ — **moved to 1.2.4** (2026-10-26)         | Designed and risk-reviewed (section 29), then deferred: 1.2.3 ships with no change inside the save code.                                                                                                                                       |
 | 26                                                                          | 30: Backup cleanup deadline — **done 2026-10-26**                                      | One unguarded delete; small.                                                                                                                                                                                                                   |
 | 27                                                                          | 13: SharePoint/Teams detection (Windows, warn only) — **done 2026-10-26**              | Detection only; the warning's wording is in item 28.                                                                                                                                                                                           |
-| 28                                                                          | 25: Conflict-check switches                                                            | Settings and two views; per user, so no persistence question.                                                                                                                                                                                  |
+| 28                                                                          | 25: Conflicts in full or as flags — **built 2026-10-26**                               | Settings and two views; per user, so no persistence question.                                                                                                                                                                                  |
 | 29                                                                          | 26: Help note on trying changes on a copy                                              | Documentation only.                                                                                                                                                                                                                            |
 | 30                                                                          | 6: BugSnag scrubber (6a–6c)                                                            | Before item 7.                                                                                                                                                                                                                                 |
 | 31                                                                          | 7: Handled-failure and unclean-exit reports                                            | Last, so it reports from the finished code.                                                                                                                                                                                                    |
@@ -3116,6 +3116,48 @@ lines, via `PropertyLinesBehavior` / `CardPropertyLine` / `SectionListItemViewMo
 
 **Decided (Greg, 2026-10-26):** in 1.2.3; two switches (rooms, instructors), per user, with a note on screen when a
 check is off. Still to settle in the brief: not shown vs not computed, and the note's wording and place.
+
+**Reframed (Greg, 2026-10-26, at the brief): it is about vertical space, not about turning detection off.** Co-taught
+courses can give a card a long list of instructor conflicts (and rooms the same). So conflicts are always detected,
+and a per-user setting chooses how a section card shows them. Greg doesn't want a new control on the card (such as a
+dropdown on the flag to expand it). Decisions:
+- **One setting for both kinds**, in Preferences under Section View, with two states:
+  "Show scheduling conflicts on section cards:" (•) "In full, one line per conflict" (today's look, the default) /
+  ( ) "As a flag; hover over it to see the conflicts". Wording approved.
+- **The flag:** one line on the card holding one flag per kind that has conflicts: the existing door icon
+  (`OpenDoorIcon`) + "Room conflict", and a new simple person icon + "Instructor conflict", icons and words in the
+  warning colour. Hovering a flag shows that kind's full list (the same text "In full" shows). Approved.
+- Per user (settings file), so no `MinimumVersionToWrite` question. Takes effect at once (the cards redraw). The
+  Workload panel is unchanged (it already flags instructor conflicts with a tooltip). The "a check is off" note is no
+  longer needed: nothing is hidden, only folded into a flag.
+- Known limit: touch screens have no hover, so a touch user keeps "In full" (the Workload icon has the same limit).
+
+**Built 2026-10-26** (not yet hand-checked):
+- `AppSettings.SectionConflictDisplay` (`Models.ConflictDisplayMode`: `Full` default, `Flag`). `PreferencesViewModel`
+  `ShowConflictsInFull` / `ShowConflictsAsFlags` (the same radio pattern as the filter choice: a setter acts only on
+  true), which save and raise `AppSettings.SettingChanged`; `SectionListViewModel.OnAppSettingChanged` then calls
+  `RefreshPropertyLines()` on every card.
+- `SectionListItemViewModel.PropertyLines` reads the setting directly: in flag mode it emits
+  `CardPropertyKind.RoomConflictFlag` / `InstructorConflictFlag` lines with the approved texts
+  (`RoomConflictFlagText` "Room conflict", `InstructorConflictFlagText` "Instructor conflict") and the full conflict
+  text in the new `CardPropertyLine.Detail`. Detection is unchanged.
+- `PropertyLinesBehavior` draws each flag as one `InlineUIContainer` (a transparent-backed horizontal `StackPanel` of
+  the icon box and a warning-look `TextBlock`, with `Detail` as its tooltip), five elements built only on a card that
+  has that kind of conflict; consecutive flags share one line, `FlagSpacing` (default 12) apart. New attached
+  properties `RoomConflictIcon`, `InstructorConflictIcon`, `FlagSpacing`; the icon-box code is shared with the
+  tag/reserve/resource lines (`MakeIconBox`).
+- AXAML: `PersonIcon` added to `Assets/Icons.axaml` (head and shoulders, outline, drawn for TermPoint); the card's
+  property-lines TextBlock in `SectionListView.axaml` gets `RoomConflictIcon="{StaticResource OpenDoorIcon}"` and
+  `InstructorConflictIcon="{StaticResource PersonIcon}"`; `PreferencesView.axaml` gets the radio pair under Section View.
+- Tests: `SectionConflictDisplayTests` (default and old settings files, the Preferences radio pair, the lines in
+  both modes, only kinds with conflicts get a flag, the redraw). The behavior's drawing has no automated test (no
+  headless Avalonia), so it is in the hand check.
+
+**Hand check (Greg).** On a semester with co-taught courses: Preferences → "As a flag": the cards' conflict lines
+become one line with a door flag "Room conflict" and/or a person flag "Instructor conflict" in the warning colour,
+at once, without reopening; resting the pointer anywhere on a flag shows that kind's full list; a card with only one
+kind shows one flag; switch back to "In full": the old lines return. Also with the section list detached, and with
+"Faster section list" on (scroll so new cards are built: they use the current setting).
 
 **To decide (original list).**
 - One switch each (rooms, instructors), or one for both?

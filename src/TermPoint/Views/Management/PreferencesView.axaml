@@ -102,6 +102,22 @@
             </StackPanel>
 
             <!--
+                How section cards show room and instructor conflicts (spec_version_1.2.3.md, item 25).
+                Takes effect immediately: the cards redraw when this changes. Wording approved by Greg.
+            -->
+            <StackPanel Spacing="6">
+                <TextBlock Text="Show scheduling conflicts on section cards:" />
+                <RadioButton
+                    Content="In full, one line per conflict"
+                    GroupName="SectionConflictDisplay"
+                    IsChecked="{Binding ShowConflictsInFull}" />
+                <RadioButton
+                    Content="As a flag; hover over it to see the conflicts"
+                    GroupName="SectionConflictDisplay"
+                    IsChecked="{Binding ShowConflictsAsFlags}" />
+            </StackPanel>
+
+            <!--
                 Faster section list for large schedules (spec_version_1.2.3.md, item 23). Opt-in.
                 Takes effect immediately: the Section List swaps its panel when this changes.
                 Hidden where the platform cannot do it (the browser demo).

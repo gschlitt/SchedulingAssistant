@@ -155,14 +155,18 @@ public partial class SectionListViewModel : ViewModelBase, IDisposable
         setting && platformSupports;
 
     /// <summary>
-    /// Forwards a change of the virtualization preference to the view, which is bound to
-    /// <see cref="IsListVirtualized"/>. Other settings are ignored.
+    /// Reacts to the two settings the section list shows live: a change of the virtualization preference is
+    /// forwarded to the view, which is bound to <see cref="IsListVirtualized"/>; a change of the conflict display
+    /// (spec item 25) makes every card rebuild its property lines. Other settings are ignored.
     /// </summary>
     /// <param name="settingName">The name of the setting that changed (see <see cref="AppSettings.SettingChanged"/>).</param>
     private void OnAppSettingChanged(string settingName)
     {
         if (settingName == nameof(AppSettings.VirtualizeSectionList))
             OnPropertyChanged(nameof(IsListVirtualized));
+        else if (settingName == nameof(AppSettings.SectionConflictDisplay))
+            foreach (var item in SectionItems.OfType<SectionListItemViewModel>())
+                item.RefreshPropertyLines();
     }
 
     /// <summary>

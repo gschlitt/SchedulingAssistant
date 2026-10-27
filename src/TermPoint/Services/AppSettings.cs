@@ -196,6 +196,15 @@ public class AppSettings
     /// </summary>
     public FilterPassBehavior FilterPassBehavior { get; set; } = FilterPassBehavior.Highlight;
 
+    /// <summary>
+    /// How section cards show room and instructor conflicts (spec item 25): in full, one line per conflict, or as one
+    /// compact flag per kind with the details on hover. A display choice only: conflicts are detected either way, and
+    /// nothing is written to the database. Takes effect immediately (the cards redraw) via <see cref="SettingChanged"/>.
+    /// A settings file written before this property existed deserializes to the default, and an older TermPoint
+    /// ignores the unknown key, so no migration is needed either way. Default: <see cref="ConflictDisplayMode.Full"/>.
+    /// </summary>
+    public Models.ConflictDisplayMode SectionConflictDisplay { get; set; } = Models.ConflictDisplayMode.Full;
+
 /// <summary>Last path used for PNG schedule export.</summary>
     public string? LastExportPath { get; set; }
 

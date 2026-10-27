@@ -158,8 +158,17 @@ public partial class SectionListItemViewModel : ObservableObject, ISectionListEn
         get
         {
             var lines = new List<CardPropertyLine>(5);
-            AddPropertyLine(lines, CardPropertyKind.RoomConflict,       RoomConflictWarning);
-            AddPropertyLine(lines, CardPropertyKind.InstructorConflict, InstructorConflictWarning);
+            if (AppSettings.Current.SectionConflictDisplay == ConflictDisplayMode.Flag)
+            {
+                // Spec item 25: one compact flag per kind, the full list kept for the hover.
+                AddConflictFlag(lines, CardPropertyKind.RoomConflictFlag,       RoomConflictFlagText,       RoomConflictWarning);
+                AddConflictFlag(lines, CardPropertyKind.InstructorConflictFlag, InstructorConflictFlagText, InstructorConflictWarning);
+            }
+            else
+            {
+                AddPropertyLine(lines, CardPropertyKind.RoomConflict,       RoomConflictWarning);
+                AddPropertyLine(lines, CardPropertyKind.InstructorConflict, InstructorConflictWarning);
+            }
             AddPropertyLine(lines, CardPropertyKind.Tags,               TagLine);
             AddPropertyLine(lines, CardPropertyKind.Reserves,           ReserveLine);
             AddPropertyLine(lines, CardPropertyKind.Resources,          ResourceLine);
@@ -184,6 +193,37 @@ public partial class SectionListItemViewModel : ObservableObject, ISectionListEn
     {
         if (!string.IsNullOrWhiteSpace(text))
             lines.Add(new CardPropertyLine(kind, text));
+    }
+
+    /// <summary>The text of a room-conflict flag (spec item 25; wording approved by Greg 2026-10-26).</summary>
+    public const string RoomConflictFlagText = "Room conflict";
+
+    /// <summary>The text of an instructor-conflict flag (spec item 25; wording approved by Greg 2026-10-26).</summary>
+    public const string InstructorConflictFlagText = "Instructor conflict";
+
+    /// <summary>
+    /// Appends a conflict flag to <paramref name="lines"/>: <paramref name="flagText"/> on the card, and the full
+    /// conflict text as the line's <see cref="CardPropertyLine.Detail"/> for the hover. Adds nothing when
+    /// <paramref name="conflicts"/> is null, empty or whitespace (no conflicts of that kind).
+    /// </summary>
+    /// <param name="lines">The list being built; mutated in place.</param>
+    /// <param name="kind">The flag kind (<see cref="CardPropertyKind.RoomConflictFlag"/> or <see cref="CardPropertyKind.InstructorConflictFlag"/>).</param>
+    /// <param name="flagText">The short text shown on the card.</param>
+    /// <param name="conflicts">The full conflict text, one conflict per line; blank means none.</param>
+    private static void AddConflictFlag(List<CardPropertyLine> lines, CardPropertyKind kind, string flagText, string? conflicts)
+    {
+        if (!string.IsNullOrWhiteSpace(conflicts))
+            lines.Add(new CardPropertyLine(kind, flagText, conflicts));
+    }
+
+    /// <summary>
+    /// Tells the card to rebuild its property lines, after the conflict display setting changed (spec item 25):
+    /// <see cref="PropertyLines"/> reads the setting each time, so re-raising it is all a redraw needs.
+    /// </summary>
+    public void RefreshPropertyLines()
+    {
+        OnPropertyChanged(nameof(PropertyLines));
+        OnPropertyChanged(nameof(HasPropertyLines));
     }
 
     /// <summary>True when this is a temporary placeholder being added/copied (not yet saved).</summary>

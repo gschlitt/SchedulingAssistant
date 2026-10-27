@@ -4,7 +4,7 @@ Written at the end of a long session so a fresh conversation can pick up. Claude
 travel between machines (`CLAUDE.md` is gitignored), so everything a new agent needs is here or in the files this
 points to.
 
-**To start the new agent, say:** "Read `HANDOFF.md`, then continue 1.2.3 with item 25."
+**To start the new agent, say:** "Read `HANDOFF.md`, then continue 1.2.3 with item 26."
 
 ## Where things are
 
@@ -45,13 +45,13 @@ points to.
    F6's F5-shaped route as known.
 2. ~~**Item 30**~~ **done 2026-10-26:** the partial-backup delete after a stalled copy goes through
    `NetworkFileOps.DeleteAsync`; `BackupServiceStalledCopyTests` (2). See spec section 30.
-3. ~~**Item 13**~~ **done 2026-10-26 (uncommitted):** SharePoint/Teams libraries synced through OneDrive are detected
+3. ~~**Item 13**~~ **done 2026-10-26 (21d6623):** SharePoint/Teams libraries synced through OneDrive are detected
    from OneDrive's registry entries (`FolderAssessor`), warn only, label "OneDrive (a SharePoint or Teams library)"
    (approved). Not yet seen on a real library: field test S9 confirms it (probe included there). File → Open warning
    moved to 1.2.4.
-4. **Item 25:** two per-user switches (rooms, instructors) in Preferences to turn off conflict detection, plus a note
-   on screen when a check is off. Still to settle in its brief: "not shown" vs "not computed", and the note's wording
-   and place (Greg approves user-facing wording).
+4. ~~**Item 25**~~ **built 2026-10-26 (hand check pending):** reframed by Greg as a vertical-space fix.
+   One Preferences choice shows section-card conflicts "In full" (default) or "As a flag" (door / person icon +
+   "Room conflict" / "Instructor conflict", full list on hover). See spec section 25 for the hand check.
 5. **Item 26:** a Help note on trying changes safely on a copy of the database (the feature is 1.2.4).
 6. **Item 6:** BugSnag scrubber, steps 6a–6c as planned in its section.
 7. **Item 7:** handled-failure and unclean-exit reports to BugSnag, after item 6.

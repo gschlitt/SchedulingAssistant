@@ -42,6 +42,12 @@ namespace TermPoint.Behaviors;
 ///         <see cref="TagIconProperty"/>, <see cref="ReserveIconProperty"/> or
 ///         <see cref="ResourceIconProperty"/>), followed by a <see cref="Run"/> with the line's
 ///         text.</item>
+///   <item><b>Conflict flags</b> (<see cref="CardPropertyKind.RoomConflictFlag"/>,
+///         <see cref="CardPropertyKind.InstructorConflictFlag"/>; spec item 25, used when the user shows conflicts as
+///         flags): one <see cref="InlineUIContainer"/> per flag holding the icon
+///         (<see cref="RoomConflictIconProperty"/> / <see cref="InstructorConflictIconProperty"/>) and the flag's text
+///         in the warning look, with the line's <see cref="CardPropertyLine.Detail"/> as its tooltip. Consecutive flags
+///         share one line, <see cref="FlagSpacingProperty"/> apart.</item>
 /// </list>
 ///
 /// <b>Presentation comes from AXAML, but is set directly, not through styles.</b> This code
@@ -173,6 +179,30 @@ public static class PropertyLinesBehavior
         AvaloniaProperty.RegisterAttached<TextBlock, Geometry?>(
             "ResourceIcon", typeof(PropertyLinesBehavior));
 
+    /// <summary>
+    /// Icon geometry for a <see cref="CardPropertyKind.RoomConflictFlag"/> (spec item 25). Null (the default) shows an
+    /// empty icon box.
+    /// </summary>
+    public static readonly AttachedProperty<Geometry?> RoomConflictIconProperty =
+        AvaloniaProperty.RegisterAttached<TextBlock, Geometry?>(
+            "RoomConflictIcon", typeof(PropertyLinesBehavior));
+
+    /// <summary>
+    /// Icon geometry for a <see cref="CardPropertyKind.InstructorConflictFlag"/> (spec item 25). Null (the default)
+    /// shows an empty icon box.
+    /// </summary>
+    public static readonly AttachedProperty<Geometry?> InstructorConflictIconProperty =
+        AvaloniaProperty.RegisterAttached<TextBlock, Geometry?>(
+            "InstructorConflictIcon", typeof(PropertyLinesBehavior));
+
+    /// <summary>
+    /// Space before a conflict flag that follows another flag on the same line, in device-independent pixels
+    /// (spec item 25). Defaults to 12.
+    /// </summary>
+    public static readonly AttachedProperty<double> FlagSpacingProperty =
+        AvaloniaProperty.RegisterAttached<TextBlock, double>(
+            "FlagSpacing", typeof(PropertyLinesBehavior), 12d);
+
     // ── Accessors (required by Avalonia's XAML for attached properties) ────────
 
     /// <summary>Gets the lines attached to the specified TextBlock.</summary>
@@ -229,6 +259,24 @@ public static class PropertyLinesBehavior
     /// <summary>Sets the resources-line icon geometry attached to the specified TextBlock.</summary>
     public static void SetResourceIcon(TextBlock tb, Geometry? value) => tb.SetValue(ResourceIconProperty, value);
 
+    /// <summary>Gets the room-conflict flag icon geometry attached to the specified TextBlock.</summary>
+    public static Geometry? GetRoomConflictIcon(TextBlock tb) => tb.GetValue(RoomConflictIconProperty);
+
+    /// <summary>Sets the room-conflict flag icon geometry attached to the specified TextBlock.</summary>
+    public static void SetRoomConflictIcon(TextBlock tb, Geometry? value) => tb.SetValue(RoomConflictIconProperty, value);
+
+    /// <summary>Gets the instructor-conflict flag icon geometry attached to the specified TextBlock.</summary>
+    public static Geometry? GetInstructorConflictIcon(TextBlock tb) => tb.GetValue(InstructorConflictIconProperty);
+
+    /// <summary>Sets the instructor-conflict flag icon geometry attached to the specified TextBlock.</summary>
+    public static void SetInstructorConflictIcon(TextBlock tb, Geometry? value) => tb.SetValue(InstructorConflictIconProperty, value);
+
+    /// <summary>Gets the spacing between conflict flags attached to the specified TextBlock.</summary>
+    public static double GetFlagSpacing(TextBlock tb) => tb.GetValue(FlagSpacingProperty);
+
+    /// <summary>Sets the spacing between conflict flags attached to the specified TextBlock.</summary>
+    public static void SetFlagSpacing(TextBlock tb, double value) => tb.SetValue(FlagSpacingProperty, value);
+
     /// <summary>
     /// Subscribes every attached property above to the one rebuild handler, so a change to any of
     /// them (lines or look) rebuilds the inlines from the TextBlock's current values.
@@ -244,6 +292,9 @@ public static class PropertyLinesBehavior
         TagIconProperty.Changed.AddClassHandler<TextBlock>(OnAnyPropertyChanged);
         ReserveIconProperty.Changed.AddClassHandler<TextBlock>(OnAnyPropertyChanged);
         ResourceIconProperty.Changed.AddClassHandler<TextBlock>(OnAnyPropertyChanged);
+        RoomConflictIconProperty.Changed.AddClassHandler<TextBlock>(OnAnyPropertyChanged);
+        InstructorConflictIconProperty.Changed.AddClassHandler<TextBlock>(OnAnyPropertyChanged);
+        FlagSpacingProperty.Changed.AddClassHandler<TextBlock>(OnAnyPropertyChanged);
     }
 
     // ── Building ───────────────────────────────────────────────────────────────
@@ -260,6 +311,9 @@ public static class PropertyLinesBehavior
     /// <param name="TagIcon">Geometry for tags lines.</param>
     /// <param name="ReserveIcon">Geometry for reserves lines.</param>
     /// <param name="ResourceIcon">Geometry for resources lines.</param>
+    /// <param name="RoomConflictIcon">Geometry for room-conflict flags.</param>
+    /// <param name="InstructorConflictIcon">Geometry for instructor-conflict flags.</param>
+    /// <param name="FlagSpacing">Space before a flag that follows another flag on the same line.</param>
     private readonly record struct Look(
         IBrush? WarningForeground,
         FontWeight WarningFontWeight,
@@ -268,7 +322,10 @@ public static class PropertyLinesBehavior
         double IconSpacing,
         Geometry? TagIcon,
         Geometry? ReserveIcon,
-        Geometry? ResourceIcon);
+        Geometry? ResourceIcon,
+        Geometry? RoomConflictIcon,
+        Geometry? InstructorConflictIcon,
+        double FlagSpacing);
 
     /// <summary>
     /// Reads the current presentation attached properties from the TextBlock.
@@ -283,7 +340,10 @@ public static class PropertyLinesBehavior
         IconSpacing: GetIconSpacing(tb),
         TagIcon: GetTagIcon(tb),
         ReserveIcon: GetReserveIcon(tb),
-        ResourceIcon: GetResourceIcon(tb));
+        ResourceIcon: GetResourceIcon(tb),
+        RoomConflictIcon: GetRoomConflictIcon(tb),
+        InstructorConflictIcon: GetInstructorConflictIcon(tb),
+        FlagSpacing: GetFlagSpacing(tb));
 
     /// <summary>
     /// The single change handler for every attached property of this behavior: whichever one
@@ -316,17 +376,24 @@ public static class PropertyLinesBehavior
 
         var look = ReadLook(tb);
 
-        var first = true;
+        CardPropertyKind? previous = null;
         foreach (var line in lines)
         {
-            // A line break between lines only, never before the first or after the last.
-            if (!first)
+            // A line break between lines only, never before the first or after the last, and none between two
+            // conflict flags: all the flags share one line (spec item 25).
+            var afterFlag = IsConflictFlag(line.Kind) && previous is { } p && IsConflictFlag(p);
+            if (previous is not null && !afterFlag)
                 inlines.Add(new LineBreak());
-            first = false;
+            previous = line.Kind;
 
-            AddLine(inlines, line, look);
+            AddLine(inlines, line, look, afterFlag);
         }
     }
+
+    /// <summary>True for the compact conflict-flag kinds (spec item 25), which share one line.</summary>
+    /// <param name="kind">The line's kind.</param>
+    private static bool IsConflictFlag(CardPropertyKind kind) =>
+        kind is CardPropertyKind.RoomConflictFlag or CardPropertyKind.InstructorConflictFlag;
 
     /// <summary>
     /// Adds the inline(s) for a single line: a warning-look run for a conflict, or an icon box
@@ -337,10 +404,19 @@ public static class PropertyLinesBehavior
     /// <param name="inlines">The collection being built.</param>
     /// <param name="line">The line to add.</param>
     /// <param name="look">The presentation values to apply.</param>
-    private static void AddLine(InlineCollection inlines, CardPropertyLine line, in Look look)
+    /// <param name="afterFlag">True when this line is a conflict flag following another flag on the same line.</param>
+    private static void AddLine(InlineCollection inlines, CardPropertyLine line, in Look look, bool afterFlag)
     {
         switch (line.Kind)
         {
+            case CardPropertyKind.RoomConflictFlag:
+                AddConflictFlag(inlines, look.RoomConflictIcon, line, look, afterFlag);
+                break;
+
+            case CardPropertyKind.InstructorConflictFlag:
+                AddConflictFlag(inlines, look.InstructorConflictIcon, line, look, afterFlag);
+                break;
+
             case CardPropertyKind.RoomConflict:
             case CardPropertyKind.InstructorConflict:
                 var warning = new Run { Text = line.Text, FontWeight = look.WarningFontWeight };
@@ -381,27 +457,83 @@ public static class PropertyLinesBehavior
     /// <param name="look">The presentation values to apply.</param>
     private static void AddIconLine(InlineCollection inlines, Geometry? geometry, string text, in Look look)
     {
+        var box = MakeIconBox(geometry, look.IconBrush, look);
+
+        // Center aligns the icon box with the text line, approximating the old centred
+        // icon-and-text rows. May be tuned after a visual check (see class summary).
+        inlines.Add(new InlineUIContainer(box) { BaselineAlignment = BaselineAlignment.Center });
+        inlines.Add(new Run { Text = text });
+    }
+
+    /// <summary>
+    /// Adds a compact conflict flag (spec item 25): one <see cref="InlineUIContainer"/> holding a horizontal
+    /// <see cref="StackPanel"/> of the icon box and a <see cref="TextBlock"/> with the flag's text, both in the warning
+    /// look (the icon is stroked with <see cref="WarningForegroundProperty"/>, or the icon brush when none is set). The
+    /// line's <see cref="CardPropertyLine.Detail"/> (the full conflict list) is the panel's tooltip; the panel has a
+    /// transparent background so the tooltip opens anywhere over the flag, not only over its strokes and letters.
+    /// Five elements, built only for a card that has conflicts of this kind.
+    /// </summary>
+    /// <param name="inlines">The collection being built.</param>
+    /// <param name="geometry">The flag's icon geometry (may be null for an empty icon box).</param>
+    /// <param name="line">The flag line: its text is shown, its detail is the tooltip.</param>
+    /// <param name="look">The presentation values to apply.</param>
+    /// <param name="afterFlag">True when another flag precedes this one on the line: <see cref="FlagSpacingProperty"/> of space is added before it.</param>
+    private static void AddConflictFlag(InlineCollection inlines, Geometry? geometry, CardPropertyLine line, in Look look, bool afterFlag)
+    {
+        var text = new TextBlock
+        {
+            Text = line.Text,
+            FontWeight = look.WarningFontWeight,
+            VerticalAlignment = Avalonia.Layout.VerticalAlignment.Center,
+        };
+        // As for the warning runs: only set a foreground when one was supplied, so the text otherwise inherits.
+        if (look.WarningForeground is not null)
+            text.Foreground = look.WarningForeground;
+
+        var icon = MakeIconBox(geometry, look.WarningForeground ?? look.IconBrush, look);
+        icon.VerticalAlignment = Avalonia.Layout.VerticalAlignment.Center;
+
+        var flag = new StackPanel
+        {
+            Orientation = Avalonia.Layout.Orientation.Horizontal,
+            Background = Brushes.Transparent,
+            Margin = new Thickness(afterFlag ? look.FlagSpacing : 0, 0, 0, 0),
+        };
+        flag.Children.Add(icon);
+        flag.Children.Add(text);
+        if (!string.IsNullOrWhiteSpace(line.Detail))
+            ToolTip.SetTip(flag, line.Detail);
+
+        inlines.Add(new InlineUIContainer(flag) { BaselineAlignment = BaselineAlignment.Center });
+    }
+
+    /// <summary>
+    /// Builds an icon box: a <see cref="Viewbox"/> of <see cref="Look.IconSize"/> with <see cref="Look.IconSpacing"/>
+    /// of space after it, around a <see cref="Path"/> stroked with <paramref name="stroke"/> using this class's fixed
+    /// stroke thickness, cap and join (the outline style of every card icon).
+    /// </summary>
+    /// <param name="geometry">The icon geometry (may be null for an empty box).</param>
+    /// <param name="stroke">The stroke brush.</param>
+    /// <param name="look">The presentation values (size and spacing).</param>
+    /// <returns>The icon box, not yet added to anything.</returns>
+    private static Viewbox MakeIconBox(Geometry? geometry, IBrush? stroke, in Look look)
+    {
         var path = new Path
         {
             Data = geometry,
             Fill = Brushes.Transparent,
-            Stroke = look.IconBrush,
+            Stroke = stroke,
             StrokeThickness = IconStrokeThickness,
             StrokeLineCap = IconStrokeLineCap,
             StrokeJoin = IconStrokeLineJoin,
         };
 
-        var box = new Viewbox
+        return new Viewbox
         {
             Child = path,
             Width = look.IconSize,
             Height = look.IconSize,
             Margin = new Thickness(0, 0, look.IconSpacing, 0),
         };
-
-        // Center aligns the icon box with the text line, approximating the old centred
-        // icon-and-text rows. May be tuned after a visual check (see class summary).
-        inlines.Add(new InlineUIContainer(box) { BaselineAlignment = BaselineAlignment.Center });
-        inlines.Add(new Run { Text = text });
     }
 }

@@ -27,7 +27,21 @@ public enum CardPropertyKind
     Reserves,
 
     /// <summary>The section's required resource names, comma-separated. Rendered with the tools icon.</summary>
-    Resources
+    Resources,
+
+    /// <summary>
+    /// A compact flag saying the section has room conflicts, used instead of <see cref="RoomConflict"/> when
+    /// conflicts are shown as flags (spec item 25). Rendered as the room icon and the line's text in the warning look,
+    /// on one line with any other flag; <see cref="CardPropertyLine.Detail"/> (the full list) is shown on hover.
+    /// </summary>
+    RoomConflictFlag,
+
+    /// <summary>
+    /// A compact flag saying an instructor of the section is double-booked, used instead of
+    /// <see cref="InstructorConflict"/> when conflicts are shown as flags (spec item 25). Rendered like
+    /// <see cref="RoomConflictFlag"/>, with the instructor icon.
+    /// </summary>
+    InstructorConflictFlag
 }
 
 /// <summary>
@@ -45,4 +59,7 @@ public enum CardPropertyKind
 /// <param name="Kind">What the line is; selects its icon (if any) and styling in the view.</param>
 /// <param name="Text">The display text for the line. Never null or whitespace when produced by
 /// <see cref="SectionListItemViewModel.PropertyLines"/>, which omits blank lines.</param>
-public sealed record CardPropertyLine(CardPropertyKind Kind, string Text);
+/// <param name="Detail">Text shown when the pointer rests on the line: the full conflict list of a flag kind
+/// (<see cref="CardPropertyKind.RoomConflictFlag"/>, <see cref="CardPropertyKind.InstructorConflictFlag"/>).
+/// Null for every other kind.</param>
+public sealed record CardPropertyLine(CardPropertyKind Kind, string Text, string? Detail = null);

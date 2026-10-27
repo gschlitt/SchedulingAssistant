@@ -106,6 +106,41 @@ public class PreferencesViewModel : ViewModelBase
         OnPropertyChanged(nameof(FilterExpandsSection));
     }
 
+    /// <summary>
+    /// True when section cards show conflicts in full, one line per conflict (spec item 25).
+    /// Mutually exclusive with <see cref="ShowConflictsAsFlags"/>.
+    /// </summary>
+    public bool ShowConflictsInFull
+    {
+        get => AppSettings.Current.SectionConflictDisplay == ConflictDisplayMode.Full;
+        set { if (value) SetConflictDisplay(ConflictDisplayMode.Full); }
+    }
+
+    /// <summary>
+    /// True when section cards show one compact flag per kind of conflict, with the details on hover (spec item 25).
+    /// Mutually exclusive with <see cref="ShowConflictsInFull"/>.
+    /// </summary>
+    public bool ShowConflictsAsFlags
+    {
+        get => AppSettings.Current.SectionConflictDisplay == ConflictDisplayMode.Flag;
+        set { if (value) SetConflictDisplay(ConflictDisplayMode.Flag); }
+    }
+
+    /// <summary>
+    /// Stores the conflict display choice, saves the settings, and tells live views
+    /// (<see cref="AppSettings.SettingChanged"/>) so the section cards redraw at once.
+    /// </summary>
+    /// <param name="mode">The chosen display mode.</param>
+    private void SetConflictDisplay(ConflictDisplayMode mode)
+    {
+        if (AppSettings.Current.SectionConflictDisplay == mode) return;
+        AppSettings.Current.SectionConflictDisplay = mode;
+        AppSettings.Current.Save();
+        AppSettings.RaiseSettingChanged(nameof(AppSettings.SectionConflictDisplay));
+        OnPropertyChanged(nameof(ShowConflictsInFull));
+        OnPropertyChanged(nameof(ShowConflictsAsFlags));
+    }
+
     // ── Access Mode ──────────────────────────────────────────────────────────
 
     /// <summary>

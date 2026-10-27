@@ -1459,11 +1459,16 @@
                                                     Note that long lines now wrap as running text, so a
                                                     continuation line starts at the left edge rather than
                                                     under the icon's text.
+                                                    When the user shows conflicts as flags (Preferences, spec item
+                                                    25), the conflicts become one line of flags: the door icon for
+                                                    rooms, the person icon for instructors, the full list on hover.
                                                 -->
                                                 <TextBlock
                                                     b:PropertyLinesBehavior.IconBrush="{StaticResource TextMuted}"
                                                     b:PropertyLinesBehavior.IconSize="16"
                                                     b:PropertyLinesBehavior.IconSpacing="4"
+                                                    b:PropertyLinesBehavior.InstructorConflictIcon="{StaticResource PersonIcon}"
+                                                    b:PropertyLinesBehavior.RoomConflictIcon="{StaticResource OpenDoorIcon}"
                                                     b:PropertyLinesBehavior.Lines="{Binding PropertyLines}"
                                                     b:PropertyLinesBehavior.ReserveIcon="{StaticResource TicketIcon}"
                                                     b:PropertyLinesBehavior.ResourceIcon="{StaticResource ToolsIcon}"
