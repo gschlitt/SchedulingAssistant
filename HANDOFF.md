@@ -1,25 +1,42 @@
-# Handoff: TermPoint 1.2.3, 2026-10-27 night (dev machine) — every Must passes on 1.2.3.4 (A12 found and fixed)
+# Handoff: TermPoint 1.2.3 RELEASED on the Microsoft Store, 2026-10-28 (dev machine)
 
 Written at the end of a long session so a fresh conversation can pick up. Claude Code's memory and `CLAUDE.md` don't
 travel between machines (`CLAUDE.md` is gitignored), so everything a new agent needs is here or in the files this
 points to.
 
-**To start the new agent, say:** "Read `HANDOFF.md`, then help me finish the 1.2.3 field tests."
+**To start the new agent, say:** "Read `HANDOFF.md`, then help me start 1.2.4."
 
 ## Where things are
 
-- **Branch `Version_1.2.3`**, committed (not pushed) with the A12 fix, `<Version>` **1.2.3.4**, and today's doc
-  updates. Never create branches; commit and push only when Greg asks.
-- **Sources of truth:** `docs/testing/network-field-tests-1.2.3.md` (**"Plan from here" near the top**, status table,
-  Open issues — **A12** is the full record of today's fix — and each scenario's results); `spec_version_1.2.3.md`
-  (item 32, the A8/A2 fix); `spec_version_1.2.4.md`. The A12 fix is not written into the 1.2.3 spec; the field-test
-  doc's A12 entry is its record.
-- **Test builds (sideload MSIX, same signing cert, already trusted on both computers):**
-  `\\mekler\Users\gregs\temp\msix-1.2.3.4\` (**current**, on both computers), `msix-1.2.3.3\`, `msix-1.2.3.2\`,
-  `msix-1.2.2\`; local copies in `C:\temp\termpoint-msix-<version>\`. Delete these folders after the field tests.
-  Before the Store/Velopack release build, `<Version>` must go back to three numbers (consider 1.2.4 so test machines
-  update).
-- **`MinimumVersionToWrite`:** No for 1.2.3, also for item 32 and A12 (neither changes what is saved).
+- **1.2.3 is released on the Microsoft Store** (Store only; Velopack comes later). Built from **`cf4d4cb`**
+  (`<Version>` 1.2.3, MSIX 1.2.3.0, the "What's new" banner in `AppAnnouncements.cs`). **`master` and `Version_1.2.3`
+  are pushed at `cf4d4cb`**; no `v1.2.3` tag (pushing a `v*` tag starts the macOS workflow; pushing `master` deploys
+  the WASM demo, so Greg checks the demo locally first). Later commits on `Version_1.2.3` are docs only. Never create
+  branches; commit and push only when Greg asks.
+- **Store package:** `\\mekler\Users\gregs\temp\store-1.2.3\TermPoint.msix`. Store identity values are in the dev
+  console's `config.ps1` (see "This machine").
+- **Sources of truth:** `spec_version_1.2.4.md` (**next release**; the new section "Release and distribution" holds the
+  Store-update failure below); `docs/testing/network-field-tests-1.2.3.md` (every 1.2.3 result, Open issues A1–A13,
+  and the Wrap-up's list of accepted gaps); `spec_version_1.2.3.md`.
+- **Test builds to clean up:** sideload MSIX folders `\\mekler\Users\gregs\temp\msix-1.2.2\` … `msix-1.2.3.4\` and
+  `C:\temp\termpoint-msix-1.2.3.4`; the sideload TermPoint (`AcademicSolutions.TermPoint`) is still installed on
+  GregDeskTop beside the Store app (removed from GregSurface).
+- **`MinimumVersionToWrite`:** No for 1.2.3 (unset). The Store's "mandatory" flag does nothing by itself: TermPoint
+  doesn't read it (in-app Store updates are parking-lot P7).
+
+## What happened on 2026-10-28 (release day)
+
+- **Full harness re-run on `79a5139` clean** (4057 passed, 3 skipped, 0 failed), so A12's crash-sweep failure was
+  timing. **S2 and S3 passed** on 1.2.3.4; S2 found **A13** (an extra, wrong "Checkout Failed" message when the
+  read-only copy fails at open; on the 1.2.4 list). The other Shoulds and Nices were accepted as gaps (field-test doc,
+  Wrap-up).
+- **Release:** `<Version>` 1.2.3, What's new banner (Greg's wording), WASM demo checked locally, `master` pushed, Store
+  package built and submitted; Microsoft certified and released it.
+- **After the release: the Store version wouldn't open until the computer was restarted** (GregDeskTop after the
+  update from Store 1.2.2; GregSurface after a fresh install). Root cause found on GregDeskTop: a Windows bug where a
+  stale, empty family record stays in Windows' package cache because removing the old version couldn't delete a file
+  that Windows shares between apps (`Microsoft.DiaSymReader.Native.amd64.dll`, held by Phone Link). Full evidence and
+  the 1.2.4 actions: `spec_version_1.2.4.md`, "Release and distribution". Users' workaround: restart.
 
 ## What happened on 2026-10-27 (night)
 
@@ -40,19 +57,20 @@ points to.
 
 ## Next steps (in order)
 
-1. **Re-run the full harness with GregDeskTop otherwise idle** (not during a field test):
-   `TERMPOINT_HARNESS=1 bash tools/run-tests-lowdisk.sh "$TEMP/full.log" --logger "trx;LogFileName=full.trx" --results-directory "$TEMP"`
-   (~20 min). If `CrashSweep_EveryPointIsCutOrExplained` fails again with "Bob lost the lock to Alice / Sleep 10
-   minutes (wake check), Demote.AfterWorkingCopyHandled", harden `Computer.SettleBackgroundWorkAsync` (after a "no
-   longer ours" / "genuinely lost" line, also wait for the demotion to be queued). Test code only.
-2. Check GregSurface's clock is back on automatic time (M5 (7) moved it).
-3. **The Shoulds** (S2, S3, S7–S9), N3 and S11 (Mac) on 1.2.3.4; N1/N2 optional; wrap-up checklist at the end of the
-   field-test doc.
-4. Still open for Greg's placement (1.2.3 or 1.2.4): A3–A7, A9–A11 (Open issues).
-5. **1.2.4 candidates from today** (not yet in `spec_version_1.2.4.md`): the harness's `SleepEvent` should run the
-   wake check and the heartbeat together, as a real wake does (that gap is how A12 got past the tests);
-   `ReleaseAsync` unsubscribes only `OnWake`, so after a release and re-checkout `OnHeartbeatFailed` is subscribed
-   twice (harmless: `_heartbeatVerifyInFlight` absorbs it).
+1. **Microsoft support case** for the Store-update failure, with the evidence in `spec_version_1.2.4.md` ("Release
+   and distribution"); the Process Monitor export `C:\temp\temp.CSV` on GregDeskTop goes with it. Watch for users
+   reporting "TermPoint won't open" (the answer: restart the computer).
+2. Restart GregDeskTop (it was kept in the failing state for the diagnosis), check the Store TermPoint opens, then
+   uninstall the sideload TermPoint and delete the test MSIX folders. Check GregSurface's clock is on automatic time.
+3. **N4** (the Store update link) now that 1.2.3 is certified.
+4. **Plan 1.2.4** from `spec_version_1.2.4.md`. Most urgent from the release: drop `Microsoft.DiaSymReader.Native.amd64.dll`
+   from the package, use **package flights** to our own computers before releasing, and look at the failing GitHub
+   Tests workflow. Also open for placement: A3–A7, A9–A11, A13 and the exit-path demotion seen in M6.
+5. **1.2.4 candidates not yet in `spec_version_1.2.4.md`:** the harness's `SleepEvent` should run the wake check and
+   the heartbeat together, as a real wake does (that gap is how A12 got past the tests); harden
+   `Computer.SettleBackgroundWorkAsync` (wait for the demotion to be queued after a "no longer ours" / "genuinely
+   lost" line) if the crash-sweep timing failure recurs; `ReleaseAsync` unsubscribes only `OnWake`, so after a release
+   and re-checkout `OnHeartbeatFailed` is subscribed twice (harmless).
 
 ## How the field tests are run (know-how)
 
@@ -101,6 +119,12 @@ points to.
 - **Keep replies tight;** Greg is often low on tokens. Offer a handoff early in long sessions.
 
 ## This machine (GregDeskTop, the dev computer)
+
+- **Dev console** (Greg's build panel): `C:\Users\gregs\source\repos\dev-console\dev-console.bat`, beside the repo.
+  Menu tasks: 01 sideload MSIX, 02 Store MSIX, 03 commit/push TermPointPages, 04/05 licenses, 06/07 WASM, 08 macOS.
+  Its `config.ps1` holds the Store identity values.
+- **Diagnosing a packaged app that won't open:** `IApplicationActivationManager` gives the real HRESULT (a click shows
+  nothing); Process Monitor filtered on the package family name shows what Explorer looked up.
 
 - **C: is nearly full** (~1.8 GB free). Tests only via **`tools/run-tests-lowdisk.sh`** (Git Bash); full suite ~4 min;
   with `TERMPOINT_HARNESS=1` ~20 min (it spawns its own extra testhost processes for `RandomWalkShardTests` — those
