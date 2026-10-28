@@ -26,10 +26,10 @@ enough); **share** = the database on Mekler's share; **both** = GregDeskTop and 
 | M2 Kill the writer | Must | one computer + share | ✅ pass |
 | M3 F1: X and Discard on "Restore?" | Must | one computer | ✅ pass |
 | M4 Two-user contention | Must | both + share | ✅ pass (B1, B2, B3) |
-| M5 Stale-lock takeover | Must | both + share (+ a third computer for (6)) | ◐ (1), (2), (4), (5) pass; (3) and (4) ✗ on waking (A8, twice; D safe); (6) not run; (7) to do |
-| M6 F12: the laptop sleeps mid-save | Must | both + share | ✅ pass (window hit; final check refused; work kept); A8, A11 seen |
-| M7 F4: an editor open across a lost lock | Must | one computer (Python + repo for the helper script) | ✅ pass (nothing written after the loss); found A2–A5 |
-| M8 Mixed 1.2.2 and 1.2.3 | Must | both + share + a sideload 1.2.2 build | ☐ to do (block 5) |
+| M5 Stale-lock takeover | Must | both + share (+ a third computer for (6)) | ◐ (1), (2), (4), (5) pass on 1.2.3.2; (3) and (4) ✗ on waking (A8; D safe) → **(3) re-run on 1.2.3.3**; **(7) and new (8) on 1.2.3.3**; (6) not run |
+| M6 F12: the laptop sleeps mid-save | Must | both + share | ✅ pass on 1.2.3.2 (window hit; final check refused; work kept); A8, A11 seen → **re-run on 1.2.3.3** (item 32 changes the final check) |
+| M7 F4: an editor open across a lost lock | Must | one computer (Python + repo for the helper script) | ✅ pass on 1.2.3.2 (nothing written after the loss); found A2–A5 → **re-run on 1.2.3.3** (the heartbeat now notices) |
+| M8 Mixed 1.2.2 and 1.2.3 | Must | both + share + a sideload 1.2.2 build | ✅ pass (Dir 1, 2, 3, gate; 2026-10-27, on 1.2.3.2 and 1.2.2) |
 | M9 A colleague joins during an edit | Must | both + share | ✅ pass |
 | M10 Exit save on a slow or dead link | Must | one computer + share | ✅ pass (re-run on 1.2.3.2, 2026-10-27) |
 | M11 Restore from backup | Must | (a) one computer + share; (b)–(d) both + share | ✅ pass ((a)–(d)); the restart after (b) left a stuck process (see Open issues) |
@@ -44,11 +44,28 @@ enough); **share** = the database on Mekler's share; **both** = GregDeskTop and 
 | S8 Windows 11 AutoCompleteBox crash test | Should | one computer on Windows 11 | ☐ to do |
 | S9 Cloud-synced folders | Should | one computer with OneDrive and a SharePoint/Teams library | ☐ to do (item 13's SharePoint/Teams detection built 2026-10-26; this is its first check on a real library. macOS, other providers and a File → Open warning moved to 1.2.4) |
 | S10 Section list: recycling test, default OFF | Should | one computer, ~800-section database | ☐ to do |
-| S11 macOS pass | Should | Mac | ☐ to do |
+| S11 macOS pass | Should | Mac | ☐ to do (on 1.2.3.3) |
 | N1 Virtualization ON | Nice | one computer, ~800-section database | ☐ to do |
 | N2 Touch and trackpad | Nice | a touchscreen (GregSurface); Mac | ☐ to do |
-| N3 BugSnag | Nice | one computer | ☐ to do (items 6, 7 built 2026-10-26) |
+| N3 BugSnag | Nice | one computer | ☐ to do (items 6, 7 built 2026-10-26; on 1.2.3.3) |
 | N4 Store update link | Nice | a computer still on 1.2.2 | ☐ after Store certification |
+
+### Plan from here (reset 2026-10-27 for spec item 32)
+
+Item 32 (the A8/A2 fix, `spec_version_1.2.3.md`) changes the lock checks, so the scenarios that met them are re-run
+on a new build, 1.2.3.3. The logs show that no other pass touched the changed code (item 32, "The other passes stand").
+
+| # | Block | Build | Scenarios |
+|---|---|---|---|
+| 1 | ~~Mixed versions~~ done 2026-10-27 | GregDeskTop 1.2.3.2, GregSurface 1.2.2 | M8 ✅ |
+| 2 | Install 1.2.3.3 | — | GregSurface: collect the 1.2.2 log, uninstall 1.2.2, install 1.2.3.3. GregDeskTop: install over 1.2.3.2 |
+| 3 | Re-runs | 1.2.3.3 | M5 (3), M5 (8) (new), M6, M7, M5 (7) |
+| 4 | Remaining Shoulds | any | S2, S3, then S7–S9 (the Windows 10 and 11 computers) |
+| 5 | BugSnag; Mac | 1.2.3.3 | N3; S11 on the Mac |
+| 6 | Optional | any | N1, N2; M5 (6) if a third computer turns up |
+| 7 | After Store certification | — | N4 |
+
+**Musts left before release:** on 1.2.3.3, M5 (3), (7), (8), M6 and M7.
 
 ### Open issues
 
@@ -60,8 +77,11 @@ enough); **share** = the database on Mekler's share; **both** = GregDeskTop and 
       The window title shows only three parts ("v1.2.3"); the log stamps `[v1.2.3.1]`.
 - [x] **Test build 1.2.3.2** (2026-10-27), from 5b4c3bc with `<Version>` 1.2.3.2, on GregDeskTop and GregSurface; the
       log stamps `[v1.2.3.2]`. Still to do: the Mac for S11.
-- [ ] **A2 (found in M7; already on the 1.2.4 list as "9.3c-2b", now with the second effect added; decide whether it
-      stays there): the heartbeat renews whoever's lock is in the file.**
+- [ ] **Test build 1.2.3.3** with spec item 32 (the A8/A2 fix): **built 2026-10-27**, MSIX in
+      `\\mekler\Users\gregs\temp\msix-1.2.3.3\` (and `C:\temp\termpoint-msix-1.2.3.3`). To install on GregDeskTop and
+      GregSurface after M8. The re-runs in "Plan from here" need it.
+- [ ] **A2 (found in M7; moved into 1.2.3 on 2026-10-27, fixed by spec item 32 (c); it was on the 1.2.4 list as
+      "9.3c-2b"): the heartbeat renews whoever's lock is in the file.**
       `WriteLockService.RenewHeartbeatAsync` reads the lock file, sets a new heartbeat and writes it back without
       checking the `SessionGuid`; the ownership check (`heartbeat verify`) runs only after three heartbeat *failures*.
       So after a takeover the old writer goes on acting as writer until its next save, autosave or wake, and until then
@@ -84,7 +104,8 @@ enough); **share** = the database on Mekler's share; **both** = GregDeskTop and 
       ("CheckIntegrity timed out after 5000ms", 14:16:24, 14:20:28, 14:21:10; also M2 on 2026-10-22): the check reads
       every page across the share within one 5 s step limit. Saves at the same lag work. Ordinary home VPNs add far less
       than 220 ms; worth finding the latency at which opening starts to fail (and what the user is told) before deciding.
-- [ ] **A8 (M5 (3), Must; decide: fix in 1.2.3 or accept): after a takeover, the waking computer can stay
+- [ ] **A8 (M5 (3), Must; decided 2026-10-27: fixed in 1.2.3 by spec item 32 (a) + (c) + (d), re-runs on 1.2.3.3):
+      after a takeover, the waking computer can stay
       writer.** GregSurface slept with `ZZZT-302 S` unsaved; GregDeskTop took over and saved; on waking (15:33:53, gap
       483 s) GregSurface's wake check read the lock and found it NOT ours, then re-read 200 ms later "to rule out a
       transient heartbeat-rename overlap", and that re-read hit a sharing violation (almost certainly GregSurface's own
@@ -404,6 +425,7 @@ Dry run of the prompt on one computer: `python tmp/handtest_lock.py stale <copy>
 5. **(5) Reader waits.** GregSurface asleep 4 min, GregDeskTop opens → **Open read-only**. Open GregSurface's lid, let it resume, then exit it cleanly. **Expect:** GregDeskTop's **Take over as writer** appears within ~60 s and works.
 6. **(6) No double takeover (needs a third computer; skip and say so if you have none).** GregSurface asleep 4 min. GregDeskTop opens (prompt, leave it open), then the third computer opens (prompt too). GregDeskTop takes over; then the third computer clicks Take over. **Expect:** it gets "Database Is In Use Again" naming GregDeskTop and is read-only; never two writers (check the lock file's holder and each banner).
 7. **(7) Clock skew.** Turn off auto time sync on GregSurface and set its clock 10 min **behind**; it stays active as writer. GregDeskTop opens. **Expect:** a prompt may show (the clock is only a hint), but Take over ends in "Database Is In Use Again" and GregSurface never loses the lock. Then its clock 10 min **ahead**, hard-killed: GregDeskTop's polling finds the dead lock after ~180 s. **Restore the clock afterwards.**
+8. **(8) Wake with Wi-Fi off (1.2.3.3; spec item 32, Story 2).** GregSurface writer, `ZZZT-308 S` unsaved. Turn its Wi-Fi off, then Start → Sleep. After 4 min GregDeskTop takes over and saves `ZZZT-309 D`. Wake GregSurface and leave Wi-Fi off for about a minute (a "can't reach the database location" notice is expected), then turn Wi-Fi on. **Expect:** within about a minute of Wi-Fi returning, the "taken over" banner; GregSurface read-only; `ZZZT-308 S` kept and offered back at its next write-access open. Log (GregSurface): the heartbeat finding another session's lock, then `heartbeat verify — lock genuinely lost; demoting`. GregDeskTop's lock is never rewritten by GregSurface (sample the lock file: its heartbeat follows GregDeskTop's rhythm only).
 
 **Result:** ☐ pass ☐ fail / notes ((1)…(7); which computer was the third): 2026-10-27, 1.2.3.2 on both,
 `BIOL-TT.db` on Mekler reset from the master; GregSurface (a Surface: no lid, so Start → Sleep; its heartbeat was
@@ -469,8 +491,8 @@ and keep the toolbar's Auto-save ticked.
 1. Open a **course** in the Courses flyout and change a field. Do **not** Apply, and don't press Ctrl+S: inside an
    editor Ctrl+S is that editor's Apply. (A section editor won't do: the reload after the demotion closes it, A3.)
 2. Run `python tmp/handtest_lock.py takeover <path to the copy>` (Alice takes the lock; if it reports a sharing error, run it again).
-3. Wait up to a minute for autosave to find Alice's lock. The heartbeat alone never notices (A2); clicking Save also
-   works, but only with the flyout closed. Expect the banner "Alice on ALICE-PC has taken over editing this database,
+3. Wait up to a minute. On 1.2.3.3 the heartbeat finds Alice's lock by itself (spec item 32 (c)). On 1.2.3.2 only
+   autosave or Save found it (A2), and Save only with the flyout closed. Expect the banner "Alice on ALICE-PC has taken over editing this database,
    so it's read-only for you now. …" and the standing read-only row "Read-only — held by Alice on ALICE-PC since …"
    (that row is every read-only session's status, not a second message). The course editor is still open.
 4. In the still-open editor click **Apply**.
@@ -505,7 +527,26 @@ session" with `newHolder=other` (N3, item 7).
 - Info only: 1.2.2 editing the planted instructor drops `zzFutureField` (1.2.2 has no catch-all).
 - **Afterwards** put 1.2.3 back on GregSurface (bump `<Version>` if the install refuses).
 
-**Result:** ☐ pass ☐ fail / notes (Dir 1, 2, 3, gate):
+**Result:** ☒ pass ☐ fail / notes (Dir 1, 2, 3, gate): 2026-10-27, GregDeskTop 1.2.3.2, GregSurface 1.2.2 (a sideload
+built from 9b4aa6b), `BIOL-TT.db` on Mekler reset from `BIOL-TT-m8-master.db` (the master with `zzFutureField` =
+`keep-me` planted on Avril Alfred; the gate copy is `BIOL-TT-m8-gate.db`). **Dir 1 ☒ pass** (user; copies of D checked
+by Claude): GregDeskTop edited Avril Alfred (last name "Alfred!") and saved `ZZZT-1001 D` (19:03): the planted field
+survived, no `MinimumVersionToWrite` row; GregSurface opened read-only naming GREGDESKTOP, took over after it closed and
+saved `ZZZT-1002 S`; GregDeskTop reopened with no error. D then held both sections, the field still `keep-me`,
+integrity ok. **Dir 2 ☒ pass:** GregSurface (1.2.2) writer, saved `ZZZT-1003 S`; GregDeskTop opened read-only
+(19:10:37 `Read-only mode; lock held by gregs@GREGSURFACE`); GregSurface closed; 19:11:37 `Poll: lock file gone —
+write access available`; GregDeskTop took over (19:11:59 `version gate — stamp none, running 1.2.3.2`) and saved
+`ZZZT 1004 D`. D: both sections, the field still `keep-me`, no `MinimumVersionToWrite` row, integrity ok.
+**Dir 3 ☒ pass:** GregDeskTop writer with `ZZZT-1005 D` applied, unsaved; GregSurface (1.2.2) joined through the wizard
+and opened read-only, but D changed at 19:16:09 (hash `3317413A…` → `2C25D0FF…`, no rows changed: the header rewrite)
+with GregDeskTop's last save at 19:12:32. GregDeskTop's Save was refused (19:18:22 `source hash mismatch … save
+refused`) with the conflict banner; Save a Copy… → `BIOL-TT (recovered-5).db` (19:19:34 `save conflict — the user's
+version was saved as a separate file`). The copy holds `ZZZT-1005 D`; D doesn't; both pass the integrity check.
+**Gate ☒ pass:** every 1.2.3 open of `BIOL-TT.db` logged `version gate — stamp none` and D never got a
+`MinimumVersionToWrite` row; GregDeskTop opened `BIOL-TT-m8-gate.db` read-only (19:21:39 `version gate — stamp 9.9.9`,
+the "needs TermPoint 9.9.9 or later" row, as expected: user); 1.2.2 on GregSurface edited and saved it, ignoring the gate
+(the row stays `9.9.9`). **Info:** 1.2.2 editing the planted instructor dropped `zzFutureField`, as expected (seen on
+the gate copy, which carries the same planted field: Avril renamed "Avril!!", field gone).
 
 ### M9 — A colleague joins while an editor session is active (item 4)
 *GregSurface, GregDeskTop (wizard), Mekler · R2 · ~10 min*
@@ -735,7 +776,7 @@ Open `ms-windows-store://downloadsandupdates`: "Get updates" finds TermPoint 1.2
 
 ---
 
-## Suggested running order
+## Original running order (blocks 0–4 done; superseded by "Plan from here" at the top)
 
 Each block reuses one setup. Times include resets and the 4-minute sleeps.
 

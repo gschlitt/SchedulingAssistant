@@ -394,6 +394,129 @@ public sealed class SessionLifecycleLeaveTests : SessionLifecycleTestBase
         AssertScriptConsumed();
     }
 
+    // ── Spec item 32, design risk 3: an exit save refused at the final check as "lock lost" ──────────
+
+    /// <summary>
+    /// Plays "Alice takes the lock over while Bob's exit save is uploading": installs a crash-point hook that, at
+    /// <c>Save.AfterTmpVerify</c> (D.tmp uploaded and verified, the final check not yet made), overwrites the lock
+    /// file with another session's. The hook is static state: the caller must reset it
+    /// (<c>CrashPoints.Hook = null</c>) when the test ends.
+    /// </summary>
+    /// <param name="db">D; its lock file is overwritten.</param>
+    /// <param name="foreignLock">
+    /// Called with the exact text of the foreign lock file once it has been written, so the test can prove nothing
+    /// changed that file afterwards.
+    /// </param>
+    private static void TakeTheLockOverWhenTheUploadIsVerified(string db, Action<string> foreignLock)
+        => CrashPoints.Hook = name =>
+        {
+            if (name != "Save.AfterTmpVerify") return;
+            WriteExternalFreshLock(db);
+            foreignLock(File.ReadAllText(LockOf(db)));
+        };
+
+    /// <summary>
+    /// The close of a writer whose lock was taken over during the exit save, with the lost-lock event handled the way
+    /// the app handles it: posted to the UI thread, so its handler runs when the closing teardown first yields — here,
+    /// while the "Changes Not Saved" message is up. The final check refuses the save as LockLost; the close still
+    /// completes, the user sees ONE message, and nothing is lost: D is byte-identical, D' and its dirty marker are
+    /// kept with the edit in them, D.tmp is left for the new holder (the save must not touch the share without the
+    /// lock), and the other session's lock file is exactly as it was written (our release must not delete it). The
+    /// guard is given back and the shutdown checkpoint is logged.
+    /// </summary>
+    [Fact]
+    public async Task Close_TheLockIsTakenOverDuringTheExitSave_KeepsTheWork_ShowsOneMessage_AndCloses_Item32()
+    {
+        var db = NewDb();
+        await OpenCleanAsync(db);
+        var working = _checkout.WorkingPath;
+        _host.Edit("edit-at-close");
+        var dBefore = DbFileTestHelpers.HashOf(db);
+
+        var reasons = new List<WriteLockLostReason>();
+        _checkout.WriteLockLost += reasons.Add;
+        var demotions = new List<Task>();
+        string? foreignLock = null;
+        TakeTheLockOverWhenTheUploadIsVerified(db, text => foreignLock = text);
+        ResetRecords();
+        _prompts.ExpectMessage("Changes Not Saved", ChangesNotSavedAtClose, before: () =>
+        {
+            // The UI thread is free while the message is up: the posted lost-lock handler runs now.
+            foreach (var reason in reasons) demotions.Add(_lifecycle.HandleWriteLockLostAsync(reason));
+        });
+
+        try { await _lifecycle.TeardownForCloseAsync(); }
+        finally { CrashPoints.Hook = null; }
+        await Task.WhenAll(demotions);
+        SettleLocks();
+
+        Assert.Equal(new[] { WriteLockLostReason.TakenOver }, reasons);
+        AssertPrompts("Message:Changes Not Saved");
+        AssertScriptConsumed();
+        AssertInOrder(_trace,
+            "host:StopBackupSession",
+            "host:CloseSecondaryWindows",
+            "host:DisposeServices(built=True, connection=True)",
+            "prompt:Message:Changes Not Saved");
+        Assert.DoesNotContain("checkout:SaveCompleted", _trace);
+        Assert.Equal(dBefore, DbFileTestHelpers.HashOf(db));
+        Assert.True(File.Exists(working), "D' must be kept");
+        Assert.True(File.Exists(MarkerOf(working)), "the dirty marker must be kept");
+        Assert.Equal("edit-at-close", NewestValue(working));
+        Assert.True(File.Exists(db + ".tmp"), "without the lock the exit save must leave D.tmp alone");
+        Assert.Equal(foreignLock, File.ReadAllText(LockOf(db)));
+        Assert.False(_guard.IsHeld(db));
+        Assert.Contains(CheckpointLine, _logger.Infos);
+        Assert.Empty(_logger.Errors);
+    }
+
+    /// <summary>
+    /// The same close, with the lost-lock handler running AT ONCE, concurrently with the teardown (as it would if
+    /// the event were handled on the thread that raises it): the demotion starts inside the exit save and its
+    /// second half (the read-only snapshot, the reconnection, the reload) finishes while, or after, the teardown
+    /// disposes the services. Only what must hold whatever the interleaving is asserted: the close completes without
+    /// an error, at most the one "Changes Not Saved" message is shown, D is byte-identical, D' and its marker are
+    /// kept (the demotion preserves them because it reads the marker before it moves on; the teardown only ever
+    /// deletes the working path it holds), D.tmp is left, and the other session's lock file is untouched.
+    /// </summary>
+    [Fact]
+    public async Task Close_TheLockIsTakenOverDuringTheExitSave_WithTheDemotionRunningAtOnce_LosesNothing_Item32()
+    {
+        var db = NewDb();
+        await OpenCleanAsync(db);
+        var working = _checkout.WorkingPath;
+        _host.Edit("edit-at-close");
+        var dBefore = DbFileTestHelpers.HashOf(db);
+
+        var demotions = new List<Task>();
+        _checkout.WriteLockLost += reason => { lock (demotions) demotions.Add(_lifecycle.HandleWriteLockLostAsync(reason)); };
+        string? foreignLock = null;
+        TakeTheLockOverWhenTheUploadIsVerified(db, text => foreignLock = text);
+        ResetRecords();
+        _prompts.ExpectMessage("Changes Not Saved", ChangesNotSavedAtClose);
+
+        try { await _lifecycle.TeardownForCloseAsync(); }
+        finally { CrashPoints.Hook = null; }
+        Task[] started;
+        lock (demotions) started = demotions.ToArray();
+        await Task.WhenAll(started);   // the demotion must finish without throwing
+        SettleLocks();
+
+        Assert.Single(started);
+        Assert.Empty(_prompts.Violations);
+        Assert.True(_prompts.Calls.Count <= 1, "at most the one 'Changes Not Saved' message");
+        Assert.All(_prompts.Calls, call => Assert.Equal("Changes Not Saved", call.Title));
+        Assert.Equal(dBefore, DbFileTestHelpers.HashOf(db));
+        Assert.True(File.Exists(working), "D' must be kept");
+        Assert.True(File.Exists(MarkerOf(working)), "the dirty marker must be kept");
+        Assert.Equal("edit-at-close", NewestValue(working));
+        Assert.True(File.Exists(db + ".tmp"));
+        Assert.Equal(foreignLock, File.ReadAllText(LockOf(db)));
+        Assert.False(_guard.IsHeld(db));
+        Assert.Contains(CheckpointLine, _logger.Infos);
+        Assert.Empty(_logger.Errors);
+    }
+
     // ═════════════════════════════════════════════════════════════════════════
     // RESTORE — RestoreFromBackupAsync
     // ═════════════════════════════════════════════════════════════════════════

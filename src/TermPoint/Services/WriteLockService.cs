@@ -170,9 +170,10 @@ public sealed class WriteLockService : IDisposable
     private Timer? _heartbeatTimer;
     /// <summary>
     /// Running count of consecutive heartbeat renewal failures. Reset to zero on
-    /// any successful renewal. When it reaches <see cref="HeartbeatFailureThreshold"/>,
-    /// <see cref="HeartbeatFailed"/> is raised and the counter is reset so the event
-    /// fires at most once per threshold-window.
+    /// any successful renewal, and on a beat that finds the lock file naming another session (which raises
+    /// <see cref="HeartbeatFailed"/> at once instead of counting). When it reaches
+    /// <see cref="HeartbeatFailureThreshold"/>, <see cref="HeartbeatFailed"/> is raised and the counter is
+    /// reset so the event fires at most once per threshold-window.
     /// </summary>
     private int _heartbeatConsecutiveFailures;
     private Timer? _pollTimer;
@@ -351,16 +352,20 @@ public sealed class WriteLockService : IDisposable
     public event Action? WakeDetected;
 
     /// <summary>
-    /// Raised on the heartbeat timer thread (NOT the UI thread) after
-    /// <see cref="HeartbeatFailureThreshold"/> consecutive heartbeat renewal failures.
-    /// Signals that the lock file is likely stale from the perspective of other
-    /// readers, who may attempt a takeover. Subscribers should route this through
+    /// Raised on the heartbeat timer thread (NOT the UI thread) when the heartbeat wants the ownership of the
+    /// lock checked: either after <see cref="HeartbeatFailureThreshold"/> consecutive heartbeat renewal failures,
+    /// or AT ONCE (on the first beat that sees it) when the lock file names another session.
+    /// The first signals that the lock file is likely stale from the perspective of other
+    /// readers, who may attempt a takeover; the second that another computer already took the lock over (the
+    /// heartbeat then writes nothing: see <see cref="RenewHeartbeatAsync"/>). Subscribers should route this through
     /// the same lock-loss handling path used for save-time and wake-check failures.
-    /// (F11, data-integrity-agenda 2026-05-04.)
+    /// (F11, data-integrity-agenda 2026-05-04; spec item 32, change (c), 2026-10-27.)
     ///
-    /// <para>Fired at most once per threshold-window: the failure counter is reset to
+    /// <para>For failures it fires at most once per threshold-window: the failure counter is reset to
     /// zero after the event, so a further uninterrupted run of failures triggers the
-    /// event again after another <see cref="HeartbeatFailureThreshold"/> beats.</para>
+    /// event again after another <see cref="HeartbeatFailureThreshold"/> beats. For a lock that names another
+    /// session it fires on every beat that still finds it there, until the session stops heartbeating (the
+    /// subscriber's lock-loss handling releases the lock, which stops the timer).</para>
     ///
     /// <para>Not fired on the UI thread — handlers must dispatch to the UI thread
     /// themselves if they need to update observable state.</para>
@@ -653,7 +658,8 @@ public sealed class WriteLockService : IDisposable
     /// milliseconds apart; there is no atomic compare-and-delete on a file share). A holder that renews its
     /// heartbeat, or a machine that takes the lock, inside that gap would still have its lock deleted.
     /// That gap is milliseconds, where the window before this check was the whole time the prompt was
-    /// open. The holder would then meet the ordinary lock-loss path (wake check, heartbeat verification
+    /// open. The holder would then meet the ordinary lock-loss path (wake check, its next heartbeat — which
+    /// finds another session's name in the lock, writes nothing and asks for the ownership check at once —
     /// or its next save finds the lock no longer ours and demotes the session, keeping its unsaved
     /// changes for recovery), exactly as for any takeover.</para>
     ///
@@ -1294,12 +1300,31 @@ public sealed class WriteLockService : IDisposable
 
     /// <summary>
     /// Rewrites the lock file with a fresh heartbeat timestamp, preserving the
-    /// original <see cref="LockFileData.Acquired"/> value. Uses an atomic
-    /// write-to-temp-then-rename pattern so readers never see a partial file.
-    /// Fired by the heartbeat timer (fire-and-forget); non-throwing — logs and
+    /// original <see cref="LockFileData.Acquired"/> value, but ONLY when the lock file names this session
+    /// (spec item 32, change (c)). Uses an atomic write-to-temp-then-rename pattern so readers never see a
+    /// partial file. Fired by the heartbeat timer (fire-and-forget); non-throwing — logs and
     /// returns on any error. All share I/O is deadline-bounded via
     /// <see cref="NetworkFileOps"/> so the gate is never held longer than
     /// ~3 deadlines even against a black-holed share.
+    ///
+    /// <para><b>What the heartbeat does with what it reads.</b> It reads the lock file before writing, and the
+    /// text decides:</para>
+    /// <list type="bullet">
+    ///   <item><b>Names this session</b> (<see cref="LockFileData.SessionGuid"/> equals <see cref="SessionGuid"/>)
+    ///         — renewed exactly as always: the fresh time is written and the failure counter reset.</item>
+    ///   <item><b>Names another session</b> (a non-empty, different <c>SessionGuid</c>) — another computer took the
+    ///         lock over. NOTHING is written: freshening that file would hold a stranger's lock up as live (the
+    ///         takeover would never go stale, and a third computer could not take it over after the stranger
+    ///         crashed). The failure counter is reset and <see cref="HeartbeatFailed"/> is raised at once, so
+    ///         the ownership check (<see cref="CheckoutService"/> routes it to the same lock-loss path as a
+    ///         failed save) runs now instead of after <see cref="HeartbeatFailureThreshold"/> failed beats or at
+    ///         the next save.</item>
+    ///   <item><b>Names no session</b> (the JSON literal <c>null</c>, or an empty <c>SessionGuid</c>) — nothing
+    ///         is written either, and the beat counts as a FAILED renewal (the same counter as a timeout, so
+    ///         <see cref="HeartbeatFailed"/> follows only after <see cref="HeartbeatFailureThreshold"/> in a row).
+    ///         Writing it back as a new, empty lock would invent a holder out of a damaged file.</item>
+    ///   <item><b>Unparseable text</b> — an exception, counted as a failed renewal, as before.</item>
+    /// </list>
     /// </summary>
     private async Task RenewHeartbeatAsync()
     {
@@ -1320,26 +1345,42 @@ public sealed class WriteLockService : IDisposable
             if (_lockFilePath is null || !IsWriter) return;
             var path = _lockFilePath;
             bool renewed = false;
+            bool namesOtherSession = false;   // the lock file names another session: write nothing, ask for the ownership check
+            bool namesNoSession = false;      // the lock file names no session at all: write nothing, count a failure
             try
             {
-                // Read the existing data to preserve the original Acquired timestamp,
-                // then update the heartbeat.
+                // Read the existing data to see whose lock it is and to preserve the original
+                // Acquired timestamp, then update the heartbeat.
                 var (readCompleted, json) = await NetworkFileOps.ReadAllTextAsync(path).ConfigureAwait(false);
                 if (readCompleted)
                 {
-                    var data = ParseLockFile(json) ?? new LockFileData();
-                    data.Heartbeat = _time.GetUtcNow().UtcDateTime;
+                    var data = ParseLockFile(json);   // JsonException on unparseable text: counted as a failure below
 
-                    // Write to a temp file first, then atomically replace. This ensures
-                    // a reader never observes a partially-written JSON file.
-                    var tmp = path + ".tmp";
-                    var tmpWritten = await NetworkFileOps.WriteAllTextAsync(tmp, JsonSerializer.Serialize(data)).ConfigureAwait(false);
-                    if (tmpWritten) CrashPoints.Hit("Heartbeat.AfterTmpWritten");
-                    renewed = tmpWritten
-                           && await NetworkFileOps.MoveAsync(tmp, path).ConfigureAwait(false);
+                    if (data is null || string.IsNullOrEmpty(data.SessionGuid))
+                    {
+                        namesNoSession = true;
+                    }
+                    else if (data.SessionGuid != SessionGuid)
+                    {
+                        namesOtherSession = true;
+                    }
+                    else
+                    {
+                        data.Heartbeat = _time.GetUtcNow().UtcDateTime;
+
+                        // Write to a temp file first, then atomically replace. This ensures
+                        // a reader never observes a partially-written JSON file.
+                        var tmp = path + ".tmp";
+                        var tmpWritten = await NetworkFileOps.WriteAllTextAsync(tmp, JsonSerializer.Serialize(data)).ConfigureAwait(false);
+                        if (tmpWritten) CrashPoints.Hit("Heartbeat.AfterTmpWritten");
+                        renewed = tmpWritten
+                               && await NetworkFileOps.MoveAsync(tmp, path).ConfigureAwait(false);
+                    }
                 }
 
-                if (!renewed)
+                if (namesNoSession)
+                    App.Logger.LogInfo("[WriteLockService] Heartbeat: the lock file names no session — not renewing.");
+                else if (!renewed && !namesOtherSession)
                     App.Logger.LogInfo("[WriteLockService] Heartbeat renewal failed: network operation timed out.");
             }
             catch (Exception ex)
@@ -1347,7 +1388,18 @@ public sealed class WriteLockService : IDisposable
                 App.Logger.LogInfo($"[WriteLockService] Heartbeat renewal failed: {ex.Message}");
             }
 
-            if (renewed)
+            if (namesOtherSession)
+            {
+                // Another session holds the lock: this beat must not freshen it. Not a failed renewal
+                // (the counter is reset, so a later run of real failures counts from zero), but the
+                // ownership check is wanted NOW, so the event is raised (below, outside the gate).
+                _heartbeatConsecutiveFailures = 0;
+                App.Logger.LogInfo(
+                    "[WriteLockService] Heartbeat: the lock file names another session — not renewing; " +
+                    "asking for an ownership check.");
+                raiseFailed = true;
+            }
+            else if (renewed)
             {
                 // Successful renewal: reset the consecutive-failure counter. (F11.)
                 _heartbeatConsecutiveFailures = 0;

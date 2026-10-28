@@ -44,6 +44,7 @@ will be verified.
 | 29 | F5: skip a save when nothing changed | Data integrity | **Moved to 1.2.4** (Greg, 2026-10-26, after the design and its risk review: too much risk in the save code for what is mainly a performance gain and a better chance of restoring after a crash). The probe-backed design is kept in section 29 for 1.2.4 |
 | 30 | Backup cleanup on a dead share: give the partial-backup delete a deadline | Responsiveness | **Done 2026-10-26**: the delete goes through `NetworkFileOps.DeleteAsync`; 2 tests. See section 30 |
 | 31 | Grid Tags filter: match all or any of the checked tags | UX / filter | Added 2026-10-26 (Greg: "one last thing to cram into 1.2.3"). **Done**: built 2026-10-26, a "Show sections with: all / any of the checked tags" choice at the top of the Tags popup; grid filter only. Hand-checked 2026-10-27 (font size matched to the tag list). See section 31 |
+| 32 | A takeover noticed late: the wake check, the heartbeat and the final check's `D.tmp` (field-test findings A8, A2) | Data integrity / UX | Added 2026-10-27 (Greg: fix in 1.2.3 with (a) + (c) + (d)). **Built 2026-10-27** (suite and harness green); field re-runs on 1.2.3.3 to do. See section 32 |
 
 Item numbers are for reference only. The implementation order is below.
 
@@ -3658,6 +3659,161 @@ checkboxes' boxes). Greg confirmed it looks right (2026-10-27): **item 31 hand-c
 **Hand check (Greg).** Check two tags in the Tags filter: the grid shows only sections with both; choose "any": the
 toggle reads "Tags (any of 2)" and the grid adds sections with either one; the section list highlights the same
 sections; Clear: both tags unchecked and "all" chosen again.
+
+---
+
+## 32 — A takeover noticed late (field-test findings A8, A2; added 2026-10-27)
+
+**Status: built 2026-10-27; field re-runs on 1.2.3.3 to do.** Greg chose (a) + (c) + (d) on 2026-10-27 and approved
+the design, with both "Recommended" choices, the same day.
+
+**Built (2026-10-27; Sonnet coded, Opus reviewed).** `CheckoutService`: `VerifyLockIsOursOnceAtAsync` also reports
+"names another session", and `VerifyLockIsOursAtAsync` skips the re-read then (a); `CheckLockAndSourceAsync` returns
+`LockConfirmed`, and the final check deletes D.tmp only when it is true (d). `WriteLockService.RenewHeartbeatAsync`
+renews only a lock naming this session (c). New tests: four for (a) (including the A8 repro on a fake wake), five for
+(c), four for (d), and the exit tests (`ReleaseAsync_ExitSaveRefusedAtTheFinalCheck_…`, two `Close_TheLockIsTakenOver…`
+in `SessionLifecycleLeaveTests`); the foreign-lock tests fail against the old code. No existing test changed except
+comments. The harness's "heartbeat ticked" step now waits for the ownership check the tick starts (`Computer.cs`), as
+the wake step already did: without that the crash sweep's planned cuts in the demotion fell outside the step. Both
+compile checks pass; full suite with the harness: 4,049 passed, then (after the harness fix) the harness 84 passed,
+0 failed. **Exit tests:** the work is kept, one message, the close completes; the demotion's tail can run after the
+teardown, and in a rare ordering the message may not show (no data risk; pre-existing; on the 1.2.4 list).
+
+**Cast.** Bob works on a laptop that sleeps (GregSurface in the field tests). Alice works on the desktop
+(GregDeskTop). Carol is a third colleague. The names match the test harness: Bob loses the lock, Alice takes it over.
+**The lock** is the small file on the share that says who is editing. Every minute the editor's TermPoint **beats**:
+it rewrites that file with a fresh time, so others can see the editor is still there.
+
+### Story 1 — Bob wakes up after Alice took over (A8; fixed by (a))
+
+**Today.** Bob adds a section and closes his lid without saving. Four minutes later Alice opens the database, is told
+Bob's lock is inactive, takes over and saves. Bob opens his lid. His TermPoint reads the lock: it names Alice. To be
+sure, it reads again 200 ms later, but at that very moment Bob's own heartbeat is rewriting the file, so the second
+read bumps into it and fails. TermPoint takes the failure for a network blip and carries on as if Bob were still the
+editor. No banner. Bob keeps working for up to 10 minutes, until autosave reads the lock, sees Alice, refuses and shows
+the banner. His work is kept and nothing reaches the database, but for those minutes he believed he was editing.
+Seen 3 times out of 3 (M5 (3), M5 (4), M6).
+
+**With (a).** The first read names Alice, and that settles it: no second read. Seconds after waking, Bob sees "Alice
+on GREGDESKTOP has taken over editing…", and his change is kept for later.
+
+**Why one read is enough.** Alice's name can only get into the lock if Alice's computer put it there by taking over.
+Bob's TermPoint never invents a name. Its heartbeat does copy: it reads the lock, changes only the time and writes the
+rest back unchanged, to keep the original "editing since" time. Normally that copy is Bob's own lock. After a takeover
+it is Alice's lock, and that is the Story 2 bug that (c) removes. Either way, Bob's computer can only write Alice's
+name if her name was already there. So a lock that names Alice means Alice really took over; it can't be a hiccup on
+Bob's side. The second read stays for what it was meant for: the file missing or unreadable for a moment.
+
+### Story 2 — Bob wakes up with no Wi-Fi (A8 again, and A2; fixed by (c))
+
+**Today.** Bob opens his lid and Wi-Fi takes 30 seconds to come back. His wake check can't reach the share at all,
+calls it a blip and gives up. (a) doesn't help here, because nothing was read. Wi-Fi returns, and every minute Bob's
+heartbeat freshens the lock without looking at whose it is. It is Alice's. Nothing notices until Bob's next save, up
+to 10 minutes later.
+
+**And worse (A2).** Alice's computer crashes. Carol opens the database. Three minutes after Alice's lock stops beating,
+Carol should be offered the takeover. But Bob's heartbeat keeps Alice's lock fresh, so Carol stays read-only until Bob
+closes TermPoint.
+
+**With (c).** The heartbeat reads the name before it freshens the lock.
+- **The lock names Bob:** freshen it, as today.
+- **It names Alice:** write nothing, and run the ownership check at once (the check that today runs only after three
+  failed heartbeats). The check reads Alice's name, and Bob sees the banner.
+
+So Bob sees the banner within a minute of Wi-Fi coming back. Alice's crashed lock goes stale on schedule, and Carol gets
+her takeover offer.
+
+**Story 1 again, when the *first* read bumps.** If Bob's wake check bumps on its first read, it still calls it a blip
+and gives up. (a) can't help, because nothing was read. (c) covers it twice over:
+- **The bump goes away.** In the field the bump came from Bob's own heartbeat rewriting the lock. With (c) that
+  heartbeat sees Alice's name and writes nothing, so there is nothing of Bob's to bump into.
+- **The heartbeat catches it anyway.** Whatever the wake check bumped into (Alice's heartbeat, or Wi-Fi dropping),
+  Bob's heartbeat reads the lock itself, sees Alice and starts the check. The banner comes within seconds of waking,
+  because the overdue heartbeat fires on waking, or at most a minute later.
+
+### Story 3 — Bob's laptop sleeps during his exit save (M6; fixed by (a) and (d))
+
+**Today.** Bob clicks X. TermPoint uploads his changes to the share as `BIOL-TT.db.tmp`, and Bob shuts the lid just after
+the upload finishes, before TermPoint swaps it in. Alice takes over and saves. Her save uploads under the same name,
+`BIOL-TT.db.tmp`. Bob opens his lid. Before swapping in his upload, his TermPoint checks the lock one last time: the
+first read names Alice, the second read bumps into something, so it calls it a blip. It doesn't swap, which is right.
+But because it thinks the lock is still Bob's, it tidies up by deleting `BIOL-TT.db.tmp`. If Alice's save was uploading
+at that moment, Bob's computer has just deleted her upload: her save fails ("TermPoint couldn't save…", her work kept).
+Bob's computer changed a file on the share while Alice held the lock.
+
+**With (a).** The first read names Alice, so the answer is "lock lost": TermPoint leaves `BIOL-TT.db.tmp` alone, tells
+Bob his changes weren't saved but are kept (the same message as today), and closes.
+
+**With (d).** Even when Bob's last check truly can't reach the share, TermPoint deletes the upload only if it has just
+confirmed the lock is Bob's. Otherwise it leaves the upload. A leftover upload is harmless:
+- the next save overwrites it;
+- the next person to open the database clears it;
+- a save only ever swaps in the upload it has just made and checked, so a leftover can never become the database.
+
+### What could go wrong with the fix
+
+- **Bob switched to read-only when he still holds the lock.** That would need his lock to name someone else while he
+  still holds it, and per Story 1 only a real takeover writes another name. One edge exists today and stays: Alice's
+  takeover and Bob's heartbeat land in the same few milliseconds and Alice ends up holding the lock. Bob is then
+  switched to read-only with his work kept, which is already the intended outcome.
+- **A misleading notice for up to a minute.** In Story 2, Bob's heartbeat sees Alice and starts the check. If the
+  check's read happens to bump into Alice's own heartbeat (once a minute, for a few milliseconds), Bob sees "can't
+  reach the database location" until his next heartbeat repeats the check and shows the right banner. Rare and
+  self-correcting. A separate path just for this would avoid it, at the cost of a second way into the lock-lost code.
+  **Recommended: accept it.**
+- **Story 3's exit path has been checked by tests and the harness, never in the field.** When Bob's last check says
+  "lock lost" during his exit, TermPoint starts switching him to read-only while the window is closing. The brief asks
+  for a test that his work is kept, he sees one message, and the window closes. If that test shows a clash, the work
+  stops and comes back to Greg. The M6 re-run is its first field check.
+- **The heartbeat runs every minute for everyone.** The only new thing it does is *not* write. The beat on Bob's own
+  lock is unchanged. The harness runs as well as the suite.
+- **Mixed versions.** Bob on 1.2.2 still freshens Alice's lock, as today. Nothing new.
+
+### Not fixed now (1.2.4)
+
+Bob's laptop sleeps **during** the upload instead of after it. Alice takes over and starts her own upload under the same
+name. Bob wakes, his upload fails, and his TermPoint deletes `BIOL-TT.db.tmp`, which may be Alice's. This has the same
+root as Story 3: everyone's upload has the same name. Giving each person's upload its own name (already on the 1.2.4
+list, A11) fixes every such delete at once. Patching each one now would add a 5-second network check to every failure
+path. **Recommended: leave for 1.2.4.**
+
+### The four rules, by story
+
+- **R1, unchanged.** No change touches the upload, the check of the upload, or the swap.
+- **R2, stronger.** Story 1: Bob stops acting as editor at once. Story 2: Bob's heartbeat stops writing Alice's lock.
+  Story 3: Bob's computer stops deleting a file while Alice holds the lock. No new writes.
+- **R3, unchanged.** Switching Bob to read-only keeps his unsaved work, as today (seen in M5 (3) and M7).
+- **R4, the point of the fix.** Bob sees the existing "taken over" banner within about a minute instead of at his next
+  save. No new messages.
+- **`MinimumVersionToWrite`: No.** Nothing is saved differently.
+
+### For the briefs
+
+| Change | Where | What | New tests |
+|---|---|---|---|
+| (a) | `CheckoutService.VerifyLockIsOursOnceAtAsync`, `VerifyLockIsOursAtAsync` | The single check also reports "names another session" (a non-empty `SessionGuid` that isn't ours), whatever `recordNewHolder` is. Then return NotOurs without the 200 ms re-read. Missing, unreadable or no session: re-read as today | Foreign lock → NotOurs, no second read (fault seam); missing, then a contended re-read → Unreachable; `recordNewHolder: false` → NotOurs; Story 1 (wake check, foreign lock, contended second read) → demoted |
+| (c) | `WriteLockService.RenewHeartbeatAsync` | Renew only a lock that names us. Foreign: write nothing, reset the failure counter, raise `HeartbeatFailed` now (`OnHeartbeatFailed` checks, then demotes). No session (`null`, no `SessionGuid`): write nothing, count as a failure. Update the event's doc | Foreign → file byte-identical, event on the first tick, `WriteLockLost` follows; ours → renewed; no session → not written, event after three |
+| (d) | `CheckLockAndSourceAsync` and the final check in `SaveAsync` | Return a third value, "lock confirmed" (Ours, or re-created after a removal). Delete D.tmp at the final check only when confirmed. Three log wordings: discarded / lock lost, left / couldn't check, left | Lock unreachable at the final check → D.tmp stays, `CopyError`; LockLost → stays; D changed → deleted |
+
+- **Plus** the exit-save test from "What could go wrong", third bullet.
+- **Order:** three briefs, (a) → (c) → (d), one after another (they share a file). After each: both compile checks and
+  the scoped tests. After (d): the full suite and the harness (`TERMPOINT_HARNESS=1`). Any existing test that changes on
+  purpose is named in the report. `HeartbeatFailed_WhenLockGenuinelyTaken_Demotes` keeps passing; its comment is
+  updated.
+- **Field re-runs on 1.2.3.3:**
+  - Story 1 (M5 (3), frozen process): the banner within about a minute of resuming.
+  - Story 3 (M6): the log says "lock lost, D.tmp left for the new holder's cleanup".
+  - Story 2 (a real sleep with Wi-Fi off): the banner within a minute of the link returning.
+  - M7 step 3: the heartbeat now notices the script's takeover by itself.
+  - M5 (7), N3 and S11's takeover part on the new build (they exercise the heartbeat and lock loss).
+- **The other passes stand.** The changed code acts only when a check finds someone else's name in the lock, when a
+  heartbeat finds a lock that doesn't name us, or when the final check can't confirm the lock. Both computers' logs from
+  2026-10-27 show these only in M7 (12:15–12:48), M5 (3) (15:33, 15:41), M5 (4) (16:05, 16:11) and M6 (16:41), all
+  re-run above (M5 (4)'s first half is M5 (3); its restore half doesn't touch the changed code). M8 can run on 1.2.3.2
+  and count: it has no takeover while the old writer keeps running, and Dir 3's refusal comes after the lock is
+  confirmed.
+- **Docs when built:** the field-test doc's A8 and A2 entries; `spec_version_1.2.4.md` row 9.3c-2b (the heartbeat part
+  done); M7 step 3; `ForceAcquire`'s residual-race comment, which (c) makes true.
 
 ---
 

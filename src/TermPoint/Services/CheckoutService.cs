@@ -110,14 +110,16 @@ namespace TermPoint.Services;
 ///         UI thread froze the window) and, if we no longer own it, fires the
 ///         same <see cref="HandleLockLossAsync"/> path. Triggers: another
 ///         user took over via stale-lock prompt while this machine slept.</item>
-///   <item><b>Heartbeat renewal failure.</b> After <see cref="WriteLockService.HeartbeatFailureThreshold"/>
-///         consecutive failures, <see cref="WriteLockService.HeartbeatFailed"/> fires.
+///   <item><b>Heartbeat renewal failure, or a lock that names another session.</b> After
+///         <see cref="WriteLockService.HeartbeatFailureThreshold"/> consecutive failures — or at once, on the
+///         first beat that finds the lock file naming another session (the heartbeat then writes nothing) —
+///         <see cref="WriteLockService.HeartbeatFailed"/> fires.
 ///         <see cref="OnHeartbeatFailed"/> calls <see cref="VerifyLockIsOursAsync"/> to
 ///         distinguish "share unreachable" (keep writer state, show transient warning)
 ///         from "lock genuinely taken" (demote via <see cref="HandleLockLossAsync"/>).
 ///         This matches the save-time and wake-from-sleep paths, which already make
 ///         this distinction, and prevents false-positive demotions during transient
-///         network interruptions. (F11, 2026-05-04; W1, 2026-06-24.)</item>
+///         network interruptions. (F11, 2026-05-04; W1, 2026-06-24; spec item 32, 2026-10-27.)</item>
 /// </list>
 /// </summary>
 public sealed class CheckoutService : IDisposable
@@ -1730,7 +1732,7 @@ public sealed class CheckoutService : IDisposable
         // ── Steps 1–2: the lock is still ours, and D is still the version we last saw ──
         // The same two checks run again, as the final check, immediately before the rename (step 4b).
         // The stamp of D taken here is what that final check compares against (the cheap path).
-        var (firstRefusal, sourceStamp) = await CheckLockAndSourceAsync(
+        var (firstRefusal, sourceStamp, _) = await CheckLockAndSourceAsync(
             isAutoSave, isFinalCheck: false, stampAtFirstCheck: null);
         if (firstRefusal is { } refused)
             return refused;
@@ -1880,24 +1882,33 @@ public sealed class CheckoutService : IDisposable
         // read and one stat of D (the stamp from the first check is compared; D is hashed again only if
         // the stamp changed). If either refuses, D is untouched: return the refusal; the working copy D'
         // and its dirty marker stay, exactly as for a refusal at the start, so nothing the user typed is
-        // lost. D.tmp is deleted only while the lock is still ours (rule 2: no write to the share without
-        // the lock). D.tmp has one name for every writer, so once the lock has changed hands the file may
-        // be the new holder's save in progress; ours is left for the next lock holder, whose checkout
-        // deletes an orphaned D.tmp (CleanupOrphanedTmpAsync) and whose save overwrites it.
+        // lost. D.tmp is deleted only when THIS check confirmed the lock is ours (rule 2: no write to the
+        // share without the lock; spec item 32, change (d)). D.tmp has one name for every writer, so once
+        // the lock has changed hands the file may be the new holder's save in progress, and when the check
+        // could not tell whose lock it is (the share did not answer) the file may be anyone's. In both
+        // cases ours is left for the next lock holder, whose checkout deletes an orphaned D.tmp
+        // (CleanupOrphanedTmpAsync) and whose save overwrites it; a leftover can never become D, because a
+        // save only renames the D.tmp it has just written and verified. A refusal AFTER the lock was
+        // confirmed (D changed, or D could not be read) still discards D.tmp: the lock was ours a moment ago.
         //
         // A gap of microseconds between the last check and the rename remains: another user's rename can
         // land in it. It cannot be closed on a plain file share, which has no compare-and-swap and no
         // server to arbitrate; the lock and the final check make it a matter of microseconds instead of
         // the length of the upload, and it is accepted.
-        var (finalRefusal, _) = await CheckLockAndSourceAsync(
+        var (finalRefusal, _, lockConfirmed) = await CheckLockAndSourceAsync(
             isAutoSave, isFinalCheck: true, stampAtFirstCheck: sourceStamp);
         if (finalRefusal is { } refusedAtFinalCheck)
         {
-            var lockStillOurs = refusedAtFinalCheck != SaveOutcome.LockLost;
+            // Three cases, three log wordings: the lock was confirmed (discard D.tmp), the lock was found to be
+            // someone else's (leave it for their cleanup), or the check could not be made (leave it in place).
             _logger.LogInfo("CheckoutService: the final check before the rename refused the save — " +
-                            (lockStillOurs ? "D.tmp discarded." : "lock lost, D.tmp left for the new holder's cleanup."));
+                            (lockConfirmed
+                                ? "D.tmp discarded."
+                                : refusedAtFinalCheck == SaveOutcome.LockLost
+                                    ? "lock lost, D.tmp left for the new holder's cleanup."
+                                    : "the lock could not be checked, D.tmp left in place."));
             _logger.LogBreadcrumb("Save: refused at final check", new() { ["outcome"] = refusedAtFinalCheck.ToString() });
-            if (lockStillOurs)
+            if (lockConfirmed)
                 await NetworkFileOps.DeleteAsync(tmpPath);
             return refusedAtFinalCheck;
         }
@@ -2033,7 +2044,8 @@ public sealed class CheckoutService : IDisposable
     /// The two checks a save makes before it may write to the shared database D, run at the start of the save
     /// (steps 1–2) and again, as the final check, immediately before the rename onto D (step 4b, F12).
     ///
-    /// <para><b>Step 1 — the lock is still ours.</b> <see cref="VerifyLockIsOursAsync"/> with its one retry. A
+    /// <para><b>Step 1 — the lock is still ours.</b> <see cref="VerifyLockIsOursAsync"/>, which re-reads once after
+    /// a NotOurs answer unless the lock file names another session (that is a takeover, final: no re-read). A
     /// share that cannot be reached is a transient <see cref="SaveOutcome.CopyError"/>; a lock file that was merely
     /// REMOVED (antivirus, cloud-sync — no new holder) is re-created atomically by
     /// <see cref="TryRecoverRemovedLockAsync"/> and the save goes on; any other loss is
@@ -2058,7 +2070,8 @@ public sealed class CheckoutService : IDisposable
     /// the final check hits none (its own point, <c>Save.AfterFinalCheck</c>, is hit by the caller), so a save
     /// still reaches each point once and in catalogue order.</para>
     ///
-    /// <para>Writes nothing to D, D.tmp or D'. The caller owns any D.tmp cleanup after a refusal.</para>
+    /// <para>Writes nothing to D, D.tmp or D'. The caller owns any D.tmp cleanup after a refusal, and decides it
+    /// from the returned <c>LockConfirmed</c>: D.tmp is deleted only when this check confirmed the lock is ours.</para>
     /// </summary>
     /// <param name="isAutoSave">True when the autosave timer started the save; selects the auto-dismissing banner text.</param>
     /// <param name="isFinalCheck">False for the check at the start of the save, true for the one before the rename.</param>
@@ -2070,8 +2083,13 @@ public sealed class CheckoutService : IDisposable
     /// <c>Refusal</c>: null when the save may continue, otherwise the <see cref="SaveOutcome"/> the save must return
     /// (any banner or event has already been raised). <c>Stamp</c>: the stamp of D this check took (null when step 2
     /// was skipped, or when the final check found it unchanged and so has nothing newer to report).
+    /// <c>LockConfirmed</c>: true when step 1 CONFIRMED the lock is ours (the lock file named this session, or a
+    /// merely removed lock file was re-created by <see cref="TryRecoverRemovedLockAsync"/>), so every return from
+    /// step 2 on carries true; false on the two step-1 refusals, the share not answering (CopyError) and the lock
+    /// being someone else's (LockLost). The final check's caller deletes D.tmp only when this is true (spec item
+    /// 32, change (d)); the first check's caller ignores it.
     /// </returns>
-    private async Task<(SaveOutcome? Refusal, SourceStamp? Stamp)> CheckLockAndSourceAsync(
+    private async Task<(SaveOutcome? Refusal, SourceStamp? Stamp, bool LockConfirmed)> CheckLockAndSourceAsync(
         bool isAutoSave, bool isFinalCheck, SourceStamp? stampAtFirstCheck)
     {
         // ── Step 1: Verify we still hold the lock ─────────────────────────────
@@ -2081,7 +2099,7 @@ public sealed class CheckoutService : IDisposable
         {
             _logger.LogInfo("CheckoutService: lock verification timed out — network unreachable");
             RaiseSaveLocationUnreachable(isAutoSave);
-            return (SaveOutcome.CopyError, null);
+            return (SaveOutcome.CopyError, null, false);   // nothing was confirmed: whose lock it is stays unknown
         }
 
         if (lockResult == LockVerificationResult.NotOurs)
@@ -2097,15 +2115,20 @@ public sealed class CheckoutService : IDisposable
             {
                 _logger.LogBreadcrumb("Save: LockLost");
                 await HandleLockLossAsync();
-                return (SaveOutcome.LockLost, null);
+                return (SaveOutcome.LockLost, null, false);   // the lock is someone else's
             }
         }
+
+        // Step 1 got Ours, or re-created a removed lock file: from here on the lock is CONFIRMED ours, and
+        // every return below says so (the final check's caller may then discard its D.tmp).
+        const bool lockConfirmed = true;
+
         if (!isFinalCheck)
             CrashPoints.Hit("Save.AfterLockCheck");
 
         // ── Step 2: Verify D has not been externally modified ─────────────────
         if (HashAtCheckout is null)
-            return (null, null);
+            return (null, null, lockConfirmed);
 
         // 2a. Stat D BEFORE hashing it, so a change after this read always shows up as a difference
         //     between two stamps (a change between the stat and the hash is caught by the hash itself,
@@ -2118,21 +2141,21 @@ public sealed class CheckoutService : IDisposable
         if (statUnreadable)
         {
             RaiseTransientSaveError(SavePrompt.InUseMessage, isAutoSave);
-            return (SaveOutcome.CopyError, null);
+            return (SaveOutcome.CopyError, null, lockConfirmed);
         }
 
         if (!statCompleted)
         {
             _logger.LogInfo("CheckoutService: source stat timed out — network unreachable");
             RaiseSaveLocationUnreachable(isAutoSave);
-            return (SaveOutcome.CopyError, null);
+            return (SaveOutcome.CopyError, null, lockConfirmed);
         }
 
         // 2b. The cheap path of the final check: size and last-write time are exactly what the first
         //     check saw, so nobody has written D since. Skip the hash (it reads the whole database over
         //     the network). The first check never takes this path: it has nothing to compare with.
         if (isFinalCheck && stampAtFirstCheck is { } firstStamp && firstStamp == stampNow)
-            return (null, stampNow);
+            return (null, stampNow, lockConfirmed);
 
         // 2c. Hash D. HashSourceAsync reports a plain file error on D (another program holds it
         //     exclusively, access denied, file gone) as a result instead of letting the IOException escape.
@@ -2142,14 +2165,14 @@ public sealed class CheckoutService : IDisposable
         if (sourceUnreadable)
         {
             RaiseTransientSaveError(SavePrompt.InUseMessage, isAutoSave);
-            return (SaveOutcome.CopyError, null);
+            return (SaveOutcome.CopyError, null, lockConfirmed);
         }
 
         if (!hashCompleted)
         {
             _logger.LogInfo("CheckoutService: source hash timed out — network unreachable");
             RaiseSaveLocationUnreachable(isAutoSave);
-            return (SaveOutcome.CopyError, null);
+            return (SaveOutcome.CopyError, null, lockConfirmed);
         }
 
         if (currentSourceHash != HashAtCheckout)
@@ -2183,11 +2206,11 @@ public sealed class CheckoutService : IDisposable
                 // persistent banner (Save a Copy… / Discard Changes) when SaveConflictDetected fires.
                 HasSaveConflict = true;
                 _dispatch(() => SaveConflictDetected?.Invoke());
-                return (SaveOutcome.SourceModified, null);
+                return (SaveOutcome.SourceModified, null, lockConfirmed);
             }
         }
 
-        return (null, stampNow);
+        return (null, stampNow, lockConfirmed);
     }
 
     /// <summary>
@@ -2274,7 +2297,8 @@ public sealed class CheckoutService : IDisposable
     }
 
     /// <summary>
-    /// Adapts <see cref="VerifyLockIsOursAsync"/> (with its one retry for a transient heartbeat-rename overlap)
+    /// Adapts <see cref="VerifyLockIsOursAsync"/> (with its one re-read for a transient heartbeat-rename overlap,
+    /// skipped when the lock names another session)
     /// to the routine's <see cref="RestoreLockCheck"/>. Deliberately does NOT call
     /// <see cref="TryRecoverRemovedLockAsync"/> or <see cref="HandleLockLossAsync"/>: a restore that finds the
     /// lock gone just refuses; the normal save/heartbeat paths deal with lock loss.
@@ -3630,7 +3654,10 @@ public sealed class CheckoutService : IDisposable
     /// <summary>
     /// Called when <see cref="WriteLockService.HeartbeatFailed"/> fires — i.e., the heartbeat
     /// timer has failed to renew the lock file <see cref="WriteLockService.HeartbeatFailureThreshold"/>
-    /// consecutive times.
+    /// consecutive times, OR (spec item 32, change (c)) it read the lock file and found it naming
+    /// another session, in which case it wrote nothing and raised the event on that very beat. The
+    /// second case needs no special handling here: the verification below reads the same file, finds the
+    /// other session's name, and answers <see cref="LockVerificationResult.NotOurs"/> at once.
     ///
     /// <para><b>Why not demote immediately?</b> The heartbeat failed because a network-file
     /// write failed — almost always because the share is unreachable. But the save-time and
@@ -3906,12 +3933,13 @@ public sealed class CheckoutService : IDisposable
     ///   <item><term>Not found</term><term>Not found / timeout</term><term>Unreachable (SMB cache lie)</term></item>
     ///   <item><term>Not found</term><term>Found</term><term>NotOurs (genuinely deleted)</term></item>
     ///   <item><term>Found, ours</term><term>—</term><term>Ours</term></item>
-    ///   <item><term>Found, other GUID</term><term>—</term><term>NotOurs</term></item>
+    ///   <item><term>Found, other GUID</term><term>—</term><term>NotOurs (final: no re-read)</term></item>
+    ///   <item><term>Found, no GUID (JSON <c>null</c> or empty GUID)</term><term>—</term><term>NotOurs (re-read once)</term></item>
     ///   <item><term>Found, parse error</term><term>Timeout</term><term>Unreachable</term></item>
-    ///   <item><term>Found, parse error</term><term>Found</term><term>NotOurs (corrupt lock file)</term></item>
+    ///   <item><term>Found, parse error</term><term>Found</term><term>NotOurs (corrupt lock file; re-read once)</term></item>
     /// </list>
     ///
-    /// <para><b>Transient-rename retry:</b><br/>
+    /// <para><b>Transient-rename re-read:</b><br/>
     /// The heartbeat timer in <see cref="WriteLockService"/> renews the lock file
     /// using an atomic write-to-temp-then-rename pattern (<c>File.Move(.lock.tmp,
     /// .lock, overwrite:true)</c>). On local NTFS this is truly atomic — a concurrent
@@ -3924,14 +3952,25 @@ public sealed class CheckoutService : IDisposable
     /// the save reads "not ours" and demotes to read-only even though no other user
     /// touched the lock. The consequence is immediate, irreversible session demotion
     /// with no confirmation dialog.<br/><br/>
-    /// To guard against this, the first <see cref="LockVerificationResult.NotOurs"/>
-    /// result triggers a single retry after a short pause
-    /// (<see cref="LockRetryDelayMs"/>). The delay is long enough for any in-flight
-    /// <c>File.Move</c> to settle (SMB renames complete in low milliseconds on a
-    /// healthy LAN) but short enough to be imperceptible in the save path. A genuine
-    /// lock loss — file deleted by another user, or GUID overwritten by a takeover —
-    /// will still be <c>NotOurs</c> on the retry and proceed to demotion. Only a
-    /// transient that self-heals within the retry window is absorbed.</para>
+    /// To guard against this, a <see cref="LockVerificationResult.NotOurs"/> result whose
+    /// lock file does NOT name another session (the file missing, unreadable, the JSON
+    /// literal <c>null</c>, or an empty <c>SessionGuid</c>) triggers a single re-read
+    /// after a short pause (<see cref="LockRetryDelayMs"/>). The delay is long enough
+    /// for any in-flight <c>File.Move</c> to settle (SMB renames complete in low
+    /// milliseconds on a healthy LAN) but short enough to be imperceptible in the save
+    /// path. A genuine deletion by another user will still be <c>NotOurs</c> on the
+    /// re-read and proceed to demotion. Only a transient that self-heals within the
+    /// window is absorbed.</para>
+    ///
+    /// <para><b>A name that is not ours needs no re-read (spec item 32, change (a)):</b><br/>
+    /// when the lock file parses and carries a non-empty <c>SessionGuid</c> that is not
+    /// ours, another session took the lock over. Our own heartbeat never invents a
+    /// name — it copies the one already in the file — so no hiccup on this computer
+    /// can produce that content, and a second read cannot change the answer. It is
+    /// returned at once. Re-reading used to be harmful here: right after a laptop wakes,
+    /// the second read collided with our own overdue heartbeat's rename, failed as
+    /// "contended", was classed <see cref="LockVerificationResult.Unreachable"/>, and the
+    /// session carried on as the editor for minutes after losing the lock.</para>
     /// </summary>
     /// <returns>
     /// <see cref="LockVerificationResult.Ours"/> — lock file exists and belongs to this session.<br/>
@@ -3944,33 +3983,51 @@ public sealed class CheckoutService : IDisposable
         => VerifyLockIsOursAtAsync(SourcePath, recordNewHolder: true);
 
     /// <summary>
-    /// <see cref="VerifyLockIsOursAsync"/> for the lock on any database: the one-retry loop of that method, with the
-    /// database path passed in instead of read from <see cref="SourcePath"/>. The session's own checks call it with
+    /// <see cref="VerifyLockIsOursAsync"/> for the lock on any database: the check with its conditional re-read, with
+    /// the database path passed in instead of read from <see cref="SourcePath"/>. The session's own checks call it with
     /// <see cref="SourcePath"/> (through the parameterless method, so their behaviour is unchanged); a restore into a
     /// database this app does not have open (<see cref="RestoreIntoAsync"/>) calls it with that database's path.
+    ///
+    /// <para><b>The re-read (spec item 32, change (a)).</b> A NotOurs answer is read once more after
+    /// <see cref="LockRetryDelayMs"/> ms, unless the first read already named ANOTHER session
+    /// (<see cref="VerifyLockIsOursOnceAtAsync"/> reports that): such a name is final, because only a takeover can put
+    /// it in the file, so the answer comes back at once. This matters most right after a laptop wakes: a re-read
+    /// made while our own overdue heartbeat is rewriting the file used to fail as "contended", be taken for a network
+    /// blip, and leave the session believing it was still the editor for up to ten minutes. The re-read stays for
+    /// what it was meant for: the file missing, unreadable or without a session name for a moment.</para>
     /// </summary>
     /// <param name="sourcePath">Full path of the database whose <c>.lock</c> file is checked.</param>
     /// <param name="recordNewHolder">
     /// True to remember a foreign holder in <see cref="LockLossNewHolder"/> (for the session's lock-loss banner);
-    /// false when the check is not about the session's own database and must not touch session state.
+    /// false when the check is not about the session's own database and must not touch session state. It does not
+    /// affect whether the re-read happens.
     /// </param>
     /// <returns>The same three-way answer as <see cref="VerifyLockIsOursAsync"/>.</returns>
     private async Task<LockVerificationResult> VerifyLockIsOursAtAsync(string sourcePath, bool recordNewHolder)
     {
-        var result = await VerifyLockIsOursOnceAtAsync(sourcePath, recordNewHolder);
+        var (result, namesOtherSession) = await VerifyLockIsOursOnceAtAsync(sourcePath, recordNewHolder);
 
         if (result == LockVerificationResult.NotOurs)
         {
+            // The lock names another session: a takeover, final. No second read could change that answer.
+            if (namesOtherSession)
+            {
+                _logger.LogInfo(
+                    "CheckoutService: lock verification returned NotOurs — the lock names another session, " +
+                    "so no re-read.");
+                return result;
+            }
+
             // A single retry absorbs transient "not found" / sharing-violation /
             // corrupt-read results caused by our own heartbeat's atomic rename
             // racing this read on a network share. A genuine lock loss (another
-            // user deleted or overwrote the file) will still be NotOurs after
-            // the delay and proceed to demotion normally.
+            // user deleted the file) will still be NotOurs after the delay and
+            // proceed to demotion normally.
             _logger.LogInfo(
                 $"CheckoutService: lock verification returned NotOurs — retrying in " +
                 $"{LockRetryDelayMs}ms to rule out a transient heartbeat-rename overlap.");
             await Task.Delay(LockRetryDelayMs);
-            result = await VerifyLockIsOursOnceAtAsync(sourcePath, recordNewHolder);
+            (result, _) = await VerifyLockIsOursOnceAtAsync(sourcePath, recordNewHolder);
         }
 
         return result;
@@ -3988,9 +4045,14 @@ public sealed class CheckoutService : IDisposable
     /// Single-attempt lock verification. Checks whether D.lock exists, reads its
     /// JSON payload, and compares the <c>SessionGuid</c> to ours. Uses network-timeout
     /// wrappers and the reachability probe for all file I/O. Called by
-    /// <see cref="VerifyLockIsOursAsync"/>, which wraps it in a one-retry loop.
+    /// <see cref="VerifyLockIsOursAsync"/>, which re-reads once after a NotOurs answer that does not
+    /// name another session.
     /// </summary>
-    private Task<LockVerificationResult> VerifyLockIsOursOnceAsync()
+    /// <returns>
+    /// <c>Result</c>: Ours, NotOurs or Unreachable. <c>NamesOtherSession</c>: see
+    /// <see cref="VerifyLockIsOursOnceAtAsync"/>.
+    /// </returns>
+    private Task<(LockVerificationResult Result, bool NamesOtherSession)> VerifyLockIsOursOnceAsync()
         => VerifyLockIsOursOnceAtAsync(SourcePath, recordNewHolder: true);
 
     /// <summary>
@@ -3998,18 +4060,31 @@ public sealed class CheckoutService : IDisposable
     /// <see cref="VerifyLockIsOursAtAsync"/> for why): the single-attempt check with the database path passed in.
     /// The decision table, the reachability probe and the contended-read handling are exactly those of the
     /// session's own check.
+    ///
+    /// <para><b>Why it also reports <c>NamesOtherSession</c> (spec item 32, change (a)).</b> A lock file that
+    /// parsed and carries a non-empty <c>SessionGuid</c> that is not ours is proof of a takeover: this computer's
+    /// own heartbeat can only write a name that was already in the file, and the only way another session's name
+    /// gets there is that session taking the lock over. So a second read cannot change the answer, and the caller
+    /// (<see cref="VerifyLockIsOursAtAsync"/>) skips the 200 ms re-read for it. Every other NotOurs (the file
+    /// missing, unreadable, the JSON literal <c>null</c>, or no session name in it) can still be the transient
+    /// shape of our own heartbeat's rename, and keeps the re-read. The flag is computed from the file alone, so it
+    /// is the same whatever <paramref name="recordNewHolder"/> is.</para>
     /// </summary>
     /// <param name="sourcePath">Full path of the database whose <c>.lock</c> file is checked.</param>
     /// <param name="recordNewHolder">True to remember a foreign holder in <see cref="LockLossNewHolder"/>; false to leave session state alone.</param>
-    /// <returns>Ours, NotOurs or Unreachable.</returns>
-    private async Task<LockVerificationResult> VerifyLockIsOursOnceAtAsync(string sourcePath, bool recordNewHolder)
+    /// <returns>
+    /// <c>Result</c>: Ours, NotOurs or Unreachable. <c>NamesOtherSession</c>: true only when the result is
+    /// NotOurs because the lock file parsed and names another session; false in every other case.
+    /// </returns>
+    private async Task<(LockVerificationResult Result, bool NamesOtherSession)> VerifyLockIsOursOnceAtAsync(
+        string sourcePath, bool recordNewHolder)
     {
         var lockPath = Path.ChangeExtension(sourcePath, ".lock");
 
         // ── Step 1: Does D.lock exist? ───────────────────────────────────────
         var (existsCompleted, exists) = await NetworkFileOps.ExistsAsync(lockPath);
         if (!existsCompleted)
-            return LockVerificationResult.Unreachable;
+            return (LockVerificationResult.Unreachable, false);
 
         if (!exists)
         {
@@ -4019,11 +4094,11 @@ public sealed class CheckoutService : IDisposable
             var sourceDir = Path.GetDirectoryName(sourcePath)!;
             var (dirCompleted, dirExists) = await NetworkFileOps.DirectoryExistsAsync(sourceDir);
             if (!dirCompleted || !dirExists)
-                return LockVerificationResult.Unreachable;
+                return (LockVerificationResult.Unreachable, false);
 
             // Share directory is reachable, so D.lock was genuinely deleted.
             if (recordNewHolder) LockLossNewHolder = null;
-            return LockVerificationResult.NotOurs;
+            return (LockVerificationResult.NotOurs, false);
         }
 
         // ── Step 2: Read and parse D.lock ────────────────────────────────────
@@ -4058,22 +4133,28 @@ public sealed class CheckoutService : IDisposable
             _logger.LogInfo(
                 $"CheckoutService: lock read contended ({ex.GetType().Name}: {ex.Message}) " +
                 "— treating as transient, keeping writer state.");
-            return LockVerificationResult.Unreachable;
+            return (LockVerificationResult.Unreachable, false);
         }
 
         if (!readCompleted)
-            return LockVerificationResult.Unreachable;
+            return (LockVerificationResult.Unreachable, false);
 
         try
         {
             var data = WriteLockService.ParseLockFile(json);
             if (data?.SessionGuid == _lockService.SessionGuid)
-                return LockVerificationResult.Ours;
+                return (LockVerificationResult.Ours, false);
 
             // Lock file belongs to a different session — capture the new holder
             // so the WriteLockLost handler can name them in the banner.
             if (recordNewHolder) LockLossNewHolder = data;
-            return LockVerificationResult.NotOurs;
+
+            // A name that is present and not ours is a takeover, final (see the method's doc). The JSON
+            // literal "null" (data is null) and a lock with no session name are NOT: they stay re-readable.
+            var namesOtherSession = data is not null
+                                    && !string.IsNullOrEmpty(data.SessionGuid)
+                                    && data.SessionGuid != _lockService.SessionGuid;
+            return (LockVerificationResult.NotOurs, namesOtherSession);
         }
         catch
         {
@@ -4082,12 +4163,12 @@ public sealed class CheckoutService : IDisposable
             var sourceDir = Path.GetDirectoryName(sourcePath)!;
             var (probeCompleted, _) = await NetworkFileOps.DirectoryExistsAsync(sourceDir);
             if (!probeCompleted)
-                return LockVerificationResult.Unreachable;
+                return (LockVerificationResult.Unreachable, false);
 
             // Share is reachable but the lock file is genuinely unreadable (corrupt).
-            // Treat as external interference — no known new holder.
+            // Treat as external interference — no known new holder, and nothing proves a takeover.
             if (recordNewHolder) LockLossNewHolder = null;
-            return LockVerificationResult.NotOurs;
+            return (LockVerificationResult.NotOurs, false);
         }
     }
 

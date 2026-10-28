@@ -325,11 +325,28 @@ internal sealed class Computer : IDisposable
         => _world.DoAsync(this, $"{DisplayName}'s autosave timer fired",
             () => ActAsync(async () => { await Checkout.TickAutoSaveAsync(); return 0; }));
 
-    /// <summary>Runs one lock-heartbeat tick now (what the 60-second heartbeat timer does).</summary>
-    /// <returns>A task that completes when the heartbeat write, or its failure, is done.</returns>
+    /// <summary>
+    /// Runs one lock-heartbeat tick now (what the 60-second heartbeat timer does). When the tick raises
+    /// <see cref="WriteLockService.HeartbeatFailed"/> (since spec item 32, change (c), it does so at once when the lock
+    /// file names another session), the checkout service's ownership check, and any lock-loss demotion it starts, run in
+    /// the background, fire-and-forget, exactly like the wake check's; this waits for them the same way
+    /// (<see cref="SettleBackgroundWorkAsync"/>), so every crash point they hit falls inside this step.
+    /// </summary>
+    /// <returns>A task that completes when the heartbeat write, or its failure, and any ownership check it started are done.</returns>
     public Task HeartbeatTickAsync()
         => _world.DoAsync(this, $"{DisplayName}'s heartbeat ticked",
-            () => ActAsync(async () => { await Locks.TickHeartbeatAsync(); return 0; }));
+            () => ActAsync(async () =>
+            {
+                var verifies = Checkout.Mode == CheckoutMode.WriteAccess;
+                var outcomesBefore = CountHeartbeatVerifyOutcomes();
+                var raised = false;
+                void OnRaised() => raised = true;
+                Locks.HeartbeatFailed += OnRaised;
+                try { await Locks.TickHeartbeatAsync(); }
+                finally { Locks.HeartbeatFailed -= OnRaised; }
+                if (raised && verifies) await SettleBackgroundWorkAsync(CountHeartbeatVerifyOutcomes, outcomesBefore);
+                return 0;
+            }));
 
     /// <summary>Runs one reader poll tick now (what the 60-second poll timer does while the session is read-only and watching the lock).</summary>
     /// <returns>A task that completes when the poll is done.</returns>
@@ -352,7 +369,7 @@ internal sealed class Computer : IDisposable
                 var verifies = Checkout.Mode == CheckoutMode.WriteAccess;
                 var outcomesBefore = CountWakeOutcomes();
                 Locks.TickWakeCheck();
-                if (verifies) await SettleBackgroundWorkAsync(outcomesBefore);
+                if (verifies) await SettleBackgroundWorkAsync(CountWakeOutcomes, outcomesBefore);
                 return 0;
             }));
 
@@ -589,17 +606,40 @@ internal sealed class Computer : IDisposable
     }
 
     /// <summary>
-    /// Waits for the fire-and-forget work the wake handler started: first for it to log its outcome, then for the
-    /// activity counters (<see cref="World.Activity"/>) to stand still for a short quiet period, because the handler
-    /// still has work to do after the line is logged (a lock re-acquire, the demotion, a heartbeat renewal). Bounded
-    /// to ten seconds. This is the harness's only wait on real time; the production class gives no task to await.
+    /// How many of this process's log lines are the heartbeat ownership check's outcome lines (its "heartbeat verify — …"
+    /// lines, its "already in flight" skip, or its failure): the end markers of the background work a heartbeat tick
+    /// starts when it raises <see cref="WriteLockService.HeartbeatFailed"/>.
     /// </summary>
-    /// <param name="outcomesBefore">The number of wake outcome lines logged before the tick.</param>
-    private async Task SettleBackgroundWorkAsync(int outcomesBefore)
+    private int CountHeartbeatVerifyOutcomes()
+    {
+        try
+        {
+            var infos = Logger.Infos.Count(line =>
+                line.Contains("heartbeat verify", StringComparison.OrdinalIgnoreCase)
+                || line.Contains("verification already in flight", StringComparison.OrdinalIgnoreCase));
+            var failures = Logger.Errors.Count(e => (e.Context ?? "").Contains("heartbeat-verify", StringComparison.OrdinalIgnoreCase));
+            return infos + failures;
+        }
+        catch (InvalidOperationException)
+        {
+            return 0;   // the list changed under the count; the caller counts again on its next look
+        }
+    }
+
+    /// <summary>
+    /// Waits for the fire-and-forget work a wake check or a heartbeat ownership check started: first for it to log its
+    /// outcome, then for the activity counters (<see cref="World.Activity"/>) to stand still for a short quiet period,
+    /// because the handler still has work to do after the line is logged (a lock re-acquire, the demotion, a heartbeat
+    /// renewal). Bounded to ten seconds. This is the harness's only wait on real time; the production class gives no
+    /// task to await.
+    /// </summary>
+    /// <param name="countOutcomes">Counts the handler's outcome lines (<see cref="CountWakeOutcomes"/> or <see cref="CountHeartbeatVerifyOutcomes"/>).</param>
+    /// <param name="outcomesBefore">The number of outcome lines logged before the tick.</param>
+    private async Task SettleBackgroundWorkAsync(Func<int> countOutcomes, int outcomesBefore)
     {
         var deadline = DateTime.UtcNow + TimeSpan.FromSeconds(10);
 
-        while (CountWakeOutcomes() <= outcomesBefore && DateTime.UtcNow < deadline)
+        while (countOutcomes() <= outcomesBefore && DateTime.UtcNow < deadline)
             await Task.Delay(2);
 
         var last = _world.Activity;

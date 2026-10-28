@@ -1130,4 +1130,182 @@ public sealed class WriteLockServiceTests : IDisposable
                 $"iteration {iter}: lock file must survive an immediate same-path re-acquire.");
         }
     }
+
+    // ═════════════════════════════════════════════════════════════════════════
+    // Group 9 — spec item 32, change (c): the heartbeat renews only a lock that names this session
+    //
+    // Bob (the service under test) loses the lock to Alice. Bob's heartbeat used to rewrite whatever lock file
+    // it read with a fresh time, which held Alice's lock up as live and let Bob go on believing he was the
+    // editor. Now the beat reads the name first: ours is renewed as always; Alice's is left byte-for-byte alone
+    // and raises HeartbeatFailed at once; a lock that names no session is left alone and counts as a failed beat.
+    // These tests use a fake clock and no background timers, so each tick is driven by hand.
+    // ═════════════════════════════════════════════════════════════════════════
+
+    /// <summary>The fixed instant the fake clock of this group starts at.</summary>
+    private static readonly DateTimeOffset HeartbeatStart = new(2026, 10, 27, 12, 0, 0, TimeSpan.Zero);
+
+    /// <summary>Creates a lock service on a fake clock with no background timers (every tick is driven by the test).</summary>
+    /// <param name="clock">The clock the service stamps and reads time from.</param>
+    private static WriteLockService NewTimerlessService(FakeTimeProvider clock) => new(clock, null, startTimers: false);
+
+    /// <summary>
+    /// Overwrites the lock file with one that names ANOTHER session, as a takeover does, and returns its exact bytes
+    /// so a test can prove a later heartbeat left it alone.
+    /// </summary>
+    /// <param name="lockPath">Full path of the lock file.</param>
+    /// <returns>The bytes now in the lock file.</returns>
+    private static byte[] WriteLockNamingAnotherSession(string lockPath)
+    {
+        var now = DateTime.UtcNow;
+        File.WriteAllText(lockPath, JsonSerializer.Serialize(new LockFileData
+        {
+            Username    = "alice",
+            Machine     = "ALICE-PC",
+            SessionGuid = Guid.NewGuid().ToString(),
+            Acquired    = now,
+            Heartbeat   = now,
+        }));
+        return File.ReadAllBytes(lockPath);
+    }
+
+    /// <summary>
+    /// Another session's name in the lock: the first beat writes NOTHING (the file is byte-identical and no D.lock.tmp
+    /// is left) and raises <see cref="WriteLockService.HeartbeatFailed"/> at once, not after the failure threshold.
+    /// Every later beat that still finds the lock there raises it again, until the holder lets go of the timer.
+    /// </summary>
+    [Fact]
+    public async Task Heartbeat_LockNamesAnotherSession_WritesNothing_AndRaisesHeartbeatFailedOnTheFirstTick()
+    {
+        var clock = new FakeTimeProvider(HeartbeatStart);
+        var db = DbPath();
+        using var svc = NewTimerlessService(clock);
+        svc.TryAcquire(db);
+        Assert.True(svc.IsWriter);
+        var raised = 0;
+        svc.HeartbeatFailed += () => raised++;
+        var alices = WriteLockNamingAnotherSession(LockPath(db));
+        clock.Advance(TimeSpan.FromSeconds(75));
+
+        await svc.TickHeartbeatAsync();
+
+        Assert.Equal(1, raised);
+        Assert.Equal(alices, File.ReadAllBytes(LockPath(db)));
+        Assert.False(File.Exists(LockPath(db) + ".tmp"), "the beat must not even stage a temp file");
+
+        clock.Advance(TimeSpan.FromSeconds(60));
+        await svc.TickHeartbeatAsync();
+
+        Assert.Equal(2, raised);
+        Assert.Equal(alices, File.ReadAllBytes(LockPath(db)));
+    }
+
+    /// <summary>
+    /// A beat that finds another session's name resets the failure counter (it is not a failed renewal). Two failed
+    /// beats, then Alice's name (event at once), then two more failed beats raise nothing more: the run of failures
+    /// counts from zero again, and the third of the new run raises.
+    /// </summary>
+    [Fact]
+    public async Task Heartbeat_LockNamesAnotherSession_ResetsTheFailureCounter()
+    {
+        var clock = new FakeTimeProvider(HeartbeatStart);
+        var db = DbPath();
+        using var svc = NewTimerlessService(clock);
+        svc.TryAcquire(db);
+        var raised = 0;
+        svc.HeartbeatFailed += () => raised++;
+
+        File.Delete(LockPath(db));
+        for (var i = 0; i < WriteLockService.HeartbeatFailureThreshold - 1; i++)
+            await svc.TickHeartbeatAsync();
+        Assert.Equal(0, raised);                      // two failures: below the threshold
+
+        WriteLockNamingAnotherSession(LockPath(db));
+        await svc.TickHeartbeatAsync();
+        Assert.Equal(1, raised);                      // Alice's name: at once, and the counter is reset
+
+        File.Delete(LockPath(db));
+        for (var i = 0; i < WriteLockService.HeartbeatFailureThreshold - 1; i++)
+            await svc.TickHeartbeatAsync();
+        Assert.Equal(1, raised);                      // two failures counted from zero: nothing more yet
+
+        await svc.TickHeartbeatAsync();
+        Assert.Equal(2, raised);                      // the third failure of the new run
+    }
+
+    /// <summary>
+    /// A lock that names THIS session is renewed exactly as before: the heartbeat advances to the (fake) now, the
+    /// acquisition time and the session name are preserved, no event is raised, and the successful beat resets the
+    /// failure counter (two failures before it and two after it never reach the threshold of three).
+    /// </summary>
+    [Fact]
+    public async Task Heartbeat_LockNamesThisSession_IsRenewed_AndResetsTheFailureCounter()
+    {
+        var clock = new FakeTimeProvider(HeartbeatStart);
+        var db = DbPath();
+        using var svc = NewTimerlessService(clock);
+        svc.TryAcquire(db);
+        var raised = 0;
+        svc.HeartbeatFailed += () => raised++;
+        var ourLock = File.ReadAllText(LockPath(db));
+        var acquired = ReadLockFile(LockPath(db)).Acquired;
+
+        File.Delete(LockPath(db));
+        for (var i = 0; i < WriteLockService.HeartbeatFailureThreshold - 1; i++)
+            await svc.TickHeartbeatAsync();               // two failed beats: the file is missing
+
+        File.WriteAllText(LockPath(db), ourLock);         // the file is back, naming us
+        clock.Advance(TimeSpan.FromSeconds(75));
+        await svc.TickHeartbeatAsync();
+
+        var renewed = ReadLockFile(LockPath(db));
+        Assert.Equal(svc.SessionGuid, renewed.SessionGuid);
+        Assert.Equal(acquired, renewed.Acquired);
+        Assert.Equal(HeartbeatStart.UtcDateTime.AddSeconds(75), renewed.Heartbeat);
+        Assert.Equal(0, raised);
+
+        File.Delete(LockPath(db));
+        for (var i = 0; i < WriteLockService.HeartbeatFailureThreshold - 1; i++)
+            await svc.TickHeartbeatAsync();
+        Assert.Equal(0, raised);                          // the renewal reset the counter, so two more failures raise nothing
+    }
+
+    /// <summary>
+    /// A lock file that names NO session (the JSON literal <c>null</c>, or a lock whose <c>SessionGuid</c> is empty) is
+    /// not written back, which would invent a holder out of a damaged file; the beat counts as a failed renewal, so
+    /// <see cref="WriteLockService.HeartbeatFailed"/> comes only on the third beat in a row, and the file is
+    /// byte-identical throughout.
+    /// </summary>
+    /// <param name="shape">"jsonNull" for the JSON literal null, "emptyGuid" for a lock with no session name.</param>
+    [Theory]
+    [InlineData("jsonNull")]
+    [InlineData("emptyGuid")]
+    public async Task Heartbeat_LockNamesNoSession_WritesNothing_AndCountsAsAFailure(string shape)
+    {
+        var clock = new FakeTimeProvider(HeartbeatStart);
+        var db = DbPath();
+        using var svc = NewTimerlessService(clock);
+        svc.TryAcquire(db);
+        var raised = 0;
+        svc.HeartbeatFailed += () => raised++;
+        if (shape == "jsonNull")
+            File.WriteAllText(LockPath(db), "null");
+        else
+            WriteExternalLockFile(LockPath(db));          // writes a lock with an empty SessionGuid
+        var before = File.ReadAllBytes(LockPath(db));
+
+        for (var i = 0; i < WriteLockService.HeartbeatFailureThreshold - 1; i++)
+        {
+            clock.Advance(TimeSpan.FromSeconds(60));
+            await svc.TickHeartbeatAsync();
+            Assert.Equal(0, raised);                      // failures below the threshold raise nothing
+            Assert.Equal(before, File.ReadAllBytes(LockPath(db)));
+        }
+
+        clock.Advance(TimeSpan.FromSeconds(60));
+        await svc.TickHeartbeatAsync();
+
+        Assert.Equal(1, raised);                          // the threshold beat
+        Assert.Equal(before, File.ReadAllBytes(LockPath(db)));
+        Assert.False(File.Exists(LockPath(db) + ".tmp"));
+    }
 }

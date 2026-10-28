@@ -2494,9 +2494,13 @@ public sealed class CheckoutServiceTests : IDisposable
     /// <summary>
     /// When the lock file was genuinely TAKEN OVER (it now bears a foreign
     /// SessionGuid) and the share is reachable, HeartbeatFailed must trigger
-    /// demotion: <see cref="CheckoutService.WriteLockLost"/> fires. The file is
-    /// made read-only so heartbeat renewals fail (reaching the threshold) while
-    /// verification can still read the foreign holder from it.
+    /// demotion: <see cref="CheckoutService.WriteLockLost"/> fires.
+    /// <para>Since spec item 32 (change (c)) the heartbeat itself finds the foreign
+    /// name, writes nothing and raises HeartbeatFailed on the FIRST tick (see
+    /// <c>Heartbeat_LockNamesAnotherSession_DemotesOnTheFirstTick</c>). The read-only
+    /// attribute and the threshold-length loop below predate that: they were what made
+    /// the renewals fail, and they are kept so this test still passes for any
+    /// other way the renewals fail while the verification read sees the foreign holder.</para>
     /// <para>Note: a merely DELETED lock file no longer demotes — that is the
     /// antivirus/cloud-sync signature and is now healed by atomic re-acquisition
     /// (see <c>HeartbeatFailed_WhenLockFileDeleted_ReacquiresInsteadOfDemoting</c>).</para>
@@ -2513,8 +2517,9 @@ public sealed class CheckoutServiceTests : IDisposable
         var lockLostTcs = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
         svc.WriteLockLost += (_) => lockLostTcs.TrySetResult();
 
-        // Another session overwrites the lock with its own GUID; read-only makes our
-        // heartbeat renewals fail so the failure threshold is reached, while the
+        // Another session overwrites the lock with its own GUID. Our heartbeat now sees that name and
+        // raises HeartbeatFailed at once (writing nothing); the read-only attribute (which used to be
+        // what made renewals fail) is kept as a second, independent reason for them to fail, while the
         // verification read still sees the foreign holder → genuine takeover.
         var lockPath = Path.ChangeExtension(db, ".lock");
         WriteExternalFreshLock(db);
@@ -2522,7 +2527,8 @@ public sealed class CheckoutServiceTests : IDisposable
 
         try
         {
-            // Trigger threshold consecutive heartbeat failures → HeartbeatFailed event.
+            // Tick the heartbeat (the first tick already raises HeartbeatFailed, because the lock names
+            // another session; the full threshold's worth of ticks is the shape this test had before item 32).
             // Awaited: renewals serialize on the lock-file gate, and an unawaited burst
             // would be skipped as contended ticks rather than counted as failures.
             for (int i = 0; i < WriteLockService.HeartbeatFailureThreshold; i++)
@@ -6767,5 +6773,324 @@ public sealed class CheckoutServiceTests : IDisposable
 
         Assert.Equal(CheckoutOutcome.WriteAccess, outcome);
         Assert.Equal("unsaved-edit", ReadTestValue(svc2.WorkingPath));
+    }
+
+    // ═════════════════════════════════════════════════════════════════════════
+    // Group 21 — spec item 32: a takeover noticed late (field-test findings A8, A2)
+    //
+    // Bob loses the lock, Alice took it over. (a) A lock file that names another
+    // session is final: the check does not re-read it 200 ms later, because that
+    // re-read can collide with Bob's own overdue heartbeat and be taken for a
+    // network blip. (c) The heartbeat renews only a lock that names this session.
+    // (d) The final check deletes D.tmp only when it confirmed the lock is ours.
+    // ═════════════════════════════════════════════════════════════════════════
+
+    /// <summary>
+    /// Change (a): the lock file names another session, so the first read settles it. The save's first check returns
+    /// LockLost after reading the lock file exactly ONCE (one existence check, one read; before the change there were
+    /// two of each, 200 ms apart), and the log says why there was no re-read. The count is made by the existing
+    /// network fault injector, which sees every <see cref="NetworkFileOps"/> operation on the lock file.
+    /// </summary>
+    [Fact]
+    public async Task SaveAsync_LockNamesAnotherSession_IsLockLost_AfterReadingTheLockFileOnce()
+    {
+        var db = DbPath();
+        var logger = new RecordingAppLogger();
+        var (svc, _) = await CheckoutWithUnsavedEditAsync(db, logger);
+        var lockPath = Path.ChangeExtension(db, ".lock");
+        WriteExternalFreshLock(db);
+        var counter = new ShareOpCounter();
+        counter.Install(lockPath);
+
+        SaveOutcome outcome;
+        try { outcome = await svc.SaveAsync(); }
+        finally { NetworkFaults.Decide = null; }
+
+        Assert.Equal(SaveOutcome.LockLost, outcome);
+        Assert.Equal(1, counter.Count("File.Exists"));
+        Assert.Equal(1, counter.Count("File.ReadAllText"));
+        Assert.Contains(logger.Infos, line => line.Contains("the lock names another session, so no re-read"));
+        Assert.DoesNotContain(logger.Infos, line => line.Contains("retrying in"));
+    }
+
+    /// <summary>
+    /// Change (a), the other side: a lock file that is MISSING (our own heartbeat's rename hiding it for a moment)
+    /// still gets its re-read, and a re-read that then finds the file back but contended is still UNREACHABLE: a
+    /// network blip, not a lost lock. The save is a CopyError with the sticky outage notice, nothing is demoted, and
+    /// the lock file is exactly what it was. The re-read is proved by counting the existence checks (two).
+    /// </summary>
+    [Fact]
+    public async Task SaveAsync_LockFileMissing_ThenAContendedReread_IsStillUnreachable_NotLockLost()
+    {
+        var db = DbPath();
+        var (svc, lockSvc) = await CheckoutWithUnsavedEditAsync(db);
+        var banners = CaptureSaveBanners(svc);
+        var lockLostFired = false;
+        svc.WriteLockLost += _ => lockLostFired = true;
+        var lockPath = Path.ChangeExtension(db, ".lock");
+        var ourLock = File.ReadAllText(lockPath);
+        File.Delete(lockPath);   // the heartbeat's rename has hidden the file for the first read
+
+        var existsCalls = 0;
+        NetworkFaults.Decide = request =>
+        {
+            if (!string.Equals(request.Path, lockPath, StringComparison.OrdinalIgnoreCase))
+                return NetworkFaultDecision.None;
+            if (request.Label == "File.Exists" && Interlocked.Increment(ref existsCalls) == 2)
+                File.WriteAllText(lockPath, ourLock);   // the file is back for the re-read...
+            return request.Label == "File.ReadAllText"
+                ? NetworkFaultDecision.Throwing(new IOException("sharing violation"))   // ...but the rename still holds it
+                : NetworkFaultDecision.None;
+        };
+
+        SaveOutcome outcome;
+        try { outcome = await svc.SaveAsync(); }
+        finally { NetworkFaults.Decide = null; }
+
+        Assert.Equal(SaveOutcome.CopyError, outcome);
+        Assert.Equal(2, existsCalls);   // the re-read happened
+        Assert.Equal((SavePrompt.OutageNotice(hasUnsavedChanges: true, autoSaveEnabled: false), false), Assert.Single(banners));
+        Assert.False(lockLostFired);
+        Assert.Equal(ourLock, File.ReadAllText(lockPath));
+        AssertSessionKept(svc, lockSvc);
+    }
+
+    /// <summary>
+    /// Change (a), A8 reproduced: Bob wakes after Alice took the lock over. The wake check reads the lock, finds
+    /// Alice's name, and demotes at once. Before the change it read AGAIN 200 ms later, bumped into Bob's own
+    /// heartbeat rewriting the file (modelled here by a second read that fails as contended), called that a network
+    /// blip, and carried on as the editor. The wake is driven the way the app drives it: the lock service sees a gap
+    /// longer than 90 s on its clock and raises WakeDetected.
+    /// </summary>
+    [Fact]
+    public async Task Wake_LockNamesAnotherSession_WithAContendedSecondRead_Demotes_A8()
+    {
+        var clock   = new FakeTimeProvider();
+        var lockSvc = new WriteLockService(clock, null, startTimers: false);
+        var svc     = new CheckoutService(lockSvc, new NullLogger(), action => action(), _workingDir, startTimers: false);
+        var db = DbPath();
+        CreateFile(db);
+        Assert.Equal(CheckoutOutcome.WriteAccess, await svc.CheckoutAsync(db));
+
+        var lost = new TaskCompletionSource<WriteLockLostReason>(TaskCreationOptions.RunContinuationsAsynchronously);
+        svc.WriteLockLost += reason => lost.TrySetResult(reason);
+
+        WriteExternalFreshLock(db);   // Alice took over while Bob's laptop slept
+        var lockPath = Path.ChangeExtension(db, ".lock");
+        var reads = 0;
+        NetworkFaults.Decide = request =>
+            request.Label == "File.ReadAllText"
+            && string.Equals(request.Path, lockPath, StringComparison.OrdinalIgnoreCase)
+            && Interlocked.Increment(ref reads) > 1
+                ? NetworkFaultDecision.Throwing(new IOException("sharing violation"))   // any SECOND read bumps into Bob's heartbeat
+                : NetworkFaultDecision.None;
+        try
+        {
+            clock.Advance(TimeSpan.FromMinutes(5));   // the laptop slept
+            lockSvc.TickWakeCheck();                  // raises WakeDetected, which runs the wake check
+
+            Assert.Same(lost.Task, await Task.WhenAny(lost.Task, Task.Delay(10_000)));
+        }
+        finally { NetworkFaults.Decide = null; }
+
+        Assert.Equal(WriteLockLostReason.TakenOver, lost.Task.Result);
+        Assert.Equal(1, reads);   // the first read settled it; there was no second one to bump
+        Assert.NotNull(svc.LockLossNewHolder);
+    }
+
+    /// <summary>
+    /// Change (c) through the checkout service: Alice has taken the lock over, and Bob's heartbeat reads her name on
+    /// its FIRST tick, writes nothing (the lock file is byte-identical afterwards, so her lock is not held up as
+    /// live) and raises HeartbeatFailed; the checkout service's ownership check then reads Alice's name and
+    /// WriteLockLost follows with the "taken over" reason. Before the change this took three failed beats, or the next
+    /// save, and the heartbeat kept freshening Alice's lock meanwhile.
+    /// </summary>
+    [Fact]
+    public async Task Heartbeat_LockNamesAnotherSession_DemotesOnTheFirstTick_AndWritesNothing()
+    {
+        var (svc, lockSvc) = CreateService();
+        var db = DbPath();
+        CreateFile(db);
+        Assert.Equal(CheckoutOutcome.WriteAccess, await svc.CheckoutAsync(db));
+
+        var lost = new TaskCompletionSource<WriteLockLostReason>(TaskCreationOptions.RunContinuationsAsynchronously);
+        svc.WriteLockLost += reason => lost.TrySetResult(reason);
+
+        var lockPath = Path.ChangeExtension(db, ".lock");
+        WriteExternalFreshLock(db);                      // Alice took over
+        var alices = File.ReadAllBytes(lockPath);
+
+        await lockSvc.ForceRenewHeartbeat();             // ONE beat
+
+        Assert.Same(lost.Task, await Task.WhenAny(lost.Task, Task.Delay(10_000)));
+        Assert.Equal(WriteLockLostReason.TakenOver, lost.Task.Result);
+        Assert.Equal(alices, File.ReadAllBytes(lockPath));
+        Assert.False(File.Exists(lockPath + ".tmp"));
+    }
+
+    // ── Change (d): the final check deletes D.tmp only when it confirmed the lock is ours ──────────
+
+    /// <summary>The log line the final check writes when it refuses a save, or null when there is none.</summary>
+    /// <param name="logger">The recording logger the service under test was given.</param>
+    private static string? FinalCheckRefusalLine(RecordingAppLogger logger)
+        => logger.Infos.SingleOrDefault(line => line.StartsWith("CheckoutService: the final check before the rename refused the save"));
+
+    /// <summary>
+    /// Change (d), the new behaviour: the final check cannot reach the lock file (the share stopped answering during
+    /// the upload), so it can NOT tell whose lock it is. The save is a CopyError with the outage notice, D is
+    /// byte-identical, D' and its marker stay, and D.tmp is LEFT in place (it may be another computer's save in
+    /// progress); the log says why. The leftover is harmless: the next save overwrites it and succeeds.
+    /// </summary>
+    [Fact]
+    public async Task SaveAsync_LockCannotBeCheckedAtTheFinalCheck_LeavesD_tmpInPlace_AsACopyError()
+    {
+        var db = DbPath();
+        var logger = new RecordingAppLogger();
+        var (svc, lockSvc) = await CheckoutWithUnsavedEditAsync(db, logger);
+        var banners = CaptureSaveBanners(svc);
+        var before = DbFileTestHelpers.HashOf(db);
+        var lockPath = Path.ChangeExtension(db, ".lock");
+
+        var outcome = await SaveWhileAsync(svc, () =>
+            NetworkFaults.Decide = request =>
+                request.Label == "File.Exists" && string.Equals(request.Path, lockPath, StringComparison.OrdinalIgnoreCase)
+                    ? NetworkFaultDecision.TimeOut
+                    : NetworkFaultDecision.None);
+
+        Assert.Equal(SaveOutcome.CopyError, outcome);
+        Assert.Equal((SavePrompt.OutageNotice(hasUnsavedChanges: true, autoSaveEnabled: false), false), Assert.Single(banners));
+        Assert.Equal(before, DbFileTestHelpers.HashOf(db));
+        Assert.True(File.Exists(db + ".tmp"), "Without a confirmed lock the save must leave D.tmp alone.");
+        Assert.EndsWith("the lock could not be checked, D.tmp left in place.", FinalCheckRefusalLine(logger));
+        AssertSessionKept(svc, lockSvc);
+
+        // The leftover D.tmp does no harm: the next save overwrites it, saves, and consumes it.
+        Assert.Equal(SaveOutcome.Success, await svc.SaveAsync());
+        Assert.Equal("unsaved-edit", ReadTestValue(db));
+        Assert.False(File.Exists(db + ".tmp"));
+    }
+
+    /// <summary>
+    /// Change (d) with change (a), Story 3: another session's name in the lock at the final check is LockLost
+    /// after reading the lock file ONCE; D is untouched, D' and its marker stay, D.tmp is left for the new
+    /// holder's cleanup, and the log says exactly that.
+    /// </summary>
+    [Fact]
+    public async Task SaveAsync_LockLostAtTheFinalCheck_ReadsTheLockOnce_AndLeavesD_tmpForTheNewHolder()
+    {
+        var db = DbPath();
+        var logger = new RecordingAppLogger();
+        var (svc, _) = await CheckoutWithUnsavedEditAsync(db, logger);
+        var before = DbFileTestHelpers.HashOf(db);
+        var lockPath = Path.ChangeExtension(db, ".lock");
+        var counter = new ShareOpCounter();
+
+        var outcome = await SaveWhileAsync(svc, () =>
+        {
+            WriteExternalFreshLock(db);       // Alice took over while Bob's upload was finishing
+            counter.Install(lockPath);        // from here on, count what the final check does to the lock file
+        });
+
+        Assert.Equal(SaveOutcome.LockLost, outcome);
+        Assert.Equal(1, counter.Count("File.Exists"));
+        Assert.Equal(1, counter.Count("File.ReadAllText"));
+        Assert.Equal(before, DbFileTestHelpers.HashOf(db));
+        Assert.True(File.Exists(db + ".tmp"));
+        Assert.True(File.Exists(svc.WorkingPath));
+        Assert.True(File.Exists(svc.WorkingPath + ".dirty"));
+        Assert.EndsWith("lock lost, D.tmp left for the new holder's cleanup.", FinalCheckRefusalLine(logger));
+    }
+
+    /// <summary>
+    /// Spec item 32, design risk 3, at the checkout service: the EXIT save (<c>ReleaseAsync(saveFirst: true)</c>) is
+    /// refused at the final check because Alice took the lock over while Bob's upload was finishing. ReleaseAsync
+    /// returns LockLost and raises WriteLockLost once; D is byte-identical; D' and its dirty marker are kept (the edit
+    /// is still in D'); D.tmp is left (the save must not touch the share without the lock); and the lock file still
+    /// names Alice, because the release re-reads the lock and skips the delete when it is not ours. Bob is no longer
+    /// a writer, and the service is read-only.
+    /// </summary>
+    [Fact]
+    public async Task ReleaseAsync_ExitSaveRefusedAtTheFinalCheck_ReturnsLockLost_AndKeepsEverything()
+    {
+        var db = DbPath();
+        var (svc, lockSvc) = await CheckoutWithUnsavedEditAsync(db);
+        var before = DbFileTestHelpers.HashOf(db);
+        var lockPath = Path.ChangeExtension(db, ".lock");
+        var lockLostCount = 0;
+        svc.WriteLockLost += _ => lockLostCount++;
+        byte[]? alices = null;
+        CrashPoints.Hook = name =>
+        {
+            if (name != "Save.AfterTmpVerify") return;
+            WriteExternalFreshLock(db);
+            alices = File.ReadAllBytes(lockPath);
+        };
+
+        SaveOutcome outcome;
+        try { outcome = await svc.ReleaseAsync(saveFirst: true); }
+        finally { CrashPoints.Hook = null; }
+        lockSvc.PendingRelease?.Wait(TimeSpan.FromSeconds(10));   // let the release's background lock-file handling finish
+
+        Assert.Equal(SaveOutcome.LockLost, outcome);
+        Assert.Equal(1, lockLostCount);
+        Assert.Equal(before, DbFileTestHelpers.HashOf(db));
+        Assert.True(File.Exists(svc.WorkingPath), "D' must be kept");
+        Assert.True(File.Exists(svc.WorkingPath + ".dirty"), "the dirty marker must be kept");
+        Assert.Equal("unsaved-edit", ReadTestValue(svc.WorkingPath));
+        Assert.True(File.Exists(db + ".tmp"), "without the lock the exit save must leave D.tmp alone");
+        Assert.Equal(alices, File.ReadAllBytes(lockPath));       // the release did not delete the other session's lock
+        Assert.False(lockSvc.IsWriter);
+        Assert.Equal(CheckoutMode.ReadOnly, svc.Mode);
+    }
+
+    /// <summary>
+    /// Change (d), unchanged behaviour pinned: the lock is confirmed ours at the final check but D changed during the
+    /// upload. The save is SourceModified, and D.tmp IS discarded (the lock was ours a moment ago); the log says so.
+    /// </summary>
+    [Fact]
+    public async Task SaveAsync_DChangedAtTheFinalCheck_DiscardsD_tmp_AndSaysSo()
+    {
+        var db = DbPath();
+        var logger = new RecordingAppLogger();
+        var (svc, _) = await CheckoutWithUnsavedEditAsync(db, logger);
+
+        var outcome = await SaveWhileAsync(svc, () =>
+        {
+            InsertTestValue(db, "other-writers-save");
+            File.SetLastWriteTimeUtc(db, File.GetLastWriteTimeUtc(db).AddMinutes(1));   // visible to the stamp however coarse the clock
+        });
+
+        Assert.Equal(SaveOutcome.SourceModified, outcome);
+        Assert.False(File.Exists(db + ".tmp"), "The lock was confirmed ours, so the refused save discards its D.tmp.");
+        Assert.EndsWith("D.tmp discarded.", FinalCheckRefusalLine(logger));
+        Assert.True(File.Exists(svc.WorkingPath + ".dirty"));
+    }
+
+    /// <summary>
+    /// Change (d), the re-created lock counts as confirmed: at the final check the lock file has been REMOVED (antivirus,
+    /// cloud-sync), the check puts it back (<c>TryRecoverRemovedLockAsync</c>), and D has changed. The refusal is
+    /// SourceModified, the lock file is back and names this session, and D.tmp is discarded.
+    /// </summary>
+    [Fact]
+    public async Task SaveAsync_LockRemovedAndPutBackAtTheFinalCheck_ThenDChanged_DiscardsD_tmp()
+    {
+        var db = DbPath();
+        var logger = new RecordingAppLogger();
+        var (svc, lockSvc) = await CheckoutWithUnsavedEditAsync(db, logger);
+        var lockPath = Path.ChangeExtension(db, ".lock");
+
+        var outcome = await SaveWhileAsync(svc, () =>
+        {
+            File.Delete(lockPath);
+            InsertTestValue(db, "other-writers-save");
+            File.SetLastWriteTimeUtc(db, File.GetLastWriteTimeUtc(db).AddMinutes(1));
+        });
+
+        Assert.Equal(SaveOutcome.SourceModified, outcome);
+        Assert.False(File.Exists(db + ".tmp"));
+        Assert.EndsWith("D.tmp discarded.", FinalCheckRefusalLine(logger));
+        Assert.True(File.Exists(lockPath), "The check must have put the removed lock file back.");
+        Assert.Equal(lockSvc.SessionGuid, JsonSerializer.Deserialize<TermPoint.Models.LockFileData>(File.ReadAllText(lockPath))!.SessionGuid);
+        Assert.True(lockSvc.IsWriter);
     }
 }

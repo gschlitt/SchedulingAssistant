@@ -456,6 +456,50 @@ public sealed class RestoreIntoTests : IDisposable
         Assert.False(File.Exists(LockPathOf(target)));
     }
 
+    /// <summary>
+    /// Spec item 32, change (a), for the restore check (which asks without recording the holder, because a restore
+    /// into another database must not touch session state): another session's name in the lock at the swap is final.
+    /// The restore is LockLost after ONE existence check of the lock file (there were two before the change: the
+    /// re-read), the database is byte-identical, and the other session's lock file is exactly as it was written —
+    /// our release does not delete a lock that is not ours. The session's own "new holder" stays unset.
+    /// </summary>
+    [Fact]
+    public async Task RestoreInto_LockNamesAnotherSessionAtTheSwap_IsLockLost_WithoutARereadOfTheLock()
+    {
+        var (svc, _) = CreateService();
+        var target = TargetPath();
+        var oldBytes = CreateTarget(target);
+        var backup = CreateBackup("from-backup");
+        var lockPath = LockPathOf(target);
+        string? foreignLock = null;
+        var existsCalls = 0;
+
+        // Someone takes the lock over while the restore is uploading; the final check at the swap is the next thing to run.
+        CrashPoints.Hook = name =>
+        {
+            if (name != "Restore.AfterTmpVerified") return;
+            foreignLock = WriteForeignLock(target, TimeSpan.Zero);
+            NetworkFaults.Decide = request =>
+            {
+                if (request.Label == "File.Exists" && string.Equals(request.Path, lockPath, StringComparison.OrdinalIgnoreCase))
+                    Interlocked.Increment(ref existsCalls);
+                return NetworkFaultDecision.None;
+            };
+        };
+
+        RestoreResult result;
+        try { result = await svc.RestoreIntoAsync(backup, target); }
+        finally { CrashPoints.Hook = null; NetworkFaults.Decide = null; }
+
+        Assert.Equal(RestoreOutcome.LockLost, result.Outcome);
+        Assert.Equal(1, existsCalls);
+        Assert.Equal(oldBytes, File.ReadAllBytes(target));
+        Assert.Empty(PreRestoreFiles());
+        Assert.Equal(foreignLock, File.ReadAllText(lockPath));
+        Assert.Null(svc.LockLossNewHolder);
+        AssertNoSession(svc);
+    }
+
     /// <summary>A damaged backup into an existing database: refused, database untouched, lock released.</summary>
     [Fact]
     public async Task RestoreInto_ExistingTarget_DamagedBackup_IsRefused_AndTheLockIsReleased()
