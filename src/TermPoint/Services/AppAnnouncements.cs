@@ -47,6 +47,13 @@ public static class AppAnnouncements
     [        
         new VersionedAnnouncement(
             SinceVersion: new Version(1,0,2),
-            Message     : "Welcome to TermPoint!")
+            Message     : "Welcome to TermPoint!"),
+
+        // 1.2.3: spec items 24 (Import Sections), 20 (subject focus) and 31 (Tags all/any). Wording approved by Greg, 2026-10-28.
+        new VersionedAnnouncement(
+            SinceVersion: new Version(1,2,3),
+            Message     : "New in TermPoint 1.2.3: import sections from a spreadsheet (Files → Import Sections), " +
+                          "focus on just the subjects you are scheduling (top banner → Subjects), " +
+                          "and more flexibility with custom tag selection.")
     ];
 }
