@@ -26,9 +26,9 @@ enough); **share** = the database on Mekler's share; **both** = GregDeskTop and 
 | M2 Kill the writer | Must | one computer + share | ✅ pass |
 | M3 F1: X and Discard on "Restore?" | Must | one computer | ✅ pass |
 | M4 Two-user contention | Must | both + share | ✅ pass (B1, B2, B3) |
-| M5 Stale-lock takeover | Must | both + share (+ a third computer for (6)) | ◐ (1), (2), (4), (5) pass on 1.2.3.2; (3) and (4) ✗ on waking (A8; D safe) → **(3) re-run on 1.2.3.3**; **(7) and new (8) on 1.2.3.3**; (6) not run |
-| M6 F12: the laptop sleeps mid-save | Must | both + share | ✅ pass on 1.2.3.2 (window hit; final check refused; work kept); A8, A11 seen → **re-run on 1.2.3.3** (item 32 changes the final check) |
-| M7 F4: an editor open across a lost lock | Must | one computer (Python + repo for the helper script) | ✅ pass on 1.2.3.2 (nothing written after the loss); found A2–A5 → **re-run on 1.2.3.3** (the heartbeat now notices) |
+| M5 Stale-lock takeover | Must | both + share (+ a third computer for (6)) | ✅ (1), (2), (4), (5) pass on 1.2.3.2; (3) passes on 1.2.3.4 with and without unsaved changes (A8 fixed; on 1.2.3.3 it found A12, fixed in 1.2.3.4); (7) and (8) pass on 1.2.3.4; (6) not run (no third computer) |
+| M6 F12: the laptop sleeps mid-save | Must | both + share | ✅ pass on 1.2.3.2 (window hit; final check refused; work kept); A8, A11 seen → ✅ re-run pass on 1.2.3.4 (D.tmp left for the new holder) |
+| M7 F4: an editor open across a lost lock | Must | one computer (Python + repo for the helper script) | ✅ pass on 1.2.3.2 (nothing written after the loss); found A2–A5 → ✅ re-run pass on 1.2.3.3 (the heartbeat noticed in 11 s; 1.2.3.4 doesn't change this path) |
 | M8 Mixed 1.2.2 and 1.2.3 | Must | both + share + a sideload 1.2.2 build | ✅ pass (Dir 1, 2, 3, gate; 2026-10-27, on 1.2.3.2 and 1.2.2) |
 | M9 A colleague joins during an edit | Must | both + share | ✅ pass |
 | M10 Exit save on a slow or dead link | Must | one computer + share | ✅ pass (re-run on 1.2.3.2, 2026-10-27) |
@@ -58,14 +58,15 @@ on a new build, 1.2.3.3. The logs show that no other pass touched the changed co
 | # | Block | Build | Scenarios |
 |---|---|---|---|
 | 1 | ~~Mixed versions~~ done 2026-10-27 | GregDeskTop 1.2.3.2, GregSurface 1.2.2 | M8 ✅ |
-| 2 | Install 1.2.3.3 | — | GregSurface: collect the 1.2.2 log, uninstall 1.2.2, install 1.2.3.3. GregDeskTop: install over 1.2.3.2 |
-| 3 | Re-runs | 1.2.3.3 | M5 (3), M5 (8) (new), M6, M7, M5 (7) |
+| 2 | ~~Install 1.2.3.3~~ done 2026-10-27 | — | GregSurface: uninstall 1.2.2, install 1.2.3.3. GregDeskTop: install over 1.2.3.2 |
+| 3 | ~~Re-runs~~ done 2026-10-27 | 1.2.3.3, then 1.2.3.4 | M7 ✅ (1.2.3.3); M5 (3) found A12 on 1.2.3.3 → fixed in 1.2.3.4; M5 (3) ✅ twice, M5 (8) ✅, M6 ✅, M5 (7) ✅ (1.2.3.4) |
 | 4 | Remaining Shoulds | any | S2, S3, then S7–S9 (the Windows 10 and 11 computers) |
 | 5 | BugSnag; Mac | 1.2.3.3 | N3; S11 on the Mac |
 | 6 | Optional | any | N1, N2; M5 (6) if a third computer turns up |
 | 7 | After Store certification | — | N4 |
 
-**Musts left before release:** on 1.2.3.3, M5 (3), (7), (8), M6 and M7.
+**Musts left before release:** none. Every Must passes on the current code (2026-10-27 evening). Still to do before
+release: one clean full harness run (see A12's note on `CrashSweep_EveryPointIsCutOrExplained`), then the Shoulds.
 
 ### Open issues
 
@@ -77,10 +78,13 @@ on a new build, 1.2.3.3. The logs show that no other pass touched the changed co
       The window title shows only three parts ("v1.2.3"); the log stamps `[v1.2.3.1]`.
 - [x] **Test build 1.2.3.2** (2026-10-27), from 5b4c3bc with `<Version>` 1.2.3.2, on GregDeskTop and GregSurface; the
       log stamps `[v1.2.3.2]`. Still to do: the Mac for S11.
-- [ ] **Test build 1.2.3.3** with spec item 32 (the A8/A2 fix): **built 2026-10-27**, MSIX in
-      `\\mekler\Users\gregs\temp\msix-1.2.3.3\` (and `C:\temp\termpoint-msix-1.2.3.3`). To install on GregDeskTop and
-      GregSurface after M8. The re-runs in "Plan from here" need it.
-- [ ] **A2 (found in M7; moved into 1.2.3 on 2026-10-27, fixed by spec item 32 (c); it was on the 1.2.4 list as
+- [x] **Test build 1.2.3.3** with spec item 32 (the A8/A2 fix): **built 2026-10-27**, MSIX in
+      `\\mekler\Users\gregs\temp\msix-1.2.3.3\` (and `C:\temp\termpoint-msix-1.2.3.3`). Installed on both computers
+      2026-10-27 evening (GregSurface uninstalled 1.2.2 first).
+- [x] **Test build 1.2.3.4** with the A12 fix: built 2026-10-27 evening, MSIX in
+      `\\mekler\Users\gregs\temp\msix-1.2.3.4\` (and `C:\temp\termpoint-msix-1.2.3.4`); installed over 1.2.3.3 on both
+      computers. The current test build.
+- [x] **A2 (found in M7; moved into 1.2.3 on 2026-10-27, fixed by spec item 32 (c); it was on the 1.2.4 list as
       "9.3c-2b"): the heartbeat renews whoever's lock is in the file.**
       `WriteLockService.RenewHeartbeatAsync` reads the lock file, sets a new heartbeat and writes it back without
       checking the `SessionGuid`; the ownership check (`heartbeat verify`) runs only after three heartbeat *failures*.
@@ -90,6 +94,10 @@ on a new build, 1.2.3.3. The logs show that no other pass touched the changed co
       heartbeat at 12:29:13 and 12:32:13. Not a regression: the heartbeat has worked this way since multi-user
       (4451a96, March). Likely real-world trigger: the writer's own link down for 4+ minutes while the other computer
       still reaches the share; the takeover happens, the link returns, the next heartbeat succeeds and nothing checks.
+      **Fixed and field-verified (2026-10-27 evening):** in M7 (1.2.3.3), M5 (3) and M5 (8) (1.2.3.4) the heartbeat
+      found the other session's lock, wrote nothing and the demotion followed; the lock samples on the share show only
+      the new holder's heartbeat after every takeover. M5 (8) is the real-world trigger above: the share answered again
+      at about 21:38:01 and the next heartbeat (21:38:23) demoted.
 - [ ] **A3 (M7; 1.2.4, with item 14): the section editor closes when TermPoint goes read-only**, and its unapplied
       change is dropped without a word: the reload after the demotion runs `SectionListViewModel.LoadCore`, which calls
       `CollapseEditor()` first. Nothing could have been saved anyway; the user just isn't told. (It also means the F4
@@ -104,7 +112,7 @@ on a new build, 1.2.3.3. The logs show that no other pass touched the changed co
       ("CheckIntegrity timed out after 5000ms", 14:16:24, 14:20:28, 14:21:10; also M2 on 2026-10-22): the check reads
       every page across the share within one 5 s step limit. Saves at the same lag work. Ordinary home VPNs add far less
       than 220 ms; worth finding the latency at which opening starts to fail (and what the user is told) before deciding.
-- [ ] **A8 (M5 (3), Must; decided 2026-10-27: fixed in 1.2.3 by spec item 32 (a) + (c) + (d), re-runs on 1.2.3.3):
+- [x] **A8 (M5 (3), Must; decided 2026-10-27: fixed in 1.2.3 by spec item 32 (a) + (c) + (d), re-runs on 1.2.3.3):
       after a takeover, the waking computer can stay
       writer.** GregSurface slept with `ZZZT-302 S` unsaved; GregDeskTop took over and saved; on waking (15:33:53, gap
       483 s) GregSurface's wake check read the lock and found it NOT ours, then re-read 200 ms later "to rule out a
@@ -125,6 +133,39 @@ on a new build, 1.2.3.3. The logs show that no other pass touched the changed co
       proof by itself (our own rename can only ever show our own session), so the re-read is needed only for a missing
       or unreadable file; (b) on Unreachable, the wake check tries again shortly instead of giving up; (c) A2's
       heartbeat ownership check would also catch it within a minute.
+      **Fixed and field-verified (2026-10-27 evening):** M5 (3) on 1.2.3.3 and 1.2.3.4 ("NotOurs — the lock names
+      another session, so no re-read"; demoted the moment the process resumed); M6 on 1.2.3.4 (the final check said
+      "lock lost, D.tmp left for the new holder's cleanup"). Item 32 (c) then exposed A12, fixed in 1.2.3.4.
+- [x] **A12 (M5 (3) on 1.2.3.3; caused by item 32 (c); fixed in 1.2.3.4 and field-verified): on waking after a
+      takeover, the wake check and the heartbeat both demoted.** Both run the moment a computer wakes (or a frozen
+      process resumes), and since item 32 both find the new holder's name, so `HandleLockLossAsync` raised
+      `WriteLockLost` twice and two in-place demotions overlapped. With unsaved changes it went unseen (one banner;
+      both demotions kept D' and its marker). **With none it broke R4** (probe, 20:04:20): the first demotion deleted
+      D', the second reconnected to it before the first had switched to D'', and GregSurface showed "The database
+      connection could not be restored after losing write access. Please close and reopen the database file." plus a
+      red "OnWriteLockLost: ReinitializeConnection failed…" banner instead of the takeover banner (the first demotion
+      then finished; the sections showed). No data risk at any point. **Fix (1.2.3.4):** only the first check to find
+      the loss in a write session raises `WriteLockLost` (`CheckoutService._lockLossRaised`, re-armed by
+      `StartWatchingForLockLoss()` at the three places write access begins); later checks log "the lock loss is
+      already being handled for this write session; not raising it again." Seven new tests (wake and heartbeat
+      together; a save after the loss; a regained write session loses it again, via checkout, take-over and recovery;
+      the lifecycle with and without unsaved changes), all failing without the fix. **Field (1.2.3.4):** M5 (3) without
+      unsaved changes (21:17:34) and with (21:25:52): one demotion, the takeover banner and the read-only row only.
+      **Why the tests missed it:** the unit tests and the harness ran the wake check and the heartbeat one at a time;
+      a real wake runs them together. The harness's sleep step (`SleepEvent`) still does them one after the other
+      (1.2.4: run them together). **Harness note:** the full run after the fix (4060 tests) had one failure,
+      `CrashSweep_EveryPointIsCutOrExplained` ("planned cut did not fire: Bob lost the lock to Alice / Sleep 10
+      minutes (wake check), Demote.AfterWorkingCopyHandled #1"); the crash sweep alone passed 5/5, and the safety
+      check `CrashSweep_NoNewViolations` passed in the full run. Likely cause: the wake step's 40 ms quiet window
+      (`Computer.SettleBackgroundWorkAsync`) can end before the demotion starts under the full run's load; before the
+      fix the heartbeat tick that follows in the same step demoted again and hid it. Test timing only; re-run the full
+      harness with GregDeskTop otherwise idle, and harden that wait in 1.2.4 if it recurs.
+- [ ] **Exit-path finding (already in `spec_version_1.2.4.md`, "Item 32 (1.2.3)" row) seen in the field: M6 on
+      1.2.3.4.** The exit save refused as LockLost started the in-place demotion while the window was closing; it
+      logged ERROR "OnWriteLockLost: demotion failed — Cannot access a disposed object." (GregSurface 21:55:15).
+      "Changes Not Saved" was shown, no red banner was visible, D' and its marker were kept and Restore was offered.
+      On 1.2.3.2 A8 hid this path (the refusal was misclassed); item 32 makes it reachable. Stays in 1.2.4 (Greg,
+      2026-10-27). Probably also a BugSnag error report each time.
 - [ ] **A11 (M6; on the 1.2.4 list as F12's "one `.tmp` name for every writer"): a writer asleep mid-save blocks
       the new writer's saves.** GregSurface's frozen TermPoint held `BIOL-TT.db.tmp` open, so for 6 minutes every save
       on GregDeskTop failed ("…in use by another program or can't be accessed…"). No data risk (D untouched, the
@@ -457,6 +498,34 @@ integrity ok). **(5) ☒ pass:** TermPoint on GregSurface frozen (last heartbeat
 file gone — write access available`; Take over as writer worked (lock acquired 16:22:26). No offer appeared before
 GregSurface came back (the reader's own 180 s had not run out). **(6)** not run (no third computer).
 
+**Re-runs, 2026-10-27 evening** (D reset from the master before each build's runs; freezes via Resource Monitor; lock
+file sampled every 20 s; user, logs, share and copies checked by Claude):
+- **(3) on 1.2.3.3 ☒ data pass, found A12:** GregSurface froze with `ZZZT-312 S` (last heartbeat 19:41:10);
+  GregDeskTop took over 19:47:03, saved `ZZZT-313 D` 19:47:28. On resume (19:47:51, gap 401 s) the heartbeat and the
+  wake check both found the other session's lock (NotOurs, no re-read: A8 fixed) and both demoted (A12); one banner,
+  `ZZZT-312 S` kept. Restart: Restore → "Can't Restore" → Save a Copy… `BIOL-TT (recovered-6).db` holds `ZZZT-312 S`;
+  D holds `ZZZT-313 D`, not `ZZZT-312 S`; both pass the integrity check. A9 again (no-edit save 19:50:13).
+  **Probe, no unsaved changes:** resumed 20:04:20 → "The database connection could not be restored…" and a red
+  log-text banner instead of the takeover banner (A12).
+- **(3) on 1.2.3.4, no unsaved changes ☒ pass:** resumed 21:17:34 (gap 375 s): one demotion (the second check logged
+  "already being handled"), only the takeover banner and the read-only row, no errors.
+- **(3) on 1.2.3.4, unsaved `ZZZT-322 S` ☒ pass:** resumed 21:25:52: one demotion, D' and marker kept, same two lines
+  on screen. GregDeskTop saved `ZZZT-323 D`. Restart → "Can't Restore" → `BIOL-TT (recovered-7).db` holds
+  `ZZZT-322 S`; D holds `ZZZT-323 D`, not `ZZZT-322 S`; integrity ok.
+- **(8) on 1.2.3.4 ☒ pass** (GregSurface's network disconnected rather than Wi-Fi off; real Start → Sleep):
+  `ZZZT-308 S` unsaved; last heartbeat 21:28:59; GregDeskTop took over and saved `ZZZT-309 D` (~21:35). GregSurface
+  woke at 21:33:23 with no network: wake check "network unreachable, keeping current state"; heartbeats failed, the
+  outage notice at 21:35:23. After reconnecting, the share still answered "path not found" until about 21:38:01 (the
+  wait Greg saw was Windows reconnecting); the next heartbeat (21:38:23) found the other session's lock, wrote
+  nothing and demoted; the takeover banner replaced the notice. GregDeskTop's lock was never rewritten. Restart →
+  "Can't Restore" → `BIOL-TT (recovered-8).db` holds `ZZZT-308 S`; D holds `ZZZT-309 D`, not `ZZZT-308 S`.
+- **(7) on 1.2.3.4 ☒ pass:** clock 10 min **behind** on GregSurface, active writer: GregDeskTop's open showed the
+  stale prompt ("clock says 634s old", 22:02:27); Take over → after the confirmation wait "ForceAcquire: lock changed
+  since it was judged stale — leaving it alone" (22:03:37) → read-only; GregSurface kept the lock, beating every
+  minute. Clock 10 min **ahead**, GregSurface hard-killed right after opening (heartbeat stamped 22:15:03):
+  GregDeskTop opened read-only with no prompt (22:06:31); "lock heartbeat unchanged for 180s — write access
+  available" at 22:09:31; Take over worked (22:09:43, "clock says -324s old, heartbeat unchanged for 188s here").
+
 ### M6 — F12: the laptop sleeps mid-save
 *GregSurface (sleeps), GregDeskTop, Mekler · R1 R2 R3 · ~30 min, a race: allow a retry*
 **Setup:** GregSurface writer with `ZZZT-401 S` unsaved. Clumsy **on GregSurface** (not Mekler, so GregDeskTop runs at full speed), degraded so the exit save takes ~15–20 s (time a dry run first).
@@ -482,6 +551,16 @@ re-read hit A8's collision, so the refusal was classed as "location did not resp
 ("D.tmp discarded") instead of leaving it for the new holder: harmless here, but see A8. GregDeskTop's next save landed
 (16:42:39): D holds `ZZZT-402 D`, not `ZZZT-401 S`. GregDeskTop closed; GregSurface's restart → Restore → "Can't
 Restore" → Save a Copy… `BIOL-TT (recovered-4).db`, which holds `ZZZT-401 S`. Both pass the integrity check.
+**Re-run on 1.2.3.4 ☒ pass** (2026-10-27 evening; clumsy Lag 110 ms on GregSurface, stopped once frozen): after two
+false starts (whose exit saves landed `ZZZT-411 S` and `ZZZT-412 S`), GregSurface froze mid-exit-save with
+`ZZZT-413 S` (last heartbeat 21:48:45; `BIOL-TT.db.tmp` on the share). GregDeskTop took over at 21:54:24; it could
+not delete the leftover `.tmp` and its first save failed "file in use" (A11). On resume (21:55:15) the heartbeat found
+the other session's lock and **the final check refused the save: "lock lost, D.tmp left for the new holder's
+cleanup."** (item 32 (d)); the final check's own report was skipped as "already being handled" (A12 fix).
+"Changes Not Saved…" was shown and TermPoint closed. Also logged: ERROR "OnWriteLockLost: demotion failed — Cannot
+access a disposed object." (the 1.2.4 exit-path finding, see Open issues; no banner seen). GregDeskTop's next save
+landed (21:56:13); D holds `ZZZT-412 D`, not `ZZZT-413 S`; `.tmp` gone. Restart → "Can't Restore" →
+`BIOL-TT (recovered-9).db` holds `ZZZT-413 S`. Both pass the integrity check.
 
 ### M7 — F4: an editor open across a lost lock
 *GregSurface; any computer with Python for the script · R3 R4 · ~10 min*
@@ -516,6 +595,11 @@ edit back and saved it at once (12:49:32), the save then removing the marker. A 
 and 12:39 was most likely an unlogged Discard (A5). Incidental: the stale-lock prompt and its confirmation wait worked
 (Alice's 5-minute-old lock, 12:24:03 → taken over 12:25:13); BugSnag got "Write lock lost: taken over by another
 session" with `newHolder=other` (N3, item 7).
+**Re-run on 1.2.3.3 ☒ pass** (2026-10-27 evening, GregDeskTop, fresh local copy `tmp\m7-133`, Auto-save **off** so
+only the heartbeat could notice): Alice's takeover at 19:35:30; the next heartbeat (19:35:41) logged "the lock file
+names another session — not renewing", the check answered NotOurs without a re-read, and TermPoint demoted with the
+banner; the course editor stayed open; Apply refused once with the plain sentence (19:35:49); Alice's lock file stayed
+byte-identical; the copy unchanged; clean exit. 1.2.3.4 doesn't change this single-check path.
 
 ### M8 — Mixed 1.2.2 and 1.2.3 on one share
 *GregDeskTop (1.2.3), GregSurface (temporarily 1.2.2), Mekler · R2 R4 · ~30 min, plus reinstalling 1.2.3*

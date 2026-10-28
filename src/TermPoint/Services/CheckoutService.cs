@@ -260,6 +260,19 @@ public sealed class CheckoutService : IDisposable
     private int     _heartbeatVerifyInFlight;
 
     /// <summary>
+    /// 0 = this write session has not yet reported losing the lock, 1 = it has (A12). Makes
+    /// <see cref="HandleLockLossAsync"/> run AT MOST ONCE per write session: the first check to find the lock
+    /// gone raises <see cref="WriteLockLost"/>, and every later check — the wake check and the heartbeat both run
+    /// when a computer wakes, and a save can find the same loss — returns without raising it again. Without this the
+    /// window ran two overlapping demotions, and the second one reopened the database on a working copy the first
+    /// had already deleted (wrong message; no data at risk). Mutated via
+    /// <see cref="Interlocked.Exchange(ref int, int)"/>; RESET to 0 only by <see cref="StartWatchingForLockLoss"/>,
+    /// which every start of write access calls, so a write session regained in the app can lose the lock again and
+    /// say so.
+    /// </summary>
+    private int     _lockLossRaised;
+
+    /// <summary>
     /// Hash of the D.tmp snapshot from a save whose step-5 rename was never confirmed
     /// (timed out or threw). The abandoned <c>File.Move</c> thread can still complete
     /// the rename seconds later — the "ghost rename" — leaving D updated while
@@ -810,8 +823,7 @@ public sealed class CheckoutService : IDisposable
         SessionDirty  = true;
         CurrentHolder = null;
 
-        _lockService.WakeDetected    += OnWake;
-        _lockService.HeartbeatFailed += OnHeartbeatFailed;   // F11
+        StartWatchingForLockLoss();
         _logger.LogBreadcrumb("Checkout: WriteAccess", new() { ["path"] = sourcePath });
         return CheckoutOutcome.WriteAccess;
     }
@@ -1033,8 +1045,7 @@ public sealed class CheckoutService : IDisposable
         SessionDirty  = true;
         CurrentHolder = null;
 
-        _lockService.WakeDetected    += OnWake;
-        _lockService.HeartbeatFailed += OnHeartbeatFailed;   // F11
+        StartWatchingForLockLoss();
         _logger.LogBreadcrumb("ForceCheckout: WriteAccess");
         return CheckoutOutcome.WriteAccess;
     }
@@ -1162,8 +1173,7 @@ public sealed class CheckoutService : IDisposable
         SessionDirty   = true;
         CurrentHolder  = null;
 
-        _lockService.WakeDetected    += OnWake;
-        _lockService.HeartbeatFailed += OnHeartbeatFailed;
+        StartWatchingForLockLoss();
         _logger.LogBreadcrumb("Recovery: WriteAccess (resumed crashed session)", new() { ["path"] = SourcePath });
         return CheckoutOutcome.WriteAccess;
     }
@@ -3513,6 +3523,28 @@ public sealed class CheckoutService : IDisposable
     }
 
     /// <summary>
+    /// Begins watching the lock for the write session that is just starting. Called at each of the three places
+    /// where write access begins — <see cref="CheckoutAsync"/>, <see cref="ForceCheckoutAsync"/> and
+    /// <see cref="FinishRecoveryCheckoutAsync"/> — right after <see cref="Mode"/> becomes
+    /// <see cref="CheckoutMode.WriteAccess"/>, so there is ONE place that does both of these things:
+    /// <list type="number">
+    ///   <item>Re-arms the once-per-session guard (<see cref="_lockLossRaised"/> back to 0). This is what lets a
+    ///         write session regained in the app after a loss (a reader choosing "Take over as writer") report its
+    ///         own next loss; if a start of write access skipped it, that next loss would be swallowed as
+    ///         "already handled" and the user would never be told.</item>
+    ///   <item>Subscribes <see cref="OnWake"/> and <see cref="OnHeartbeatFailed"/> to the lock service (F11).
+    ///         <see cref="HandleLockLossAsync"/> unsubscribes both on the session's first loss.</item>
+    /// </list>
+    /// The guard is reset BEFORE the handlers are subscribed, so a check that fires at once sees a fresh guard.
+    /// </summary>
+    private void StartWatchingForLockLoss()
+    {
+        Volatile.Write(ref _lockLossRaised, 0);
+        _lockService.WakeDetected    += OnWake;
+        _lockService.HeartbeatFailed += OnHeartbeatFailed;   // F11
+    }
+
+    /// <summary>
     /// Called when <see cref="WriteLockService.WakeDetected"/> fires — i.e., the
     /// wake-detection timer saw a gap long enough to infer the machine was
     /// asleep. Re-reads the lock file to verify this session still owns it.
@@ -3520,6 +3552,10 @@ public sealed class CheckoutService : IDisposable
     /// other readers. If no, routes through
     /// <see cref="HandleLockLossAsync"/>, which raises
     /// <see cref="WriteLockLost"/> so MainWindow can demote in place.
+    ///
+    /// <para>The heartbeat check (<see cref="OnHeartbeatFailed"/>) runs at the same moment on waking, so both can
+    /// find the same loss. Only the first to do so raises <see cref="WriteLockLost"/> (once per write session —
+    /// see <see cref="_lockLossRaised"/>, A12); the other logs that and does nothing.</para>
     ///
     /// <para>The event is dispatched on the UI thread, but the verification work
     /// (reading the <c>.lock</c> file on a network share) can block for 20–30
@@ -3628,9 +3664,23 @@ public sealed class CheckoutService : IDisposable
     /// and reopens the connection. Keeping state transitions in the handler means
     /// the UI stays consistent with <see cref="CheckoutService"/> state, and the
     /// existing view-model / banner is preserved.</para>
+    ///
+    /// <para><b>Once per write session (A12).</b> Only the FIRST caller in a write session does any of the above.
+    /// The wake check, the heartbeat check and a save can all find the same loss at the same moment (on waking, the
+    /// first two always do), and each used to raise <see cref="WriteLockLost"/>: the window then ran two overlapping
+    /// demotions, the second reopened the database on a working copy the first had already deleted, and the user saw
+    /// "connection could not be restored" instead of "has taken over editing". Later callers log one line and return.
+    /// The guard (<see cref="_lockLossRaised"/>) is re-armed by <see cref="StartWatchingForLockLoss"/> whenever write
+    /// access begins again.</para>
     /// </summary>
     private Task HandleLockLossAsync()
     {
+        if (Interlocked.Exchange(ref _lockLossRaised, 1) != 0)
+        {
+            _logger.LogInfo("CheckoutService: the lock loss is already being handled for this write session; not raising it again.");
+            return Task.CompletedTask;
+        }
+
         StopAutoSave();
         _lockService.WakeDetected    -= OnWake;
         _lockService.HeartbeatFailed -= OnHeartbeatFailed;   // F11 — unsubscribe on first loss
@@ -3687,6 +3737,10 @@ public sealed class CheckoutService : IDisposable
     /// <para>A re-entrancy guard (<see cref="_heartbeatVerifyInFlight"/>) prevents stacking
     /// verification attempts if <see cref="WriteLockService.HeartbeatFailed"/> fires again
     /// while an earlier verification is still awaiting the network.</para>
+    ///
+    /// <para>The wake check (<see cref="OnWake"/>) runs at the same moment on waking, so both can find the same
+    /// loss. Only the first to do so raises <see cref="WriteLockLost"/> (once per write session — see
+    /// <see cref="_lockLossRaised"/>, A12); the other logs that and does nothing.</para>
     ///
     /// <para>This handler is called from the heartbeat timer thread (not the UI thread).
     /// The verification runs on a thread-pool thread via <see cref="Task.Run"/> (the SMB

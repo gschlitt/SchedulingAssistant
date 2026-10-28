@@ -51,15 +51,15 @@ internal sealed class RecordingAppLogger : IAppLogger
     /// <inheritdoc/>
     public void LogError(Exception? ex, string? context = null, bool unhandled = false)
     {
-        Errors.Add((ex, context));
+        lock (Errors) Errors.Add((ex, context));
         ErrorLogged?.Invoke(this, context ?? ex?.Message ?? "error");
     }
 
     /// <inheritdoc/>
-    public void LogWarning(string message, string? context = null) => Warnings.Add(message);
+    public void LogWarning(string message, string? context = null) { lock (Warnings) Warnings.Add(message); }
 
     /// <inheritdoc/>
-    public void LogInfo(string message, string? context = null) => Infos.Add(message);
+    public void LogInfo(string message, string? context = null) { lock (Infos) Infos.Add(message); }
 
     /// <inheritdoc/>
     public void LogBreadcrumb(string message, Dictionary<string, string>? metadata = null) { }
@@ -75,11 +75,11 @@ internal sealed class RecordingAppLogger : IAppLogger
         if (ThrowFromReportHandled)
             throw new InvalidOperationException("the logger is failing");
 
-        Handled.Add(new HandledReport(ex, context, metadata, metadataTab, groupingKey));
+        lock (Handled) Handled.Add(new HandledReport(ex, context, metadata, metadataTab, groupingKey));
     }
 
     /// <inheritdoc/>
-    public void NotifyUser(string message) => UserNotices.Add(message);
+    public void NotifyUser(string message) { lock (UserNotices) UserNotices.Add(message); }
 }
 
 /// <summary>

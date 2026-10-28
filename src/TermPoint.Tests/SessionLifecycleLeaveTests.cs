@@ -1099,6 +1099,111 @@ public sealed class SessionLifecycleLeaveTests : SessionLifecycleTestBase
     }
 
     /// <summary>
+    /// A12: makes the wake check and the heartbeat find a takeover at the same moment, as they do when a computer
+    /// wakes, with the window's handler wired the way the app wires it (every <see cref="CheckoutService.WriteLockLost"/>
+    /// starts a demotion). Alice takes the lock over; the wake check is raised as the wake timer raises it; one
+    /// heartbeat beat reads Alice's name and starts the other check. Both checks are held at their first read of the
+    /// lock file until both are running (<see cref="LockLossRace"/>), so they overlap for certain. Waits until both
+    /// have finished, then for every demotion that was started.
+    /// </summary>
+    /// <param name="db">D, open for writing.</param>
+    /// <returns>The demotions that were started, in order. The correct number is one.</returns>
+    private async Task<Task[]> TakeOverWhileWakeCheckAndHeartbeatBothRunAsync(string db)
+    {
+        var demotions = new List<Task>();
+        _checkout.WriteLockLost += reason => { lock (demotions) demotions.Add(_lifecycle.HandleWriteLockLostAsync(reason)); };
+
+        WriteExternalFreshLock(db);   // Alice took over
+        using (LockLossRace.HoldFirstCheckUntilTheSecondArrives(LockOf(db)))
+        {
+            LockLossRace.RaiseWakeDetected(_lockSvc);   // the wake check starts in the background...
+            await _lockSvc.ForceRenewHeartbeat();       // ...and ONE heartbeat beat starts the other check
+
+            Assert.True(
+                await LockLossRace.WaitForBothChecksAsync(_logger, () => { lock (demotions) return demotions.Count; }),
+                "both the wake check and the heartbeat check should have found the loss");
+            await Task.Delay(300);                      // settle: nothing else may be started after the checks are done
+        }
+
+        Task[] started;
+        lock (demotions) started = demotions.ToArray();
+        await Task.WhenAll(started);                    // every demotion must finish without throwing
+        SettleLocks();
+        return started;
+    }
+
+    /// <summary>
+    /// A12, the field symptom (GregSurface, 20:04:20), with no unsaved changes: Bob's computer wakes after Alice took the
+    /// lock over, and the wake check and the heartbeat find the loss together. Before the fix the window ran TWO
+    /// demotions; the first deleted D' (nothing to keep) and the second reopened the database on that deleted file, so
+    /// Bob saw "the database connection could not be restored" and a red error instead of the "has taken over editing"
+    /// banner. Now there is exactly one demotion, exactly one banner (the takeover one), exactly one reconnection (onto a
+    /// read-only copy that exists at that moment), no logged error, and Bob is read-only.
+    /// </summary>
+    [Fact]
+    public async Task LostLock_WakeCheckAndHeartbeatTogether_NoUnsavedEdits_OneDemotion_AndTheTakeoverBanner_A12()
+    {
+        var db = NewDb();
+        await OpenCleanAsync(db);
+        var working = _checkout.WorkingPath;
+        var dBefore = DbFileTestHelpers.HashOf(db);
+        var existedWhenReopened = new List<bool>();
+        _host.LockLossSurface.OnReinitialize = path => { lock (existedWhenReopened) existedWhenReopened.Add(File.Exists(path)); };
+        ResetRecords();
+
+        var demotions = await TakeOverWhileWakeCheckAndHeartbeatBothRunAsync(db);
+
+        Assert.Single(demotions);
+        Assert.Equal(
+            LockLossPrompt.Banner(takenOver: true, "other_user", "OTHER-PC", hadUnsavedChanges: false),
+            Assert.Single(_host.LockLossSurface.SaveErrors));
+        Assert.Single(_host.LockLossSurface.ReinitializedPaths);
+        Assert.Equal(new[] { true }, existedWhenReopened);   // the one reconnection was onto a file that existed
+        Assert.Equal(1, LockLossRace.CountInfos(_logger, LockLossRace.AlreadyHandled));
+        Assert.Empty(_logger.Errors);
+        Assert.Equal(CheckoutMode.ReadOnly, _checkout.Mode);
+        Assert.False(File.Exists(working));                  // no edits: D' was deleted by the (one) demotion
+        Assert.Equal(dBefore, DbFileTestHelpers.HashOf(db));
+        Assert.Equal("other_user", JsonSerializer.Deserialize<LockFileData>(File.ReadAllText(LockOf(db)))!.Username);
+    }
+
+    /// <summary>
+    /// A12 with an unsaved edit: the same wake-plus-heartbeat takeover, but Bob has an unsaved change. Still exactly one
+    /// demotion, one banner (the takeover banner, naming the kept changes), one reconnection onto a read-only copy that
+    /// exists, no logged error. D' and its dirty marker are KEPT with the edit in them (the only copy of that work), and D
+    /// is byte-identical.
+    /// </summary>
+    [Fact]
+    public async Task LostLock_WakeCheckAndHeartbeatTogether_WithAnUnsavedEdit_OneDemotion_KeepsTheEdit_A12()
+    {
+        var db = NewDb();
+        await OpenCleanAsync(db);
+        var working = _checkout.WorkingPath;
+        _host.Edit(SessionEdit);
+        var dBefore = DbFileTestHelpers.HashOf(db);
+        var existedWhenReopened = new List<bool>();
+        _host.LockLossSurface.OnReinitialize = path => { lock (existedWhenReopened) existedWhenReopened.Add(File.Exists(path)); };
+        ResetRecords();
+
+        var demotions = await TakeOverWhileWakeCheckAndHeartbeatBothRunAsync(db);
+
+        Assert.Single(demotions);
+        Assert.Equal(
+            LockLossPrompt.Banner(takenOver: true, "other_user", "OTHER-PC", hadUnsavedChanges: true),
+            Assert.Single(_host.LockLossSurface.SaveErrors));
+        Assert.Single(_host.LockLossSurface.ReinitializedPaths);
+        Assert.Equal(new[] { true }, existedWhenReopened);
+        Assert.Equal(1, LockLossRace.CountInfos(_logger, LockLossRace.AlreadyHandled));
+        Assert.Empty(_logger.Errors);
+        Assert.Equal(CheckoutMode.ReadOnly, _checkout.Mode);
+        Assert.True(File.Exists(working), "D' must be kept");
+        Assert.True(File.Exists(MarkerOf(working)), "the dirty marker must be kept");
+        Assert.Equal(SessionEdit, NewestValue(working));
+        Assert.Equal(dBefore, DbFileTestHelpers.HashOf(db));
+        Assert.Equal("other_user", JsonSerializer.Deserialize<LockFileData>(File.ReadAllText(LockOf(db)))!.Username);
+    }
+
+    /// <summary>
     /// The lock file is removed by another program and there are no unsaved edits: the banner says "removed or
     /// changed" by another program (F13: a damaged file is not "removed") and "no unsaved changes"; D' is deleted (nothing to keep), the snapshot D'' is created, the
     /// connection reopens on it and the sections reload.

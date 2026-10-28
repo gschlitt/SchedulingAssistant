@@ -6928,6 +6928,166 @@ public sealed class CheckoutServiceTests : IDisposable
         Assert.False(File.Exists(lockPath + ".tmp"));
     }
 
+    // ── A12: a lost lock is reported ONCE per write session ─────────────────────────────────────────
+    //
+    // On waking, the wake check and the heartbeat both run, and (since change (c)) both find Alice's name at once.
+    // Both used to raise WriteLockLost, so the window ran two overlapping demotions and the second reopened the
+    // database on a working copy the first had already deleted. Now only the first check in a write session raises
+    // it; the shared helper (LockLossRace) makes the overlap certain instead of a matter of thread timing.
+
+    /// <summary>
+    /// A12 (field, GregSurface): Bob's laptop wakes after Alice took the lock over, and the wake check and the
+    /// heartbeat find the loss at the same moment. Before the fix both raised WriteLockLost (the window then ran two
+    /// demotions at once and told Bob "the connection could not be restored" instead of "has taken over editing").
+    /// Now WriteLockLost is raised exactly once, as "taken over"; the second check says in the log that the loss is
+    /// already being handled. Both checks are held at their first read of the lock file until both are running, and the
+    /// test's handler only counts (Bob stays in write mode), so both really do reach the decision.
+    /// </summary>
+    [Fact]
+    public async Task WakeCheckAndHeartbeatTogether_RaiseWriteLockLostExactlyOnce_A12()
+    {
+        var clock   = new FakeTimeProvider();
+        var lockSvc = new WriteLockService(clock, null, startTimers: false);
+        var logger  = new RecordingAppLogger();
+        var svc     = new CheckoutService(lockSvc, logger, action => action(), _workingDir, startTimers: false);
+        var db = DbPath();
+        CreateFile(db);
+        Assert.Equal(CheckoutOutcome.WriteAccess, await svc.CheckoutAsync(db));
+
+        var reasons = new System.Collections.Concurrent.ConcurrentQueue<WriteLockLostReason>();
+        svc.WriteLockLost += reasons.Enqueue;
+
+        WriteExternalFreshLock(db);   // Alice took over while Bob's laptop slept
+        using (LockLossRace.HoldFirstCheckUntilTheSecondArrives(Path.ChangeExtension(db, ".lock")))
+        {
+            clock.Advance(TimeSpan.FromMinutes(5));   // the laptop slept
+            lockSvc.TickWakeCheck();                  // the wake check starts in the background...
+            await lockSvc.ForceRenewHeartbeat();      // ...and ONE heartbeat beat reads Alice's name and starts the other check
+
+            Assert.True(await LockLossRace.WaitForBothChecksAsync(logger, () => reasons.Count),
+                "both the wake check and the heartbeat check should have found the loss");
+            await Task.Delay(300);                    // settle: nothing else may be raised after the checks are done
+        }
+
+        Assert.Equal(new[] { WriteLockLostReason.TakenOver }, reasons.ToArray());
+        Assert.Equal(1, LockLossRace.CountInfos(logger, LockLossRace.WakeVerdict));
+        Assert.Equal(1, LockLossRace.CountInfos(logger, LockLossRace.HeartbeatVerdict));
+        Assert.Equal(1, LockLossRace.CountInfos(logger, LockLossRace.AlreadyHandled));
+    }
+
+    /// <summary>
+    /// A12, the same guard in a fixed order (no timing at all): Bob's heartbeat finds Alice's name and WriteLockLost is
+    /// raised once. Then a save finds the same loss. It still answers LockLost (the save is refused, D is byte-identical)
+    /// but does not raise WriteLockLost a second time; the log says the loss is already being handled. The test's
+    /// handler only counts, so Bob is still in write mode when the save runs — the case where a save and a check
+    /// race each other.
+    /// </summary>
+    [Fact]
+    public async Task SaveAsync_AfterTheLossWasAlreadyRaised_IsLockLost_WithoutRaisingItAgain_A12()
+    {
+        var db = DbPath();
+        var logger = new RecordingAppLogger();
+        var (svc, lockSvc) = await CheckoutWithUnsavedEditAsync(db, logger);
+        var before = DbFileTestHelpers.HashOf(db);
+        var reasons = new System.Collections.Concurrent.ConcurrentQueue<WriteLockLostReason>();
+        svc.WriteLockLost += reasons.Enqueue;
+
+        WriteExternalFreshLock(db);                // Alice took over
+        await lockSvc.ForceRenewHeartbeat();       // ONE beat: the heartbeat check finds Alice's name and raises the loss
+        Assert.True(await LockLossRace.WaitUntilAsync(() => reasons.Count == 1, LockLossRace.Deadline),
+            "the heartbeat check should have raised the loss");
+        Assert.Equal(0, LockLossRace.CountInfos(logger, LockLossRace.AlreadyHandled));   // nobody has been turned away yet
+
+        var outcome = await svc.SaveAsync();       // the save finds the same loss
+
+        Assert.Equal(SaveOutcome.LockLost, outcome);
+        Assert.Equal(new[] { WriteLockLostReason.TakenOver }, reasons.ToArray());   // still ONE
+        Assert.Equal(1, LockLossRace.CountInfos(logger, LockLossRace.AlreadyHandled));
+        Assert.Equal(before, DbFileTestHelpers.HashOf(db));
+    }
+
+    /// <summary>The ways a write session is begun again after a loss (the three places the checkout service grants write access).</summary>
+    public enum WriteReEntry
+    {
+        /// <summary>The lock was released: an ordinary <see cref="CheckoutService.CheckoutAsync"/> takes it.</summary>
+        Checkout,
+
+        /// <summary>The lock was left stale: <see cref="CheckoutService.CheckoutAsync"/> judges it, then <see cref="CheckoutService.ForceCheckoutAsync"/> takes it over.</summary>
+        ForceCheckout,
+
+        /// <summary>The kept working copy is adopted: <see cref="CheckoutService.CheckoutAsync"/> with recovery (<c>FinishRecoveryCheckoutAsync</c>).</summary>
+        Recovery,
+    }
+
+    /// <summary>
+    /// A12, the guard is per WRITE SESSION, not per service: Bob loses the lock (raised once), the window demotes him
+    /// to read-only, and later Bob gets write access again in the app (a reader choosing "Take over as writer": the
+    /// read-only session is released, then a new checkout runs). When Alice takes over AGAIN, Bob must be told again —
+    /// WriteLockLost is raised a second time. If any of the three places that grant write access forgot to re-arm the
+    /// guard, the second loss would be swallowed as "already handled" and Bob would keep editing a database he can no
+    /// longer save. Covers a plain checkout, a forced takeover of a stale lock, and a recovery checkout (Bob had
+    /// unsaved changes, so his working copy was kept and is adopted).
+    /// </summary>
+    /// <param name="reEntry">How Bob's second write session begins.</param>
+    [Theory]
+    [InlineData(WriteReEntry.Checkout)]
+    [InlineData(WriteReEntry.ForceCheckout)]
+    [InlineData(WriteReEntry.Recovery)]
+    public async Task ARegainedWriteSession_ThatLosesTheLockAgain_RaisesItAgain_A12(WriteReEntry reEntry)
+    {
+        var (svc, lockSvc) = CreateService();
+        var db = DbPath();
+        var lockPath = Path.ChangeExtension(db, ".lock");
+        CreateSqliteDb(db);
+        Assert.Equal(CheckoutOutcome.WriteAccess, await svc.CheckoutAsync(db));
+        if (reEntry == WriteReEntry.Recovery)
+        {
+            InsertTestValue(svc.WorkingPath, "unsaved-edit");   // unsaved work: the demotion keeps D' and its marker
+            svc.MarkDirty();
+        }
+        var reasons = new System.Collections.Concurrent.ConcurrentQueue<WriteLockLostReason>();
+        svc.WriteLockLost += reasons.Enqueue;
+
+        // First loss, and what the window does about it: demote, then (when the user asks to edit again) release the
+        // read-only session and drop its snapshot, as a database switch does before the new checkout.
+        WriteExternalFreshLock(db);
+        await lockSvc.ForceRenewHeartbeat();
+        Assert.True(await LockLossRace.WaitUntilAsync(() => reasons.Count == 1, LockLossRace.Deadline),
+            "the first loss should be raised");
+        Assert.True(await svc.DemoteToReadOnlyAsync());
+        await svc.ReleaseAsync(saveFirst: false);
+        svc.CleanupWorkingCopy();
+        lockSvc.PendingRelease?.Wait(LockLossRace.Deadline);
+
+        // Bob gets write access again.
+        switch (reEntry)
+        {
+            case WriteReEntry.Checkout:
+                File.Delete(lockPath);                                   // Alice finished and released
+                Assert.Equal(CheckoutOutcome.WriteAccess, await svc.CheckoutAsync(db));
+                break;
+            case WriteReEntry.ForceCheckout:
+                WriteExternalStaleLock(db);                              // Alice's lock went stale instead
+                Assert.Equal(CheckoutOutcome.StaleHolder, await svc.CheckoutAsync(db));
+                Assert.Equal(CheckoutOutcome.WriteAccess, await svc.ForceCheckoutAsync());
+                break;
+            default:
+                File.Delete(lockPath);
+                Assert.Equal(CheckoutOutcome.WriteAccess, await svc.CheckoutAsync(db, recoverWorkingCopy: true));
+                Assert.Equal("unsaved-edit", ReadTestValue(svc.WorkingPath));   // the kept edit came back
+                break;
+        }
+        Assert.Equal(CheckoutMode.WriteAccess, svc.Mode);
+
+        // Alice takes over again: the second session reports its own loss.
+        WriteExternalFreshLock(db);
+        await lockSvc.ForceRenewHeartbeat();
+
+        Assert.True(await LockLossRace.WaitUntilAsync(() => reasons.Count == 2, LockLossRace.Deadline),
+            "the regained write session lost the lock again, and must say so");
+        Assert.Equal(new[] { WriteLockLostReason.TakenOver, WriteLockLostReason.TakenOver }, reasons.ToArray());
+    }
+
     // ── Change (d): the final check deletes D.tmp only when it confirmed the lock is ours ──────────
 
     /// <summary>The log line the final check writes when it refuses a save, or null when there is none.</summary>
