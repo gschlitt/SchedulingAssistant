@@ -35,8 +35,8 @@ enough); **share** = the database on Mekler's share; **both** = GregDeskTop and 
 | M11 Restore from backup | Must | (a) one computer + share; (b)–(d) both + share | ✅ pass ((a)–(d)); the restart after (b) left a stuck process (see Open issues) |
 | M12 D changed by someone else | Must | one computer + share (Python + repo) | ✅ pass |
 | S1 Second copy on the same computer | Should | one computer | ✅ pass |
-| S2 Local copy fails after validation | Should | both + share | ☐ to do |
-| S3 Reader Refresh failures | Should | one computer (the DEBUG switch) | ☐ to do (item 11's messages, built in item 28; the reconnection moved to 1.2.4) |
+| S2 Local copy fails after validation | Should | both + share | ✅ pass on 1.2.3.4 (2026-10-28); found A13 (an extra, wrong message first; 1.2.4) |
+| S3 Reader Refresh failures | Should | one computer (the DEBUG switch) | ✅ pass on 1.2.3.4 (2026-10-28; item 28's messages; the reconnection moved to 1.2.4) |
 | S4 Repeated X / edits during exit save | Should | one computer + share | ✅ pass (with M10; detached panels and the 2-minute backstop not tried) |
 | S5 Unapplied editor changes at close/switch | Should | one computer | — moved to 1.2.4 with item 14 |
 | S6 New database / export with the share down | Should | one computer + share | ✅ pass ((b) covered by the probe) |
@@ -60,13 +60,14 @@ on a new build, 1.2.3.3. The logs show that no other pass touched the changed co
 | 1 | ~~Mixed versions~~ done 2026-10-27 | GregDeskTop 1.2.3.2, GregSurface 1.2.2 | M8 ✅ |
 | 2 | ~~Install 1.2.3.3~~ done 2026-10-27 | — | GregSurface: uninstall 1.2.2, install 1.2.3.3. GregDeskTop: install over 1.2.3.2 |
 | 3 | ~~Re-runs~~ done 2026-10-27 | 1.2.3.3, then 1.2.3.4 | M7 ✅ (1.2.3.3); M5 (3) found A12 on 1.2.3.3 → fixed in 1.2.3.4; M5 (3) ✅ twice, M5 (8) ✅, M6 ✅, M5 (7) ✅ (1.2.3.4) |
-| 4 | Remaining Shoulds | any | S2, S3, then S7–S9 (the Windows 10 and 11 computers) |
+| 4 | Remaining Shoulds | any | S2 ✅, S3 ✅ (2026-10-28, 1.2.3.4); S7–S11 not run for the 1.2.3 release (accepted gaps, see Wrap-up) |
 | 5 | BugSnag; Mac | 1.2.3.3 | N3; S11 on the Mac |
 | 6 | Optional | any | N1, N2; M5 (6) if a third computer turns up |
 | 7 | After Store certification | — | N4 |
 
-**Musts left before release:** none. Every Must passes on the current code (2026-10-27 evening). Still to do before
-release: one clean full harness run (see A12's note on `CrashSweep_EveryPointIsCutOrExplained`), then the Shoulds.
+**Musts left before release:** none. Every Must passes on the current code (2026-10-27 evening); the full harness
+re-run is clean (2026-10-27 night); S2 and S3 pass (2026-10-28). The remaining Shoulds and Nices are accepted gaps
+for the 1.2.3 release (Wrap-up).
 
 ### Open issues
 
@@ -159,7 +160,15 @@ release: one clean full harness run (see A12's note on `CrashSweep_EveryPointIsC
       check `CrashSweep_NoNewViolations` passed in the full run. Likely cause: the wake step's 40 ms quiet window
       (`Computer.SettleBackgroundWorkAsync`) can end before the demotion starts under the full run's load; before the
       fix the heartbeat tick that follows in the same step demoted again and hid it. Test timing only; re-run the full
-      harness with GregDeskTop otherwise idle, and harden that wait in 1.2.4 if it recurs.
+      harness with GregDeskTop otherwise idle, and harden that wait in 1.2.4 if it recurs. **Re-run 2026-10-27 night
+      on 79a5139, GregDeskTop idle: 4057 passed, 3 skipped, 0 failed** (17 min 54 s), the crash sweep included.
+- [ ] **A13 (S2 on 1.2.3.4, 2026-10-28; on the 1.2.4 list, Greg): a failed read-only copy at open shows two
+      messages, the first one wrong.** With another session holding the lock, `CheckoutAsync` returns `Failed`
+      when the read-only copy fails (`CheckoutService.cs:750`), so `SessionLifecycle` first shows "Checkout Failed —
+      Could not open the database for editing. The application will open in read-only mode." and only then the
+      right prompt, "Couldn't Open the Database … Check the network connection, then try again." (Try again /
+      Close). R4 (one message per problem; the user never asked to edit). No data risk; rare in use (the copy takes
+      ~50 ms). Details and fix direction in `spec_version_1.2.4.md`.
 - [ ] **Exit-path finding (already in `spec_version_1.2.4.md`, "Item 32 (1.2.3)" row) seen in the field: M6 on
       1.2.3.4.** The exit save refused as LockLost started the in-place demotion while the window was closing; it
       logged ERROR "OnWriteLockLost: demotion failed — Cannot access a disposed object." (GregSurface 21:55:15).
@@ -743,14 +752,34 @@ copy also blocked a second one, and after ending it, Restore was offered.
 2. Repeat, choose **Close**: nothing is left open on D; GregDeskTop is still writer with its lock untouched; no stray lock or `.tmp` on the share.
 
 **Log:** `read-only setup copy timed out — network unreachable`.
-**Result:** ☐ pass ☐ fail / notes:
+**Result:** ☒ pass ☐ fail / notes: 2026-10-28, 1.2.3.4, GregDeskTop writer, GregSurface opening (user; lock samples,
+share and GregSurface's log checked by Claude). The copy takes only ~50 ms, too short to aim clumsy at, so it was
+failed deterministically instead: PowerShell on GregSurface held `…\TermPoint\working\87406900_BIOL-TT_ro.db.tmp`
+open (`[IO.File]::Open($p,'OpenOrCreate','ReadWrite','None')`); the copy then fails ("cannot read D to make D''…
+being used by another process", 07:51:09) and takes the same null return as a network timeout (only the log line
+differs). **Found A13:** "Checkout Failed — Could not open the database for editing. The application will open in
+read-only mode." came first, then the right "Couldn't Open the Database … Check the network connection, then try
+again." with Try again / Close. Try again while still held failed quietly again; after `$f.Close()`, the open went
+read-only "held by gregs on GREGDESKTOP" (07:53:59). Repeat with **Close** (07:55:52): TermPoint ended cleanly.
+Throughout, the lock file named only GregDeskTop's session (43 samples), D was untouched, and the share held only
+`BIOL-TT.db` and `BIOL-TT.lock` (no stray lock or `.tmp`). No ERROR lines.
 
 ### S3 — Reader Refresh failures (item 11's messages, built in item 28; the reconnection moved to 1.2.4)
 *GregDeskTop (reader), GregSurface (writer), Mekler · R4 · ~15 min*
 - **(a) Share down.** Black hole, click **Refresh View**. **Expect** (item 28's approved text): "Couldn't refresh: the database location isn't responding. Showing data from h:mm AM/PM." in the yellow row; the tooltip still shows the last refresh that *worked*; the section list isn't reloaded; network back and Refresh clears that line only.
 - **(b) File locked.** Hold GregDeskTop's local snapshot (newest `*_ro*.db` under `%AppData%\TermPoint\`) open with `$f=[IO.File]::Open('<path>','Open','Read','ReadWrite')`, then Refresh. **Expect:** "Couldn't refresh just now. Showing data from h:mm AM/PM. Try again in a moment." (or "TermPoint couldn't refresh and lost its connection to the database. Close TermPoint and open it again." if the swap got as far as closing the connection: record which); the data stays readable; `$f.Close()` and Refresh works.
 - No red log-text banner in either case.
-**Result:** ☐ pass ☐ fail / notes:
+**Result:** ☒ pass ☐ fail / notes: 2026-10-28, 1.2.3.4, roles swapped (GregSurface the reader, GregDeskTop the
+writer) (user; GregSurface's log checked by Claude). **(a)** clumsy Drop 100 % on GregSurface: "Couldn't refresh: the
+database location isn't responding. Showing data from when you opened the database." (no refresh had worked yet
+in that session, so the time is replaced by design, `RefreshPrompt.cs:56`); log 08:00:42 `refresh hash timed out`,
+`SourceUnavailable, connection lost: False`; the reader poll skipped its cycles quietly; network back, Refresh worked
+and the line cleared (08:05:27). **(b)** the read-only copy held open (`'Open','Read','ReadWrite'`): the swap's rename
+was refused ("Access to the path is denied", 08:08:28), the connection had already been closed for the swap, so
+**"TermPoint couldn't refresh and lost its connection to the database. Close TermPoint and open it again."**
+(`connection lost: True`; honest for 1.2.3, the reconnection is item 11's part in 1.2.4); the data stayed readable;
+after `$f.Close()` Refresh worked (08:09:22). No red log-text banner; one BugSnag "Refresh failed…" report per
+failure (N3).
 
 ### S4 — Repeated X and edits during the exit save (item 15's exit guard, built 2026-10-26)
 *GregSurface, Mekler · R3 · ~15 min*
@@ -885,6 +914,19 @@ M5 (1)–(3), M6, M7, M12, M8 Dir 3. Run the rest of the Musts before release, n
 
 ## Wrap-up
 
-- [ ] Collect every computer's log; mark each fail or odd result with the time, the computer and the log line.
-- [ ] Any message that said "safe", "working copy", "local copy", or showed a path or log text: list the exact text.
-- [ ] All Must results are pass, or each fail has a decision (fix, or accept with a release note).
+- [x] Collect every computer's log; mark each fail or odd result with the time, the computer and the log line. (Done
+      scenario by scenario: each result names its times and log lines; GregSurface's copies are in
+      `\\mekler\Users\gregs\temp\surface-logs\`.)
+- [x] Any message that said "safe", "working copy", "local copy", or showed a path or log text: list the exact text.
+      Log text on screen only in A12's probe on 1.2.3.3 ("OnWriteLockLost: ReinitializeConnection failed…"), fixed
+      in 1.2.3.4. Wrong or extra messages: A13 (1.2.4).
+- [x] All Must results are pass, or each fail has a decision (fix, or accept with a release note). Every Must passes
+      on 1.2.3.4 (M7 on 1.2.3.3, a path 1.2.3.4 doesn't change); M5 (6) not run (no third computer).
+- [x] **Not run for the 1.2.3 release (Greg, 2026-10-28: release that morning; accepted gaps):**
+      - S7 (wizard and UNC picker; the compositor fix is from the Avalonia 12 upgrade, verified by code read) and S8
+        (Windows 11 AutoCompleteBox; no Windows 11 computer since 2026-10-09).
+      - S9 (SharePoint/Teams detection): if it misses a library the user simply gets no warning, as in 1.2.2.
+      - S10, N1, N2 (section-list virtualization): opt-in, default off.
+      - S11 (macOS) and N3 (BugSnag dashboard check); N4 after Store certification.
+      - S4's untried parts (detached panels and sticky notes during the exit save; the 2-minute backstop).
+- Open for 1.2.4 (Greg): A3–A7, A9–A11, A13, and the exit-path demotion seen in M6.
