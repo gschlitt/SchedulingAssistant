@@ -1,9 +1,10 @@
 # Slot Browser (working name) — Progressive Design Spec
 
 ## Status
-Current phase: **1 — Problem Statement** (COMPLETE: D1–D4 decided; Q5–Q6 deferred to Phase 3)
+Current phase: **1 — Problem Statement** (reopened 2026-10-30 for one-move suggestions; all questions settled, D1–D8;
+Q5–Q6 deferred to Phase 3; not yet locked by Greg)
 Last session: 2026-10-30
-Next step: Phase 2 (Domain Model), starting with the points under "Consequences" below
+Next step: Greg locks Phase 1, then Phase 2 (Domain Model), starting with the points under "Consequences" below
 
 ---
 
@@ -81,7 +82,8 @@ whether that's acceptable.
   rooms") and, for each placement, what it overlaps and whether students still have another section.
 
 ### Not in this feature (proposed)
-- Auto-scheduling, or moving other sections to make room ("move B so A fits").
+- Auto-scheduling. (Suggesting *one* move of another section is now proposed: see "One-move suggestions".)
+- Chains of moves (B moves so A fits, C moves so B fits).
 - The inverse question: *who* is free to teach this at a fixed time. A natural sibling feature; noted for later.
 - Student enrolment data or demand.
 - Instructor preferences not already in the data ("Z avoids Fridays"), unless entered as commitments.
@@ -92,7 +94,8 @@ whether that's acceptable.
 Read-only until Accept, and Accept only fills the editor's meeting rows; nothing reaches the database until the user
 saves through the existing path. If programs come from existing watches there is no new persisted data, so the four
 shared-database rules are untouched and the `MinimumVersionToWrite` answer is No. Revisit if a later phase stores
-anything new (for example per-course "must avoid" lists).
+anything new (for example per-course "must avoid" lists). One-move suggestions keep all of this because a move is two
+ordinary edits (D8); the pending move is held in memory only.
 
 ### Decisions made
 
@@ -102,6 +105,10 @@ anything new (for example per-course "must avoid" lists).
 | D2 | **Programs come from program watches (Q2, 2026-10-30).** The program check uses the *enabled* watches that cover this section; its program-mates are the sections of other courses those watches cover. Course tags alone never make a program | Watches are already the user's explicit "these must not overlap". Tags also include things like "evening" or "lab" that are not programs |
 | D3 | **Program clashes are ranked, not counted alike (Q3, 2026-10-30).** (1) First, placements that overlap no program-mate section. (2) Then placements that overlap some sections but leave students another section of each course (overlaps 340 A, but 340 B is free). (3) Last, placements that overlap *every* section of some program-mate course. Each placement says what it overlaps and what students can still take, and the finder says what it checked | Overlapping one of two sections costs students much less than overlapping both. Level 3 is still shown, last, so nothing is hidden (ranked, not filtered) |
 | D4 | **Musts and preferences (Q4, 2026-10-30).** Musts (a placement that breaks one is never shown): the instructor is free, the start time is legal, anything already set on a meeting row is kept, and a required room type (lab) has a free room. Preferences (ranked): programs (D3), any free room when no type is required, spread across the course's sections | A placement in a room that can't hold the class, or at a time the instructor teaches, is no use to anyone. The lab was decided explicitly; the rest follows the Phase 1 recommendation and can be revisited |
+| D5 | **Any section in the way may be suggested for a move (Q7, 2026-10-30).** A program-mate, the instructor's other class, or the class in the only suitable room: the same test for all, "would this placement be better without B?" | Room swaps and the instructor's own other class are probably the commonest real fixes, and a move is the natural answer when the musts leave nothing |
+| D6 | **Moves appear automatically when there is no clean fit (Q8, 2026-10-30).** Otherwise they are one click away ("look for one move") | Keeps the common case short; the finder only reaches further when it has to |
+| D7 | **No time window (Q9, 2026-10-30).** The finder treats every legal hour alike; "poor" means only clashes (D3). The user steps past evening slots, or narrows the search by setting a day or start time on a meeting row (already a must, D4) | Keeps the finder free of a new notion of quality and a new control |
+| D8 | **A move is two guided edits (Q10, 2026-10-30).** Accept fills the edited section's rows; the user saves it as usual. The finder then offers to open B with its new placement filled in; the user checks it and saves | No new save path, and no section changes without the user opening it. A half-finished move shows on the grid as a clash |
 
 Consequences of D1, to carry into later phases:
 - **Room Browser results change in production.** With an instructor assigned, options where that instructor is busy
@@ -138,6 +145,65 @@ Consequences of D4:
 - **A room type on a meeting is now a promise the finder keeps.** It already works this way in the Room Browser, and
   it fits the 1.2.4 "meeting room type" item: the stored type is what the meeting *needs*, used only when no room is
   set (a set room is a must anyway).
+
+### One-move suggestions (added 2026-10-30; D5–D8)
+
+When nothing good fits, the finder looks one step further: would a placement work if **one other section moved**,
+and does that section have somewhere valid to go?
+
+**Story.** Prof. Z is free only on Tuesday afternoon and in the evenings. Tuesday 13:00 overlaps STAT 199 A, the only
+STAT 199 section, so Program X students would lose one of the two courses (level 3). The best clean fit is Wednesday
+18:30. The finder adds: "If STAT 199 A moves from Tue 13:00 to Thu 10:00, PSYCH 301 B fits Tue 13:00 with no clash.
+At Thu 10:00, Prof. Y is free, room B210 is free, and no new program clash." Alice accepts. PSYCH 301 B's meeting row
+fills in, and Alice saves. The finder then offers to open STAT 199 A with Thu 10:00 filled in; Alice checks it and
+saves. If Alice stops between the two saves, the grid shows the clash, so nothing is silently half-done.
+
+**Rules (proposed):**
+- **One move only.** The moved section (B) must fit its new spot as it is. The finder never moves a third section to
+  make room for B: the tree stops at depth 1.
+- **B is "in the way"** when taking it out of its spot makes a placement for the edited section better: it clears a
+  must, or raises the program level (D3).
+- **B's new spot meets all of B's own musts** (its instructor free, legal start, its required room type free, its
+  meeting lengths kept), counting the edited section in its new place. B's own program level must be no worse than
+  it is now: one student problem is never fixed by creating another. B keeps its room when it can.
+- **B is an existing section.** Mid-semester its students would have to change too; the finder can't know about
+  enrolment, so the label says plainly that B moves, and the user judges.
+
+Consequences of D5:
+- **Only sections move.** Meetings (committees, with many attendees) and instructor commitments are never suggested
+  for a move; they still count as "in the way" for the musts, so a placement they block simply isn't offered.
+- **Only musts and program levels justify a move.** Preferences (any free room, spread across the course) never do:
+  disturbing another section for a nicety is not worth it.
+- **A move can be room-only.** If B is in the way only because it holds the one free lab, B keeping its time in
+  another suitable room is the cheapest move: its students change nothing but the door. Moves are ranked by how much
+  they disturb: room only, then time only (same room), then both.
+- **More to search.** Every placement blocked by exactly one section now starts a second, smaller search for that
+  section. Phase 2/5 should check the cost, especially in the WASM demo.
+
+Consequences of D6:
+- **"Clean fit" means: a direct placement that meets every must and is program level 1.** The other preferences
+  (any free room, spread) don't count, since D5 says a move can't be justified by them anyway.
+
+Consequences of D7:
+- **"Only evening slots are clean" does not bring in moves by itself.** That case, the one that started this idea,
+  relies on the "look for one move" button (D6). Moves still appear on their own when nothing is clean at any hour.
+- **Order within a level** follows the Room Browser (earliest start first), so daytime placements come before
+  evening ones of the same level without the finder judging them.
+- **Two groups, not one merged ranking** (proposed): "fits as it is" (the direct placements, levels 2–3 when there is
+  no clean fit) and "fits if one section moves". Whether costing Program X students one section beats disturbing
+  STAT 199 A is the user's judgement, not a score the finder should invent. The order inside each group follows D3
+  and D5.
+
+Consequences of D8:
+- **The edited section is saved first, then B.** The other order would mean opening B while the edited section is
+  still unsaved in the editor, and only one section is open at a time. The offer to open B appears only after the
+  save succeeds, so unsaved work is never put at risk (rule 3).
+- **In between, the clash is real and visible**: a program box, an instructor clash, or a room double-booked, until B
+  moves. If the user stops there, the grid's existing nudges are the reminder.
+- **The pending move lives in memory only.** Nothing new is stored; closing the app forgets the offer, and the clash
+  on the grid remains.
+- **B's new spot is checked again when B opens.** Something may have changed between the two saves. If the spot no
+  longer fits, the finder says so in plain words and searches for B afresh.
 
 ### Open questions (deferred to Phase 3, UX Sketch)
 
