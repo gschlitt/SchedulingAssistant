@@ -138,6 +138,10 @@ Consequences of D3, to settle in Phase 2:
   takes nothing away if 301 A doesn't overlap it: students can still take 301 A with 340 A. Moving the *only* 301
   section is different. Decide whether "what students can still take" counts the section's own course.
 - **How program levels combine with the other preferences** (any free room, spread): one ordering to settle in Phase 2.
+- **Level 2 is judged pair by pair, and that can be wrong** (raised 2026-10-30 in `designs/access-analyzer.md`, Q12).
+  "Students still have 250 B" ignores whether 250 B fits with the program's *other* courses. If it clashes with the
+  only CHEM 213 section, nobody can take every course, so the placement is really level 3. Proposal there: judge levels
+  by whole timetables, with one engine shared by the finder and the Access Analyzer. Open; D3 stands until Greg decides.
 
 Consequences of D4:
 - **The musts can leave nothing.** Then the finder must say which must did it, in plain words, with a next step:
