@@ -168,8 +168,8 @@ for the 1.2.3 release (Wrap-up).
       Could not open the database for editing. The application will open in read-only mode." and only then the
       right prompt, "Couldn't Open the Database … Check the network connection, then try again." (Try again /
       Close). R4 (one message per problem; the user never asked to edit). No data risk; rare in use (the copy takes
-      ~50 ms). Details and fix direction in `spec_version_1.2.4.md`.
-- [ ] **Exit-path finding (already in `spec_version_1.2.4.md`, "Item 32 (1.2.3)" row) seen in the field: M6 on
+      ~50 ms). Details and fix direction in `designs/spec_version_1.2.4.md`.
+- [ ] **Exit-path finding (already in `designs/spec_version_1.2.4.md`, "Item 32 (1.2.3)" row) seen in the field: M6 on
       1.2.3.4.** The exit save refused as LockLost started the in-place demotion while the window was closing; it
       logged ERROR "OnWriteLockLost: demotion failed — Cannot access a disposed object." (GregSurface 21:55:15).
       "Changes Not Saved" was shown, no red banner was visible, D' and its marker were kept and Restore was offered.
@@ -193,7 +193,7 @@ for the 1.2.3 release (Wrap-up).
       was gone by 14:40, and the 14:24:54 backup just restored was gone at the next open. A user troubleshooting a bad
       edit by restarting a few times would lose the backups from before it. Worth a look at count versus age (for
       example, always keep the newest backup from each of the last few days).
-- [x] **Moved to 1.2.4 (Greg, 2026-10-27; `spec_version_1.2.4.md`, "Item 5 (M11)"). Probe: a TermPoint process left running with no window** after its main window closed (seen once,
+- [x] **Moved to 1.2.4 (Greg, 2026-10-27; `designs/spec_version_1.2.4.md`, "Item 5 (M11)"). Probe: a TermPoint process left running with no window** after its main window closed (seen once,
       GregDeskTop, PID 15416, during the restart after a restore at 21:44:48: "Managed teardown complete" but never
       "Dispatcher loop exited", two hidden untitled windows, no lock or guard held). Suspected: the hidden-not-closed
       database chooser or wizard refusing the app's own shutdown. Probe (one computer): open via the chooser, close with

@@ -53,7 +53,7 @@ Item numbers are for reference only. The implementation order is below.
 Everything not yet done for 1.2.3, in one place. Field-test scenario codes (M, S, N) are in
 `docs/testing/network-field-tests-1.2.3.md`. **The scope of the unbuilt persistence work was decided on 2026-10-26
 (Greg), one item at a time:** what stays is listed under "Still to build"; the rest moved to 1.2.4
-(`spec_version_1.2.4.md`). Items 25, 27, 6 and 7 were decided the same day; all are in the list below.
+(`designs/spec_version_1.2.4.md`). Items 25, 27, 6 and 7 were decided the same day; all are in the list below.
 
 **Still to build for 1.2.3 (decided 2026-10-26)**
 - ~~**Item 28, message pass**~~ **done 2026-10-26** (rule 4; wording and notice behaviour only, no save code):
@@ -3812,7 +3812,7 @@ path. **Recommended: leave for 1.2.4.**
   re-run above (M5 (4)'s first half is M5 (3); its restore half doesn't touch the changed code). M8 can run on 1.2.3.2
   and count: it has no takeover while the old writer keeps running, and Dir 3's refusal comes after the lock is
   confirmed.
-- **Docs when built:** the field-test doc's A8 and A2 entries; `spec_version_1.2.4.md` row 9.3c-2b (the heartbeat part
+- **Docs when built:** the field-test doc's A8 and A2 entries; `designs/spec_version_1.2.4.md` row 9.3c-2b (the heartbeat part
   done); M7 step 3; `ForceAcquire`'s residual-race comment, which (c) makes true.
 
 ---

@@ -15,7 +15,7 @@ points to.
   branches; commit and push only when Greg asks.
 - **Store package:** `\\mekler\Users\gregs\temp\store-1.2.3\TermPoint.msix`. Store identity values are in the dev
   console's `config.ps1` (see "This machine").
-- **Sources of truth:** `spec_version_1.2.4.md` (**next release**; the new section "Release and distribution" holds the
+- **Sources of truth:** `designs/spec_version_1.2.4.md` (**next release**; the new section "Release and distribution" holds the
   Store-update failure below); `docs/testing/network-field-tests-1.2.3.md` (every 1.2.3 result, Open issues A1–A13,
   and the Wrap-up's list of accepted gaps); `designs/spec_version_1.2.3.md`.
 - **Test builds to clean up:** sideload MSIX folders `\\mekler\Users\gregs\temp\msix-1.2.2\` … `msix-1.2.3.4\` and
@@ -36,7 +36,7 @@ points to.
   update from Store 1.2.2; GregSurface after a fresh install). Root cause found on GregDeskTop: a Windows bug where a
   stale, empty family record stays in Windows' package cache because removing the old version couldn't delete a file
   that Windows shares between apps (`Microsoft.DiaSymReader.Native.amd64.dll`, held by Phone Link). Full evidence and
-  the 1.2.4 actions: `spec_version_1.2.4.md`, "Release and distribution". Users' workaround: restart.
+  the 1.2.4 actions: `designs/spec_version_1.2.4.md`, "Release and distribution". Users' workaround: restart.
 
 ## What happened on 2026-10-27 (night)
 
@@ -57,16 +57,16 @@ points to.
 
 ## Next steps (in order)
 
-1. **Microsoft support case** for the Store-update failure, with the evidence in `spec_version_1.2.4.md` ("Release
+1. **Microsoft support case** for the Store-update failure, with the evidence in `designs/spec_version_1.2.4.md` ("Release
    and distribution"); the Process Monitor export `C:\temp\temp.CSV` on GregDeskTop goes with it. Watch for users
    reporting "TermPoint won't open" (the answer: restart the computer).
 2. Restart GregDeskTop (it was kept in the failing state for the diagnosis), check the Store TermPoint opens, then
    uninstall the sideload TermPoint and delete the test MSIX folders. Check GregSurface's clock is on automatic time.
 3. **N4** (the Store update link) now that 1.2.3 is certified.
-4. **Plan 1.2.4** from `spec_version_1.2.4.md`. Most urgent from the release: drop `Microsoft.DiaSymReader.Native.amd64.dll`
+4. **Plan 1.2.4** from `designs/spec_version_1.2.4.md`. Most urgent from the release: drop `Microsoft.DiaSymReader.Native.amd64.dll`
    from the package, use **package flights** to our own computers before releasing, and look at the failing GitHub
    Tests workflow. Also open for placement: A3–A7, A9–A11, A13 and the exit-path demotion seen in M6.
-5. **1.2.4 candidates not yet in `spec_version_1.2.4.md`:** the harness's `SleepEvent` should run the wake check and
+5. **1.2.4 candidates not yet in `designs/spec_version_1.2.4.md`:** the harness's `SleepEvent` should run the wake check and
    the heartbeat together, as a real wake does (that gap is how A12 got past the tests); harden
    `Computer.SettleBackgroundWorkAsync` (wait for the demotion to be queued after a "no longer ours" / "genuinely
    lost" line) if the crash-sweep timing failure recurs; `ReleaseAsync` unsubscribes only `OnWake`, so after a release
