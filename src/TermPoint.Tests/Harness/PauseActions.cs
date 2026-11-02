@@ -1,3 +1,5 @@
+using TermPoint.Services;
+
 namespace TermPoint.Tests.Harness;
 
 /// <summary>
@@ -223,6 +225,86 @@ internal sealed class PausedComputerSwitchesAction : PauseAction
             : new SwitchBackEvent(_paused).ExecuteAsync(ctx);
 }
 
+/// <summary>
+/// "Bob's heartbeat ticks": the paused computer's lock-heartbeat timer fires while its operation is held. Offered only while the same
+/// computer's SLEEP is held (its wake check held at <c>WakeCheck.AfterVerify</c>): on a real wake the wake check and the heartbeat run at
+/// the same moment, which the sleep event itself does one after the other (field bug A12: both found the lock gone and both raised
+/// WriteLockLost). Possible only while the computer has a write session, because only a writer's heartbeat verifies the lock.
+/// </summary>
+internal sealed class PausedComputerHeartbeatTicksAction : PauseAction
+{
+    /// <summary>The paused computer ("bob").</summary>
+    private readonly string _paused;
+
+    /// <summary>Creates the action.</summary>
+    /// <param name="paused">The paused computer.</param>
+    public PausedComputerHeartbeatTicksAction(string paused) => _paused = paused;
+
+    /// <inheritdoc/>
+    public override string Key => $"{Capital(_paused)}sHeartbeatTicks";
+
+    /// <inheritdoc/>
+    public override string Story => $"{Capital(_paused)}'s heartbeat ticks";
+
+    /// <inheritdoc/>
+    public override bool IsPossible(RunContext ctx)
+    {
+        var computer = ctx.Computer(_paused);
+        return computer.HasOpenSession && computer.Checkout.Mode == CheckoutMode.WriteAccess;
+    }
+
+    /// <summary>Offered only while the same computer's sleep is held (the wake check and the heartbeat of a real wake).</summary>
+    /// <param name="held">The event whose operation is held.</param>
+    public override bool IsOfferedWhileHolding(ComputerEvent held)
+        => held is SleepEvent && string.Equals(held.ComputerName, _paused, StringComparison.Ordinal);
+
+    /// <inheritdoc/>
+    public override Task RunAsync(RunContext ctx) => ctx.Computer(_paused).HeartbeatTickAsync();
+
+    /// <inheritdoc/>
+    public override IReadOnlyList<Computer> ComputersOf(RunContext ctx) => new[] { ctx.Computer(_paused) };
+}
+
+/// <summary>
+/// "Bob's wake check runs": the paused computer's wake-detection timer fires while its operation is held. Offered only while the same
+/// computer's HEARTBEAT tick is held (its ownership check held at <c>HeartbeatVerify.AfterVerify</c>): the reverse of
+/// <see cref="PausedComputerHeartbeatTicksAction"/>. The wake check notices a wake only when time has passed since its last tick, so
+/// the run must have advanced the clock (a takeover does); otherwise it finds nothing and the case is an ordinary one.
+/// </summary>
+internal sealed class PausedComputerWakeCheckRunsAction : PauseAction
+{
+    /// <summary>The paused computer ("bob").</summary>
+    private readonly string _paused;
+
+    /// <summary>Creates the action.</summary>
+    /// <param name="paused">The paused computer.</param>
+    public PausedComputerWakeCheckRunsAction(string paused) => _paused = paused;
+
+    /// <inheritdoc/>
+    public override string Key => $"{Capital(_paused)}sWakeCheckRuns";
+
+    /// <inheritdoc/>
+    public override string Story => $"{Capital(_paused)}'s wake check runs";
+
+    /// <inheritdoc/>
+    public override bool IsPossible(RunContext ctx)
+    {
+        var computer = ctx.Computer(_paused);
+        return computer.HasOpenSession && computer.Checkout.Mode == CheckoutMode.WriteAccess;
+    }
+
+    /// <summary>Offered only while the same computer's heartbeat tick is held (the heartbeat and the wake check of a real wake).</summary>
+    /// <param name="held">The event whose operation is held.</param>
+    public override bool IsOfferedWhileHolding(ComputerEvent held)
+        => held is HeartbeatTickEvent && string.Equals(held.ComputerName, _paused, StringComparison.Ordinal);
+
+    /// <inheritdoc/>
+    public override Task RunAsync(RunContext ctx) => ctx.Computer(_paused).WakeCheckAsync();
+
+    /// <inheritdoc/>
+    public override IReadOnlyList<Computer> ComputersOf(RunContext ctx) => new[] { ctx.Computer(_paused) };
+}
+
 /// <summary>The catalogue of the events that can happen while an operation is held.</summary>
 internal static class PauseActions
 {
@@ -231,7 +313,8 @@ internal static class PauseActions
 
     /// <summary>
     /// The actions that make sense while <paramref name="paused"/>'s operation is held: the other computer takes over, takes over
-    /// and saves; IT restores an old copy; the lock file is deleted; time passes; the paused computer edits; the paused computer switches.
+    /// and saves; IT restores an old copy; the lock file is deleted; time passes; the paused computer edits; the paused computer switches; the paused computer's heartbeat ticks (while its
+    /// sleep is held); the paused computer's wake check runs (while its heartbeat tick is held).
     /// </summary>
     /// <param name="paused">The paused computer's name.</param>
     /// <returns>The actions, in a fixed order.</returns>
@@ -246,7 +329,9 @@ internal static class PauseActions
             new DeletesLockFileAction(),
             new TimePassesAction(),
             new PausedComputerEditsAction(paused),
-            new PausedComputerSwitchesAction(paused)
+            new PausedComputerSwitchesAction(paused),
+            new PausedComputerHeartbeatTicksAction(paused),
+            new PausedComputerWakeCheckRunsAction(paused)
         };
     }
 }

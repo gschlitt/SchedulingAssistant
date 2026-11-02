@@ -272,6 +272,19 @@ public sealed class CheckoutService : IDisposable
     /// </summary>
     private int     _lockLossRaised;
 
+    /// <summary>Guards <see cref="_backgroundChecks"/> and <see cref="_backgroundChecksStarted"/>.</summary>
+    private readonly object _backgroundChecksGate = new();
+
+    /// <summary>
+    /// The fire-and-forget ownership checks (<see cref="OnWake"/>, <see cref="OnHeartbeatFailed"/>) that have been started and
+    /// have not yet finished, by start number. A test seam only (see <see cref="WhenBackgroundChecksDoneAsync"/>); each task
+    /// removes itself when it ends, so nothing accumulates.
+    /// </summary>
+    private readonly Dictionary<long, Task> _backgroundChecks = new();
+
+    /// <summary>How many background checks have been started so far (the number of the last one).</summary>
+    private long _backgroundChecksStarted;
+
     /// <summary>
     /// Hash of the D.tmp snapshot from a save whose step-5 rename was never confirmed
     /// (timed out or threw). The abandoned <c>File.Move</c> thread can still complete
@@ -3545,6 +3558,63 @@ public sealed class CheckoutService : IDisposable
     }
 
     /// <summary>
+    /// Starts a fire-and-forget ownership check on a thread-pool thread and remembers its task until it ends, so a test can
+    /// wait for it (<see cref="WhenBackgroundChecksDoneAsync"/>). Production behaviour is exactly that of
+    /// <c>_ = Task.Run(work)</c>: the task is never awaited by the app and its result is never read.
+    /// </summary>
+    /// <param name="work">The check (it handles its own exceptions).</param>
+    private void StartBackgroundCheck(Func<Task> work)
+    {
+        var task = Task.Run(work);
+        long number;
+        lock (_backgroundChecksGate)
+        {
+            number = ++_backgroundChecksStarted;
+            _backgroundChecks[number] = task;
+        }
+
+        // Forget the task once it has ended, so nothing accumulates. Attached after the task is recorded, so a check that
+        // ends at once is still removed (a continuation on a finished task runs immediately).
+        task.ContinueWith(_ =>
+        {
+            lock (_backgroundChecksGate) _backgroundChecks.Remove(number);
+        }, TaskScheduler.Default);
+    }
+
+    /// <summary>
+    /// <b>Test seam; nothing in the app calls it.</b> The number of background checks (<see cref="OnWake"/>,
+    /// <see cref="OnHeartbeatFailed"/>) started so far. A test reads it before an action and passes it to
+    /// <see cref="WhenBackgroundChecksDoneAsync"/> to wait only for the checks that action started.
+    /// </summary>
+    internal long BackgroundChecksStarted
+    {
+        get { lock (_backgroundChecksGate) return _backgroundChecksStarted; }
+    }
+
+    /// <summary>
+    /// <b>Test seam; nothing in the app calls it.</b> Completes when every background ownership check started so far (by the
+    /// wake handler or the heartbeat-failed handler) has finished, including any lock-loss handling it ran. Loops until none is
+    /// pending, because one check can lead to more work. Never throws: a check's own failure is logged by the check itself.
+    /// </summary>
+    /// <param name="startedAfter">Only checks started after this one (a value of <see cref="BackgroundChecksStarted"/>) are waited
+    /// for; 0 waits for all. Lets a test that runs one check while another is deliberately held wait for its own.</param>
+    /// <returns>A task that completes when no such check is pending.</returns>
+    internal async Task WhenBackgroundChecksDoneAsync(long startedAfter = 0)
+    {
+        while (true)
+        {
+            Task[] pending;
+            lock (_backgroundChecksGate)
+                pending = _backgroundChecks.Where(kv => kv.Key > startedAfter).Select(kv => kv.Value).ToArray();
+            if (pending.Length == 0) return;
+
+            try { await Task.WhenAll(pending).ConfigureAwait(false); }
+            catch (Exception) { /* a faulted check is the check's own business; the wait is only for its end */ }
+            await Task.Yield();   // lets a finished check's removal run before the next look
+        }
+    }
+
+    /// <summary>
     /// Called when <see cref="WriteLockService.WakeDetected"/> fires — i.e., the
     /// wake-detection timer saw a gap long enough to infer the machine was
     /// asleep. Re-reads the lock file to verify this session still owns it.
@@ -3575,11 +3645,12 @@ public sealed class CheckoutService : IDisposable
 
         // Fire-and-forget — VerifyLockIsOursAsync uses NetworkFileOps internally
         // so the UI stays responsive during the SMB reconnect delay.
-        _ = Task.Run(async () =>
+        StartBackgroundCheck(async () =>
         {
             try
             {
                 var result = await VerifyLockIsOursAsync();
+                CrashPoints.Hit("WakeCheck.AfterVerify");
                 switch (result)
                 {
                     case LockVerificationResult.NotOurs:
@@ -3758,12 +3829,13 @@ public sealed class CheckoutService : IDisposable
             return;
         }
 
-        _ = Task.Run(async () =>
+        StartBackgroundCheck(async () =>
         {
             try
             {
                 _logger.LogInfo("CheckoutService: HeartbeatFailed — verifying lock ownership before acting.");
                 var result = await VerifyLockIsOursAsync();
+                CrashPoints.Hit("HeartbeatVerify.AfterVerify");
                 switch (result)
                 {
                     case LockVerificationResult.NotOurs:

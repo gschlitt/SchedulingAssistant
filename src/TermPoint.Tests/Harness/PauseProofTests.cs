@@ -264,8 +264,20 @@ public sealed class PauseProofTests
             Assert.True(switches.IsOfferedWhileHolding(new OpenEvent(paused)));
 
             // Everything else may happen during the paused computer's close, and the other computer's own Close is not this rule's business.
-            foreach (var action in PauseActions.For(paused).Where(a => a is not PausedComputerSwitchesAction))
+            // (The heartbeat and wake-check actions are offered only for the interleaving they exist for: see below.)
+            foreach (var action in PauseActions.For(paused).Where(a =>
+                         a is not (PausedComputerSwitchesAction or PausedComputerHeartbeatTicksAction or PausedComputerWakeCheckRunsAction)))
                 Assert.True(action.IsOfferedWhileHolding(new CloseEvent(paused)), $"{action.Key} during {paused}'s close");
+
+            // A heartbeat during a held sleep (the wake check and the heartbeat of a real wake), a wake check during a held heartbeat tick; nothing else.
+            var heartbeat = PauseActions.For(paused).OfType<PausedComputerHeartbeatTicksAction>().Single();
+            var wakeCheck = PauseActions.For(paused).OfType<PausedComputerWakeCheckRunsAction>().Single();
+            Assert.True(heartbeat.IsOfferedWhileHolding(new SleepEvent(paused, TimeSpan.FromMinutes(10), "10m", "4m")));
+            Assert.False(heartbeat.IsOfferedWhileHolding(new CloseEvent(paused)));
+            Assert.False(heartbeat.IsOfferedWhileHolding(new SleepEvent(other, TimeSpan.FromMinutes(10), "10m", "4m")));
+            Assert.True(wakeCheck.IsOfferedWhileHolding(new HeartbeatTickEvent(paused)));
+            Assert.False(wakeCheck.IsOfferedWhileHolding(new CloseEvent(paused)));
+            Assert.False(wakeCheck.IsOfferedWhileHolding(new HeartbeatTickEvent(other)));
             Assert.True(switches.IsOfferedWhileHolding(new CloseEvent(other)));
         }
     }

@@ -72,6 +72,10 @@ internal static class CrashPoints
     /// kept or deleted.</item>
     /// <item><b>Lock.*, Heartbeat.*</b> (<c>WriteLockService</c>): the lock file has just been created, its
     /// heartbeat renewal temp file written (the rename onto the lock file not yet done), or the lock file deleted.</item>
+    /// <item><b>WakeCheck.*, HeartbeatVerify.*</b> (<c>CheckoutService.OnWake</c>, <c>OnHeartbeatFailed</c>): the
+    /// background ownership check has just read the lock file and not yet acted on what it found. Nothing on disk
+    /// differs from before the check; the points exist so a harness can hold one check here while the other runs (they
+    /// run at the same moment on a real wake, field bug A12).</item>
     /// </list>
     /// </summary>
     internal static IReadOnlyList<string> All { get; } =
@@ -137,5 +141,9 @@ internal static class CrashPoints
         "Lock.AfterCreated",
         "Heartbeat.AfterTmpWritten",
         "Lock.AfterDeleted",
+
+        // CheckoutService.OnWake / OnHeartbeatFailed (the background ownership checks)
+        "WakeCheck.AfterVerify",
+        "HeartbeatVerify.AfterVerify",
     ];
 }

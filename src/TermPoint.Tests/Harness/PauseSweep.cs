@@ -155,7 +155,7 @@ internal static class PauseSweep
     /// <summary>The prefixes of the crash points the default sweep pauses at (see the class remarks for why these).</summary>
     public static readonly IReadOnlyList<string> DefaultPointPrefixes = new[]
     {
-        "Save.", "Demote.", "Release.", "Restore.", "Checkout.", "Recovery."
+        "Save.", "Demote.", "Release.", "Restore.", "Checkout.", "Recovery.", "WakeCheck.", "HeartbeatVerify."
     };
 
     /// <summary>The names (see <see cref="SweepOperation.Name"/>) of the operations the default sweep pauses.</summary>

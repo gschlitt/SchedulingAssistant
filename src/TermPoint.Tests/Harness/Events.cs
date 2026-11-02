@@ -434,6 +434,12 @@ internal sealed class NetworkUpEvent : ComputerEvent
 /// network returns, the wake check runs (which re-verifies the lock, and demotes the session if it was taken over) and,
 /// if the computer is still the writer, a heartbeat is sent. Enabled when the computer has an open session and its
 /// network is up.
+///
+/// <para><b>The wake check and the heartbeat run one after the other here, on purpose.</b> On a real wake they run at the same
+/// moment (field bug A12: both found the lock gone and both raised WriteLockLost). That concurrency is NOT modelled by this
+/// event, which stays deterministic; it is covered by the pause interleavings instead: the wake check held at
+/// <c>WakeCheck.AfterVerify</c> while the same computer's heartbeat ticks (<see cref="PausedComputerHeartbeatTicksAction"/>), and a heartbeat
+/// verify held at <c>HeartbeatVerify.AfterVerify</c> while the wake check runs (<see cref="PausedComputerWakeCheckRunsAction"/>).</para>
 /// </summary>
 internal sealed class SleepEvent : ComputerEvent
 {
