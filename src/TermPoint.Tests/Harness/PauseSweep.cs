@@ -310,6 +310,7 @@ internal static class PauseSweep
             ConfigureContext = ctx => ctx.World.CrashPointSurvey = (index, who, point) =>
             {
                 if (who is null) return;
+                SettleLockReleases(ctx, point);
                 var possibleActions = PauseActions.For(who.Name).Where(a => SafelyPossible(a, ctx)).ToList();
                 var possible = possibleActions.Select(a => a.Key).ToList();
                 var waiting  = possibleActions.Where(a => SafelyWaits(a, ctx)).Select(a => a.Key).ToList();
@@ -354,6 +355,9 @@ internal static class PauseSweep
 
                     // A pairing left out by decision (see PausedComputerSwitchesAction): neither planned nor run, at any width. Counted once
                     // per identity, like a case, so the count is the number of cases the rule removed (per follow-up).
+                    // An action tied to one crash point is simply not offered elsewhere (not a pairing "left out by decision").
+                    if (!action.IsOfferedAtPoint(held, group.Key)) continue;
+
                     if (!action.IsOfferedWhileHolding(held))
                     {
                         if (planned.Add("left out|" + identity)) result.NotOffered++;
@@ -376,6 +380,29 @@ internal static class PauseSweep
             }
         }
         return plans;
+    }
+
+    /// <summary>The longest the survey waits for a computer's background lock-file delete to finish.</summary>
+    private static readonly TimeSpan LockSettleTimeout = TimeSpan.FromSeconds(10);
+
+    /// <summary>
+    /// Lets every computer's background lock-file delete (<see cref="TermPoint.Services.WriteLockService.PendingRelease"/>) finish before the survey asks which events
+    /// are possible. A release deletes the lock file on a pool thread, so whether "the lock file is deleted" is still possible at a later crash point of a
+    /// close (or a switch) depended on how fast that thread ran: under load the survey dropped six <c>TheLockFileIsDeleted</c> cases, and the plan was
+    /// not stable. Waiting makes the answer the same every time (bounded, like <c>CheckoutFailedOpenTests.Dispose</c>). Not done at
+    /// <c>Lock.AfterDeleted</c>, which is reached from inside that very delete: waiting there would wait for itself.
+    /// </summary>
+    /// <param name="ctx">The run.</param>
+    /// <param name="point">The crash point being surveyed.</param>
+    private static void SettleLockReleases(RunContext ctx, string point)
+    {
+        if (point == "Lock.AfterDeleted") return;
+
+        foreach (var name in EventCatalogue.ComputerNames)
+        {
+            try { ctx.Computer(name).Locks?.PendingRelease?.Wait(LockSettleTimeout); }
+            catch (Exception) { /* a failed delete is the lock service's business; the survey only wants it finished */ }
+        }
     }
 
     /// <summary>Asks whether a pause action is known to wait for the held operation, treating a question that throws as "no" (the survey must never break a dry run).</summary>

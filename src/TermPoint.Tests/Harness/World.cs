@@ -104,6 +104,15 @@ internal sealed class World : IDisposable
     /// <summary>The dialogs each computer was asked during the current step, by computer name.</summary>
     private readonly Dictionary<string, List<PromptCall>> _stepPrompts = new();
 
+    /// <summary>The messages and banners (not questions) shown during the current step, for invariant I8; cleared when a step begins.</summary>
+    private readonly List<SeenMessage> _stepMessages = new();
+
+    /// <summary>What was going on when a message appeared, during a pause: "" outside one (see <see cref="SeenMessage.Phase"/>). Written by <see cref="RunWithPauseAsync"/>, read by the observers.</summary>
+    private volatile string _phase = "";
+
+    /// <summary>Every pair of different messages one computer was shown in one step during this run (invariant I8 b), allowed or not.</summary>
+    private readonly List<MessagePairSighting> _pairSightings = new();
+
     /// <summary>The computers that completed an open during the current step.</summary>
     private readonly HashSet<Computer> _openedThisStep = new();
 
@@ -115,9 +124,6 @@ internal sealed class World : IDisposable
 
     /// <summary>How many "Save a Copy" paths have been handed out (numbers "copy-1.db", "copy-2.db", ...).</summary>
     private int _savedCopyCounter;
-
-    /// <summary>How many times the network fault hook has been asked about an operation (a sign that work is still running on the share).</summary>
-    private int _shareActivity;
 
     /// <summary>Every file a "Save a Copy" picker answered with.</summary>
     private readonly List<string> _savedCopyPaths = new();
@@ -239,12 +245,6 @@ internal sealed class World : IDisposable
     /// <see cref="ScriptedPrompts"/> whenever a process is launched.
     /// </summary>
     public Func<Computer, PromptCall, PromptAnswer>? PromptPolicy { get; set; }
-
-    /// <summary>
-    /// A number that grows whenever work touches the share (every operation asks the network fault hook) or a computer
-    /// logs something. A caller waiting for background work to finish watches it stand still.
-    /// </summary>
-    public int Activity => Volatile.Read(ref _shareActivity) + _computers.Sum(c => c.LogActivity);
 
     /// <summary>The one fake clock every simulated lock service reads. It starts at the real current time.</summary>
     public FakeTimeProvider Clock { get; } = new();
@@ -564,6 +564,8 @@ internal sealed class World : IDisposable
         lock (_gate)
         {
             _stepPrompts.Clear();
+            _stepMessages.Clear();
+            _phase = "";
             _openedThisStep.Clear();
             _restoreSuspects.Clear();
         }
@@ -588,12 +590,39 @@ internal sealed class World : IDisposable
         Computer[] opened;
         lock (_gate) opened = _openedThisStep.ToArray();
 
+        found.AddRange(CheckMessagesOfStep());
         found.AddRange(_invariants.Check(this, now, _step));
         found.AddRange(_promises.Evaluate(this, _last, now, opened, _step));
         _last = now;
 
         Record(found);
     }
+
+    /// <summary>
+    /// Invariant I8 for the step that is ending: judges the messages and banners each computer showed (a message twice; two different messages), and
+    /// keeps the pairs of different messages in <see cref="MessagePairSightings"/>.
+    /// </summary>
+    /// <returns>The violations.</returns>
+    private IReadOnlyList<Violation> CheckMessagesOfStep()
+    {
+        List<SeenMessage> seen;
+        lock (_gate) seen = _stepMessages.ToList();
+        if (seen.Count < 2) return Array.Empty<Violation>();
+
+        var sightings = new List<MessagePairSighting>();
+        var violations = MessageChecker.CheckStep(seen, _step, Title, _story.HeadlineOf(_step), sightings);
+        lock (_gate) _pairSightings.AddRange(sightings);
+        return violations;
+    }
+
+    /// <summary>Every pair of different messages one computer was shown in one step during this run (invariant I8 b), allowed or not.</summary>
+    public IReadOnlyList<MessagePairSighting> MessagePairSightings
+    {
+        get { lock (_gate) return _pairSightings.ToList(); }
+    }
+
+    /// <summary>The folders the user must never be shown in a message: everything the harness puts under its temp folder (share, computers' local folders, scratch).</summary>
+    private IEnumerable<string> ForbiddenFolders => new[] { RootDir };
 
     /// <summary>
     /// Records the violations of a step (each key once), gives each its finding id, and throws when one of them is not a
@@ -1050,6 +1079,7 @@ internal sealed class World : IDisposable
             try
             {
                 lock (_gate) _armedPause = pause;
+                _phase = "before the event";
                 opTask = Task.Run(() => RunHeldOperation(pause, operation));
 
                 // 1. The operation runs until it is held at the point, or it ends without reaching it.
@@ -1077,6 +1107,7 @@ internal sealed class World : IDisposable
                     }
                     else
                     {
+                        _phase      = "while held: " + eventStory;
                         eventTask   = Task.Run(pauseEvent);
                         interleaved = await CompletesWithinAsync(eventTask, lim.Grace);
                         if (interleaved) NoteCommitsDuringHeldSave(pause, heldAt);
@@ -1086,6 +1117,7 @@ internal sealed class World : IDisposable
                     }
 
                     // 3. Let the operation go on, and let both finish.
+                    _phase = "after release";
                     pause.Release();
                     var both = Task.WhenAll(opTask, eventTask);
                     if (!await CompletesWithinAsync(both, lim.FinishLimit))
@@ -1348,7 +1380,36 @@ internal sealed class World : IDisposable
         }
 
         if (call.Kind == PromptKind.Message)
+        {
             HandMessageToTracker(computer, call.Title, call.Text);
+            NoteMessageShown(computer, "message", call.Title, call.Text, call.Buttons, countsForOneMessagePerProblem: true, isQuestion: false);
+        }
+        else if (call.Kind == PromptKind.Choice)
+        {
+            NoteMessageShown(computer, "question", call.Title, call.Text, call.Buttons,
+                countsForOneMessagePerProblem: MessageChecker.IsProblemQuestion(call.Title), isQuestion: true);
+        }
+    }
+
+    /// <summary>
+    /// Invariants I7 and I8 for one message, question or banner as it appears: checks its wording now (a violation is raised when the step ends) and, for a
+    /// message or banner, remembers it for the step's "one message per problem" check.
+    /// </summary>
+    /// <param name="computer">The computer that showed it.</param>
+    /// <param name="kindName">"message", "question" or "banner".</param>
+    /// <param name="title">The title ("" for a banner).</param>
+    /// <param name="text">The text.</param>
+    /// <param name="buttons">The button labels ("a|b"), or "".</param>
+    /// <param name="countsForOneMessagePerProblem">True for a message or banner, or a question that reports a problem; false for any other question.</param>
+    /// <param name="isQuestion">True for a choice.</param>
+    private void NoteMessageShown(
+        Computer computer, string kindName, string title, string text, string buttons, bool countsForOneMessagePerProblem, bool isQuestion)
+    {
+        foreach (var violation in MessageChecker.CheckWording(computer, _step, kindName, title, text, buttons, ForbiddenFolders))
+            AddPending(violation);
+
+        if (countsForOneMessagePerProblem)
+            lock (_gate) _stepMessages.Add(new SeenMessage(computer.Name, computer.DisplayName, title, text, isQuestion, _phase));
     }
 
     /// <summary>
@@ -1403,6 +1464,7 @@ internal sealed class World : IDisposable
 
         _story.Add(_step, 1, $"{computer.DisplayName}'s screen showed a banner: {MessagePromises.FirstSentence(text)}");
         HandMessageToTracker(computer, "", text);
+        NoteMessageShown(computer, "banner", "", text, "", countsForOneMessagePerProblem: true, isQuestion: false);
     }
 
     /// <summary>Looks a message up in the promise tracker and keeps any violation it returns.</summary>
@@ -1867,8 +1929,6 @@ internal sealed class World : IDisposable
     /// <returns>A timeout for a share operation of a computer whose network is down; otherwise no fault.</returns>
     private NetworkFaultDecision DecideFault(NetworkFaultRequest request)
     {
-        Interlocked.Increment(ref _shareActivity);
-
         // A process without power cannot reach anything: its operation throws at once (it neither waits nor times out).
         var life = ActingLife();
         if (life is { PowerIsOut: true }) return NetworkFaultDecision.Throwing(new PowerCutException(request.Label));
@@ -1918,7 +1978,7 @@ internal sealed class World : IDisposable
         {
             // A file that is deleted while the copy is being made (by a thread of the process that is not the one being
             // frozen) simply was not there at that instant.
-            try { Inspector.CopyShared(file, Path.Combine(destination, Path.GetFileName(file))); }
+            try { CopyRetryingWhileInUse(file, Path.Combine(destination, Path.GetFileName(file))); }
             catch (FileNotFoundException) { }
             catch (DirectoryNotFoundException) { }
         }
@@ -1928,6 +1988,36 @@ internal sealed class World : IDisposable
             if (skipDirectory is not null && string.Equals(sub, skipDirectory, StringComparison.OrdinalIgnoreCase))
                 continue;
             CopyTree(sub, Path.Combine(destination, Path.GetFileName(sub)), skipDirectory);
+        }
+    }
+
+    /// <summary>The longest <see cref="CopyRetryingWhileInUse"/> keeps trying a file another handle holds without sharing.</summary>
+    private static readonly TimeSpan InUseRetryLimit = TimeSpan.FromSeconds(2);
+
+    /// <summary>
+    /// Copies one file like <see cref="Inspector.CopyShared"/>, retrying for a short while when another handle holds it without sharing (a sharing
+    /// violation). At a power cut just after a release, the lock service's background thread may be deleting the lock file at that instant; the copy
+    /// then waits until the delete is done (the file is gone, which <see cref="CopyTree"/> treats as "not there") or the handle is closed. Freezing a
+    /// few milliseconds later is still a faithful power cut: the disk at that later instant.
+    /// </summary>
+    /// <param name="source">The file to copy.</param>
+    /// <param name="destination">Where to copy it.</param>
+    /// <exception cref="IOException">The file stayed in use for longer than <see cref="InUseRetryLimit"/>.</exception>
+    private static void CopyRetryingWhileInUse(string source, string destination)
+    {
+        const int sharingViolation = unchecked((int)0x80070020);
+        var deadline = DateTime.UtcNow + InUseRetryLimit;
+        while (true)
+        {
+            try
+            {
+                Inspector.CopyShared(source, destination);
+                return;
+            }
+            catch (IOException ex) when (ex.HResult == sharingViolation && DateTime.UtcNow < deadline)
+            {
+                Thread.Sleep(20);
+            }
         }
     }
 

@@ -27,11 +27,14 @@ internal static class KnownFindings
         ["F5"]  = "A restore is refused although nobody changed any data: every editing session rewrites the shared database at its first save, even with no edits.",
         ["F6"]  = "A kept-changes message promises that TermPoint will offer the changes back at the next open, unless someone else changes the database first, and the offer fails although nobody changed any data (the F5 shape), or is not made, or does not bring the work back.",
         ["F7"]  = "\"Restore Unsaved Changes?\" is asked, Restore is chosen, and then \"Can't Restore Unsaved Changes\" follows because someone changed data.",
-        ["F16"] = "A lost-lock demotion still running when the user switches database lands on the NEW session: it copies the new database and leaves a session that holds the new lock read-only."
+        ["F16"] = "A lost-lock demotion still running when the user switches database lands on the NEW session: it copies the new database and leaves a session that holds the new lock read-only.",
+        ["F17"] = "A save during a close or a switch finds a problem (someone took over, the location can't be reached, the lock file was removed, the file is in use), and the person is shown the problem's banner and then \"Changes Not Saved\": two messages for one problem, both saying what happens to their changes. 1.2.4: show only the dialog.",
+        ["F18"] = "Two different lock-lost banners for one loss (\"Another program removed the file...\" and \"... has taken over editing\"), seen when a held heartbeat check finishes while the person switches database. Not yet investigated.",
+        ["A13"] = "When someone else holds the lock and the copy of the database for reading fails (the network drops), the person sees two messages for one problem: \"Checkout Failed\" (which says the program will open read-only) and then \"Couldn't Open the Database\" (Try again / Close). Spec item 6.5."
     };
 
-    /// <summary>Every known finding id, in order (F2, F5, F6, F7, F16). F1, F8 and F12 are fixed and so are no longer on the list.</summary>
-    public static IReadOnlyList<string> Ids { get; } = new[] { "F2", "F5", "F6", "F7", "F16" };
+    /// <summary>Every known finding id, in order (F2, F5, F6, F7, F16, F17, F18, A13). F1, F8 and F12 are fixed and so are no longer on the list.</summary>
+    public static IReadOnlyList<string> Ids { get; } = new[] { "F2", "F5", "F6", "F7", "F16", "F17", "F18", "A13" };
 
     /// <summary>True when <paramref name="findingId"/> is a finding expected on today's code.</summary>
     /// <param name="findingId">A finding id as the classifier gives it ("F1" ... or "new").</param>

@@ -22,6 +22,12 @@ internal static class HarnessTitles
     /// [Discard] really deletes the kept changes, [Go Back] (or the window's X) asks the original question again.
     /// </summary>
     public const string DiscardUnsavedConfirm = RecoveryConflictPrompt.DiscardConfirmTitle;
+
+    /// <summary>The message shown when the checkout failed outright (written inline in the lifecycle).</summary>
+    public const string CheckoutFailed = "Checkout Failed";
+
+    /// <summary>The "Try again / Close" question shown when no local copy could be made.</summary>
+    public const string CouldntOpen = LocalCopyCheckPrompt.CouldntOpenTitle;
 }
 
 /// <summary>
@@ -66,7 +72,7 @@ internal static class Findings
 
     /// <summary>Gives a violation its finding id.</summary>
     /// <param name="violation">The violation to classify.</param>
-    /// <returns>"F1", "F2", "F5", "F6", "F7", "F8", "F12", "F16", or <see cref="NewFinding"/>.</returns>
+    /// <returns>"F1", "F2", "F5", "F6", "F7", "F8", "F12", "F16", "F17", "F18", "A13", or <see cref="NewFinding"/>.</returns>
     public static string Classify(Violation violation)
     {
         switch (violation.Kind)
@@ -108,10 +114,50 @@ internal static class Findings
             case ViolationKind.DemotionOnAnotherDatabase:
                 return "F16";
 
+            // Invariant I8 (b), two different messages for one problem: A13 is the failed read-only copy at open ("Checkout Failed" and then
+            // "Couldn't Open the Database"). Any other unlisted pair is new.
+            case ViolationKind.TwoMessagesForOneProblem when IsA13(violation.MessageIdentities):
+                return "A13";
+
+            // F17: a save during a close or a switch finds the problem (a takeover, an unreachable location, a removed lock file, a file in use), and the
+            // person is shown its banner AND "Changes Not Saved", which says the same thing about their changes.
+            case ViolationKind.TwoMessagesForOneProblem when IsBannerThenChangesNotSaved(violation.MessageIdentities):
+                return "F17";
+
+            // F18: two different lock-lost banners for one loss (seen with a held heartbeat check that finishes while the person switches database).
+            case ViolationKind.TwoMessagesForOneProblem when IsTwoBanners(violation.MessageIdentities):
+                return "F18";
+
             default:
                 return NewFinding;
         }
     }
+
+    /// <summary>
+    /// True when the two message identities are field bug A13's pair: "Checkout Failed" (the open could not copy the database for reading, and says the
+    /// program will open read-only) followed by "Couldn't Open the Database" (the read-only copy then failed too, and the person is asked to try again).
+    /// </summary>
+    /// <param name="identities">The two identities of the pair (see <see cref="MessageChecker.IdentityOf"/>).</param>
+    private static bool IsA13(IReadOnlyList<string> identities)
+        => identities.Count == 2
+           && identities.Any(i => i.StartsWith(HarnessTitles.CheckoutFailed + " | ", StringComparison.Ordinal))
+           && identities.Any(i => i.StartsWith(HarnessTitles.CouldntOpen + " | ", StringComparison.Ordinal));
+
+    /// <summary>True when the pair is a banner and a "Changes Not Saved" message (finding F17).</summary>
+    /// <param name="identities">The two identities of the pair (see <see cref="MessageChecker.IdentityOf"/>).</param>
+    private static bool IsBannerThenChangesNotSaved(IReadOnlyList<string> identities)
+        => identities.Count == 2
+           && identities.Any(IsBanner)
+           && identities.Any(i => i.StartsWith(KeptChangesPrompt.ChangesNotSavedTitle + " | ", StringComparison.Ordinal));
+
+    /// <summary>True when both messages of the pair are banners (finding F18).</summary>
+    /// <param name="identities">The two identities of the pair (see <see cref="MessageChecker.IdentityOf"/>).</param>
+    private static bool IsTwoBanners(IReadOnlyList<string> identities)
+        => identities.Count == 2 && identities.All(IsBanner);
+
+    /// <summary>True when the identity is a banner's (a banner has no title, see <see cref="MessageChecker.IdentityOf"/>).</summary>
+    /// <param name="identity">One message identity.</param>
+    private static bool IsBanner(string identity) => identity.StartsWith("(banner) | ", StringComparison.Ordinal);
 
     /// <summary>
     /// True when a recovery question ("Restore Unsaved Changes?" or "Can't Restore Unsaved Changes") was answered with the

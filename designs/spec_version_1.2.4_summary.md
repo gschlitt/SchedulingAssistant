@@ -31,7 +31,7 @@ About 80 items in nine groups. Most were deferred from 1.2.3 or found while test
 | 3 | [Protecting unsaved work](#3.%20Protecting%20unsaved%20work) | The remaining ways edits can be lost or stranded; the recovery redesign | 11 |
 | 4 | [Lock, save, open and restore](#4.%20Lock,%20save,%20open%20and%20restore) | Correctness gaps in the persistence paths | 11 |
 | 5 | [Network shares](#5.%20Network%20shares) | What SMB caching, antivirus and unusual storage do to us | 8 |
-| 6 | [Messages](#6.%20Messages) | Wrong, doubled, hidden or jargon messages | 9 |
+| 6 | [Messages](#6.%20Messages) | Wrong, doubled, hidden or jargon messages | 11 |
 | 7 | [Field reporting](#7.%20Field%20reporting) | Learning from BugSnag whether a failure ended well | 5 |
 | 8 | [Testing](#8.%20Testing) | Harness gaps that let field bugs through; cheaper hand tests | 12 |
 | 9 | [Smaller fixes and housekeeping](#9.%20Smaller%20fixes%20and%20housekeeping) | Bugs, consistency, upstream | 8 |
@@ -564,6 +564,23 @@ name instead. The redesign (3.5) may remove this flow anyway.
 *Source: field-test open issue A10.*
 </details>
 
+<details><summary><b>6.10 Closing or switching after a save problem shows a banner and a dialog</b></summary>
+
+When the save that a close or a switch runs finds a problem (someone took over, the location can't be reached, the
+lock file was removed, the file is in use), the user sees the problem's banner and then "Changes Not Saved". Both say
+what happens to their changes. **Fix:** in that case show only the dialog. Also check that a switch never leaves the old
+database's "read-only for you now" banner showing over the new database. No data risk.
+*Source: harness message checks (8.6), known finding F17.*
+</details>
+
+<details><summary><b>6.11 Two different lock-lost banners for one loss</b></summary>
+
+Seen once in the harness: a heartbeat check still running while the user switches database shows "Another program
+removed the file…" and then "… has taken over editing". Not investigated yet; possibly related to the demotion that
+lands on the new session (F16).
+*Source: harness message checks (8.6), known finding F18.*
+</details>
+
 ---
 
 ## 7. Field reporting
@@ -658,6 +675,8 @@ rewrite (3.4) as a known finding.
 The harness records every dialog, but checks neither rule 4's "one message per problem" nor the banned words
 ("working copy", "local copy", "safe", paths, log text). Add both. Also add an event for the read-only copy failing
 at open, which would have caught 6.5.
+**Done (2 Nov 2026):** both checks are in. The wording check found nothing. The pair check found 6.5 and two new
+problems, 6.10 and 6.11, all recorded as known findings until fixed. The database chooser's dialogs are not checked.
 </details>
 
 <details><summary><b>8.7 Test timings: one scale factor for the lock timers</b> <code>save path</code></summary>

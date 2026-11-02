@@ -44,6 +44,13 @@ internal sealed class Story
         return entry;
     }
 
+    /// <summary>The step's own line (indent 0): what the person or the world did in it, or an empty string when the step has none yet.</summary>
+    /// <param name="step">The step number.</param>
+    public string HeadlineOf(int step)
+    {
+        lock (_gate) return _entries.FirstOrDefault(e => e.Step == step && e.Indent == 0)?.Text ?? "";
+    }
+
     /// <summary>Renders the whole story.</summary>
     /// <param name="title">What the story is of (the walk's name), or empty.</param>
     /// <param name="editPlaces">One line per edit: "bob-1: the shared database, ...".</param>

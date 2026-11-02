@@ -264,9 +264,10 @@ public sealed class PauseProofTests
             Assert.True(switches.IsOfferedWhileHolding(new OpenEvent(paused)));
 
             // Everything else may happen during the paused computer's close, and the other computer's own Close is not this rule's business.
-            // (The heartbeat and wake-check actions are offered only for the interleaving they exist for: see below.)
+            // (The heartbeat, wake-check and network-drop actions are offered only for the interleaving they exist for: see below.)
             foreach (var action in PauseActions.For(paused).Where(a =>
-                         a is not (PausedComputerSwitchesAction or PausedComputerHeartbeatTicksAction or PausedComputerWakeCheckRunsAction)))
+                         a is not (PausedComputerSwitchesAction or PausedComputerHeartbeatTicksAction or PausedComputerWakeCheckRunsAction
+                                   or PausedComputerNetworkDropsAction)))
                 Assert.True(action.IsOfferedWhileHolding(new CloseEvent(paused)), $"{action.Key} during {paused}'s close");
 
             // A heartbeat during a held sleep (the wake check and the heartbeat of a real wake), a wake check during a held heartbeat tick; nothing else.
@@ -279,6 +280,15 @@ public sealed class PauseProofTests
             Assert.False(wakeCheck.IsOfferedWhileHolding(new CloseEvent(paused)));
             Assert.False(wakeCheck.IsOfferedWhileHolding(new HeartbeatTickEvent(other)));
             Assert.True(switches.IsOfferedWhileHolding(new CloseEvent(other)));
+
+            // The network drop: only while the same computer's open is held, and only at the point just before the read-only copy.
+            var drops = PauseActions.For(paused).OfType<PausedComputerNetworkDropsAction>().Single();
+            Assert.True(drops.IsOfferedWhileHolding(new OpenEvent(paused)));
+            Assert.False(drops.IsOfferedWhileHolding(new OpenEvent(other)));
+            Assert.False(drops.IsOfferedWhileHolding(new CloseEvent(paused)));
+            Assert.False(drops.IsOfferedWhileHolding(new SaveEvent(paused)));
+            Assert.True(drops.IsOfferedAtPoint(new OpenEvent(paused), "Checkout.AfterLiveHolderSeen"));
+            Assert.False(drops.IsOfferedAtPoint(new OpenEvent(paused), "Checkout.AfterLockAcquired"));
         }
     }
 

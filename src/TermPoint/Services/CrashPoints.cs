@@ -57,7 +57,10 @@ internal static class CrashPoints
     /// <item><b>Dirty.*</b> (<c>CheckoutService.MarkDirty</c>): the dirty marker has just been written.</item>
     /// <item><b>Checkout.*, Recovery.*</b> (<c>CheckoutAsync</c>, <c>ForceCheckoutAsync</c>,
     /// <c>FinishRecoveryCheckoutAsync</c>): the lock file is ours on the share and the process dies, leaving a
-    /// lock only the stale-lock rules can clear, with D' absent, freshly copied, or adopted.</item>
+    /// lock only the stale-lock rules can clear, with D' absent, freshly copied, or adopted. The exception is
+    /// <c>Checkout.AfterLiveHolderSeen</c>: someone else holds a live lock, so this computer holds nothing; the point is
+    /// just before D is copied to the read-only snapshot D'', so a harness can drop the network there (field bug A13:
+    /// the failed copy raised two messages for one problem).</item>
     /// <item><b>Release.*, Demote.*</b>: the end of a write session; a crash leaves the lock file released or not,
     /// D' present or deleted, and the dirty marker as it was.</item>
     /// <item><b>Discard.*</b> (<c>DiscardCrash</c>): the user's discarded recovery data is partly deleted; the
@@ -97,6 +100,7 @@ internal static class CrashPoints
         "Checkout.AfterLockAcquired",
         "Checkout.AfterCopyVerified",
         "Checkout.AfterVersionGate",
+        "Checkout.AfterLiveHolderSeen",
         "Recovery.AfterSourceVerified",
 
         // CheckoutService.ReleaseAsync

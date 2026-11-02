@@ -540,7 +540,7 @@ public sealed class InvariantProofTests
     public async Task I5_ARestorePromisedForOneDatabase_IsNotJudgedAtTheOpenOfAnother()
     {
         using var world = new World(_output, nameof(I5_ARestorePromisedForOneDatabase_IsNotJudgedAtTheOpenOfAnother));
-        world.ExpectFindings("F16");   // the promise is not broken, it is not yet due. F16: the harness-inline form of the switch race (see BobLeavesDeptAfterAliceTookOverAsync)
+        world.ExpectFindings("F16", "F17");   // the promise is not broken, it is not yet due. F17: the takeover banner and "Changes Not Saved" in one step. F16: the harness-inline form of the switch race (see BobLeavesDeptAfterAliceTookOverAsync)
         world.CreateDatabase();
         var bob   = world.AddComputer("bob");
         var alice = world.AddComputer("alice");
@@ -549,7 +549,7 @@ public sealed class InvariantProofTests
 
         Assert.True(world.HasPendingPromise(bob), "the promise is about dept.db; opening other.db does not judge it");
         Assert.Equal("d", world.PendingPromiseCode(bob));
-        Assert.All(world.Violations, v => Assert.Equal("I6", v.Invariant));   // nothing about the promise: only the inline-handler form of F16
+        Assert.All(world.Violations, v => Assert.Contains(v.FindingId, new[] { "F16", "F17" }));   // nothing about the promise: only the inline-handler form of F16, and F17's two messages
         Assert.True(bob.HasDirtyMarker, "Bob's kept changes to dept.db are still on his disk");
         world.AssertAllScriptsConsumed();
         world.Finish();
@@ -564,7 +564,7 @@ public sealed class InvariantProofTests
     public async Task I5_TwoMessagesPromisingTheSameRestore_AreOnePromise()
     {
         using var world = new World(_output, nameof(I5_TwoMessagesPromisingTheSameRestore_AreOnePromise));
-        world.ExpectFindings("F16");   // the harness-inline form of the switch race (see BobLeavesDeptAfterAliceTookOverAsync)
+        world.ExpectFindings("F16", "F17");   // F17: the takeover banner and "Changes Not Saved" in one step. F16: the harness-inline form of the switch race (see BobLeavesDeptAfterAliceTookOverAsync)
         world.CreateDatabase();
         var bob   = world.AddComputer("bob");
         var alice = world.AddComputer("alice");
@@ -595,7 +595,7 @@ public sealed class InvariantProofTests
     public async Task I5_ARestorePromisedForOneDatabase_IsJudgedAtTheNextOpenOfThatDatabase()
     {
         using var world = new World(_output, nameof(I5_ARestorePromisedForOneDatabase_IsJudgedAtTheNextOpenOfThatDatabase));
-        world.ExpectFindings("F5", "F6", "F16");   // F16: the harness-inline form of the switch race (see BobLeavesDeptAfterAliceTookOverAsync)
+        world.ExpectFindings("F5", "F6", "F16", "F17");   // F17: the takeover banner and "Changes Not Saved" in one step. F16: the harness-inline form of the switch race (see BobLeavesDeptAfterAliceTookOverAsync)
         world.CreateDatabase();
         var bob   = world.AddComputer("bob");
         var alice = world.AddComputer("alice");
@@ -638,7 +638,7 @@ public sealed class InvariantProofTests
     public async Task I5_ARestoreRefusedBecauseSomeoneElseChangedData_KeepsThePromise()
     {
         using var world = new World(_output, nameof(I5_ARestoreRefusedBecauseSomeoneElseChangedData_KeepsThePromise));
-        world.ExpectFindings("F7", "F16");   // F7: "Restore?" then "Can't Restore". F16: the harness-inline form of the switch race (see BobLeavesDeptAfterAliceTookOverAsync)
+        world.ExpectFindings("F7", "F16", "F17");   // F17: the takeover banner and "Changes Not Saved" in one step. F7: "Restore?" then "Can't Restore". F16: the harness-inline form of the switch race (see BobLeavesDeptAfterAliceTookOverAsync)
         world.CreateDatabase();
         var bob   = world.AddComputer("bob");
         var alice = world.AddComputer("alice");

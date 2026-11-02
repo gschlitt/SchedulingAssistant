@@ -47,7 +47,16 @@ internal enum ViolationKind
     DemotionOnAnotherDatabase,
 
     /// <summary>A paused operation, or the event run while it was held, did not finish within the real-time limit (step 9.3c-2b): the harness abandoned the stuck work.</summary>
-    Hang
+    Hang,
+
+    /// <summary>I7: a message, choice or banner uses words or shows text the project's "plain words" rule forbids (see <see cref="MessageWording"/>).</summary>
+    MessageNotPlainWords,
+
+    /// <summary>I8 (a): the same message was shown twice, on one computer, in one step.</summary>
+    MessageShownTwice,
+
+    /// <summary>I8 (b): two different messages were shown on one computer in one step, and the pair is not on the allow-list (see <see cref="MessageAllowList"/>).</summary>
+    TwoMessagesForOneProblem
 }
 
 /// <summary>
@@ -59,7 +68,7 @@ internal sealed class Violation
     /// <summary>The funnel step at whose end the breach was found (0 = before any step).</summary>
     public required int Step { get; init; }
 
-    /// <summary>The invariant: "I1" to "I6", or "Hang" for a pause that did not finish.</summary>
+    /// <summary>The invariant: "I1" to "I8", or "Hang" for a pause that did not finish.</summary>
     public required string Invariant { get; init; }
 
     /// <summary>What kind of breach it is.</summary>
@@ -116,6 +125,12 @@ internal sealed class Violation
 
     /// <summary>The dialogs the concerned computer was asked during the step (for classification).</summary>
     public IReadOnlyList<PromptCall> ComputerPrompts { get; init; } = Array.Empty<PromptCall>();
+
+    /// <summary>
+    /// For <see cref="ViolationKind.TwoMessagesForOneProblem"/>: the identities (title plus first sentence, see <see cref="MessageChecker.IdentityOf"/>) of the
+    /// two messages, in sorted order. Empty for every other kind.
+    /// </summary>
+    public IReadOnlyList<string> MessageIdentities { get; init; } = Array.Empty<string>();
 
     /// <summary>The finding id the classifier gave it: "F1".."F16" or "new". Set when the violation is recorded.</summary>
     public string FindingId { get; set; } = Findings.NewFinding;

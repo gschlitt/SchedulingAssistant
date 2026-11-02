@@ -169,6 +169,23 @@ internal static class CrashSweep
         new("Restore from a backup", c => new RestoreBackupEvent(c)),
     };
 
+    /// <summary>The prefixes of the crash points the checkout service's fire-and-forget lock checks reach (the wake check and the heartbeat check).</summary>
+    private static readonly string[] BackgroundCheckPrefixes = { "WakeCheck.", "HeartbeatVerify." };
+
+    /// <summary>
+    /// True when a crash point the dry run reached belongs to the operation, so a cut there is planned. The background lock checks run
+    /// fire-and-forget; only the heartbeat tick and the wake (sleep) wait for them, so only those two own their points. A background check that
+    /// another operation's dry run happens to catch was started earlier and runs on its own clock: a cut planned there may not fire again in the
+    /// replay (seen under load: "Bob is reading while Alice edits / alice: Edit, HeartbeatVerify.AfterVerify").
+    /// </summary>
+    /// <param name="operation">The operation of the dry run.</param>
+    /// <param name="point">A crash point the dry run reached.</param>
+    private static bool BelongsToOperation(SweepOperation operation, string point)
+    {
+        if (!BackgroundCheckPrefixes.Any(prefix => point.StartsWith(prefix, StringComparison.Ordinal))) return true;
+        return operation.Name is "Heartbeat tick" || operation.Name.StartsWith("Sleep", StringComparison.Ordinal);
+    }
+
     /// <summary>The situations a sweep of the given width uses.</summary>
     /// <param name="width">1 (default) or 2.</param>
     public static IEnumerable<CrashSituation> SituationsFor(int width) => Situations.Where(s => width >= 2 || !s.Wide);
@@ -270,7 +287,9 @@ internal static class CrashSweep
 
                     var applicable = prefixHeld && dry.Record.Steps.Count == situation.Prefix.Count + 1 && dry.Record.Steps[^1].EventKey == innerKey;
                     var points = applicable && dry.HitsByEvent.Count > situation.Prefix.Count
-                        ? dry.HitsByEvent[situation.Prefix.Count].Where(h => h.Computer == computer).Select(h => h.Point).ToList()
+                        ? dry.HitsByEvent[situation.Prefix.Count]
+                            .Where(h => h.Computer == computer && BelongsToOperation(operation, h.Point))
+                            .Select(h => h.Point).ToList()
                         : new List<string>();
                     result.Probes.Add(new SweepProbe(situation.Name, computer, operation.Name, applicable, points));
                     foreach (var point in points.Distinct()) result.Reached[point]++;

@@ -243,7 +243,7 @@ internal sealed class PauseEvent : HarnessEvent
     public override int Weight => 1;
 
     /// <inheritdoc/>
-    public override bool IsEnabled(RunContext ctx) => _inner.IsEnabled(ctx) && _action.IsOfferedWhileHolding(_inner);
+    public override bool IsEnabled(RunContext ctx) => _inner.IsEnabled(ctx) && _action.IsOfferedWhileHolding(_inner) && _action.IsOfferedAtPoint(_inner, Point);
 
     /// <inheritdoc/>
     public override async Task ExecuteAsync(RunContext ctx)

@@ -49,9 +49,6 @@ internal sealed class Computer : IDisposable
     /// <summary>How many saves of the current process are running (0 or 1: the checkout service refuses a second one).</summary>
     private int _savesInFlight;
 
-    /// <summary>How many background tasks have been added to <see cref="_pending"/> (a sign that lock-loss work is still being started).</summary>
-    private int _pendingAdded;
-
     /// <summary>How many times <see cref="CheckoutService.WriteLockLost"/> has been raised on this computer (and acted on) across its launches.</summary>
     private int _lockLostRaised;
 
@@ -122,13 +119,6 @@ internal sealed class Computer : IDisposable
     public bool SessionIsOnSharedDatabase
         => HasOpenSession && string.Equals(
             Path.GetFullPath(Checkout.SourcePath ?? ""), Path.GetFullPath(_world.DatabasePath), StringComparison.OrdinalIgnoreCase);
-
-    /// <summary>
-    /// A number that grows whenever this computer's process logs anything or starts lock-loss work. A caller waiting for
-    /// background work to finish watches it (together with <see cref="World.Activity"/>) stand still.
-    /// </summary>
-    public int LogActivity
-        => Logger is null ? 0 : Logger.Infos.Count + Logger.Warnings.Count + Logger.Errors.Count + Logger.Handled.Count + Volatile.Read(ref _pendingAdded);
 
     /// <summary>True while this computer's connection to the share is cut (see <see cref="World.NetworkDown"/>).</summary>
     public bool NetworkIsDown { get; internal set; }
@@ -208,7 +198,7 @@ internal sealed class Computer : IDisposable
             if (life.PowerIsOut) return;
             Interlocked.Increment(ref _lockLostRaised);
             var task = Lifecycle.HandleWriteLockLostAsync(reason);
-            lock (_pending) { _pending.Add(task); _pendingAdded++; }
+            lock (_pending) _pending.Add(task);
         };
         Checkout.SaveConflictDetected += () => { if (!life.PowerIsOut) ConflictBannerShown = true; };
 

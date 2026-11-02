@@ -41,6 +41,15 @@ internal abstract class PauseAction
     /// <param name="held">The event whose operation is held (the pause's inner event).</param>
     public virtual bool IsOfferedWhileHolding(ComputerEvent held) => true;
 
+    /// <summary>
+    /// True when the action may be offered while <paramref name="held"/> is held at the crash point <paramref name="point"/>. The default is yes. An
+    /// action overrides it to be offered at one point only (see <see cref="PausedComputerNetworkDropsAction"/>). It is asked together with
+    /// <see cref="IsOfferedWhileHolding"/> by the sweep's plan and by <see cref="PauseEvent.IsEnabled"/>.
+    /// </summary>
+    /// <param name="held">The event whose operation is held.</param>
+    /// <param name="point">The crash point it is held at.</param>
+    public virtual bool IsOfferedAtPoint(ComputerEvent held, string point) => true;
+
     /// <summary>Carries the action out (through the world's funnel, so the story and the promise checks apply as always).</summary>
     /// <param name="ctx">The run.</param>
     /// <returns>A task that completes when the action is done.</returns>
@@ -305,6 +314,51 @@ internal sealed class PausedComputerWakeCheckRunsAction : PauseAction
     public override IReadOnlyList<Computer> ComputersOf(RunContext ctx) => new[] { ctx.Computer(_paused) };
 }
 
+/// <summary>
+/// "Bob's network drops": the paused computer loses its connection to the share while its OPEN is held at <c>Checkout.AfterLiveHolderSeen</c>, the
+/// moment before the copy of the shared database to the read-only snapshot. That copy then fails (field bug A13: the person saw "Checkout Failed" and
+/// then "Couldn't Open the Database", two messages for one problem). Offered only there: at other points a dropped network is the business of the
+/// network events of the catalogue, and the sweep would multiply its cases by every point of every open.
+/// </summary>
+internal sealed class PausedComputerNetworkDropsAction : PauseAction
+{
+    /// <summary>The one crash point the action is offered at.</summary>
+    public const string OnlyPoint = "Checkout.AfterLiveHolderSeen";
+
+    /// <summary>The paused computer ("bob").</summary>
+    private readonly string _paused;
+
+    /// <summary>Creates the action.</summary>
+    /// <param name="paused">The paused computer.</param>
+    public PausedComputerNetworkDropsAction(string paused) => _paused = paused;
+
+    /// <inheritdoc/>
+    public override string Key => $"{Capital(_paused)}sNetworkDrops";
+
+    /// <inheritdoc/>
+    public override string Story => $"{Capital(_paused)}'s network drops";
+
+    /// <inheritdoc/>
+    public override bool IsPossible(RunContext ctx) => !ctx.Computer(_paused).NetworkIsDown;
+
+    /// <summary>Offered only while the same computer's OPEN is held.</summary>
+    /// <param name="held">The event whose operation is held.</param>
+    public override bool IsOfferedWhileHolding(ComputerEvent held)
+        => held is OpenEvent && string.Equals(held.ComputerName, _paused, StringComparison.Ordinal);
+
+    /// <summary>Offered only at <see cref="OnlyPoint"/>.</summary>
+    /// <param name="held">The event whose operation is held.</param>
+    /// <param name="point">The crash point it is held at.</param>
+    public override bool IsOfferedAtPoint(ComputerEvent held, string point)
+        => string.Equals(point, OnlyPoint, StringComparison.Ordinal);
+
+    /// <inheritdoc/>
+    public override Task RunAsync(RunContext ctx) => new NetworkDownEvent(_paused).ExecuteAsync(ctx);
+
+    /// <inheritdoc/>
+    public override IReadOnlyList<Computer> ComputersOf(RunContext ctx) => new[] { ctx.Computer(_paused) };
+}
+
 /// <summary>The catalogue of the events that can happen while an operation is held.</summary>
 internal static class PauseActions
 {
@@ -314,7 +368,7 @@ internal static class PauseActions
     /// <summary>
     /// The actions that make sense while <paramref name="paused"/>'s operation is held: the other computer takes over, takes over
     /// and saves; IT restores an old copy; the lock file is deleted; time passes; the paused computer edits; the paused computer switches; the paused computer's heartbeat ticks (while its
-    /// sleep is held); the paused computer's wake check runs (while its heartbeat tick is held).
+    /// sleep is held); the paused computer's wake check runs (while its heartbeat tick is held); the paused computer's network drops (while its open is held just before the read-only copy).
     /// </summary>
     /// <param name="paused">The paused computer's name.</param>
     /// <returns>The actions, in a fixed order.</returns>
@@ -331,7 +385,8 @@ internal static class PauseActions
             new PausedComputerEditsAction(paused),
             new PausedComputerSwitchesAction(paused),
             new PausedComputerHeartbeatTicksAction(paused),
-            new PausedComputerWakeCheckRunsAction(paused)
+            new PausedComputerWakeCheckRunsAction(paused),
+            new PausedComputerNetworkDropsAction(paused)
         };
     }
 }

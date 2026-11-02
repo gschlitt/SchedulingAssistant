@@ -759,6 +759,8 @@ public sealed class CheckoutService : IDisposable
             // Read-only mode: set up D'' via the shared helper so D is never held open.
             CurrentHolder           = _lockService.CurrentHolder;
             HolderIsLiveSameMachine = _lockService.HolderIsLiveSameMachine;
+            // Test-only crash point: someone else's live lock was just read; the copy of D to D'' comes next. A harness drops the network here.
+            CrashPoints.Hit("Checkout.AfterLiveHolderSeen");
             var d2 = await SetupReadOnlySnapshotAsync();
             var outcome = d2 is not null ? CheckoutOutcome.ReadOnly : CheckoutOutcome.Failed;
             _logger.LogBreadcrumb($"Checkout: {outcome}", new() { ["path"] = sourcePath, ["holder"] = _lockService.DescribeHolder(CurrentHolder) });
