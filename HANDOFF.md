@@ -17,7 +17,7 @@ points to.
   console's `config.ps1` (see "This machine").
 - **Sources of truth:** `spec_version_1.2.4.md` (**next release**; the new section "Release and distribution" holds the
   Store-update failure below); `docs/testing/network-field-tests-1.2.3.md` (every 1.2.3 result, Open issues A1–A13,
-  and the Wrap-up's list of accepted gaps); `spec_version_1.2.3.md`.
+  and the Wrap-up's list of accepted gaps); `designs/spec_version_1.2.3.md`.
 - **Test builds to clean up:** sideload MSIX folders `\\mekler\Users\gregs\temp\msix-1.2.2\` … `msix-1.2.3.4\` and
   `C:\temp\termpoint-msix-1.2.3.4`; the sideload TermPoint (`AcademicSolutions.TermPoint`) is still installed on
   GregDeskTop beside the Store app (removed from GregSurface).

@@ -950,7 +950,7 @@ history of freezes. Run the 3-machine clumsy network protocol.
         - **Fixed in 1.2.3** by this step.
         - **Release note:** "Fixes an occasional 'couldn't save' message when a colleague opened the
           database while you were saving."
-        - Screenshot: `exceptions_logged/`.
+        - Screenshot: `docs/testing/exceptions_logged/`.
     - **Restore from backup** releases the guard before relaunching, so the relaunch isn't refused.
     - **Same-computer read-only banner:** "Read-only — {Username} is already editing this database
       in TermPoint on this computer. If that window has stopped responding, it can be ended in Task

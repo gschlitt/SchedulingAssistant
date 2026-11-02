@@ -1,7 +1,7 @@
 # Section Import by User — Progressive Design Spec
 
 **Status:** Phases 1–3 LOCKED (2026-10-20); amended 2026-10-24 by A4 (setup values are created as needed, marked
-inline). Phase 4 (Data Design) LOCKED (2026-10-24). Phase 5 (Architecture) LOCKED (2026-10-24). Phase 6 (Implementation Plan) LOCKED (2026-10-24). **Design complete**; implementation is item 24 in `spec_version_1.2.3.md`.
+inline). Phase 4 (Data Design) LOCKED (2026-10-24). Phase 5 (Architecture) LOCKED (2026-10-24). Phase 6 (Implementation Plan) LOCKED (2026-10-24). **Design complete**; implementation is item 24 in `designs/spec_version_1.2.3.md`.
 **Target release:** 1.2.3.
 
 ## Phase 1: Problem Statement
@@ -909,4 +909,4 @@ Steps 5 and 6 can run side by side, as can 6 and 7.
 
 | # | Decision |
 |---|---|
-| F1 The 1.2.3 spec | Added to `spec_version_1.2.3.md` as item 24 (Items table, implementation order, a section with the step table pointing here). The 1.2.4 candidate list points to item 24 |
+| F1 The 1.2.3 spec | Added to `designs/spec_version_1.2.3.md` as item 24 (Items table, implementation order, a section with the step table pointing here). The 1.2.4 candidate list points to item 24 |

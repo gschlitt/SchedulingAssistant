@@ -5,8 +5,6 @@ obj/
 # Velopack publish artifacts
 publish/
 releases/
-publish-output.txt
-publish-verbose.txt
 
 # GitHub publish token — never commit this
 .publish-token
@@ -43,22 +41,10 @@ nul
 # Build macros
 publish.ps1
 publish-wasm.ps1
-publish-output.txt
-publish-verbose.txt
 
-#Notes
-multi-user-text.txt
-migration.txt
-CodeComments.txt
-publish.mac.sh
 
 #Markdown
-AUDIT.md
 CLAUDE.md
-data-integrity-agenda.md
-persistence-review.md
-spec_responsive_menu_overflow.md
-TEST_SCENARIO.md
 WORKAROUNDS.md
 
 # License signing keys — NEVER commit the private key
@@ -88,3 +74,6 @@ src/TermPoint/Properties/launchSettings.json
 
 # Personal to-do notes — kept local
 /todo/
+
+# Recycling bin for retired files (kept locally, never committed)
+/_recycle/

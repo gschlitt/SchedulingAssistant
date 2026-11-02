@@ -3,7 +3,7 @@
 Hand-run checklist, essential first. It re-runs the July protocol
 ([degraded-network-field-tests-2026-07-04.md](degraded-network-field-tests-2026-07-04.md): A, B1–B5, C1–C3) against the
 1.2.3 release build and adds the 1.2.3 scenarios of the spec's "Release testing: network field tests"
-(`spec_version_1.2.3.md`) and the fixes F1, F4, F8 and F12 ([review §3](../../designs/data-persistence-review-2026-10.md)).
+(`designs/spec_version_1.2.3.md`) and the fixes F1, F4, F8 and F12 ([review §3](../../designs/data-persistence-review-2026-10.md)).
 **Do the Must tier before release; Should and Nice only after.** Every 1.2.3 item is now built (2026-10-26) and
 committed on `Version_1.2.3`; scenarios for work moved to 1.2.4 (item 14 / S5, item 11's reconnection, item 13's
 other providers and macOS) say so. **Test on a build made from `Version_1.2.3` at or after 2210817**: the 1.2.3.1
@@ -52,7 +52,7 @@ enough); **share** = the database on Mekler's share; **both** = GregDeskTop and 
 
 ### Plan from here (reset 2026-10-27 for spec item 32)
 
-Item 32 (the A8/A2 fix, `spec_version_1.2.3.md`) changes the lock checks, so the scenarios that met them are re-run
+Item 32 (the A8/A2 fix, `designs/spec_version_1.2.3.md`) changes the lock checks, so the scenarios that met them are re-run
 on a new build, 1.2.3.3. The logs show that no other pass touched the changed code (item 32, "The other passes stand").
 
 | # | Block | Build | Scenarios |
@@ -232,7 +232,7 @@ for the 1.2.3 release (Wrap-up).
       (message pass), 30 (backup cleanup), item 15's exit guard, item 13's SharePoint/Teams detection and a
       Help note for item 26 (later moved to 1.2.4 as a real Save As command); everything else moved to 1.2.4. S5 moved with item 14. Item 29 (F5) was in at first, then
       moved to 1.2.4 the same day after its design and risk review, so the save code the field tests exercise is final
-      for 1.2.3. Details: `spec_version_1.2.3.md`, "Work remaining".
+      for 1.2.3. Details: `designs/spec_version_1.2.3.md`, "Work remaining".
 - [x] **Decided 2026-10-26:** items 25, 6 and 7 are in 1.2.3; item 27 gets a time-boxed probe, then is fixed in
       1.2.3 or the virtualization switch is hidden in 1.2.3 (then S10, N1 and N2 wait for 1.2.4).
 - [x] **Done 2026-10-26 (item 30):** `BackupService` no longer deletes a partial backup with plain, unguarded file
