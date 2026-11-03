@@ -1,4 +1,4 @@
-# Handoff: TermPoint 1.2.4 in progress on branch `Version_1.2.4` (dev machine, 2026-11-02)
+# Handoff: TermPoint 1.2.4 in progress on branch `Version_1.2.4` (dev machine, 2026-11-03)
 
 Written at the end of a long session so a fresh conversation can pick up. Claude Code's memory and `CLAUDE.md` don't
 travel between machines (`CLAUDE.md` is gitignored), so everything a new agent needs is here or in the files this
@@ -6,7 +6,18 @@ points to. Older sections below (1.2.3 release) are kept for reference.
 
 **To start the new agent, say:** "Read `HANDOFF.md`, then let's continue 1.2.4."
 
-## Now (2026-11-02): 1.2.4 testing group 8, mostly done
+## Now (2026-11-03): F19/F22 fixed; branch pushed
+
+- **Pushed:** `Version_1.2.4` is on origin (tracking set). `master` is still not pushed (7 doc-only
+  commits ahead; pushing it redeploys the WASM demo).
+- **4.12 F19 + 4.14 F22 done** (`cf2bce9`): a lock-file check counts for 2 s (`WriteLockService.LockCheckFreshness`)
+  before every lock-file write/delete; takeover confirmation 70 -> 170 s ("up to 3 minutes" in the wait dialog),
+  derived from experiment E1 (abandoned SMB ops die ~85 s after issue at default SessTimeout; NetworkProbe
+  `--late-landing`). F19 is off the known list; F22 stays known only because the harness doesn't model the 85 s limit.
+  Left-open items are in the summary spec's 4.12 Done note. Full suite with harness: 4182 passed, 0 failed (~38 min).
+- **New spec:** `designs/subject-colours.md` (P9 / summary 2.3 reframed as colour by subject), Phase 1, Q1-Q9 open.
+
+## Earlier (2026-11-02): 1.2.4 testing group 8, mostly done
 
 - **Branch:** all 1.2.4 work is on local branch **`Version_1.2.4`** (6 commits, aa34e6a … b41d9dc). **`master`** was
   moved back to `1672168` = the released 1.2.3 code plus doc commits, so it stays hotfixable. **Nothing is pushed**
@@ -24,17 +35,16 @@ points to. Older sections below (1.2.3 release) are kept for reference.
 - **Left in group 8:** 8.8 PowerShell test scripts; 8.9 Hyper-V VMs as 2nd/3rd computer (Hyper-V enabled on this
   desktop 2026-11-02, VT-x on; put VMs on drive E). Then 8.10/8.11.
 - **Open findings to fix (summary items):** 4.12 F19 + 4.14 F22 (check-then-act gaps on the lock file: a held
-  heartbeat puts its lock back over the new holder's; a held release deletes it). Fix together; lock-code change, so a
-  risk review first. 4.13 F20 (own leftover lock after a switch). 6.10 F17, 6.11 F18, 6.12 (false "Inactive" prompt
+  heartbeat puts its lock back over the new holder's; a held release deletes it). **Done 2026-11-03, see above.** 4.13 F20 (own leftover lock after a switch). 6.10 F17, 6.11 F18, 6.12 (false "Inactive" prompt
   when the writer's clock is behind), 6.13 F23 (kept-changes banner outlives a Discard). Known findings now:
-  F2, F5, F6, F7, F16, F17, F18, F19, F20, F22, F23, A13 (`src/TermPoint.Tests/Harness/KnownFindings.cs`).
+  F2, F5, F6, F7, F16, F17, F18, F20, F22, F23, A13 (`src/TermPoint.Tests/Harness/KnownFindings.cs`).
 - **Tests:** last full run with the harness 4159 passed, 0 failed, 3 skipped (~16–18 min):
   `TERMPOINT_HARNESS=1 dotnet test src/TermPoint.Tests/TermPoint.Tests.csproj --nologo -v q -o E:/sa-verify --logger "trx;LogFileName=E:/sa-verify.trx"`.
   Build output goes on drive E (C: is tight); delete with `cd /e && rm -rf ./name` (the absolute `rm -rf E:/...` form
   is blocked by a safety check). Old run files `E:/sa-8*.trx/.txt/.log` can go.
 - **Working style Greg asked for:** decisions at Opus level, coding handed to Sonnet unless short; work economically
   (tokens). Sonnet briefs: no commits/branches, no .md/.axaml edits, keep CRLF, never `sed -i`, never `taskkill /IM`.
-- **Uncommitted, Greg's:** `designs/schedule-overlay.md`. This file is uncommitted too.
+- **Everything is committed** as of 2026-11-03.
 
 ## Earlier (2026-11-01, cleanup before 1.2.4)
 
