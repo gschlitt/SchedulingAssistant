@@ -63,7 +63,7 @@ internal static class HarnessTitles
 /// computer then crashed before another save landed, or, for a close or a switch, the working copy itself was cleaned up. Step 9.3c-2b.</description></item>
 /// <item><description><b>F21</b>: an applied edit is nowhere that survives a crash (invariant I2) in a run where another program had a file of the share open
 /// (spec item 8.3), and neither F1 nor F2 explains it. Found with a lost-lock demotion (the wake check) whose copy of the database for reading fails because the
-/// database is held without sharing: the unsaved edit stays in the kept working file, and the next close deletes it.</description></item>
+/// database is held without sharing: the unsaved edit stays in the kept working file, and the next close deleted it. FIXED in 1.2.4 (summary item 3.12): the working-copy delete refuses a file that still has its dirty marker, so the classifier no longer gives F21.</description></item>
 /// <item><description><b>F20</b>: invariant I6 (a) in a run where another program had a file of the share open (spec item 8.3): a switch away from the database
 /// whose final save failed (the database was in use) or whose lock-file delete was refused (the lock file was in use) leaves the lock file naming the person's own
 /// session, and the session is read-only on that database. Cause not separated from F16 by the checker beyond that condition.</description></item>
@@ -81,7 +81,7 @@ internal static class Findings
 
     /// <summary>Gives a violation its finding id.</summary>
     /// <param name="violation">The violation to classify.</param>
-    /// <returns>"F1", "F2", "F5", "F6", "F7", "F8", "F12", "F16", "F17", "F18", "F19", "F20", "F21", "A13", or <see cref="NewFinding"/>.</returns>
+    /// <returns>"F1", "F2", "F5", "F6", "F7", "F8", "F12", "F16", "F17", "F18", "F19", "F20", "A13", or <see cref="NewFinding"/>.</returns>
     public static string Classify(Violation violation)
     {
         switch (violation.Kind)
@@ -95,10 +95,6 @@ internal static class Findings
             // working file; a close or a switch is followed by the cleanup of the working copy itself (spec item 15, step 9.3c-2b).
             case ViolationKind.EditLost when violation.EditAppliedDuringHeldSave == true:
                 return "F2";
-
-            // An edit lost in a run where another program held a file on the share (spec item 8.3) and the F2 route does not explain it: F21.
-            case ViolationKind.EditLost when violation.OtherProgramInvolved:
-                return "F21";
 
             case ViolationKind.RestoreOfferedThenImpossible:
                 // Checked first, because it is the more specific reading of the same refusal: the changes are not lost

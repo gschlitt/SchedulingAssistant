@@ -86,17 +86,6 @@ internal static class KnownSequences
                 "Open(bob)", "Pause(Sleep(bob,10m) at Heartbeat.AfterTmpWritten #2; AliceTakesOver)"
             }),
 
-        new("F21: a demotion cannot copy the held database, and the next close deletes the unsaved edit",
-            "F21",
-            "Alice takes over a lock, edits, and Bob's later save re-takes it. Another program then opens the shared database without sharing. Alice's computer wakes: " +
-            "her lock was taken over, the demotion to read-only cannot copy the database, her edit stays in her kept working file, and when she closes TermPoint the " +
-            "edit is deleted without any message (invariant I2). Found by a random walk (item 8.3).",
-            new[]
-            {
-                "Open(bob)", "AdvanceTime(4m)", "Open(alice)", "DeleteLockFile", "Edit(alice)", "Save(bob)",
-                "OtherProgramOpens(database,none)", "Sleep(alice,4m)", "Close(alice)"
-            }),
-
         new("F20: another program holds the lock file while the person switches away",
             "F20",
             "Bob switches to the other database while another program has the lock file of the first open (so TermPoint cannot delete it). The lock file is " +

@@ -95,7 +95,7 @@ internal sealed class Violation
     /// <summary>For <see cref="ViolationKind.WriteWithoutLockOrOnStaleVersion"/>: the crash point at which it was seen.</summary>
     public string? CrashPoint { get; init; }
 
-    /// <summary>For <see cref="ViolationKind.ReadOnlySessionHoldsLock"/> and <see cref="ViolationKind.EditLost"/>: true when another program has held a file on the share in this run (spec item 8.3), which is what the classifier reads to tell finding F20 from F16 and F21 from an edit lost for another reason.</summary>
+    /// <summary>For <see cref="ViolationKind.ReadOnlySessionHoldsLock"/> and <see cref="ViolationKind.EditLost"/>: true when another program has held a file on the share in this run (spec item 8.3), which is what the classifier reads to tell finding F20 from F16 (it told F21, now fixed, from an edit lost for another reason).</summary>
     public bool OtherProgramInvolved { get; init; }
 
     /// <summary>For <see cref="ViolationKind.LockFileOfAnotherSessionWritten"/>: the file operation that touched the lock file ("File.Move" is a heartbeat renewal landing, "File.Delete" a release).</summary>

@@ -3384,9 +3384,24 @@ public sealed class CheckoutService : IDisposable
     /// connection has been closed — the file cannot be deleted while SQLite holds it open.
     /// On crash the file is left behind; <see cref="CleanupStaleCrashArtifacts"/> or
     /// <see cref="DetectCrashRecovery"/> handles it at next startup.
+    ///
+    /// <para><b>Never deletes unsaved work (rule 3).</b> A working copy that still has its dirty marker holds changes that
+    /// are nowhere else, so it is KEPT, with its marker, and offered back the next time the database is opened for editing.
+    /// The callers' own guard ("the final save succeeded, or there is no marker") is not enough on its own: a session that
+    /// is read-only skips the final save and reports Success, and a lost-lock demotion whose copy for reading failed is
+    /// read-only while still on its marked working copy (known finding F21: the next Close deleted the edit). A successful
+    /// save always deletes the marker first, read-only snapshots never have one, and a deliberate discard goes through
+    /// <see cref="DiscardCrash"/>, so no legitimate delete is refused.</para>
     /// </summary>
     public void CleanupWorkingCopy()
     {
+        if (HasDirtyMarker)
+        {
+            _logger.LogInfo("CheckoutService: CleanupWorkingCopy — keeping the working copy and its dirty marker (unsaved changes kept for recovery).");
+            _logger.LogBreadcrumb("Cleanup: unsaved changes kept");
+            return;
+        }
+
         if (!string.IsNullOrEmpty(WorkingPath) && File.Exists(WorkingPath) && WorkingPath != SourcePath)
         {
             try { File.Delete(WorkingPath); }

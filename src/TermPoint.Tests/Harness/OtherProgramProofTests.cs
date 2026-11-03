@@ -72,6 +72,34 @@ public sealed class OtherProgramProofTests
         Assert.Null(world.OtherProgramHolding);
     }
 
+    /// <summary>
+    /// Regression test for F21 (summary item 3.12). Alice's lock is taken over while she has an unsaved edit, another program holds the shared database
+    /// without sharing, and her computer wakes: the demotion cannot copy the database, so she stays read-only on her own marked working copy. Before the fix
+    /// her Close deleted it (invariant I2, the edit was nowhere). Now the working-copy delete refuses a file that still has its dirty marker, so the run
+    /// ends with no breach at all: the edit is kept for the next open to offer back.
+    /// </summary>
+    [HarnessFact]
+    public async Task AFailedDemotion_ThenClose_KeepsTheUnsavedEdit()
+    {
+        var keys = new[]
+        {
+            "Open(bob)", "AdvanceTime(4m)", "Open(alice)", "DeleteLockFile", "Edit(alice)", "Save(bob)",
+            "OtherProgramOpens(database,none)", "Sleep(alice,4m)", "Close(alice)"
+        };
+        var record = new RunRecord();
+        foreach (var key in keys) record.Steps.Add(new RecordedStep { EventKey = key });
+
+        var result = await RunExecutor.ExecuteAsync(new ReplaySource(record), new RunOptions
+        {
+            Title = nameof(AFailedDemotion_ThenClose_KeepsTheUnsavedEdit),
+            ExtraEvents = EventCatalogue.ExtrasFor(keys)
+        });
+        _output.WriteLine(result.Story);
+
+        Assert.False(result.Hung);
+        Assert.Empty(result.Violations.Select(v => $"{v.Invariant}/{v.FindingId}: {v.Reason}"));
+    }
+
     /// <summary>The keys of the new events and pause actions read back (a pause key with the action parses).</summary>
     [Fact]
     public void TheKeysOfTheNewEvents_AreUniqueAndParse()

@@ -234,6 +234,8 @@ An edit made while a save is running isn't covered by that save. The save clears
 the computer crashes before the next save, or the exit save finishes, the edit is deleted. The harness reproduces
 this in three steps. 1.2.3 added the exit guard (repeated X, "Saving and closing…") but not the fix. **Fix
 direction:** an edit counter, so that a save clears the marker only if no edit arrived while it ran.
+**Partly fixed (2 Nov 2026) by 3.12:** when the edit lands after the save's marker delete (it re-writes the marker),
+the close or switch no longer deletes it; it is offered back at the next open. The crash route remains.
 *Source: spec, data-loss table (F2 / item 15).*
 </details>
 
@@ -324,7 +326,8 @@ Alice has an unsaved edit when her computer wakes to find Bob took over. The swi
 copy of the database for reading fails (another program has it open, or the network drops at that moment). She stays
 on her own working file, read-only. At Close the skipped final save reports Success, so the teardown deletes the file
 despite its unsaved-changes marker. No message. **Fix:** the working-copy delete itself refuses a file that still has
-unsaved changes (rule 3 at the data layer); only the end of a restore asks for it explicitly.
+unsaved changes (rule 3 at the data layer); the end of a restore deletes it through the discard path.
+**Done (2 Nov 2026):** with a regression test; it also closes the close-time route of 3.2.
 *Source: harness, another program holding a file (8.3), known finding F21.*
 </details>
 

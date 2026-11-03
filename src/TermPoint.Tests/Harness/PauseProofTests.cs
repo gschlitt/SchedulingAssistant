@@ -532,36 +532,35 @@ public sealed class PauseProofTests
 
 
     /// <summary>
-    /// The clean-close face of F2 (spec item 15: "edits made during the exit save are deleted"): Bob closes TermPoint and, while his
-    /// final save is held at its last step (the marker is already deleted), makes another edit. The edit is not in the save, and
-    /// when the close goes on, the lock is released and the working copy that holds the edit is deleted. No crash is needed: the edit
-    /// is gone when Bob's TermPoint has closed. Classified F2, not "new".
+    /// The clean-close face of F2 (spec item 15: "edits made during the exit save are deleted"), now FIXED by 1.2.4 summary item 3.12: Bob closes
+    /// TermPoint and, while his final save is held at its last step (the marker is already deleted), makes another edit. The edit is not in the
+    /// save and re-writes the marker. Until 1.2.4 the close then deleted the working copy that held it (F2). Now the working-copy delete refuses a
+    /// file that still has its marker, so the edit is kept: when Bob opens the database again it is offered back, and the run has no breach at all.
     /// </summary>
     [HarnessFact]
-    public async Task F2_AnEditDuringTheExitSave_IsDeletedWithTheWorkingCopy_AndClassifiedF2()
+    public async Task F2_AnEditDuringTheExitSave_IsKept_AndOfferedBackAtTheNextOpen()
     {
-        var run = await RunKeysAsync("Open(bob)", "Pause(Close(bob) at Save.AfterMarkerDelete; BobEdits)");
+        var run = await RunKeysAsync("Open(bob)", "Pause(Close(bob) at Save.AfterMarkerDelete; BobEdits)", "Open(bob)");
         _output.WriteLine(run.Story);
 
-        var lost = Assert.Single(run.Violations);
-        Assert.Equal("F2", lost.FindingId);
-        Assert.Equal("I2", lost.Invariant);
-        Assert.Empty(run.NewViolations);
+        Assert.Empty(run.Violations);
+        Assert.Contains("Restore Unsaved Changes?", run.Story);
     }
 
     /// <summary>
-    /// The same loss when the edit lands after the final save has returned but before the close cleans up (held at
-    /// <c>Release.AfterFinalSave</c>). The edit has to wait for the close's lock release, so this pause is "waited"; the loss is F2 all the same.
+    /// The same edit when it lands after the final save has returned but before the close cleans up (held at <c>Release.AfterFinalSave</c>;
+    /// the pause is "waited", because the edit waits for the close's lock release). Also kept since 1.2.4 item 3.12, and offered back.
     /// </summary>
     [HarnessFact]
-    public async Task F2_AnEditBetweenTheExitSaveAndTheCleanup_IsDeleted_AndClassifiedF2()
+    public async Task F2_AnEditBetweenTheExitSaveAndTheCleanup_IsKept_AndOfferedBackAtTheNextOpen()
     {
-        var run = await RunKeysAsync("Open(bob)", "Pause(Close(bob) at Release.AfterFinalSave; BobEdits)");
+        var run = await RunKeysAsync("Open(bob)", "Pause(Close(bob) at Release.AfterFinalSave; BobEdits)", "Open(bob)");
         _output.WriteLine(run.Story);
 
-        Assert.Equal("F2", Assert.Single(run.Violations).FindingId);
-        Assert.Empty(run.NewViolations);
+        Assert.Empty(run.Violations);
+        Assert.Contains("Restore Unsaved Changes?", run.Story);
     }
+
     /// <summary>
     /// The same edit made BEFORE the save's snapshot (held at <c>Save.AfterSourceCheck</c>) is in the snapshot, so it is saved: no
     /// loss, no violation. Pins that the F2 rule is about the window after the snapshot, not about any edit during a save.
