@@ -31,7 +31,7 @@ About 80 items in nine groups. Most were deferred from 1.2.3 or found while test
 | 3 | [Protecting unsaved work](#3.%20Protecting%20unsaved%20work) | The remaining ways edits can be lost or stranded; the recovery redesign | 12 |
 | 4 | [Lock, save, open and restore](#4.%20Lock,%20save,%20open%20and%20restore) | Correctness gaps in the persistence paths | 14 |
 | 5 | [Network shares](#5.%20Network%20shares) | What SMB caching, antivirus and unusual storage do to us | 8 |
-| 6 | [Messages](#6.%20Messages) | Wrong, doubled, hidden or jargon messages | 11 |
+| 6 | [Messages](#6.%20Messages) | Wrong, doubled, hidden or jargon messages | 13 |
 | 7 | [Field reporting](#7.%20Field%20reporting) | Learning from BugSnag whether a failure ended well | 5 |
 | 8 | [Testing](#8.%20Testing) | Harness gaps that let field bugs through; cheaper hand tests | 12 |
 | 9 | [Smaller fixes and housekeeping](#9.%20Smaller%20fixes%20and%20housekeeping) | Bugs, consistency, upstream | 8 |
@@ -618,6 +618,21 @@ lands on the new session (F16).
 *Source: harness message checks (8.6), known finding F18.*
 </details>
 
+<details><summary><b>6.12 A writer whose clock is behind looks inactive</b></summary>
+
+Bob edits with his clock an hour behind. Alice opens and is told his lock "hasn't been active for 55 minutes". Taking
+over still waits for his heartbeat to stand still, so nothing is lost, but the message is wrong. The wall-clock hint
+in the stale check fires on any skew over about 3 minutes.
+*Source: harness clock skew (8.4).*
+</details>
+
+<details><summary><b>6.13 A "changes kept" banner outlives a Discard</b></summary>
+
+After a failed switch save, Can't Restore, and a confirmed Discard, a banner still says the changes are kept. Long
+route with another program holding the database; not investigated.
+*Source: harness clock skew walks (8.4), known finding F23.*
+</details>
+
 ---
 
 ## 7. Field reporting
@@ -703,6 +718,7 @@ can't be reached; with the database held, a close with nothing to save still sho
 
 One fake clock serves every computer, so clock skew can't be expressed. Give each computer its own wall-clock offset
 over a shared steady clock.
+**Done (2 Nov 2026):** staleness holds with clocks ±1 h off, and clock jumps don't cost the lock. Found 6.12 and 6.13.
 </details>
 
 <details><summary><b>8.5 Harness: a computer rewrites only its own lock file</b></summary>

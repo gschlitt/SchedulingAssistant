@@ -50,6 +50,7 @@ internal static class AbstractState
             sb.Append(c.IsRunning ? 'p' : '-');
             sb.Append(SessionCode(c));
             sb.Append(c.NetworkIsDown ? 'x' : c.NetworkHangs ? 'h' : 'n');
+            sb.Append(c.Clock.Offset == TimeSpan.Zero ? '=' : c.Clock.Offset > TimeSpan.Zero ? '+' : '-');   // wall clock: true, ahead, behind
             sb.Append(c.ConflictBannerShown ? 'c' : '-');
             sb.Append(c.HasWorkingFile ? 'f' : '-');
             sb.Append(c.HasDirtyMarker ? 'm' : '-');
@@ -117,9 +118,10 @@ internal static class AbstractState
             var data = JsonSerializer.Deserialize<LockFileData>(reader.ReadToEnd());
             if (data is null) return "?";
 
-            var age    = ctx.World.Clock.GetUtcNow().UtcDateTime - data.Heartbeat;
-            var bucket = AgeBucket(age);
             var owner  = ctx.Computers.FirstOrDefault(c => c.Name == data.Username);
+            // The heartbeat is stamped by the owner's own (possibly skewed) clock; take the skew out so the age is true elapsed time.
+            var age    = ctx.World.Clock.GetUtcNow().UtcDateTime - (data.Heartbeat - (owner?.Clock.Offset ?? TimeSpan.Zero));
+            var bucket = AgeBucket(age);
             if (owner is null) return $"other:{bucket}";
             return $"{owner.Name}:{(owner.Locks.SessionGuid == data.SessionGuid ? "live" : "old")}:{bucket}";
         }

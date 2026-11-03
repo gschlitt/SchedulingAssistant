@@ -357,6 +357,7 @@ internal sealed class PromiseTracker
         Key             = $"I5:broken:{p.Kind}:{p.Step}:{p.Owner.Name}:{p.Title}",
         Computer        = p.Owner.Name,
         Promise         = p.Kind,
+        OtherProgramInvolved = world.OtherProgramHasBeenUsed,
         ComputerPrompts = world.StepPrompts(p.Owner)
     };
 }

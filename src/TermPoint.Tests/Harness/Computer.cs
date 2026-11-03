@@ -64,6 +64,7 @@ internal sealed class Computer : IDisposable
     public Computer(World world, string name)
     {
         _world    = world;
+        Clock     = new SkewedTimeProvider(world.Clock);
         Name      = name;
         LocalDir  = Path.Combine(world.RootDir, "computers", name);
         WorkDir   = Path.Combine(LocalDir, "work");
@@ -72,6 +73,12 @@ internal sealed class Computer : IDisposable
         Directory.CreateDirectory(GuardDir);
         Launch();
     }
+
+    /// <summary>
+    /// This computer's own clock (spec item 8.4): the world's shared fake time plus <see cref="SkewedTimeProvider.Offset"/>. Every service
+    /// of every process on this computer reads it; the offset survives a relaunch, as a real machine's clock does.
+    /// </summary>
+    public SkewedTimeProvider Clock { get; }
 
     // ── Identity and state ───────────────────────────────────────────────────
 
@@ -194,7 +201,7 @@ internal sealed class Computer : IDisposable
 
         Trace         = new List<string>();
         Logger        = new RecordingAppLogger();
-        Locks         = new WriteLockService(_world.Clock, _identity, startTimers: false);
+        Locks         = new WriteLockService(Clock, _identity, startTimers: false);
         Checkout      = new CheckoutService(Locks, Logger, action => action(), WorkDir, startTimers: false);
         Guard         = new DatabaseInstanceGuard(GuardDir, Logger);
         Prompts       = new ScriptedPrompts(Trace.Add);

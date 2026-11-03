@@ -558,6 +558,52 @@ internal sealed class RelaunchEvent : ComputerEvent
     }
 }
 
+/// <summary>
+/// A computer's wall clock is set ahead or behind true time (spec item 8.4): a wrong clock at boot, a person fixing the time, a
+/// time-sync service stepping the clock. Done while sessions are open this is also a clock JUMP (forward or back, by the difference
+/// between the old and the new offset). Only wall time moves: elapsed time on the computer's stopwatch and its timers do not
+/// (<see cref="SkewedTimeProvider"/>). Enabled while the computer's clock is not already at that offset. A zero offset is "the clock is
+/// corrected" and has the key <c>SetClock(bob,0)</c>.
+/// </summary>
+internal sealed class SetClockEvent : ComputerEvent
+{
+    /// <summary>The offset the clock is set to.</summary>
+    private readonly TimeSpan _offset;
+
+    /// <summary>The offset as the key writes it ("+1h", "-5m", "0").</summary>
+    private readonly string _label;
+
+    /// <summary>Creates the event.</summary>
+    /// <param name="name">The computer's name.</param>
+    /// <param name="offset">The offset from true time the clock is set to.</param>
+    /// <param name="label">The offset as the key writes it.</param>
+    public SetClockEvent(string name, TimeSpan offset, string label)
+        : base(name, "SetClock", offset == TimeSpan.Zero
+            ? "{0}'s computer clock is corrected to the true time"
+            : "{0}'s computer clock is set " + (offset > TimeSpan.Zero ? "ahead" : "behind") + " by " + label.TrimStart('+', '-'))
+    {
+        _offset = offset;
+        _label  = label;
+    }
+
+    /// <inheritdoc/>
+    public override string Key => $"SetClock({ComputerName},{_label})";
+
+    /// <inheritdoc/>
+    public override int Weight => 1;
+
+    /// <inheritdoc/>
+    public override bool IsEnabled(RunContext ctx) => On(ctx).Clock.Offset != _offset;
+
+    /// <inheritdoc/>
+    public override Task ExecuteAsync(RunContext ctx)
+    {
+        var computer = On(ctx);
+        ctx.World.Do(null, Story, () => computer.Clock.Offset = _offset);
+        return Task.CompletedTask;
+    }
+}
+
 /// <summary>Time passes (the clock the lock service reads moves forward; no timer fires by itself). Always enabled.</summary>
 internal sealed class AdvanceTimeEvent : HarnessEvent
 {
@@ -795,6 +841,13 @@ internal static class EventCatalogue
             events.Add(new SleepEvent(name, TimeSpan.FromMinutes(10), "10m", "4m"));
             events.Add(new CrashEvent(name));
             events.Add(new RelaunchEvent(name));
+
+            // Each computer's own clock (spec item 8.4): ahead, behind, or put right. Setting it while sessions are open is a clock jump.
+            events.Add(new SetClockEvent(name, TimeSpan.FromMinutes(5), "+5m"));
+            events.Add(new SetClockEvent(name, TimeSpan.FromMinutes(-5), "-5m"));
+            events.Add(new SetClockEvent(name, TimeSpan.FromHours(1), "+1h"));
+            events.Add(new SetClockEvent(name, TimeSpan.FromHours(-1), "-1h"));
+            events.Add(new SetClockEvent(name, TimeSpan.Zero, "0"));
         }
 
         events.Add(new AdvanceTimeEvent(TimeSpan.FromSeconds(30), "30s", null));

@@ -86,7 +86,7 @@ internal static class Findings
 
     /// <summary>Gives a violation its finding id.</summary>
     /// <param name="violation">The violation to classify.</param>
-    /// <returns>"F1", "F2", "F5", "F6", "F7", "F8", "F12", "F16", "F17", "F18", "F19", "F20", "F22", "A13", or <see cref="NewFinding"/>.</returns>
+    /// <returns>"F1", "F2", "F5", "F6", "F7", "F8", "F12", "F16", "F17", "F18", "F19", "F20", "F22", "F23", "A13", or <see cref="NewFinding"/>.</returns>
     public static string Classify(Violation violation)
     {
         switch (violation.Kind)
@@ -127,6 +127,11 @@ internal static class Findings
             // of it was left behind naming their own session (F20), not the demotion of F16.
             case ViolationKind.ReadOnlySessionHoldsLock when violation.OtherProgramInvolved:
                 return "F20";
+
+            // Invariant I5 (a "your changes are kept" message that is not true) in a world where another program held a file on the share: after the
+            // person's own Discard (confirmed) of the changes that could not be restored, the open's banner still says they are kept (F23).
+            case ViolationKind.BrokenPromise when violation.Promise == PromiseKind.ChangesKept && violation.OtherProgramInvolved:
+                return "F23";
 
             // Invariant I6: a read-only session holding its database's lock, or a demotion that carried on against another database.
             case ViolationKind.ReadOnlySessionHoldsLock:
