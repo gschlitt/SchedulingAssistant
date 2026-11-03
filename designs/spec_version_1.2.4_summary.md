@@ -28,8 +28,8 @@ About 80 items in nine groups. Most were deferred from 1.2.3 or found while test
 |---|---|---|---|
 | 1 | [Store release](#1.%20Store%20release) | The 1.2.3 update that wouldn't open; a smaller package; test flights | 6 |
 | 2 | [Features and user-facing gaps](#2.%20Features%20and%20user-facing%20gaps) | Requests from Greg and clients; the licence-expiry warning | 11 |
-| 3 | [Protecting unsaved work](#3.%20Protecting%20unsaved%20work) | The remaining ways edits can be lost or stranded; the recovery redesign | 11 |
-| 4 | [Lock, save, open and restore](#4.%20Lock,%20save,%20open%20and%20restore) | Correctness gaps in the persistence paths | 11 |
+| 3 | [Protecting unsaved work](#3.%20Protecting%20unsaved%20work) | The remaining ways edits can be lost or stranded; the recovery redesign | 12 |
+| 4 | [Lock, save, open and restore](#4.%20Lock,%20save,%20open%20and%20restore) | Correctness gaps in the persistence paths | 13 |
 | 5 | [Network shares](#5.%20Network%20shares) | What SMB caching, antivirus and unusual storage do to us | 8 |
 | 6 | [Messages](#6.%20Messages) | Wrong, doubled, hidden or jargon messages | 11 |
 | 7 | [Field reporting](#7.%20Field%20reporting) | Learning from BugSnag whether a failure ended well | 5 |
@@ -318,6 +318,16 @@ Redo the persistence review's situation-by-situation walkthrough against the new
 the other ways data can be lost (backups, imports, Copy and Empty Semester).
 </details>
 
+<details><summary><b>3.12 A failed demotion, then Close, deletes the unsaved edit</b> <code>save path</code> <b>data loss</b></summary>
+
+Alice has an unsaved edit when her computer wakes to find Bob took over. The switch to read-only keeps her edit, but its
+copy of the database for reading fails (another program has it open, or the network drops at that moment). She stays
+on her own working file, read-only. At Close the skipped final save reports Success, so the teardown deletes the file
+despite its unsaved-changes marker. No message. **Fix:** the working-copy delete itself refuses a file that still has
+unsaved changes (rule 3 at the data layer); only the end of a restore asks for it explicitly.
+*Source: harness, another program holding a file (8.3), known finding F21.*
+</details>
+
 ---
 
 ## 4. Lock, save, open and restore
@@ -417,6 +427,22 @@ Windows). File → Open and Recent don't check the folder at all, for any provid
 wizard and in New Database. Adding it needs a message route and wording, and touches the open flow. Warn, don't
 block.
 *Source: 1.2.3 spec, item 13.*
+</details>
+
+<details><summary><b>4.12 A held heartbeat puts its own lock back over the new holder's</b></summary>
+
+The heartbeat reads its lock, writes a temp file, then moves it onto the lock file. A computer that sleeps between the
+last two steps, while someone takes over, replaces the new holder's lock with its own. No data risk (every save checks
+the database is as last seen), but the two computers fight over the lock.
+*Source: harness lock-file check (8.5), known finding F19.*
+</details>
+
+<details><summary><b>4.13 A lock left behind by a switch makes you read-only when you come back</b></summary>
+
+If another program holds the lock file (so it can't be deleted), or the database (so the switch's final save fails)
+when the user switches database, the old lock stays, naming their own live session. Switching back, they are told
+"Someone else is editing this database right now" and their kept changes can't be restored yet. No data loss.
+*Source: harness, another program holding a file (8.3), known finding F20.*
 </details>
 
 ---
@@ -655,6 +681,9 @@ The test-clock route changes the save path, so a risk review comes first.
 
 Add an event that holds the database, its temporary file or the lock file open with a chosen sharing mode. Let the
 pause sweep keep a paused save's files open as well.
+**Done (2 Nov 2026):** the event, nine pause actions during held saves, and power cuts with a file held. Found 3.12
+(data loss) and 4.13. Also seen, not yet items: with the lock file held, the save banner wrongly says the location
+can't be reached; with the database held, a close with nothing to save still shows "couldn't save".
 </details>
 
 <details><summary><b>8.4 Harness: one clock per computer</b></summary>
@@ -668,6 +697,8 @@ over a shared steady clock.
 The heartbeat renewing someone else's lock (fixed in 1.2.3) broke no invariant. Add one: a computer rewrites a lock
 file only if the file names its own session (creating a lock and a confirmed takeover aside). Record the no-edit save
 rewrite (3.4) as a known finding.
+**Done (2 Nov 2026):** the check is in; it found 4.12. The no-edit rewrite touches the database, not the lock file, so
+the check does not fire on it.
 </details>
 
 <details><summary><b>8.6 Harness: check messages for "one per problem" and banned words</b></summary>
@@ -738,6 +769,9 @@ covers), keeping their on-screen wording checks in one short pass. Keep by hand 
 - Six "lock file deleted during a held close" cases dropped out of the pause plan. Cause unknown.
 - From HANDOFF: after a release and a fresh checkout, the heartbeat-failure handler is subscribed twice (only the
   wake handler is unsubscribed). Harmless.
+
+**Partly done (2 Nov 2026):** the double subscription is fixed with a test, and the six cases are back and stable
+across two sweeps. The two flaky tests remain.
 </details>
 
 ---

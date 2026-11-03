@@ -61,6 +61,15 @@ internal static class HarnessTitles
 /// edit-loss window (<see cref="PausePoints.EditLossWindow"/>: from a save's snapshot to the cleanup of the working copy). It
 /// missed the save, and what protected it was thrown away when the operation ended: the save's last step deleted the marker and the
 /// computer then crashed before another save landed, or, for a close or a switch, the working copy itself was cleaned up. Step 9.3c-2b.</description></item>
+/// <item><description><b>F21</b>: an applied edit is nowhere that survives a crash (invariant I2) in a run where another program had a file of the share open
+/// (spec item 8.3), and neither F1 nor F2 explains it. Found with a lost-lock demotion (the wake check) whose copy of the database for reading fails because the
+/// database is held without sharing: the unsaved edit stays in the kept working file, and the next close deletes it.</description></item>
+/// <item><description><b>F20</b>: invariant I6 (a) in a run where another program had a file of the share open (spec item 8.3): a switch away from the database
+/// whose final save failed (the database was in use) or whose lock-file delete was refused (the lock file was in use) leaves the lock file naming the person's own
+/// session, and the session is read-only on that database. Cause not separated from F16 by the checker beyond that condition.</description></item>
+/// <item><description><b>F19</b>: invariant I9 saw a heartbeat renewal (a move onto the lock file) land over a lock file that names another session. The
+/// heartbeat reads the lock, checks that it is its own, writes a temporary file and then moves it onto the lock file: these are separate operations on
+/// the share, and a computer that is held between the last two (it sleeps; the pause sweep) renews a lock that someone took over meanwhile. Step 8.5.</description></item>
 /// <item><description><b>F16</b>: any I6 violation: a read-only session holds its database's lock, or a lost-lock demotion
 /// carried on against a database other than the one it started on. Step 9.3c-2b.</description></item>
 /// </list>
@@ -72,7 +81,7 @@ internal static class Findings
 
     /// <summary>Gives a violation its finding id.</summary>
     /// <param name="violation">The violation to classify.</param>
-    /// <returns>"F1", "F2", "F5", "F6", "F7", "F8", "F12", "F16", "F17", "F18", "A13", or <see cref="NewFinding"/>.</returns>
+    /// <returns>"F1", "F2", "F5", "F6", "F7", "F8", "F12", "F16", "F17", "F18", "F19", "F20", "F21", "A13", or <see cref="NewFinding"/>.</returns>
     public static string Classify(Violation violation)
     {
         switch (violation.Kind)
@@ -86,6 +95,10 @@ internal static class Findings
             // working file; a close or a switch is followed by the cleanup of the working copy itself (spec item 15, step 9.3c-2b).
             case ViolationKind.EditLost when violation.EditAppliedDuringHeldSave == true:
                 return "F2";
+
+            // An edit lost in a run where another program held a file on the share (spec item 8.3) and the F2 route does not explain it: F21.
+            case ViolationKind.EditLost when violation.OtherProgramInvolved:
+                return "F21";
 
             case ViolationKind.RestoreOfferedThenImpossible:
                 // Checked first, because it is the more specific reading of the same refusal: the changes are not lost
@@ -109,6 +122,11 @@ internal static class Findings
             case ViolationKind.SharedEditsDisappeared when violation.LostEditsCommittedDuringHeldSave == true:
                 return "F12";
 
+            // Invariant I6 (a) in a world where another program held a file on the share (spec item 8.3): the person left a database and the lock file
+            // of it was left behind naming their own session (F20), not the demotion of F16.
+            case ViolationKind.ReadOnlySessionHoldsLock when violation.OtherProgramInvolved:
+                return "F20";
+
             // Invariant I6: a read-only session holding its database's lock, or a demotion that carried on against another database.
             case ViolationKind.ReadOnlySessionHoldsLock:
             case ViolationKind.DemotionOnAnotherDatabase:
@@ -127,6 +145,11 @@ internal static class Findings
             // F18: two different lock-lost banners for one loss (seen with a held heartbeat check that finishes while the person switches database).
             case ViolationKind.TwoMessagesForOneProblem when IsTwoBanners(violation.MessageIdentities):
                 return "F18";
+
+            // Invariant I9: a heartbeat renewal (a move onto the lock file) landed over a lock that names another session: F19. A delete of
+            // someone else's lock, or any other write onto it, is not explained by a known finding.
+            case ViolationKind.LockFileOfAnotherSessionWritten when violation.Operation == "File.Move":
+                return "F19";
 
             default:
                 return NewFinding;

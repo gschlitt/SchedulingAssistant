@@ -3551,10 +3551,18 @@ public sealed class CheckoutService : IDisposable
     ///         <see cref="HandleLockLossAsync"/> unsubscribes both on the session's first loss.</item>
     /// </list>
     /// The guard is reset BEFORE the handlers are subscribed, so a check that fires at once sees a fresh guard.
+    ///
+    /// <para><b>Subscribed exactly once per write session.</b> A normal release (<see cref="ReleaseAsync"/>) and a demotion unhook
+    /// only <see cref="WriteLockService.WakeDetected"/>, so after a release and a fresh checkout on the same service the
+    /// <see cref="WriteLockService.HeartbeatFailed"/> handler was subscribed a second time and one failed heartbeat started two ownership
+    /// checks. Each handler is therefore unhooked before it is hooked (removing a handler that is not subscribed does nothing), so the
+    /// subscription is the same whatever the session before it did.</para>
     /// </summary>
     private void StartWatchingForLockLoss()
     {
         Volatile.Write(ref _lockLossRaised, 0);
+        _lockService.WakeDetected    -= OnWake;
+        _lockService.HeartbeatFailed -= OnHeartbeatFailed;
         _lockService.WakeDetected    += OnWake;
         _lockService.HeartbeatFailed += OnHeartbeatFailed;   // F11
     }

@@ -132,6 +132,7 @@ internal sealed class InvariantChecker
                         Key = $"I2:lost:{edit}", Computer = computer.Name, Edit = edit,
                         Reason = $"{edit} ({computer.DisplayName}'s) is no longer anywhere that survives a crash",
                         EditAppliedDuringHeldSave = world.WasEditAppliedDuringHeldSave(edit),
+                        OtherProgramInvolved = world.OtherProgramHasBeenUsed,
                         ComputerPrompts = world.StepPrompts(computer)
                     });
                 }
@@ -173,7 +174,7 @@ internal sealed class InvariantChecker
             found.Add(new Violation
             {
                 Step = step, Invariant = "I6", Kind = ViolationKind.ReadOnlySessionHoldsLock,
-                Key = $"I6a:{step}:{computer.Name}:{database}", Computer = computer.Name,
+                Key = $"I6a:{step}:{computer.Name}:{database}", Computer = computer.Name, OtherProgramInvolved = world.OtherProgramHasBeenUsed,
                 Reason = $"{computer.DisplayName}'s session on {database} is read-only to the checkout service (it cannot save) yet " +
                          string.Join(" and ", holds) + ": it holds a lock it cannot use"
             });

@@ -30,11 +30,14 @@ internal static class KnownFindings
         ["F16"] = "A lost-lock demotion still running when the user switches database lands on the NEW session: it copies the new database and leaves a session that holds the new lock read-only.",
         ["F17"] = "A save during a close or a switch finds a problem (someone took over, the location can't be reached, the lock file was removed, the file is in use), and the person is shown the problem's banner and then \"Changes Not Saved\": two messages for one problem, both saying what happens to their changes. 1.2.4: show only the dialog.",
         ["F18"] = "Two different lock-lost banners for one loss (\"Another program removed the file...\" and \"... has taken over editing\"), seen when a held heartbeat check finishes while the person switches database. Not yet investigated.",
+        ["F19"] = "A heartbeat renewal that is held (the computer sleeps) between writing its temporary file and moving it onto the lock file lands over the lock that someone else took over meanwhile: the lock file then names the sleeper's session again, although the other computer holds the lock. (Invariant I9, a computer rewrites only its own lock file.)",
+        ["F20"] = "Another program has a file of the share open (the database, so a switch's final save fails; or the lock file, so the release can't delete it) when the person switches to another database: the lock file of the old database is left behind naming their own session, and when they switch back they are read-only (\"Someone else is editing this database right now\") although it is their own leftover lock, and their kept unsaved changes cannot be restored yet. (Invariant I6 clause a. By code reading, the leftover lock's holder is their own live process, so it is not reclaimed on its own.)",
+        ["F21"] = "DATA LOSS. Another program has the shared database open without sharing when a computer wakes to find its lock was taken over: the demotion to read-only cannot copy the database, the unsaved edit stays in the kept working file, and the next Close (or exit) deletes it, with no message, although the edit was never saved anywhere else. (Invariant I2 in a run where another program held a file.)",
         ["A13"] = "When someone else holds the lock and the copy of the database for reading fails (the network drops), the person sees two messages for one problem: \"Checkout Failed\" (which says the program will open read-only) and then \"Couldn't Open the Database\" (Try again / Close). Spec item 6.5."
     };
 
-    /// <summary>Every known finding id, in order (F2, F5, F6, F7, F16, F17, F18, A13). F1, F8 and F12 are fixed and so are no longer on the list.</summary>
-    public static IReadOnlyList<string> Ids { get; } = new[] { "F2", "F5", "F6", "F7", "F16", "F17", "F18", "A13" };
+    /// <summary>Every known finding id, in order (F2, F5, F6, F7, F16, F17, F18, F19, F20, F21, A13). F1, F8 and F12 are fixed and so are no longer on the list.</summary>
+    public static IReadOnlyList<string> Ids { get; } = new[] { "F2", "F5", "F6", "F7", "F16", "F17", "F18", "F19", "F20", "F21", "A13" };
 
     /// <summary>True when <paramref name="findingId"/> is a finding expected on today's code.</summary>
     /// <param name="findingId">A finding id as the classifier gives it ("F1" ... or "new").</param>

@@ -86,7 +86,7 @@ internal static class Inspector
     /// <param name="path">The file.</param>
     private static byte[] ReadShared(string path)
     {
-        using var input = new FileStream(path, FileMode.Open, FileAccess.Read, FileShare.ReadWrite | FileShare.Delete);
+        using var input = ObserverFiles.OpenRead(path);
         using var memory = new MemoryStream();
         input.CopyTo(memory);
         return memory.ToArray();
@@ -190,7 +190,7 @@ internal static class Inspector
     /// <param name="destination">Where the copy goes (overwritten).</param>
     internal static void CopyShared(string source, string destination)
     {
-        using var input = new FileStream(source, FileMode.Open, FileAccess.Read, FileShare.ReadWrite | FileShare.Delete);
+        using var input = ObserverFiles.OpenRead(source);
         using var output = new FileStream(destination, FileMode.Create, FileAccess.Write, FileShare.None);
         input.CopyTo(output);
     }

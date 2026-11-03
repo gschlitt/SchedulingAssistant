@@ -671,6 +671,70 @@ internal sealed class DeleteLockFileEvent : HarnessEvent
 }
 
 /// <summary>
+/// Another program (antivirus, a backup tool, cloud sync) opens a file on the share and keeps it open, with a chosen sharing mode (spec item 8.3). Enabled
+/// while it holds nothing and the file exists. The handle is a real one, so the code under test meets the real sharing violation.
+/// </summary>
+internal sealed class OtherProgramOpensEvent : HarnessEvent
+{
+    /// <summary>Which file it opens.</summary>
+    private readonly OtherProgramFile _file;
+
+    /// <summary>What it lets others do with the file.</summary>
+    private readonly OtherProgramShare _share;
+
+    /// <summary>Creates the event.</summary>
+    /// <param name="file">Which file it opens.</param>
+    /// <param name="share">What it lets others do with the file while it has it open.</param>
+    public OtherProgramOpensEvent(OtherProgramFile file, OtherProgramShare share)
+    {
+        _file  = file;
+        _share = share;
+    }
+
+    /// <inheritdoc/>
+    public override string Key => $"OtherProgramOpens({OtherProgramNames.KeyOf(_file)},{OtherProgramNames.KeyOf(_share)})";
+
+    /// <inheritdoc/>
+    public override string Story => $"Another program opens {OtherProgramNames.Words(_file)}, {OtherProgramNames.Words(_share)}";
+
+    /// <inheritdoc/>
+    public override int Weight => 1;
+
+    /// <inheritdoc/>
+    public override bool IsEnabled(RunContext ctx) => ctx.World.OtherProgramCanOpen(_file);
+
+    /// <inheritdoc/>
+    public override Task ExecuteAsync(RunContext ctx)
+    {
+        ctx.World.OtherProgramOpens(_file, _share);
+        return Task.CompletedTask;
+    }
+}
+
+/// <summary>The other program lets go of the file it has open. Enabled while it holds one.</summary>
+internal sealed class OtherProgramReleasesEvent : HarnessEvent
+{
+    /// <inheritdoc/>
+    public override string Key => "OtherProgramReleases";
+
+    /// <inheritdoc/>
+    public override string Story => "The other program lets go of the file it had open";
+
+    /// <inheritdoc/>
+    public override int Weight => 3;
+
+    /// <inheritdoc/>
+    public override bool IsEnabled(RunContext ctx) => ctx.World.OtherProgramHolding is not null;
+
+    /// <inheritdoc/>
+    public override Task ExecuteAsync(RunContext ctx)
+    {
+        ctx.World.OtherProgramReleases();
+        return Task.CompletedTask;
+    }
+}
+
+/// <summary>
 /// The catalogue of events (spec item 9.3, step 9.3c): for each computer, the things a person or their machine does;
 /// for the world, the things that happen to the share. Built once per run in a fixed order, so the same state always
 /// offers the same events in the same order (the exhaustive search depends on it).
@@ -714,6 +778,12 @@ internal static class EventCatalogue
         events.Add(new TakeSnapshotEvent());
         events.Add(new ItRestoresOldFileEvent());
         events.Add(new DeleteLockFileEvent());
+
+        // Another program holding a file on the share (spec item 8.3): each file with each sharing mode, and the release.
+        foreach (var file in Enum.GetValues<OtherProgramFile>())
+            foreach (var share in Enum.GetValues<OtherProgramShare>())
+                events.Add(new OtherProgramOpensEvent(file, share));
+        events.Add(new OtherProgramReleasesEvent());
         return events;
     }
 

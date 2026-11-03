@@ -917,6 +917,59 @@ public sealed class InvariantProofTests
         world.Finish();
     }
 
+    // ═════════════════════════════════════════════════════════════════════════
+    // I9: a computer rewrites only its own lock file
+    // ═════════════════════════════════════════════════════════════════════════
+
+    /// <summary>
+    /// Re-creates the SHAPE of the 1.2.3 bug (the heartbeat renewing a lock file that names ANOTHER session) without touching production:
+    /// Bob's heartbeat reads the lock (his own) and writes its temporary file; in the instant after that (<c>Heartbeat.AfterTmpWritten</c>)
+    /// Alice's lock appears on the share; Bob's renewal then moves its file over it. Today's heartbeat checks the name before writing, so
+    /// this window is the only way left to do it, and I9 sees the overwrite and reports Bob rewrote a lock that names another session.
+    /// Classified F19 (the known finding for exactly this window); it proves the checker can fail.
+    /// </summary>
+    [HarnessFact]
+    public async Task I9_AHeartbeatRenewalOverAnotherSessionsLock_IsCaught()
+    {
+        using var world = new World(_output, nameof(I9_AHeartbeatRenewalOverAnotherSessionsLock_IsCaught));
+        world.ExpectFindings("F19");
+        world.CreateDatabase();
+        var bob = world.AddComputer("bob");
+
+        await bob.OpenAsync();
+        world.AtCrashPoint("Heartbeat.AfterTmpWritten", () => world.PlaceForeignLock("alice", "ALICE-PC"),
+            "(after Bob's heartbeat wrote its temporary file) Alice's lock appears");
+        await bob.HeartbeatTickAsync();
+
+        var violation = Only(world, "I9");
+        Assert.Equal(ViolationKind.LockFileOfAnotherSessionWritten, violation.Kind);
+        Assert.Equal("bob", violation.Computer);
+        Assert.Equal("F19", violation.FindingId);
+        Assert.Contains("names another session", violation.Reason);
+        Assert.Contains("dept.lock", violation.Reason);
+        world.Finish();
+    }
+
+    /// <summary>
+    /// A computer that rewrites and removes ITS OWN lock raises nothing: Bob opens (creates the lock), his heartbeat renews it, and he closes
+    /// (deletes it). Creating a lock where none exists is not looked at either.
+    /// </summary>
+    [HarnessFact]
+    public async Task I9_RenewingAndReleasingOwnLock_RaisesNothing()
+    {
+        using var world = new World(_output, nameof(I9_RenewingAndReleasingOwnLock_RaisesNothing));
+        world.CreateDatabase();
+        var bob = world.AddComputer("bob");
+
+        await bob.OpenAsync();
+        await bob.HeartbeatTickAsync();
+        await bob.HeartbeatTickAsync();
+        await bob.CloseAsync();
+
+        Assert.Empty(world.Violations);
+        world.Finish();
+    }
+
     /// <summary>
     /// The key of a power-cut event reads back into the same event, and a key that is not one, or names an event that does
     /// not exist, is not parsed. (A plain unit test: it runs with the normal suite.)

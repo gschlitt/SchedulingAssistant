@@ -112,7 +112,7 @@ internal static class AbstractState
         {
             if (!File.Exists(lockPath)) return "none";
 
-            using var stream = new FileStream(lockPath, FileMode.Open, FileAccess.Read, FileShare.ReadWrite | FileShare.Delete);
+            using var stream = ObserverFiles.OpenRead(lockPath);
             using var reader = new StreamReader(stream);
             var data = JsonSerializer.Deserialize<LockFileData>(reader.ReadToEnd());
             if (data is null) return "?";

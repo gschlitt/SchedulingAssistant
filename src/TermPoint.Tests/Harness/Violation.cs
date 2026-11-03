@@ -56,7 +56,10 @@ internal enum ViolationKind
     MessageShownTwice,
 
     /// <summary>I8 (b): two different messages were shown on one computer in one step, and the pair is not on the allow-list (see <see cref="MessageAllowList"/>).</summary>
-    TwoMessagesForOneProblem
+    TwoMessagesForOneProblem,
+
+    /// <summary>I9: a computer wrote, replaced or deleted a lock file on the share that names another session (or no session at all). Creating a lock where none exists, and a confirmed takeover or reclaim of a dead holder's lock, are not breaches.</summary>
+    LockFileOfAnotherSessionWritten
 }
 
 /// <summary>
@@ -68,7 +71,7 @@ internal sealed class Violation
     /// <summary>The funnel step at whose end the breach was found (0 = before any step).</summary>
     public required int Step { get; init; }
 
-    /// <summary>The invariant: "I1" to "I8", or "Hang" for a pause that did not finish.</summary>
+    /// <summary>The invariant: "I1" to "I9", or "Hang" for a pause that did not finish.</summary>
     public required string Invariant { get; init; }
 
     /// <summary>What kind of breach it is.</summary>
@@ -91,6 +94,12 @@ internal sealed class Violation
 
     /// <summary>For <see cref="ViolationKind.WriteWithoutLockOrOnStaleVersion"/>: the crash point at which it was seen.</summary>
     public string? CrashPoint { get; init; }
+
+    /// <summary>For <see cref="ViolationKind.ReadOnlySessionHoldsLock"/> and <see cref="ViolationKind.EditLost"/>: true when another program has held a file on the share in this run (spec item 8.3), which is what the classifier reads to tell finding F20 from F16 and F21 from an edit lost for another reason.</summary>
+    public bool OtherProgramInvolved { get; init; }
+
+    /// <summary>For <see cref="ViolationKind.LockFileOfAnotherSessionWritten"/>: the file operation that touched the lock file ("File.Move" is a heartbeat renewal landing, "File.Delete" a release).</summary>
+    public string? Operation { get; init; }
 
     /// <summary>
     /// For <see cref="ViolationKind.RestoreOfferedThenImpossible"/>: true when the shared database's set of edits had NOT
@@ -132,6 +141,6 @@ internal sealed class Violation
     /// </summary>
     public IReadOnlyList<string> MessageIdentities { get; init; } = Array.Empty<string>();
 
-    /// <summary>The finding id the classifier gave it: "F1".."F16" or "new". Set when the violation is recorded.</summary>
+    /// <summary>The finding id the classifier gave it: "F1".."F19", "A13" or "new". Set when the violation is recorded.</summary>
     public string FindingId { get; set; } = Findings.NewFinding;
 }

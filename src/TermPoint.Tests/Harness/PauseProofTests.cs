@@ -267,8 +267,18 @@ public sealed class PauseProofTests
             // (The heartbeat, wake-check and network-drop actions are offered only for the interleaving they exist for: see below.)
             foreach (var action in PauseActions.For(paused).Where(a =>
                          a is not (PausedComputerSwitchesAction or PausedComputerHeartbeatTicksAction or PausedComputerWakeCheckRunsAction
-                                   or PausedComputerNetworkDropsAction)))
+                                   or PausedComputerNetworkDropsAction or OtherProgramOpensAction)))
                 Assert.True(action.IsOfferedWhileHolding(new CloseEvent(paused)), $"{action.Key} during {paused}'s close");
+
+            // Another program opening a file (spec item 8.3): only while a save is held, and only at the save's points between its snapshot and its rename.
+            foreach (var opens in PauseActions.For(paused).OfType<OtherProgramOpensAction>())
+            {
+                Assert.True(opens.IsOfferedWhileHolding(new SaveEvent(paused)), $"{opens.Key} during a save");
+                Assert.True(opens.IsOfferedWhileHolding(new AutosaveTickEvent(paused)), $"{opens.Key} during an autosave");
+                Assert.False(opens.IsOfferedWhileHolding(new CloseEvent(paused)), $"{opens.Key} during a close");
+                Assert.True(opens.IsOfferedAtPoint(new SaveEvent(paused), "Save.AfterTmpCopy"));
+                Assert.False(opens.IsOfferedAtPoint(new SaveEvent(paused), "Save.AfterRename"));
+            }
 
             // A heartbeat during a held sleep (the wake check and the heartbeat of a real wake), a wake check during a held heartbeat tick; nothing else.
             var heartbeat = PauseActions.For(paused).OfType<PausedComputerHeartbeatTicksAction>().Single();

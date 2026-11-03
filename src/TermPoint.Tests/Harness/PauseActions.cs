@@ -359,11 +359,72 @@ internal sealed class PausedComputerNetworkDropsAction : PauseAction
     public override IReadOnlyList<Computer> ComputersOf(RunContext ctx) => new[] { ctx.Computer(_paused) };
 }
 
+/// <summary>
+/// "Another program opens a file": an antivirus scanner, a backup tool or a cloud-sync client opens the shared database, the temporary file the held save
+/// uploads, or the lock file, with a chosen sharing mode, while the save is held (spec item 8.3). The handle stays open until the run lets go of it (the
+/// <c>OtherProgramReleases</c> event, a power cut, or the end of the run). Offered only while a SAVE is held (a save is what uses all three files), at the
+/// points where a save is between its snapshot and its rename; the temporary file is possible only once the save has copied it.
+/// </summary>
+internal sealed class OtherProgramOpensAction : PauseAction
+{
+    /// <summary>The save's points this action is offered at: after the snapshot (the temporary file is not there yet), after it is copied, after it is verified.</summary>
+    private static readonly string[] Points = { "Save.AfterLocalSnapshot", "Save.AfterTmpCopy", "Save.AfterTmpVerify" };
+
+    /// <summary>Which file it opens.</summary>
+    private readonly OtherProgramFile _file;
+
+    /// <summary>What it lets others do with the file.</summary>
+    private readonly OtherProgramShare _share;
+
+    /// <summary>Creates the action.</summary>
+    /// <param name="file">Which file it opens.</param>
+    /// <param name="share">What it lets others do with the file while it has it open.</param>
+    public OtherProgramOpensAction(OtherProgramFile file, OtherProgramShare share)
+    {
+        _file  = file;
+        _share = share;
+    }
+
+    /// <inheritdoc/>
+    public override string Key => $"OtherProgramOpens{Cap(_file.ToString())}{Cap(_share.ToString())}";
+
+    /// <inheritdoc/>
+    public override string Story => $"another program opens {OtherProgramNames.Words(_file)}, {OtherProgramNames.Words(_share)}";
+
+    /// <inheritdoc/>
+    public override bool IsPossible(RunContext ctx) => ctx.World.OtherProgramCanOpen(_file);
+
+    /// <summary>Offered only while a save (a Save press or an autosave tick) is held.</summary>
+    /// <param name="held">The event whose operation is held.</param>
+    public override bool IsOfferedWhileHolding(ComputerEvent held) => held is SaveEvent or AutosaveTickEvent;
+
+    /// <summary>Offered only at <see cref="Points"/>.</summary>
+    /// <param name="held">The event whose operation is held.</param>
+    /// <param name="point">The crash point it is held at.</param>
+    public override bool IsOfferedAtPoint(ComputerEvent held, string point) => Points.Contains(point);
+
+    /// <inheritdoc/>
+    public override Task RunAsync(RunContext ctx)
+    {
+        ctx.World.OtherProgramOpens(_file, _share);
+        return Task.CompletedTask;
+    }
+
+    /// <summary>Upper-cases the first letter ("SaveTemp" stays, "none" would become "None").</summary>
+    /// <param name="text">A word.</param>
+    private static string Cap(string text) => char.ToUpperInvariant(text[0]) + text[1..];
+}
+
 /// <summary>The catalogue of the events that can happen while an operation is held.</summary>
 internal static class PauseActions
 {
     /// <summary>Every action for every computer, in a fixed order (what a pause key is parsed against).</summary>
     public static IReadOnlyList<PauseAction> All { get; } = EventCatalogue.ComputerNames.SelectMany(For).DistinctBy(a => a.Key).ToList();
+
+    /// <summary>The "another program opens a file" actions: every file with every sharing mode, in a fixed order.</summary>
+    private static IEnumerable<PauseAction> OtherProgramActions()
+        => Enum.GetValues<OtherProgramFile>().SelectMany(file =>
+            Enum.GetValues<OtherProgramShare>().Select(share => (PauseAction)new OtherProgramOpensAction(file, share)));
 
     /// <summary>
     /// The actions that make sense while <paramref name="paused"/>'s operation is held: the other computer takes over, takes over
@@ -387,6 +448,6 @@ internal static class PauseActions
             new PausedComputerHeartbeatTicksAction(paused),
             new PausedComputerWakeCheckRunsAction(paused),
             new PausedComputerNetworkDropsAction(paused)
-        };
+        }.Concat(OtherProgramActions()).ToArray();
     }
 }

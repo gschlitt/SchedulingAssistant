@@ -374,8 +374,98 @@ internal sealed class World : IDisposable
     public void DeleteLockFile()
         => Do(null, "Somebody deleted the lock file from the share", () =>
         {
-            if (File.Exists(LockFilePath)) File.Delete(LockFilePath);
+            TryWhileOtherProgramMayHoldFile("the lock file", () => { if (File.Exists(LockFilePath)) File.Delete(LockFilePath); });
         });
+
+    // ── Another program holding a file on the share (spec item 8.3) ──────────
+
+    /// <summary>The file another program has open right now, or null. At most one at a time. Guarded by <see cref="_gate"/>.</summary>
+    private OtherProgramHandle? _otherProgram;
+
+    /// <summary>True once another program has held a file in this world (it may have let go since). Read by the classifier (finding F20).</summary>
+    public bool OtherProgramHasBeenUsed => Volatile.Read(ref _otherProgramUsed);
+
+    /// <summary>Backing field of <see cref="OtherProgramHasBeenUsed"/>.</summary>
+    private bool _otherProgramUsed;
+
+    /// <summary>The file another program has open right now, or null.</summary>
+    public OtherProgramHandle? OtherProgramHolding
+    {
+        get { lock (_gate) return _otherProgram; }
+    }
+
+    /// <summary>Full path of a file another program may open.</summary>
+    /// <param name="file">Which file.</param>
+    public string OtherProgramPath(OtherProgramFile file) => file switch
+    {
+        OtherProgramFile.Database => DatabasePath,
+        OtherProgramFile.SaveTemp => DatabasePath + ".tmp",
+        _                         => LockFilePath
+    };
+
+    /// <summary>True when another program could open <paramref name="file"/> now: it holds nothing yet and the file exists.</summary>
+    /// <param name="file">Which file.</param>
+    public bool OtherProgramCanOpen(OtherProgramFile file) => OtherProgramHolding is null && File.Exists(OtherProgramPath(file));
+
+    /// <summary>
+    /// <b>Another program opens a file on the share</b> (antivirus, a backup tool, cloud sync) and keeps it open until <see cref="OtherProgramReleases"/>,
+    /// the end of the world, or a power cut (which puts the disk back, see <see cref="RestoreFrozenDisk"/>). The handle is a real operating-system
+    /// handle opened for reading with the given sharing, so the code under test meets the real sharing violation. Does nothing when the program already
+    /// holds a file, or the file is not there, or somebody else has it open without sharing; the story says which.
+    /// </summary>
+    /// <param name="file">Which file.</param>
+    /// <param name="share">What the program lets others do with the file while it has it open.</param>
+    public void OtherProgramOpens(OtherProgramFile file, OtherProgramShare share)
+        => Do(null, $"Another program opened {OtherProgramNames.Words(file)}, {OtherProgramNames.Words(share)}", () =>
+        {
+            lock (_gate)
+            {
+                if (_otherProgram is not null) return "it already has a file open, so nothing changed";
+                try
+                {
+                    _otherProgram = new OtherProgramHandle(file, share, OtherProgramPath(file));
+                    Volatile.Write(ref _otherProgramUsed, true);
+                    return "it holds the file open";
+                }
+                catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+                {
+                    return "the file was not there or was in use, so nothing changed";
+                }
+            }
+        }, note => note);
+
+    /// <summary>The other program lets go of the file it had open. Does nothing when it has none.</summary>
+    public void OtherProgramReleases()
+        => Do(null, "The other program let go of the file it had open", () => { CloseOtherProgram(); });
+
+    /// <summary>Closes the other program's handle, if any, and says whether there was one.</summary>
+    /// <returns>True when a handle was closed.</returns>
+    private bool CloseOtherProgram()
+    {
+        OtherProgramHandle? handle;
+        lock (_gate)
+        {
+            handle = _otherProgram;
+            _otherProgram = null;
+        }
+        handle?.Dispose();
+        return handle is not null;
+    }
+
+    /// <summary>
+    /// Runs a change the harness itself makes to a file on the share (a colleague's write, IT's restore, someone deleting the lock file). If another
+    /// program has the file open without sharing, the change cannot be made, exactly as for a person: it is skipped and the story says so.
+    /// </summary>
+    /// <param name="what">The file, in words ("the lock file").</param>
+    /// <param name="change">The change.</param>
+    private void TryWhileOtherProgramMayHoldFile(string what, Action change)
+    {
+        try { change(); }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or SqliteException)
+        {
+            _story.Add(_step, 1, $"(nothing happened: {what} is open in another program)");
+        }
+    }
 
     /// <summary>True when D's lock file exists.</summary>
     public bool LockFileExists => File.Exists(LockFilePath);
@@ -773,15 +863,18 @@ internal sealed class World : IDisposable
     public void ColleagueWritesDatabase(string editId)
         => Do(null, $"A 1.2.2 colleague changed the database (edit {editId})", () =>
         {
-            using (var conn = new SqliteConnection($"Data Source={DatabasePath};Pooling=False"))
+            TryWhileOtherProgramMayHoldFile("the shared database", () =>
             {
-                conn.Open();
-                using var cmd = conn.CreateCommand();
-                cmd.CommandText = $"INSERT INTO {EditsTable}(id, actor) VALUES (@id, 'colleague')";
-                cmd.Parameters.AddWithValue("@id", editId);
-                cmd.ExecuteNonQuery();
-            }
-            SqliteConnection.ClearAllPools();
+                using (var conn = new SqliteConnection($"Data Source={DatabasePath};Pooling=False"))
+                {
+                    conn.Open();
+                    using var cmd = conn.CreateCommand();
+                    cmd.CommandText = $"INSERT INTO {EditsTable}(id, actor) VALUES (@id, 'colleague')";
+                    cmd.Parameters.AddWithValue("@id", editId);
+                    cmd.ExecuteNonQuery();
+                }
+                SqliteConnection.ClearAllPools();
+            });
         });
 
     /// <summary>
@@ -790,7 +883,13 @@ internal sealed class World : IDisposable
     /// TermPoint's back.
     /// </summary>
     /// <returns>D's bytes now.</returns>
-    public byte[] TakeSnapshot() => File.ReadAllBytes(DatabasePath);
+    public byte[] TakeSnapshot()
+    {
+        using var stream = ObserverFiles.OpenRead(DatabasePath);
+        using var memory = new MemoryStream();
+        stream.CopyTo(memory);
+        return memory.ToArray();
+    }
 
     /// <summary>
     /// <b>IT restores an old file:</b> an earlier snapshot of D is copied over D outside TermPoint (a backup tool, a
@@ -801,10 +900,13 @@ internal sealed class World : IDisposable
     public void ItRestoresOldFile(byte[] snapshot)
         => Do(null, $"IT restored an older copy of {Path.GetFileName(DatabasePath)} over the shared database", () =>
         {
-            var before = TryEditsInFile(DatabasePath) ?? new List<string>();
-            File.WriteAllBytes(DatabasePath, snapshot);
-            ExcuseEditsGoneFromDatabase(before);
-            _invariants.ResetBaselineAtNextCheck();
+            TryWhileOtherProgramMayHoldFile("the shared database", () =>
+            {
+                var before = TryEditsInFile(DatabasePath) ?? new List<string>();
+                File.WriteAllBytes(DatabasePath, snapshot);
+                ExcuseEditsGoneFromDatabase(before);
+                _invariants.ResetBaselineAtNextCheck();
+            });
         });
 
     /// <summary>
@@ -823,7 +925,7 @@ internal sealed class World : IDisposable
                 Username = userName, Machine = machineName, SessionGuid = Guid.NewGuid().ToString(),
                 Acquired = now, Heartbeat = now, ProcessId = 1, ProcessStartTimeUtc = now
             };
-            File.WriteAllText(LockFilePath, JsonSerializer.Serialize(data));
+            TryWhileOtherProgramMayHoldFile("the lock file", () => File.WriteAllText(LockFilePath, JsonSerializer.Serialize(data)));
         });
 
     /// <summary>
@@ -894,6 +996,10 @@ internal sealed class World : IDisposable
     /// <param name="frozen">The copies made by <see cref="FreezeDisk"/>.</param>
     private void RestoreFrozenDisk(Computer computer, FrozenDisk frozen)
     {
+        // Another program's open handle would keep the share's files from being replaced. The disk is frozen THROUGH such a handle (the copy reads
+        // via it, see ObserverFiles), but putting the frozen disk back needs the files free, so at a power cut the other program lets go.
+        if (CloseOtherProgram()) _story.Add(_step, 1, "(the other program's hold on the file ended with the power cut)");
+
         ReplaceContents(ShareDir, frozen.Share);
         ReplaceContents(computer.LocalDir, frozen.Local);
         Directory.CreateDirectory(computer.GuardDir);
@@ -1852,7 +1958,7 @@ internal sealed class World : IDisposable
     /// <param name="path">The file.</param>
     private static string ReadSharedText(string path)
     {
-        using var stream = new FileStream(path, FileMode.Open, FileAccess.Read, FileShare.ReadWrite | FileShare.Delete);
+        using var stream = ObserverFiles.OpenRead(path);
         using var reader = new StreamReader(stream);
         return reader.ReadToEnd();
     }
@@ -1861,7 +1967,7 @@ internal sealed class World : IDisposable
     /// <param name="path">The file.</param>
     private static string HashFile(string path)
     {
-        using var stream = new FileStream(path, FileMode.Open, FileAccess.Read, FileShare.ReadWrite | FileShare.Delete);
+        using var stream = ObserverFiles.OpenRead(path);
         return Convert.ToHexString(SHA256.HashData(stream));
     }
 
@@ -1941,10 +2047,68 @@ internal sealed class World : IDisposable
         }
 
         var actor = life?.Owner ?? _currentActor;
-        if (actor is null || !actor.NetworkIsDown) return NetworkFaultDecision.None;
+        if (actor is null || !actor.NetworkIsDown)
+        {
+            // The operation is going to run: invariant I9 looks at it first.
+            if (life is not null) ObserveLockFileWrite(life.Owner, request);
+            return NetworkFaultDecision.None;
+        }
 
         var onShare = IsUnderShare(request.Path) || IsUnderShare(request.DestinationPath) || IsGenericLockOperation(request);
         return onShare ? NetworkFaultDecision.TimeOut : NetworkFaultDecision.None;
+    }
+
+    /// <summary>
+    /// <b>Invariant I9, a computer rewrites only its own lock file.</b> Observed in the network fault hook, just before an operation that
+    /// writes onto a lock file on the share really runs (a move onto it, which is how the heartbeat renews it; a write or copy onto it; a
+    /// delete of it, which is how a release removes it). The lock file as it is on the share at that instant must name the acting
+    /// computer's own session. Not breaches, and so not looked at: creating a lock where there is none (<c>FileMode.CreateNew</c> does not go
+    /// through the hook, and a move onto a missing file finds nothing to overwrite), and the user-confirmed takeover and the reclaim of a
+    /// provably dead holder's lock (both delete with a direct <c>File.Delete</c> that does not go through the hook, so they are never seen).
+    /// A lock file that cannot be read at that instant (another program has it open) cannot be judged and is skipped. The 1.2.3 bug this
+    /// is for: the heartbeat renewed (rewrote) a lock file that named ANOTHER session, holding a stranger's lock up as live.
+    /// </summary>
+    /// <param name="actor">The computer about to do the operation.</param>
+    /// <param name="request">The operation the fault hook was asked about.</param>
+    private void ObserveLockFileWrite(Computer actor, NetworkFaultRequest request)
+    {
+        // The path the operation writes to or removes, if it writes at all.
+        var target = request.Label switch
+        {
+            "File.Move"         => request.DestinationPath,
+            "CopyFile"          => request.DestinationPath,
+            "File.WriteAllText" => request.Path,
+            "File.Delete"       => request.Path,
+            _                   => null
+        };
+        if (target is null || !IsUnderShare(target)
+            || !string.Equals(Path.GetExtension(target), ".lock", StringComparison.OrdinalIgnoreCase)) return;
+
+        string? named;
+        try
+        {
+            if (!File.Exists(target)) return;                                   // creating a lock where none exists
+            named = JsonSerializer.Deserialize<LockFileData>(ReadSharedText(target))?.SessionGuid;
+        }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+        {
+            return;                                                             // cannot be read right now: cannot be judged
+        }
+        catch (JsonException)
+        {
+            named = null;                                                       // a damaged file names no session
+        }
+
+        if (string.Equals(named, actor.Locks.SessionGuid, StringComparison.Ordinal)) return;
+
+        var what = request.Label == "File.Delete" ? "deleted" : "rewrote";
+        var file = Path.GetFileName(target);
+        AddPending(new Violation
+        {
+            Step = _step, Invariant = "I9", Kind = ViolationKind.LockFileOfAnotherSessionWritten,
+            Key = $"I9:{_step}:{actor.Name}:{what}:{file}:{named ?? "none"}", Computer = actor.Name, Operation = request.Label,
+            Reason = $"{actor.DisplayName}'s session {what} {file}, which {(string.IsNullOrEmpty(named) ? "names no session" : "names another session")}, not {actor.DisplayName}'s own"
+        });
     }
 
     /// <summary>True when <paramref name="path"/> is inside the share folder.</summary>
@@ -2047,6 +2211,7 @@ internal sealed class World : IDisposable
 
         NetworkFaults.Decide = null;
         CrashPoints.Hook     = null;
+        CloseOtherProgram();
         foreach (var computer in _computers) computer.Dispose();
         SqliteConnection.ClearAllPools();
         _settingsGuard.Dispose();
