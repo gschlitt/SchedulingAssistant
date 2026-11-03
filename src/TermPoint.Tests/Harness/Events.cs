@@ -398,7 +398,7 @@ internal sealed class NetworkDownEvent : ComputerEvent
     public override int Weight => 1;
 
     /// <inheritdoc/>
-    public override bool IsEnabled(RunContext ctx) => !On(ctx).NetworkIsDown;
+    public override bool IsEnabled(RunContext ctx) => !On(ctx).NetworkIsFaulty;
 
     /// <inheritdoc/>
     public override Task ExecuteAsync(RunContext ctx)
@@ -408,7 +408,32 @@ internal sealed class NetworkDownEvent : ComputerEvent
     }
 }
 
-/// <summary>The computer's connection to the share returns. Enabled while it is down.</summary>
+/// <summary>
+/// The computer's connection to the share HANGS (spec item 8.2): every call it makes on the share blocks instead of failing, until the network
+/// returns (<see cref="NetworkUpEvent"/>). The caller sees only the deadline (a timeout after five seconds, here fired at once); when the network
+/// returns each blocked call really runs and lands late. Enabled while the network is up.
+/// </summary>
+internal sealed class NetworkHangEvent : ComputerEvent
+{
+    /// <summary>Creates the event.</summary>
+    /// <param name="name">The computer's name.</param>
+    public NetworkHangEvent(string name) : base(name, "NetworkHang", "{0}'s network hangs") { }
+
+    /// <inheritdoc/>
+    public override int Weight => 1;
+
+    /// <inheritdoc/>
+    public override bool IsEnabled(RunContext ctx) => !On(ctx).NetworkIsFaulty;
+
+    /// <inheritdoc/>
+    public override Task ExecuteAsync(RunContext ctx)
+    {
+        ctx.World.NetworkHang(On(ctx));
+        return Task.CompletedTask;
+    }
+}
+
+/// <summary>The computer's connection to the share returns (from a drop or a hang). Enabled while it is down or hanging.</summary>
 internal sealed class NetworkUpEvent : ComputerEvent
 {
     /// <summary>Creates the event.</summary>
@@ -419,7 +444,7 @@ internal sealed class NetworkUpEvent : ComputerEvent
     public override int Weight => 3;
 
     /// <inheritdoc/>
-    public override bool IsEnabled(RunContext ctx) => On(ctx).NetworkIsDown;
+    public override bool IsEnabled(RunContext ctx) => On(ctx).NetworkIsFaulty;
 
     /// <inheritdoc/>
     public override Task ExecuteAsync(RunContext ctx)
@@ -472,7 +497,7 @@ internal sealed class SleepEvent : ComputerEvent
     public override int Weight => 1;
 
     /// <inheritdoc/>
-    public override bool IsEnabled(RunContext ctx) => On(ctx).HasOpenSession && !On(ctx).NetworkIsDown;
+    public override bool IsEnabled(RunContext ctx) => On(ctx).HasOpenSession && !On(ctx).NetworkIsFaulty;
 
     /// <inheritdoc/>
     public override async Task ExecuteAsync(RunContext ctx)
@@ -764,6 +789,7 @@ internal static class EventCatalogue
             events.Add(new ResolveConflictEvent(name, saveCopy: true));
             events.Add(new ResolveConflictEvent(name, saveCopy: false));
             events.Add(new NetworkDownEvent(name));
+            events.Add(new NetworkHangEvent(name));
             events.Add(new NetworkUpEvent(name));
             events.Add(new SleepEvent(name, TimeSpan.FromMinutes(4), "4m", null));
             events.Add(new SleepEvent(name, TimeSpan.FromMinutes(10), "10m", "4m"));

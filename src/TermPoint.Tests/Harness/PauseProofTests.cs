@@ -267,7 +267,7 @@ public sealed class PauseProofTests
             // (The heartbeat, wake-check and network-drop actions are offered only for the interleaving they exist for: see below.)
             foreach (var action in PauseActions.For(paused).Where(a =>
                          a is not (PausedComputerSwitchesAction or PausedComputerHeartbeatTicksAction or PausedComputerWakeCheckRunsAction
-                                   or PausedComputerNetworkDropsAction or OtherProgramOpensAction)))
+                                   or PausedComputerNetworkDropsAction or PausedComputerNetworkHangsAction or OtherProgramOpensAction)))
                 Assert.True(action.IsOfferedWhileHolding(new CloseEvent(paused)), $"{action.Key} during {paused}'s close");
 
             // Another program opening a file (spec item 8.3): only while a save is held, and only at the save's points between its snapshot and its rename.
@@ -299,6 +299,14 @@ public sealed class PauseProofTests
             Assert.False(drops.IsOfferedWhileHolding(new SaveEvent(paused)));
             Assert.True(drops.IsOfferedAtPoint(new OpenEvent(paused), "Checkout.AfterLiveHolderSeen"));
             Assert.False(drops.IsOfferedAtPoint(new OpenEvent(paused), "Checkout.AfterLockAcquired"));
+
+            // The network hang (item 8.2) is offered at exactly the same moment as the drop, and nowhere else.
+            var hangs = PauseActions.For(paused).OfType<PausedComputerNetworkHangsAction>().Single();
+            Assert.True(hangs.IsOfferedWhileHolding(new OpenEvent(paused)));
+            Assert.False(hangs.IsOfferedWhileHolding(new OpenEvent(other)));
+            Assert.False(hangs.IsOfferedWhileHolding(new SaveEvent(paused)));
+            Assert.True(hangs.IsOfferedAtPoint(new OpenEvent(paused), "Checkout.AfterLiveHolderSeen"));
+            Assert.False(hangs.IsOfferedAtPoint(new OpenEvent(paused), "Checkout.AfterLockAcquired"));
         }
     }
 

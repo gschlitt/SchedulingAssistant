@@ -124,6 +124,18 @@ internal sealed class Computer : IDisposable
     public bool NetworkIsDown { get; internal set; }
 
     /// <summary>
+    /// True while this computer's network HANGS (see <see cref="World.NetworkHang"/>): every call on the share blocks instead of failing, until the
+    /// network returns. Never true together with <see cref="NetworkIsDown"/> by the catalogue's events (a hang is one way for the network to go bad).
+    /// </summary>
+    public bool NetworkHangs { get; internal set; }
+
+    /// <summary>True while the network is down or hanging: the one thing that restores it is <see cref="World.NetworkUp"/>.</summary>
+    public bool NetworkIsFaulty => NetworkIsDown || NetworkHangs;
+
+    /// <summary>The gate of the current hang (the calls held on it), or null when the network is not hanging. Set by <see cref="World.NetworkHang"/>.</summary>
+    internal NetworkHangGate? HangGate { get; set; }
+
+    /// <summary>
     /// True once a save was refused because the shared database changed elsewhere (the conflict banner of
     /// <c>MainWindow</c>); cleared when a launch starts and when the conflict is resolved.
     /// </summary>

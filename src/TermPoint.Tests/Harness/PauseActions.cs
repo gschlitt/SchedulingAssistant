@@ -339,7 +339,7 @@ internal sealed class PausedComputerNetworkDropsAction : PauseAction
     public override string Story => $"{Capital(_paused)}'s network drops";
 
     /// <inheritdoc/>
-    public override bool IsPossible(RunContext ctx) => !ctx.Computer(_paused).NetworkIsDown;
+    public override bool IsPossible(RunContext ctx) => !ctx.Computer(_paused).NetworkIsFaulty;
 
     /// <summary>Offered only while the same computer's OPEN is held.</summary>
     /// <param name="held">The event whose operation is held.</param>
@@ -354,6 +354,47 @@ internal sealed class PausedComputerNetworkDropsAction : PauseAction
 
     /// <inheritdoc/>
     public override Task RunAsync(RunContext ctx) => new NetworkDownEvent(_paused).ExecuteAsync(ctx);
+
+    /// <inheritdoc/>
+    public override IReadOnlyList<Computer> ComputersOf(RunContext ctx) => new[] { ctx.Computer(_paused) };
+}
+
+/// <summary>
+/// "Bob's network hangs": the same moment as <see cref="PausedComputerNetworkDropsAction"/> (the paused OPEN is held at <c>Checkout.AfterLiveHolderSeen</c>,
+/// just before the copy of the shared database to the read-only snapshot) but the share does not fail: the copy BLOCKS, so only the deadline can end it
+/// (spec item 8.2; the 1.2.3 field bug A1 was a copy that blocked before its deadline began). The person must see one message for one problem, as with a drop.
+/// </summary>
+internal sealed class PausedComputerNetworkHangsAction : PauseAction
+{
+    /// <summary>The paused computer ("bob").</summary>
+    private readonly string _paused;
+
+    /// <summary>Creates the action.</summary>
+    /// <param name="paused">The paused computer.</param>
+    public PausedComputerNetworkHangsAction(string paused) => _paused = paused;
+
+    /// <inheritdoc/>
+    public override string Key => $"{Capital(_paused)}sNetworkHangs";
+
+    /// <inheritdoc/>
+    public override string Story => $"{Capital(_paused)}'s network hangs";
+
+    /// <inheritdoc/>
+    public override bool IsPossible(RunContext ctx) => !ctx.Computer(_paused).NetworkIsFaulty;
+
+    /// <summary>Offered only while the same computer's OPEN is held.</summary>
+    /// <param name="held">The event whose operation is held.</param>
+    public override bool IsOfferedWhileHolding(ComputerEvent held)
+        => held is OpenEvent && string.Equals(held.ComputerName, _paused, StringComparison.Ordinal);
+
+    /// <summary>Offered only at <see cref="PausedComputerNetworkDropsAction.OnlyPoint"/>.</summary>
+    /// <param name="held">The event whose operation is held.</param>
+    /// <param name="point">The crash point it is held at.</param>
+    public override bool IsOfferedAtPoint(ComputerEvent held, string point)
+        => string.Equals(point, PausedComputerNetworkDropsAction.OnlyPoint, StringComparison.Ordinal);
+
+    /// <inheritdoc/>
+    public override Task RunAsync(RunContext ctx) => new NetworkHangEvent(_paused).ExecuteAsync(ctx);
 
     /// <inheritdoc/>
     public override IReadOnlyList<Computer> ComputersOf(RunContext ctx) => new[] { ctx.Computer(_paused) };
@@ -447,7 +488,8 @@ internal static class PauseActions
             new PausedComputerSwitchesAction(paused),
             new PausedComputerHeartbeatTicksAction(paused),
             new PausedComputerWakeCheckRunsAction(paused),
-            new PausedComputerNetworkDropsAction(paused)
+            new PausedComputerNetworkDropsAction(paused),
+            new PausedComputerNetworkHangsAction(paused)
         }.Concat(OtherProgramActions()).ToArray();
     }
 }

@@ -49,7 +49,7 @@ internal static class AbstractState
             sb.Append(c.Name).Append('[');
             sb.Append(c.IsRunning ? 'p' : '-');
             sb.Append(SessionCode(c));
-            sb.Append(c.NetworkIsDown ? 'x' : 'n');
+            sb.Append(c.NetworkIsDown ? 'x' : c.NetworkHangs ? 'h' : 'n');
             sb.Append(c.ConflictBannerShown ? 'c' : '-');
             sb.Append(c.HasWorkingFile ? 'f' : '-');
             sb.Append(c.HasDirtyMarker ? 'm' : '-');

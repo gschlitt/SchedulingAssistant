@@ -29,7 +29,7 @@ About 80 items in nine groups. Most were deferred from 1.2.3 or found while test
 | 1 | [Store release](#1.%20Store%20release) | The 1.2.3 update that wouldn't open; a smaller package; test flights | 6 |
 | 2 | [Features and user-facing gaps](#2.%20Features%20and%20user-facing%20gaps) | Requests from Greg and clients; the licence-expiry warning | 11 |
 | 3 | [Protecting unsaved work](#3.%20Protecting%20unsaved%20work) | The remaining ways edits can be lost or stranded; the recovery redesign | 12 |
-| 4 | [Lock, save, open and restore](#4.%20Lock,%20save,%20open%20and%20restore) | Correctness gaps in the persistence paths | 13 |
+| 4 | [Lock, save, open and restore](#4.%20Lock,%20save,%20open%20and%20restore) | Correctness gaps in the persistence paths | 14 |
 | 5 | [Network shares](#5.%20Network%20shares) | What SMB caching, antivirus and unusual storage do to us | 8 |
 | 6 | [Messages](#6.%20Messages) | Wrong, doubled, hidden or jargon messages | 11 |
 | 7 | [Field reporting](#7.%20Field%20reporting) | Learning from BugSnag whether a failure ended well | 5 |
@@ -448,6 +448,14 @@ when the user switches database, the old lock stays, naming their own live sessi
 *Source: harness, another program holding a file (8.3), known finding F20.*
 </details>
 
+<details><summary><b>4.14 A held release deletes the new holder's lock</b></summary>
+
+A release checks the lock file is its own, then deletes it. A computer that sleeps between the two deletes the lock
+of whoever took over meanwhile, so a third person could open for editing alongside them (saves stay protected: the
+second saver is refused and keeps their changes). Same shape as 4.12; fix both together.
+*Source: harness hang mode (8.2), known finding F22.*
+</details>
+
 ---
 
 ## 5. Network shares
@@ -678,6 +686,8 @@ Today "network down" answers every call with an immediate timeout, so a call tha
 can never show up. (That is the bug the probe found.) Add a hang mode in which calls block until the network
 returns. The deadlines use real time, so either keep such walks few (5 s each) or give the deadlines the test clock.
 The test-clock route changes the save path, so a risk review comes first.
+**Done (2 Nov 2026):** the deadline reads a replaceable clock (no other change); hang mode, including at the A1 spot.
+Found 4.14.
 </details>
 
 <details><summary><b>8.3 Harness: another process holding a share file open</b></summary>
@@ -725,6 +735,10 @@ and takes over while she works. The database stays safe, but she is switched to 
 - The lock file records its scale, and a computer judges staleness only for locks at its own scale.
 - "Test timings" in the title bar.
 - A test that pins the production values.
+
+**Done (2 Nov 2026), at ×3 at most:** the 5 s network deadline doesn't scale, so at ×6 one slow heartbeat (~15 s)
+would leave too little margin before stale (30 s). A lock is judged stale at the speed recorded in it, so a test build
+and a normal one never misjudge each other.
 </details>
 
 <details><summary><b>8.8 Scripted setup and checks</b></summary>

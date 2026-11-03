@@ -64,6 +64,11 @@ internal static class HarnessTitles
 /// <item><description><b>F21</b>: an applied edit is nowhere that survives a crash (invariant I2) in a run where another program had a file of the share open
 /// (spec item 8.3), and neither F1 nor F2 explains it. Found with a lost-lock demotion (the wake check) whose copy of the database for reading fails because the
 /// database is held without sharing: the unsaved edit stays in the kept working file, and the next close deleted it. FIXED in 1.2.4 (summary item 3.12): the working-copy delete refuses a file that still has its dirty marker, so the classifier no longer gives F21.</description></item>
+/// <item><description><b>F22</b>: invariant I9 saw a release DELETE a lock file that names another session. The release's background task reads the lock
+/// file, checks that it names its own session, and then deletes it: two separate operations on the share, and a computer that is held between them (it sleeps; the
+/// pause sweep, held at <c>Release.AfterLockReleased</c>) deletes the lock of whoever took over meanwhile. Found once in three full runs of the pause sweep (item 8.2):
+/// whether the held release was past its read when the hold began depends on thread timing, so it appears in about one run in twenty of that pause and has no
+/// replay sequence.</description></item>
 /// <item><description><b>F20</b>: invariant I6 (a) in a run where another program had a file of the share open (spec item 8.3): a switch away from the database
 /// whose final save failed (the database was in use) or whose lock-file delete was refused (the lock file was in use) leaves the lock file naming the person's own
 /// session, and the session is read-only on that database. Cause not separated from F16 by the checker beyond that condition.</description></item>
@@ -81,7 +86,7 @@ internal static class Findings
 
     /// <summary>Gives a violation its finding id.</summary>
     /// <param name="violation">The violation to classify.</param>
-    /// <returns>"F1", "F2", "F5", "F6", "F7", "F8", "F12", "F16", "F17", "F18", "F19", "F20", "A13", or <see cref="NewFinding"/>.</returns>
+    /// <returns>"F1", "F2", "F5", "F6", "F7", "F8", "F12", "F16", "F17", "F18", "F19", "F20", "F22", "A13", or <see cref="NewFinding"/>.</returns>
     public static string Classify(Violation violation)
     {
         switch (violation.Kind)
@@ -143,9 +148,12 @@ internal static class Findings
                 return "F18";
 
             // Invariant I9: a heartbeat renewal (a move onto the lock file) landed over a lock that names another session: F19. A delete of
-            // someone else's lock, or any other write onto it, is not explained by a known finding.
+            // someone else's lock is F22 (a release that checked, was held, and deleted). Any other write onto it is not explained by a known finding.
             case ViolationKind.LockFileOfAnotherSessionWritten when violation.Operation == "File.Move":
                 return "F19";
+
+            case ViolationKind.LockFileOfAnotherSessionWritten when violation.Operation == "File.Delete":
+                return "F22";
 
             default:
                 return NewFinding;

@@ -66,6 +66,30 @@ public static class NetworkFileOps
     public const int TimeoutMs = 5000;
 
     /// <summary>
+    /// The clock every deadline in this class runs on: the system clock in the app, always. A test may swap it
+    /// (<see cref="SetTimeProviderForTests"/>) so a deadline can be made to fire without a real five-second wait; the
+    /// same precedent as <c>SlowExitSave</c>. Never changes <see cref="TimeoutMs"/> or any other value.
+    /// </summary>
+    private static volatile TimeProvider _time = TimeProvider.System;
+
+    /// <summary>The clock the deadlines run on right now (<see cref="TimeProvider.System"/> unless a test swapped it).</summary>
+    internal static TimeProvider Time => _time;
+
+    /// <summary>
+    /// Test seam: replaces the clock the deadlines run on. Pass null to restore <see cref="TimeProvider.System"/>; a test
+    /// that swaps it must always restore it when it finishes.
+    /// </summary>
+    /// <param name="time">The clock for every deadline; null restores the system clock.</param>
+    internal static void SetTimeProviderForTests(TimeProvider? time) => _time = time ?? TimeProvider.System;
+
+    /// <summary>
+    /// Starts one deadline: a task that completes <see cref="TimeoutMs"/> from now on <see cref="Time"/>. Every
+    /// <c>Task.WhenAny(work, Deadline())</c> race in this class is built on it.
+    /// </summary>
+    /// <returns>The deadline task.</returns>
+    private static Task Deadline() => Task.Delay(TimeSpan.FromMilliseconds(TimeoutMs), _time);
+
+    /// <summary>
     /// Chunk size for bulk transfers (<see cref="CopyAsync"/>, <see cref="ComputeHashAsync"/>).
     /// Each chunk must complete within <see cref="TimeoutMs"/>, so the chunk size sets the
     /// minimum throughput a link must sustain to avoid being classified as stalled:
@@ -202,6 +226,10 @@ public static class NetworkFileOps
         if (fault.Kind == NetworkFaultKind.None)
             return await ComputeHashCoreAsync(path).ConfigureAwait(false);
 
+        // A hang runs the real hash with its open blocked behind the injector's gate: the normal deadline race decides.
+        if (fault.Kind == NetworkFaultKind.Hang)
+            return await ComputeHashCoreAsync(path, fault.EnterHang).ConfigureAwait(false);
+
         await ApplyFaultAsync(
             fault,
             () => ComputeHashCoreAsync(path),
@@ -214,8 +242,9 @@ public static class NetworkFileOps
     /// The real <see cref="ComputeHashAsync"/>: opens the file under a deadline, then hashes it chunk by chunk.
     /// </summary>
     /// <param name="path">File to hash.</param>
+    /// <param name="hangAtOpen">Test seam (<see cref="NetworkFaultKind.Hang"/>): entered inside the open's deadline-guarded task, before the file is opened; null in the app.</param>
     /// <returns>As <see cref="ComputeHashAsync"/>.</returns>
-    private static async Task<(bool Completed, string? Hash)> ComputeHashCoreAsync(string path)
+    private static async Task<(bool Completed, string? Hash)> ComputeHashCoreAsync(string path, Func<IDisposable>? hangAtOpen = null)
     {
         FileStream? stream = null;
         try
@@ -225,10 +254,14 @@ public static class NetworkFileOps
             // the continuation in the stall branch disposes it the moment that happens.
             // SequentialScan hints the OS (and the SMB redirector) to read ahead
             // aggressively — on a network path this overlaps wire transfer with hashing.
-            var openTask = Task.Run(() => stream = new FileStream(
-                path, FileMode.Open, FileAccess.Read, FileShare.ReadWrite, ChunkSize,
-                FileOptions.Asynchronous | FileOptions.SequentialScan));
-            if (await Task.WhenAny(openTask, Task.Delay(TimeoutMs)).ConfigureAwait(false) != openTask)
+            var openTask = Task.Run(() =>
+            {
+                using var hang = hangAtOpen?.Invoke();   // null in the app
+                return stream = new FileStream(
+                    path, FileMode.Open, FileAccess.Read, FileShare.ReadWrite, ChunkSize,
+                    FileOptions.Asynchronous | FileOptions.SequentialScan);
+            });
+            if (await Task.WhenAny(openTask, Deadline()).ConfigureAwait(false) != openTask)
             {
                 LogStall("ComputeHash (open)");
                 ObserveAbandonedTask(openTask, "ComputeHash (open)");
@@ -302,6 +335,13 @@ public static class NetworkFileOps
         if (fault.Kind == NetworkFaultKind.None)
             return await CopyCoreAsync(source, dest).ConfigureAwait(false);
 
+        // A hang runs the real copy with one step blocked behind the injector's gate: the normal deadline race decides.
+        if (fault.Kind == NetworkFaultKind.Hang)
+            return await CopyCoreAsync(
+                source, dest,
+                hangAtOpen:  fault.HangPoint == NetworkHangPoint.Start      ? fault.EnterHang : null,
+                hangAtWrite: fault.HangPoint == NetworkHangPoint.ChunkWrite ? fault.EnterHang : null).ConfigureAwait(false);
+
         await ApplyFaultAsync(
             fault,
             () => CopyCoreAsync(source, dest),
@@ -315,8 +355,11 @@ public static class NetworkFileOps
     /// </summary>
     /// <param name="source">File to copy.</param>
     /// <param name="dest">Destination file.</param>
+    /// <param name="hangAtOpen">Test seam (<see cref="NetworkFaultKind.Hang"/>): entered inside the open's deadline-guarded task, before either file is opened; null in the app.</param>
+    /// <param name="hangAtWrite">Test seam: entered inside the chunk write's deadline-guarded task, immediately before the real write call, which is exactly where field bug A1 blocked (see the comment at the write); null in the app.</param>
     /// <returns>As <see cref="CopyAsync"/>.</returns>
-    private static async Task<bool> CopyCoreAsync(string source, string dest)
+    private static async Task<bool> CopyCoreAsync(
+        string source, string dest, Func<IDisposable>? hangAtOpen = null, Func<IDisposable>? hangAtWrite = null)
     {
         FileStream? src = null, dst = null;
         try
@@ -324,12 +367,13 @@ public static class NetworkFileOps
             // See ComputeHashAsync for the open-deadline and leak-on-timeout notes.
             var openTask = Task.Run(() =>
             {
+                using var hang = hangAtOpen?.Invoke();   // null in the app
                 src = new FileStream(source, FileMode.Open, FileAccess.Read, FileShare.ReadWrite, ChunkSize,
                     FileOptions.Asynchronous | FileOptions.SequentialScan);
                 dst = new FileStream(dest, FileMode.Create, FileAccess.Write, FileShare.None, ChunkSize,
                     FileOptions.Asynchronous);
             });
-            if (await Task.WhenAny(openTask, Task.Delay(TimeoutMs)).ConfigureAwait(false) != openTask)
+            if (await Task.WhenAny(openTask, Deadline()).ConfigureAwait(false) != openTask)
             {
                 LogStall("CopyFile (open)");
                 ObserveAbandonedTask(openTask, "CopyFile (open)");
@@ -362,7 +406,7 @@ public static class NetworkFileOps
                     var toClose = dst;
                     dst = null; // finally must not double-dispose
                     var closeTask = Task.Run(toClose!.Dispose);
-                    if (await Task.WhenAny(closeTask, Task.Delay(TimeoutMs)).ConfigureAwait(false) != closeTask)
+                    if (await Task.WhenAny(closeTask, Deadline()).ConfigureAwait(false) != closeTask)
                     {
                         LogStall("CopyFile (close)");
                         ObserveAbandonedTask(closeTask, "CopyFile (close)");
@@ -390,8 +434,14 @@ public static class NetworkFileOps
                 // and the stall path returns without reading again.
                 var target = dst!;
                 var chunk = buffer.AsMemory(0, read);
-                var writeTask = Task.Run(() => target.WriteAsync(chunk).AsTask());
-                if (await Task.WhenAny(writeTask, Task.Delay(TimeoutMs)).ConfigureAwait(false) != writeTask)
+                // (The hang hook sits INSIDE the task, on the pool thread, at the spot where the real write call is made. A hook
+                // that blocked here on the calling thread, before Task.Run, would reproduce the A1 shape: no deadline fires.)
+                var writeTask = Task.Run(async () =>
+                {
+                    using var hang = hangAtWrite?.Invoke();   // null in the app
+                    await target.WriteAsync(chunk).ConfigureAwait(false);
+                });
+                if (await Task.WhenAny(writeTask, Deadline()).ConfigureAwait(false) != writeTask)
                 {
                     LogStall("CopyFile (write)");
                     ObserveAbandonedTask(writeTask, "CopyFile (write)");
@@ -426,7 +476,7 @@ public static class NetworkFileOps
     private static async Task<(bool Ok, int Read)> ReadChunkAsync(FileStream stream, byte[] buffer, string label)
     {
         var readTask = Task.Run(() => stream.ReadAsync(buffer.AsMemory()).AsTask());
-        if (await Task.WhenAny(readTask, Task.Delay(TimeoutMs)).ConfigureAwait(false) != readTask)
+        if (await Task.WhenAny(readTask, Deadline()).ConfigureAwait(false) != readTask)
         {
             LogStall(label);
             ObserveAbandonedTask(readTask, label);
@@ -455,7 +505,7 @@ public static class NetworkFileOps
             try { stream.Dispose(); }
             catch { /* read handle, data already consumed — nothing to lose */ }
         });
-        if (await Task.WhenAny(closeTask, Task.Delay(TimeoutMs)).ConfigureAwait(false) != closeTask)
+        if (await Task.WhenAny(closeTask, Deadline()).ConfigureAwait(false) != closeTask)
             LogStall(label); // close continues in the background; faults are swallowed above
     }
 
@@ -605,7 +655,13 @@ public static class NetworkFileOps
         if (NetworkFaults.Decide is not null)
         {
             var fault = NetworkFaults.Consult(label, path, destinationPath);
-            if (fault.Kind != NetworkFaultKind.None)
+            if (fault.Kind == NetworkFaultKind.Hang)
+            {
+                // Test seam: the real operation, blocked behind the injector's gate inside the guarded task.
+                var inner = operation;
+                operation = () => { using var hang = fault.EnterHang?.Invoke(); return inner(); };
+            }
+            else if (fault.Kind != NetworkFaultKind.None)
             {
                 await ApplyFaultAsync(fault, () => Task.Run(operation), () => LogTimeout(label), label)
                     .ConfigureAwait(false);
@@ -614,7 +670,7 @@ public static class NetworkFileOps
         }
 
         var task = Task.Run(operation);
-        var winner = await Task.WhenAny(task, Task.Delay(TimeoutMs)).ConfigureAwait(false);
+        var winner = await Task.WhenAny(task, Deadline()).ConfigureAwait(false);
 
         if (winner == task)
             return (true, await task.ConfigureAwait(false));
@@ -703,7 +759,13 @@ public static class NetworkFileOps
         if (NetworkFaults.Decide is not null)
         {
             var fault = NetworkFaults.Consult(label, path, destinationPath);
-            if (fault.Kind != NetworkFaultKind.None)
+            if (fault.Kind == NetworkFaultKind.Hang)
+            {
+                // Test seam: the real operation, blocked behind the injector's gate inside the guarded task.
+                var inner = operation;
+                operation = () => { using var hang = fault.EnterHang?.Invoke(); inner(); };
+            }
+            else if (fault.Kind != NetworkFaultKind.None)
             {
                 await ApplyFaultAsync(fault, () => Task.Run(operation), () => LogTimeout(label), label)
                     .ConfigureAwait(false);
@@ -712,7 +774,7 @@ public static class NetworkFileOps
         }
 
         var task = Task.Run(operation);
-        var winner = await Task.WhenAny(task, Task.Delay(TimeoutMs)).ConfigureAwait(false);
+        var winner = await Task.WhenAny(task, Deadline()).ConfigureAwait(false);
 
         if (winner == task)
         {

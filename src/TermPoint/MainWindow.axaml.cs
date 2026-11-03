@@ -83,7 +83,9 @@ public partial class MainWindow : Window, ILifecyclePrompts, ISessionHost
         // field-test build such as 1.2.3.1 can be told apart from the release at a glance.
         var version = Assembly.GetExecutingAssembly().GetName().Version;
         var shown = version is null ? "0.0.0" : version.ToString(version.Revision > 0 ? 4 : 3);
-        Title = $"TermPoint v{shown}";
+        // A build running its lock timers faster (TERMPOINT_TEST_TIMINGS, a Sideload or Development build only) says so in the title,
+        // so it can never be mistaken for a normal one; the suffix is empty at factor 1 (spec item 8.7).
+        Title = $"TermPoint v{shown}{LockTimings.Current.TitleSuffix}";
 
 
 

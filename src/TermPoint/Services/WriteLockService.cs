@@ -210,6 +210,13 @@ public sealed class WriteLockService : IDisposable
     private readonly TimeProvider _time;
 
     /// <summary>
+    /// This service's own lock timers (spec item 8.7): the production values at factor 1, scaled in a test build. Used for everything this
+    /// service DOES itself (its heartbeat, its polling, its wake check, the factor it writes into its lock file). Judging someone ELSE'S lock
+    /// never uses it: that uses <see cref="LockTimings.ForHolder"/>, the factor recorded in that lock file.
+    /// </summary>
+    private readonly LockTimings _timings;
+
+    /// <summary>
     /// Times how long the lock holder's snapshot (session + heartbeat) has stood unchanged, on this
     /// computer's own monotonic clock. Shared by the open path (<see cref="DetectStaleLock"/>), the
     /// polling path (<see cref="PollLockFile"/>) and the takeover confirmation
@@ -226,7 +233,7 @@ public sealed class WriteLockService : IDisposable
     /// <see cref="TimeProvider.System"/>; tests pass a fake so minutes of waiting take no real time.
     /// </param>
     public WriteLockService(TimeProvider? timeProvider = null)
-        : this(timeProvider, null, startTimers: true) { }
+        : this(timeProvider, null, startTimers: true, timings: null) { }
 
     /// <summary>
     /// Test seam: creates a lock service with its own identity and, optionally, no background timers. The app
@@ -245,8 +252,13 @@ public sealed class WriteLockService : IDisposable
     /// then drives one tick at a time with <see cref="TickHeartbeatAsync"/>, <see cref="TickPollAsync"/> and
     /// <see cref="TickWakeCheck"/>. Everything else about starting and stopping is unchanged.
     /// </param>
-    internal WriteLockService(TimeProvider? timeProvider, LockIdentity? identity = null, bool startTimers = true)
+    /// <param name="timings">
+    /// This service's own lock timers and the factor it writes into its lock file. <see cref="LockTimings.Current"/> (resolved from the
+    /// install channel and the environment variable; factor 1 in the Store, the installer and the test host) when null.
+    /// </param>
+    internal WriteLockService(TimeProvider? timeProvider, LockIdentity? identity = null, bool startTimers = true, LockTimings? timings = null)
     {
+        _timings        = timings ?? LockTimings.Current;
         _time           = timeProvider ?? TimeProvider.System;
         _identity       = identity ?? LockIdentity.Current;
         _startTimers    = startTimers;
@@ -772,7 +784,8 @@ public sealed class WriteLockService : IDisposable
         var unchanged = _lockFilePath is null
             ? TimeSpan.Zero
             : _heartbeatWatch.UnchangedFor(_lockFilePath, staleHolder);
-        var remaining = TimeSpan.FromSeconds(StaleConfirmationSeconds) - unchanged;
+        // Judged at the HOLDER's speed: a holder running fast (a test build) is confirmed stale after its own, shorter wait.
+        var remaining = LockTimings.ForHolder(staleHolder).StaleConfirmation - unchanged;
         return remaining > TimeSpan.Zero ? remaining : TimeSpan.Zero;
     }
 
@@ -1055,8 +1068,10 @@ public sealed class WriteLockService : IDisposable
 
         var unchanged  = _heartbeatWatch.Observe(_lockFilePath!, CurrentHolder);
         var clockAge   = (_time.GetUtcNow().UtcDateTime - CurrentHolder.Heartbeat).TotalSeconds;
-        var clockHint  = clockAge > StaleLockThresholdSeconds;
-        var stoodStill = unchanged.TotalSeconds >= StaleLockThresholdSeconds;
+        // Judged at the HOLDER's speed (the factor in its lock file), not this computer's own.
+        var threshold  = LockTimings.ForHolder(CurrentHolder).StaleLockThreshold.TotalSeconds;
+        var clockHint  = clockAge > threshold;
+        var stoodStill = unchanged.TotalSeconds >= threshold;
         if (!clockHint && !stoodStill) return false;
 
         App.Logger.LogInfo(
@@ -1277,6 +1292,12 @@ public sealed class WriteLockService : IDisposable
     }
 
     /// <summary>
+    /// The factor to record in this service's lock file: null at factor 1 (the field is then absent and the file is byte-for-byte what 1.2.3
+    /// wrote), the factor itself above 1.
+    /// </summary>
+    private int? OwnTimingScaleForLockFile => _timings.IsScaled ? _timings.Scale : null;
+
+    /// <summary>
     /// Serializes a new <see cref="LockFileData"/> payload to the provided stream.
     /// Both <c>Acquired</c> and <c>Heartbeat</c> are set to the current UTC time.
     /// <see cref="SessionGuid"/> is included so wake-checks can identify this exact session.
@@ -1293,7 +1314,8 @@ public sealed class WriteLockService : IDisposable
             Acquired            = now,
             Heartbeat           = now,
             ProcessId           = _identity.ProcessId,
-            ProcessStartTimeUtc = _identity.ProcessStartTimeUtc
+            ProcessStartTimeUtc = _identity.ProcessStartTimeUtc,
+            TimingScale         = OwnTimingScaleForLockFile
         };
         JsonSerializer.Serialize(fs, data);
     }
@@ -1366,7 +1388,8 @@ public sealed class WriteLockService : IDisposable
                     }
                     else
                     {
-                        data.Heartbeat = _time.GetUtcNow().UtcDateTime;
+                        data.Heartbeat   = _time.GetUtcNow().UtcDateTime;
+                        data.TimingScale = OwnTimingScaleForLockFile;   // this session's own lock: its own factor
 
                         // Write to a temp file first, then atomically replace. This ensures
                         // a reader never observes a partially-written JSON file.
@@ -1441,7 +1464,7 @@ public sealed class WriteLockService : IDisposable
     private void StartHeartbeat()
     {
         if (!_startTimers) return; // test mode: TickHeartbeatAsync drives it by hand
-        var interval = TimeSpan.FromSeconds(HeartbeatIntervalSeconds);
+        var interval = _timings.HeartbeatInterval;
         // Fire-and-forget: RenewHeartbeatAsync is non-throwing by construction, and the
         // gate's zero-timeout wait means overlapping ticks skip rather than queue.
         _heartbeatTimer = new Timer(_ => _ = RenewHeartbeatAsync(), null, interval, interval);
@@ -1457,7 +1480,7 @@ public sealed class WriteLockService : IDisposable
 #if !BROWSER
         _pollRunning = true;
         if (!_startTimers) return; // test mode: TickPollAsync drives it by hand
-        var interval = TimeSpan.FromSeconds(PollIntervalSeconds);
+        var interval = _timings.PollInterval;
         _pollTimer = new Timer(_ =>
         {
             _ = Dispatcher.UIThread.InvokeAsync(() => RunPollTickAsync());
@@ -1486,11 +1509,9 @@ public sealed class WriteLockService : IDisposable
     /// </summary>
     private void StartWakeDetection()
     {
-        const int checkIntervalSeconds = 30;
-
         _lastWakeTick = _time.GetUtcNow().UtcDateTime;
         if (!_startTimers) return; // test mode: TickWakeCheck drives it by hand
-        var interval = TimeSpan.FromSeconds(checkIntervalSeconds);
+        var interval = _timings.WakeCheckInterval;
 
         _wakeDetectionTimer = new Timer(_ =>
         {
@@ -1499,23 +1520,20 @@ public sealed class WriteLockService : IDisposable
         }, null, interval, interval);
     }
 
-    /// <summary>A gap between wake checks longer than this many seconds (3x the 30 s interval) means the machine was asleep.</summary>
-    private const int WakeThresholdSeconds = 90;
-
     /// <summary>
     /// The body of one wake-detection tick: measures the time since the previous tick, remembers "now" for the
     /// next one, and reports whether the gap was long enough to infer the machine was asleep (logging it if so).
     /// Shared by the wake timer and <see cref="TickWakeCheck"/>; the caller decides how to raise
     /// <see cref="WakeDetected"/>.
     /// </summary>
-    /// <returns>True when the gap exceeded <see cref="WakeThresholdSeconds"/>.</returns>
+    /// <returns>True when the gap exceeded <see cref="LockTimings.WakeThreshold"/> (90 s at factor 1: three wake-check intervals).</returns>
     private bool WakeGapExceeded()
     {
         var now     = _time.GetUtcNow().UtcDateTime;
         var elapsed = (now - _lastWakeTick).TotalSeconds;
         _lastWakeTick = now;
 
-        if (elapsed > WakeThresholdSeconds)
+        if (elapsed > _timings.WakeThreshold.TotalSeconds)
         {
             App.Logger.LogInfo($"[WriteLockService] Wake detected — gap was {elapsed:F0}s.");
             return true;
@@ -1668,7 +1686,8 @@ public sealed class WriteLockService : IDisposable
             }
 
             var unchanged = _heartbeatWatch.Observe(_lockFilePath, data ?? CreateCorruptedHolder());
-            available = unchanged.TotalSeconds >= StaleLockThresholdSeconds;
+            // Judged at the HOLDER's speed: the factor in the lock file just read (1 for an unreadable file).
+            available = unchanged >= LockTimings.ForHolder(data).StaleLockThreshold;
             if (available)
                 App.Logger.LogInfo(
                     $"[WriteLockService] Poll: lock heartbeat unchanged for {unchanged.TotalSeconds:F0}s — write access available.");

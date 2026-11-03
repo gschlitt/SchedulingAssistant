@@ -28,7 +28,31 @@ internal enum NetworkFaultKind
     /// The call throws <see cref="NetworkFaultDecision.Exception"/>, at the point the real operation would
     /// throw (before it does any work). Simulates a share that answers with an error.
     /// </summary>
-    Throw
+    Throw,
+
+    /// <summary>
+    /// The operation IS run, but inside the deadline-guarded part it first blocks on a gate the injector controls
+    /// (<see cref="NetworkFaultDecision.EnterHang"/>), so the ordinary deadline race decides: the caller sees the same timeout (and
+    /// the same log line and abandoned-task observer) a real hung share produces, and when the gate opens the operation
+    /// really runs and lands late. Simulates a share call that blocks instead of failing; unlike <see cref="TimeOut"/>, the
+    /// code under test has to survive the block itself.
+    /// </summary>
+    Hang
+}
+
+/// <summary>
+/// Where a <see cref="NetworkFaultKind.Hang"/> blocks inside a bulk copy (the other operations have one guarded part only).
+/// </summary>
+internal enum NetworkHangPoint
+{
+    /// <summary>The first deadline-guarded step: the open for a copy or a hash; the whole operation for the others.</summary>
+    Start,
+
+    /// <summary>
+    /// A copy's chunk write, immediately before the real write call: the spot field bug A1 blocked at (1.2.3: the write
+    /// call itself blocked synchronously before its deadline race had begun). Ignored by every operation but a copy.
+    /// </summary>
+    ChunkWrite
 }
 
 /// <summary>
@@ -52,7 +76,15 @@ internal readonly record struct NetworkFaultRequest(string Label, string? Path, 
 /// </summary>
 /// <param name="Kind">What to do; <see cref="NetworkFaultKind.None"/> lets the operation run normally.</param>
 /// <param name="Exception">The exception to throw; required (by the caller's contract) when <paramref name="Kind"/> is <see cref="NetworkFaultKind.Throw"/>.</param>
-internal readonly record struct NetworkFaultDecision(NetworkFaultKind Kind, Exception? Exception = null)
+/// <param name="EnterHang">
+/// For <see cref="NetworkFaultKind.Hang"/>: called on the pool thread, inside the deadline-guarded task, where the real call would
+/// block. It blocks until the injector lets the operation go and returns a scope that is disposed when the operation has run
+/// (so the injector can tell the late landing is over). Null means "nothing to block on".
+/// </param>
+/// <param name="HangPoint">For <see cref="NetworkFaultKind.Hang"/>: where a bulk copy blocks (see <see cref="NetworkHangPoint"/>).</param>
+internal readonly record struct NetworkFaultDecision(
+    NetworkFaultKind Kind, Exception? Exception = null,
+    Func<IDisposable>? EnterHang = null, NetworkHangPoint HangPoint = NetworkHangPoint.Start)
 {
     /// <summary>The "no fault" answer.</summary>
     public static NetworkFaultDecision None => new(NetworkFaultKind.None);
@@ -66,6 +98,12 @@ internal readonly record struct NetworkFaultDecision(NetworkFaultKind Kind, Exce
     /// <summary>The operation throws <paramref name="exception"/>.</summary>
     /// <param name="exception">The exception the call throws.</param>
     public static NetworkFaultDecision Throwing(Exception exception) => new(NetworkFaultKind.Throw, exception);
+
+    /// <summary>The operation runs, blocked behind a gate inside its deadline-guarded part; see <see cref="NetworkFaultKind.Hang"/>.</summary>
+    /// <param name="enterHang">Blocks until the operation may go on; the returned scope is disposed when it has run.</param>
+    /// <param name="point">Where a bulk copy blocks; ignored by the other operations.</param>
+    public static NetworkFaultDecision Hanging(Func<IDisposable> enterHang, NetworkHangPoint point = NetworkHangPoint.Start)
+        => new(NetworkFaultKind.Hang, null, enterHang, point);
 }
 
 /// <summary>

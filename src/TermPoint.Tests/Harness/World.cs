@@ -212,6 +212,7 @@ internal sealed class World : IDisposable
 
         CrashPoints.Hook     = OnCrashPoint;
         NetworkFaults.Decide = DecideFault;
+        NetworkFileOps.SetTimeProviderForTests(_deadlineClock);
         ApplySettings();
     }
 
@@ -245,6 +246,15 @@ internal sealed class World : IDisposable
     /// <see cref="ScriptedPrompts"/> whenever a process is launched.
     /// </summary>
     public Func<Computer, PromptCall, PromptAnswer>? PromptPolicy { get; set; }
+
+    /// <summary>
+    /// The clock <see cref="NetworkFileOps"/> runs its deadlines on while this world exists (item 8.2): the real clock, except that the
+    /// deadline of a call held by a network hang fires at once. Restored to the system clock by <see cref="Dispose"/>.
+    /// </summary>
+    private readonly HangDeadlineClock _deadlineClock = new();
+
+    /// <summary>How many copies a hang has been asked about; every other copy blocks at its chunk write (field bug A1's spot), the rest at the open.</summary>
+    private int _hungCopies;
 
     /// <summary>The one fake clock every simulated lock service reads. It starts at the real current time.</summary>
     public FakeTimeProvider Clock { get; } = new();
@@ -851,7 +861,34 @@ internal sealed class World : IDisposable
     /// <summary>Restores a computer's connection to the share.</summary>
     /// <param name="computer">The computer that gets the network back.</param>
     public void NetworkUp(Computer computer)
-        => Do(null, $"{computer.DisplayName}'s network came back", () => { computer.NetworkIsDown = false; });
+        => Do(null, $"{computer.DisplayName}'s network came back", () =>
+        {
+            computer.NetworkIsDown = false;
+            computer.NetworkHangs  = false;
+
+            // A hang ends here: every call it held now goes on and lands late (this step waits for them, so the landings happen now).
+            var gate = computer.HangGate;
+            computer.HangGate = null;
+            if (gate is not null)
+            {
+                gate.Open();
+                if (gate.HeldCalls > 0)
+                    _story.Add(_step, 1, $"({gate.HeldCalls} call{(gate.HeldCalls == 1 ? "" : "s")} {computer.DisplayName}'s computer had made while the network hung went through now, long after it had given up on {(gate.HeldCalls == 1 ? "it" : "them")})");
+            }
+        });
+
+    /// <summary>
+    /// Makes a computer's network HANG (spec item 8.2): from now on every call that computer makes on the share blocks instead of failing,
+    /// until <see cref="NetworkUp"/>. The call's caller sees the ordinary deadline (the timeout is reported within the deadline, the log line is
+    /// written, the abandoned task is observed), and when the network returns each held call really runs and lands late. Local files keep working.
+    /// </summary>
+    /// <param name="computer">The computer whose network hangs.</param>
+    public void NetworkHang(Computer computer)
+        => Do(null, $"{computer.DisplayName}'s network hangs", () =>
+        {
+            computer.NetworkHangs = true;
+            computer.HangGate     = new NetworkHangGate();
+        });
 
     /// <summary>
     /// A colleague who is not one of the simulated computers changes the shared database: a row is inserted directly
@@ -2035,6 +2072,8 @@ internal sealed class World : IDisposable
     /// <returns>A timeout for a share operation of a computer whose network is down; otherwise no fault.</returns>
     private NetworkFaultDecision DecideFault(NetworkFaultRequest request)
     {
+        _deadlineClock.SetHold(null);   // no hold carries over from an earlier call (see HangDeadlineClock)
+
         // A process without power cannot reach anything: its operation throws at once (it neither waits nor times out).
         var life = ActingLife();
         if (life is { PowerIsOut: true }) return NetworkFaultDecision.Throwing(new PowerCutException(request.Label));
@@ -2047,7 +2086,7 @@ internal sealed class World : IDisposable
         }
 
         var actor = life?.Owner ?? _currentActor;
-        if (actor is null || !actor.NetworkIsDown)
+        if (actor is null || !actor.NetworkIsFaulty)
         {
             // The operation is going to run: invariant I9 looks at it first.
             if (life is not null) ObserveLockFileWrite(life.Owner, request);
@@ -2055,7 +2094,39 @@ internal sealed class World : IDisposable
         }
 
         var onShare = IsUnderShare(request.Path) || IsUnderShare(request.DestinationPath) || IsGenericLockOperation(request);
-        return onShare ? NetworkFaultDecision.TimeOut : NetworkFaultDecision.None;
+        if (!onShare) return NetworkFaultDecision.None;
+
+        // A hanging network holds the call (up to the gate's limit; after that the call just times out).
+        if (!actor.NetworkIsDown && actor.NetworkHangs && actor.HangGate is { } gate && gate.TryHold())
+            return HoldCall(actor, gate, request);
+
+        return NetworkFaultDecision.TimeOut;
+    }
+
+    /// <summary>
+    /// The decision for a call a hanging network holds: the real call runs, blocked on the hang's gate inside the deadline-guarded part. Also hands
+    /// <see cref="NetworkFileOps"/>' clock a hold, so this call's deadline fires as soon as the call is parked instead of after five real seconds.
+    /// When the network returns and the call lands, invariant I9 looks at it then (a held lock-file write that lands over someone else's lock).
+    /// A copy blocks alternately at its chunk write (where field bug A1 blocked) and at its open.
+    /// </summary>
+    /// <param name="actor">The computer whose network hangs.</param>
+    /// <param name="gate">The hang's gate.</param>
+    /// <param name="request">The call being held.</param>
+    /// <returns>The hang decision.</returns>
+    private NetworkFaultDecision HoldCall(Computer actor, NetworkHangGate gate, NetworkFaultRequest request)
+    {
+        var hold = new HangDeadlineClock.Hold();
+        _deadlineClock.SetHold(hold);
+
+        var point = NetworkHangPoint.Start;
+        if (request.Label == "CopyFile" && Interlocked.Increment(ref _hungCopies) % 2 == 1)
+            point = NetworkHangPoint.ChunkWrite;
+
+        return NetworkFaultDecision.Hanging(() =>
+        {
+            hold.Parked();
+            return gate.Enter(() => ObserveLockFileWrite(actor, request));
+        }, point);
     }
 
     /// <summary>
@@ -2207,7 +2278,12 @@ internal sealed class World : IDisposable
     /// </summary>
     public void Dispose()
     {
+        NetworkFileOps.SetTimeProviderForTests(null);   // first, so a failure below can never leave the real deadlines on the harness clock
         if (!_outputWritten) WriteOutput(PrintStory(_promises.PendingLines()));
+
+        // Let every held call of a hang that is still on go (and land) before the folders go, then give the deadlines back their real clock.
+        foreach (var computer in _computers) computer.HangGate?.Open();
+        NetworkFileOps.SetTimeProviderForTests(null);
 
         NetworkFaults.Decide = null;
         CrashPoints.Hook     = null;
