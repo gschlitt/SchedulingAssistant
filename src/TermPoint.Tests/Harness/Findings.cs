@@ -64,7 +64,8 @@ internal static class HarnessTitles
 /// <item><description><b>F21</b>: an applied edit is nowhere that survives a crash (invariant I2) in a run where another program had a file of the share open
 /// (spec item 8.3), and neither F1 nor F2 explains it. Found with a lost-lock demotion (the wake check) whose copy of the database for reading fails because the
 /// database is held without sharing: the unsaved edit stays in the kept working file, and the next close deleted it. FIXED in 1.2.4 (summary item 3.12): the working-copy delete refuses a file that still has its dirty marker, so the classifier no longer gives F21.</description></item>
-/// <item><description><b>F22</b>: invariant I9 saw a release DELETE a lock file that names another session. The release's background task reads the lock
+/// <item><description><b>F22</b> (the freeze route is closed in 1.2.4, item 4.14: the delete repeats a check older than 2 seconds; a stalled delete that
+/// lands late is not): invariant I9 saw a release DELETE a lock file that names another session. The release's background task reads the lock
 /// file, checks that it names its own session, and then deletes it: two separate operations on the share, and a computer that is held between them (it sleeps; the
 /// pause sweep, held at <c>Release.AfterLockReleased</c>) deletes the lock of whoever took over meanwhile. Found once in three full runs of the pause sweep (item 8.2):
 /// whether the held release was past its read when the hold began depends on thread timing, so it appears in about one run in twenty of that pause and has no
@@ -72,9 +73,11 @@ internal static class HarnessTitles
 /// <item><description><b>F20</b>: invariant I6 (a) in a run where another program had a file of the share open (spec item 8.3): a switch away from the database
 /// whose final save failed (the database was in use) or whose lock-file delete was refused (the lock file was in use) leaves the lock file naming the person's own
 /// session, and the session is read-only on that database. Cause not separated from F16 by the checker beyond that condition.</description></item>
-/// <item><description><b>F19</b>: invariant I9 saw a heartbeat renewal (a move onto the lock file) land over a lock file that names another session. The
-/// heartbeat reads the lock, checks that it is its own, writes a temporary file and then moves it onto the lock file: these are separate operations on
-/// the share, and a computer that is held between the last two (it sleeps; the pause sweep) renews a lock that someone took over meanwhile. Step 8.5.</description></item>
+/// <item><description><b>F19</b> (FIXED in 1.2.4, item 4.12: a lock-file check counts for 2 seconds, so the heartbeat repeats it before the temporary-file write and
+/// before the move; the rules stay as the regression detector): invariant I9 saw a heartbeat renewal (a move onto the lock file) land over a lock file that names
+/// another session. The heartbeat reads the lock, checks that it is its own, writes a temporary file and then moves it onto the lock file: these are separate
+/// operations on the share, and a computer that was held between the last two (it slept; the pause sweep) renewed a lock that someone took over meanwhile. Step 8.5.
+/// Now it only fires for a move within 2 seconds of the check.</description></item>
 /// <item><description><b>F16</b>: any I6 violation: a read-only session holds its database's lock, or a lost-lock demotion
 /// carried on against a database other than the one it started on. Step 9.3c-2b.</description></item>
 /// </list>

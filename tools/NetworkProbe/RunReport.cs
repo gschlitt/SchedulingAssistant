@@ -50,6 +50,9 @@ internal sealed class RunReport
     /// <summary>One result per case run, in the order they ran.</summary>
     public List<CaseResult> Results { get; } = new();
 
+    /// <summary>One result per late-landing cycle (<c>--late-landing</c>), in the order they ran; empty in the ordinary mode.</summary>
+    public List<LateLandingResult> LateResults { get; } = new();
+
     /// <summary>Why the run stopped early, or null.</summary>
     public string? AbortMessage { get; set; }
 
@@ -85,6 +88,9 @@ internal sealed class RunReport
     {
         get
         {
+            if (Options.LateLanding)
+                return LateLandingHeadline();
+
             if (DryRun)
                 return $"DRY RUN (nothing was cut): {Simulated} case runs were made against a local folder, to check the plumbing. None of them is a verdict.";
 
@@ -94,5 +100,31 @@ internal sealed class RunReport
                 : $"{Passed} passed, {Failed} failed, {NotTested} not tested";
             return $"{counts}; the rig's self-checks {rig}." + (AbortMessage is null ? "" : " The run stopped early (see below).");
         }
+    }
+
+    /// <summary>
+    /// The opening line of a late-landing run, in plain words: "Late landings: N of M cycles; the longest landed X s
+    /// after the call (cut held Y s)", then how the other cycles ended.
+    /// </summary>
+    /// <returns>The sentence.</returns>
+    private string LateLandingHeadline()
+    {
+        if (DryRun)
+            return $"DRY RUN (nothing was cut): {LateResults.Count} late-landing cycles were made against a local folder, to check the plumbing. None of them is a verdict.";
+        if (RigFailed)
+            return "TEST RIG NOT WORKING: no late-landing results are reported (the rig's self-checks FAILED).";
+
+        var landed = LateResults.Where(r => r.Outcome == LateOutcome.LandedLate).ToList();
+        var text = $"Late landings: {landed.Count} of {LateResults.Count} cycles";
+        if (landed.Count > 0)
+        {
+            var longest = landed.MaxBy(r => r.FirstChangedAfterIssue)!;
+            text += $"; the longest landed {TextFormat.Seconds(longest.FirstChangedAfterIssue)} after the call (cut held {longest.HoldSeconds} s)";
+        }
+        var died = LateResults.Count(r => r.Outcome == LateOutcome.Died);
+        var pending = LateResults.Count(r => r.Outcome == LateOutcome.StillPending);
+        var untested = LateResults.Count(r => r.Outcome == LateOutcome.NotTested);
+        text += $"; {died} died, {pending} still pending, {untested} not tested";
+        return text + "." + (AbortMessage is null ? "" : " The run stopped early (see below).");
     }
 }

@@ -4,7 +4,7 @@ using Xunit.Abstractions;
 namespace TermPoint.Tests.Harness;
 
 /// <summary>
-/// Proof that three fixed findings of the data-persistence review (section 3) stay fixed. All three were fixed on 2026-10-21 (1.2.3):
+/// Proof that fixed findings of the data-persistence review (section 3) stay fixed. F1, F8 and F12 were fixed on 2026-10-21 (1.2.3); F19 in 1.2.4 (item 4.12):
 /// <list type="bullet">
 /// <item><description><b>F1</b>: the window's X on "Restore Unsaved Changes?" / "Can't Restore Unsaved Changes" asks the question again
 /// instead of deleting the kept changes, and Discard asks "Discard Unsaved Changes?" ([Discard] / [Go Back]) before it deletes anything.</description></item>
@@ -12,6 +12,8 @@ namespace TermPoint.Tests.Harness;
 /// lock another computer took over while it uploaded is refused instead of landing over that computer's save.</description></item>
 /// <item><description><b>F8</b>: the save records its fingerprint in the unsaved-changes marker before the rename, so a crash right
 /// after a rename that did succeed no longer ends in "Can't Restore" when the person starts again.</description></item>
+/// <item><description><b>F19</b>: a lock-file check counts for 2 seconds, so a heartbeat held (the computer sleeps) between its check and its move onto
+/// the lock file reads the lock again and does not move over a lock another computer took meanwhile.</description></item>
 /// </list>
 ///
 /// <para>The routes below are the OLD routes of these findings (for F8 and F12 the known sequences of <see cref="KnownSequences"/>, copied here
@@ -46,6 +48,16 @@ public sealed class FixedFindingsProofTests
     private static readonly string[] OldF12VerifiedTmpRoute =
     {
         "Open(bob)", "Edit(bob)", "Pause(Save(bob) at Save.AfterTmpVerify; AliceTakesOverAndSaves)", "Crash(bob)", "Open(bob)"
+    };
+
+    /// <summary>
+    /// The old F19 known sequence (1.2.4 item 4.12): Bob's computer sleeps; on waking, his heartbeat has read his own lock and written its temporary file
+    /// and is held before it moves that file onto the lock file. Alice takes over the (stale) lock meanwhile. It used to move Bob's renewed lock over
+    /// ALICE's (invariant I9). Pause occurrence #2 is the heartbeat the harness's second tick reaches.
+    /// </summary>
+    private static readonly string[] OldF19KnownSequence =
+    {
+        "Open(bob)", "Pause(Sleep(bob,10m) at Heartbeat.AfterTmpWritten #2; AliceTakesOver)"
     };
 
     /// <summary>
@@ -134,6 +146,23 @@ public sealed class FixedFindingsProofTests
         Assert.Empty(run.NewViolations);
         Assert.Contains("Bob saved the database — LockLost", run.Story);
         Assert.Matches("alice-1: .*the shared database", run.Story);
+    }
+
+    /// <summary>
+    /// F19: the old known sequence ends with Bob's heartbeat NOT moving his lock over Alice's. The sleep makes his lock check older than two
+    /// seconds, so on going on the heartbeat reads the lock again, finds Alice's name in it and leaves it alone (it asks for the ownership
+    /// check instead). No violation of any kind: not I9 (nothing of Bob's is written over her lock), not F19.
+    /// </summary>
+    [HarnessFact]
+    public async Task F19_TheOldKnownSequence_EndsWithBobsHeartbeatLeavingAlicesLockAlone()
+    {
+        var run = await RunKeysAsync(OldF19KnownSequence);
+        _output.WriteLine(run.Story);
+
+        Assert.Equal(PauseOutcome.Interleaved, Assert.Single(run.PauseResults).Outcome);
+        Assert.DoesNotContain(run.Violations, v => v.FindingId == "F19");
+        Assert.DoesNotContain(run.Violations, v => v.Invariant == "I9");
+        Assert.Empty(run.Violations);
     }
 
     /// <summary>
@@ -308,9 +337,9 @@ public sealed class FixedFindingsProofTests
     /// rules for them (a regression is reported as a "new" violation of that kind, not hidden). A plain unit test.
     /// </summary>
     [Fact]
-    public void F1F8AndF12_AreOffTheKnownLists_SoARegressionFailsAsNew()
+    public void F1F8F12AndF19_AreOffTheKnownLists_SoARegressionFailsAsNew()
     {
-        foreach (var id in new[] { "F1", "F8", "F12" })
+        foreach (var id in new[] { "F1", "F8", "F12", "F19" })
         {
             Assert.False(KnownFindings.IsKnown(id), $"{id} is fixed and must not be a known finding");
             Assert.DoesNotContain(id, KnownFindings.Ids);
@@ -325,5 +354,13 @@ public sealed class FixedFindingsProofTests
         };
         Assert.Equal("F12", Findings.Classify(f12));
         Assert.False(KnownFindings.IsKnown(Findings.Classify(f12)));
+
+        var f19 = new Violation
+        {
+            Step = 1, Invariant = "I9", Kind = ViolationKind.LockFileOfAnotherSessionWritten, Key = "k", Computer = "bob",
+            Operation = "File.Move", Reason = "r"
+        };
+        Assert.Equal("F19", Findings.Classify(f19));
+        Assert.False(KnownFindings.IsKnown(Findings.Classify(f19)));
     }
 }

@@ -438,6 +438,28 @@ The heartbeat reads its lock, writes a temp file, then moves it onto the lock fi
 last two steps, while someone takes over, replaces the new holder's lock with its own. No data risk (every save checks
 the database is as last seen), but the two computers fight over the lock.
 *Source: harness lock-file check (8.5), known finding F19.*
+
+**Done (3 Nov 2026, with 4.14):** two parts.
+- *A check counts for 2 seconds* (`WriteLockService.LockCheckFreshness`, not scaled). Before the heartbeat's temp
+  write and its move, the release's delete, and both takeover deletes (`ForceAcquire`, `TryReclaimDeadHolder`), a
+  check older than 2 s on either clock (steady or wall) is read again first. This closes the sleep/freeze route.
+- *Takeover confirmation 70 s → 170 s* (`StaleConfirmationSeconds` = 60 next beat + 10 slow beat + 85 Windows
+  give-up + 15 margin; stays below the 180 s stale threshold). This closes the stalled-network route for any clock
+  skew. The wait dialog now says "(up to 3 minutes)" (minutes from 90 s on).
+
+*Experiment E1 (3 Nov, GregDeskTop Win10 → Mekler, NetworkProbe `--late-landing`):* an abandoned SMB delete or
+rename lands when the network returns if the outage is ≤ 60 s; at 90 s and 180 s outages it dies about 85 s
+(85.4–85.8 s) after it was issued. Assumes the writer's SessTimeout is the Windows default (60 s); a raised
+SessTimeout lengthens the 85 s. Report: `tmp/netprobe/netprobe-20261103-093522.md` (local).
+
+F19 is off the harness's known list (proof test in `FixedFindingsProofTests`). Full suite with harness: 4182
+passed, 0 failed. MinimumVersionToWrite: **No** (nothing new is saved).
+
+*Left open:* (1) the harness doesn't model the ~85 s death of a stalled operation, so F22 stays known (hung delete
+landing after a takeover); an H-item for the harness. (2) Test-timing builds scale the 170 s but not the 85 s, so
+they are not protected against late landings. (3) Later options: record each writer's SessTimeout in the lock
+file; probe SessTimeout=30 and macOS. (4) Separate item to place: the save's dirty-marker write sits between its
+final check and the rename.
 </details>
 
 <details><summary><b>4.13 A lock left behind by a switch makes you read-only when you come back</b></summary>
@@ -454,6 +476,10 @@ A release checks the lock file is its own, then deletes it. A computer that slee
 of whoever took over meanwhile, so a third person could open for editing alongside them (saves stay protected: the
 second saver is refused and keeps their changes). Same shape as 4.12; fix both together.
 *Source: harness hang mode (8.2), known finding F22.*
+
+**Done (3 Nov 2026):** fixed with 4.12, see there. The freeze route is closed by the 2 s check (new crash
+point `Release.AfterOwnershipCheck`); a stalled delete is covered by the 170 s confirmation. F22 stays on the
+harness's known list only because the harness doesn't model the 85 s limit.
 </details>
 
 ---

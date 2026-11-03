@@ -73,8 +73,11 @@ internal static class CrashPoints
     /// <item><b>Close.*, Switch.*</b> (<c>SessionLifecycle</c>): the steps of leaving a database; a crash leaves
     /// the final save done or not, the lock released or not, the services closed or not, and the working copy
     /// kept or deleted.</item>
-    /// <item><b>Lock.*, Heartbeat.*</b> (<c>WriteLockService</c>): the lock file has just been created, its
-    /// heartbeat renewal temp file written (the rename onto the lock file not yet done), or the lock file deleted.</item>
+    /// <item><b>Lock.*, Heartbeat.*, Release.AfterOwnershipCheck</b> (<c>WriteLockService</c>): the lock file has just been created, its
+    /// heartbeat renewal temp file written (the rename onto the lock file not yet done), the release's check that the lock file is
+    /// its own passed (the delete not yet done: <c>DeleteLockFileGatedAsync</c>, a background task), or the lock file deleted. The
+    /// two middle points are where a frozen or sleeping computer is held between a check and the action that relied on it (findings
+    /// F19 and F22); the action repeats a check older than two seconds.</item>
     /// <item><b>WakeCheck.*, HeartbeatVerify.*</b> (<c>CheckoutService.OnWake</c>, <c>OnHeartbeatFailed</c>): the
     /// background ownership check has just read the lock file and not yet acted on what it found. Nothing on disk
     /// differs from before the check; the points exist so a harness can hold one check here while the other runs (they
@@ -144,6 +147,7 @@ internal static class CrashPoints
         // WriteLockService
         "Lock.AfterCreated",
         "Heartbeat.AfterTmpWritten",
+        "Release.AfterOwnershipCheck",
         "Lock.AfterDeleted",
 
         // CheckoutService.OnWake / OnHeartbeatFailed (the background ownership checks)

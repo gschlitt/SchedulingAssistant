@@ -324,7 +324,7 @@ internal sealed class CaseRunner
     /// <param name="when">Where in the run this is, for the message.</param>
     /// <param name="ct">Cancels the wait.</param>
     /// <exception cref="ProbeAbortException">The share did not answer within 120 s.</exception>
-    private async Task RequireNetworkUpAsync(string when, CancellationToken ct)
+    internal async Task RequireNetworkUpAsync(string when, CancellationToken ct)
     {
         if (!await _ctx.Rig.WaitUntilUpAsync(NetworkUpWait, ct).ConfigureAwait(false))
             throw new ProbeAbortException(
@@ -375,7 +375,7 @@ internal sealed class CaseRunner
     /// <param name="ct">Cancels the wait.</param>
     /// <returns>The probe-clock time of the confirming check, or null if the cut was not confirmed in time.</returns>
     /// <exception cref="ProbeAbortException">The first cut of the run was not confirmed and the filter names addresses.</exception>
-    private async Task<TimeSpan?> ConfirmCutOrAbortAsync(CancellationToken ct)
+    internal async Task<TimeSpan?> ConfirmCutOrAbortAsync(CancellationToken ct)
     {
         var confirmed = await _ctx.Rig.ConfirmCutAsync(CutConfirmWait, ct).ConfigureAwait(false);
         if (confirmed is not null)

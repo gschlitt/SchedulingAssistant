@@ -107,15 +107,51 @@ public sealed class WriteLockService : IDisposable
     public const int StaleLockThresholdSeconds = 180;
 
     /// <summary>
-    /// How long, in seconds of this computer's own time, a lock's heartbeat must be seen UNCHANGED
-    /// before a user-confirmed takeover may go ahead (spec item 9b). A live writer rewrites its
-    /// heartbeat every <see cref="HeartbeatIntervalSeconds"/> seconds, so seeing it stand still for one
-    /// full interval plus a margin of 10 s proves the writer is not renewing, independent of either
-    /// computer's clock. Shorter than <see cref="StaleLockThresholdSeconds"/> on purpose: on the open
-    /// path the clock comparison has already said "long dead", and this is only the confirmation that the
-    /// clock was not misleading, so the extra wait stays short.
+    /// How long after a heartbeat starts its rename (the move of the temporary file onto the lock file) the
+    /// move can still be issued: a slow beat, held up by the network, issues its rename up to this many
+    /// seconds after the beat began. A part of <see cref="StaleConfirmationSeconds"/>.
     /// </summary>
-    public const int StaleConfirmationSeconds = HeartbeatIntervalSeconds + 10;
+    private const int HeartbeatRenameDelaySeconds = 10;
+
+    /// <summary>
+    /// How long, in seconds, Windows can still deliver an operation that TermPoint has given up on: an SMB delete or
+    /// rename that was in flight when the network went away lands whenever the connection comes back, up to this long
+    /// after it was issued. Measured as 85.4 to 85.8 s in experiment E1 (1.2.4 items 4.12 and 4.14) on Windows with the
+    /// default workstation SessTimeout of 60 s; a raised SessTimeout lengthens it. A part of
+    /// <see cref="StaleConfirmationSeconds"/>.
+    /// </summary>
+    private const int AbandonedOperationDeliverySeconds = 85;
+
+    /// <summary>The safety margin, in seconds, added on top of the measured delays in <see cref="StaleConfirmationSeconds"/>.</summary>
+    private const int StaleConfirmationMarginSeconds = 15;
+
+    /// <summary>
+    /// How long, in seconds of this computer's own time, a lock's heartbeat must be seen UNCHANGED
+    /// before a user-confirmed takeover may go ahead (spec item 9b). 170 s, derived as: long enough that no
+    /// abandoned operation of the old holder can still land. Its next heartbeat starts up to
+    /// <see cref="HeartbeatIntervalSeconds"/> (60 s) after the last one landed, a slow beat issues its rename up
+    /// to <see cref="HeartbeatRenameDelaySeconds"/> (10 s) later, and Windows can still deliver an abandoned
+    /// SMB delete or rename for about <see cref="AbandonedOperationDeliverySeconds"/> (85 s; measured 85.4 to
+    /// 85.8 s in experiment E1, 1.2.4 items 4.12 and 4.14, on Windows with the default workstation SessTimeout
+    /// of 60 s; a raised SessTimeout lengthens it) = 155 s, plus a <see cref="StaleConfirmationMarginSeconds"/>
+    /// (15 s) margin. Seeing the heartbeat stand still that long proves the writer is not renewing, independent
+    /// of either computer's clock, and that nothing it started can still land. Stays below
+    /// <see cref="StaleLockThresholdSeconds"/> (180), so a reader that has already watched the lock stand
+    /// still for the stale threshold waits no longer; on the open path, where only the clock hint has said
+    /// "long dead", the user waits up to this long (the wait dialog says so).
+    /// </summary>
+    public const int StaleConfirmationSeconds =
+        HeartbeatIntervalSeconds + HeartbeatRenameDelaySeconds + AbandonedOperationDeliverySeconds + StaleConfirmationMarginSeconds;
+
+    /// <summary>
+    /// How long a lock-file check counts, as the thing an action may rely on: a read that proved the lock file
+    /// is ours (or, for a taker, unchanged) is trusted for 2 seconds. If more time than that has passed when the
+    /// action (write the temporary file, move it onto the lock, delete the lock) is about to happen, the read is
+    /// repeated first (see <see cref="IsLockCheckFresh"/>). NOT scaled by <see cref="LockTimings"/>: it is not a
+    /// lock timer, it detects a computer that was frozen or asleep between a check and the action that
+    /// relied on it (findings F19 and F22), which takes as long in a test build as anywhere.
+    /// </summary>
+    internal static readonly TimeSpan LockCheckFreshness = TimeSpan.FromSeconds(2);
 
     /// <summary>
     /// Number of consecutive heartbeat renewal failures before
@@ -224,6 +260,13 @@ public sealed class WriteLockService : IDisposable
     /// <see cref="Release"/> or <see cref="TryAcquire"/>, so a measurement made by one carries to the next.
     /// </summary>
     private readonly LockHeartbeatWatch _heartbeatWatch;
+
+    /// <summary>
+    /// When <see cref="ReadCurrentHolder"/> last read the lock file (see <see cref="StampLockCheck"/>). Used by
+    /// <see cref="TryReclaimDeadHolder"/> to tell whether the dead holder it is about to delete was read within
+    /// <see cref="LockCheckFreshness"/>. Written and read only on the open path's one thread.
+    /// </summary>
+    private LockCheckStamp _currentHolderStamp;
 
     /// <summary>
     /// Creates a lock service.
@@ -541,6 +584,12 @@ public sealed class WriteLockService : IDisposable
     /// <see cref="StaleLockThresholdSeconds"/> and the standard stale-lock takeover
     /// reclaims it, so abandonment inconveniences but never blocks another user.
     /// Non-faulting by construction: callers may Wait() on it without exception handling.
+    ///
+    /// <para><b>A check counts for <see cref="LockCheckFreshness"/> (finding F22).</b> The ownership read and the delete
+    /// are separate operations; a computer that froze between them would delete the lock of whoever took over meanwhile.
+    /// Right before the delete the read is repeated if it is more than 2 seconds old; a lock that is then no longer ours
+    /// is left alone. A stalled delete that lands late (rather than a frozen computer) is not covered here: it is covered
+    /// by <see cref="StaleConfirmationSeconds"/>.</para>
     /// </summary>
     /// <param name="path">The lock file path captured before state was cleared.</param>
     private async Task DeleteLockFileGatedAsync(string path)
@@ -555,15 +604,33 @@ public sealed class WriteLockService : IDisposable
         {
             // Ownership re-check (see Release() doc): never trample another session's
             // claim even though we locally believed we were the writer.
-            var (readCompleted, json) = await NetworkFileOps.ReadAllTextAsync(path).ConfigureAwait(false);
-            if (!readCompleted)
+            var check = await ReadOwnershipAsync(path).ConfigureAwait(false);
+            if (check.Verdict == LockOwnership.ReadTimedOut)
             {
                 App.Logger.LogInfo($"[WriteLockService] Release: lock-file read timed out — abandoning {path} (stale-lock takeover will reclaim it).");
                 return;
             }
 
-            var data = ParseLockFile(json);
-            if (data?.SessionGuid != SessionGuid)
+            if (check.Verdict != LockOwnership.Ours)
+            {
+                App.Logger.LogInfo($"[WriteLockService] Release: lock file at {path} is no longer ours; skipping delete.");
+                return;
+            }
+
+            // The point between the check and the delete: a test freezes the computer here (F22).
+            CrashPoints.Hit("Release.AfterOwnershipCheck");
+
+            // A check counts for LockCheckFreshness: if this computer froze since the read (it slept), the lock may have
+            // been taken over meanwhile, so the read is repeated right before the delete and a lock that is no longer
+            // ours is left alone (F22).
+            check = await EnsureFreshOwnershipAsync(path, check, "Release", "deleting").ConfigureAwait(false);
+            if (check.Verdict == LockOwnership.ReadTimedOut || check.Verdict == LockOwnership.WentStale)
+            {
+                App.Logger.LogInfo($"[WriteLockService] Release: could not re-check the lock file before deleting — abandoning {path} (stale-lock takeover will reclaim it).");
+                return;
+            }
+
+            if (check.Verdict != LockOwnership.Ours)
             {
                 App.Logger.LogInfo($"[WriteLockService] Release: lock file at {path} is no longer ours; skipping delete.");
                 return;
@@ -670,7 +737,8 @@ public sealed class WriteLockService : IDisposable
     /// milliseconds apart; there is no atomic compare-and-delete on a file share). A holder that renews its
     /// heartbeat, or a machine that takes the lock, inside that gap would still have its lock deleted.
     /// That gap is milliseconds, where the window before this check was the whole time the prompt was
-    /// open. The holder would then meet the ordinary lock-loss path (wake check, its next heartbeat — which
+    /// open. If this computer itself froze inside the gap (a check counts for <see cref="LockCheckFreshness"/>,
+    /// 2 seconds), the check is made again before the delete. The holder would then meet the ordinary lock-loss path (wake check, its next heartbeat — which
     /// finds another session's name in the lock, writes nothing and asks for the ownership check at once —
     /// or its next save finds the lock no longer ours and demotes the session, keeping its unsaved
     /// changes for recovery), exactly as for any takeover.</para>
@@ -701,6 +769,18 @@ public sealed class WriteLockService : IDisposable
 
         // Re-check immediately before the delete — keep nothing else between the two.
         var recheck = RecheckStaleHolder(expectedHolder, out var currentHolder);
+        var recheckStamp = StampLockCheck();
+
+        // A check counts for LockCheckFreshness (F19/F22 family): if this computer froze between the check and the
+        // delete (it slept, or the share stalled), the lock may have been renewed or taken over since. Check again
+        // before deleting; the second answer (possibly Changed, the HolderActiveAgain route below) is the one acted on.
+        if (recheck == StaleRecheck.Unchanged && !IsLockCheckFresh(recheckStamp, out var recheckAge))
+        {
+            App.Logger.LogInfo(
+                $"[WriteLockService] ForceAcquire: the lock check is {recheckAge.TotalSeconds:F0} s old " +
+                "(the computer was probably asleep) — checking again before deleting.");
+            recheck = RecheckStaleHolder(expectedHolder, out currentHolder);
+        }
 
         if (recheck == StaleRecheck.Changed)
         {
@@ -966,6 +1046,25 @@ public sealed class WriteLockService : IDisposable
     private bool TryReclaimDeadHolder()
     {
         var deadHolder = CurrentHolder;
+
+        // The dead holder was read earlier in the open path (ReadCurrentHolder). A read counts for LockCheckFreshness; if
+        // this computer froze since (it slept, or the share stalled), someone may have replaced the lock with a live one.
+        // Read it again and delete only a lock that still names the same dead session.
+        if (deadHolder is not null && !IsLockCheckFresh(_currentHolderStamp, out var readAge))
+        {
+            App.Logger.LogInfo(
+                $"[WriteLockService] Reclaim: the lock check is {readAge.TotalSeconds:F0} s old " +
+                "(the computer was probably asleep) — checking again before deleting.");
+            var recheck = RecheckStaleHolder(deadHolder, out _);
+            if (recheck == StaleRecheck.Changed)
+            {
+                // Not the dead session any more (or unreadable): leave it alone. The caller re-reads the holder and judges it afresh.
+                App.Logger.LogInfo("[WriteLockService] TryReclaimDeadHolder: the lock changed since it was read — leaving it alone.");
+                return false;
+            }
+            // Missing: nothing to delete, the create below arbitrates. Unchanged: still the dead session, delete it.
+        }
+
         try { File.Delete(_lockFilePath!); }
         catch (Exception ex)
         {
@@ -1114,6 +1213,10 @@ public sealed class WriteLockService : IDisposable
             App.Logger.LogInfo($"[WriteLockService] Could not read lock file: {ex.Message}");
             CurrentHolder = null;
         }
+
+        // Remember when this read was made, so an action that relies on it later (TryReclaimDeadHolder's delete)
+        // can tell whether it is still fresh.
+        _currentHolderStamp = StampLockCheck();
     }
 
     /// <summary>
@@ -1193,6 +1296,118 @@ public sealed class WriteLockService : IDisposable
             ? HolderSelf
             : HolderSelfOtherComputer;
     }
+
+    /// <summary>
+    /// When a lock-file check was made, on BOTH clocks (see <see cref="StampLockCheck"/> and <see cref="IsLockCheckFresh"/>).
+    /// </summary>
+    /// <param name="SteadyTimestamp">The steady clock's reading (<see cref="TimeProvider.GetTimestamp"/>).</param>
+    /// <param name="Wall">The wall clock's reading (<see cref="TimeProvider.GetUtcNow"/>).</param>
+    private readonly record struct LockCheckStamp(long SteadyTimestamp, DateTimeOffset Wall);
+
+    /// <summary>
+    /// Records "the lock file was just read, and it was ours (or, for a taker, unchanged)" on both clocks. Call it the
+    /// moment the read has come back, then hand the stamp to <see cref="IsLockCheckFresh"/> before the action that relies on
+    /// the read.
+    /// </summary>
+    /// <returns>The stamp.</returns>
+    private LockCheckStamp StampLockCheck() => new(_time.GetTimestamp(), _time.GetUtcNow());
+
+    /// <summary>
+    /// True while a lock-file check made at <paramref name="stamp"/> is still good enough to act on: less than
+    /// <see cref="LockCheckFreshness"/> has passed on BOTH clocks. Whichever clock says more time passed wins, so either one
+    /// noticing a freeze is enough. A wall clock that jumped backwards counts as no time passed (the steady clock still speaks).
+    ///
+    /// <para><b>Why two clocks:</b> we are not sure the steady clock keeps counting while Windows sleeps (if it does not, a
+    /// night's sleep would look like no time at all), and the wall clock can be set by the person or a time service. Each
+    /// covers the other's blind spot; a wall-clock jump forward only costs one extra read.</para>
+    /// </summary>
+    /// <param name="stamp">When the check was made.</param>
+    /// <param name="age">How old the check is (the larger of the two clocks' answers, never negative).</param>
+    /// <returns>True when the check is still fresh; false when it must be made again.</returns>
+    private bool IsLockCheckFresh(LockCheckStamp stamp, out TimeSpan age)
+    {
+        var steady = _time.GetElapsedTime(stamp.SteadyTimestamp);
+        var wall   = _time.GetUtcNow() - stamp.Wall;
+        if (wall < TimeSpan.Zero) wall = TimeSpan.Zero;
+        age = steady > wall ? steady : wall;
+        return age < LockCheckFreshness;
+    }
+
+#if !BROWSER
+    /// <summary>What a read of the lock file says about whose it is (see <see cref="ReadOwnershipAsync"/>).</summary>
+    private enum LockOwnership
+    {
+        /// <summary>The read did not complete in time; nothing is known.</summary>
+        ReadTimedOut,
+        /// <summary>The file holds no holder (the JSON literal <c>null</c>, or an empty session id).</summary>
+        NamesNoSession,
+        /// <summary>The file names another session: the lock has been taken over.</summary>
+        NamesOtherSession,
+        /// <summary>The file names this session.</summary>
+        Ours,
+        /// <summary>The check was ours but went stale a second time before the action, so the action is given up.</summary>
+        WentStale
+    }
+
+    /// <summary>One read of the lock file, what it says and when it was read.</summary>
+    /// <param name="Verdict">Whose lock it is (or that nothing is known).</param>
+    /// <param name="Data">The parsed file; null when the read timed out or the file held the JSON literal <c>null</c>.</param>
+    /// <param name="Stamp">When the read came back (see <see cref="StampLockCheck"/>); meaningless when it timed out.</param>
+    private readonly record struct OwnershipCheck(LockOwnership Verdict, LockFileData? Data, LockCheckStamp Stamp);
+
+    /// <summary>
+    /// Reads the lock file (deadline-bounded) and says whose it is, stamping the moment the read came back.
+    /// </summary>
+    /// <param name="path">The lock file's path.</param>
+    /// <returns>The check; <see cref="LockOwnership.ReadTimedOut"/> when the deadline passed.</returns>
+    /// <exception cref="JsonException">The text is not valid lock-file JSON (the caller counts it as a failure).</exception>
+    /// <exception cref="IOException">The file cannot be read (missing, in use, ...).</exception>
+    private async Task<OwnershipCheck> ReadOwnershipAsync(string path)
+    {
+        var (readCompleted, json) = await NetworkFileOps.ReadAllTextAsync(path).ConfigureAwait(false);
+        if (!readCompleted)
+            return new OwnershipCheck(LockOwnership.ReadTimedOut, null, default);
+
+        var data  = ParseLockFile(json);
+        var stamp = StampLockCheck();
+        if (data is null || string.IsNullOrEmpty(data.SessionGuid))
+            return new OwnershipCheck(LockOwnership.NamesNoSession, data, stamp);
+
+        return new OwnershipCheck(data.SessionGuid == SessionGuid ? LockOwnership.Ours : LockOwnership.NamesOtherSession, data, stamp);
+    }
+
+    /// <summary>
+    /// Makes sure a check that said "ours" is still fresh right before the action that relies on it (the temporary-file write,
+    /// the move onto the lock file, the delete: findings F19 and F22). A fresh check (or one that did not say "ours") is
+    /// returned unchanged. A stale one is replaced by one more read, once. If that read is again stale by the time it is
+    /// handed back (a second freeze) the answer is <see cref="LockOwnership.WentStale"/>, and the caller gives the action up.
+    /// Nothing user-facing changes: a stale check costs one extra read and one log line.
+    /// </summary>
+    /// <param name="path">The lock file's path.</param>
+    /// <param name="check">The check made earlier.</param>
+    /// <param name="actor">Who is asking, for the log line ("Heartbeat", "Release").</param>
+    /// <param name="act">What it is about to do, for the log line ("writing", "deleting").</param>
+    /// <returns>The check to act on.</returns>
+    /// <exception cref="JsonException">The repeated read found unparseable text.</exception>
+    /// <exception cref="IOException">The repeated read could not read the file.</exception>
+    private async Task<OwnershipCheck> EnsureFreshOwnershipAsync(string path, OwnershipCheck check, string actor, string act)
+    {
+        if (check.Verdict != LockOwnership.Ours || IsLockCheckFresh(check.Stamp, out var age))
+            return check;
+
+        App.Logger.LogInfo(
+            $"[WriteLockService] {actor}: the lock check is {age.TotalSeconds:F0} s old " +
+            $"(the computer was probably asleep) — checking again before {act}.");
+
+        var again = await ReadOwnershipAsync(path).ConfigureAwait(false);
+        if (again.Verdict == LockOwnership.Ours && !IsLockCheckFresh(again.Stamp, out _))
+        {
+            App.Logger.LogInfo($"[WriteLockService] {actor}: the repeated lock check went stale too — giving up before {act}.");
+            return again with { Verdict = LockOwnership.WentStale };
+        }
+        return again;
+    }
+#endif
 
     /// <summary>The verdict of <see cref="RecheckStaleHolder"/>.</summary>
     private enum StaleRecheck
@@ -1347,6 +1562,13 @@ public sealed class WriteLockService : IDisposable
     ///         Writing it back as a new, empty lock would invent a holder out of a damaged file.</item>
     ///   <item><b>Unparseable text</b> — an exception, counted as a failed renewal, as before.</item>
     /// </list>
+    ///
+    /// <para><b>A check counts for <see cref="LockCheckFreshness"/> (finding F19).</b> The read and the move are separate
+    /// operations on the share; a computer that sleeps or freezes between them could move its lock back over the lock of
+    /// whoever took over meanwhile. So the read is trusted for 2 seconds only: if more time has passed right before the
+    /// temporary file is written, or right before the move, the lock file is read and judged again (the same three
+    /// verdicts as above) before anything else happens. If the repeated check also goes stale before the action (a second
+    /// freeze), the beat is given up and counts as a failed renewal.</para>
     /// </summary>
     private async Task RenewHeartbeatAsync()
     {
@@ -1372,32 +1594,48 @@ public sealed class WriteLockService : IDisposable
             try
             {
                 // Read the existing data to see whose lock it is and to preserve the original
-                // Acquired timestamp, then update the heartbeat.
-                var (readCompleted, json) = await NetworkFileOps.ReadAllTextAsync(path).ConfigureAwait(false);
-                if (readCompleted)
+                // Acquired timestamp, then update the heartbeat. (JsonException on unparseable text:
+                // counted as a failure below.)
+                var check = await ReadOwnershipAsync(path).ConfigureAwait(false);
+
+                // A check counts for LockCheckFreshness (F19): if this computer froze since the read, it is repeated
+                // before anything is written. The temporary file is NOT built before this first verification (its
+                // name is shared by every computer that heartbeats this lock).
+                check = await EnsureFreshOwnershipAsync(path, check, "Heartbeat", "writing").ConfigureAwait(false);
+
+                if (check.Verdict == LockOwnership.NamesNoSession)
                 {
-                    var data = ParseLockFile(json);   // JsonException on unparseable text: counted as a failure below
+                    namesNoSession = true;
+                }
+                else if (check.Verdict == LockOwnership.NamesOtherSession)
+                {
+                    namesOtherSession = true;
+                }
+                else if (check.Verdict == LockOwnership.Ours)
+                {
+                    var data = check.Data!;
+                    data.Heartbeat   = _time.GetUtcNow().UtcDateTime;
+                    data.TimingScale = OwnTimingScaleForLockFile;   // this session's own lock: its own factor
 
-                    if (data is null || string.IsNullOrEmpty(data.SessionGuid))
-                    {
-                        namesNoSession = true;
-                    }
-                    else if (data.SessionGuid != SessionGuid)
-                    {
-                        namesOtherSession = true;
-                    }
-                    else
-                    {
-                        data.Heartbeat   = _time.GetUtcNow().UtcDateTime;
-                        data.TimingScale = OwnTimingScaleForLockFile;   // this session's own lock: its own factor
+                    // Write to a temp file first, then atomically replace. This ensures
+                    // a reader never observes a partially-written JSON file.
+                    var tmp = path + ".tmp";
+                    var tmpWritten = await NetworkFileOps.WriteAllTextAsync(tmp, JsonSerializer.Serialize(data)).ConfigureAwait(false);
+                    if (tmpWritten) CrashPoints.Hit("Heartbeat.AfterTmpWritten");
 
-                        // Write to a temp file first, then atomically replace. This ensures
-                        // a reader never observes a partially-written JSON file.
-                        var tmp = path + ".tmp";
-                        var tmpWritten = await NetworkFileOps.WriteAllTextAsync(tmp, JsonSerializer.Serialize(data)).ConfigureAwait(false);
-                        if (tmpWritten) CrashPoints.Hit("Heartbeat.AfterTmpWritten");
-                        renewed = tmpWritten
-                               && await NetworkFileOps.MoveAsync(tmp, path).ConfigureAwait(false);
+                    if (tmpWritten)
+                    {
+                        // The same freshness rule right before the move, which is the step that would put our lock back over
+                        // the lock of a computer that took over while this one was asleep (F19). If it went stale and the
+                        // repeated check names another session, nothing is moved.
+                        var beforeMove = await EnsureFreshOwnershipAsync(path, check, "Heartbeat", "writing").ConfigureAwait(false);
+                        if (beforeMove.Verdict == LockOwnership.Ours)
+                            renewed = await NetworkFileOps.MoveAsync(tmp, path).ConfigureAwait(false);
+                        else if (beforeMove.Verdict == LockOwnership.NamesOtherSession)
+                            namesOtherSession = true;
+                        else if (beforeMove.Verdict == LockOwnership.NamesNoSession)
+                            namesNoSession = true;
+                        // ReadTimedOut or WentStale: not renewed; counts as a failed beat below.
                     }
                 }
 

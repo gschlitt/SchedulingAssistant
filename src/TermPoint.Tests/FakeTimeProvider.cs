@@ -49,6 +49,33 @@ internal sealed class FakeTimeProvider : TimeProvider
             timer.Fire();
     }
 
+    /// <summary>
+    /// Moves ONLY the wall clock (<see cref="GetUtcNow"/>) forward or backward, as if the person or a time service set the
+    /// computer's clock: the steady clock and the timers do not move. Used to test code that must notice a freeze on either clock alone.
+    /// </summary>
+    /// <param name="by">How far to move the wall clock; negative moves it back.</param>
+    public void JumpWallClock(TimeSpan by)
+    {
+        lock (_gate) _utcNow += by;
+    }
+
+    /// <summary>
+    /// Moves ONLY the steady clock (<see cref="GetTimestamp"/>) forward and fires every timer that has become due: the wall clock does
+    /// not move. Used to test code that must notice a freeze on either clock alone.
+    /// </summary>
+    /// <param name="by">How far to move the steady clock; must not be negative.</param>
+    public void AdvanceSteadyClockOnly(TimeSpan by)
+    {
+        List<FakeTimer> due;
+        lock (_gate)
+        {
+            _ticks += by.Ticks;
+            due = _timers.Where(t => t.IsDue(_ticks)).ToList();
+        }
+        foreach (var timer in due)
+            timer.Fire();
+    }
+
     /// <inheritdoc/>
     public override ITimer CreateTimer(TimerCallback callback, object? state, TimeSpan dueTime, TimeSpan period)
     {

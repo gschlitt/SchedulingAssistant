@@ -27,6 +27,15 @@ internal static class TextFormat
         => value is null ? none : $"{value.Value.TotalSeconds:F2} s";
 
     /// <summary>
+    /// Formats a time the server reported (its own clock, in UTC), to a tenth of a second.
+    /// </summary>
+    /// <param name="utc">The time, or null when it could not be read.</param>
+    /// <param name="none">What to show for null.</param>
+    /// <returns>For example <c>14:03:22.4</c>, or <paramref name="none"/>.</returns>
+    public static string ServerTime(DateTime? utc, string none = "-")
+        => utc is null ? none : utc.Value.ToString("HH:mm:ss.f");
+
+    /// <summary>
     /// Renders rows as a fixed-width plain-text table for the console: a header, a rule, then the rows.
     /// </summary>
     /// <param name="headers">Column titles.</param>

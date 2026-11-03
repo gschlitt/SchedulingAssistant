@@ -132,6 +132,23 @@ internal sealed class ProbeWorkspace
     }
 
     /// <summary>
+    /// Creates a folder of its own on the share holding small text files with exact contents (the late-landing cases
+    /// need to tell "BEFORE" from nothing, and "OLD" from "NEW"). Runs while the network is normal.
+    /// </summary>
+    /// <param name="caseId">A unique folder name for this cycle, for example <c>late-delete-h10-1</c>.</param>
+    /// <param name="files">The files to create: a file name and the exact text it holds.</param>
+    /// <returns>The path of the new folder.</returns>
+    /// <exception cref="TimeoutException">The share stopped answering during set-up.</exception>
+    public string BuildTextFolder(string caseId, IReadOnlyList<(string Name, string Text)> files)
+    {
+        var dir = Path.Combine(ShareRoot, caseId);
+        RigIo.Run(() => Directory.CreateDirectory(dir), RigIo.Short, $"creating the folder for {caseId}");
+        foreach (var (name, text) in files)
+            RigIo.Run(() => File.WriteAllText(Path.Combine(dir, name), text), RigIo.Short, $"writing {name}");
+        return dir;
+    }
+
+    /// <summary>
     /// Deletes one case's folder on the share. Best effort: a handle an abandoned call still holds can make this fail,
     /// in which case <see cref="DeleteAll"/> retries at the end.
     /// </summary>

@@ -32,7 +32,7 @@ public sealed class LockTimingsTests : IDisposable
 
     // ── Production values ────────────────────────────────────────────────────
 
-    /// <summary>At factor 1 every timer is exactly its production value: heartbeat 60, poll 60, stale 180, confirmation 70, wake check 30, wake threshold 90.</summary>
+    /// <summary>At factor 1 every timer is exactly its production value: heartbeat 60, poll 60, stale 180, confirmation 170, wake check 30, wake threshold 90.</summary>
     [Fact]
     public void FactorOne_IsExactlyTheProductionValues()
     {
@@ -42,7 +42,7 @@ public sealed class LockTimingsTests : IDisposable
         Assert.Equal(TimeSpan.FromSeconds(60),  t.HeartbeatInterval);
         Assert.Equal(TimeSpan.FromSeconds(60),  t.PollInterval);
         Assert.Equal(TimeSpan.FromSeconds(180), t.StaleLockThreshold);
-        Assert.Equal(TimeSpan.FromSeconds(70),  t.StaleConfirmation);
+        Assert.Equal(TimeSpan.FromSeconds(170), t.StaleConfirmation);
         Assert.Equal(TimeSpan.FromSeconds(30),  t.WakeCheckInterval);
         Assert.Equal(TimeSpan.FromSeconds(90),  t.WakeThreshold);
         Assert.Equal(string.Empty, t.TitleSuffix);
@@ -51,7 +51,7 @@ public sealed class LockTimingsTests : IDisposable
         Assert.Equal(60,  WriteLockService.HeartbeatIntervalSeconds);
         Assert.Equal(60,  WriteLockService.PollIntervalSeconds);
         Assert.Equal(180, WriteLockService.StaleLockThresholdSeconds);
-        Assert.Equal(70,  WriteLockService.StaleConfirmationSeconds);
+        Assert.Equal(170, WriteLockService.StaleConfirmationSeconds);
 
         // The things that are never scaled.
         Assert.Equal(5000, NetworkFileOps.TimeoutMs);
@@ -67,8 +67,8 @@ public sealed class LockTimingsTests : IDisposable
 
     /// <summary>Factors 2 and 3 divide every timer by the factor; the ratios stay the same.</summary>
     [Theory]
-    [InlineData(2, 30, 30, 90, 35, 15, 45)]
-    [InlineData(3, 20, 20, 60, 70.0 / 3, 10, 30)]
+    [InlineData(2, 30, 30, 90, 85, 15, 45)]
+    [InlineData(3, 20, 20, 60, 170.0 / 3, 10, 30)]
     public void ScaledTimings_AreTheProductionValuesDividedByTheFactor(
         int scale, double heartbeat, double poll, double stale, double confirmation, double wakeCheck, double wakeThreshold)
     {
@@ -286,12 +286,12 @@ public sealed class LockTimingsTests : IDisposable
         Assert.True(JudgeCallsStale(holderScale: 1, judgeScale: 1, silentSeconds: 181));
     }
 
-    /// <summary>The takeover confirmation is also the holder's: 70 s for a factor-1 lock even to a factor-3 judge, 70/3 s for a factor-3 lock to a factor-1 judge.</summary>
+    /// <summary>The takeover confirmation is also the holder's: 170 s for a factor-1 lock even to a factor-3 judge, 170/3 s for a factor-3 lock to a factor-1 judge.</summary>
     [Fact]
     public void TheConfirmationWait_IsTheHoldersToo()
     {
-        Assert.Equal(TimeSpan.FromSeconds(70),      ConfirmationRemainingRightAfterTheFirstLook(holderScale: 1, judgeScale: 3));
-        Assert.Equal(TimeSpan.FromSeconds(70.0 / 3), ConfirmationRemainingRightAfterTheFirstLook(holderScale: 3, judgeScale: 1));
+        Assert.Equal(TimeSpan.FromSeconds(170),      ConfirmationRemainingRightAfterTheFirstLook(holderScale: 1, judgeScale: 3));
+        Assert.Equal(TimeSpan.FromSeconds(170.0 / 3), ConfirmationRemainingRightAfterTheFirstLook(holderScale: 3, judgeScale: 1));
     }
 
     /// <summary>The judge looks at a lock once and asks how long a takeover must still wait.</summary>

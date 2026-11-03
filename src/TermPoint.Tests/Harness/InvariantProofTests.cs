@@ -926,7 +926,10 @@ public sealed class InvariantProofTests
     /// Bob's heartbeat reads the lock (his own) and writes its temporary file; in the instant after that (<c>Heartbeat.AfterTmpWritten</c>)
     /// Alice's lock appears on the share; Bob's renewal then moves its file over it. Today's heartbeat checks the name before writing, so
     /// this window is the only way left to do it, and I9 sees the overwrite and reports Bob rewrote a lock that names another session.
-    /// Classified F19 (the known finding for exactly this window); it proves the checker can fail.
+    /// Classified F19 (the finding for exactly this window; fixed for a held or sleeping computer, see
+    /// <see cref="FixedFindingsProofTests"/>); it proves the checker can fail. NO time passes between the heartbeat's check and its move
+    /// here, so the 2 second freshness rule (<c>WriteLockService.LockCheckFreshness</c>) rightly trusts the check: this is the residual
+    /// window of a few milliseconds that a file share cannot close, and a pause that lets time pass is what the fix handles.
     /// </summary>
     [HarnessFact]
     public async Task I9_AHeartbeatRenewalOverAnotherSessionsLock_IsCaught()

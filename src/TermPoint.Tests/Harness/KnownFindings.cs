@@ -17,6 +17,12 @@ namespace TermPoint.Tests.Harness;
 /// and re-checks the lock and D immediately before the rename (F12). Their old routes are kept as proof tests
 /// (<see cref="FixedFindingsProofTests"/>) that must now show no violation; the classifier's rules for them stay in
 /// <see cref="Findings"/>, so a regression is reported as a new violation.</para>
+///
+/// <para><b>F19 is fixed (1.2.4, item 4.12)</b> and so is off the list: a lock-file check counts for 2 seconds
+/// (<see cref="TermPoint.Services.WriteLockService.LockCheckFreshness"/>), so a heartbeat that was held (the computer slept) between its
+/// check and the move onto the lock file repeats the check and moves nothing over a lock another computer took meanwhile. Its old route
+/// is a proof test in <see cref="FixedFindingsProofTests"/>. <b>F22 stays</b>: the same 2 second check closes its freeze route, but a
+/// delete that is stalled and lands whenever the (simulated) network returns is not closed by it (see its description).</para>
 /// </summary>
 internal static class KnownFindings
 {
@@ -30,15 +36,14 @@ internal static class KnownFindings
         ["F16"] = "A lost-lock demotion still running when the user switches database lands on the NEW session: it copies the new database and leaves a session that holds the new lock read-only.",
         ["F17"] = "A save during a close or a switch finds a problem (someone took over, the location can't be reached, the lock file was removed, the file is in use), and the person is shown the problem's banner and then \"Changes Not Saved\": two messages for one problem, both saying what happens to their changes. 1.2.4: show only the dialog.",
         ["F18"] = "Two different lock-lost banners for one loss (\"Another program removed the file...\" and \"... has taken over editing\"), seen when a held heartbeat check finishes while the person switches database. Not yet investigated.",
-        ["F19"] = "A heartbeat renewal that is held (the computer sleeps) between writing its temporary file and moving it onto the lock file lands over the lock that someone else took over meanwhile: the lock file then names the sleeper's session again, although the other computer holds the lock. (Invariant I9, a computer rewrites only its own lock file.)",
         ["F20"] = "Another program has a file of the share open (the database, so a switch's final save fails; or the lock file, so the release can't delete it) when the person switches to another database: the lock file of the old database is left behind naming their own session, and when they switch back they are read-only (\"Someone else is editing this database right now\") although it is their own leftover lock, and their kept unsaved changes cannot be restored yet. (Invariant I6 clause a. By code reading, the leftover lock's holder is their own live process, so it is not reclaimed on its own.)",
-        ["F22"] = "A release that is held (the computer sleeps) between its check that the lock file is its own and its delete of that file deletes the lock of whoever took over meanwhile: the new writer's lock file disappears although it is alive, so a third computer can open for editing alongside it. (Invariant I9, a computer rewrites only its own lock file; the delete is the release's background task, WriteLockService.DeleteLockFileGatedAsync. Found by the pause sweep at Release.AfterLockReleased, intermittently: about one run in twenty, because it depends on whether the held release had passed its read.)",
+        ["F22"] = "A release whose delete of the lock file is stalled (a blocked or hung delete that lands whenever the network returns) deletes the lock of whoever took over meanwhile: the new writer's lock file disappears although it is alive, so a third computer can open for editing alongside it. (Invariant I9, a computer rewrites only its own lock file; the delete is the release's background task, WriteLockService.DeleteLockFileGatedAsync.) The freeze or pause route (the computer sleeps between the release's check that the lock file is its own and its delete) is CLOSED by the 2 second check (WriteLockService.LockCheckFreshness: the check is repeated right before the delete). What remains is a stalled operation landing late; in reality that is covered by the 170 second takeover confirmation (WriteLockService.StaleConfirmationSeconds), as long as the operation dies within about 85 s (Windows' own limit, experiment E1). The harness does not yet model that 85 s limit, so a hung delete that lands after a takeover still shows here.",
         ["F23"] = "Another program has the shared database open when the person switches back to it, and the kept changes cannot be restored; they choose Save a Copyâ€¦ and cancel the save dialog, then Discard (and confirm it). The open's banner (\"TermPoint couldn't save because the database file is in use by another program...\") then promises that their changes are kept, although the person has just discarded them. (Invariant I5, ChangesKept. Found by the random walks in 1.2.4 item 8.4; not clock related, the changed event catalogue drew a new route. Not yet investigated: the banner text is read from the story, not from the code.)",
         ["A13"] = "When someone else holds the lock and the copy of the database for reading fails (the network drops), the person sees two messages for one problem: \"Checkout Failed\" (which says the program will open read-only) and then \"Couldn't Open the Database\" (Try again / Close). Spec item 6.5."
     };
 
-    /// <summary>Every known finding id, in order (F2, F5, F6, F7, F16, F17, F18, F19, F20, F22, F23, A13). F1, F8, F12 and F21 are fixed and so are no longer on the list.</summary>
-    public static IReadOnlyList<string> Ids { get; } = new[] { "F2", "F5", "F6", "F7", "F16", "F17", "F18", "F19", "F20", "F22", "F23", "A13" };
+    /// <summary>Every known finding id, in order (F2, F5, F6, F7, F16, F17, F18, F20, F22, F23, A13). F1, F8, F12, F19 and F21 are fixed and so are no longer on the list.</summary>
+    public static IReadOnlyList<string> Ids { get; } = new[] { "F2", "F5", "F6", "F7", "F16", "F17", "F18", "F20", "F22", "F23", "A13" };
 
     /// <summary>True when <paramref name="findingId"/> is a finding expected on today's code.</summary>
     /// <param name="findingId">A finding id as the classifier gives it ("F1" ... or "new").</param>

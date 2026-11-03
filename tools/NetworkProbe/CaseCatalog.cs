@@ -263,7 +263,7 @@ internal static class CaseCatalog
     /// <summary>Boils a plain success bool (false means the timeout was reported) down to an <see cref="OpResult"/>.</summary>
     /// <param name="ok">What the method returned.</param>
     /// <returns>Gave up when <paramref name="ok"/> is false.</returns>
-    private static OpResult FromBool(bool ok) => new(!ok, $"returned {ok}");
+    internal static OpResult FromBool(bool ok) => new(!ok, $"returned {ok}");
 
     /// <summary>Boils a <c>(Completed, Hash)</c> answer down to an <see cref="OpResult"/>.</summary>
     /// <param name="answer">What <c>ComputeHashAsync</c> returned.</param>

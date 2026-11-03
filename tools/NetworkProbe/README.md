@@ -88,6 +88,33 @@ known-bad control, and 6 mid-operation cycles. Lower `--hold` to 20 to shorten i
 Exit codes: 0 clean (or a dry run that worked); 1 at least one case FAILED; 2 the rig did not work or the run stopped
 early; 3 refused to start; 64 command-line error.
 
+## Late-landing mode (`--late-landing`, experiment E1 of 1.2.4 items 4.12/4.14)
+
+A different question from the 5 s deadline: when `NetworkFileOps` gives up on a delete or a rename-over-existing
+and abandons it, can the abandoned operation still take effect on the server after the network returns, and how
+late? (If it can land minutes later, a lock release or heartbeat could act on a lock that changed hands meanwhile.)
+
+```
+E:\netprobe-build\NetworkProbe.exe --late-landing --share \\mekler\Users\gregs\temp\handtest
+```
+
+Same refusals, controls and clean-up as the normal mode. Then two cases, `late-delete` (`DeleteAsync`, as the lock
+release) and `late-move` (`MoveAsync(source, target, overwrite: true)`, as the heartbeat), each for every
+`--holds` (default `10,30,60,90,180` s) × `--repeat` (default 2 here). One cycle: create the files, settle, cut,
+issue the real call, hold the cut H s from the call, restore, then look at the folder once a second (plain file
+opens, not `NetworkFileOps`) for up to 120 s. About an hour at the defaults.
+
+| Outcome | Meaning |
+|---|---|
+| **LANDED LATE** | The folder changed after the network came back: the abandoned operation took effect. "First seen changed" is an upper bound, from the call. |
+| **DIED** | Nothing changed, and `NetworkFileOps` logged that the abandoned operation ended with an error (its time is when Windows gave up). |
+| **STILL PENDING** | Nothing changed and no such line: the operation may still be blocked. (A successful late finish is never logged; it shows only as a change.) |
+| **NOT TESTED** | The cut was not confirmed, the folder was not as created before the cut, the share did not come back, or the call succeeded without the network. |
+
+The folder's server-side "last written" time is shown as a cross-check only (SMB may serve it up to ~10 s stale;
+the server clock differs from this computer's). A result holds for this client, server and kind of share only: a
+late landing proves the route exists; none proves only "not here".
+
 ## What a run does
 
 1. Refuses unless safe (elevated, TermPoint closed, no clumsy, a UNC share on another computer that exists).

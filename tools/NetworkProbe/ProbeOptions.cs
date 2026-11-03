@@ -55,6 +55,33 @@ internal sealed class ProbeOptions
     /// <summary>Seconds to let SMB's caches expire between set-up and a cut-before-call case.</summary>
     public int SettleSeconds { get; private set; } = DefaultSettleSeconds;
 
+    /// <summary>Default for <c>--repeat</c> in the late-landing mode (<c>--late-landing</c>).</summary>
+    public const int DefaultLateRepeat = 2;
+
+    /// <summary>Default for <c>--holds</c>: seconds the cut is held in the late-landing mode.</summary>
+    public static readonly IReadOnlyList<int> DefaultHolds = new[] { 10, 30, 60, 90, 180 };
+
+    /// <summary>Smallest hold allowed in a real late-landing run: the call must have time to give up (5 s) and be seen to.</summary>
+    public const int MinLateHoldSeconds = 6;
+
+    /// <summary>True once <c>--repeat</c> was given, so the late-landing mode knows whether to use its own default.</summary>
+    private bool _repeatGiven;
+
+    /// <summary>
+    /// True for <c>--late-landing</c>: run ONLY the late-landing experiment (after the two rig controls). The question it
+    /// answers: when the network drops while a delete or a rename-over-existing is in flight and later returns, does the
+    /// abandoned operation still take effect on the server?
+    /// </summary>
+    public bool LateLanding { get; private set; }
+
+    /// <summary>Seconds the cut is held in each late-landing cycle (<c>--holds</c>).</summary>
+    public IReadOnlyList<int> Holds { get; private set; } = DefaultHolds;
+
+    /// <summary>
+    /// Repetitions of each late-landing case and hold: <c>--repeat</c> when given, else <see cref="DefaultLateRepeat"/>.
+    /// </summary>
+    public int LateRepeat => _repeatGiven ? Repeat : DefaultLateRepeat;
+
     /// <summary>Case names to run, or null for all.</summary>
     public IReadOnlyCollection<string>? Only { get; private set; }
 
@@ -82,6 +109,7 @@ internal sealed class ProbeOptions
     public static ProbeOptions Parse(string[] args)
     {
         var o = new ProbeOptions();
+        var holdsGiven = false;
         for (var i = 0; i < args.Length; i++)
         {
             var arg = args[i];
@@ -94,7 +122,9 @@ internal sealed class ProbeOptions
                 case "--hold":        o.HoldSeconds = NextInt(args, ref i, arg, MinHoldSeconds, 600); break;
                 case "--big-mb":      o.BigMb = NextInt(args, ref i, arg, 1, 1024); break;
                 case "--lag-ms":      o.LagMs = NextInt(args, ref i, arg, 1, 2000); break;
-                case "--repeat":      o.Repeat = NextInt(args, ref i, arg, 1, 20); break;
+                case "--repeat":      o.Repeat = NextInt(args, ref i, arg, 1, 20); o._repeatGiven = true; break;
+                case "--late-landing": o.LateLanding = true; break;
+                case "--holds":       o.Holds = ParseHolds(NextValue(args, ref i, arg)); holdsGiven = true; break;
                 case "--settle":      o.SettleSeconds = NextInt(args, ref i, arg, 0, 120); break;
                 case "--only":        o.Only = ParseCaseNames(NextValue(args, ref i, arg)); break;
                 case "--report-dir":  o.ReportDir = NextValue(args, ref i, arg); break;
@@ -114,6 +144,10 @@ internal sealed class ProbeOptions
             throw new UsageException("Use either --share (the real run) or --dry-run (the plumbing check), not both.");
         if (o.Share is null && o.DryRunFolder is null)
             throw new UsageException("Give --share <UNC folder> for the real run, --dry-run <local folder> for the plumbing check, or --list.");
+        if (holdsGiven && !o.LateLanding)
+            throw new UsageException("--holds belongs to --late-landing; add --late-landing, or use --hold for the ordinary cases.");
+        if (o.LateLanding && o.Share is not null && o.Holds.Any(h => h < MinLateHoldSeconds))
+            throw new UsageException($"--holds: every hold must be at least {MinLateHoldSeconds} s in a real run (the call needs 5 s to give up; shorter holds are only allowed with --dry-run).");
         return o;
     }
 
@@ -135,8 +169,13 @@ internal sealed class ProbeOptions
           --hold <s>             seconds each cut is held (default 40, minimum 20)
           --big-mb <n>           size of the large test file in MB (default 32)
           --lag-ms <n>           lag used to slow a long operation before the cut (default 150)
-          --repeat <n>           repetitions of each mid-operation case (default 3)
+          --repeat <n>           repetitions of each mid-operation case (default 3); with --late-landing, repetitions of
+                                 each case and hold (default 2)
           --settle <s>           seconds between set-up and a cut-before-call case, so SMB caches expire (default 11)
+          --late-landing         run ONLY the late-landing experiment (after the two rig controls): cut the network while
+                                 a delete / a rename-over-existing is in flight, bring it back, and watch the server to see
+                                 whether the abandoned operation still takes effect, and how long after the call (see --list)
+          --holds <a,b,...>      late-landing only: seconds the cut is held (default 10,30,60,90,180; at least 6 in a real run)
           --only <a,b,...>       run only these cases (see --list)
           --report-dir <dir>     where the Markdown report goes (default <repo>\tmp\netprobe, else .\netprobe-reports)
           --dry-run <folder>     see above
@@ -174,6 +213,27 @@ internal sealed class ProbeOptions
         if (!int.TryParse(text, out var value) || value < min || value > max)
             throw new UsageException($"{option} must be a whole number from {min} to {max} (got '{text}').");
         return value;
+    }
+
+    /// <summary>
+    /// Splits and checks the comma-separated list of seconds given to <c>--holds</c>.
+    /// </summary>
+    /// <param name="text">The raw list, for example <c>10,30,60</c>.</param>
+    /// <returns>The holds, in the order given.</returns>
+    /// <exception cref="UsageException">The list is empty or a value is not a whole number from 1 to 900.</exception>
+    private static IReadOnlyList<int> ParseHolds(string text)
+    {
+        var parts = text.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
+        var holds = new List<int>();
+        foreach (var part in parts)
+        {
+            if (!int.TryParse(part, out var value) || value < 1 || value > 900)
+                throw new UsageException($"--holds must be a comma-separated list of whole seconds from 1 to 900 (got '{part}').");
+            holds.Add(value);
+        }
+        if (holds.Count == 0)
+            throw new UsageException("--holds needs at least one value, for example --holds 10,30,60.");
+        return holds;
     }
 
     /// <summary>

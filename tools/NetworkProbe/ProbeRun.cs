@@ -123,7 +123,10 @@ internal static class ProbeRun
             else
             {
                 // ── 5. The cases ─────────────────────────────────────────────────────────────────────────────
-                await RunCasesAsync(ctx, runner, report, cts.Token).ConfigureAwait(false);
+                if (options.LateLanding)
+                    await new LateLandingRunner(ctx, runner).RunAllAsync(report, cts.Token).ConfigureAwait(false);
+                else
+                    await RunCasesAsync(ctx, runner, report, cts.Token).ConfigureAwait(false);
             }
         }
         catch (ProbeAbortException ex)

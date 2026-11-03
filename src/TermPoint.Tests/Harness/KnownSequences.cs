@@ -76,16 +76,6 @@ internal static class KnownSequences
                 "Open(bob)", "AdvanceTime(4m)", "Open(alice)", "Pause(Sleep(bob,10m) at Demote.AfterWorkingCopyHandled; BobSwitches)"
             }),
 
-        new("F19: a held heartbeat renewal lands over a lock that was taken over",
-            "F19",
-            "Bob's computer sleeps; on waking his heartbeat has read his own lock and written its temporary file, and is held before it moves that file " +
-            "onto the lock file. Meanwhile Alice takes over the (stale) lock. When Bob's heartbeat goes on, its move replaces ALICE's lock with a renewed copy " +
-            "of Bob's own (invariant I9). Found by the pause sweep (item 8.5).",
-            new[]
-            {
-                "Open(bob)", "Pause(Sleep(bob,10m) at Heartbeat.AfterTmpWritten #2; AliceTakesOver)"
-            }),
-
         new("F20: another program holds the lock file while the person switches away",
             "F20",
             "Bob switches to the other database while another program has the lock file of the first open (so TermPoint cannot delete it). The lock file is " +

@@ -129,12 +129,18 @@ public sealed class CheckoutServiceTakeOverWaitTests : IDisposable
 
     // ── How long is left ──────────────────────────────────────────────────────
 
-    /// <summary>The constant is the heartbeat interval plus a 10 second margin: one full renewal cycle.</summary>
+    /// <summary>
+    /// The constant is 170 s: long enough that no abandoned operation of the old holder can still land. Its next heartbeat starts up to
+    /// 60 s after the last one landed, a slow beat issues its rename up to 10 s later, and Windows can still deliver an abandoned SMB
+    /// delete or rename for about 85 s (experiment E1) = 155 s, plus a 15 s margin; and it stays below the stale-lock threshold (180 s),
+    /// so a reader that already watched the lock stand still that long waits no longer.
+    /// </summary>
     [Fact]
-    public void StaleConfirmationSeconds_IsOneHeartbeatIntervalPlusTenSeconds()
+    public void StaleConfirmationSeconds_OutlastsEveryAbandonedOperationOfTheOldHolder_AndStaysBelowTheStaleThreshold()
     {
-        Assert.Equal(70, WriteLockService.StaleConfirmationSeconds);
-        Assert.Equal(WriteLockService.HeartbeatIntervalSeconds + 10, WriteLockService.StaleConfirmationSeconds);
+        Assert.Equal(170, WriteLockService.StaleConfirmationSeconds);
+        Assert.Equal(WriteLockService.HeartbeatIntervalSeconds + 10 + 85 + 15, WriteLockService.StaleConfirmationSeconds);
+        Assert.True(WriteLockService.StaleConfirmationSeconds < WriteLockService.StaleLockThresholdSeconds);
     }
 
     /// <summary>With no stale judgement behind it there is nothing to wait for.</summary>
@@ -156,26 +162,26 @@ public sealed class CheckoutServiceTakeOverWaitTests : IDisposable
         Assert.Equal(Window, svc.GetTakeOverWait());
     }
 
-    /// <summary>Clicked 10 seconds after the lock was first seen: 60 seconds are left.</summary>
+    /// <summary>Clicked 10 seconds after the lock was first seen: the window minus 10 seconds is left.</summary>
     [Fact]
-    public async Task GetTakeOverWait_ClickedAt10Seconds_Is60Seconds()
+    public async Task GetTakeOverWait_ClickedAt10Seconds_IsTheWindowMinus10Seconds()
     {
         var clock = new FakeTimeProvider();
         var (svc, _, _, _) = await OpenAtStalePromptAsync(clock);
 
         clock.Advance(TimeSpan.FromSeconds(10));
 
-        Assert.Equal(TimeSpan.FromSeconds(60), svc.GetTakeOverWait());
+        Assert.Equal(Window - TimeSpan.FromSeconds(10), svc.GetTakeOverWait());
     }
 
     /// <summary>Boundary: one second short of the window leaves one second; the full window leaves none.</summary>
     [Fact]
-    public async Task GetTakeOverWait_Boundary_69Seconds_Leaves1_70Seconds_LeavesNone()
+    public async Task GetTakeOverWait_Boundary_OneSecondShortOfTheWindowLeaves1_TheFullWindowLeavesNone()
     {
         var clock = new FakeTimeProvider();
         var (svc, _, _, _) = await OpenAtStalePromptAsync(clock);
 
-        clock.Advance(TimeSpan.FromSeconds(69));
+        clock.Advance(Window - TimeSpan.FromSeconds(1));
         Assert.Equal(TimeSpan.FromSeconds(1), svc.GetTakeOverWait());
 
         clock.Advance(TimeSpan.FromSeconds(1));
@@ -183,15 +189,15 @@ public sealed class CheckoutServiceTakeOverWaitTests : IDisposable
     }
 
     /// <summary>
-    /// Clicked at 75 seconds (reading the prompt took a while): no wait at all, the takeover goes
+    /// Clicked 5 seconds after the window (reading the prompt took a while): no wait at all, the takeover goes
     /// straight to the 9a re-check and succeeds.
     /// </summary>
     [Fact]
-    public async Task ClickedAt75Seconds_NoWait_TakesOverImmediately()
+    public async Task ClickedAfterTheWindow_NoWait_TakesOverImmediately()
     {
         var clock = new FakeTimeProvider();
         var (svc, lockSvc, db, _) = await OpenAtStalePromptAsync(clock);
-        clock.Advance(TimeSpan.FromSeconds(75));
+        clock.Advance(Window + TimeSpan.FromSeconds(5));
 
         Assert.Equal(TimeSpan.Zero, svc.GetTakeOverWait());
         Assert.True(await svc.WaitForTakeOverConfirmationAsync().WaitAsync(Patience), "nothing to wait for");
@@ -207,21 +213,22 @@ public sealed class CheckoutServiceTakeOverWaitTests : IDisposable
     // ── Waiting it out ────────────────────────────────────────────────────────
 
     /// <summary>
-    /// Clicked at +10 seconds: the wait is the remaining 60 seconds and does not finish a second early.
+    /// Clicked at +10 seconds: the wait is the rest of the window and does not finish a second early.
     /// After the (fake) wait with no change in the heartbeat, the takeover goes ahead.
     /// </summary>
     [Fact]
-    public async Task ClickedAt10Seconds_WaitsTheRemaining60Seconds_ThenTakesOver()
+    public async Task ClickedAt10Seconds_WaitsTheRestOfTheWindow_ThenTakesOver()
     {
         var clock = new FakeTimeProvider();
         var (svc, lockSvc, _, _) = await OpenAtStalePromptAsync(clock);
         clock.Advance(TimeSpan.FromSeconds(10));
-        Assert.Equal(TimeSpan.FromSeconds(60), svc.GetTakeOverWait());
+        var rest = Window - TimeSpan.FromSeconds(10);
+        Assert.Equal(rest, svc.GetTakeOverWait());
 
         var wait = svc.WaitForTakeOverConfirmationAsync();
         Assert.False(wait.IsCompleted);
 
-        clock.Advance(TimeSpan.FromSeconds(59));
+        clock.Advance(rest - TimeSpan.FromSeconds(1));
         Assert.False(wait.IsCompleted, "one second still to go");
 
         clock.Advance(TimeSpan.FromSeconds(1));
@@ -251,7 +258,7 @@ public sealed class CheckoutServiceTakeOverWaitTests : IDisposable
         clock.Advance(TimeSpan.FromSeconds(30));
         WriteLock(db, "dead-or-asleep", heartbeat.AddSeconds(60));   // the holder renewed
         var lockBytes = File.ReadAllBytes(LockFileOf(db));
-        clock.Advance(TimeSpan.FromSeconds(30));
+        clock.Advance(Window - TimeSpan.FromSeconds(40));   // to the end of the window (10 s + 30 s have passed)
         Assert.True(await wait.WaitAsync(Patience));
 
         var outcome = await svc.ForceCheckoutAsync();
@@ -274,14 +281,15 @@ public sealed class CheckoutServiceTakeOverWaitTests : IDisposable
         var clock = new FakeTimeProvider();
         var (svc, lockSvc, db, heartbeat) = await OpenAtStalePromptAsync(clock);
 
-        // The user clicks Take over at once; during the full 70 s the live writer beats at 30 s and 60 s
-        // (its stamps still look 20 minutes old: the writer's clock is behind).
+        // The user clicks Take over at once; during the full 170 s the live writer beats at 30 s and 60 s, and goes on beating
+        // (its stamps still look 20 minutes old: the writer's clock is behind). The last beat is at 60 s; the wait then
+        // runs to the end of the window.
         var wait = svc.WaitForTakeOverConfirmationAsync();
         clock.Advance(TimeSpan.FromSeconds(30));
         WriteLock(db, "dead-or-asleep", heartbeat.AddSeconds(30));
         clock.Advance(TimeSpan.FromSeconds(30));
         WriteLock(db, "dead-or-asleep", heartbeat.AddSeconds(60));
-        clock.Advance(TimeSpan.FromSeconds(10));
+        clock.Advance(TimeSpan.FromSeconds(WriteLockService.StaleConfirmationSeconds - 60));
         Assert.True(await wait.WaitAsync(Patience));
 
         Assert.Equal(CheckoutOutcome.HolderActiveAgain, await svc.ForceCheckoutAsync());
@@ -372,7 +380,7 @@ public sealed class CheckoutServiceTakeOverWaitTests : IDisposable
     {
         var clock = new FakeTimeProvider();
         var (svc, lockSvc, db, _) = await OpenAtStalePromptAsync(clock);
-        clock.Advance(TimeSpan.FromSeconds(80));
+        clock.Advance(Window + TimeSpan.FromSeconds(10));
 
         await svc.ReleaseAsync(saveFirst: false);
         Assert.Equal(CheckoutOutcome.StaleHolder, await svc.CheckoutAsync(db));

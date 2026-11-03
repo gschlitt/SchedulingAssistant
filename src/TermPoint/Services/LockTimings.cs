@@ -7,7 +7,7 @@ namespace TermPoint.Services;
 /// <summary>
 /// The lock timers of <see cref="WriteLockService"/> as ONE set, divided by ONE whole-number scale factor (spec item 8.7, 1.2.4).
 /// The factor exists so a test build can make the lock's waiting (a heartbeat a minute, a lock stale after three minutes, a
-/// takeover confirmed after seventy seconds) take a third of the time, and so field tests of stale locks and takeovers need minutes
+/// takeover confirmed after 170 seconds) take a third of the time, and so field tests of stale locks and takeovers need minutes
 /// rather than the better part of an hour. The RATIOS between the timers are what keep the lock safe, so they are scaled together
 /// and never one by one.
 ///
@@ -15,7 +15,14 @@ namespace TermPoint.Services;
 /// poll interval, the stale-lock threshold, the stale confirmation, the wake-check interval and the wake threshold.
 /// <b>What is never scaled:</b> <see cref="NetworkFileOps.TimeoutMs"/> (the five-second deadline on every share call),
 /// <see cref="NetworkFileOps.MoveRetryDelayMs"/>, the lock-acquire retry delay, the waits on the program's own pending release,
-/// the restore's lock-release wait, the autosave interval (a user setting), and anything Windows owns.</para>
+/// the restore's lock-release wait, the autosave interval (a user setting), the two-second freshness of a lock-file check
+/// (<see cref="WriteLockService.LockCheckFreshness"/>), and anything Windows owns.</para>
+///
+/// <para><b>Test builds are not protected against a late-landing operation.</b> The stale confirmation (170 s) is long enough
+/// that no operation the old holder abandoned can still land, because Windows gives up an abandoned SMB delete or rename after
+/// about 85 s. That 85 s is Windows' and does not scale, so at a factor of 2 or 3 the confirmation (85 s or 57 s) is no longer
+/// longer than it. Test-timing builds (Sideload and Development only) can therefore see a delete or rename of an abandoned
+/// operation land after a takeover; a Store or installer build never runs scaled.</para>
 ///
 /// <para><b>When the factor is more than 1.</b> Only when BOTH hold: the install channel is <see cref="InstallChannel.Sideload"/>
 /// or <see cref="InstallChannel.Development"/> (never the Store or the downloadable installer, so a customer's copy can never run
@@ -47,7 +54,7 @@ internal sealed class LockTimings
     /// <summary>Production stale-lock threshold, in seconds, at factor 1.</summary>
     public const int StaleLockThresholdSeconds = WriteLockService.StaleLockThresholdSeconds;
 
-    /// <summary>Production stale confirmation, in seconds, at factor 1 (a heartbeat interval plus ten seconds).</summary>
+    /// <summary>Production stale confirmation, in seconds, at factor 1 (170 s: see <see cref="WriteLockService.StaleConfirmationSeconds"/> for the derivation).</summary>
     public const int StaleConfirmationSeconds = WriteLockService.StaleConfirmationSeconds;
 
     /// <summary>Production wake-check interval, in seconds, at factor 1.</summary>
@@ -90,7 +97,7 @@ internal sealed class LockTimings
     /// <summary>How long a heartbeat must stand still before the lock is stale (180 s at factor 1).</summary>
     public TimeSpan StaleLockThreshold { get; }
 
-    /// <summary>How long a heartbeat must have stood still before a confirmed takeover may go ahead (70 s at factor 1).</summary>
+    /// <summary>How long a heartbeat must have stood still before a confirmed takeover may go ahead (170 s at factor 1).</summary>
     public TimeSpan StaleConfirmation { get; }
 
     /// <summary>How often the wake check runs (30 s at factor 1).</summary>

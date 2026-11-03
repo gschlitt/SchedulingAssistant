@@ -47,6 +47,12 @@ public static class StaleLockPrompt
     /// </summary>
     private const double MaxPlausibleQuietMinutes = 365d * 24 * 60;
 
+    /// <summary>
+    /// From this many seconds of remaining wait the wait dialog says minutes ("up to 3 minutes") instead of seconds
+    /// ("up to 170 seconds"): a long wait reads better in minutes. Below it the text is in seconds.
+    /// </summary>
+    internal const int WaitInMinutesFromSeconds = 90;
+
     // ── Builders ──────────────────────────────────────────────────────────────
 
     /// <summary>
@@ -94,15 +100,22 @@ public static class StaleLockPrompt
     /// Builds the body of the wait dialog shown when the user chose "Take over" before the holder's
     /// heartbeat had stood still long enough to be sure (spec item 9b): "Checking that jsmith isn't still
     /// active in this database… (up to 45 seconds)". Without a usable name it says "the other user".
+    /// A wait of <see cref="WaitInMinutesFromSeconds"/> seconds or more is stated in minutes, rounded up:
+    /// "(up to 3 minutes)".
     /// </summary>
     /// <param name="holder">The lock holder the prompt was about; null when unknown.</param>
-    /// <param name="remaining">The longest the check can still take; shown rounded UP to whole seconds.</param>
+    /// <param name="remaining">
+    /// The longest the check can still take; shown rounded UP to whole seconds, or, from
+    /// <see cref="WaitInMinutesFromSeconds"/> seconds on, to whole minutes.
+    /// </param>
     /// <returns>The dialog body.</returns>
     public static string BuildWaitMessage(LockFileData? holder, TimeSpan remaining)
     {
         var seconds = Math.Max(1, (int)Math.Ceiling(remaining.TotalSeconds));
-        return $"Checking that {NameOrNull(holder) ?? "the other user"} isn't still active in this database… " +
-               $"(up to {seconds} {(seconds == 1 ? "second" : "seconds")})";
+        var upTo = seconds >= WaitInMinutesFromSeconds
+            ? FormatMinutes((long)Math.Ceiling(seconds / 60.0))
+            : $"{seconds} {(seconds == 1 ? "second" : "seconds")}";
+        return $"Checking that {NameOrNull(holder) ?? "the other user"} isn't still active in this database… (up to {upTo})";
     }
 
     // ── Helpers ───────────────────────────────────────────────────────────────
