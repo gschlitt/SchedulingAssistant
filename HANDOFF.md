@@ -1,10 +1,51 @@
-# Handoff: TermPoint 1.2.3 RELEASED on the Microsoft Store, 2026-10-28 (dev machine)
+# Handoff: TermPoint 1.2.4 in progress on branch `Version_1.2.4` (dev machine, 2026-11-02)
 
 Written at the end of a long session so a fresh conversation can pick up. Claude Code's memory and `CLAUDE.md` don't
 travel between machines (`CLAUDE.md` is gitignored), so everything a new agent needs is here or in the files this
-points to.
+points to. Older sections below (1.2.3 release) are kept for reference.
 
-**To start the new agent, say:** "Read `HANDOFF.md`, then help me start 1.2.4."
+**To start the new agent, say:** "Read `HANDOFF.md`, then let's continue 1.2.4."
+
+## Now (2026-11-02): 1.2.4 testing group 8, mostly done
+
+- **Branch:** all 1.2.4 work is on local branch **`Version_1.2.4`** (6 commits, aa34e6a … b41d9dc). **`master`** was
+  moved back to `1672168` = the released 1.2.3 code plus doc commits, so it stays hotfixable. **Nothing is pushed**
+  (`master` is 7 doc-only commits ahead of origin; pushing `master` redeploys the WASM demo). Greg controls branches
+  and commits; ask before each commit.
+- **The plan:** `designs/spec_version_1.2.4_summary.md` (progressive-reveal summary of `designs/spec_version_1.2.4.md`;
+  "Done" notes are on each finished item). Greg chose to do group 8 (testing) first.
+- **Done in group 8:** 8.1 wake check + heartbeat together; 8.3 another program holding a share file; 8.5 invariant I9
+  (rewrite only your own lock file); 8.6 message checks (I7 plain words, I8 one message per problem); 8.2 hang mode
+  (the 5 s deadline now reads a replaceable clock); 8.7 test-only lock timer scale (×2/×3, Sideload/Development +
+  `TERMPOINT_TEST_TIMINGS`; staleness judged at the holder's recorded scale); 8.4 one clock per computer. 8.12 partly
+  (two flaky tests remain).
+- **Fixed on the way:** F21 data loss (3.12): `CheckoutService.CleanupWorkingCopy` now refuses to delete a working
+  copy that still has its dirty marker (a failed demotion + Close deleted the edit). Also closes F2's close-time route.
+- **Left in group 8:** 8.8 PowerShell test scripts; 8.9 Hyper-V VMs as 2nd/3rd computer (Hyper-V enabled on this
+  desktop 2026-11-02, VT-x on; put VMs on drive E). Then 8.10/8.11.
+- **Open findings to fix (summary items):** 4.12 F19 + 4.14 F22 (check-then-act gaps on the lock file: a held
+  heartbeat puts its lock back over the new holder's; a held release deletes it). Fix together; lock-code change, so a
+  risk review first. 4.13 F20 (own leftover lock after a switch). 6.10 F17, 6.11 F18, 6.12 (false "Inactive" prompt
+  when the writer's clock is behind), 6.13 F23 (kept-changes banner outlives a Discard). Known findings now:
+  F2, F5, F6, F7, F16, F17, F18, F19, F20, F22, F23, A13 (`src/TermPoint.Tests/Harness/KnownFindings.cs`).
+- **Tests:** last full run with the harness 4159 passed, 0 failed, 3 skipped (~16–18 min):
+  `TERMPOINT_HARNESS=1 dotnet test src/TermPoint.Tests/TermPoint.Tests.csproj --nologo -v q -o E:/sa-verify --logger "trx;LogFileName=E:/sa-verify.trx"`.
+  Build output goes on drive E (C: is tight); delete with `cd /e && rm -rf ./name` (the absolute `rm -rf E:/...` form
+  is blocked by a safety check). Old run files `E:/sa-8*.trx/.txt/.log` can go.
+- **Working style Greg asked for:** decisions at Opus level, coding handed to Sonnet unless short; work economically
+  (tokens). Sonnet briefs: no commits/branches, no .md/.axaml edits, keep CRLF, never `sed -i`, never `taskkill /IM`.
+- **Uncommitted, Greg's:** `designs/schedule-overlay.md`. This file is uncommitted too.
+
+## Earlier (2026-11-01, cleanup before 1.2.4)
+
+- **Repo root cleaned up** (4521be0, 1672168): both version specs now live in `designs/` (`designs/spec_version_1.2.4.md`
+  is the next release); test plans in `docs/testing/`; retired files moved to `_recycle/` (git-ignored, kept locally).
+  New docs go in `designs/`, not the root. `designs/` stays tracked so it syncs between machines; the GitHub repo is
+  public, so treat it as public.
+- **Faster release testing** added to the 1.2.4 spec (harness gaps H1–H6, hand-test items T1–T5): the 1.2.3 field tests
+  mostly caught places where the harness simulates more kindly than reality; test timings (T1) touch lock code.
+- **Not pushed:** `master` is 7 doc-only commits ahead of `origin/master` (pushing `master` redeploys the WASM demo).
+  `designs/schedule-overlay.md` has an uncommitted change of Greg's.
 
 ## Where things are
 

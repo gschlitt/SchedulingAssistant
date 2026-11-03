@@ -150,6 +150,9 @@ Give each section type a colour, and colour sections by type in the Section List
 presentation in each view is still to be designed. Storage is one new field on the section-type record. Set brushes
 directly on each card, never through per-type style classes (performance rule).
 *Source: 1.2.3 spec, parking lot (P9).*
+
+**Update 2026-11-03:** Greg's request is now **colour by subject**, stored in AppSettings (no version gate). Spec:
+`designs/subject-colours.md` (Phase 1; Q1 asks whether it replaces section-type colours).
 </details>
 
 <details><summary><b>2.4 Hide sections that meet for only part of the semester</b></summary>
