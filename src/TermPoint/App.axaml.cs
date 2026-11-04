@@ -492,6 +492,9 @@ public partial class App : Application
         // already run CheckoutAsync, which sets Checkout.SourcePath to D, so it names the right database.
         RegisterFocusService(services, DesktopFocusDatabaseKey);
 
+        // Subject colours (colour-by-subject feature): one store over settings.json; palette read from AppColors.axaml.
+        RegisterSubjectColorStore(services);
+
         RegisterViewModels(services);
 
         services.AddTransient<SaveAndBackupViewModel>();
@@ -620,8 +623,35 @@ public partial class App : Application
         // or written to settings (the browser's settings do not survive a visit anyway).
         RegisterFocusService(services, () => null);
 
+        // Subject colours (colour-by-subject feature): one store over settings.json; palette read from AppColors.axaml.
+        RegisterSubjectColorStore(services);
+
         RegisterViewModels(services);
     }
+
+    /// <summary>
+    /// Reads the subject-colour palette from the application resources: <c>SubjectPalette01</c>, <c>SubjectPalette02</c>,
+    /// ... in <c>AppColors.axaml</c> (colours live there, never in code: CLAUDE.md), stopping at the first missing
+    /// number. Adding a colour is adding the next numbered resource.
+    /// </summary>
+    /// <returns>The palette in order as <c>#RRGGBB</c> strings (alpha dropped).</returns>
+    private static List<string> ReadSubjectPalette()
+    {
+        var palette = new List<string>();
+        var resources = Current!.Resources;
+        for (var n = 1; resources.TryGetResource($"SubjectPalette{n:00}", null, out var value)
+                        && value is Avalonia.Media.Color c; n++)
+            palette.Add($"#{c.R:X2}{c.G:X2}{c.B:X2}");
+        return palette;
+    }
+
+    /// <summary>
+    /// Registers <see cref="SubjectColorStore"/> as a singleton, built lazily (so the application resources exist)
+    /// with the palette from <see cref="ReadSubjectPalette"/>. Shared by the desktop and demo registrations.
+    /// </summary>
+    /// <param name="services">The collection to register into.</param>
+    private static void RegisterSubjectColorStore(IServiceCollection services) =>
+        services.AddSingleton(_ => new SubjectColorStore(ReadSubjectPalette()));
 
     /// <summary>
     /// Registers <see cref="FocusService"/> as a singleton over whichever repositories the container holds. Shared by

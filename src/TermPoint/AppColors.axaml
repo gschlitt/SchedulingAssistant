@@ -299,4 +299,23 @@
 	<!--  Out-of-focus instructors in the section editor's instructor list: lighter than normal text, still legible  -->
 	<SolidColorBrush x:Key="TextOutOfFocus" Color="#8A94A3" />
 
+	<!--
+		Subject colour suggestion palette (designs/subject-colours.md, Phase 4). Read IN ORDER (01, 02, ...) at startup
+		by App.ReadSubjectPalette and handed to SubjectColorStore; "Suggest colours" takes them in this order, each as
+		different as possible from the ones before it. Light colours only: every one must stay at least 7 : 1 contrast
+		with black text (SubjectPaletteTests checks this file). Blues are left out on purpose: the tile fill and the
+		filter highlight are blue. Opaque #RRGGBB only (no transparency, P2-4). To add a colour, add SubjectPalette12.
+	-->
+	<Color x:Key="SubjectPalette01">#B7E79D</Color> <!-- green -->
+	<Color x:Key="SubjectPalette02">#EBB4E6</Color> <!-- orchid -->
+	<Color x:Key="SubjectPalette03">#F8C58C</Color> <!-- orange -->
+	<Color x:Key="SubjectPalette04">#F2A89A</Color> <!-- salmon -->
+	<Color x:Key="SubjectPalette05">#F4E98A</Color> <!-- yellow -->
+	<Color x:Key="SubjectPalette06">#9EDCC8</Color> <!-- teal -->
+	<Color x:Key="SubjectPalette07">#DCC6A0</Color> <!-- tan -->
+	<Color x:Key="SubjectPalette08">#D8C4EE</Color> <!-- lavender -->
+	<Color x:Key="SubjectPalette09">#F5B0C8</Color> <!-- pink -->
+	<Color x:Key="SubjectPalette10">#D4EC8E</Color> <!-- lime -->
+	<Color x:Key="SubjectPalette11">#D0D0D0</Color> <!-- grey -->
+
 </ResourceDictionary>

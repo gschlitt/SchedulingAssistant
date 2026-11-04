@@ -1,4 +1,5 @@
 using System.Text.Json;
+using System.Text.Json.Serialization;
 using TermPoint.Models;
 
 namespace TermPoint.Services;
@@ -205,7 +206,33 @@ public class AppSettings
     /// </summary>
     public Models.ConflictDisplayMode SectionConflictDisplay { get; set; } = Models.ConflictDisplayMode.Full;
 
-/// <summary>Last path used for PNG schedule export.</summary>
+    /// <summary>
+    /// Subject colours (colour-by-subject feature): subject abbreviation to <c>"#RRGGBB"</c>. Keys are written trimmed
+    /// and upper-case, by <see cref="SubjectColorStore"/> only; nothing else reads or writes this dictionary. An entry
+    /// whose value does not parse is ignored when read and left untouched in the file. A settings file written before
+    /// this property existed deserializes to an empty dictionary (no colours), and an older TermPoint ignores the
+    /// unknown key, so no migration is needed either way.
+    /// </summary>
+    public Dictionary<string, string> SubjectColors { get; set; } = new();
+
+    /// <summary>
+    /// When subject colours are shown (see <see cref="Models.SubjectColorDisplay"/>). A settings file written before
+    /// this property existed deserializes to the default, and an older TermPoint ignores the unknown key, so no
+    /// migration is needed either way. A stored number that is not a defined value is read as the default by
+    /// <see cref="SubjectColorStore"/>. Default: <see cref="Models.SubjectColorDisplay.OnlyWhenSeveral"/>.
+    /// </summary>
+    public SubjectColorDisplay SubjectColorDisplay { get; set; } = SubjectColorDisplay.OnlyWhenSeveral;
+
+    /// <summary>
+    /// Settings keys found in <c>settings.json</c> that this version of TermPoint does not declare, kept so that
+    /// saving does not delete them: a later version's settings survive a load and save by this one (spec
+    /// subject-colours P4-4). Same mechanism as <see cref="PersistedRecord.ExtensionData"/>. Null when there are none
+    /// (the normal case), in which case nothing extra is written. Entries are written back verbatim as sibling keys.
+    /// </summary>
+    [JsonExtensionData]
+    public Dictionary<string, JsonElement>? ExtensionData { get; set; }
+
+    /// <summary>Last path used for PNG schedule export.</summary>
     public string? LastExportPath { get; set; }
 
     /// <summary>Last path used for workload report CSV export.</summary>
