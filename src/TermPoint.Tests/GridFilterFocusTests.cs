@@ -113,7 +113,9 @@ public sealed class GridFilterFocusTests : IDisposable
         _list = new SectionListViewModel(
             _sectionRepo, _courseRepo, _subjectRepo, _instructorRepo, _roomRepo, new LegalStartTimeRepository(db),
             _semesterRepo, new BlockPatternRepository(db), new SectionCodePatternRepository(db), _semesterContext,
-            _sectionStore, envRepo, campusRepo, meetingRepo, new NullDialog(), _fx.Lock, _focus);
+            _sectionStore, envRepo, campusRepo, meetingRepo, new NullDialog(), _fx.Lock, _focus,
+            new SubjectColorPresenter(new SubjectColorStore([], () => new AppSettings()), _focus, _sectionStore,
+                _courseRepo, _subjectRepo));
 
         _grid = new ScheduleGridViewModel(
             _sectionRepo, _courseRepo, _instructorRepo, _roomRepo, _subjectRepo, envRepo, campusRepo,

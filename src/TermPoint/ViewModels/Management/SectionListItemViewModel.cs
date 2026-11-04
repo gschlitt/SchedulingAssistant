@@ -226,6 +226,29 @@ public partial class SectionListItemViewModel : ObservableObject, ISectionListEn
         OnPropertyChanged(nameof(HasPropertyLines));
     }
 
+    // ── Subject colour chip (colour by subject, designs/subject-colours.md) ─────
+
+    /// <summary>
+    /// Answers this card's chip colour (normally <see cref="SubjectColorPresenter.ColorFor"/>), or null when the card
+    /// never shows a chip. Kept so <see cref="RefreshSubjectChip"/> can ask again.
+    /// </summary>
+    private readonly Func<Section, string>? _subjectChipColorFor;
+
+    /// <summary>
+    /// The background colour behind the heading text, as <c>#RRGGBB</c>, or empty for none (the heading then looks
+    /// exactly as it did before subject colours existed). Set when the card is built and by
+    /// <see cref="RefreshSubjectChip"/>; the view turns it into a brush.
+    /// </summary>
+    [ObservableProperty]
+    private string _subjectChipColor;
+
+    /// <summary>
+    /// Asks for this card's chip colour again, after the subject colours, the display mode or the "colours on?"
+    /// answer changed (<see cref="SubjectColorPresenter.Changed"/>). Raises a change only when the colour differs.
+    /// </summary>
+    public void RefreshSubjectChip() =>
+        SubjectChipColor = _subjectChipColorFor?.Invoke(Section) ?? "";
+
     /// <summary>True when this is a temporary placeholder being added/copied (not yet saved).</summary>
     [ObservableProperty] private bool _isBeingCreated;
 
@@ -280,9 +303,13 @@ public partial class SectionListItemViewModel : ObservableObject, ISectionListEn
         Dictionary<string, SchedulingEnvironmentValue> reserveLookup,
         Dictionary<string, SchedulingEnvironmentValue> meetingTypeLookup,
         string semesterName = "",
-        string semesterColor = "")
+        string semesterColor = "",
+        Func<Section, string>? subjectChipColorFor = null)
     {
         Section = section;
+
+        _subjectChipColorFor = subjectChipColorFor;
+        _subjectChipColor = subjectChipColorFor?.Invoke(section) ?? "";
 
         SemesterName = semesterName;
         SemesterColor = semesterColor;

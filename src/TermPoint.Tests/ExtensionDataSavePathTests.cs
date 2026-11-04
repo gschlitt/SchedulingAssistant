@@ -95,7 +95,8 @@ public sealed class ExtensionDataSavePathTests : IDisposable
             _legalRepo, _semesterRepo, _blockPatternRepo, _codePatternRepo,
             _semesterContext, _sectionStore, _envRepo, _campusRepo, _meetingRepo,
             _dialog, _fx.Lock,
-            FocusTestSupport.AllFocus(_semesterContext, _sectionStore));
+            FocusTestSupport.AllFocus(_semesterContext, _sectionStore),
+            FocusTestSupport.NoColours(_courseRepo, _subjectRepo, _sectionStore));
 
     // ══════════════════════════════════════════════════════════════════════════
     // List view models whose Edit works on a hand-built copy of the selected record

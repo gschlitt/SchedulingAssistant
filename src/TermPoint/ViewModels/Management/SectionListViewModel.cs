@@ -38,6 +38,14 @@ public partial class SectionListViewModel : ViewModelBase, IDisposable
     private readonly FocusService _focus;
 
     /// <summary>
+    /// Subject colours (colour by subject): gives each card its heading chip colour, and raises
+    /// <see cref="SubjectColorPresenter.Changed"/> when those may differ, which refreshes every card in place.
+    /// Taken as a constructor dependency so it is built, and subscribes to <see cref="SectionStore.SectionsChanged"/>,
+    /// before this VM: its answers are then fresh when <see cref="Reload"/> rebuilds the cards.
+    /// </summary>
+    private readonly SubjectColorPresenter _subjectColors;
+
+    /// <summary>
     /// True only while <see cref="OnStoreSelectionChanged"/> clears <see cref="SelectedItem"/> because the section
     /// the store selected has no card (it is outside the focus). Stops <see cref="OnSelectedItemChanged"/> from
     /// pushing that null back into the store.
@@ -170,6 +178,17 @@ public partial class SectionListViewModel : ViewModelBase, IDisposable
     }
 
     /// <summary>
+    /// Re-reads every card's subject chip colour (<see cref="SectionListItemViewModel.RefreshSubjectChip"/>), the
+    /// way <see cref="OnAppSettingChanged"/> refreshes property lines: the cards stay, only the changed colours
+    /// raise a property change.
+    /// </summary>
+    private void RefreshSubjectChips()
+    {
+        foreach (var item in SectionItems.OfType<SectionListItemViewModel>())
+            item.RefreshSubjectChip();
+    }
+
+    /// <summary>
     /// The currently selected section item, or null if nothing is selected or a banner is selected.
     /// Safe to use without type-casting.
     /// </summary>
@@ -299,9 +318,11 @@ public partial class SectionListViewModel : ViewModelBase, IDisposable
         IMeetingRepository meetingRepo,
         IDialogService dialog,
         WriteLockService lockService,
-        FocusService focus)
+        FocusService focus,
+        SubjectColorPresenter subjectColors)
     {
         _focus = focus;
+        _subjectColors = subjectColors;
         _sectionRepo = sectionRepo;
         _courseRepo = courseRepo;
         _subjectRepo = subjectRepo;
@@ -338,6 +359,9 @@ public partial class SectionListViewModel : ViewModelBase, IDisposable
         // A changed focus (picker, Show all, tour start, a deleted subject) shows a different set of cards.
         // The service refuses a change while an editor is open, so the rebuild never closes unapplied edits.
         _focus.FocusChanged += Reload;
+
+        // New subject colours, display mode or "colours on?" answer: repaint every card's chip in place (no reload).
+        _subjectColors.Changed += RefreshSubjectChips;
 
         _sortMode = AppSettings.Current.SectionSortMode;
         _selectedSortModeIndex = SortModeToIndex(_sortMode);
@@ -613,7 +637,8 @@ public partial class SectionListViewModel : ViewModelBase, IDisposable
     private SectionListItemViewModel CreateSectionItem(
         Section s, ItemLookups lk, string semesterName, string semesterColor) =>
         new(s, lk.Courses, lk.Instructors, lk.Rooms, lk.SectionTypes, lk.Campuses,
-            lk.Tags, lk.Resources, lk.Reserves, lk.MeetingTypes, semesterName, semesterColor);
+            lk.Tags, lk.Resources, lk.Reserves, lk.MeetingTypes, semesterName, semesterColor,
+            _subjectColors.ColorFor);
 
     /// <summary>
     /// Fast path for refreshing the list after editing a single existing section: replaces just
@@ -1178,7 +1203,7 @@ public partial class SectionListViewModel : ViewModelBase, IDisposable
     /// </summary>
     /// <param name="section">The new section model that the placeholder represents.</param>
     /// <param name="ctx">Editor context containing all needed list data.</param>
-    private static SectionListItemViewModel BuildPlaceholder(Section section, EditorContext ctx)
+    private SectionListItemViewModel BuildPlaceholder(Section section, EditorContext ctx)
     {
         var placeholder = new SectionListItemViewModel(
             section,
@@ -1190,7 +1215,8 @@ public partial class SectionListViewModel : ViewModelBase, IDisposable
             ctx.AllTags.ToDictionary(v => v.Id),
             ctx.AllResources.ToDictionary(v => v.Id),
             ctx.AllReserves.ToDictionary(v => v.Id),
-            ctx.MeetingTypes.ToDictionary(v => v.Id));
+            ctx.MeetingTypes.ToDictionary(v => v.Id),
+            subjectChipColorFor: _subjectColors.ColorFor);
         placeholder.IsBeingCreated = true;
         return placeholder;
     }
@@ -1601,6 +1627,7 @@ public partial class SectionListViewModel : ViewModelBase, IDisposable
         _sectionStore.FilteredIdsChanged -= ApplyFilterHighlights;
         AppSettings.SettingChanged -= OnAppSettingChanged;
         _focus.FocusChanged -= Reload;
+        _subjectColors.Changed -= RefreshSubjectChips;
     }
 
     // ── Debug / Dev ────────────────────────────────────────────────────────────

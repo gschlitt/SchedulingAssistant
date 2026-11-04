@@ -494,6 +494,7 @@ public partial class App : Application
 
         // Subject colours (colour-by-subject feature): one store over settings.json; palette read from AppColors.axaml.
         RegisterSubjectColorStore(services);
+        RegisterSubjectColorPresenter(services);
 
         RegisterViewModels(services);
 
@@ -625,6 +626,7 @@ public partial class App : Application
 
         // Subject colours (colour-by-subject feature): one store over settings.json; palette read from AppColors.axaml.
         RegisterSubjectColorStore(services);
+        RegisterSubjectColorPresenter(services);
 
         RegisterViewModels(services);
     }
@@ -652,6 +654,20 @@ public partial class App : Application
     /// <param name="services">The collection to register into.</param>
     private static void RegisterSubjectColorStore(IServiceCollection services) =>
         services.AddSingleton(_ => new SubjectColorStore(ReadSubjectPalette()));
+
+    /// <summary>
+    /// Registers <see cref="SubjectColorPresenter"/> as a singleton: the one place both views ask "are colours on?"
+    /// and "what is this section's colour?". Shared by the desktop and demo registrations.
+    /// </summary>
+    /// <param name="services">The collection to register into.</param>
+    private static void RegisterSubjectColorPresenter(IServiceCollection services) =>
+        services.AddSingleton(sp => new SubjectColorPresenter(
+            sp.GetRequiredService<SubjectColorStore>(),
+            // A constructor dependency so FocusService is built, and subscribes to SectionsChanged, first.
+            sp.GetRequiredService<FocusService>(),
+            sp.GetRequiredService<SectionStore>(),
+            sp.GetRequiredService<ICourseRepository>(),
+            sp.GetRequiredService<ISubjectRepository>()));
 
     /// <summary>
     /// Registers <see cref="FocusService"/> as a singleton over whichever repositories the container holds. Shared by
