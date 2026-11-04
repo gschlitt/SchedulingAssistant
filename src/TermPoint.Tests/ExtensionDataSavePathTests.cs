@@ -115,7 +115,8 @@ public sealed class ExtensionDataSavePathTests : IDisposable
         _fx.Stamp("Courses", course.Id);
 
         var vm = new CourseListViewModel(_courseRepo, _subjectRepo, _envRepo, _dialog, _sectionRepo,
-            _semesterRepo, _ayRepo, _instructorRepo, _fx.Lock, _sectionStore);
+            _semesterRepo, _ayRepo, _instructorRepo, _fx.Lock, _sectionStore,
+            new SubjectColorStore(new[] { "#B7E79D" }, () => new AppSettings()));
         vm.SelectedCourse = vm.Courses.Single();
         vm.EditCommand.Execute(null);
         vm.EditVm!.CourseTitle = "Intro to History";
@@ -137,7 +138,8 @@ public sealed class ExtensionDataSavePathTests : IDisposable
         _fx.Stamp("Subjects", subject.Id);
 
         var vm = new CourseListViewModel(_courseRepo, _subjectRepo, _envRepo, _dialog, _sectionRepo,
-            _semesterRepo, _ayRepo, _instructorRepo, _fx.Lock, _sectionStore);
+            _semesterRepo, _ayRepo, _instructorRepo, _fx.Lock, _sectionStore,
+            new SubjectColorStore(new[] { "#B7E79D" }, () => new AppSettings()));
         vm.SelectedSubject = vm.Subjects.Single();
         vm.EditSubjectCommand.Execute(null);
         vm.SubjectEditVm!.Name = "World History";

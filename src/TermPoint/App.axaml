@@ -51,6 +51,10 @@
 			<!--  Weight of headings inside flyout bodies (the Import Sections problems heading and the "New in TermPoint" group headings)  -->
 			<FontWeight x:Key="FlyoutHeadingWeight">SemiBold</FontWeight>
 
+			<!--  Font of the section card heading (e.g. "BIOL 105 AB1"). The section card heading should use these too; the subject colour chooser's preview chip already does  -->
+			<x:Double x:Key="SectionHeadingFontSize">12</x:Double>
+			<FontWeight x:Key="SectionHeadingFontWeight">SemiBold</FontWeight>
+
 			<!--  Converters  -->
 			<conv:MinutesToTimeConverter x:Key="MinutesToTimeConverter" />
 			<conv:MultiSemesterLeftBorderThicknessConverter x:Key="MultiSemesterLeftBorderThicknessConverter" />
@@ -68,6 +72,23 @@
 		<SimpleTheme />
 		<StyleInclude Source="avares://Avalonia.Controls.DataGrid/Themes/Simple.xaml" />
 		<StyleInclude Source="avares://Avalonia.Controls.ColorPicker/Themes/Simple/Simple.xaml" />
+
+		<!--
+			Colour choosers (subjects, semesters, wizard): hide the ColorView's tab strip.
+			Since the Avalonia 12 upgrade its tab icons and palette swatches render blank, leaving an empty
+			pale band above the spectrum. Every chooser only needs the spectrum tab (the default tab), so the
+			strip (the TabControl's header ItemsPresenter), its background band and the content's 48 px top
+			offset are removed. Applies only inside ColorView templates, so no other control pays for it.
+		-->
+		<Style Selector="ColorView /template/ TabControl#PART_TabControl /template/ ItemsPresenter">
+			<Setter Property="IsVisible" Value="False" />
+		</Style>
+		<Style Selector="ColorView /template/ Border#TabBackgroundBorder">
+			<Setter Property="IsVisible" Value="False" />
+		</Style>
+		<Style Selector="ColorView /template/ Border#ContentBackgroundBorder">
+			<Setter Property="Margin" Value="0" />
+		</Style>
 
 		<!--
 			Inter is the application-wide font. It is registered as the default in

@@ -16,6 +16,7 @@ public partial class CourseListViewModel : ViewModelBase, IDismissableEditor, ID
     private readonly IDialogService _dialog;
     private readonly WriteLockService _lockService;
     private readonly SectionStore _sectionStore;
+    private readonly SubjectColorStore _colorStore;
 
     /// <summary>True when this instance holds the write lock; gates all write-capable buttons.</summary>
     public bool IsWriteEnabled => _lockService.IsWriter;
@@ -56,7 +57,8 @@ public partial class CourseListViewModel : ViewModelBase, IDismissableEditor, ID
         IAcademicYearRepository academicYearRepo,
         IInstructorRepository instructorRepo,
         WriteLockService lockService,
-        SectionStore sectionStore)
+        SectionStore sectionStore,
+        SubjectColorStore colorStore)
     {
         _courseRepo = courseRepo;
         _sectionRepo = sectionRepo;
@@ -65,16 +67,148 @@ public partial class CourseListViewModel : ViewModelBase, IDismissableEditor, ID
         _dialog = dialog;
         _lockService = lockService;
         _sectionStore = sectionStore;
+        _colorStore = colorStore;
+        _colorStore.Changed += OnColorStoreChanged;
         _lockService.LockStateChanged += OnLockStateChanged;
         CourseHistoryVm = new CourseHistoryViewModel(sectionRepo, semesterRepo, academicYearRepo, instructorRepo);
 
         ShowOnlyActive = AppSettings.Current.ShowOnlyActiveCourses;
 
         Subjects = new ObservableCollection<Subject>(_subjectRepo.GetAll());
+        RebuildSubjectRows();
         if (Subjects.Count > 0)
             SelectedSubject = Subjects[0];
 
         LoadCourses();
+    }
+
+    // ── Subject colours (personal settings, never the database: none of this checks the write lock) ──
+
+    /// <summary>
+    /// One row per entry of <see cref="Subjects"/>, in the same order, for the Subjects grid (name, abbreviation
+    /// and colour swatch). <see cref="Subjects"/> stays the source other code reads (tour, section editor).
+    /// </summary>
+    [ObservableProperty] private ObservableCollection<SubjectRowViewModel> _subjectRows = new();
+
+    /// <summary>The grid's selected row; kept in step with <see cref="SelectedSubject"/> in both directions.</summary>
+    [ObservableProperty] private SubjectRowViewModel? _selectedSubjectRow;
+
+    /// <summary>The three ways colours can be shown, with the words the user sees.</summary>
+    public IReadOnlyList<SubjectColorDisplayOption> DisplayOptions { get; } = new SubjectColorDisplayOption[]
+    {
+        new(SubjectColorDisplay.Always, "Always"),
+        new(SubjectColorDisplay.OnlyWhenSeveral, "Only when more than one subject is shown"),
+        new(SubjectColorDisplay.Never, "Never"),
+    };
+
+    /// <summary>How colours are shown; reads and writes the store (which saves and raises its change events).</summary>
+    public SubjectColorDisplay SelectedDisplay
+    {
+        get => _colorStore.Display;
+        set => _colorStore.Display = value;
+    }
+
+    /// <summary>The <see cref="DisplayOptions"/> entry for <see cref="SelectedDisplay"/>, for the ComboBox.</summary>
+    public SubjectColorDisplayOption SelectedDisplayOption
+    {
+        get => DisplayOptions.First(o => o.Value == SelectedDisplay);
+        set { if (value is not null) SelectedDisplay = value.Value; }
+    }
+
+    /// <summary>True when at least one subject of this database has a colour (shows the display choice; enables Clear).</summary>
+    public bool HasAnyColour => _colorStore.HasAnyColor(SubjectAbbreviations());
+
+    /// <summary>True when some subject with an abbreviation has no colour yet (enables Suggest).</summary>
+    public bool CanSuggest => Subjects.Any(s => !string.IsNullOrWhiteSpace(s.CalendarAbbreviation)
+                                                && _colorStore.GetColor(s.CalendarAbbreviation) is null);
+
+    /// <summary>True when two subjects of this database have the same colour (normalised); shows a note.</summary>
+    public bool HasSharedColours => Subjects
+        .Select(s => _colorStore.GetColor(s.CalendarAbbreviation))
+        .Where(c => c is not null)
+        .GroupBy(c => c!, StringComparer.OrdinalIgnoreCase)
+        .Any(g => g.Count() > 1);
+
+    /// <summary>The abbreviations of this database's subjects (blank ones included; the store skips them).</summary>
+    private List<string> SubjectAbbreviations() => Subjects.Select(s => s.CalendarAbbreviation).ToList();
+
+    /// <summary>
+    /// Rebuilds <see cref="SubjectRows"/> from <see cref="Subjects"/>. The selected row is re-pointed without touching
+    /// <see cref="SelectedSubject"/>; the caller then usually sets <see cref="SelectedSubject"/>, which selects the
+    /// matching new row.
+    /// </summary>
+    private void RebuildSubjectRows()
+    {
+        _syncingSubjectSelection = true;
+        try
+        {
+            SubjectRows = new ObservableCollection<SubjectRowViewModel>(
+                Subjects.Select(s => new SubjectRowViewModel(s, _colorStore)));
+            SelectedSubjectRow = SubjectRows.FirstOrDefault(r => r.Subject == SelectedSubject);
+        }
+        finally { _syncingSubjectSelection = false; }
+        RaiseColourStateChanged();
+    }
+
+    /// <summary>True while one of the two selection properties is being set from the other (breaks the loop).</summary>
+    private bool _syncingSubjectSelection;
+
+    /// <summary>Selecting a subject elsewhere (code, tour) selects its grid row.</summary>
+    /// <param name="value">The newly selected subject, or null.</param>
+    partial void OnSelectedSubjectChanged(Subject? value)
+    {
+        if (_syncingSubjectSelection) return;
+        _syncingSubjectSelection = true;
+        try { SelectedSubjectRow = SubjectRows.FirstOrDefault(r => r.Subject == value); }
+        finally { _syncingSubjectSelection = false; }
+    }
+
+    /// <summary>Selecting a grid row selects its subject.</summary>
+    /// <param name="value">The newly selected row, or null.</param>
+    partial void OnSelectedSubjectRowChanged(SubjectRowViewModel? value)
+    {
+        if (_syncingSubjectSelection) return;
+        _syncingSubjectSelection = true;
+        try { SelectedSubject = value?.Subject; }
+        finally { _syncingSubjectSelection = false; }
+    }
+
+    /// <summary>The store changed (here, or on another screen): re-read every row and the colour state.</summary>
+    private void OnColorStoreChanged()
+    {
+        foreach (var row in SubjectRows) row.RefreshFromStore();
+        RaiseColourStateChanged();
+    }
+
+    /// <summary>Tells the view to re-read the colour properties and re-evaluates the two colour commands.</summary>
+    private void RaiseColourStateChanged()
+    {
+        OnPropertyChanged(nameof(HasAnyColour));
+        OnPropertyChanged(nameof(CanSuggest));
+        OnPropertyChanged(nameof(HasSharedColours));
+        OnPropertyChanged(nameof(SelectedDisplay));
+        OnPropertyChanged(nameof(SelectedDisplayOption));
+        SuggestColoursCommand.NotifyCanExecuteChanged();
+        ClearColoursCommand.NotifyCanExecuteChanged();
+    }
+
+    /// <summary>Gives every subject of this database that has no colour a palette colour; existing colours stay.</summary>
+    [RelayCommand(CanExecute = nameof(CanSuggest))]
+    private void SuggestColours() => _colorStore.ApplySuggestions(SubjectAbbreviations());
+
+    /// <summary>
+    /// Asks, then removes the colours of this database's subjects (other databases' abbreviations keep theirs).
+    /// </summary>
+    [RelayCommand(CanExecute = nameof(HasAnyColour))]
+    private async Task ClearColoursAsync()
+    {
+        var n = Subjects.Count(s => _colorStore.GetColor(s.CalendarAbbreviation) is not null);
+        if (n == 0) return;
+        var message = n == 1
+            ? "Remove the colour of 1 subject in this database? You can't undo this."
+            : $"Remove the colours of all {n} subjects in this database? You can't undo this.";
+        if (await _dialog.Confirm(message, "Remove colours"))
+            _colorStore.ClearColors(SubjectAbbreviations());
     }
 
     public bool HasSubjects => Subjects.Count > 0;
@@ -247,6 +381,7 @@ public partial class CourseListViewModel : ViewModelBase, IDismissableEditor, ID
     {
         LastErrorMessage = null;
         if (SelectedSubject is null) return;
+        var originalAbbreviation = SelectedSubject.CalendarAbbreviation;
         // Save writes the whole copy back, so unknown JSON fields (spec item 3) are carried over too.
         var clone = new Subject
         {
@@ -257,7 +392,17 @@ public partial class CourseListViewModel : ViewModelBase, IDismissableEditor, ID
         SubjectEditVm = new SubjectEditViewModel(clone, isNew: false,
             onSave: async s =>
             {
-                try { _subjectRepo.Update(s); LoadSubjects(); SelectedSubject = Subjects.FirstOrDefault(x => x.Id == s.Id); SubjectEditVm = null; }
+                try
+                {
+                    _subjectRepo.Update(s);
+                    // A renamed abbreviation keeps its colour: copy it before the rows are rebuilt.
+                    if (!string.Equals(originalAbbreviation?.Trim(), s.CalendarAbbreviation?.Trim(), StringComparison.OrdinalIgnoreCase)
+                        && !string.IsNullOrWhiteSpace(originalAbbreviation) && !string.IsNullOrWhiteSpace(s.CalendarAbbreviation))
+                        _colorStore.CopyColor(originalAbbreviation, s.CalendarAbbreviation);
+                    LoadSubjects();
+                    SelectedSubject = Subjects.FirstOrDefault(x => x.Id == s.Id);
+                    SubjectEditVm = null;
+                }
                 catch (Exception ex) { App.Logger.LogError(ex, "CourseListViewModel.EditSubject"); LastErrorMessage = WriteFailureText.For(ex, "The save could not be completed. Please try again."); }
                 await Task.CompletedTask;
             },
@@ -294,6 +439,7 @@ public partial class CourseListViewModel : ViewModelBase, IDismissableEditor, ID
     private void LoadSubjects()
     {
         Subjects = new ObservableCollection<Subject>(_subjectRepo.GetAll());
+        RebuildSubjectRows();
         if (Subjects.Count > 0)
             SelectedSubject = Subjects[0];
         else
@@ -329,5 +475,15 @@ public partial class CourseListViewModel : ViewModelBase, IDismissableEditor, ID
     public void Dispose()
     {
         _lockService.LockStateChanged -= OnLockStateChanged;
+        _colorStore.Changed -= OnColorStoreChanged;
     }
+}
+
+/// <summary>One choice in the "Show subject colours" list: the setting value and the words the user sees.</summary>
+/// <param name="Value">The setting this choice stands for.</param>
+/// <param name="Label">The text shown in the list.</param>
+public sealed record SubjectColorDisplayOption(SubjectColorDisplay Value, string Label)
+{
+    /// <summary>The label, so a ComboBox with no item template shows the words.</summary>
+    public override string ToString() => Label;
 }

@@ -298,19 +298,91 @@
                             CanUserSortColumns="True"
                             IsReadOnly="True"
                             IsVisible="{Binding SubjectEditVm, Converter={x:Static ObjectConverters.IsNull}}"
-                            ItemsSource="{Binding Subjects}"
-                            SelectedItem="{Binding SelectedSubject}">
+                            ItemsSource="{Binding SubjectRows}"
+                            SelectedItem="{Binding SelectedSubjectRow}">
                             <DataGrid.Columns>
                                 <DataGridTextColumn
                                     Width="Auto"
                                     MinWidth="160"
-                                    Binding="{Binding Name}"
+                                    Binding="{Binding Subject.Name}"
                                     Header="Name" />
                                 <DataGridTextColumn
                                     Width="Auto"
                                     MinWidth="160"
-                                    Binding="{Binding CalendarAbbreviation}"
+                                    Binding="{Binding Subject.CalendarAbbreviation}"
                                     Header="Calendar Abbreviation" />
+
+                                <!--  Colour swatch: opens a chooser flyout; the colour is saved when the flyout closes.
+                                      A personal setting, so deliberately not gated by IsWriteEnabled.  -->
+                                <DataGridTemplateColumn Width="Auto" Header="Colour">
+                                    <DataGridTemplateColumn.CellTemplate>
+                                        <DataTemplate DataType="vm:SubjectRowViewModel">
+                                            <Button
+                                                Padding="0"
+                                                HorizontalAlignment="Center"
+                                                VerticalAlignment="Center"
+                                                b:FlyoutClosedCommandBehavior.Command="{Binding CommitCommand}"
+                                                Background="Transparent"
+                                                BorderThickness="0"
+                                                ToolTip.Tip="Click to choose a colour">
+                                                <Button.Flyout>
+                                                    <Flyout Placement="BottomEdgeAlignedLeft">
+                                                        <StackPanel Margin="4" Spacing="6">
+                                                            <ColorView
+                                                                HexInputAlphaPosition="Trailing"
+                                                                IsAccentColorsVisible="False"
+                                                                IsAlphaEnabled="False"
+                                                                IsAlphaVisible="False"
+                                                                IsColorComponentsVisible="False"
+                                                                IsColorModelVisible="False"
+                                                                IsColorPaletteVisible="True"
+                                                                IsColorPreviewVisible="False"
+                                                                IsColorSpectrumSliderVisible="True"
+                                                                IsColorSpectrumVisible="True"
+                                                                Color="{Binding ColorHex, Mode=TwoWay, Converter={StaticResource HexToColorConverter}}" />
+                                                            <!--  Preview chip: sample section code in the card heading font on the chosen colour (card background when none)  -->
+                                                            <Border HorizontalAlignment="Left" Background="{StaticResource TileFill}">
+                                                                <TextBlock
+                                                                    Padding="3,0"
+                                                                    Background="{Binding ColorHex, Converter={StaticResource HexToBrushConverter}}"
+                                                                    FontSize="{StaticResource SectionHeadingFontSize}"
+                                                                    FontWeight="{StaticResource SectionHeadingFontWeight}"
+                                                                    Text="{Binding PreviewText}" />
+                                                            </Border>
+                                                            <TextBlock
+                                                                MaxWidth="260"
+                                                                FontSize="{StaticResource FontSizeSmall}"
+                                                                Foreground="{StaticResource TextMuted}"
+                                                                IsVisible="{Binding IsTooDark}"
+                                                                Text="Black text may be hard to read on this colour."
+                                                                TextWrapping="Wrap" />
+                                                            <Button
+                                                                HorizontalAlignment="Left"
+                                                                Command="{Binding ClearColorCommand}"
+                                                                Content="No colour" />
+                                                        </StackPanel>
+                                                    </Flyout>
+                                                </Button.Flyout>
+                                                <Grid Width="48" Height="18">
+                                                    <Border
+                                                        Background="{Binding ColorHex, Converter={StaticResource HexToBrushConverter}}"
+                                                        BorderBrush="{StaticResource SeparatorLine}"
+                                                        BorderThickness="1"
+                                                        CornerRadius="3"
+                                                        IsVisible="{Binding HasColor}" />
+                                                    <!--  No colour yet: a dashed outline instead of a filled swatch  -->
+                                                    <Rectangle
+                                                        RadiusX="3"
+                                                        RadiusY="3"
+                                                        Stroke="{StaticResource SeparatorLine}"
+                                                        StrokeDashArray="3,2"
+                                                        StrokeThickness="1"
+                                                        IsVisible="{Binding HasColor, Converter={x:Static BoolConverters.Not}}" />
+                                                </Grid>
+                                            </Button>
+                                        </DataTemplate>
+                                    </DataGridTemplateColumn.CellTemplate>
+                                </DataGridTemplateColumn>
                             </DataGrid.Columns>
                         </DataGrid>
 
@@ -328,7 +400,28 @@
                                 Command="{Binding DeleteSubjectCommand}"
                                 Content="Delete Subject"
                                 IsEnabled="{Binding SelectedSubject, Converter={x:Static ObjectConverters.IsNotNull}}" />
+                            <!--  Colour buttons: personal settings, so not gated by write access  -->
+                            <Button Command="{Binding SuggestColoursCommand}" Content="Suggest colours" />
+                            <Button Command="{Binding ClearColoursCommand}" Content="Clear colours" />
                         </StackPanel>
+
+                        <!--  Display choice: only meaningful once some subject has a colour  -->
+                        <StackPanel
+                            IsVisible="{Binding HasAnyColour}"
+                            Orientation="Horizontal"
+                            Spacing="8">
+                            <TextBlock VerticalAlignment="Center" Text="Show subject colours:" />
+                            <ComboBox ItemsSource="{Binding DisplayOptions}" SelectedItem="{Binding SelectedDisplayOption}" />
+                        </StackPanel>
+
+                        <TextBlock
+                            MaxWidth="460"
+                            FontSize="{StaticResource FontSizeSmall}"
+                            Foreground="{StaticResource TextMuted}"
+                            HorizontalAlignment="Left"
+                            IsVisible="{Binding HasSharedColours}"
+                            Text="Some subjects share a colour: there are more subjects than clearly different colours."
+                            TextWrapping="Wrap" />
                     </StackPanel>
                 </StackPanel>
             </ScrollViewer>

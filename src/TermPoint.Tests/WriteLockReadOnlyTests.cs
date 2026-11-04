@@ -185,7 +185,8 @@ public sealed class WriteLockReadOnlyTests : IDisposable
     /// <summary>Creates a fully-wired <see cref="CourseListViewModel"/> in reader mode.</summary>
     private CourseListViewModel CreateCourseListVm() =>
         new(_courseRepo, _subjectRepo, _propertyRepo, _dialog, _sectionRepo,
-            _semesterRepo, _ayRepo, _instructorRepo, _lock, _sectionStore);
+            _semesterRepo, _ayRepo, _instructorRepo, _lock, _sectionStore,
+            new SubjectColorStore(new[] { "#B7E79D" }, () => new AppSettings()));
 
     /// <summary>Creates a fully-wired <see cref="InstructorListViewModel"/> in reader mode.</summary>
     private InstructorListViewModel CreateInstructorListVm() =>
