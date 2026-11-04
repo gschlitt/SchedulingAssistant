@@ -47,8 +47,8 @@ About 80 items in nine groups. Most were deferred from 1.2.3 or found while test
 - **The GitHub Tests workflow fails on `master`.** Not investigated yet.
 
 **Things that shape the plan**
-- **The version gate.** Section-type colours, "Subjects taught" and "any"-tag access watches each save something
-  older versions would drop. If even one ships, 1.2.4 raises `MinimumVersionToWrite`, and in-app Store updates were
+- **The version gate.** "Subjects taught" and "any"-tag access watches each save something older versions would
+  drop (colour by subject, which replaced section-type colours, lives in AppSettings and is not gated). If even one ships, 1.2.4 raises `MinimumVersionToWrite`, and in-app Store updates were
   meant to land before the first release that does that.
 - **Risk reviews first.** These change the save path: skipping no-edit saves, the edit counter, per-session
   temporary files, longer rename retries, a check after the rename, the save-recovery report, test timings, and the
@@ -144,7 +144,7 @@ permanent licence. No data risk.
 *Source: spec, "Licensing".*
 </details>
 
-<details><summary><b>2.3 Section-type colours</b> (client request) <code>version gate</code> <code>decide</code></summary>
+<details><summary><b>2.3 Colour by subject</b> (replaces section-type colours, client request) <code>spec</code></summary>
 
 Give each section type a colour, and colour sections by type in the Section List and the Schedule view. The
 presentation in each view is still to be designed. Storage is one new field on the section-type record. Set brushes
@@ -152,7 +152,7 @@ directly on each card, never through per-type style classes (performance rule).
 *Source: 1.2.3 spec, parking lot (P9).*
 
 **Update 2026-11-03:** Greg's request is now **colour by subject**, stored in AppSettings (no version gate). Spec:
-`designs/subject-colours.md` (Phase 1; Q1 asks whether it replaces section-type colours).
+`designs/subject-colours.md` (spec locked 2026-11-04; five implementation tasks, next task 1). **Replaces** section-type colours (decided 2026-11-03), so this item no longer needs the version gate.
 </details>
 
 <details><summary><b>2.4 Hide sections that meet for only part of the semester</b></summary>
@@ -211,6 +211,10 @@ should room type follow the "meeting times" option or the "room assignments" opt
 less for meetings that have a room.
 </details>
 
+<details><summary><b>2.12 Sections should show credits</b> <code>decide</code></summary>
+
+Sections should show the credits available. Should really attach credit to a course, then propagate to sections, with an over-ride in section editor.
+</details>
 ---
 
 ## 3. Protecting unsaved work
@@ -792,6 +796,11 @@ PowerShell from one console through Remoting: reset the test database, launch th
 kill/suspend/resume by PID, sample the lock file, compare hashes, list test sections in the database and in kept
 copies, and run integrity checks. Add a log checker that looks for each scenario's expected lines in order, with no
 ERROR, and prints pass or fail. Fold in the existing `tmp\handtest_*` scripts. No product change.
+**Built (3 Nov 2026), VM parts not yet run:** the `tools/FieldTest` module (`README.md` there). Machines are listed
+in a gitignored config: this computer, VMs over PowerShell Direct, and an optional WinRM computer. Scenario files
+check the logs for M1 B, M2 C1/C3, M4 B2/B3 and M5. The handtest scripts are folded in. The local commands pass a
+self-test in PowerShell 5.1 and 7. The VM commands are untested until a VM exists.
+Dialog-only outcomes (the restore offer, the banners) have no log line, so they're still checked by eye.
 </details>
 
 <details><summary><b>8.9 A Hyper-V VM as the second and third computer</b></summary>
@@ -800,6 +809,15 @@ Suspending a VM freezes the whole machine, network included. That is closer to r
 process, it can be scripted to the second, and there are no Modern Standby self-wakes. Checkpoints reset a VM. A
 second VM is the third computer the field tests never had, and a Windows 11 VM covers the untested Windows 11
 checks. Keep one real Surface sleep per release.
+**Started (3 Nov 2026):** `tools/FieldTest/New-TestComputer.ps1` makes the VM:
+- Generation 2, with a virtual TPM and Secure Boot. Windows 11 installs even though this host's i5-7500T can't run
+  it itself.
+- Checkpoints hold memory, so a reset brings back a signed-in computer.
+- An external switch on the wired adapter.
+- A copy mode for the third computer.
+
+Next: Greg downloads the Windows 11 ISO and creates TPVM1. The first `Suspend-TestComputer` shows whether a paused
+VM's clock jumps on resume. If it doesn't, the wake check won't fire; try `-Mode Save`.
 </details>
 
 <details><summary><b>8.10 Later: an automated two-machine rig</b></summary>

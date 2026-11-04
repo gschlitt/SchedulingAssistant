@@ -37,8 +37,23 @@ Written so a fresh conversation can pick up. Claude Code's memory and `CLAUDE.md
 
 ## Next steps
 
-1. **Rest of group 8:** 8.8 PowerShell test scripts; 8.9 Hyper-V VMs as 2nd/3rd computer (Hyper-V enabled on this
-   desktop 2026-11-02, VT-x on; VMs go on drive E); then 8.10/8.11; finish 8.12 (two flaky tests).
+1. **Rest of group 8:**
+   - **8.8 built and 8.9 started (2026-11-03), not committed:** `tools/FieldTest/`. Read its `README.md` first.
+     - The module drives every test computer from one elevated console.
+     - `New-TestComputer.ps1` makes the VMs.
+     - Greg's machine list is `tools/FieldTest/fieldtest.config.psd1`: GregDeskTop, TPVM1 and TPVM2, plus GregSurface
+       switched off. It is gitignored.
+   - **Next, by Greg:**
+     - Download the Windows 11 ISO to E:.
+     - Run `New-TestComputer.ps1 -Name TPVM1 -IsoPath ...`, elevated.
+       - The VM starts on Hyper-V's Default Switch (NAT, now the script's default), so the host network is untouched.
+       - If the VM can't open `\\mekler` by name, use `\\192.168.1.81` (Mekler's address on 2026-11-03), or move the
+         VM to an external switch (README, "Network").
+     - Install Windows, then `Install-TermPoint`, then the `Ready` checkpoint.
+   - **Then:**
+     - The first live run of the VM commands: Install, Start, Stop and Suspend-TestComputer. Nothing VM-side has run yet.
+     - Note whether a paused VM's clock jumps on resume; the wake check needs the jump.
+     - Then 8.10/8.11, and finish 8.12 (two flaky tests).
 2. **Open findings (summary items):** 4.13 F20 (own leftover lock after a switch → read-only on return); 6.10 F17
    (two messages for one save problem); 6.11 F18 (two lock-lost banners); 6.12 false "Inactive" prompt when the
    writer's clock is behind; 6.13 F23 (kept-changes banner outlives a Discard).
