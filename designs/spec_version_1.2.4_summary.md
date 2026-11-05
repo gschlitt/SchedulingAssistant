@@ -172,10 +172,47 @@ Sections that meet for, say, the first three weeks clutter the grid. Wanted: a w
 chosen sections from the grid. Not designed yet.
 </details>
 
-<details><summary><b>2.5 Shorten long instructor lists on section cards</b></summary>
+<details><summary><b>2.5 Shorten long instructor lists on Schedule view tiles</b> <code>spec</code></summary>
 
-Long instructor lists take too much horizontal space in the section view. Not designed yet; keep within the
-section-card compactness rules.
+**Problem:** long instructor lists make the Schedule view very wide. Greg's screenshot (2026-11-04) shows Monday alone
+filling the screen. Within a group of overlapping tiles, each side-by-side column is as wide as its widest entry
+(`ScheduleGridView.axaml.cs`, Phase 1.5). So one entry like "MECH221 T1B GH JC2 LD FM2 AD2" widens the whole column
+for the whole group, not just its own tile.
+
+**Design (option 1, chosen 2026-11-04):** show the first instructors' initials plus a count of the rest, e.g.
+"MECH221 T1B GH +4". A count, not "…", because it says how many are hidden. Hovering a shortened entry shows the
+full instructor names in the same tooltip style meeting tiles use. Entries that aren't shortened get no tooltip
+(section tiles have none today).
+- **Reuse:** meeting tiles already do this (first 5 initials + "+N", names on hover) in
+  `ScheduleGridViewModel.cs` (meeting block build). Move it into one shared helper with the limit as a parameter, and
+  use it for both. Meetings keep their limit of 5.
+- **Width measurement** must measure the shortened label, so the column actually narrows.
+- **Cost:** a tooltip is a single property set on the entry row that's already drawn; Avalonia builds the popup only on
+  hover. Set it directly, not through a style class (performance rule).
+- **Section List cards are unchanged:** they wrap names onto more lines and are a separate concern.
+- **No data risk:** display only; nothing reaches the database. `MinimumVersionToWrite`: No.
+
+**Decided (Greg, 2026-11-04):**
+- **D1.** There is no lead instructor; the first shown is simply the first in the section's stored order.
+- **D2.** One instructor's initials before "+N": "GH +4", and two instructors become "PO +1".
+
+**Done 2026-11-04:** shared helper `ScheduleGridViewModel.BuildInstructorText` (limits
+`SectionInitialsShown` = 1, `MeetingInitialsShown` = 5) used by section and meeting tiles; full names ride on
+`SectionMeetingBlock`/`TileEntry.InstructorNames` only when shortened, and the view sets a per-line tooltip from
+them. Column widths measure the shortened text. Tests in `GridPipelineTests`; full suite green apart from the
+`SubjectPaletteTests` repo-root lookup, which fails only when built to a temp output folder.
+Greg checked it by eye in the app on 2026-11-04 (Monday width, hover on a shortened line, meetings still showing 5).
+
+**Later, only if Monday is still too wide after option 1:**
+- **Option 2:** in a tall single-entry tile whose time-based height already fits a second line, put the initials on
+  line 2 at no vertical cost. Bends the one-line rule only where the space is already empty. Medium complexity.
+- **Option 3:** draw initials one font step smaller than the course and section code (an app.axaml resource). Cheap;
+  about 10–15% narrower. Could ship alongside option 1.
+
+**Rejected:** vertical text (needs a rotation wrapper per entry, doesn't work with stacked entries, hard to read);
+dropping the subject prefix when the colour marker shows the subject (colours aren't unique enough, and screenshots or
+printouts would lose the subject); re-packing the side-by-side columns (what's left of the width comes from genuinely
+different time spans).
 </details>
 
 <details><summary><b>2.6 Instructor names don't wrap properly in the Workload view</b></summary>

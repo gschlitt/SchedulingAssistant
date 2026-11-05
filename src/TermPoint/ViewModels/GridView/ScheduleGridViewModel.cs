@@ -708,27 +708,50 @@ public partial class ScheduleGridViewModel : ViewModelBase
     }
 
     /// <summary>
-    /// Builds the display label and instructor initials string for a section tile.
-    ///
-    /// Label format: "[CalendarCode] [SectionCode]" when a matching course is found
-    /// (e.g. "HIST101 A"). Falls back to "[SectionCode]" alone if the section has no
-    /// course or the course ID cannot be resolved from the lookup.
-    ///
-    /// Initials format: space-joined initials of all assigned instructors in the order
-    /// they appear in <see cref="Section.InstructorIds"/> (e.g. "JRS MKL"). Returns
-    /// an empty string when no instructor assignments exist or none resolve in the lookup.
-    ///
-    /// This method exists to eliminate the repetition of the same three-line label-
-    /// building block that appeared in Pass 1 (filtered sections), Pass 2 instructor/tag
-    /// overlay, and Pass 2 room overlay in the original monolithic ReloadCore().
+    /// How many instructors' initials a section tile shows before the "+N" count (spec 1.2.4 item 2.5).
+    /// One keeps long team-taught lists from widening the whole Schedule view column.
     /// </summary>
-    /// <param name="section">The section whose display text should be built.</param>
-    /// <param name="courses">Course lookup keyed by course ID.</param>
+    internal const int SectionInitialsShown = 1;
+
+    /// <summary>How many attendees' initials a meeting tile shows before the "+N" count.</summary>
+    internal const int MeetingInitialsShown = 5;
+
+    /// <summary>
+    /// Builds the instructor text for one tile line: the initials shown on the line and the full names for hover.
+    /// Shared by section tiles and meeting tiles so both shorten long lists the same way.
+    /// </summary>
+    /// <param name="instructorIds">Instructor IDs in their stored order. IDs not found in
+    /// <paramref name="instructors"/> are skipped and not counted.</param>
     /// <param name="instructors">Instructor lookup keyed by instructor ID.</param>
+    /// <param name="maxShown">How many initials to show before the rest become "+N". Must be at least 1.</param>
     /// <returns>
-    /// A tuple <c>(Label, Initials)</c> where Label is the tile heading line and
-    /// Initials is the instructor text appended after it on the same line.
+    /// <c>Initials</c>: the first <paramref name="maxShown"/> initials, space-joined, followed by " +N" when more
+    /// instructors are hidden (e.g. "GH +4"); empty when no instructor resolves.
+    /// <c>FullNames</c>: every resolved instructor as "First Last", comma-separated; empty when none resolve.
+    /// <c>IsShortened</c>: true when some initials were replaced by the "+N" count.
     /// </returns>
+    /// <exception cref="ArgumentOutOfRangeException"><paramref name="maxShown"/> is less than 1.</exception>
+    internal static (string Initials, string FullNames, bool IsShortened) BuildInstructorText(
+        IEnumerable<string> instructorIds,
+        IReadOnlyDictionary<string, Instructor> instructors,
+        int maxShown)
+    {
+        ArgumentOutOfRangeException.ThrowIfLessThan(maxShown, 1);
+
+        var resolved = instructorIds
+            .Where(instructors.ContainsKey)
+            .Select(id => instructors[id])
+            .ToList();
+
+        bool isShortened = resolved.Count > maxShown;
+        var initials = string.Join(" ", resolved.Take(maxShown).Select(i => i.Initials));
+        if (isShortened)
+            initials += $" +{resolved.Count - maxShown}";
+
+        var fullNames = string.Join(", ", resolved.Select(i => $"{i.FirstName} {i.LastName}"));
+        return (initials, fullNames, isShortened);
+    }
+
     /// <summary>
     /// Builds the tooltip data for a grid tile.
     /// The first line is always the time range (e.g. "1015-1145").
@@ -767,7 +790,30 @@ public partial class ScheduleGridViewModel : ViewModelBase
         return new TileTooltip(lines);
     }
 
-    internal static (string Label, string Initials) BuildSectionLabel(
+    /// <summary>
+    /// Builds the display label and instructor text for a section tile.
+    ///
+    /// Label format: "[CalendarCode] [SectionCode]" when a matching course is found
+    /// (e.g. "HIST101 A"). Falls back to "[SectionCode]" alone if the section has no
+    /// course or the course ID cannot be resolved from the lookup.
+    ///
+    /// Initials format: the first <see cref="SectionInitialsShown"/> instructor's initials, in the order they
+    /// appear in <see cref="Section.InstructorIds"/>, then " +N" for the rest (e.g. "JRS +2"; spec 1.2.4 item 2.5).
+    /// There is no lead instructor: the first shown is simply the first stored. Returns an empty string when no
+    /// instructor assignments exist or none resolve in the lookup.
+    ///
+    /// This method exists to eliminate the repetition of the same label-building block used by
+    /// Pass 1 (filtered sections), the Pass 2 instructor/tag overlay, and the Pass 2 room overlay.
+    /// </summary>
+    /// <param name="section">The section whose display text should be built.</param>
+    /// <param name="courses">Course lookup keyed by course ID.</param>
+    /// <param name="instructors">Instructor lookup keyed by instructor ID.</param>
+    /// <returns>
+    /// A tuple <c>(Label, Initials, InstructorNames)</c>: Label is the tile heading text, Initials is the
+    /// instructor text appended after it on the same line, and InstructorNames is every instructor's full name
+    /// for the hover tooltip — set only when Initials was shortened, empty otherwise (no tooltip needed).
+    /// </returns>
+    internal static (string Label, string Initials, string InstructorNames) BuildSectionLabel(
         Section section,
         IReadOnlyDictionary<string, Course> courses,
         IReadOnlyDictionary<string, Instructor> instructors)
@@ -775,15 +821,14 @@ public partial class ScheduleGridViewModel : ViewModelBase
         var calCode = section.CourseId is not null && courses.TryGetValue(section.CourseId, out var course)
             ? course.CalendarCode : null;
 
-        var initials = string.Join(" ", section.InstructorIds
-            .Where(id => instructors.ContainsKey(id))
-            .Select(id => instructors[id].Initials));
+        var (initials, fullNames, isShortened) =
+            BuildInstructorText(section.InstructorIds, instructors, SectionInitialsShown);
 
         var label = calCode is not null
             ? $"{calCode} {section.SectionCode}"
             : section.SectionCode;
 
-        return (label, initials);
+        return (label, initials, isShortened ? fullNames : string.Empty);
     }
 
     /// <summary>
@@ -944,7 +989,7 @@ public partial class ScheduleGridViewModel : ViewModelBase
                 continue;
 
             // ── Build display label (DRY helper used by all three passes) ──────────
-            var (label, initials) = BuildSectionLabel(section, lookups.Courses, lookups.Instructors);
+            var (label, initials, instructorNames) = BuildSectionLabel(section, lookups.Courses, lookups.Instructors);
             bool sectionIsOverlay  = overlayMatchedIds.Contains(section.Id);
             // "Emphasize Unstaffed" mode: staffed sections are de-emphasised with a
             // strikethrough in the grid; unstaffed sections are highlighted.
@@ -984,7 +1029,8 @@ public partial class ScheduleGridViewModel : ViewModelBase
                     Flag: section.Flag,
                     IsDeemphasized: isDeemphasized,
                     IsEmphasized: isEmphasized,
-                    SubjectColor: subjectColor));
+                    SubjectColor: subjectColor,
+                    InstructorNames: instructorNames));
             }
         }
 
@@ -1067,7 +1113,7 @@ public partial class ScheduleGridViewModel : ViewModelBase
                 var section = sections.FirstOrDefault(s => s.Id == sectionId);
                 if (section is null) continue;
 
-                var (label, initials) = BuildSectionLabel(section, lookups.Courses, lookups.Instructors);
+                var (label, initials, instructorNames) = BuildSectionLabel(section, lookups.Courses, lookups.Instructors);
                 var semName = lookups.SemesterIdToName.TryGetValue(section.SemesterId, out var n) ? n : string.Empty;
                 var semColor = lookups.SemesterIdToColor.TryGetValue(section.SemesterId, out var c) ? c : string.Empty;
                 var subjectColor = subjectColorFor?.Invoke(section) ?? string.Empty;
@@ -1079,7 +1125,8 @@ public partial class ScheduleGridViewModel : ViewModelBase
                         true, label, initials, section.Id, section.SemesterId, semName, semColor,
                         SectionDaySchedule.FormatFrequency(slot.Frequency),
                         Flag: section.Flag,
-                        SubjectColor: subjectColor));
+                        SubjectColor: subjectColor,
+                        InstructorNames: instructorNames));
                 }
             }
         }
@@ -1096,7 +1143,7 @@ public partial class ScheduleGridViewModel : ViewModelBase
 
             foreach (var section in sections)
             {
-                var (label, initials) = BuildSectionLabel(section, lookups.Courses, lookups.Instructors);
+                var (label, initials, instructorNames) = BuildSectionLabel(section, lookups.Courses, lookups.Instructors);
                 var semName = lookups.SemesterIdToName.TryGetValue(section.SemesterId, out var n) ? n : string.Empty;
                 var semColor = lookups.SemesterIdToColor.TryGetValue(section.SemesterId, out var c) ? c : string.Empty;
                 var subjectColor = subjectColorFor?.Invoke(section) ?? string.Empty;
@@ -1111,7 +1158,8 @@ public partial class ScheduleGridViewModel : ViewModelBase
                         true, label, initials, section.Id, section.SemesterId, semName, semColor,
                         SectionDaySchedule.FormatFrequency(slot.Frequency),
                         Flag: section.Flag,
-                        SubjectColor: subjectColor));
+                        SubjectColor: subjectColor,
+                        InstructorNames: instructorNames));
                 }
             }
         }
@@ -1182,20 +1230,10 @@ public partial class ScheduleGridViewModel : ViewModelBase
 
         foreach (var meeting in _meetingStore.Meetings)
         {
-            // Build initials list; truncate to 5 + "+N" when there are more.
-            const int maxInitials = 5;
-            var allInitials = meeting.InstructorIds
-                .Where(id => instructors.ContainsKey(id))
-                .Select(id => instructors[id].Initials)
-                .ToList();
-            var attendees = allInitials.Count <= maxInitials
-                ? string.Join(" ", allInitials)
-                : string.Join(" ", allInitials.Take(maxInitials)) + $" +{allInitials.Count - maxInitials}";
-
-            // Full name list for the hover tooltip (empty when no attendees).
-            var attendeeList = string.Join(", ", meeting.InstructorIds
-                .Where(id => instructors.ContainsKey(id))
-                .Select(id => $"{instructors[id].FirstName} {instructors[id].LastName}"));
+            // Initials shortened to MeetingInitialsShown + "+N"; the full name list always feeds the hover
+            // tooltip (empty when no attendees).
+            var (attendees, attendeeList, _) =
+                BuildInstructorText(meeting.InstructorIds, instructors, MeetingInitialsShown);
 
             semIdToName.TryGetValue(meeting.SemesterId,  out var semName);
             semIdToColor.TryGetValue(meeting.SemesterId, out var semColor);
@@ -1450,7 +1488,7 @@ public partial class ScheduleGridViewModel : ViewModelBase
     /// </summary>
     private static TileEntry ToEntry(GridBlock block) => block switch
     {
-        SectionMeetingBlock s => new TileEntry(s.Label, s.Initials, s.SectionId, s.IsOverlay, false, s.FrequencyAnnotation, s.IsDeemphasized, IsEmphasized: s.IsEmphasized, Flag: s.Flag, SubjectColor: s.SubjectColor),
+        SectionMeetingBlock s => new TileEntry(s.Label, s.Initials, s.SectionId, s.IsOverlay, false, s.FrequencyAnnotation, s.IsDeemphasized, IsEmphasized: s.IsEmphasized, Flag: s.Flag, SubjectColor: s.SubjectColor, InstructorNames: s.InstructorNames),
         CommitmentBlock c     => new TileEntry(c.Name,  string.Empty, string.Empty, true,  IsCommitment: true),
         // Meeting blocks: carry the MeetingId so double-click can route to the editor.
         // IsCommitment=true is kept so the right-click context menu (section-only) is

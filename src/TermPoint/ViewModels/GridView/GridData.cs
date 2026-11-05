@@ -40,7 +40,7 @@ public abstract record GridBlock(int Day, int StartMinutes, int EndMinutes, bool
 /// <summary>
 /// A single scheduled meeting for a section (one slot in section.Schedule).
 /// Label               = display text shown on the tile, e.g. "HIST101 A"
-/// Initials            = space-joined instructor initials, e.g. "JRS MKL" (may be empty)
+/// Initials            = the first instructor's initials plus " +N" for the rest, e.g. "JRS +1" (may be empty)
 /// SectionId           = database ID of the section — used to highlight/select the tile
 /// IsOverlay           = true when the section matches the active overlay (renders red)
 /// SemesterId          = database ID of the semester this section belongs to
@@ -55,6 +55,8 @@ public abstract record GridBlock(int Day, int StartMinutes, int EndMinutes, bool
 /// SubjectColor        = the section's subject marker colour (<c>#RRGGBB</c>) from
 ///                       <see cref="TermPoint.Services.SubjectColorPresenter.ColorFor"/>; empty string when colours are
 ///                       off or the subject has none (the line is then drawn exactly as without the feature).
+/// InstructorNames     = every instructor's full name, comma-separated, for the line's hover tooltip. Set only when
+///                       Initials was shortened to "+N" (spec 1.2.4 item 2.5); empty otherwise, meaning no tooltip.
 /// </summary>
 public record SectionMeetingBlock(
     int Day, int StartMinutes, int EndMinutes, bool IsOverlay,
@@ -64,7 +66,8 @@ public record SectionMeetingBlock(
     bool IsDeemphasized = false,
     bool IsEmphasized = false,
     SectionFlag Flag = SectionFlag.None,
-    string SubjectColor = ""
+    string SubjectColor = "",
+    string InstructorNames = ""
 ) : GridBlock(Day, StartMinutes, EndMinutes, IsOverlay, SemesterId, SemesterName, SemesterColor);
 
 /// <summary>
@@ -175,7 +178,13 @@ public record TileEntry(
     /// The subject marker colour (<c>#RRGGBB</c>): a small rounded square drawn before the section text, carried from
     /// <see cref="SectionMeetingBlock.SubjectColor"/>. Empty string = no marker (always empty for non-section entries).
     /// </summary>
-    string SubjectColor = "");
+    string SubjectColor = "",
+    /// <summary>
+    /// Full instructor names for this line's own hover tooltip, carried from
+    /// <see cref="SectionMeetingBlock.InstructorNames"/>. Non-empty only when the line's initials were shortened
+    /// to "+N" (spec 1.2.4 item 2.5); empty = no tooltip on the line.
+    /// </summary>
+    string InstructorNames = "");
 
 /// <summary>
 /// A single tile drawn on the grid, potentially containing multiple co-scheduled sections

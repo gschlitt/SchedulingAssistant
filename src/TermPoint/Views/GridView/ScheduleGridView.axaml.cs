@@ -891,6 +891,12 @@ public partial class ScheduleGridView : UserControl
                         Tag          = clickCtx,
                         Child        = entryContent,
                     };
+                    // A line whose instructor initials were shortened to "+N" shows every instructor's full name
+                    // on hover (spec 1.2.4 item 2.5). Lines that weren't shortened carry no names and get no tooltip,
+                    // so most section lines pay nothing. Set directly on the row, never via a style class.
+                    if (!string.IsNullOrEmpty(entry.InstructorNames))
+                        ToolTip.SetTip(entryRow, BuildTileTooltipContent(new TileTooltip([], entry.InstructorNames)));
+
                     if (isConflict)
                         conflictEntryRows[(entry.SectionId, clickDay, tile.StartMinutes, tile.EndMinutes)] =
                             (ei, tileX, adjustedTileY, tileW - TilePaddingH);
@@ -1308,14 +1314,15 @@ public partial class ScheduleGridView : UserControl
                 panel.Children.Add(new TextBlock { Text = line });
 
             // Full attendee list: wrap at 300 px so it forms a readable box rather than a
-            // single long line. Separated from the time range by a small top margin.
+            // single long line. Separated from the time range (when there is one) by a small top margin;
+            // a names-only tooltip (shortened section line) has no lines above it, so no margin.
             if (hasAttendeeList)
                 panel.Children.Add(new TextBlock
                 {
                     Text        = tooltip.AttendeeList,
                     TextWrapping = TextWrapping.Wrap,
                     MaxWidth    = 300,
-                    Margin      = new Thickness(0, 2, 0, 0),
+                    Margin      = tooltip.Lines.Count > 0 ? new Thickness(0, 2, 0, 0) : default,
                 });
 
             content = panel;
