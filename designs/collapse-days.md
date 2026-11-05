@@ -6,7 +6,8 @@ decisions"). ✅ Phase 2 (Domain Model) complete
 P3-1–P3-5 settled. ✅ Phase 4 (Data Design): nothing stored, folded into Phase 5 (Greg, 2026-11-05).
 ✅ Phase 5 (Architecture) complete 2026-11-05: P5-1–P5-3 settled.
 ✅ Phase 6 (Implementation Plan) signed off 2026-11-05. **Spec locked.** ✅ Task 1 (tile padding) done 2026-11-05 (1eb90c9; see its "Outcome"). ✅ Task 2 (real day
-numbers) done 2026-11-05, not yet committed. **Next: task 3 (fold state and commands).**
+numbers) done 2026-11-05 (233488a). ✅ Task 3 (fold state and commands) done 2026-11-05, not yet committed.
+**Next: task 4 (strips and header controls; AXAML edits).**
 **Target release:** 1.2.4. **Expands** summary item 2.13. The summary's "Design direction" (toolbar toggles, narrow
 strips, MWF/TR/All shortcuts) is treated here as one candidate, not a decision. UI waits for Phase 3.
 
@@ -519,6 +520,16 @@ Mon–Fri or Mon–Sat shown (by code reading; the width probe was not re-run).
   aren't shown.
 - `FoldedDaysCaption` for export.
 - **Tests:** everything in Phase 5's VM list.
+
+**Outcome (2026-11-05).** In `ScheduleGridViewModel`: `FoldedDays`, `ToggleDay`, `ShowOnlyDay`, `ShowPattern(days)`,
+`ShowAllDays`, `CanFold` (false for the last open day, a hidden day, or a day already folded) and `FoldedDaysCaption`.
+A fold rebuilds `GridData` from the last reload's inputs, never the database; everything runs on the UI thread, so it
+can't race a reload. Folded columns have no tiles; the first sub-column of a folded day carries `FoldedDaySummary`
+(section count, "has other things", section meetings with start times). Resets: semester switch, focus change, and
+no semesters shown; Saturday/Sunday turned off drops out (and the week opens up if nothing would be left open).
+Opening any database builds a new view model, so it starts unfolded. The shown days are read from `GridData`, so
+task 4 should use `GridData.DayColumns`. Tests: `GridFoldDaysTests` (22). The block patterns for the menu are not
+read yet (task 4).
 
 ### Task 4: Strips and header controls (AXAML edits)
 

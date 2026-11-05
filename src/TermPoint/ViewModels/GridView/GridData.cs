@@ -207,6 +207,32 @@ public record GridTile(
     string SemesterColor = "");
 
 /// <summary>
+/// What a folded day's strip needs to say about the day it hides (collapse days, <c>designs/collapse-days.md</c>
+/// P2-1). Built by <see cref="ScheduleGridViewModel"/> from the day's blocks across ALL shown semesters (Q6), and
+/// carried only by the FIRST sub-column of a folded day.
+/// </summary>
+/// <param name="SectionCount">
+/// Distinct sections with at least one non-overlay section meeting on the day, each counted once (so two meetings
+/// of one section on the day count 1, and an overlay turning on never changes the number).
+/// </param>
+/// <param name="HasOtherThings">
+/// True when the day also holds anything else the grid draws: faculty/committee meetings, instructor commitments,
+/// shared-schedule tiles or overlay section tiles. Keeps "T · 0" from suggesting the day is empty.
+/// </param>
+/// <param name="SectionMeetings">
+/// Every non-overlay section meeting on the day (one entry per meeting, all semesters), for the strip's time marks.
+/// </param>
+public record FoldedDaySummary(
+    int SectionCount,
+    bool HasOtherThings,
+    IReadOnlyList<FoldedSectionMeeting> SectionMeetings);
+
+/// <summary>One section meeting on a folded day: which section, and when it starts (minutes from midnight).</summary>
+/// <param name="SectionId">Database ID of the section.</param>
+/// <param name="StartMinutes">Start time in minutes from midnight.</param>
+public record FoldedSectionMeeting(string SectionId, int StartMinutes);
+
+/// <summary>
 /// One day-semester column's worth of positioned tiles.
 /// In single-semester mode, Header is the day name and SemesterName is empty.
 /// In multi-semester mode, SemesterName identifies which semester this sub-column belongs to
@@ -216,13 +242,18 @@ public record GridTile(
 /// to name-based color lookup in the renderer.
 /// DayNumber is the real day of the week this column shows (1 = Monday ... 7 = Sunday). Never work out a
 /// column's day from its position: the shown days can have gaps (e.g. Sunday on, Saturday off).
+/// IsFolded is true when the user has folded this column's day: the column then has NO tiles (so nothing is
+/// measured for it) and the renderer draws a strip instead. Every sub-column of a folded day has it set.
+/// Folded is the strip's summary; set only on the FIRST sub-column of a folded day, null everywhere else.
 /// </summary>
 public record GridDayColumn(
     string Header,
     int DayNumber,
     IReadOnlyList<GridTile> Tiles,
     string SemesterName = "",
-    string SemesterColor = "");
+    string SemesterColor = "",
+    bool IsFolded = false,
+    FoldedDaySummary? Folded = null);
 
 /// <summary>
 /// Data for a tooltip shown when the user hovers over a tile on the schedule grid.
@@ -263,7 +294,12 @@ public record GridData(
     /// <summary>True when more than one semester's data is displayed side-by-side.</summary>
     public bool IsMultiSemester => SemesterCount > 1;
 
-    public bool HasData => DayColumns.Any(d => d.Tiles.Count > 0);
+    /// <summary>
+    /// True when the grid holds anything to draw. A folded day has no tiles, so its summary counts too: folding
+    /// must not make a busy week look empty.
+    /// </summary>
+    public bool HasData => DayColumns.Any(d => d.Tiles.Count > 0
+                                            || d.Folded is { SectionCount: > 0 } or { HasOtherThings: true });
 
     /// <summary>
     /// The real day of the week (1 = Monday ... 7 = Sunday) shown by a flat column. Reads

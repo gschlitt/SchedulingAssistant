@@ -65,6 +65,13 @@ public partial class ScheduleGridViewModel : ViewModelBase
     private List<GhostBlock>? _ghostBlocks;
 
     [ObservableProperty] private GridData _gridData = GridData.Empty;
+
+    /// <summary>
+    /// The day-grid caption depends on <see cref="GridData"/> (which days are shown), so it changes whenever the
+    /// grid is replaced (collapse days, task 3).
+    /// </summary>
+    /// <param name="value">The new grid (unused).</param>
+    partial void OnGridDataChanged(GridData value) => OnPropertyChanged(nameof(FoldedDaysCaption));
     [ObservableProperty] private IReadOnlySet<string> _selectedSectionIds = new HashSet<string>();
     [ObservableProperty] private string? _lastErrorMessage;
 
@@ -228,9 +235,11 @@ public partial class ScheduleGridViewModel : ViewModelBase
         // Reload grid when shared schedules are imported or dismissed.
         _sharedScheduleService.Changed += Reload;
 
-        // The grid follows the subject focus: a focus change redraws it. FocusService is a constructor dependency,
-        // so DI built it first and its own SectionsChanged handler (which drops its caches) runs before our Reload.
-        _focus.FocusChanged += Reload;
+        // The grid follows the subject focus: a focus change clears any folded days (Q2a), then redraws. FocusService
+        // is a constructor dependency, so DI built it first and its own SectionsChanged handler (which drops its
+        // caches) runs before our OnFocusChanged -> Reload. (This view model is never unsubscribed; it lives as long
+        // as the services of one database open.)
+        _focus.FocusChanged += OnFocusChanged;
 
         // Subject colours changed (a colour, the display mode, or colours turning on or off): redraw the markers with
         // one full reload (P5-5). The presenter is a constructor dependency, so it subscribed to SectionsChanged and
@@ -324,10 +333,159 @@ public partial class ScheduleGridViewModel : ViewModelBase
         catch (Exception ex)
         {
             App.Logger.LogError(ex, "ScheduleGridViewModel.Reload");
+            _gridInputs = null;
             GridData = GridData.Empty;
             StatsLine = string.Empty;
             LastErrorMessage = "An error occurred loading the schedule grid. See logs for details.";
         }
+    }
+
+    // ── Collapse days (designs/collapse-days.md, task 3) ─────────────────────────
+    //
+    // Folding is a VIEW choice (Q9): it never changes sections, filters, selection or the database. The folded set
+    // lives only here, in memory, for this view model's life (Q2: never stored). Opening a database rebuilds the
+    // services (App.InitializeServices), so a new view model starts with nothing folded (P5-1).
+    //
+    // Threading: Reload/ReloadCore and every command below run synchronously on the UI thread (every trigger is a
+    // plain event handler; nothing here is debounced or awaited), so a fold can never interleave with a reload in
+    // flight. The cache a fold rebuilds from is written at the end of each ReloadCore and dropped whenever the grid
+    // is blanked (no semesters, or a failed reload), so a fold never draws from stale or missing inputs.
+
+    /// <summary>The folded day numbers (1 = Monday ... 7 = Sunday). Replaced, never mutated, on each change.</summary>
+    private IReadOnlySet<int> _foldedDays = new HashSet<int>();
+
+    /// <summary>The inputs of the last successful reload, so a fold can rebuild without the database.</summary>
+    private (IReadOnlyList<SemesterDisplay> Semesters, IReadOnlyList<GridBlock> Blocks,
+             IReadOnlyList<ProgramConflict> Conflicts)? _gridInputs;
+
+    /// <summary>Short day names for <see cref="FoldedDaysCaption"/>, by day number.</summary>
+    private static readonly string[] ShortDayNames = ["", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
+
+    /// <summary>
+    /// The days the user has folded (1 = Monday ... 7 = Sunday); empty means the full week. Only shown days are
+    /// ever in it. Never stored anywhere.
+    /// </summary>
+    public IReadOnlySet<int> FoldedDays => _foldedDays;
+
+    /// <summary>
+    /// Text for the PNG title banner: the OPEN days in week order, e.g. "Mon, Wed, Fri only"; empty when nothing is
+    /// folded. Not yet wired into export (task 6).
+    /// </summary>
+    public string FoldedDaysCaption
+    {
+        get
+        {
+            if (_foldedDays.Count == 0) return string.Empty;
+            var open = ShownDays().Where(d => !_foldedDays.Contains(d)).Select(d => ShortDayNames[d]);
+            return string.Join(", ", open) + " only";
+        }
+    }
+
+    /// <summary>The distinct day numbers the current <see cref="GridData"/> shows, in week order.</summary>
+    /// <returns>The shown days; empty while the grid is blank.</returns>
+    private List<int> ShownDays() => GridData.DayColumns.Select(c => c.DayNumber).Distinct().ToList();
+
+    /// <summary>
+    /// Replaces the folded set and raises <see cref="FoldedDays"/> when it actually changed.
+    /// </summary>
+    /// <param name="days">The new folded days.</param>
+    private void SetFoldedDays(HashSet<int> days)
+    {
+        if (_foldedDays.SetEquals(days)) return;
+        _foldedDays = days;
+        OnPropertyChanged(nameof(FoldedDays));
+        OnPropertyChanged(nameof(FoldedDaysCaption));
+    }
+
+    /// <summary>
+    /// Whether the UI may offer to fold a day: true only for a shown, currently open day while at least one other
+    /// shown day is open (P2-5: the last open day can't be folded). False for a day that is not shown and for a day
+    /// that is already folded (it can be opened, not folded).
+    /// </summary>
+    /// <param name="day">Day number, 1 = Monday ... 7 = Sunday.</param>
+    /// <returns>True when <see cref="ToggleDay"/> would fold this day.</returns>
+    public bool CanFold(int day)
+    {
+        var shown = ShownDays();
+        return shown.Contains(day) && !_foldedDays.Contains(day) && shown.Count(d => !_foldedDays.Contains(d)) > 1;
+    }
+
+    /// <summary>
+    /// Folds an open day, or opens a folded one. Does nothing for a day that isn't shown, and refuses to fold the
+    /// last open day (P2-5).
+    /// </summary>
+    /// <param name="day">Day number, 1 = Monday ... 7 = Sunday.</param>
+    public void ToggleDay(int day)
+    {
+        if (!ShownDays().Contains(day)) return;
+        var next = new HashSet<int>(_foldedDays);
+        if (!next.Remove(day))
+        {
+            if (!CanFold(day)) return;
+            next.Add(day);
+        }
+        ApplyFoldedDays(next);
+    }
+
+    /// <summary>
+    /// "Show only this day": that day open, every other shown day folded. Does nothing if the day isn't shown.
+    /// </summary>
+    /// <param name="day">Day number, 1 = Monday ... 7 = Sunday.</param>
+    public void ShowOnlyDay(int day) => ShowPattern([day]);
+
+    /// <summary>
+    /// "Show MWF" (P3-5): exactly the pattern's shown days open, every other shown day folded. Pattern days that
+    /// aren't shown (a Saturday pattern with Saturday off) are ignored; if none of them is shown nothing happens
+    /// (never folds everything).
+    /// </summary>
+    /// <param name="days">The pattern's day numbers.</param>
+    public void ShowPattern(IReadOnlyCollection<int> days)
+    {
+        var shown = ShownDays();
+        var open = shown.Where(days.Contains).ToHashSet();
+        if (open.Count == 0) return;
+        ApplyFoldedDays(shown.Where(d => !open.Contains(d)).ToHashSet());
+    }
+
+    /// <summary>"Show all days": opens every folded day.</summary>
+    public void ShowAllDays() => ApplyFoldedDays([]);
+
+    /// <summary>
+    /// Sets the folded days and, when they changed, redraws <see cref="GridData"/> from the cached inputs of the
+    /// last reload. Never touches the database.
+    /// </summary>
+    /// <param name="days">The new folded set (already validated by the caller).</param>
+    private void ApplyFoldedDays(HashSet<int> days)
+    {
+        if (_foldedDays.SetEquals(days) || _gridInputs is not { } inputs) return;
+        SetFoldedDays(days);
+        UpdateDisplayProperties(inputs.Semesters, inputs.Blocks, inputs.Conflicts);
+    }
+
+    /// <summary>
+    /// Subject-focus change: a different slice of the timetable, so the days open up again (Q2a), then the usual
+    /// reload. The clear comes first so the reload draws the full week.
+    /// </summary>
+    private void OnFocusChanged()
+    {
+        SetFoldedDays([]);
+        Reload();
+    }
+
+    /// <summary>
+    /// Builds a folded day's strip summary (P2-1) from every block on that day across all shown semesters.
+    /// </summary>
+    /// <param name="allBlocks">All blocks on the grid.</param>
+    /// <param name="dayNum">Day number, 1 = Monday ... 7 = Sunday.</param>
+    /// <returns>The summary for that day.</returns>
+    internal static FoldedDaySummary SummarizeDay(IReadOnlyList<GridBlock> allBlocks, int dayNum)
+    {
+        var day = allBlocks.Where(b => b.Day == dayNum).ToList();
+        var meetings = day.OfType<SectionMeetingBlock>().Where(b => !b.IsOverlay).ToList();
+        return new FoldedDaySummary(
+            meetings.Select(b => b.SectionId).Distinct().Count(),
+            day.Count > meetings.Count,
+            meetings.Select(b => new FoldedSectionMeeting(b.SectionId, b.StartMinutes)).ToList());
     }
 
     /// <summary>
@@ -395,6 +553,9 @@ public partial class ScheduleGridViewModel : ViewModelBase
             Filter.ClearAll();
             Filter.FilterChanged += Reload;
             _lastSemesterKey = semesterKey;
+
+            // A different timetable opens with the full week (Q2a), like the cleared filters.
+            SetFoldedDays([]);
 
             // Keep the meeting cache in sync when the semester selection changes.
             // MeetingsChanged will fire, but this ReloadCore call is already in flight;
@@ -477,6 +638,7 @@ public partial class ScheduleGridViewModel : ViewModelBase
         }
         Access.UpdateConflictCounts(programConflicts, sectionLabels);
 
+        _gridInputs = (semesters, allBlocks, programConflicts);
         UpdateDisplayProperties(semesters, allBlocks, programConflicts);
     }
 
@@ -537,6 +699,8 @@ public partial class ScheduleGridViewModel : ViewModelBase
     /// </summary>
     private void ClearDisplay()
     {
+        _gridInputs          = null;
+        SetFoldedDays([]);   // nothing is shown, so nothing stays folded
         GridData             = GridData.Empty;
         SemesterLine         = string.Empty;
         SemesterLineSegments = [];
@@ -1375,6 +1539,13 @@ public partial class ScheduleGridViewModel : ViewModelBase
         var dayNumbers = new List<int> { 1, 2, 3, 4, 5 };
         if (settings.IncludeSaturday) dayNumbers.Add(6);
         if (settings.IncludeSunday)   dayNumbers.Add(7);
+
+        // Folded days must be shown days (Saturday/Sunday turned off drops out, rule 3); if that leaves no open
+        // shown day, the week opens up again (P2-5).
+        var stillFolded = _foldedDays.Where(dayNumbers.Contains).ToHashSet();
+        if (dayNumbers.All(stillFolded.Contains)) stillFolded.Clear();
+        SetFoldedDays(stillFolded);
+
         var dayNames = new Dictionary<int, string>
         {
             [1] = "Monday", [2] = "Tuesday",  [3] = "Wednesday",
@@ -1390,8 +1561,21 @@ public partial class ScheduleGridViewModel : ViewModelBase
 
         foreach (var dayNum in dayNumbers)
         {
+            bool folded = _foldedDays.Contains(dayNum);
+            var summary = folded ? SummarizeDay(allBlocks, dayNum) : null;
+            bool firstSubColumn = true;
+
             foreach (var sd in semesters)
             {
+                // A folded day carries no tiles (nothing to measure); its first sub-column carries the summary.
+                if (folded)
+                {
+                    dayColumns.Add(new GridDayColumn(dayNames[dayNum], dayNum, [], sd.Semester.Name,
+                        sd.Semester.Color ?? string.Empty, IsFolded: true, Folded: firstSubColumn ? summary : null));
+                    firstSubColumn = false;
+                    continue;
+                }
+
                 // In multi-semester mode, each sub-column contains only that semester's blocks.
                 // In single-semester mode, SemesterId filtering is omitted for robustness
                 // (all blocks should share the single semester ID, but we don't depend on it).
