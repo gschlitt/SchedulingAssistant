@@ -1,0 +1,26 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!--
+    Off-screen visual comparison of the Schedule grid's tile widths: today's rule versus the proposed
+    "exact sums + 4 px gap" rule (see README.md). NOT part of TermPoint.sln and NOT built by CI: run it by hand.
+    It draws the REAL ScheduleGridView over the REAL ScheduleGridViewModel, referencing the app project directly,
+    so it always matches the shipping code and the app's own resource dictionaries.
+  -->
+
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <TargetFramework>net10.0</TargetFramework>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <AvaloniaUseCompiledBindingsByDefault>false</AvaloniaUseCompiledBindingsByDefault>
+    <!-- The app is a WinExe; its Program.Main must not be picked as this exe's entry point. -->
+    <StartupObject>TileWidthProbe.Program</StartupObject>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\..\src\TermPoint\TermPoint.csproj" />
+    <!-- Needed to load the app's App.axaml resources at run time (AvaloniaRuntimeXamlLoader). -->
+    <PackageReference Include="Avalonia.Markup.Xaml.Loader" Version="12.1.3" />
+  </ItemGroup>
+
+</Project>

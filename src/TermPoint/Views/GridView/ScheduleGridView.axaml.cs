@@ -8,6 +8,7 @@ using Avalonia.Markup.Xaml;
 using Avalonia.Media;
 using Avalonia.Media.Imaging;
 using Avalonia.Threading;
+using Avalonia.VisualTree;
 using TermPoint.Models;
 using TermPoint.Services;
 using TermPoint.ViewModels.GridView;
@@ -49,18 +50,36 @@ public partial class ScheduleGridView : UserControl
     private const double DayHeaderSidePadding = 15; // 15px left + 15px right = 30px total
 
     /// <summary>
-    /// Total horizontal pixels consumed by the tile render layers between the day-column
-    /// edge and the TextBlock that displays the label. Breakdown:
-    ///   2 × TilePaddingH (slot-allocation gap)         =  6 px
-    ///   2 × tile BorderThickness (max 3 px, multi-sem) =  6 px
-    ///   2 × tile Padding left/right (3 px each)        =  6 px
-    ///   2 × entryRow Padding left/right (1 px each)    =  2 px
-    ///   Safety margin for off-tree font measurement     =  8 px
-    ///                                              Total = 28 px
-    /// Used in Phase 2 to turn a raw Bold text width into a required column width.
+    /// Reads the tile chrome (borders, paddings, flag icon, measuring margin) from <c>AppLayout.axaml</c>. Both the
+    /// tile drawing (Phase 4) and the tile width calculation (Phases 1 and 1.5) use the returned values, so they
+    /// cannot drift apart. Call once per render and keep the result.
     /// </summary>
-    private const double TileTextOverhead = 28;
+    /// <returns>The chrome for the current resources.</returns>
+    private static TileChrome ReadTileChrome() => new(
+        Gap:                TilePaddingH,
+        BorderThin:         Layout("TileBorderThickness"),
+        BorderThick:        Layout("TileThickBorderThickness"),
+        OverlayOuterBorder: Layout("TileOverlayOuterBorderThickness"),
+        ContentPadding:     Resource<Thickness>("TileContentPadding", default),
+        EntryRowPadding:    Resource<Thickness>("TileEntryRowPadding", default),
+        SelectionBorder:    Layout("TileSelectionBorderThickness"),
+        FlagIconSize:       Layout("TileFlagIconSize"),
+        FlagIconMargin:     Resource<Thickness>("TileFlagIconMargin", default),
+        MeasuringMargin:    Layout("TileMeasuringMargin"));
 
+    /// <summary>
+    /// The font family the tiles are actually drawn in, which the width and height measuring must use too.
+    /// Tile text blocks inherit it from the window (the theme sets it; the app registers Inter). A text block
+    /// measured OFF the tree would get the platform default font instead (a different, narrower face), so the
+    /// measuring always borrows this one. Before the view is attached it has not inherited anything yet, so the
+    /// theme's own value is read instead.
+    /// </summary>
+    private FontFamily DrawnFontFamily =>
+        !this.IsAttachedToVisualTree()
+        && Application.Current!.TryGetResource("ContentControlThemeFontFamily", null, out var themeFont)
+        && themeFont is FontFamily themeFamily
+            ? themeFamily
+            : FontFamily;
     
     /// <summary>
     /// Cached export palette loaded from PrintColors.axaml on first export.
@@ -97,9 +116,10 @@ public partial class ScheduleGridView : UserControl
     private static double TilePaddingV   => Layout("TilePaddingVertical");
     private static double TilePaddingH   => Layout("TilePaddingHorizontal");
     private static double MultiSemPad    => Layout("MultiSemesterInternalTilePadding");
+    private static double DayEdgeGap     => Layout("DayEdgeGap");
 
-    /// <summary>Border thickness applied to the entry row of a user-selected section tile.</summary>
-    private const double TileSelectionBorderThickness = 3;
+    /// <summary>Border thickness applied to the entry row of a user-selected section tile (<c>TileSelectionBorderThickness</c>, AppLayout.axaml).</summary>
+    private static double TileSelectionBorderThickness => Layout("TileSelectionBorderThickness");
 
     private static IBrush TileFill              => Res("TileFill");
     private static IBrush MeetingTileFill       => Res("MeetingTile");
@@ -364,9 +384,12 @@ public partial class ScheduleGridView : UserControl
         // The fully-qualified "ScheduleGridView.X" on the right-hand side is required —
         // the local is in scope from its declaration point, so a bare "X" on the RHS
         // would be a self-reference (use-before-assignment).
+        TileChrome chrome              = ReadTileChrome();
+        FontFamily drawnFont           = DrawnFontFamily;
         double TilePaddingV            = ScheduleGridView.TilePaddingV;
         double TilePaddingH            = ScheduleGridView.TilePaddingH;
         double MultiSemPad             = ScheduleGridView.MultiSemPad;
+        double DayEdgeGap              = ScheduleGridView.DayEdgeGap;
         IBrush TileFill                = ScheduleGridView.TileFill;
         IBrush MeetingTileFill         = ScheduleGridView.MeetingTileFill;
         IBrush TileExternalBorder      = ScheduleGridView.TileExternalBorder;
@@ -426,7 +449,7 @@ public partial class ScheduleGridView : UserControl
         // Using TextBlock.Measure keeps us on the same measurement basis as Phase 4 — the
         // existing WASM per-entry fudge (PlatformCapabilities.TileHeightMarginPerEntry) is
         // applied identically below.
-        double entryLineH = MeasureLineHeight(_vm!.TileFontSize, FontWeight.SemiBold);
+        double entryLineH = MeasureLineHeight(drawnFont, _vm!.TileFontSize, FontWeight.SemiBold);
         const double EntrySeparatorH = 5; // 1 px rule + 2 px top margin + 2 px bottom margin (see Phase 4)
 
         for (int d = 0; d < dayCount; d++)
@@ -441,30 +464,42 @@ public partial class ScheduleGridView : UserControl
 
                 // Compute natural tile height arithmetically rather than by building a
                 // throwaway visual tree. Components, matching the Phase 4 layout exactly:
-                //   • per entry        : entryLineH (TextBlock line height)
+                //   • per entry        : its line (entryLineH, or the flag icon if taller) + row padding top/bottom
                 //   • per selected row : 2 × TileSelectionBorderThickness (top + bottom border)
                 //   • between entries  : EntrySeparatorH
+                //   • the tile's own   : borders + content padding, top and bottom (TileChrome.ChromeHeight)
                 //   • WASM compensation: TileHeightMarginPerEntry × entry count
+                // This is the tile's drawn (outer) height; the tileHeightMap key spans semester sub-columns, so each
+                // tile's value is computed here first and only then maxed into the map below.
                 int entryCount     = tile.Entries.Count;
                 int selectedCount  = 0;
+                double entriesH    = 0;
                 for (int ei = 0; ei < entryCount; ei++)
+                {
                     if (selectedIds.Contains(tile.Entries[ei].SectionId)) selectedCount++;
+                    entriesH += chrome.EntryHeight(entryLineH, tile.Entries[ei].Flag != SectionFlag.None);
+                }
 
-                double actualH = entryCount * entryLineH
-                               + selectedCount * 2 * TileSelectionBorderThickness
+                double actualH = entriesH
+                               + selectedCount * 2 * chrome.SelectionBorder
                                + Math.Max(0, entryCount - 1) * EntrySeparatorH
+                               + chrome.ChromeHeight(tile.Entries.Any(e => e.IsOverlay),
+                                                     data.IsMultiSemester && !string.IsNullOrEmpty(tile.SemesterName))
                                + entryCount * PlatformCapabilities.TileHeightMarginPerEntry;
 
                 // Measure the widest entry label in this tile using Bold (the heavier weight
                 // applied when selected), guaranteeing the column fits in both render states.
-                // MeasureTextWidth avoids subtle width under-reporting from off-tree controls.
+                // The measuring uses the font the tiles are drawn in (drawnFont); a marker and a flag icon
+                // add their own fixed widths to a line (TileChrome.EntryWidth).
                 double tileTextW = 0;
                 foreach (var e in tile.Entries)
                 {
                     string lbl = BuildTileLabel(e.Label, e.Initials, e.FrequencyAnnotation);
                     // A subject marker adds its side and the gap after it to the line (colour by subject).
                     double markerW = SubjectMarkerBrush(e.SubjectColor) is null ? 0 : SubjectMarkerSide + SubjectMarkerGap;
-                    tileTextW = Math.Max(tileTextW, MeasureTextWidth(lbl, _vm!.TileFontSize, FontWeight.Bold) + markerW);
+                    tileTextW = Math.Max(tileTextW, chrome.EntryWidth(
+                        MeasureTextWidth(drawnFont, lbl, _vm!.TileFontSize, FontWeight.Bold), markerW,
+                        e.Flag != SectionFlag.None));
                 }
                 tileMaxTextWidths[(d, tile.StartMinutes, tile.EndMinutes)] = tileTextW;
 
@@ -489,7 +524,7 @@ public partial class ScheduleGridView : UserControl
         //   tilePredNaturalW — sum of natural widths for slots preceding this tile's slot
         //
         // "Natural width" for a slot = (max Bold text width across all tiles in that slot)
-        // + TileTextOverhead (which accounts for tile padding, border, and safety margin).
+        // + the tile's overhead (TileChrome.TileOverhead: gap, borders, paddings, selection border, margin).
         var tileSlotNaturalW = new Dictionary<(int, int, int), double>();
         var tileSumNaturalW  = new Dictionary<(int, int, int), double>();
         var tilePredNaturalW = new Dictionary<(int, int, int), double>();
@@ -530,15 +565,19 @@ public partial class ScheduleGridView : UserControl
                 int slotCount = cluster[0].OverlapCount;
 
                 // Per-slot natural width = max text width among tiles at that slot + overhead.
-                // Initialise each slot to TileTextOverhead so it is never zero.
+                // Initialise each slot to its tile's overhead so it is never zero.
                 var slotNaturalW = new double[slotCount];
-                for (int i = 0; i < slotCount; i++) slotNaturalW[i] = TileTextOverhead;
+                // A tile is drawn in a semester colour when several semesters are shown and it has a semester.
+                double TileOverheadOf(GridTile t) => chrome.TileOverhead(
+                    t.Entries.Any(e => e.IsOverlay),
+                    data.IsMultiSemester && !string.IsNullOrEmpty(t.SemesterName));
+                for (int i = 0; i < slotCount; i++) slotNaturalW[i] = TileOverheadOf(cluster[0]);
 
                 foreach (var t in cluster)
                 {
                     double textW = tileMaxTextWidths[(d, t.StartMinutes, t.EndMinutes)];
                     slotNaturalW[t.OverlapIndex] = Math.Max(slotNaturalW[t.OverlapIndex],
-                                                            textW + TileTextOverhead);
+                                                            textW + TileOverheadOf(t));
                 }
 
                 // Prefix sums give each tile its left-offset within the cluster.
@@ -574,12 +613,13 @@ public partial class ScheduleGridView : UserControl
             // Per-sub-column floor: day-header text width divided evenly so the label
             // always fits even if some or all semester sub-columns have no content.
             string dayName         = data.DayColumns[ld * semCount].Header;
-            double headerTextWidth = MeasureTextWidth(dayName, headerFontSize, FontWeight.SemiBold)
+            double headerTextWidth = MeasureTextWidth(drawnFont, dayName, headerFontSize, FontWeight.SemiBold)
                                      + DayHeaderSidePadding * 2;
             double minSubColWidth  = headerTextWidth / semCount;
 
             // Size each semester sub-column independently from its own content.
-            // Cluster required width = sum of slot natural widths + 2 × TilePaddingH (left + right gaps).
+            // Cluster required width = sum of slot natural widths + the column's slot insets
+            // (TileChrome.SlotInsets: the day-edge gap on outer edges, MultiSemPad at semester boundaries).
             // tileSumNaturalW is the same for all tiles in a given cluster, so the max across
             // all tiles in the column is the widest cluster's required width.
             for (int s = 0; s < semCount; s++)
@@ -587,9 +627,10 @@ public partial class ScheduleGridView : UserControl
                 int flatCol = ld * semCount + s;
                 var dayCol  = data.DayColumns[flatCol];
 
+                var (colLeft, colRight) = TileChrome.SlotInsets(s, semCount, TilePaddingH, MultiSemPad, DayEdgeGap);
                 double colContentWidth = dayCol.Tiles.Count == 0 ? 0 :
                     dayCol.Tiles.Max(t =>
-                        tileSumNaturalW[(flatCol, t.StartMinutes, t.EndMinutes)] + 2 * TilePaddingH);
+                        tileSumNaturalW[(flatCol, t.StartMinutes, t.EndMinutes)] + colLeft + colRight);
 
                 dayColWidths[flatCol] = Math.Max(minSubColWidth, colContentWidth);
             }
@@ -764,8 +805,7 @@ public partial class ScheduleGridView : UserControl
                 double predNatW  = tilePredNaturalW[tileKey];
                 int    subIdx    = d % semCount;
                 bool   isMultiSem = semCount > 1;
-                double leftInset  = (isMultiSem && subIdx > 0)            ? MultiSemPad : TilePaddingH;
-                double rightInset = (isMultiSem && subIdx < semCount - 1) ? MultiSemPad : 0;
+                var (leftInset, rightInset) = TileChrome.SlotInsets(subIdx, semCount, TilePaddingH, MultiSemPad, DayEdgeGap);
                 double scale     = (dayColWidth - leftInset - rightInset) / sumNatW;
                 double tileW     = natW * scale;
                 double tileX     = dayX + leftInset + predNatW * scale;
@@ -850,11 +890,11 @@ public partial class ScheduleGridView : UserControl
                         {
                             Data              = flagGeo,
                             Fill              = flagBrush,
-                            Width             = 12,
-                            Height            = 12,
+                            Width             = chrome.FlagIconSize,
+                            Height            = chrome.FlagIconSize,
                             Stretch           = Stretch.Uniform,
                             VerticalAlignment = VerticalAlignment.Top,
-                            Margin            = new Thickness(3, 2, 0, 0),
+                            Margin            = chrome.FlagIconMargin,
                         };
                         DockPanel.SetDock(flagIcon, Dock.Right);
                         var dock = new DockPanel();
@@ -881,9 +921,9 @@ public partial class ScheduleGridView : UserControl
                     {
                         Background      = isConflict ? conflictGlow : entryRowBg,
                         BorderBrush     = entrySelected ? UserSelectedBorder : Brushes.Transparent,
-                        BorderThickness = new Thickness(entrySelected ? TileSelectionBorderThickness : 0),
+                        BorderThickness = new Thickness(entrySelected ? chrome.SelectionBorder : 0),
                         CornerRadius    = new CornerRadius(2),
-                        Padding         = new Thickness(1, 0),
+                        Padding         = chrome.EntryRowPadding,
                         // Commitment tiles are display-only — no hand cursor.
                         // Meetings are flagged IsCommitment to suppress the right-click menu
                         // but are still interactive, so they keep the hand cursor.
@@ -978,9 +1018,9 @@ public partial class ScheduleGridView : UserControl
                     {
                         Background      = TileFill,
                         BorderBrush     = semesterBrush,
-                        BorderThickness = new Thickness(3),
+                        BorderThickness = new Thickness(chrome.BorderThick),
                         CornerRadius    = new CornerRadius(3),
-                        Padding         = new Thickness(3, 2),
+                        Padding         = chrome.ContentPadding,
                         Child           = stack,
                     };
 
@@ -990,7 +1030,7 @@ public partial class ScheduleGridView : UserControl
                         Height          = adjustedTileH,
                         Background      = TileFill,
                         BorderBrush     = OverlayFrameBorder,
-                        BorderThickness = new Thickness(4),
+                        BorderThickness = new Thickness(chrome.OverlayOuterBorder),
                         CornerRadius    = new CornerRadius(3),
                         BoxShadow       = new BoxShadows(new BoxShadow { Blur = 4, Spread = 0, Color = new Color(128, 0, 0, 0), OffsetX = 1, OffsetY = 2 }),
                         ClipToBounds    = false,
@@ -1007,11 +1047,11 @@ public partial class ScheduleGridView : UserControl
                         Background      = TileFill,
                         BorderBrush     = tileHasOverlay ? OverlayFrameBorder
                                         : semesterBrush ?? TileExternalBorder,
-                        BorderThickness = tileHasOverlay ? new Thickness(3)
-                                        : semesterBrush is not null ? new Thickness(3) : new Thickness(1),
+                        BorderThickness = new Thickness(tileHasOverlay || semesterBrush is not null
+                                                        ? chrome.BorderThick : chrome.BorderThin),
                         CornerRadius    = new CornerRadius(3),
                         BoxShadow       = new BoxShadows(new BoxShadow { Blur = 4, Spread = 0, Color = new Color(128, 0, 0, 0), OffsetX = 1, OffsetY = 2 }),
-                        Padding         = new Thickness(3, 2),
+                        Padding         = chrome.ContentPadding,
                         ClipToBounds    = false,
                         Child           = stack,
                     };
@@ -1106,7 +1146,6 @@ public partial class ScheduleGridView : UserControl
 
         int semCount = _cachedSemesterCount;
         double TilePaddingV = ScheduleGridView.TilePaddingV;
-        double TilePaddingH = ScheduleGridView.TilePaddingH;
 
         foreach (var ghost in ghosts)
         {
@@ -1116,8 +1155,8 @@ public partial class ScheduleGridView : UserControl
             int flatCol = (ghost.Day - 1) * semCount;
             if (flatCol < 0 || flatCol >= data.DayColumns.Count) continue;
 
-            double dayX = _cachedDayXOffsets[flatCol];
-            double dayColWidth = _cachedDayColWidths[flatCol];
+            // The ghost spans the same edges as the tiles of that day (first tile left edge to last tile right edge).
+            var (ghostX, ghostW) = GetDayGroupContentBounds(flatCol, semCount, _cachedDayXOffsets, _cachedDayColWidths);
 
             double startY = _cachedEffectiveHeaderHeight
                           + TimeToY(ghost.StartMinutes, _cachedFirstRowMinutes)
@@ -1128,7 +1167,7 @@ public partial class ScheduleGridView : UserControl
 
             double tileY = startY + TilePaddingV;
             double tileH = Math.Max(endY - startY - TilePaddingV * 2, 18);
-            double tileW = dayColWidth;
+            double tileW = ghostW;
 
             // Tab: small opaque strip with room label, positioned above the outline
             var tabLabel = new TextBlock
@@ -1157,7 +1196,7 @@ public partial class ScheduleGridView : UserControl
             // Outer outline: transparent body with colored border
             var outline = new Border
             {
-                Width           = tileW - TilePaddingH,
+                Width           = tileW,
                 Height          = tileH,
                 Background      = GhostBodyFill,
                 BorderBrush     = GhostOutlineBrush,
@@ -1169,7 +1208,7 @@ public partial class ScheduleGridView : UserControl
             // Wrapper canvas: tab sits above the outline at negative Y
             var wrapper = new Canvas
             {
-                Width  = tileW - TilePaddingH,
+                Width  = tileW,
                 Height = tileH,
                 ClipToBounds = false,
             };
@@ -1183,7 +1222,7 @@ public partial class ScheduleGridView : UserControl
 
             ToolTip.SetTip(wrapper, $"{ghost.RoomLabel}  {ghost.TimeLabel}");
 
-            Canvas.SetLeft(wrapper, dayX + TilePaddingH / 2);
+            Canvas.SetLeft(wrapper, ghostX);
             Canvas.SetTop(wrapper, tileY);
             _canvas.Children.Add(wrapper);
             _ghostControls.Add(wrapper);
@@ -1343,24 +1382,20 @@ public partial class ScheduleGridView : UserControl
         (minutes - firstRowMinutes) / 30.0 * HalfHourHeight;
 
     /// <summary>
-    /// Returns the horizontal content bounds (X, Width) for a flat sub-column, inset by
-    /// <see cref="TilePaddingH"/> at day-group boundaries only. In single-semester mode
-    /// every sub-column is both first and last in its group, so both sides are inset;
-    /// in multi-semester mode adjacent semester sub-columns within the same day render
-    /// edge-to-edge, while the outer edges of the day-group reserve a gutter.
-    ///
-    /// This unifies the gutter concept across modes: tiles already inset by TilePaddingH
-    /// (creating the visible gap in single-semester mode), and by using the same constant
-    /// here, any day-column-level fills (semester wash, header bars) leave the same gap
-    /// at day-group boundaries.
+    /// Returns the horizontal content bounds (X, Width) for a flat sub-column: the span from the first tile's left
+    /// edge to the last tile's right edge, used by the semester bars and ghost outlines so they line up with the
+    /// tiles. Outer day-group edges are inset by half the <c>DayEdgeGap</c>; boundaries between semester
+    /// sub-columns of one day use <c>MultiSemesterInternalTilePadding</c> (see <see cref="TileChrome.ContentInsets"/>).
     /// </summary>
+    /// <param name="flatCol">Flat column index.</param>
+    /// <param name="semCount">Semester sub-columns per day.</param>
+    /// <param name="dayXOffsets">Cumulative X offset of each flat column.</param>
+    /// <param name="dayColWidths">Width of each flat column.</param>
+    /// <returns>The left X and the width of the content span.</returns>
     private static (double X, double Width) GetDayGroupContentBounds(
         int flatCol, int semCount, double[] dayXOffsets, double[] dayColWidths)
     {
-        int subIdx        = flatCol % semCount;
-        bool isMultiSem   = semCount > 1;
-        double leftInset  = (isMultiSem && subIdx > 0)            ? MultiSemPad  : TilePaddingH;
-        double rightInset = (isMultiSem && subIdx < semCount - 1) ? MultiSemPad  : TilePaddingH;
+        var (leftInset, rightInset) = TileChrome.ContentInsets(flatCol % semCount, semCount, MultiSemPad, DayEdgeGap);
         return (dayXOffsets[flatCol] + leftInset,
                 dayColWidths[flatCol] - leftInset - rightInset);
     }
@@ -1467,9 +1502,19 @@ public partial class ScheduleGridView : UserControl
     private static T Resource<T>(string key, T fallback) =>
         Application.Current!.Resources.TryGetResource(key, null, out var v) && v is T t ? t : fallback;
 
-    private static double MeasureTextWidth(string text, double fontSize, FontWeight weight)
+    /// <summary>
+    /// Measures the width of a single line of text, in the font the tiles are drawn in. The text block is not in the
+    /// visual tree, so it must be given the font explicitly (see <see cref="DrawnFontFamily"/>); left alone it would
+    /// use the platform default font and under-measure by about 5 percent.
+    /// </summary>
+    /// <param name="family">The font family the text is drawn in.</param>
+    /// <param name="text">The text to measure.</param>
+    /// <param name="fontSize">Font size in pixels.</param>
+    /// <param name="weight">Font weight.</param>
+    /// <returns>The text's desired width in pixels.</returns>
+    private static double MeasureTextWidth(FontFamily family, string text, double fontSize, FontWeight weight)
     {
-        var tb = new TextBlock { Text = text, FontSize = fontSize, FontWeight = weight };
+        var tb = new TextBlock { Text = text, FontFamily = family, FontSize = fontSize, FontWeight = weight };
         tb.Measure(new Size(double.PositiveInfinity, double.PositiveInfinity));
         return tb.DesiredSize.Width;
     }
@@ -1480,9 +1525,13 @@ public partial class ScheduleGridView : UserControl
     /// actual rendered line box (an empty TextBlock measures to zero on some platforms).
     /// Used by Phase 1 to compute tile heights without building a full visual tree per tile.
     /// </summary>
-    private static double MeasureLineHeight(double fontSize, FontWeight weight)
+    /// <param name="family">The font family the text is drawn in (see <see cref="DrawnFontFamily"/>).</param>
+    /// <param name="fontSize">Font size in pixels.</param>
+    /// <param name="weight">Font weight.</param>
+    /// <returns>The line's desired height in pixels.</returns>
+    private static double MeasureLineHeight(FontFamily family, double fontSize, FontWeight weight)
     {
-        var tb = new TextBlock { Text = "Mg", FontSize = fontSize, FontWeight = weight };
+        var tb = new TextBlock { Text = "Mg", FontFamily = family, FontSize = fontSize, FontWeight = weight };
         tb.Measure(new Size(double.PositiveInfinity, double.PositiveInfinity));
         return tb.DesiredSize.Height;
     }

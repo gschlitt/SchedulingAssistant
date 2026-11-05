@@ -12,10 +12,39 @@
     <!--  Vertical gap between the gridline and the top/bottom of a tile  -->
     <x:Double x:Key="TilePaddingVertical">2</x:Double>
     <!--
-        Horizontal gap between the day-column edge and tile edges;
-        also used as the slot-allocation gap when scaling tile widths
+        Horizontal gap between the day-column edge and tile edges, and between side-by-side tiles.
+        Also the gap each tile's width allowance includes (see TileChrome).
     -->
-    <x:Double x:Key="TilePaddingHorizontal">8</x:Double>
+    <x:Double x:Key="TilePaddingHorizontal">4</x:Double>
+
+    <!--
+        Total space between the last tile of one day and the first tile of the next. The gap between tiles
+        inside a day stays TilePaddingHorizontal. Each day group is inset by half of this on its outer edges.
+    -->
+    <x:Double x:Key="DayEdgeGap">16</x:Double>
+
+    <!--
+        Tile chrome. The schedule grid both DRAWS its tiles and WIDTHS its columns from these values (TileChrome),
+        so changing one here keeps the two in step: a tile is never drawn narrower than its text needs.
+    -->
+    <!--  Border of a plain tile (one semester shown, no overlay)  -->
+    <x:Double x:Key="TileBorderThickness">1</x:Double>
+    <!--  Border of a tile drawn in a semester colour (several semesters shown), and of any overlay tile  -->
+    <x:Double x:Key="TileThickBorderThickness">3</x:Double>
+    <!--  Outer (overlay) border of an overlay tile that also has a semester colour; the semester border sits inside it  -->
+    <x:Double x:Key="TileOverlayOuterBorderThickness">4</x:Double>
+    <!--  Padding between a tile's border and its lines (left/right, top/bottom)  -->
+    <Thickness x:Key="TileContentPadding">3,2</Thickness>
+    <!--  Padding inside one line's row of a tile (left/right, top/bottom)  -->
+    <Thickness x:Key="TileEntryRowPadding">1,0</Thickness>
+    <!--  Border drawn around a selected line, on every side  -->
+    <x:Double x:Key="TileSelectionBorderThickness">3</x:Double>
+    <!--  Size of the flag icon docked at the right of a flagged line  -->
+    <x:Double x:Key="TileFlagIconSize">12</x:Double>
+    <!--  Margin around that flag icon (left, top, right, bottom)  -->
+    <Thickness x:Key="TileFlagIconMargin">3,2,0,0</Thickness>
+    <!--  Small allowance, in pixels, added to every tile's width for rounding in text measurement  -->
+    <x:Double x:Key="TileMeasuringMargin">1</x:Double>
 
     <!--
         Spacing inserted on each side of an internal semester boundary in multi-semester

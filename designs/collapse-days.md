@@ -5,7 +5,8 @@ decisions"). ✅ Phase 2 (Domain Model) complete
 2026-11-05: P2-1–P2-5 settled. ✅ Phase 3 (UX Sketch) complete 2026-11-05:
 P3-1–P3-5 settled. ✅ Phase 4 (Data Design): nothing stored, folded into Phase 5 (Greg, 2026-11-05).
 ✅ Phase 5 (Architecture) complete 2026-11-05: P5-1–P5-3 settled.
-✅ Phase 6 (Implementation Plan) signed off 2026-11-05. **Spec locked; next: task 1 (tile padding).**
+✅ Phase 6 (Implementation Plan) signed off 2026-11-05. **Spec locked.** ✅ Task 1 (tile padding) done 2026-11-05, not yet
+committed (see its "Outcome"). **Next: task 2 (real day numbers).**
 **Target release:** 1.2.4. **Expands** summary item 2.13. The summary's "Design direction" (toolbar toggles, narrow
 strips, MWF/TR/All shortcuts) is treated here as one candidate, not a decision. UI waits for Phase 3.
 
@@ -468,6 +469,30 @@ slices.
 - **Check:** no ellipsis on any tile at each "Text:" size, one and several semesters, Windows and the WASM demo
   (its fonts measure differently: `PlatformCapabilities`). macOS on the next signed build.
 - **Tests:** the overhead for one vs several semesters.
+
+**Outcome (2026-11-05, Greg's choices after a mock on the UBC data).** The plan's sums were wrong: the gap between
+side-by-side tiles (`TilePaddingHorizontal`) was 8 px, not 3, and a selected line's 3 px border was never counted, so
+the real spare room was about 4 px (one semester) and 0 (several), not 8. The "safety margin" was really hiding a
+measuring bug: labels were measured in the system default font but drawn in Inter (about 5% wider). The flag icon
+(15 px) was never counted, so a selected, flagged line in a narrow tile was cut off with "…" (Greg confirmed it in
+the app). Built:
+
+- **Measuring uses the drawn font** (`MeasureTextWidth`/`MeasureLineHeight` take the view's font family).
+- **`TileChrome`** (`Views/GridView/TileChrome.cs`) works out each tile's width and height from its parts: gap,
+  borders (plain, semester colour, overlay, dual overlay), paddings, room for the selection border, the flag icon per
+  flagged line, and a 1 px measuring margin. The drawing reads the same values, all in `AppLayout.axaml`.
+- **Tile gap 8 → 4 px within a day; 16 px between days** (as in 1.2.3; its own resource, `DayEdgeGap`, after
+  Greg's eye check). The 4 px left unused at the right of each column is gone. Room/Slot Browser ghosts now span
+  the same edges as the day's tiles. Tile heights now count the tile's own top and bottom border and padding (the old 1 px per
+  line over-measure was hiding that; heights are within 2 px of 1.2.3).
+- **Widths at text size 11** (1.2.3 → now): 400-level CIVL + MECH 2,471 → 2,389; 300-level CIVL + ELEC + MECH
+  2,751 → 2,644; with Winter Terms 1 + 2 shown 2,723 → 2,704. The spec's 2,642 px was measured at size 12
+  (2,639 → 2,561; the other slice 2,936 → 2,836).
+- **Checked:** no cut-off text, across or at the bottom, at every Text: size, one and two semesters, with lines
+  selected and flagged (`tools/TileWidthProbe`, a regression check on a copy of the UBC database). WASM demo checked
+  by eye at sizes 8, 11 and 12, including a selected, flagged line in a side-by-side tile. macOS on the next signed
+  build.
+- **Left as is:** the WASM height fudge `TileHeightMarginPerEntry` may have had the same font cause.
 
 ### Task 2: Real day numbers on columns (no visible change)
 
