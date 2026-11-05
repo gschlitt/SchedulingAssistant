@@ -53,4 +53,31 @@
     -->
     <x:Double x:Key="MultiSemesterInternalTilePadding">0</x:Double>
 
+    <!--  ── Folded day strips and day headers (collapse days, designs/collapse-days.md)  ─────────────────  -->
+    <!--
+        Padding on EACH side of a folded day's strip. The strip is as wide as its letter or its section count
+        (whichever is wider) plus this on both sides: about 24 px at the default size.
+    -->
+    <x:Double x:Key="FoldedDayStripPadding">4</x:Double>
+    <!--  Vertical gap between the strip's header row, its section count, and its "other things" sign  -->
+    <x:Double x:Key="FoldedDayStripContentGap">3</x:Double>
+    <!--  Width of the crease line down the middle of a folded strip  -->
+    <x:Double x:Key="FoldedDayCreaseThickness">1</x:Double>
+    <!--  Gap between a strip's outer edge and the end of its section bands (the bands meet at the crease)  -->
+    <x:Double x:Key="FoldedDayBandEdgeInset">3</x:Double>
+    <!--  Gap at the top and bottom of every band, so two back-to-back sections show a hairline between them  -->
+    <x:Double x:Key="FoldedDayBandVerticalInset">1</x:Double>
+    <!--  Width of a bar for an "other thing" (meeting, commitment, shared tile, overlay tile), centred on the crease  -->
+    <x:Double x:Key="FoldedDayOtherBarWidth">6</x:Double>
+    <!--  Height of a mark drawn across a strip at the time of what it marks (selection, ghost...); task 5  -->
+    <x:Double x:Key="FoldedDayMarkHeight">3</x:Double>
+    <!--  Weight of the strip's day letter and of its section count  -->
+    <FontWeight x:Key="FoldedDayLetterFontWeight">SemiBold</FontWeight>
+    <FontWeight x:Key="FoldedDayCountFontWeight">SemiBold</FontWeight>
+    <!--  Size of the fold icon that appears at the right end of a hovered day header, and its line thickness  -->
+    <x:Double x:Key="FoldDayIconSize">12</x:Double>
+    <x:Double x:Key="FoldDayIconStrokeThickness">1.5</x:Double>
+    <!--  Space between the fold icon and the right edge of the day header  -->
+    <x:Double x:Key="FoldDayIconRightMargin">2</x:Double>
+
 </ResourceDictionary>

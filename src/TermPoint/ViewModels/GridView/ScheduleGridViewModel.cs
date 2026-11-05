@@ -115,6 +115,9 @@ public partial class ScheduleGridViewModel : ViewModelBase
     /// <summary>State for the right-click context menu on section tiles.</summary>
     public SectionContextMenuViewModel ContextMenu { get; }
 
+    /// <summary>State for the right-click menu on a day header or a folded day's strip (collapse days).</summary>
+    public DayHeaderMenuViewModel DayHeaderMenu { get; }
+
     /// <summary>
     /// True when the write lock is held by this instance and write-capable UI
     /// (such as the right-click context menu) should be available.
@@ -183,7 +186,8 @@ public partial class ScheduleGridViewModel : ViewModelBase
         SharedScheduleService sharedScheduleService,
         AccessPanelViewModel accessPanelViewModel,
         FocusService focus,
-        SubjectColorPresenter subjectColors)
+        SubjectColorPresenter subjectColors,
+        IBlockPatternRepository blockPatternRepo)
     {
         _sectionRepo = sectionRepo;
         _courseRepo = courseRepo;
@@ -214,6 +218,10 @@ public partial class ScheduleGridViewModel : ViewModelBase
             var semIds = _semesterContext.SelectedSemesters.Select(s => s.Semester.Id);
             _sectionStore.Reload(_sectionRepo, semIds);
         }, lockService);
+
+        // The day-header menu reads the block patterns each time it opens (so Settings edits show) and calls this
+        // view model's fold commands.
+        DayHeaderMenu = new DayHeaderMenuViewModel(this, blockPatternRepo);
 
         LoadAcademicUnitName();
 
@@ -381,6 +389,9 @@ public partial class ScheduleGridViewModel : ViewModelBase
         }
     }
 
+    /// <summary>The day numbers the current grid shows, in week order (the day-header menu reads this).</summary>
+    public IReadOnlyList<int> ShownDayNumbers => ShownDays();
+
     /// <summary>The distinct day numbers the current <see cref="GridData"/> shows, in week order.</summary>
     /// <returns>The shown days; empty while the grid is blank.</returns>
     private List<int> ShownDays() => GridData.DayColumns.Select(c => c.DayNumber).Distinct().ToList();
@@ -482,10 +493,26 @@ public partial class ScheduleGridViewModel : ViewModelBase
     {
         var day = allBlocks.Where(b => b.Day == dayNum).ToList();
         var meetings = day.OfType<SectionMeetingBlock>().Where(b => !b.IsOverlay).ToList();
+        // Everything else the grid draws on the day, with its kind, for the strip's bars (R1-3). Ghosts are not
+        // "other things" here (they become marks in task 5), so they have no kind and are skipped.
+        var others = new List<FoldedOtherSpan>();
+        foreach (var b in day)
+        {
+            FoldedOtherKind? kind = b switch
+            {
+                SectionMeetingBlock { IsOverlay: true } => FoldedOtherKind.OverlaySection,
+                MeetingBlock => FoldedOtherKind.Meeting,
+                CommitmentBlock => FoldedOtherKind.Commitment,
+                SharedScheduleBlock => FoldedOtherKind.SharedSchedule,
+                _ => null,
+            };
+            if (kind is { } k) others.Add(new FoldedOtherSpan(k, b.StartMinutes, b.EndMinutes));
+        }
         return new FoldedDaySummary(
             meetings.Select(b => b.SectionId).Distinct().Count(),
             day.Count > meetings.Count,
-            meetings.Select(b => new FoldedSectionMeeting(b.SectionId, b.StartMinutes)).ToList());
+            meetings.Select(b => new FoldedSectionMeeting(b.SectionId, b.StartMinutes, b.EndMinutes)).ToList(),
+            others);
     }
 
     /// <summary>

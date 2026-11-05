@@ -83,4 +83,10 @@
 	-->
 	<StreamGeometry x:Key="DisclosureTriangleIcon">M 0,0 L 10,5 L 0,10 Z</StreamGeometry>
 
+	<!--
+		Fold a day away — stroke-based, 24×24, drawn for TermPoint: two chevrons pointing in at each other (">  <"),
+		the picture of a column squeezing narrow. Shown at the right end of a hovered Schedule day header.
+	-->
+	<StreamGeometry x:Key="FoldDayIcon">M 3,6 L 9,12 L 3,18 M 21,6 L 15,12 L 21,18</StreamGeometry>
+
 </ResourceDictionary>

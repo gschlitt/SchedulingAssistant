@@ -125,7 +125,7 @@ public sealed class GridSubjectColourTests : IDisposable
             _fx.Lock, new SharedScheduleService(),
             new AccessPanelViewModel(new ProgramWatchRepository(db), _semesterContext, notifier, _envRepo, _courseRepo,
                 () => true),
-            _focus, _presenter);
+            _focus, _presenter, new BlockPatternRepository(db));
 
         // Open the Fall semester and load its sections, as the section list does in the app.
         _semesterContext.Reload(_ayRepo, _semesterRepo, year.Id, new HashSet<string> { fall.Id });

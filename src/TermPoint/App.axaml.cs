@@ -743,7 +743,9 @@ public partial class App : Application
             // A constructor dependency so FocusService is built, and subscribes to SectionsChanged, first.
             sp.GetRequiredService<FocusService>(),
             // Likewise, so the presenter drops its caches on SectionsChanged/FocusChanged before the grid reloads.
-            sp.GetRequiredService<SubjectColorPresenter>()));
+            sp.GetRequiredService<SubjectColorPresenter>(),
+            // Read each time the day-header menu opens (both ConfigureServices and ConfigureDemoServices register it).
+            sp.GetRequiredService<IBlockPatternRepository>()));
         services.AddSingleton<WorkloadPanelViewModel>(sp => new WorkloadPanelViewModel(
             sp.GetRequiredService<IInstructorRepository>(),
             sp.GetRequiredService<ISectionRepository>(),

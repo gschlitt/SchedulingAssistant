@@ -323,4 +323,23 @@
 	      tile fill and the card background (Revision 1)  -->
 	<SolidColorBrush x:Key="SubjectMarkerOutline" Color="#59000000" />
 
+	<!--  ── Folded day strips and day headers (collapse days, designs/collapse-days.md)  ──────────────────  -->
+	<!--
+		Revision 1: the strip is a sheet folded almost shut down its middle. Flat fills only (no gradients): a light
+		left face, a shadowed right face and a crease line between them. Each hidden section time is a band in the tile
+		blue on both faces (lighter on the left, shadowed on the right); every band looks the same, however many
+		sections share it.
+	-->
+	<SolidColorBrush x:Key="FoldedDayFaceLight" Color="#F4F4F6" />
+	<SolidColorBrush x:Key="FoldedDayFaceShadow" Color="#DCDEE3" />
+	<SolidColorBrush x:Key="FoldedDayCrease" Color="#9A9EA8" />
+	<SolidColorBrush x:Key="FoldedDayBandLight" Color="#AFCFE8" />
+	<SolidColorBrush x:Key="FoldedDayBandShadow" Color="#8FAAC2" />
+	<!--  The section count on a strip  -->
+	<SolidColorBrush x:Key="FoldedDayStripText" Color="#1e2938" />
+	<!--  Fill of an OPEN day's header while the pointer is over it (translucent: the day name stays readable)  -->
+	<SolidColorBrush x:Key="GridHeaderHoverFill" Color="#26000000" />
+	<!--  The fold icon on a hovered day header  -->
+	<SolidColorBrush x:Key="FoldDayIconBrush" Color="#1e2938" />
+
 </ResourceDictionary>

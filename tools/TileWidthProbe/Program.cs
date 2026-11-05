@@ -68,7 +68,7 @@ static class Program
             new MeetingRepository(db), notifier, new InstructorCommitmentRepository(db), new WriteLockService(),
             new SharedScheduleService(),
             new AccessPanelViewModel(new ProgramWatchRepository(db), semCtx, notifier, envRepo, courseRepo, () => false),
-            focus, presenter);
+            focus, presenter, new BlockPatternRepository(db));
 
         // Which semesters exist?
         var allSems = semRepo.GetAll().ToList();
@@ -192,6 +192,19 @@ static class Program
         ShowSemesters(t1, t2);
         Filter(["CIVL", "MECH"], "400");
         Run("s4_multisem_400_CIVL_MECH");
+
+        // 5. Collapse days (1.2.4 item 2.13, task 4): slice 1 with Tue+Thu folded (MWF open) and Mon/Wed/Fri folded
+        // (TR open), first with both semesters, then with one. A semester switch clears the folds, so each fold is
+        // applied after the semesters and filter are set; ShowPattern is the same call the header menu makes.
+        vm.ShowAllDays();
+        Run("s5_fold_MWF_2sem", () => vm.ShowPattern([1, 3, 5]));
+        Run("s5_fold_TR_2sem", () => vm.ShowPattern([2, 4]));
+        ShowSemesters(t1);
+        Filter(["CIVL", "MECH"], "400");
+        vm.ShowAllDays();
+        Run("s5_fold_MWF_1sem", () => vm.ShowPattern([1, 3, 5]));
+        Run("s5_fold_TR_1sem", () => vm.ShowPattern([2, 4]));
+        vm.ShowAllDays();
 
         WriteReport(outDir, results, defaultFont, Layout("TileMeasuringMargin"), Layout("TilePaddingHorizontal"));
         Console.WriteLine("Done.");

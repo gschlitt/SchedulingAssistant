@@ -163,6 +163,10 @@ public partial class ScheduleGridView : UserControl
     private static Geometry? FlagGeometry =>
         Application.Current!.Resources.TryGetResource("FlagIcon", null, out var v) && v is Geometry g ? g : null;
 
+    /// <summary>The fold icon shown on a hovered day header (<c>FoldDayIcon</c>, Icons.axaml); null if the resource is missing.</summary>
+    private static Geometry? FoldDayGeometry =>
+        Application.Current!.Resources.TryGetResource("FoldDayIcon", null, out var v) && v is Geometry g ? g : null;
+
 
     private Canvas? _canvas;
     private ScheduleGridViewModel? _vm;
@@ -611,8 +615,28 @@ public partial class ScheduleGridView : UserControl
         var dayColWidths  = new double[dayCount];
         double headerFontSize = FontSizeFromResource("FontSizeXLarge");
 
+        // Folded days (collapse days): read once per render. A folded day has no tiles, so Phase 1 and 1.5 above
+        // measured nothing for it; it only needs its strip width below.
+        FontWeight stripLetterWeight = Resource("FoldedDayLetterFontWeight", FontWeight.SemiBold);
+        FontWeight stripCountWeight  = Resource("FoldedDayCountFontWeight", FontWeight.SemiBold);
+        double stripPadding          = Layout("FoldedDayStripPadding");
+
         for (int ld = 0; ld < logicalDayCount; ld++)
         {
+            // A folded day: the whole strip is as wide as its letter (header font) or its section count (tile text
+            // font), whichever is wider, plus padding (FoldedDayStrip.StripWidth), shared evenly by the day's
+            // semester sub-columns so the flat per-column arrays keep working.
+            if (data.DayColumns[ld * semCount].IsFolded)
+            {
+                var folded    = data.DayColumns[ld * semCount];
+                double letterW = MeasureTextWidth(drawnFont, FoldedDayStrip.Letter(folded.DayNumber), headerFontSize, stripLetterWeight);
+                double countW  = MeasureTextWidth(drawnFont, (folded.Folded?.SectionCount ?? 0).ToString(), _vm!.TileFontSize, stripCountWeight);
+                double stripW  = FoldedDayStrip.StripWidth(letterW, countW, stripPadding);
+                for (int s = 0; s < semCount; s++)
+                    dayColWidths[ld * semCount + s] = stripW / semCount;
+                continue;
+            }
+
             // Per-sub-column floor: day-header text width divided evenly so the label
             // always fits even if some or all semester sub-columns have no content.
             string dayName         = data.DayColumns[ld * semCount].Header;
@@ -696,10 +720,14 @@ public partial class ScheduleGridView : UserControl
             // Day name label centred over the full day group width.
             // Vertical centering is within the day-name row only (DayHeaderHeight),
             // not the full effectiveHeaderHeight, so the bar doesn't push the text up.
+            // A folded day shows its short strip letter (M T W R F Sa Su) in the same header row instead.
+            bool   dayFolded = data.DayColumns[firstCol].IsFolded;
+            int    dayNumber = data.DayOfColumn(firstCol);
+            string dayName   = data.DayColumns[firstCol].Header;
             var tb = new TextBlock
             {
-                Text = data.DayColumns[firstCol].Header,
-                FontWeight = FontWeight.SemiBold,
+                Text = dayFolded ? FoldedDayStrip.Letter(dayNumber) : dayName,
+                FontWeight = dayFolded ? stripLetterWeight : FontWeight.SemiBold,
                 FontSize = headerFontSize,
                 Width = dayGroupW,
                 TextAlignment = TextAlignment.Center,
@@ -712,7 +740,8 @@ public partial class ScheduleGridView : UserControl
             // below the day-name row for each semester sub-column. The bar spans the
             // exact width of that sub-column's content area and always appears, even
             // when the sub-column has no sections scheduled for that day.
-            if (data.IsMultiSemester)
+            // A folded day is one strip across all its semesters, so it gets no semester bars.
+            if (data.IsMultiSemester && !dayFolded)
             {
                 for (int s = 0; s < semCount; s++)
                 {
@@ -724,6 +753,47 @@ public partial class ScheduleGridView : UserControl
                     var (barX, barW) = GetDayGroupContentBounds(flatCol, semCount, dayXOffsets, dayColWidths);
                     AddRect(_canvas, barX, DayHeaderHeight,
                             barW, SemesterBarHeight, barFill, null);
+                }
+            }
+
+            // The header is the control (collapse days): a transparent hit area over the header row, drawn last so
+            // it sits above the label and the bars. An open day folds on click (unless it is the last open day);
+            // a folded day's strip opens on click; right-click opens the header menu on either.
+            if (dayFolded)
+            {
+                AddDayHit(dayGroupX, 0, dayGroupW, effectiveHeaderHeight, Brushes.Transparent, dayNumber, dayName,
+                          FoldedDayStrip.StripTooltip(dayName, data.DayColumns[firstCol].Folded), clickToggles: true, entryCursor);
+            }
+            else
+            {
+                bool canFold = _vm!.CanFold(dayNumber);
+                var hit = AddDayHit(dayGroupX, 0, dayGroupW, effectiveHeaderHeight, Brushes.Transparent, dayNumber, dayName,
+                                    FoldedDayStrip.HeaderTooltip(dayName, canFold), clickToggles: canFold, entryCursor);
+                if (canFold && FoldDayGeometry is { } foldGeo)
+                {
+                    // Hover feedback: the fill and the fold icon at the right end (a separate, click-through
+                    // element so it never steals the pointer from the hit area).
+                    double iconSize = Layout("FoldDayIconSize");
+                    var icon = new Avalonia.Controls.Shapes.Path
+                    {
+                        Data = foldGeo,
+                        Stroke = Res("FoldDayIconBrush"),
+                        StrokeThickness = Layout("FoldDayIconStrokeThickness"),
+                        StrokeLineCap = PenLineCap.Round,
+                        StrokeJoin = PenLineJoin.Round,
+                        Width = iconSize,
+                        Height = iconSize,
+                        Stretch = Stretch.Uniform,
+                        IsVisible = false,
+                        IsHitTestVisible = false,
+                    };
+                    Canvas.SetLeft(icon, dayGroupX + dayGroupW - iconSize - Layout("FoldDayIconRightMargin"));
+                    Canvas.SetTop(icon, (DayHeaderHeight - iconSize) / 2);
+                    _canvas.Children.Add(icon);
+
+                    IBrush hoverFill = Res("GridHeaderHoverFill");
+                    hit.PointerEntered += (_, _) => { hit.Background = hoverFill; icon.IsVisible = true; };
+                    hit.PointerExited  += (_, _) => { hit.Background = Brushes.Transparent; icon.IsVisible = false; };
                 }
             }
         }
@@ -754,6 +824,115 @@ public partial class ScheduleGridView : UserControl
             Canvas.SetLeft(timeTb, 4);
             Canvas.SetTop(timeTb, y - (isHour ? 7 : 6));
             _canvas.Children.Add(timeTb);
+        }
+
+        // ── Folded day strips (collapse days, Revision 1: a sheet folded almost shut) ────────────────
+        // Drawn after the gridlines so a strip covers them: full grid height below the header. A light left face, a
+        // shadowed right face (flat fills) and a crease down the middle. Where any section meets the day, a band of tile
+        // blue on each face (R1-2); where a meeting, commitment, shared tile or overlay tile sits, a narrower bar on the
+        // crease in that kind's own tile colour (R1-3). Bands and bars are placed with the SAME time-to-Y mapping as the
+        // tiles (TimeToY plus the gridline expansion), so they line up with the open days' tiles at the same times.
+        // The strip is one control across all the day's semester sub-columns; clicking it opens the day. The two day
+        // separators are redrawn on top of its edges. Everything on top of the hit area is click-through.
+        {
+            IBrush faceLight   = Res("FoldedDayFaceLight");
+            IBrush faceShadow  = Res("FoldedDayFaceShadow");
+            IBrush creaseBrush = Res("FoldedDayCrease");
+            IBrush bandLight   = Res("FoldedDayBandLight");
+            IBrush bandShadow  = Res("FoldedDayBandShadow");
+            IBrush stripText   = Res("FoldedDayStripText");
+            double contentGap  = Layout("FoldedDayStripContentGap");
+            double creaseW     = Layout("FoldedDayCreaseThickness");
+            double edgeInset   = Layout("FoldedDayBandEdgeInset");
+            double vInset      = Layout("FoldedDayBandVerticalInset");
+            double otherBarW   = Layout("FoldedDayOtherBarWidth");
+
+            // Canvas Y of a time, exactly as the tiles compute it.
+            double YOf(int minutes) => effectiveHeaderHeight + TimeToY(minutes, data.FirstRowMinutes)
+                                     + GetGridlineOffset(gridlineYOffsets, minutes);
+
+            // One click-through rectangle (the hit area underneath stays the only element that takes the pointer).
+            void AddFlat(double x, double y, double w, double h, IBrush fill)
+            {
+                if (w <= 0 || h <= 0) return;
+                var r = new Border { Width = w, Height = h, Background = fill, IsHitTestVisible = false };
+                Canvas.SetLeft(r, x);
+                Canvas.SetTop(r, y);
+                _canvas.Children.Add(r);
+            }
+
+            // The brush the grid's own tiles use for each kind of other thing.
+            IBrush OtherBrush(FoldedOtherKind kind) => kind switch
+            {
+                FoldedOtherKind.Meeting        => MeetingTileFill,
+                FoldedOtherKind.SharedSchedule => Res("SharedScheduleBorder"),
+                _                              => OverlayFrameBorder,   // commitments and overlay sections are drawn in the overlay style
+            };
+
+            for (int ld = 0; ld < logicalDayCount; ld++)
+            {
+                int firstCol = ld * semCount;
+                var col = data.DayColumns[firstCol];
+                if (!col.IsFolded) continue;
+
+                double stripX = dayXOffsets[firstCol];
+                double stripW = dayXOffsets[firstCol + semCount] - stripX;
+                double bodyY  = effectiveHeaderHeight;
+                double bodyH  = totalHeight - bodyY;
+                double half   = stripW / 2;
+                string stripDayName = col.Header;
+
+                // The hit area carries the light face; the shadowed half goes on top, click-through.
+                AddDayHit(stripX, bodyY, stripW, bodyH, faceLight, col.DayNumber, stripDayName,
+                          FoldedDayStrip.StripTooltip(stripDayName, col.Folded), clickToggles: true, entryCursor);
+                AddFlat(stripX + half, bodyY, half, bodyH, faceShadow);
+
+                // Section remnants: one band per merged time span, on each face, inset from the outer edge and
+                // meeting at the crease; the vertical inset leaves a hairline between spans that only touch.
+                var sectionSpans = FoldedDayStrip.MergeSpans(
+                    (col.Folded?.SectionMeetings ?? []).Select(m => (m.StartMinutes, m.EndMinutes)));
+                foreach (var (start, end) in sectionSpans)
+                {
+                    double top = YOf(start) + vInset;
+                    double h   = YOf(end) - vInset - top;
+                    AddFlat(stripX + edgeInset, top, half - edgeInset, h, bandLight);
+                    AddFlat(stripX + half, top, half - edgeInset, h, bandShadow);
+                }
+
+                // The section count, centred under the letter (on top of the faces and bands).
+                var countTb = new TextBlock
+                {
+                    Text = (col.Folded?.SectionCount ?? 0).ToString(),
+                    FontSize = _vm!.TileFontSize,
+                    FontWeight = stripCountWeight,
+                    Foreground = stripText,
+                    Width = stripW,
+                    TextAlignment = TextAlignment.Center,
+                    IsHitTestVisible = false,
+                };
+                double countY = bodyY + contentGap;
+                Canvas.SetLeft(countTb, stripX);
+                Canvas.SetTop(countTb, countY);
+                _canvas.Children.Add(countTb);
+
+                // The crease starts below the count so it never strikes through the number.
+                double creaseTop = countY + entryLineH + contentGap;
+                AddFlat(stripX + half - creaseW / 2, creaseTop, creaseW, totalHeight - creaseTop, creaseBrush);
+
+                // Other things: bars centred on the crease, on top of the section bands, merged per kind.
+                foreach (var kindGroup in (col.Folded?.OtherSpans ?? []).GroupBy(o => o.Kind))
+                {
+                    var brush = OtherBrush(kindGroup.Key);
+                    foreach (var (start, end) in FoldedDayStrip.MergeSpans(kindGroup.Select(o => (o.StartMinutes, o.EndMinutes))))
+                    {
+                        double top = YOf(start) + vInset;
+                        AddFlat(stripX + (stripW - otherBarW) / 2, top, otherBarW, YOf(end) - vInset - top, brush);
+                    }
+                }
+
+                if (ld > 0) AddLine(_canvas, stripX, 0, stripX, totalHeight, HeaderBorder, 1);
+                AddLine(_canvas, stripX + stripW, 0, stripX + stripW, totalHeight, HeaderBorder, 1);
+            }
         }
 
         // ── Multi-semester column wash ────────────────────────────────────
@@ -1155,6 +1334,8 @@ public partial class ScheduleGridView : UserControl
             // Map the ghost's day number to its flat column by DayNumber. Ghost blocks target the
             // first semester sub-column of that day; a day that isn't shown is skipped.
             if (data.FirstColumnOfDay(ghost.Day) is not int flatCol) continue;
+            // A ghost on a folded day has no tile to sit in; it will become a mark on the strip (task 5).
+            if (data.DayColumns[flatCol].IsFolded) continue;
 
             // The ghost spans the same edges as the tiles of that day (first tile left edge to last tile right edge).
             var (ghostX, ghostW) = GetDayGroupContentBounds(flatCol, semCount, _cachedDayXOffsets, _cachedDayColWidths);
@@ -1235,6 +1416,51 @@ public partial class ScheduleGridView : UserControl
             _ghostControls.Clear();
             App.Logger.LogError(ex, "Ghost overlay failed to render");
         }
+    }
+
+    /// <summary>
+    /// Adds one clickable area of a day header or a folded strip to the canvas (collapse days). Like the tiles, it is a
+    /// real element with pointer handlers, drawn by this view. A left click toggles the day when
+    /// <paramref name="clickToggles"/> is set; a right click prepares and opens the day-header menu.
+    /// </summary>
+    /// <param name="x">Left edge on the canvas.</param>
+    /// <param name="y">Top edge on the canvas.</param>
+    /// <param name="width">Width of the area.</param>
+    /// <param name="height">Height of the area.</param>
+    /// <param name="background">Fill: transparent for a header (it must not be null, or the area would not be hit), the hatch for a strip body.</param>
+    /// <param name="day">The REAL day number (1 = Monday ... 7 = Sunday), taken from the column's <c>DayNumber</c>.</param>
+    /// <param name="dayName">The day's full name, for the menu text.</param>
+    /// <param name="tooltipLines">The hover tooltip, one string per line.</param>
+    /// <param name="clickToggles">True when a left click folds or opens the day; false for the last open day, which only offers the menu.</param>
+    /// <param name="handCursor">The hand cursor, shown only when <paramref name="clickToggles"/> is true.</param>
+    /// <returns>The area, so the caller can add hover feedback.</returns>
+    private Border AddDayHit(double x, double y, double width, double height, IBrush background, int day, string dayName,
+                             IReadOnlyList<string> tooltipLines, bool clickToggles, Cursor handCursor)
+    {
+        var hit = new Border
+        {
+            Width = width, Height = height, Background = background,
+            Cursor = clickToggles ? handCursor : null,
+        };
+        ToolTip.SetTip(hit, BuildTileTooltipContent(new TileTooltip(tooltipLines)));
+        hit.PointerPressed += (_, e) =>
+        {
+            if (_vm is null) return;
+            // Handled first: a toggle redraws the whole canvas, including this very element.
+            e.Handled = true;
+            if (e.GetCurrentPoint(null).Properties.IsRightButtonPressed)
+            {
+                if (_vm.DayHeaderMenu.Prepare(day, dayName)) _vm.DayHeaderMenu.IsOpen = true;
+            }
+            else if (clickToggles)
+            {
+                _vm.ToggleDay(day);
+            }
+        };
+        Canvas.SetLeft(hit, x);
+        Canvas.SetTop(hit, y);
+        _canvas!.Children.Add(hit);
+        return hit;
     }
 
     private void ShowEmpty()

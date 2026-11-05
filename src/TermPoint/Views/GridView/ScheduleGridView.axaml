@@ -436,6 +436,48 @@
 			</Border>
 		</Popup>
 
+		<!--
+			Day header / folded strip right-click menu (collapse days): "Show only <day>", one "Show <pattern>" per block
+			pattern, and "Show all days". Same look as the tile menu above. The lines' text, visibility and commands are
+			prepared by DayHeaderMenuViewModel when the menu opens.
+		-->
+		<Popup
+			x:Name="DayHeaderPopup"
+			Grid.RowSpan="4"
+			IsLightDismissEnabled="True"
+			IsOpen="{Binding DayHeaderMenu.IsOpen, Mode=TwoWay}"
+			Placement="Pointer">
+			<Border
+				Background="{StaticResource AppBackground}"
+				BorderBrush="{StaticResource FilterExpanderBorder}"
+				BorderThickness="1"
+				BoxShadow="0 2 8 0 #33000000"
+				CornerRadius="4">
+				<StackPanel>
+					<Button
+						Classes="CtxMenuItem"
+						Command="{Binding DayHeaderMenu.ShowOnlyCommand}"
+						Content="{Binding DayHeaderMenu.ShowOnlyText}"
+						IsVisible="{Binding DayHeaderMenu.ShowOnlyVisible}" />
+					<ItemsControl ItemsSource="{Binding DayHeaderMenu.Patterns}">
+						<ItemsControl.ItemTemplate>
+							<DataTemplate>
+								<Button
+									Classes="CtxMenuItem"
+									Command="{Binding ChooseCommand}"
+									Content="{Binding Text}" />
+							</DataTemplate>
+						</ItemsControl.ItemTemplate>
+					</ItemsControl>
+					<Button
+						Classes="CtxMenuItem"
+						Command="{Binding DayHeaderMenu.ShowAllCommand}"
+						Content="Show all days"
+						IsVisible="{Binding DayHeaderMenu.ShowAllVisible}" />
+				</StackPanel>
+			</Border>
+		</Popup>
+
 	</Grid>
 
 </UserControl>

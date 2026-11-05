@@ -220,17 +220,43 @@ public record GridTile(
 /// shared-schedule tiles or overlay section tiles. Keeps "T · 0" from suggesting the day is empty.
 /// </param>
 /// <param name="SectionMeetings">
-/// Every non-overlay section meeting on the day (one entry per meeting, all semesters), for the strip's time marks.
+/// Every non-overlay section meeting on the day (one entry per meeting, all semesters). The strip draws the union of
+/// their time spans as remnant bands (Revision 1, R1-2).
+/// </param>
+/// <param name="OtherSpans">
+/// The time span of every other thing the grid draws on the day, with its kind (R1-3): faculty/committee meetings,
+/// instructor commitments, shared-schedule tiles and overlay section tiles. Drawn as bars in each kind's own colour.
 /// </param>
 public record FoldedDaySummary(
     int SectionCount,
     bool HasOtherThings,
-    IReadOnlyList<FoldedSectionMeeting> SectionMeetings);
+    IReadOnlyList<FoldedSectionMeeting> SectionMeetings,
+    IReadOnlyList<FoldedOtherSpan> OtherSpans);
 
-/// <summary>One section meeting on a folded day: which section, and when it starts (minutes from midnight).</summary>
+/// <summary>One section meeting on a folded day: which section, and when it starts and ends (minutes from midnight).</summary>
 /// <param name="SectionId">Database ID of the section.</param>
 /// <param name="StartMinutes">Start time in minutes from midnight.</param>
-public record FoldedSectionMeeting(string SectionId, int StartMinutes);
+/// <param name="EndMinutes">End time in minutes from midnight (exclusive).</param>
+public record FoldedSectionMeeting(string SectionId, int StartMinutes, int EndMinutes);
+
+/// <summary>The kinds of "other thing" a folded strip shows as bars; each uses its own tile colour on the grid.</summary>
+public enum FoldedOtherKind
+{
+    /// <summary>A faculty/committee meeting (the Meetings table).</summary>
+    Meeting,
+    /// <summary>An instructor commitment (always drawn in the overlay style).</summary>
+    Commitment,
+    /// <summary>A tile from an imported shared schedule.</summary>
+    SharedSchedule,
+    /// <summary>A section tile shown because an overlay (instructor/room/etc.) matches it.</summary>
+    OverlaySection,
+}
+
+/// <summary>One other thing on a folded day: what kind, and when it starts and ends (minutes from midnight).</summary>
+/// <param name="Kind">Which kind of thing it is (decides the bar colour).</param>
+/// <param name="StartMinutes">Start time in minutes from midnight.</param>
+/// <param name="EndMinutes">End time in minutes from midnight (exclusive).</param>
+public record FoldedOtherSpan(FoldedOtherKind Kind, int StartMinutes, int EndMinutes);
 
 /// <summary>
 /// One day-semester column's worth of positioned tiles.

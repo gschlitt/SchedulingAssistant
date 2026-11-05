@@ -6,8 +6,8 @@ decisions"). ✅ Phase 2 (Domain Model) complete
 P3-1–P3-5 settled. ✅ Phase 4 (Data Design): nothing stored, folded into Phase 5 (Greg, 2026-11-05).
 ✅ Phase 5 (Architecture) complete 2026-11-05: P5-1–P5-3 settled.
 ✅ Phase 6 (Implementation Plan) signed off 2026-11-05. **Spec locked.** ✅ Task 1 (tile padding) done 2026-11-05 (1eb90c9; see its "Outcome"). ✅ Task 2 (real day
-numbers) done 2026-11-05 (233488a). ✅ Task 3 (fold state and commands) done 2026-11-05, not yet committed.
-**Next: task 4 (strips and header controls; AXAML edits).**
+numbers) done 2026-11-05 (233488a). ✅ Task 3 (fold state and commands) done 2026-11-05 (043eaea).
+✅ Task 4 (strips and header controls) done 2026-11-05, not yet committed. **Next: task 5 (marks and the flash).**
 **Target release:** 1.2.4. **Expands** summary item 2.13. The summary's "Design direction" (toolbar toggles, narrow
 strips, MWF/TR/All shortcuts) is treated here as one candidate, not a decision. UI waits for Phase 3.
 
@@ -350,6 +350,15 @@ The PNG shows the strips as drawn. Its title banner adds the open days: "Mon, We
 | P3-4 | **Muted hatch fill**, full height. | A folded day never reads as an empty one. Colours are resources in AppColors.axaml. |
 | P3-5 | **"Show MWF" means exactly MWF:** the pattern's days open and every other shown day folds. | One click gives a known state, whatever was folded before. A pattern day that isn't shown (Saturday turned off) is ignored (Phase 2 edge cases). |
 
+**Revision 1 (Greg, 2026-11-05, after seeing the task 4 strips and mocks): the strip is a folded page.**
+
+| # | Decision | Replaces |
+|---|---|---|
+| R1-1 | **The strip looks like a sheet folded almost shut down its middle:** a light left face, a shadowed right face, a crease line. **No hatch.** | P3-4's hatch fill. |
+| R1-2 | **Remnants of the hidden sections:** a flat band in the tile colour (lighter on the left face, shadowed on the right) wherever any section meets that day, with a hairline where one tile ends and the next starts ("B2"). Every band looks the same: it shows *that* something is there, not how busy it is (no darker shading for overlaps). | The plan to show sections only through task 5's marks. |
+| R1-3 | **Other things** (meetings, commitments, shared-schedule tiles, overlay tiles) are **bars at their own times**, in their own colours, instead of one dot under the count. | P2-1's "small sign". |
+| R1-4 | **Task 5's marks are bars at their times too**: a selected section, Room Browser ghosts, Access-watch conflicts. **No separate filter mark**: with a filter on, the grid already shows only matching sections, so the remnant bands are the matches. | P2-2's filter mark and P5-2. |
+
 ---
 
 ## Phase 4: Data Design (folded into Phase 5)
@@ -539,6 +548,20 @@ read yet (task 4).
   patterns and "Show all days" (**AXAML edit**).
 - App.axaml / AppColors.axaml: strip padding, hatch, mark height, the fold icon `Path` (**AXAML edit**).
 - **Check by eye** on the real slices: MWF and TR fit (or nearly) on one monitor; nothing folded looks like 1.2.3.
+
+**Outcome (2026-11-05).** Click a header to fold its day (hover: fill, fold icon, hand pointer; the last open day
+does nothing), click a strip to open it, right-click either for "Show only …", one "Show <pattern>" per block pattern
+(read when the menu opens; patterns with no shown day are left out) and "Show all days" (only when something is
+folded). Strips (after Revision 1): a folded page (light face, shadowed face, crease), letter, section count, flat
+"B2" bands wherever sections meet (`FoldedDayStrip.MergeSpans`: overlaps merge, touching spans keep a hairline),
+other things as narrow bars on the crease in their tiles' colours, and a tooltip. New: `FoldedDayStrip` (strip width), `DayHeaderMenuViewModel` (the menu, exposed as
+`ScheduleGridViewModel.DayHeaderMenu`), resources in AppLayout/AppColors, `FoldDayIcon` in Icons.axaml. The view
+model now takes `IBlockPatternRepository` (both service setups already register it). Strips are about 21–27 px. Open point: the meeting bar uses the pale `MeetingTile` fill and is barely visible.
+UBC 400-level CIVL + MECH at size 11: MWF 1,599 px and TR 990 px with one semester (2,419 unfolded); 1,790 / 1,115
+with two. Nothing folded renders exactly as before (probe, byte-identical PNGs against the previous commit). Checked
+by eye in the WASM demo: fold, unfold, the menu, a pattern, the last-open-day rule, Show all days. Not yet checked
+in the desktop app. Ghosts on a folded day are skipped until task 5 makes them marks. (The unfolded width grew from
+2,389 to 2,419 because two MWF sections are now flagged in the live UBC database, not because of a code change.)
 
 ### Task 5: Marks and the flash
 

@@ -45,6 +45,7 @@ public sealed class GridFoldDaysTests : IDisposable
     private readonly FocusService _focus;
     private readonly SubjectColorPresenter _presenter;
     private readonly ScheduleGridViewModel _grid;
+    private readonly BlockPatternRepository _patternRepo;
     private readonly Subject _biol = new() { Id = "subj-biol", Name = "Biology", CalendarAbbreviation = "BIOL" };
     private readonly Course _course = new() { Id = "c-biol", SubjectId = "subj-biol", CalendarCode = "BIOL101", Title = "Bio" };
     private readonly AcademicYear _year = new() { Name = "2025-2026" };
@@ -91,7 +92,7 @@ public sealed class GridFoldDaysTests : IDisposable
             _fx.Lock, new SharedScheduleService(),
             new AccessPanelViewModel(new ProgramWatchRepository(db), _semesterContext, notifier, envRepo, _courseRepo,
                 () => true),
-            _focus, _presenter);
+            _focus, _presenter, _patternRepo = new BlockPatternRepository(db));
     }
 
     /// <summary>Restores settings, releases the presenter, the focus service, the database and the settings guard.</summary>
@@ -230,14 +231,25 @@ public sealed class GridFoldDaysTests : IDisposable
         Assert.Equal(1, s.SectionCount);
         Assert.False(s.HasOtherThings);
         Assert.Equal(2, s.SectionMeetings.Count);
+        Assert.Equal(new[] { (510, 600), (700, 790) }, s.SectionMeetings.Select(m => (m.StartMinutes, m.EndMinutes)).ToArray());
+        Assert.Empty(s.OtherSpans);
 
         Assert.True(ScheduleGridViewModel.SummarizeDay([otherDay], 3).HasOtherThings);
+        // Every kind of other thing carries its kind and its span.
+        var kinds = ScheduleGridViewModel.SummarizeDay(
+            [new MeetingBlock(2, 600, 660, false, "T", "", "m"), new CommitmentBlock(2, 700, 760, "C", "k"),
+             new SharedScheduleBlock(2, 800, 860, "CHEM101 A"), overlay], 2).OtherSpans;
+        Assert.Equal(
+            new[] { (FoldedOtherKind.Meeting, 600, 660), (FoldedOtherKind.Commitment, 700, 760),
+                    (FoldedOtherKind.SharedSchedule, 800, 860), (FoldedOtherKind.OverlaySection, 510, 600) },
+            kinds.Select(k => (k.Kind, k.StartMinutes, k.EndMinutes)).ToArray());
         Assert.True(ScheduleGridViewModel.SummarizeDay([new MeetingBlock(2, 1, 2, false, "T", "", "m")], 2).HasOtherThings);
         Assert.True(ScheduleGridViewModel.SummarizeDay([new SharedScheduleBlock(2, 1, 2, "CHEM101 A")], 2).HasOtherThings);
         var o = ScheduleGridViewModel.SummarizeDay([overlay], 2);
         Assert.Equal(0, o.SectionCount);
         Assert.True(o.HasOtherThings);
         Assert.Empty(o.SectionMeetings);
+        Assert.Equal(FoldedOtherKind.OverlaySection, Assert.Single(o.OtherSpans).Kind);
     }
 
     // ── Commands ───────────────────────────────────────────────────────────────
@@ -484,5 +496,104 @@ public sealed class GridFoldDaysTests : IDisposable
         _grid.ShowOnlyDay(1);
         Assert.Equal(stats, _grid.StatsLine);
         Assert.Contains(_fallB, _grid.SelectedSectionIds);
+    }
+
+    // ── Day-header menu (collapse days, task 4) ────────────────────────────────
+
+    /// <summary>Saves a block pattern in the test database.</summary>
+    /// <param name="name">Pattern name, e.g. "MWF".</param>
+    /// <param name="days">Its day numbers.</param>
+    private void AddPattern(string name, params int[] days) =>
+        _patternRepo.Insert(new BlockPattern { Name = name, Days = days.ToList() });
+
+    /// <summary>The menu's pattern lines as text, for easy comparison.</summary>
+    private string[] PatternTexts() => _grid.DayHeaderMenu.Patterns.Select(p => p.Text).ToArray();
+
+    /// <summary>With nothing folded the menu offers "Show only", the patterns, and no "Show all days".</summary>
+    [Fact]
+    public void Menu_NothingFolded_ShowOnlyAndPatterns_NoShowAll()
+    {
+        Open(_fall);
+        AddPattern("MWF", 1, 3, 5);
+        Assert.True(_grid.DayHeaderMenu.Prepare(2, "Tuesday"));
+        Assert.Equal("Show only Tuesday", _grid.DayHeaderMenu.ShowOnlyText);
+        Assert.True(_grid.DayHeaderMenu.ShowOnlyVisible);
+        Assert.False(_grid.DayHeaderMenu.ShowAllVisible);
+        Assert.Equal(new[] { "Show MWF" }, PatternTexts());
+    }
+
+    /// <summary>"Show only" is absent when the day is the only open day; "Show all days" appears once something is folded.</summary>
+    [Fact]
+    public void Menu_OnlyOpenDay_HidesShowOnly_ShowAllAppears()
+    {
+        Open(_fall);
+        _grid.ShowOnlyDay(2);
+        _grid.DayHeaderMenu.Prepare(2, "Tuesday");
+        Assert.False(_grid.DayHeaderMenu.ShowOnlyVisible);
+        Assert.True(_grid.DayHeaderMenu.ShowAllVisible);
+        // A folded day can still be made the only one.
+        _grid.DayHeaderMenu.Prepare(4, "Thursday");
+        Assert.True(_grid.DayHeaderMenu.ShowOnlyVisible);
+    }
+
+    /// <summary>Patterns none of whose days are shown (Saturday off) are skipped; a partly shown one stays.</summary>
+    [Fact]
+    public void Menu_PatternsFilteredToShownDays()
+    {
+        Open(_fall);   // Saturday and Sunday are off in this fixture
+        AddPattern("Sat", 6);
+        AddPattern("TR", 2, 4);
+        AddPattern("WeekendMon", 1, 6, 7);
+        _grid.DayHeaderMenu.Prepare(1, "Monday");
+        Assert.Equal(new[] { "Show TR", "Show WeekendMon" }, PatternTexts().OrderBy(t => t).ToArray());
+        Assert.DoesNotContain("Show Sat", PatternTexts());
+    }
+
+    /// <summary>Patterns are read when the menu opens, so one added or renamed afterwards shows next time.</summary>
+    [Fact]
+    public void Menu_ReadsPatternsEachTimeItOpens()
+    {
+        Open(_fall);
+        _grid.DayHeaderMenu.Prepare(1, "Monday");
+        Assert.Empty(PatternTexts());
+        AddPattern("MW", 1, 3);
+        _grid.DayHeaderMenu.Prepare(1, "Monday");
+        Assert.Equal(new[] { "Show MW" }, PatternTexts());
+    }
+
+    /// <summary>The lines call the fold commands and close the menu.</summary>
+    [Fact]
+    public void Menu_Commands_CallThroughAndClose()
+    {
+        Open(_fall);
+        AddPattern("TR", 2, 4);
+
+        _grid.DayHeaderMenu.Prepare(3, "Wednesday");
+        _grid.DayHeaderMenu.IsOpen = true;
+        _grid.DayHeaderMenu.ShowOnlyCommand.Execute(null);
+        Assert.Equal(new[] { 1, 2, 4, 5 }, Folded());
+        Assert.False(_grid.DayHeaderMenu.IsOpen);
+
+        _grid.DayHeaderMenu.Prepare(1, "Monday");
+        _grid.DayHeaderMenu.IsOpen = true;
+        _grid.DayHeaderMenu.Patterns.Single().ChooseCommand.Execute(null);
+        Assert.Equal(new[] { 1, 3, 5 }, Folded());
+        Assert.False(_grid.DayHeaderMenu.IsOpen);
+
+        _grid.DayHeaderMenu.Prepare(1, "Monday");
+        _grid.DayHeaderMenu.IsOpen = true;
+        _grid.DayHeaderMenu.ShowAllCommand.Execute(null);
+        Assert.Empty(_grid.FoldedDays);
+        Assert.False(_grid.DayHeaderMenu.IsOpen);
+    }
+
+    /// <summary>A pattern with a blank name is not listed (the line would read "Show ").</summary>
+    [Fact]
+    public void Menu_BlankPatternNameSkipped()
+    {
+        Open(_fall);
+        AddPattern("  ", 1, 3);
+        _grid.DayHeaderMenu.Prepare(1, "Monday");
+        Assert.Empty(PatternTexts());
     }
 }
