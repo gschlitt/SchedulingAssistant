@@ -27,7 +27,7 @@ pale yellow for CHEM in the chooser; its square still stands out because every s
 | Item | Was | Now |
 |---|---|---|
 | G7, Q7, Q8, Phase 3 card and tile | Solid background block behind the section text | A square marker before the section text, then a small gap. Text, its colour and its background are untouched. |
-| Marker size | (chip padding 3 px) | Side ≈ the cap height of the font the text uses: font size × a ratio resource (`SubjectMarkerSizeRatio`, about 0.7, in App.axaml). Section list heading (12 pt) ≈ 8 px; tiles follow the grid's font-size selector. Corner radius and gap are resources too. Vertically centred on the text. |
+| Marker size | (chip padding 3 px) | Side close to the text height: font size × a ratio resource (`SubjectMarkerSizeRatio`, **0.9**, in App.axaml; Greg raised it from 0.7 after seeing it, 2026-11-04). Section list heading (12 pt) and the Courses flyout preview: **11 px** (`SectionListSubjectMarkerSize`); tiles follow the grid's font-size selector. Corner radius and gap are resources too. Vertically centred on the text; on cards the marker stays on the heading line when instructor names wrap. |
 | Rounded corners (P3-3, P5-1) | Square (TextBlock has no corner radius) | **Rounded**: the marker is a `Border`, so `CornerRadius` costs nothing extra. |
 | Outline | none | A thin translucent dark outline (`SubjectMarkerOutline`, resource), so pale colours stay visible on the tile fill and the card. |
 | Too-dark note (Q6, Phase 4, P4-5) | "Black text may be hard to read on this colour" below 7 : 1 | **Removed.** Text never sits on the colour, and the outline keeps any colour visible. `ColorMath.IsTooDark`, `SubjectRowViewModel.IsTooDark` and the note go; the contrast palette test goes with them. |
