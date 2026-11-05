@@ -1405,7 +1405,7 @@ public partial class ScheduleGridViewModel : ViewModelBase
                         .OrderBy(b => b.StartMinutes).ThenBy(b => b.EndMinutes)
                         .ToList();
 
-                dayColumns.Add(new GridDayColumn(dayNames[dayNum], ComputeTiles(dayBlocks, sd.Semester.Name, sd.Semester.Color ?? string.Empty), sd.Semester.Name, sd.Semester.Color ?? string.Empty));
+                dayColumns.Add(new GridDayColumn(dayNames[dayNum], dayNum, ComputeTiles(dayBlocks, sd.Semester.Name, sd.Semester.Color ?? string.Empty), sd.Semester.Name, sd.Semester.Color ?? string.Empty));
             }
         }
 

@@ -412,6 +412,9 @@ public partial class ScheduleGridView : UserControl
         int dayCount        = data.DayColumns.Count;
         int semCount        = data.SemesterCount;
         int logicalDayCount = dayCount / semCount;
+        // Position arithmetic below (ld * semCount + s, d % semCount, firstCol + semCount) is safe: it
+        // only groups the semCount sub-columns of ONE day, which GridData always stores contiguously, and
+        // it never says WHICH day. For the real day use data.DayOfColumn / data.FirstColumnOfDay.
 
         // In multi-semester mode a thin colored bar sits below the day-name row so users
         // can quickly identify which sub-column belongs to which semester.
@@ -842,9 +845,9 @@ public partial class ScheduleGridView : UserControl
                     var labelText = BuildTileLabel(entry.Label, entry.Initials, entry.FrequencyAnnotation);
 
                     var entryId = entry.SectionId;
-                    // In multi-semester mode columns are interleaved: [Mon/Sem1, Mon/Sem2, Tue/Sem1, ...].
-                    // The day number is the day-group index + 1, not the raw column index + 1.
-                    int clickDay = (d / semCount) + 1;
+                    // The real day comes from the column's DayNumber, never its position: the shown
+                    // days can have gaps (e.g. Sunday on, Saturday off). Also keys the conflict lookups.
+                    int clickDay = data.DayOfColumn(d);
                     var clickCtx = new TileClickContext(entryId, clickDay, tile.StartMinutes);
                     var entryLabel = new TextBlock
                     {
@@ -1149,11 +1152,9 @@ public partial class ScheduleGridView : UserControl
 
         foreach (var ghost in ghosts)
         {
-            // Map day number (1-based) to flat column index. In single-semester mode
-            // column = day - 1. In multi-semester mode, ghost blocks target the first
-            // semester sub-column for that day.
-            int flatCol = (ghost.Day - 1) * semCount;
-            if (flatCol < 0 || flatCol >= data.DayColumns.Count) continue;
+            // Map the ghost's day number to its flat column by DayNumber. Ghost blocks target the
+            // first semester sub-column of that day; a day that isn't shown is skipped.
+            if (data.FirstColumnOfDay(ghost.Day) is not int flatCol) continue;
 
             // The ghost spans the same edges as the tiles of that day (first tile left edge to last tile right edge).
             var (ghostX, ghostW) = GetDayGroupContentBounds(flatCol, semCount, _cachedDayXOffsets, _cachedDayColWidths);

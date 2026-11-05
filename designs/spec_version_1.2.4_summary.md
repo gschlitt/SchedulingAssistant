@@ -782,6 +782,12 @@ kindly than reality. So: close the harness gaps first, then make the remaining h
 >
 > **Partly done (2 Nov 2026):** the double subscription is fixed with a test, and the six cases are back and stable
 > across two sweeps. The two flaky tests remain.
+>
+> **New (5 Nov 2026, not looked at yet):** `WizardExistingDbJoinTests.Step1a_JoinExistingDb_DoesNotOpenOrChangeD`
+> (`readerMode: True`) failed once in a full-suite run: it expected one temp path and got two. It passed in three
+> other full runs that day and when run alone or with its class. Guess (unconfirmed): something left in a shared temp
+> folder by an earlier test, since tests run one at a time. Seen during collapse-days task 2, which doesn't touch the
+> wizard.
 
 ---
 

@@ -214,9 +214,12 @@ public record GridTile(
 /// when the column has no tiles.
 /// SemesterColor is the hex color string assigned to the semester; empty string falls back
 /// to name-based color lookup in the renderer.
+/// DayNumber is the real day of the week this column shows (1 = Monday ... 7 = Sunday). Never work out a
+/// column's day from its position: the shown days can have gaps (e.g. Sunday on, Saturday off).
 /// </summary>
 public record GridDayColumn(
     string Header,
+    int DayNumber,
     IReadOnlyList<GridTile> Tiles,
     string SemesterName = "",
     string SemesterColor = "");
@@ -261,6 +264,28 @@ public record GridData(
     public bool IsMultiSemester => SemesterCount > 1;
 
     public bool HasData => DayColumns.Any(d => d.Tiles.Count > 0);
+
+    /// <summary>
+    /// The real day of the week (1 = Monday ... 7 = Sunday) shown by a flat column. Reads
+    /// <see cref="GridDayColumn.DayNumber"/>, never the column's position, so it stays right when the
+    /// shown days have gaps.
+    /// </summary>
+    /// <param name="flatCol">Flat column index, 0 .. DayColumns.Count - 1.</param>
+    /// <returns>The day number of that column.</returns>
+    /// <exception cref="ArgumentOutOfRangeException">The index is outside <see cref="DayColumns"/>.</exception>
+    public int DayOfColumn(int flatCol) => DayColumns[flatCol].DayNumber;
+
+    /// <summary>
+    /// Finds the first flat column of a day (its first semester sub-column).
+    /// </summary>
+    /// <param name="day">Day number, 1 = Monday ... 7 = Sunday.</param>
+    /// <returns>The first column index of that day, or null when the day isn't shown.</returns>
+    public int? FirstColumnOfDay(int day)
+    {
+        for (int i = 0; i < DayColumns.Count; i++)
+            if (DayColumns[i].DayNumber == day) return i;
+        return null;
+    }
 
     /// <summary>
     /// Program conflicts detected among the filtered sections by enabled watches.

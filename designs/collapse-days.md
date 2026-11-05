@@ -5,8 +5,8 @@ decisions"). ✅ Phase 2 (Domain Model) complete
 2026-11-05: P2-1–P2-5 settled. ✅ Phase 3 (UX Sketch) complete 2026-11-05:
 P3-1–P3-5 settled. ✅ Phase 4 (Data Design): nothing stored, folded into Phase 5 (Greg, 2026-11-05).
 ✅ Phase 5 (Architecture) complete 2026-11-05: P5-1–P5-3 settled.
-✅ Phase 6 (Implementation Plan) signed off 2026-11-05. **Spec locked.** ✅ Task 1 (tile padding) done 2026-11-05, not yet
-committed (see its "Outcome"). **Next: task 2 (real day numbers).**
+✅ Phase 6 (Implementation Plan) signed off 2026-11-05. **Spec locked.** ✅ Task 1 (tile padding) done 2026-11-05 (1eb90c9; see its "Outcome"). ✅ Task 2 (real day
+numbers) done 2026-11-05, not yet committed. **Next: task 3 (fold state and commands).**
 **Target release:** 1.2.4. **Expands** summary item 2.13. The summary's "Design direction" (toolbar toggles, narrow
 strips, MWF/TR/All shortcuts) is treated here as one candidate, not a decision. UI waits for Phase 3.
 
@@ -501,6 +501,14 @@ the app). Built:
   lookups on `DayNumber` (one small helper that maps a day to its columns). Check the conflict-line code and the
   Room Browser and Slot Browser callers for the same assumption.
 - **Tests:** the helper with a gap in the week (Tuesday missing), with Saturday on, and with several semesters.
+
+**Outcome (2026-11-05).** `GridDayColumn.DayNumber` plus `GridData.DayOfColumn` / `FirstColumnOfDay`; clicks,
+Access-watch conflict marks and lines, and Room/Slot Browser ghosts now use them. This fixed a live bug: with Sunday
+on and Saturday off, Sunday tiles were treated as Saturday (right-click menu, conflict marks) and Sunday ghosts were
+dropped. The remaining position arithmetic only groups one day's semester sub-columns (commented in the view). The
+browsers, list view models and meeting rules already used real day numbers. Tests: `GridDayNumberTests` (gap,
+Saturday, Sunday without Saturday, two semesters, and the real view model with Sunday on). No visible change with
+Mon–Fri or Mon–Sat shown (by code reading; the width probe was not re-run).
 
 ### Task 3: Fold state and commands (no UI)
 
