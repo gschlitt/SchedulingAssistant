@@ -8,7 +8,7 @@ P3-1–P3-5 settled. ✅ Phase 4 (Data Design): nothing stored, folded into Phas
 ✅ Phase 6 (Implementation Plan) signed off 2026-11-05. **Spec locked.** ✅ Task 1 (tile padding) done 2026-11-05 (1eb90c9; see its "Outcome"). ✅ Task 2 (real day
 numbers) done 2026-11-05 (233488a). ✅ Task 3 (fold state and commands) done 2026-11-05 (043eaea).
 ✅ Task 4 (strips and header controls) done 2026-11-05 (68c9a0f). ✅ Task 5 (marks and the flash) done
-2026-11-05 (98a02df). ✅ Task 6 (export and release check) done 2026-11-05, uncommitted. **The item is complete,
+2026-11-05 (98a02df). ✅ Task 6 (export and release check) done 2026-11-05 (76ad875). **The item is complete,
 pending Greg's eye pass on the desktop app and the macOS check on the next signed build.**
 **Target release:** 1.2.4. **Expands** summary item 2.13. The summary's "Design direction" (toolbar toggles, narrow
 strips, MWF/TR/All shortcuts) is treated here as one candidate, not a decision. UI waits for Phase 3.

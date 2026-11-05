@@ -39,7 +39,7 @@ Written so a fresh conversation can pick up. Claude Code's memory and `CLAUDE.md
   (click a day name or strip; right-click for Show only / block patterns / Show all days; marks and a flash for what the
   user pointed at; the PNG title says which days are open). Nothing stored (MinimumVersionToWrite No). Tasks:
   1 tile padding `1eb90c9`, 2 real day numbers `233488a`, 3 fold state `043eaea`, 4 strips and header `68c9a0f`,
-  5 marks and flash `98a02df`, 6 export + release check + help: **uncommitted**. Open small points: the meeting bar
+  5 marks and flash `98a02df`, 6 export + release check + help `76ad875`. Open small points: the meeting bar
   on a strip is faint (pale fill); mark bars overhang the strip by a pixel or two; stepping through Room Browser slots
   flashes at every step; a redraw within a second of a flash cuts it short. **macOS check on the next signed build.**
 
