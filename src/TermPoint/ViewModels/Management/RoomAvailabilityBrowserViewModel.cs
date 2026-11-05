@@ -27,7 +27,7 @@ public partial class RoomAvailabilityBrowserViewModel : ViewModelBase
 
     /// <summary>
     /// Campus the edited section/meeting is assigned to, or null if none. When set, the browser
-    /// considers only rooms on this campus (hard exclude). Null means no campus restriction.
+    /// drops rooms on any other campus; rooms with no campus are kept. Null means no restriction.
     /// </summary>
     private readonly string? _campusId;
     private readonly IReadOnlyList<LegalStartTime> _legalStartTimes;
@@ -162,8 +162,8 @@ public partial class RoomAvailabilityBrowserViewModel : ViewModelBase
     private void Recompute()
     {
         // Filter candidate rooms by campus and capacity via the shared helper.
-        //  • Campus: when the section/meeting has a campus, only rooms on that campus qualify
-        //    (hard exclude — note this also drops rooms with no campus set, unlike capacity).
+        //  • Campus: when the section/meeting has a campus, rooms on another campus are dropped.
+        //    Rooms with no campus set are kept, like the editor's room picker.
         //  • Capacity: drop rooms whose known capacity is below the section's; unknown capacity
         //    gets the benefit of the doubt. Both filters are no-ops when their value is null.
         var rooms = RoomAvailabilityService.ApplyFilter(

@@ -657,6 +657,24 @@ public class RoomAvailabilityTests
         Assert.Equal("r1", filtered[0].Id);
     }
 
+    /// <summary>
+    /// A room with no campus is kept by a campus filter (the UBC A121 case: a Vancouver section
+    /// and the only room, which had no campus, gave "No solutions"). Another campus is still dropped.
+    /// </summary>
+    [Fact]
+    public void ApplyFilter_ByCampus_KeepsRoomsWithNoCampus()
+    {
+        var rooms = new[]
+        {
+            new Room { Id = "r1", CampusId = "c1", Building = "A", RoomNumber = "101" },
+            new Room { Id = "r2", CampusId = "c2", Building = "B", RoomNumber = "201" },
+            new Room { Id = "r3", CampusId = null, Building = "C", RoomNumber = "301" },
+            new Room { Id = "r4", CampusId = "",   Building = "D", RoomNumber = "401" }
+        };
+        var filtered = RoomAvailabilityService.ApplyFilter(rooms, campusId: "c1", null, null, null);
+        Assert.Equal(new[] { "r1", "r3", "r4" }, filtered.Select(r => r.Id).ToArray());
+    }
+
     [Fact]
     public void ApplyFilter_ByBuilding_CaseInsensitive()
     {

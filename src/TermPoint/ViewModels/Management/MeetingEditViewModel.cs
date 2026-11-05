@@ -377,7 +377,7 @@ public partial class MeetingEditViewModel : ViewModelBase
 
         if (specs.Count == 0)
         {
-            LastErrorMessage = "Every slot must have a duration before browsing. Remote slots are excluded.";
+            LastErrorMessage = "Remote meetings don't need a room, so there is nothing to browse.";
             return;
         }
 

@@ -829,7 +829,7 @@ public partial class SectionEditViewModel : ViewModelBase
 
         if (specs.Count == 0)
         {
-            LastErrorMessage = "Every meeting must have a duration before browsing. Remote meetings are excluded.";
+            LastErrorMessage = "Remote meetings don't need a room, so there is nothing to browse.";
             return;
         }
 
