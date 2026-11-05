@@ -96,10 +96,17 @@ public record MeetingBlock(
 /// </summary>
 /// <param name="RoomLabel">Room display label, e.g. "A 101".</param>
 /// <param name="TimeLabel">Time range display, e.g. "8:00–9:15".</param>
+/// <param name="Kind">
+/// What this ghost means when its day is folded: the kind of attention mark the strip draws for it
+/// (<see cref="FoldedDayMarks"/>). Defaults to <see cref="MarkKind.Proposal"/> (the Room Browser's candidate slot), so
+/// the Room Browser needs no change. This is the hook for the Slot Browser: it passes its own kind (moving from,
+/// moving to, a break...) and the strip code stays the same.
+/// </param>
 public record GhostBlock(
     int Day, int StartMinutes, int EndMinutes,
     string RoomLabel, string TimeLabel,
-    string SemesterId = "", string SemesterName = "", string SemesterColor = ""
+    string SemesterId = "", string SemesterName = "", string SemesterColor = "",
+    MarkKind Kind = MarkKind.Proposal
 ) : GridBlock(Day, StartMinutes, EndMinutes, IsOverlay: false, SemesterId, SemesterName, SemesterColor);
 
 /// <summary>
@@ -237,7 +244,8 @@ public record FoldedDaySummary(
 /// <param name="SectionId">Database ID of the section.</param>
 /// <param name="StartMinutes">Start time in minutes from midnight.</param>
 /// <param name="EndMinutes">End time in minutes from midnight (exclusive).</param>
-public record FoldedSectionMeeting(string SectionId, int StartMinutes, int EndMinutes);
+/// <param name="Label">The meeting's tile label, e.g. "MECH361 001" (used in the strip's tooltip when it is marked). Empty when unknown.</param>
+public record FoldedSectionMeeting(string SectionId, int StartMinutes, int EndMinutes, string Label = "");
 
 /// <summary>The kinds of "other thing" a folded strip shows as bars; each uses its own tile colour on the grid.</summary>
 public enum FoldedOtherKind

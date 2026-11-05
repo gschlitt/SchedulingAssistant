@@ -71,6 +71,12 @@
     <x:Double x:Key="FoldedDayOtherBarWidth">6</x:Double>
     <!--  Height of a mark drawn across a strip at the time of what it marks (selection, ghost...); task 5  -->
     <x:Double x:Key="FoldedDayMarkHeight">3</x:Double>
+    <!--
+        The attention flash on a folded strip (task 5): the strip's faces pulse toward FoldedDayFlashBrush and back.
+        Duration is the TOTAL time in milliseconds for all pulses; Count is how many pulses (an integer, kept as a double).
+    -->
+    <x:Double x:Key="FoldedDayFlashDurationMs">1000</x:Double>
+    <x:Double x:Key="FoldedDayFlashCount">2</x:Double>
     <!--  Weight of the strip's day letter and of its section count  -->
     <FontWeight x:Key="FoldedDayLetterFontWeight">SemiBold</FontWeight>
     <FontWeight x:Key="FoldedDayCountFontWeight">SemiBold</FontWeight>

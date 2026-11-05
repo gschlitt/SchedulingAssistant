@@ -511,7 +511,7 @@ public partial class ScheduleGridViewModel : ViewModelBase
         return new FoldedDaySummary(
             meetings.Select(b => b.SectionId).Distinct().Count(),
             day.Count > meetings.Count,
-            meetings.Select(b => new FoldedSectionMeeting(b.SectionId, b.StartMinutes, b.EndMinutes)).ToList(),
+            meetings.Select(b => new FoldedSectionMeeting(b.SectionId, b.StartMinutes, b.EndMinutes, b.Label)).ToList(),
             others);
     }
 

@@ -337,6 +337,17 @@
 	<SolidColorBrush x:Key="FoldedDayBandShadow" Color="#8FAAC2" />
 	<!--  The section count on a strip  -->
 	<SolidColorBrush x:Key="FoldedDayStripText" Color="#1e2938" />
+	<!--
+		Attention marks on a folded strip (task 5): bars at the time of what the user pointed at. One brush per
+		MarkKind (see FoldedDayMarks.Kinds); the Slot Browser adds its own here.
+		Selection = the selected-section border colour; Proposal = the Room Browser ghost outline colour (opaque);
+		Conflict = the program-conflict colour.
+	-->
+	<SolidColorBrush x:Key="FoldedDayMarkSelection" Color="#3c647f" />
+	<SolidColorBrush x:Key="FoldedDayMarkProposal" Color="#4CAF50" />
+	<SolidColorBrush x:Key="FoldedDayMarkConflict" Color="{StaticResource ProgramConflictColor}" />
+	<!--  The colour a strip's faces pulse toward when something new is marked on it (translucent amber, so the strip stays readable)  -->
+	<SolidColorBrush x:Key="FoldedDayFlashBrush" Color="#CCFFB300" />
 	<!--  Fill of an OPEN day's header while the pointer is over it (translucent: the day name stays readable)  -->
 	<SolidColorBrush x:Key="GridHeaderHoverFill" Color="#26000000" />
 	<!--  The fold icon on a hovered day header  -->

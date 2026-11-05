@@ -1,4 +1,5 @@
 using Avalonia;
+using Avalonia.Animation;
 using Avalonia.Controls;
 using Avalonia.Controls.Primitives;
 using Avalonia.Controls.Shapes;
@@ -7,6 +8,7 @@ using Avalonia.Layout;
 using Avalonia.Markup.Xaml;
 using Avalonia.Media;
 using Avalonia.Media.Imaging;
+using Avalonia.Styling;
 using Avalonia.Threading;
 using Avalonia.VisualTree;
 using TermPoint.Models;
@@ -184,6 +186,19 @@ public partial class ScheduleGridView : UserControl
     private int _cachedSemesterCount;
     private readonly List<Control> _ghostControls = new();
 
+    // Folded-strip attention marks (collapse days, task 5). The strips are drawn by Render(); the marks on them are
+    // drawn (and redrawn) by RefreshStripMarks(), which the light repaints (selection, ghosts) can call without a
+    // full Render. These hold what it needs from the last Render.
+    /// <summary>What <see cref="RefreshStripMarks"/> needs about one folded strip: its hit area (for the tooltip), its summary and its geometry.</summary>
+    private sealed record StripVisual(Border Hit, string DayName, FoldedDaySummary? Summary, double X, double Width, double BodyY, double BodyHeight);
+    private readonly Dictionary<int, StripVisual> _stripVisuals = new();
+    /// <summary>The mark bars currently on the canvas; removed and redrawn by every <see cref="RefreshStripMarks"/>.</summary>
+    private readonly List<Control> _markControls = new();
+    /// <summary>Remembers each strip's last marks so only NEW marks flash (P2-4).</summary>
+    private readonly StripAttention _stripAttention = new();
+    /// <summary>Cancelled by the next <see cref="Render"/> (which clears the canvas and so any flash overlay on it) or on detach.</summary>
+    private CancellationTokenSource _flashCts = new();
+
     // Tile font size lives on ScheduleGridViewModel.TileFontSize (initialized from AppSettings).
     // The in-grid ComboBox binds to it directly; changes trigger OnVmPropertyChanged → Render().
 
@@ -315,6 +330,9 @@ public partial class ScheduleGridView : UserControl
         _canvas?.Children.Clear();
         _entryRowRegistry.Clear();
         _ghostControls.Clear();
+        _flashCts.Cancel();
+        _markControls.Clear();
+        _stripVisuals.Clear();
     }
 
     private void OnVmPropertyChanged(object? sender, PropertyChangedEventArgs e)
@@ -326,7 +344,10 @@ public partial class ScheduleGridView : UserControl
         else if (e.PropertyName == nameof(ScheduleGridViewModel.TileFontSize))
             Render();
         else if (e.PropertyName == nameof(ScheduleGridViewModel.GhostBlocks))
+        {
             RenderGhostOverlay();
+            RefreshStripMarks();   // ghosts on a folded day are strip marks, not tiles
+        }
     }
 
     /// <summary>
@@ -351,6 +372,9 @@ public partial class ScheduleGridView : UserControl
                                   : info.IsDeemphasized ? TileDeemphasizedText
                                   : TileText;
         }
+
+        // Selected sections on folded days are marked on their strips (a light redraw, no Render).
+        RefreshStripMarks();
     }
 
     private void Render()
@@ -360,6 +384,11 @@ public partial class ScheduleGridView : UserControl
 
         _canvas.Children.Clear();
         _entryRowRegistry.Clear();
+        _stripVisuals.Clear();
+        _markControls.Clear();
+        // The canvas (and any flash overlay on it) is gone: stop the running flash and start a fresh token.
+        _flashCts.Cancel();
+        _flashCts = new CancellationTokenSource();
 
         var data = _vm?.GridData ?? GridData.Empty;
         if (data.DayColumns.Count == 0) { ShowEmpty(); return; }
@@ -883,8 +912,9 @@ public partial class ScheduleGridView : UserControl
                 string stripDayName = col.Header;
 
                 // The hit area carries the light face; the shadowed half goes on top, click-through.
-                AddDayHit(stripX, bodyY, stripW, bodyH, faceLight, col.DayNumber, stripDayName,
+                var stripHit = AddDayHit(stripX, bodyY, stripW, bodyH, faceLight, col.DayNumber, stripDayName,
                           FoldedDayStrip.StripTooltip(stripDayName, col.Folded), clickToggles: true, entryCursor);
+                _stripVisuals[col.DayNumber] = new StripVisual(stripHit, stripDayName, col.Folded, stripX, stripW, bodyY, bodyH);
                 AddFlat(stripX + half, bodyY, half, bodyH, faceShadow);
 
                 // Section remnants: one band per merged time span, on each face, inset from the outer edge and
@@ -1291,6 +1321,7 @@ public partial class ScheduleGridView : UserControl
         _cachedSemesterCount = semCount;
 
         RenderGhostOverlay();
+        RefreshStripMarks();
 
         }
         catch (Exception ex)
@@ -1334,7 +1365,8 @@ public partial class ScheduleGridView : UserControl
             // Map the ghost's day number to its flat column by DayNumber. Ghost blocks target the
             // first semester sub-column of that day; a day that isn't shown is skipped.
             if (data.FirstColumnOfDay(ghost.Day) is not int flatCol) continue;
-            // A ghost on a folded day has no tile to sit in; it will become a mark on the strip (task 5).
+            // A ghost on a folded day has no tile to sit in; it is a Proposal mark on the strip instead
+            // (FoldedDayMarks.Build, drawn by RefreshStripMarks).
             if (data.DayColumns[flatCol].IsFolded) continue;
 
             // The ghost spans the same edges as the tiles of that day (first tile left edge to last tile right edge).
@@ -1415,6 +1447,123 @@ public partial class ScheduleGridView : UserControl
         {
             _ghostControls.Clear();
             App.Logger.LogError(ex, "Ghost overlay failed to render");
+        }
+    }
+
+    /// <summary>
+    /// Redraws the attention marks on every folded strip and flashes the strips that gained a NEW mark (collapse days,
+    /// task 5). Cheap and self-contained: it only removes and re-adds the small bars of folded strips, so the light
+    /// repaints (selection, ghosts) call it without a full <see cref="Render"/>; Render calls it at its end.
+    /// The marks come from the pure <see cref="FoldedDayMarks"/> (the user's current pointers: selection, ghosts,
+    /// conflict ends); <see cref="StripAttention"/> decides which strips flash. Each strip's tooltip is rebuilt to
+    /// name its marks. Positions use the layout cached by the last Render, with the same time-to-Y mapping as tiles.
+    /// </summary>
+    private void RefreshStripMarks()
+    {
+        if (_canvas is null) return;
+
+        foreach (var c in _markControls) _canvas.Children.Remove(c);
+        _markControls.Clear();
+
+        var data = _vm?.GridData ?? GridData.Empty;
+        var inputs = new MarkInputs(_vm?.SelectedSectionIds ?? new HashSet<string>(),
+                                    _vm?.GhostBlocks ?? [], data.ProgramConflicts);
+        var marksByDay = new Dictionary<int, IReadOnlyList<AttentionMark>>();
+        foreach (var (day, strip) in _stripVisuals)
+            marksByDay[day] = FoldedDayMarks.Build(day, strip.Summary, inputs);
+
+        // Always updated (also with no folded days, which makes it forget the days that opened).
+        var flashDays = _stripAttention.Update(marksByDay);
+        if (_stripVisuals.Count == 0 || _cachedGridlineYOffsets is null) return;
+
+        try
+        {
+            double markHeight = Layout("FoldedDayMarkHeight");
+            double YOf(int minutes) => _cachedEffectiveHeaderHeight + TimeToY(minutes, _cachedFirstRowMinutes)
+                                     + GetGridlineOffset(_cachedGridlineYOffsets, minutes);
+
+            // The flash first, so it sits under the marks. Never while exporting (the export re-renders the canvas).
+            if (!_useExportPalette)
+                foreach (int day in flashDays)
+                    FlashStrip(_stripVisuals[day]);
+
+            foreach (var (day, strip) in _stripVisuals)
+            {
+                var marks = marksByDay[day];
+                foreach (var mark in marks)
+                {
+                    double top = YOf(mark.Start);
+                    var bar = new Border
+                    {
+                        Width = strip.Width,
+                        Height = Math.Max(YOf(mark.End) - top, markHeight),
+                        Background = Res(FoldedDayMarks.InfoFor(mark.Kind).BrushKey),
+                        IsHitTestVisible = false,
+                    };
+                    Canvas.SetLeft(bar, strip.X);
+                    Canvas.SetTop(bar, top);
+                    _canvas.Children.Add(bar);
+                    _markControls.Add(bar);
+                }
+                ToolTip.SetTip(strip.Hit, BuildTileTooltipContent(new TileTooltip(
+                    FoldedDayStrip.StripTooltip(strip.DayName, strip.Summary, FoldedDayMarks.TooltipLines(marks)))));
+            }
+        }
+        catch (Exception ex)
+        {
+            App.Logger.LogError(ex, "Strip marks failed to render");
+        }
+    }
+
+    /// <summary>
+    /// Pulses a folded strip toward <c>FoldedDayFlashBrush</c> and back, a few times in about a second (all three
+    /// numbers are resources). A translucent click-through overlay over the strip has its opacity animated 0 to 1 to 0
+    /// per pulse with an Avalonia <see cref="Animation"/> (plain dispatcher-driven, so it also runs in WASM). It never
+    /// takes input and never re-renders the grid; it removes itself when finished, and is cancelled by the next
+    /// <see cref="Render"/>, which clears the canvas.
+    /// </summary>
+    /// <param name="strip">The strip to flash.</param>
+    private async void FlashStrip(StripVisual strip)
+    {
+        if (_canvas is null) return;
+        var canvas = _canvas;
+        var token = _flashCts.Token;
+        int pulses = Math.Max(1, (int)Layout("FoldedDayFlashCount"));
+        double totalMs = Layout("FoldedDayFlashDurationMs");
+
+        var overlay = new Border
+        {
+            Width = strip.Width, Height = strip.BodyHeight, Opacity = 0,
+            Background = Res("FoldedDayFlashBrush"), IsHitTestVisible = false,
+        };
+        Canvas.SetLeft(overlay, strip.X);
+        Canvas.SetTop(overlay, strip.BodyY);
+        canvas.Children.Add(overlay);
+
+        try
+        {
+            // One pulse = 0 -> 1 -> 0; the animation repeats it `pulses` times within the total duration.
+            var pulse = new Animation
+            {
+                Duration = TimeSpan.FromMilliseconds(totalMs / pulses),
+                IterationCount = new IterationCount((ulong)pulses),
+                Children =
+                {
+                    new KeyFrame { Cue = new Cue(0.0), Setters = { new Setter(Visual.OpacityProperty, 0.0) } },
+                    new KeyFrame { Cue = new Cue(0.5), Setters = { new Setter(Visual.OpacityProperty, 1.0) } },
+                    new KeyFrame { Cue = new Cue(1.0), Setters = { new Setter(Visual.OpacityProperty, 0.0) } },
+                },
+            };
+            await pulse.RunAsync(overlay, token);
+        }
+        catch (OperationCanceledException) { /* a Render replaced the canvas: nothing to clean up */ }
+        catch (Exception ex)
+        {
+            App.Logger.LogError(ex, "Strip flash failed");
+        }
+        finally
+        {
+            canvas.Children.Remove(overlay);
         }
     }
 

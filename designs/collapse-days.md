@@ -7,7 +7,8 @@ P3-1–P3-5 settled. ✅ Phase 4 (Data Design): nothing stored, folded into Phas
 ✅ Phase 5 (Architecture) complete 2026-11-05: P5-1–P5-3 settled.
 ✅ Phase 6 (Implementation Plan) signed off 2026-11-05. **Spec locked.** ✅ Task 1 (tile padding) done 2026-11-05 (1eb90c9; see its "Outcome"). ✅ Task 2 (real day
 numbers) done 2026-11-05 (233488a). ✅ Task 3 (fold state and commands) done 2026-11-05 (043eaea).
-✅ Task 4 (strips and header controls) done 2026-11-05, not yet committed. **Next: task 5 (marks and the flash).**
+✅ Task 4 (strips and header controls) done 2026-11-05 (68c9a0f). ✅ Task 5 (marks and the flash) done
+2026-11-05, not yet committed. **Next: task 6 (export and release check).**
 **Target release:** 1.2.4. **Expands** summary item 2.13. The summary's "Design direction" (toolbar toggles, narrow
 strips, MWF/TR/All shortcuts) is treated here as one candidate, not a decision. UI waits for Phase 3.
 
@@ -359,6 +360,26 @@ The PNG shows the strips as drawn. Its title banner adds the open days: "Mon, We
 | R1-3 | **Other things** (meetings, commitments, shared-schedule tiles, overlay tiles) are **bars at their own times**, in their own colours, instead of one dot under the count. | P2-1's "small sign". |
 | R1-4 | **Task 5's marks are bars at their times too**: a selected section, Room Browser ghosts, Access-watch conflicts. **No separate filter mark**: with a filter on, the grid already shows only matching sections, so the remnant bands are the matches. | P2-2's filter mark and P5-2. |
 
+**Revision 2 (Greg, 2026-11-05): what gets marked.** The rule: **mark what the user pointed at; never mark what only
+narrows the view.** Narrowing (filters, subject focus, levels) changes the whole grid; marking it would light up
+nearly every strip and make users open days just to check. The remnant bands already reflect it.
+
+| What | On a folded strip |
+|---|---|
+| Selected sections, single or multi (Section list, Events view, clicking a section or an instructor's name in the Workload view; all go through the section store's selection) | **Attention mark**, flashes when it arrives |
+| Room Browser ghosts (later: Slot Browser placements) | **Attention mark**, flashes |
+| Access-watch conflicts | **Attention mark**, flashes only when new (P2-4) |
+| Overlays, meetings, commitments, shared schedules | **Remnant bars** (R1-3); never flash |
+| Filters, subject focus, flags | Nothing |
+
+**Two layers on a strip.** *Remnants* are what the day holds, drawn quietly (task 4). *Attention marks* are what the
+user pointed at: each is a kind, a start and end time, and optionally the section it is about. Only attention marks
+flash, and only when new. One pure function turns a folded day plus the current *pointers* (selection, ghosts,
+conflicts) into marks. Ghosts carry a kind, so the Slot Browser adds kinds and colours, not strip code. Kinds it will
+need: a proposed placement, the section that would move (its current time and its proposed time, marked
+differently), and a section a placement breaks ("overlaps PSYCH 340 A"). Several marks at one time: show the most
+important (selection, then a proposal, then a conflict), not a split bar.
+
 ---
 
 ## Phase 4: Data Design (folded into Phase 5)
@@ -570,6 +591,18 @@ in the desktop app. Ghosts on a folded day are skipped until task 5 makes them m
   conflict ends on folded days become marks; run the flash for the days `StripAttention` returns.
 - `FoldedDayFlashBrush` and the timing as resources (**AXAML edit**).
 - **Check by eye:** the four stories in Phase 3 (selection, a lab day, a ghost when scrolled down, a filter).
+
+**Outcome (2026-11-05).** Built to Revision 2. `FoldedDayMarks` (pure): a folded day plus the pointers (`MarkInputs`:
+selection, ghosts, conflicts) gives attention marks; `MarkKind` (Selection, Proposal, Conflict) with one table of
+brush key, tooltip wording and priority, so the Slot Browser adds a row, not strip code; overlapping marks resolve to
+the highest priority. `GhostBlock` gained `Kind` (default Proposal). `StripAttention` (pure) returns the days whose
+marks gained something new. The view redraws only the strip marks after a selection change (no full render), and
+after the ghost overlay; ghosts and conflict ends on folded days become marks. The flash is an amber overlay pulsed
+twice (about 1 s, resources), click-through. Tests: `FoldedDayMarksTests` (25). Checked by eye in the WASM demo:
+selecting a Mon/Wed section with Monday folded marks and flashes the M strip; folding Wednesday with it selected
+shows the mark (no flash seen). Conflict marks were not seen on real data (no watches in the probe or demo). Small
+points: the mark bars stick out a pixel or two past the strip edges; stepping through Room Browser slots flashes the
+strip at every step (each slot is a new mark); a full redraw within a second of a flash cuts it short.
 
 ### Task 6: Export and release check
 

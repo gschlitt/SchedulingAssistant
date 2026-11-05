@@ -57,17 +57,20 @@ public static class FoldedDayStrip
     }
 
     /// <summary>
-    /// The tooltip lines of a folded day's strip: what is folded and what it holds, then how to open it. Plain words,
-    /// no marks (those arrive with task 5).
+    /// The tooltip lines of a folded day's strip: what is folded and what it holds, then what is marked on it (if
+    /// anything), then how to open it. Plain words.
     /// </summary>
     /// <param name="dayName">The day's full name, e.g. "Tuesday".</param>
     /// <param name="summary">The strip's summary; null reads as an empty day.</param>
+    /// <param name="markLines">One line per kind of attention mark on the strip (<see cref="FoldedDayMarks.TooltipLines"/>); null or empty adds none.</param>
     /// <returns>One string per tooltip line.</returns>
-    public static IReadOnlyList<string> StripTooltip(string dayName, FoldedDaySummary? summary)
+    public static IReadOnlyList<string> StripTooltip(string dayName, FoldedDaySummary? summary,
+                                                     IReadOnlyList<string>? markLines = null)
     {
         int count = summary?.SectionCount ?? 0;
         var lines = new List<string> { $"{dayName} is folded: {count} {(count == 1 ? "section" : "sections")}." };
         if (summary?.HasOtherThings == true) lines.Add("Also has meetings or commitments.");
+        if (markLines is not null) lines.AddRange(markLines);
         lines.Add($"Click to show {dayName}.");
         return lines;
     }

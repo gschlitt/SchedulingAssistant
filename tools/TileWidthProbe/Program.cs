@@ -206,6 +206,27 @@ static class Program
         Run("s5_fold_TR_1sem", () => vm.ShowPattern([2, 4]));
         vm.ShowAllDays();
 
+        // 6. Attention marks on folded strips (task 5): TR open, M/W/F folded. First a selected MECH section that meets
+        // Monday, Wednesday and Friday (its three strips each get a Selection bar), then a Room Browser style ghost on
+        // Wednesday 19:00 (a Proposal bar on the W strip). Marks are drawn after the render, like a user's click.
+        var mwfIds = new[] { 1, 3, 5 }
+            .Select(d => vm.GridData.DayColumns.Where(c => c.DayNumber == d)
+                .SelectMany(c => c.Tiles).SelectMany(t => t.Entries)
+                .Where(e => e.Label.StartsWith("MECH", StringComparison.OrdinalIgnoreCase) && !string.IsNullOrEmpty(e.SectionId))
+                .Select(e => e.SectionId).ToHashSet())
+            .Aggregate((a, b) => { a.IntersectWith(b); return a; });
+        string mwfPick = mwfIds.First();
+        Console.WriteLine("MWF section picked for marks: " + vm.GridData.DayColumns.SelectMany(c => c.Tiles).SelectMany(t => t.Entries).First(e => e.SectionId == mwfPick).Label);
+        Run("s6_marks_selection_TR_open", () => { vm.ShowPattern([2, 4]); store.SetMultiSelection([mwfPick]); });
+        store.SetMultiSelection([]);
+        Run("s6_marks_ghost_TR_open", () =>
+        {
+            vm.ShowPattern([2, 4]);
+            vm.SetGhostBlocks([new GhostBlock(3, 19 * 60, 19 * 60 + 75, "A 101", "19:00-20:15")]);
+        });
+        vm.SetGhostBlocks(null);
+        vm.ShowAllDays();
+
         WriteReport(outDir, results, defaultFont, Layout("TileMeasuringMargin"), Layout("TilePaddingHorizontal"));
         Console.WriteLine("Done.");
         Environment.Exit(0);
