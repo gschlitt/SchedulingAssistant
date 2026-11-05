@@ -81,7 +81,7 @@ public sealed class GridWatchFocusTests : IDisposable
             _sectionStore, new MeetingStore(), new MeetingRepository(db), notifier, new InstructorCommitmentRepository(db),
             _fx.Lock, new SharedScheduleService(),
             new AccessPanelViewModel(watchRepo, _semesterContext, notifier, envRepo, courseRepo, () => true),
-            _focus);
+            _focus, FocusTestSupport.NoColours(courseRepo, subjectRepo, _sectionStore));
 
         // Open the Fall semester and load its sections, as the section list does in the app.
         _semesterContext.Reload(ayRepo, semesterRepo, year.Id, new HashSet<string> { fall.Id });

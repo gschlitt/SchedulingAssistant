@@ -51,6 +51,10 @@ public abstract record GridBlock(int Day, int StartMinutes, int EndMinutes, bool
 ///                       The renderer applies a strikethrough to visually de-emphasise staffed tiles.
 /// IsEmphasized        = true when "Emphasize Unstaffed" is active and this section is unstaffed.
 ///                       The renderer applies a distinct background to make these tiles stand out.
+/// Flag                = the section's advisory attention flag.
+/// SubjectColor        = the section's subject marker colour (<c>#RRGGBB</c>) from
+///                       <see cref="TermPoint.Services.SubjectColorPresenter.ColorFor"/>; empty string when colours are
+///                       off or the subject has none (the line is then drawn exactly as without the feature).
 /// </summary>
 public record SectionMeetingBlock(
     int Day, int StartMinutes, int EndMinutes, bool IsOverlay,
@@ -59,7 +63,8 @@ public record SectionMeetingBlock(
     string FrequencyAnnotation = "",
     bool IsDeemphasized = false,
     bool IsEmphasized = false,
-    SectionFlag Flag = SectionFlag.None
+    SectionFlag Flag = SectionFlag.None,
+    string SubjectColor = ""
 ) : GridBlock(Day, StartMinutes, EndMinutes, IsOverlay, SemesterId, SemesterName, SemesterColor);
 
 /// <summary>
@@ -165,7 +170,12 @@ public record TileEntry(
     /// <summary>True when this entry came from a <see cref="SharedScheduleBlock"/>. The renderer applies purple outlined styling.</summary>
     bool IsSharedSchedule = false,
     /// <summary>The section's advisory attention flag, drawn as a small colored icon after the label. None = no icon.</summary>
-    SectionFlag Flag = SectionFlag.None);
+    SectionFlag Flag = SectionFlag.None,
+    /// <summary>
+    /// The subject marker colour (<c>#RRGGBB</c>): a small rounded square drawn before the section text, carried from
+    /// <see cref="SectionMeetingBlock.SubjectColor"/>. Empty string = no marker (always empty for non-section entries).
+    /// </summary>
+    string SubjectColor = "");
 
 /// <summary>
 /// A single tile drawn on the grid, potentially containing multiple co-scheduled sections

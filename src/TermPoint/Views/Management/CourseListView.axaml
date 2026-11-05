@@ -340,22 +340,27 @@
                                                                 IsColorSpectrumSliderVisible="True"
                                                                 IsColorSpectrumVisible="True"
                                                                 Color="{Binding ColorHex, Mode=TwoWay, Converter={StaticResource HexToColorConverter}}" />
-                                                            <!--  Preview chip: sample section code in the card heading font on the chosen colour (card background when none)  -->
+                                                            <!--  Preview: the subject marker (hidden when no colour) and a sample section
+                                                                  code in the card heading font, on the tile fill, as on a section card  -->
                                                             <Border HorizontalAlignment="Left" Background="{StaticResource TileFill}">
-                                                                <TextBlock
-                                                                    Padding="3,0"
-                                                                    Background="{Binding ColorHex, Converter={StaticResource HexToBrushConverter}}"
-                                                                    FontSize="{StaticResource SectionHeadingFontSize}"
-                                                                    FontWeight="{StaticResource SectionHeadingFontWeight}"
-                                                                    Text="{Binding PreviewText}" />
+                                                                <StackPanel Orientation="Horizontal">
+                                                                    <Border
+                                                                        Width="{StaticResource SectionListSubjectMarkerSize}"
+                                                                        Height="{StaticResource SectionListSubjectMarkerSize}"
+                                                                        Margin="{StaticResource SectionListSubjectMarkerMargin}"
+                                                                        VerticalAlignment="Center"
+                                                                        Background="{Binding ColorHex, Converter={StaticResource HexToBrushConverter}}"
+                                                                        BorderBrush="{StaticResource SubjectMarkerOutline}"
+                                                                        BorderThickness="{StaticResource SubjectMarkerBorderThickness}"
+                                                                        CornerRadius="{StaticResource SubjectMarkerCornerRadius}"
+                                                                        IsVisible="{Binding HasColor}" />
+                                                                    <TextBlock
+                                                                        Margin="2,0,4,0"
+                                                                        FontSize="{StaticResource SectionHeadingFontSize}"
+                                                                        FontWeight="{StaticResource SectionHeadingFontWeight}"
+                                                                        Text="{Binding PreviewText}" />
+                                                                </StackPanel>
                                                             </Border>
-                                                            <TextBlock
-                                                                MaxWidth="260"
-                                                                FontSize="{StaticResource FontSizeSmall}"
-                                                                Foreground="{StaticResource TextMuted}"
-                                                                IsVisible="{Binding IsTooDark}"
-                                                                Text="Black text may be hard to read on this colour."
-                                                                TextWrapping="Wrap" />
                                                             <Button
                                                                 HorizontalAlignment="Left"
                                                                 Command="{Binding ClearColorCommand}"

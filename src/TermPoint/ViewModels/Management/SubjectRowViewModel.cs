@@ -29,18 +29,14 @@ public partial class SubjectRowViewModel : ViewModelBase
     /// </summary>
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(HasColor))]
-    [NotifyPropertyChangedFor(nameof(IsTooDark))]
     private string _colorHex = string.Empty;
 
     /// <summary>True when a colour is set (the swatch shows it; otherwise it shows a dashed outline).</summary>
     public bool HasColor => ColorHex.Length > 0;
 
-    /// <summary>True when black text would be hard to read on the colour (contrast under 7:1). False when empty.</summary>
-    public bool IsTooDark => HasColor && ColorMath.IsTooDark(ColorHex);
-
     /// <summary>
-    /// Sample section code shown on the chooser's preview chip, e.g. "BIOL 105 AB1" (just "105 AB1" when the subject
-    /// has no abbreviation), so the user can judge how legible text is on the chosen colour.
+    /// Sample section code shown after the subject marker in the chooser's preview, e.g. "BIOL 105 AB1" (just
+    /// "105 AB1" when the subject has no abbreviation), so the user sees the marker as it will look on a card.
     /// </summary>
     public string PreviewText => $"{Subject.CalendarAbbreviation} 105 AB1".Trim();
 

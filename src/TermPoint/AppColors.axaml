@@ -300,22 +300,27 @@
 	<SolidColorBrush x:Key="TextOutOfFocus" Color="#8A94A3" />
 
 	<!--
-		Subject colour suggestion palette (designs/subject-colours.md, Phase 4). Read IN ORDER (01, 02, ...) at startup
+		Subject colour suggestion palette (designs/subject-colours.md, Revision 1). Read IN ORDER (01, 02, ...) at startup
 		by App.ReadSubjectPalette and handed to SubjectColorStore; "Suggest colours" takes them in this order, each as
-		different as possible from the ones before it. Light colours only: every one must stay at least 7 : 1 contrast
-		with black text (SubjectPaletteTests checks this file). Blues are left out on purpose: the tile fill and the
-		filter highlight are blue. Opaque #RRGGBB only (no transparency, P2-4). To add a colour, add SubjectPalette12.
+		different as possible from the ones before it. The colour fills only the small subject marker before the section
+		code (text never sits on it), so these are strong mid-tone colours and blues are allowed. Red is left out: the
+		conflict glow and the flags are red. SubjectPaletteTests checks this file (eleven, distinct, far enough apart).
+		Opaque #RRGGBB only (no transparency, P2-4). To add a colour, add SubjectPalette12. Draft; tuned by eye in task 5.
 	-->
-	<Color x:Key="SubjectPalette01">#B7E79D</Color> <!-- green -->
-	<Color x:Key="SubjectPalette02">#EBB4E6</Color> <!-- orchid -->
-	<Color x:Key="SubjectPalette03">#F8C58C</Color> <!-- orange -->
-	<Color x:Key="SubjectPalette04">#F2A89A</Color> <!-- salmon -->
-	<Color x:Key="SubjectPalette05">#F4E98A</Color> <!-- yellow -->
-	<Color x:Key="SubjectPalette06">#9EDCC8</Color> <!-- teal -->
-	<Color x:Key="SubjectPalette07">#DCC6A0</Color> <!-- tan -->
-	<Color x:Key="SubjectPalette08">#D8C4EE</Color> <!-- lavender -->
-	<Color x:Key="SubjectPalette09">#F5B0C8</Color> <!-- pink -->
-	<Color x:Key="SubjectPalette10">#D4EC8E</Color> <!-- lime -->
-	<Color x:Key="SubjectPalette11">#D0D0D0</Color> <!-- grey -->
+	<Color x:Key="SubjectPalette01">#2F6FC4</Color> <!-- blue -->
+	<Color x:Key="SubjectPalette02">#F08A24</Color> <!-- orange -->
+	<Color x:Key="SubjectPalette03">#3A9A3A</Color> <!-- green -->
+	<Color x:Key="SubjectPalette04">#8E4FC2</Color> <!-- purple -->
+	<Color x:Key="SubjectPalette05">#1A9E9A</Color> <!-- teal -->
+	<Color x:Key="SubjectPalette06">#D0459C</Color> <!-- magenta -->
+	<Color x:Key="SubjectPalette07">#8C5A2E</Color> <!-- brown -->
+	<Color x:Key="SubjectPalette08">#9A9A1E</Color> <!-- olive -->
+	<Color x:Key="SubjectPalette09">#2A3F7A</Color> <!-- navy -->
+	<Color x:Key="SubjectPalette10">#6E6E6E</Color> <!-- grey -->
+	<Color x:Key="SubjectPalette11">#E3B51C</Color> <!-- gold -->
+
+	<!--  Thin translucent dark outline round every subject marker, so pale user-picked colours stay visible on the
+	      tile fill and the card background (Revision 1)  -->
+	<SolidColorBrush x:Key="SubjectMarkerOutline" Color="#59000000" />
 
 </ResourceDictionary>

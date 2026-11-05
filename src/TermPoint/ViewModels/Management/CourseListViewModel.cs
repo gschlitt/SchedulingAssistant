@@ -18,6 +18,12 @@ public partial class CourseListViewModel : ViewModelBase, IDismissableEditor, ID
     private readonly SectionStore _sectionStore;
     private readonly SubjectColorStore _colorStore;
 
+    /// <summary>
+    /// The subject colour presenter the Section list and Schedule view read. Told to drop its caches after a subject's
+    /// abbreviation is renamed, which changes no section and so reloads nothing on its own.
+    /// </summary>
+    private readonly SubjectColorPresenter _subjectColors;
+
     /// <summary>True when this instance holds the write lock; gates all write-capable buttons.</summary>
     public bool IsWriteEnabled => _lockService.IsWriter;
 
@@ -58,7 +64,8 @@ public partial class CourseListViewModel : ViewModelBase, IDismissableEditor, ID
         IInstructorRepository instructorRepo,
         WriteLockService lockService,
         SectionStore sectionStore,
-        SubjectColorStore colorStore)
+        SubjectColorStore colorStore,
+        SubjectColorPresenter subjectColors)
     {
         _courseRepo = courseRepo;
         _sectionRepo = sectionRepo;
@@ -68,6 +75,7 @@ public partial class CourseListViewModel : ViewModelBase, IDismissableEditor, ID
         _lockService = lockService;
         _sectionStore = sectionStore;
         _colorStore = colorStore;
+        _subjectColors = subjectColors;
         _colorStore.Changed += OnColorStoreChanged;
         _lockService.LockStateChanged += OnLockStateChanged;
         CourseHistoryVm = new CourseHistoryViewModel(sectionRepo, semesterRepo, academicYearRepo, instructorRepo);
@@ -395,10 +403,15 @@ public partial class CourseListViewModel : ViewModelBase, IDismissableEditor, ID
                 try
                 {
                     _subjectRepo.Update(s);
+                    var abbreviationChanged = !string.Equals(originalAbbreviation?.Trim(), s.CalendarAbbreviation?.Trim(),
+                        StringComparison.OrdinalIgnoreCase);
                     // A renamed abbreviation keeps its colour: copy it before the rows are rebuilt.
-                    if (!string.Equals(originalAbbreviation?.Trim(), s.CalendarAbbreviation?.Trim(), StringComparison.OrdinalIgnoreCase)
+                    if (abbreviationChanged
                         && !string.IsNullOrWhiteSpace(originalAbbreviation) && !string.IsNullOrWhiteSpace(s.CalendarAbbreviation))
                         _colorStore.CopyColor(originalAbbreviation, s.CalendarAbbreviation);
+                    // The presenter maps courses to abbreviations, and a rename reloads no sections, so its map is
+                    // stale (whether or not a colour was copied): drop it so markers in both views follow the rename now.
+                    if (abbreviationChanged) _subjectColors.Invalidate();
                     LoadSubjects();
                     SelectedSubject = Subjects.FirstOrDefault(x => x.Id == s.Id);
                     SubjectEditVm = null;

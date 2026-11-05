@@ -187,7 +187,8 @@ public sealed class WriteLockReadOnlyTests : IDisposable
     private CourseListViewModel CreateCourseListVm() =>
         new(_courseRepo, _subjectRepo, _propertyRepo, _dialog, _sectionRepo,
             _semesterRepo, _ayRepo, _instructorRepo, _lock, _sectionStore,
-            new SubjectColorStore(new[] { "#B7E79D" }, () => new AppSettings()));
+            new SubjectColorStore(new[] { "#B7E79D" }, () => new AppSettings()),
+            FocusTestSupport.NoColours(_courseRepo, _subjectRepo, _sectionStore));
 
     /// <summary>Creates a fully-wired <see cref="InstructorListViewModel"/> in reader mode.</summary>
     private InstructorListViewModel CreateInstructorListVm() =>

@@ -76,7 +76,8 @@ public sealed class CourseListSubjectColourTests : IDisposable
     /// <summary>Builds the view model; <paramref name="lockService"/> defaults to the fixture's writer lock.</summary>
     private CourseListViewModel NewVm(WriteLockService? lockService = null) =>
         new(_courseRepo, _subjectRepo, _envRepo, _dialog, _sectionRepo, _semesterRepo, _ayRepo,
-            _instructorRepo, lockService ?? _fx.Lock, new SectionStore(), _store);
+            _instructorRepo, lockService ?? _fx.Lock, new SectionStore(), _store,
+            FocusTestSupport.NoColours(_courseRepo, _subjectRepo));
 
     /// <summary>A lock service that never acquired the lock, so IsWriter is false (read-only user).</summary>
     private static WriteLockService ReadOnlyLock() => new();
@@ -272,21 +273,16 @@ public sealed class CourseListSubjectColourTests : IDisposable
         Assert.True(vm.HasSharedColours);
     }
 
-    /// <summary>A row is too dark for black text only for a dark colour, never when empty; dragging does not save.</summary>
+    /// <summary>A row has a colour once one is chosen, any colour (dark ones too); dragging does not save.</summary>
     [Fact]
-    public void Row_IsTooDark_AndDraggingDoesNotSave()
+    public void Row_HasColor_AndDraggingDoesNotSave()
     {
         AddSubject("1", "Biology", "BIOL");
         var row = NewVm().SubjectRows.Single();
-        Assert.False(row.IsTooDark);
         Assert.False(row.HasColor);
 
         row.ColorHex = "#000011";
-        Assert.True(row.IsTooDark);
         Assert.True(row.HasColor);
         Assert.Null(_store.GetColor("BIOL")); // not saved until the flyout closes (Commit)
-
-        row.ColorHex = "#FFFF99";
-        Assert.False(row.IsTooDark);
     }
 }

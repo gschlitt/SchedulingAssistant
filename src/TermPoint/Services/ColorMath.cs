@@ -4,17 +4,11 @@ namespace TermPoint.Services;
 
 /// <summary>
 /// Pure colour arithmetic with no Avalonia dependency: hex parsing, WCAG contrast against black, and perceptual
-/// distance in the OKLab colour space. Used by the subject-colour feature (palette checks, the too-dark note and
+/// distance in the OKLab colour space. Used by the subject-colour feature (palette checks and
 /// <see cref="SubjectColorSuggester"/>).
 /// </summary>
 public static class ColorMath
 {
-    /// <summary>
-    /// The smallest acceptable contrast ratio with black text (WCAG AAA for normal text; spec subject-colours P4-5).
-    /// A colour below this gets the "too dark" note.
-    /// </summary>
-    public const double MinimumContrastWithBlack = 7.0;
-
     /// <summary>
     /// Parses <c>#RRGGBB</c> or <c>#AARRGGBB</c> (alpha is read and dropped). Surrounding whitespace is ignored and
     /// hex digits may be either case. Anything else (no <c>#</c>, wrong length, non-hex digits, null) fails.
@@ -78,14 +72,6 @@ public static class ColorMath
     /// <returns>The ratio.</returns>
     /// <exception cref="ArgumentException"><paramref name="hex"/> does not parse.</exception>
     public static double ContrastWithBlack(string hex) => ContrastWithBlack(ParseOrThrow(hex));
-
-    /// <summary>
-    /// True when the colour's contrast with black is below <see cref="MinimumContrastWithBlack"/>.
-    /// </summary>
-    /// <param name="hex">A colour in <c>#RRGGBB</c> or <c>#AARRGGBB</c> form.</param>
-    /// <returns>True if too dark for black text.</returns>
-    /// <exception cref="ArgumentException"><paramref name="hex"/> does not parse.</exception>
-    public static bool IsTooDark(string hex) => ContrastWithBlack(hex) < MinimumContrastWithBlack;
 
     /// <summary>
     /// Converts an sRGB colour to OKLab (Bjorn Ottosson's matrices: linear sRGB, then LMS, cube root, then Lab).

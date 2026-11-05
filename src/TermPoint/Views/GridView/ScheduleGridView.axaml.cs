@@ -22,10 +22,16 @@ public partial class ScheduleGridView : UserControl
     /// <summary>
     /// Snapshot of every entry row rendered during the last full <see cref="Render"/> call.
     /// Used by <see cref="UpdateSelectionHighlight"/> to repaint selection state without
-    /// triggering a full layout pass.
+    /// triggering a full layout pass. A line's subject marker needs no restyle: selection changes only the text.
     /// </summary>
     private record EntryRowInfo(Border Row, TextBlock Label, string SectionId, bool IsOverlay, bool IsDeemphasized, IBrush BaseBg);
     private readonly List<EntryRowInfo> _entryRowRegistry = new();
+
+    /// <summary>
+    /// Subject marker brushes by <c>#RRGGBB</c> string (case-insensitive), so a reload re-uses one brush per subject
+    /// colour instead of allocating one per tile line. Colours come from the user's settings, so the cache stays tiny.
+    /// </summary>
+    private static readonly Dictionary<string, IBrush> _subjectMarkerBrushes = new(StringComparer.OrdinalIgnoreCase);
     
     // Layout constants
     private const double TimeGutterWidth  = 52;
@@ -456,7 +462,9 @@ public partial class ScheduleGridView : UserControl
                 foreach (var e in tile.Entries)
                 {
                     string lbl = BuildTileLabel(e.Label, e.Initials, e.FrequencyAnnotation);
-                    tileTextW = Math.Max(tileTextW, MeasureTextWidth(lbl, _vm!.TileFontSize, FontWeight.Bold));
+                    // A subject marker adds its side and the gap after it to the line (colour by subject).
+                    double markerW = SubjectMarkerBrush(e.SubjectColor) is null ? 0 : SubjectMarkerSide + SubjectMarkerGap;
+                    tileTextW = Math.Max(tileTextW, MeasureTextWidth(lbl, _vm!.TileFontSize, FontWeight.Bold) + markerW);
                 }
                 tileMaxTextWidths[(d, tile.StartMinutes, tile.EndMinutes)] = tileTextW;
 
@@ -812,6 +820,20 @@ public partial class ScheduleGridView : UserControl
                         TextTrimming    = TextTrimming.CharacterEllipsis,
                         TextDecorations = entry.IsDeemphasized ? TextDecorations.Strikethrough : null,
                     };
+
+                    // Colour by subject (Revision 1): a coloured line gets a small rounded square of the subject's
+                    // colour before the text. The text stays one trimming block, so a narrow tile trims the initials
+                    // first. A line with no colour is the text block alone, exactly as before the feature.
+                    Control entryText = entryLabel;
+                    if (SubjectMarkerBrush(entry.SubjectColor) is { } markerBrush)
+                    {
+                        var marker = NewSubjectMarker(markerBrush);
+                        DockPanel.SetDock(marker, Dock.Left);
+                        var markerLine = new DockPanel();
+                        markerLine.Children.Add(marker);      // docked left
+                        markerLine.Children.Add(entryLabel);  // fills the remaining width, trims with ellipsis
+                        entryText = markerLine;
+                    }
                     IBrush entryRowBg = entry.IsMeeting   ? MeetingTileFill
                                       : entry.IsEmphasized ? FilterEmphasizedBg
                                       : Brushes.Transparent;
@@ -819,7 +841,7 @@ public partial class ScheduleGridView : UserControl
                     // When the section carries an attention flag, draw a small colored flag icon
                     // at the trailing edge of the line (after the initials). A DockPanel lets the
                     // label keep its ellipsis trimming while the flag stays pinned and visible.
-                    Control entryContent = entryLabel;
+                    Control entryContent = entryText;
                     if (entry.Flag != SectionFlag.None
                         && FlagVisuals.ResolveBrush(entry.Flag) is { } flagBrush
                         && FlagGeometry is { } flagGeo)
@@ -837,7 +859,7 @@ public partial class ScheduleGridView : UserControl
                         DockPanel.SetDock(flagIcon, Dock.Right);
                         var dock = new DockPanel();
                         dock.Children.Add(flagIcon);   // docked right (added first so it reserves space)
-                        dock.Children.Add(entryLabel); // fills remaining width, trims with ellipsis
+                        dock.Children.Add(entryText);  // fills remaining width, trims with ellipsis
                         entryContent = dock;
                     }
 
@@ -1379,6 +1401,64 @@ public partial class ScheduleGridView : UserControl
         var text = string.IsNullOrEmpty(initials) ? label : $"{label}  {initials}";
         return string.IsNullOrEmpty(frequencyAnnotation) ? text : $"{text}  {frequencyAnnotation}";
     }
+
+    /// <summary>
+    /// The marker brush for a subject colour, taken from <see cref="_subjectMarkerBrushes"/> (created on first use).
+    /// </summary>
+    /// <param name="hex">The entry's <see cref="TileEntry.SubjectColor"/>: <c>#RRGGBB</c>, or empty for none.</param>
+    /// <returns>The brush, or null when the line has no marker (empty or unparsable colour).</returns>
+    private static IBrush? SubjectMarkerBrush(string hex)
+    {
+        if (string.IsNullOrEmpty(hex)) return null;
+        if (_subjectMarkerBrushes.TryGetValue(hex, out var cached)) return cached;
+        if (!Color.TryParse(hex, out var color)) return null;
+        var brush = new SolidColorBrush(color).ToImmutable();
+        _subjectMarkerBrushes[hex] = brush;
+        return brush;
+    }
+
+    /// <summary>
+    /// The side of a tile's subject marker in pixels: the tile font size times <c>SubjectMarkerSizeRatio</c>
+    /// (App.axaml), so the marker is about a capital letter high and follows the font-size selector.
+    /// </summary>
+    private double SubjectMarkerSide => Math.Round(_vm!.TileFontSize * Layout("SubjectMarkerSizeRatio"));
+
+    /// <summary>Pixels between a tile's subject marker and its text (<c>SubjectMarkerGap</c>, App.axaml).</summary>
+    private static double SubjectMarkerGap => Layout("SubjectMarkerGap");
+
+    /// <summary>
+    /// Builds a tile line's subject marker: a rounded square of the subject colour with the thin
+    /// <c>SubjectMarkerOutline</c>, vertically centred on the line, followed by <see cref="SubjectMarkerGap"/>.
+    /// Size, corner radius, outline thickness and gap all come from App.axaml / AppColors.axaml.
+    /// </summary>
+    /// <param name="fill">The subject colour brush, from <see cref="SubjectMarkerBrush"/>.</param>
+    /// <returns>A new, unparented marker.</returns>
+    private Border NewSubjectMarker(IBrush fill)
+    {
+        var side = SubjectMarkerSide;
+        return new Border
+        {
+            Width             = side,
+            Height            = side,
+            Background        = fill,
+            BorderBrush       = Res("SubjectMarkerOutline"),
+            BorderThickness   = Resource("SubjectMarkerBorderThickness", new Thickness(1)),
+            CornerRadius      = Resource("SubjectMarkerCornerRadius", new CornerRadius(2)),
+            VerticalAlignment = VerticalAlignment.Center,
+            Margin            = new Thickness(0, 0, SubjectMarkerGap, 0),
+        };
+    }
+
+    /// <summary>
+    /// Reads a typed value (a <see cref="Thickness"/>, <see cref="CornerRadius"/> and so on) from the application
+    /// resources.
+    /// </summary>
+    /// <typeparam name="T">The resource's type.</typeparam>
+    /// <param name="key">The resource key.</param>
+    /// <param name="fallback">Returned when the key is missing or holds another type.</param>
+    /// <returns>The resource value, or <paramref name="fallback"/>.</returns>
+    private static T Resource<T>(string key, T fallback) =>
+        Application.Current!.Resources.TryGetResource(key, null, out var v) && v is T t ? t : fallback;
 
     private static double MeasureTextWidth(string text, double fontSize, FontWeight weight)
     {

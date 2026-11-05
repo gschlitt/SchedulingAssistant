@@ -45,6 +45,13 @@ public partial class ScheduleGridViewModel : ViewModelBase
     private readonly FocusService _focus;
 
     /// <summary>
+    /// Subject colours (colour by subject, <c>designs/subject-colours.md</c> Phase 5). Every section block is stamped
+    /// with <see cref="SubjectColorPresenter.ColorFor"/>, and the grid reloads once on
+    /// <see cref="SubjectColorPresenter.Changed"/> (P5-5).
+    /// </summary>
+    private readonly SubjectColorPresenter _subjectColors;
+
+    /// <summary>
     /// Tracks the set of semester IDs from the last reload so <see cref="ReloadCore"/>
     /// can detect when the semester selection has changed and clear the filter state.
     /// </summary>
@@ -168,7 +175,8 @@ public partial class ScheduleGridViewModel : ViewModelBase
         WriteLockService lockService,
         SharedScheduleService sharedScheduleService,
         AccessPanelViewModel accessPanelViewModel,
-        FocusService focus)
+        FocusService focus,
+        SubjectColorPresenter subjectColors)
     {
         _sectionRepo = sectionRepo;
         _courseRepo = courseRepo;
@@ -188,6 +196,7 @@ public partial class ScheduleGridViewModel : ViewModelBase
         _lockService = lockService;
         _sharedScheduleService = sharedScheduleService;
         _focus = focus;
+        _subjectColors = subjectColors;
         Access = accessPanelViewModel;
         SharedScheduleStrip = new SharedScheduleStripViewModel(sharedScheduleService);
 
@@ -222,6 +231,11 @@ public partial class ScheduleGridViewModel : ViewModelBase
         // The grid follows the subject focus: a focus change redraws it. FocusService is a constructor dependency,
         // so DI built it first and its own SectionsChanged handler (which drops its caches) runs before our Reload.
         _focus.FocusChanged += Reload;
+
+        // Subject colours changed (a colour, the display mode, or colours turning on or off): redraw the markers with
+        // one full reload (P5-5). The presenter is a constructor dependency, so it subscribed to SectionsChanged and
+        // FocusChanged before this view model did and answers ColorFor from fresh caches in those reloads too.
+        _subjectColors.Changed += Reload;
 
         // Keep SelectedSectionIds in sync with the store's single source of truth.
         _sectionStore.SelectionChanged += ids => SelectedSectionIds = ids;
@@ -400,7 +414,7 @@ public partial class ScheduleGridViewModel : ViewModelBase
         var snap = TakeFilterSnapshot();
 
         var (filtered, overlayOnly, overlayMatchedIds) =
-            BuildSectionBlocks(lookups.Sections, snap, lookups, FocusPredicate());
+            BuildSectionBlocks(lookups.Sections, snap, lookups, FocusPredicate(), _subjectColors.ColorFor);
 
         // Push filtered section IDs to SectionStore so the section list can highlight matching cards.
         // Only publish when a real (non-overlay) filter is active; null signals "no highlighting".
@@ -486,6 +500,10 @@ public partial class ScheduleGridViewModel : ViewModelBase
     /// <param name="snap">Snapshot of the current filter and overlay state.</param>
     /// <param name="lookups">Entity lookup dictionaries.</param>
     /// <param name="isInFocus">The subject-focus test for Pass 1; null when every section is in focus.</param>
+    /// <param name="subjectColorFor">
+    /// A section's subject marker colour (normally <see cref="SubjectColorPresenter.ColorFor"/>), stamped on every block
+    /// of both passes; null means no colours.
+    /// </param>
     /// <returns>
     /// The Pass 1 blocks, the Pass 2 overlay-only blocks, and the set of sections matching a section-level overlay.
     /// </returns>
@@ -494,11 +512,12 @@ public partial class ScheduleGridViewModel : ViewModelBase
             IReadOnlyList<Section> sections,
             FilterSnapshot snap,
             GridLookups lookups,
-            Func<Section, bool>? isInFocus)
+            Func<Section, bool>? isInFocus,
+            Func<Section, string>? subjectColorFor = null)
     {
         var overlayMatchedIds = ComputeOverlayMatchedSectionIds(sections, snap);
-        var filtered    = BuildFilteredBlocks(sections, snap, lookups, overlayMatchedIds, isInFocus);
-        var overlayOnly = BuildOverlayBlocks(sections, snap, lookups, filtered, overlayMatchedIds);
+        var filtered    = BuildFilteredBlocks(sections, snap, lookups, overlayMatchedIds, isInFocus, subjectColorFor);
+        var overlayOnly = BuildOverlayBlocks(sections, snap, lookups, filtered, overlayMatchedIds, subjectColorFor);
         return (filtered, overlayOnly, overlayMatchedIds);
     }
 
@@ -855,6 +874,10 @@ public partial class ScheduleGridViewModel : ViewModelBase
     /// Tells whether a section is inside the subject focus (normally <see cref="FocusService.Matches"/>). Null means
     /// "no focus", every section is considered; that is what the focus-All case and the existing pipeline tests pass.
     /// </param>
+    /// <param name="subjectColorFor">
+    /// A section's subject marker colour (normally <see cref="SubjectColorPresenter.ColorFor"/>), copied onto each of
+    /// its blocks as <see cref="SectionMeetingBlock.SubjectColor"/>. Null means no colours.
+    /// </param>
     /// <returns>
     /// All <see cref="SectionMeetingBlock"/> objects for meetings that survived the focus and all
     /// filter predicates. Not yet deduplicated.
@@ -864,7 +887,8 @@ public partial class ScheduleGridViewModel : ViewModelBase
         FilterSnapshot snap,
         GridLookups lookups,
         HashSet<string> overlayMatchedIds,
-        Func<Section, bool>? isInFocus = null)
+        Func<Section, bool>? isInFocus = null,
+        Func<Section, string>? subjectColorFor = null)
     {
         var blocks = new List<GridBlock>();
 
@@ -926,6 +950,8 @@ public partial class ScheduleGridViewModel : ViewModelBase
             // strikethrough in the grid; unstaffed sections are highlighted.
             bool isDeemphasized    = snap.EmphasizeUnstaffedSelected && section.InstructorIds.Any();
             bool isEmphasized      = snap.EmphasizeUnstaffedSelected && !section.InstructorIds.Any();
+            // Subject marker colour (colour by subject); empty when colours are off or the subject has none.
+            var subjectColor       = subjectColorFor?.Invoke(section) ?? string.Empty;
 
             // ── Meeting-level filters and block emission ───────────────────────────
             foreach (var slot in section.Schedule)
@@ -957,7 +983,8 @@ public partial class ScheduleGridViewModel : ViewModelBase
                     SectionDaySchedule.FormatFrequency(slot.Frequency),
                     Flag: section.Flag,
                     IsDeemphasized: isDeemphasized,
-                    IsEmphasized: isEmphasized));
+                    IsEmphasized: isEmphasized,
+                    SubjectColor: subjectColor));
             }
         }
 
@@ -1004,6 +1031,10 @@ public partial class ScheduleGridViewModel : ViewModelBase
     /// Pre-computed set of section IDs that match the section-level overlay.
     /// Only used for Instructor and Tag overlay types.
     /// </param>
+    /// <param name="subjectColorFor">
+    /// A section's subject marker colour, as for <see cref="BuildFilteredBlocks"/>; null means no colours. Overlay
+    /// blocks get the marker too; the red overlay styling of the text and border is unchanged.
+    /// </param>
     /// <returns>
     /// A list of <see cref="SectionMeetingBlock"/> objects that are in the overlay but
     /// were absent from <paramref name="filteredBlocks"/>. Not yet deduplicated.
@@ -1013,7 +1044,8 @@ public partial class ScheduleGridViewModel : ViewModelBase
         FilterSnapshot snap,
         GridLookups lookups,
         IReadOnlyList<GridBlock> filteredBlocks,
-        HashSet<string> overlayMatchedIds)
+        HashSet<string> overlayMatchedIds,
+        Func<Section, string>? subjectColorFor = null)
     {
         var blocks = new List<GridBlock>();
         if (!snap.HasOverlay) return blocks;
@@ -1038,6 +1070,7 @@ public partial class ScheduleGridViewModel : ViewModelBase
                 var (label, initials) = BuildSectionLabel(section, lookups.Courses, lookups.Instructors);
                 var semName = lookups.SemesterIdToName.TryGetValue(section.SemesterId, out var n) ? n : string.Empty;
                 var semColor = lookups.SemesterIdToColor.TryGetValue(section.SemesterId, out var c) ? c : string.Empty;
+                var subjectColor = subjectColorFor?.Invoke(section) ?? string.Empty;
 
                 foreach (var slot in section.Schedule)
                 {
@@ -1045,7 +1078,8 @@ public partial class ScheduleGridViewModel : ViewModelBase
                         slot.Day, slot.StartMinutes, slot.EndMinutes,
                         true, label, initials, section.Id, section.SemesterId, semName, semColor,
                         SectionDaySchedule.FormatFrequency(slot.Frequency),
-                        Flag: section.Flag));
+                        Flag: section.Flag,
+                        SubjectColor: subjectColor));
                 }
             }
         }
@@ -1065,6 +1099,7 @@ public partial class ScheduleGridViewModel : ViewModelBase
                 var (label, initials) = BuildSectionLabel(section, lookups.Courses, lookups.Instructors);
                 var semName = lookups.SemesterIdToName.TryGetValue(section.SemesterId, out var n) ? n : string.Empty;
                 var semColor = lookups.SemesterIdToColor.TryGetValue(section.SemesterId, out var c) ? c : string.Empty;
+                var subjectColor = subjectColorFor?.Invoke(section) ?? string.Empty;
 
                 foreach (var slot in section.Schedule)
                 {
@@ -1075,7 +1110,8 @@ public partial class ScheduleGridViewModel : ViewModelBase
                         slot.Day, slot.StartMinutes, slot.EndMinutes,
                         true, label, initials, section.Id, section.SemesterId, semName, semColor,
                         SectionDaySchedule.FormatFrequency(slot.Frequency),
-                        Flag: section.Flag));
+                        Flag: section.Flag,
+                        SubjectColor: subjectColor));
                 }
             }
         }
@@ -1414,7 +1450,7 @@ public partial class ScheduleGridViewModel : ViewModelBase
     /// </summary>
     private static TileEntry ToEntry(GridBlock block) => block switch
     {
-        SectionMeetingBlock s => new TileEntry(s.Label, s.Initials, s.SectionId, s.IsOverlay, false, s.FrequencyAnnotation, s.IsDeemphasized, IsEmphasized: s.IsEmphasized, Flag: s.Flag),
+        SectionMeetingBlock s => new TileEntry(s.Label, s.Initials, s.SectionId, s.IsOverlay, false, s.FrequencyAnnotation, s.IsDeemphasized, IsEmphasized: s.IsEmphasized, Flag: s.Flag, SubjectColor: s.SubjectColor),
         CommitmentBlock c     => new TileEntry(c.Name,  string.Empty, string.Empty, true,  IsCommitment: true),
         // Meeting blocks: carry the MeetingId so double-click can route to the editor.
         // IsCommitment=true is kept so the right-click context menu (section-only) is

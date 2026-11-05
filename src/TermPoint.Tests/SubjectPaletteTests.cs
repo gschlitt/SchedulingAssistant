@@ -6,7 +6,7 @@ namespace TermPoint.Tests;
 
 /// <summary>
 /// Checks the REAL subject palette in <c>src/TermPoint/AppColors.axaml</c>, so a palette swap (task 5) is
-/// re-verified automatically: eleven consecutive colours, each readable under black text, all distinct, and
+/// re-verified automatically: eleven consecutive colours, all distinct, and
 /// far enough apart for <see cref="SubjectColorSuggester.DefaultMinimumDistance"/> to take them in order.
 /// </summary>
 public sealed class SubjectPaletteTests
@@ -41,13 +41,6 @@ public sealed class SubjectPaletteTests
         var palette = ReadPalette();
         Assert.Equal(11, palette.Count);
         Assert.All(palette, h => Assert.True(ColorMath.TryParseHex(h, out _), h));
-    }
-
-    /// <summary>Every colour is at least 7:1 against black text.</summary>
-    [Fact]
-    public void Palette_AllReadableWithBlack()
-    {
-        Assert.All(ReadPalette(), h => Assert.True(ColorMath.ContrastWithBlack(h) >= ColorMath.MinimumContrastWithBlack, h));
     }
 
     /// <summary>All colours are different.</summary>

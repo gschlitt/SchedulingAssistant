@@ -8,6 +8,37 @@ to **Q1–Q9** are recorded below.
 ✅ **Phase 5 (Architecture)** complete 2026-11-04 (P5-1–P5-5 settled).
 ✅ **Phase 6 (Implementation Plan)** signed off 2026-11-04. **Spec locked; next: task 1 (foundations).**
 **Target release:** 1.2.4. **Replaces** summary item 2.3, "Section-type colours" (Q1).
+**Revision 1 (2026-11-04):** a small rounded square before the section code replaces the background chip; see below. It overrides the sections it lists.
+
+## Revision 1 (2026-11-04): a square marker instead of a background chip
+
+**Why.** After seeing task 4's tiles, Greg asked for a change. A coloured background behind "IGEN230 001" looks heavy,
+constrains colour choice to pastels that black text reads on, and fights the Access-watch row shading. Instead, each
+section code is **prefaced by a small square of the subject's colour**, about the size of a capital letter, with
+slightly rounded corners. Same in the Section list and the Schedule view.
+
+**Story.** Alice has IGEN and MECH in focus. Each tile line reads "■ IGEN230 001  JY NY2", with a small blue square
+in front of IGEN lines and an orange one in front of MECH lines. The text sits on the tile's usual pale blue, exactly as
+in 1.2.3. When she turns on "Emphasize unstaffed" or an Access watch shades a row, the squares still show. Bob picks a
+pale yellow for CHEM in the chooser; its square still stands out because every square has a thin dark outline.
+
+**What this changes** (it replaces the items listed; everything else in the spec stands):
+
+| Item | Was | Now |
+|---|---|---|
+| G7, Q7, Q8, Phase 3 card and tile | Solid background block behind the section text | A square marker before the section text, then a small gap. Text, its colour and its background are untouched. |
+| Marker size | (chip padding 3 px) | Side ≈ the cap height of the font the text uses: font size × a ratio resource (`SubjectMarkerSizeRatio`, about 0.7, in App.axaml). Section list heading (12 pt) ≈ 8 px; tiles follow the grid's font-size selector. Corner radius and gap are resources too. Vertically centred on the text. |
+| Rounded corners (P3-3, P5-1) | Square (TextBlock has no corner radius) | **Rounded**: the marker is a `Border`, so `CornerRadius` costs nothing extra. |
+| Outline | none | A thin translucent dark outline (`SubjectMarkerOutline`, resource), so pale colours stay visible on the tile fill and the card. |
+| Too-dark note (Q6, Phase 4, P4-5) | "Black text may be hard to read on this colour" below 7 : 1 | **Removed.** Text never sits on the colour, and the outline keeps any colour visible. `ColorMath.IsTooDark`, `SubjectRowViewModel.IsTooDark` and the note go; the contrast palette test goes with them. |
+| Palette (Phase 4) | 11 pastels, ≥ 7 : 1 with black, no blues | 11 **stronger mid-tone colours**, blues allowed (a small dark-blue square doesn't read as the tile fill). Red left out (conflict glow and flags are red). Draft, in suggestion order: blue #2F6FC4, orange #F08A24, green #3A9A3A, purple #8E4FC2, teal #1A9E9A, magenta #D0459C, brown #8C5A2E, olive #9A9A1E, navy #2A3F7A, grey #6E6E6E, gold #E3B51C. Every pair is further apart (OKLab ≥ 0.09) than the old palette's. Tuned by eye in task 5. Colours users already picked are kept as they are. |
+| Courses flyout preview (task 2) | Sample text on the colour | The marker followed by sample text, on the tile fill. |
+| Width (task 4) | +6 px chip padding | + marker side + gap. |
+| Alignment | n/a | Lines and cards whose subject has no colour get no marker and no gap, so their text starts a marker's width further left. Accepted for now (it is what the sketch shows); reserving the space is a contained change if it looks ragged. |
+
+**Cost.** One `Border` per card heading (hidden when there is no colour) and one per coloured tile line. No style
+classes (item 21). Settings, store, presenter, suggester and the version-gate answer (No) are unchanged.
+
 
 ---
 
@@ -269,6 +300,8 @@ Some subjects share a colour: there are more subjects than clearly different col
 
 ### Section list card
 
+> **Superseded in part by Revision 1** (square marker, not a background chip).
+
 Row 1 today: `▸ BIOL 105 AB1   JRS   Lab   30`. With colours on, the heading text sits on a chip of its subject's
 colour:
 
@@ -281,6 +314,8 @@ colour:
 - It stays the same when the card is selected, expanded for editing, highlighted by the filter or flagged.
 
 ### Schedule view tile
+
+> **Superseded in part by Revision 1** (square marker, not a background chip).
 
 A **tile** is one block in the Schedule view holding one or more co-scheduled sections, one line each. Every tile
 has the same pale blue fill (`TileFill`); in multi-semester mode its 3 px border carries the semester colour.
@@ -402,6 +437,8 @@ Same input, same output, on any computer.
 
 ### Draft palette
 
+> **Superseded in part by Revision 1** (square marker, not a background chip).
+
 Ordered so that each colour is as far as possible from the ones before it (greedy, OKLab). Only light colours that
 bold black text reads well on, kept away from colours the app already uses: the pale blue tile fill (`TileFill`
 #cfecf8), the filter highlight (#9ecbf7), meetings (#bbaada), the overlay purple, the conflict red and the flag
@@ -426,6 +463,8 @@ All are far above the 7 : 1 accessibility bar. Colours 9–11 sit noticeably clo
 (CLAUDE.md: no colours in code), read in order by the store. Final hexes are checked by eye on real tiles in Phase 6.
 
 ### Too-dark warning (Q6)
+
+> **Superseded in part by Revision 1** (square marker, not a background chip).
 
 Shown when a colour's contrast with black is below **7 : 1** (WCAG AAA for normal text; heading and tile text are
 small). Example: mid-grey #808080 is 5.3 : 1 and gets the note; every palette colour passes.
@@ -486,6 +525,8 @@ Both asked the same presenter, so they agree (Phase 2, rule 3).
 
 ### Section list
 
+> **Superseded in part by Revision 1** (square marker, not a background chip).
+
 - `SectionListItemViewModel` gains `SubjectChipColor` (observable string, empty = none), set when the card is built
   and by `RefreshSubjectChip()`.
 - `SectionListViewModel` subscribes to `SubjectColorPresenter.Changed` and calls `RefreshSubjectChip()` on every
@@ -497,6 +538,8 @@ Both asked the same presenter, so they agree (Phase 2, rule 3).
   one binding more. `TextBlock` has no corner radius, so card chips are square (P3-3 fallback; P5-1).
 
 ### Schedule view
+
+> **Superseded in part by Revision 1** (square marker, not a background chip).
 
 - `SectionMeetingBlock` gains `string SubjectColor = ""`, filled by `ScheduleGridViewModel` from the presenter in all
   three places it builds a block (filtered pass, overlay pass, and the third, ~line 1074). The tile entry it groups

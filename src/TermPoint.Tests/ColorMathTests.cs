@@ -59,15 +59,6 @@ public sealed class ColorMathTests
         Assert.Equal(1.0, ColorMath.ContrastWithBlack("#000000"), 6);
     }
 
-    /// <summary>IsTooDark uses the 7:1 threshold.</summary>
-    [Fact]
-    public void IsTooDark_UsesSevenToOne()
-    {
-        Assert.True(ColorMath.IsTooDark("#808080"));
-        Assert.False(ColorMath.IsTooDark("#B7E79D"));
-        Assert.Equal(7.0, ColorMath.MinimumContrastWithBlack);
-    }
-
     /// <summary>OKLab distance: 0 for identical, symmetric, black to white about 1.</summary>
     [Fact]
     public void OkLabDistance_BasicProperties()
