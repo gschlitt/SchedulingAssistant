@@ -153,6 +153,17 @@ directly on each card, never through per-type style classes (performance rule).
 
 **Update 2026-11-03:** Greg's request is now **colour by subject**, stored in AppSettings (no version gate). Spec:
 `designs/subject-colours.md` (spec locked 2026-11-04; five implementation tasks, next task 1). **Replaces** section-type colours (decided 2026-11-03), so this item no longer needs the version gate.
+
+**Done 2026-11-04 (tasks 1–4 and Revision 1; `3b5d71e`, `d257914`, `d04cb0b`, `c33861f`):** colours per subject
+abbreviation in AppSettings, set in the Courses flyout (swatch + chooser, Suggest colours, Clear, display mode Always /
+Only when more than one subject is shown / Never). Revision 1 (Greg, after seeing tiles): a small outlined rounded
+square before the section code, not a background chip, on Schedule view tiles (0.9 × tile font) and section cards
+(11 px). New mid-tone palette; the too-dark note is gone. `MinimumVersionToWrite`: No (nothing reaches the database).
+Task 5 checks: demo registers the same services (code read) and compiles for the browser; palette spacing passes.
+**Left:** Greg's by-eye pass on real data (the list in the spec's task 4 and Revision 1).
+**Palette kept as is (Greg, 2026-11-04):** palette blue #2F6FC4 and green #3A9A3A nearly match the blue and green
+flags (OKLab 0.027 and 0.037), but marker and flag differ in shape and place; the suggester's minimum distance stays
+0.04 (closest palette pair 0.092).
 </details>
 
 <details><summary><b>2.4 Hide sections that meet for only part of the semester</b></summary>
