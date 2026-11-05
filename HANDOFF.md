@@ -35,6 +35,13 @@ Written so a fresh conversation can pick up. Claude Code's memory and `CLAUDE.md
     when the network returns if the outage is ≤ 60 s, otherwise dies ~85 s after it was issued (default SessTimeout 60 s
     assumed). Report `tmp/netprobe/netprobe-20261103-093522.md` (local only).
   - F19 retired to `FixedFindingsProofTests`; F22 stays known because the harness doesn't model the 85 s limit.
+- **Collapse days, 2.13 (spec `designs/collapse-days.md`; tasks 1-6):** fold days of the Schedule view into strips
+  (click a day name or strip; right-click for Show only / block patterns / Show all days; marks and a flash for what the
+  user pointed at; the PNG title says which days are open). Nothing stored (MinimumVersionToWrite No). Tasks:
+  1 tile padding `1eb90c9`, 2 real day numbers `233488a`, 3 fold state `043eaea`, 4 strips and header `68c9a0f`,
+  5 marks and flash `98a02df`, 6 export + release check + help: **uncommitted**. Open small points: the meeting bar
+  on a strip is faint (pale fill); mark bars overhang the strip by a pixel or two; stepping through Room Browser slots
+  flashes at every step; a redraw within a second of a flash cuts it short. **macOS check on the next signed build.**
 
 ## Next steps
 

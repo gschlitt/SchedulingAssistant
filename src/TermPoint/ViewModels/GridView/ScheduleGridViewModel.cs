@@ -377,7 +377,7 @@ public partial class ScheduleGridViewModel : ViewModelBase
 
     /// <summary>
     /// Text for the PNG title banner: the OPEN days in week order, e.g. "Mon, Wed, Fri only"; empty when nothing is
-    /// folded. Not yet wired into export (task 6).
+    /// folded. Appended to the PNG export's title banner (see <see cref="ComposeExportTitle"/>).
     /// </summary>
     public string FoldedDaysCaption
     {
@@ -388,6 +388,19 @@ public partial class ScheduleGridViewModel : ViewModelBase
             return string.Join(", ", open) + " only";
         }
     }
+
+    /// <summary>
+    /// Builds the title banner text of the PNG export: the academic unit's name, the semester line and, when days are
+    /// folded, which days are open, joined with " — " (e.g. "UFV Biology — 2025-2026 — Fall — Mon, Wed, Fri only").
+    /// Parts that are null, empty or whitespace are left out, with no stray separators.
+    /// </summary>
+    /// <param name="unitName">The academic unit's name; may be null or empty.</param>
+    /// <param name="semesterLine">The semester line; may be null or empty.</param>
+    /// <param name="foldedDaysCaption">See <see cref="FoldedDaysCaption"/>; empty when nothing is folded.</param>
+    /// <returns>The title, or an empty string when every part is empty (the export then draws no banner).</returns>
+    public static string ComposeExportTitle(string? unitName, string? semesterLine, string? foldedDaysCaption) =>
+        string.Join(" — ", new[] { unitName, semesterLine, foldedDaysCaption }
+            .Where(part => !string.IsNullOrWhiteSpace(part)));
 
     /// <summary>The day numbers the current grid shows, in week order (the day-header menu reads this).</summary>
     public IReadOnlyList<int> ShownDayNumbers => ShownDays();

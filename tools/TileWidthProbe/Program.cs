@@ -225,6 +225,22 @@ static class Program
             vm.SetGhostBlocks([new GhostBlock(3, 19 * 60, 19 * 60 + 75, "A 101", "19:00-20:15")]);
         });
         vm.SetGhostBlocks(null);
+
+        // 7. Export (task 6): the real ExportToPng (print palette, title banner) with TR open, a selected MWF section and a
+        // ghost, so the strips' bands, bars and attention marks are drawn in the PRINT palette. The selection starts a
+        // strip flash first; the export must cancel it cleanly and leave no flash overlay in the picture.
+        vm.TileFontSize = defaultFont;
+        vm.ShowPattern([2, 4]);
+        vm.SetGhostBlocks([new GhostBlock(3, 19 * 60, 19 * 60 + 75, "A 101", "19:00-20:15")]);
+        store.SetMultiSelection([mwfPick]);
+        var gridCanvas = view.FindControl<Canvas>("GridCanvas")!;
+        int overlaysBefore = gridCanvas.Children.OfType<Border>().Count(b => b.Opacity == 0 && !b.IsHitTestVisible && b.Child is null && b.Width < 40);
+        Console.WriteLine($"export: title would be '{ScheduleGridViewModel.ComposeExportTitle(vm.AcademicUnitName, vm.SemesterLine, vm.FoldedDaysCaption)}'; flash-like overlays on canvas before export: {overlaysBefore}");
+        string exportPng = Path.Combine(outDir, "s7_export_TR_open.png");
+        view.ExportToPng(exportPng);
+        Console.WriteLine($"export written: {exportPng} ({new FileInfo(exportPng).Length} bytes); canvas children after export {gridCanvas.Children.Count}");
+        store.SetMultiSelection([]);
+        vm.SetGhostBlocks(null);
         vm.ShowAllDays();
 
         WriteReport(outDir, results, defaultFont, Layout("TileMeasuringMargin"), Layout("TilePaddingHorizontal"));

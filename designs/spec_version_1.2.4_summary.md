@@ -229,9 +229,13 @@ About 80 items in nine groups. Most were deferred from 1.2.3 or found while test
 > Sections should show the credits available. Should really attach credit to a course, then propagate to sections, with an over-ride in section editor.
 
 > [!note]- **2.13 Collapse days in the Schedule view** (Greg's idea, 2026-11-04) `AXAML`
-> **Now specced in `designs/collapse-days.md`** (spec locked 2026-11-05; next: task 1, tile padding). That file supersedes the design direction
-> below: folded days show as strips with a count, the full week on every launch, any set of days, export says what it
-> shows, padding change first.
+> **Done (2026-11-05), all six tasks in `designs/collapse-days.md`.** Click a day's name to fold it into a strip
+> drawn as a folded page (letter, section count, bands where sections meet, bars for meetings and commitments); click
+> the strip to open it; right-click for "Show only", block patterns and "Show all days". A selection, a Room Browser
+> slot or an Access conflict behind a fold shows a bar and flashes once. The PNG title names the open days. Tiles are
+> narrower too (task 1: about 100–130 px back on a busy week). Nothing stored; `MinimumVersionToWrite`: No. Left:
+> Greg's eye pass in the desktop app, macOS on the next signed build, and the small points in the spec's task 4–5
+> Outcome notes (faint meeting bar first). That file supersedes the design direction below.
 >
 > **Problem:** a busy week doesn't fit on one monitor. In real UBC data (Winter Term 1), 400-level CIVL + MECH needs
 > 2,642 px and 300-level CIVL + ELEC + MECH needs 2,961 px; a monitor's grid area is about 1,500 px. With time running
@@ -272,6 +276,15 @@ About 80 items in nine groups. Most were deferred from 1.2.3 or found while test
 > when many subjects are chosen (the first few, then "+N"). Display only: no data risk, no version gate.
 
 >[!note]- **2.15 Mute instructor conflicts, mute room conflicts
+
+>[!note]- **2.16 Events editor meeting editor is completely messed up.
+
+>[!note]- **2.17 Rooms and possibly other Scheduling Environment fields don't show up in the Filter Bar until after a semester change
+
+>[!note]- **2.18 Is the Room Browser functional? Consider CIVL 215 T1A in Winter Term 1 UBC
+
+
+---
 ---
 
 ## 3. Protecting unsaved work

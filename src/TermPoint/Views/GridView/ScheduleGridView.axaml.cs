@@ -1631,7 +1631,8 @@ public partial class ScheduleGridView : UserControl
     /// <summary>
     /// Exports the full schedule grid canvas to a PNG file using the higher-contrast
     /// export palette defined in PrintColors.axaml. Prepends a title banner showing the
-    /// semester name(s). Re-renders the canvas with export colors, captures the bitmap,
+    /// semester name(s) and, when days are folded, which days are open (the strips export as drawn). A running strip
+    /// flash is cancelled by the re-render, and none starts while exporting. Re-renders the canvas with export colors, captures the bitmap,
     /// then restores the on-screen palette.
     /// </summary>
     /// <param name="outputPath">Absolute path for the output PNG file.</param>
@@ -1649,11 +1650,9 @@ public partial class ScheduleGridView : UserControl
             Render();
 
             // ── Title banner ────────────────────────────────────────────────
-            var unitName = _vm?.AcademicUnitName;
-            var semester = _vm?.SemesterLine ?? "";
-            var title = string.IsNullOrWhiteSpace(unitName)
-                ? semester
-                : $"{unitName} — {semester}";
+            // Unit, semester line, and (when days are folded) the open days: "Mon, Wed, Fri only".
+            var title = ScheduleGridViewModel.ComposeExportTitle(
+                _vm?.AcademicUnitName, _vm?.SemesterLine, _vm?.FoldedDaysCaption);
             double titleStripHeight = 0;
 
             if (!string.IsNullOrWhiteSpace(title))

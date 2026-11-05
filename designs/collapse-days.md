@@ -8,7 +8,8 @@ P3-1–P3-5 settled. ✅ Phase 4 (Data Design): nothing stored, folded into Phas
 ✅ Phase 6 (Implementation Plan) signed off 2026-11-05. **Spec locked.** ✅ Task 1 (tile padding) done 2026-11-05 (1eb90c9; see its "Outcome"). ✅ Task 2 (real day
 numbers) done 2026-11-05 (233488a). ✅ Task 3 (fold state and commands) done 2026-11-05 (043eaea).
 ✅ Task 4 (strips and header controls) done 2026-11-05 (68c9a0f). ✅ Task 5 (marks and the flash) done
-2026-11-05, not yet committed. **Next: task 6 (export and release check).**
+2026-11-05 (98a02df). ✅ Task 6 (export and release check) done 2026-11-05, uncommitted. **The item is complete,
+pending Greg's eye pass on the desktop app and the macOS check on the next signed build.**
 **Target release:** 1.2.4. **Expands** summary item 2.13. The summary's "Design direction" (toolbar toggles, narrow
 strips, MWF/TR/All shortcuts) is treated here as one candidate, not a decision. UI waits for Phase 3.
 
@@ -612,6 +613,20 @@ strip at every step (each slot is a new mark); a full redraw within a second of 
 - The full test suite.
 - Docs: the 1.2.4 summary item 2.13, repo `HANDOFF.md`, and the user-facing help if it lists the Schedule view's
   controls.
+
+**Outcome (2026-11-05).** The PNG title is now built by the pure `ScheduleGridViewModel.ComposeExportTitle(unit,
+semesterLine, foldedDaysCaption)`: parts joined with " — ", empty parts skipped, so a folded export reads
+"FASC — 2026-2027 — Winter Term 1 — Tue, Thu only". `ExportTitleTests` (5). Checked with `tools/TileWidthProbe` (new
+scenario 7 calls the real `ExportToPng` on a copy of UBC1-TT.db: slice 1, TR open, an MWF section selected, a ghost on
+Wednesday 19:00): in the PRINT palette the strips, letters, counts, remnant bands, the selection bar and the ghost bar
+are all readable, and the title carries the caption. No flash overlay is in the picture: the export's own `Render`
+cancels a running flash and no flash starts while exporting. Release check: nothing in tasks 1-6 touches
+`AppSettings`, a repository, a model or a `PersistedRecord` (`MinimumVersionToWrite` stays No, untouched); the only new
+constructor dependency, `IBlockPatternRepository`, is registered in both `ConfigureServices` and
+`ConfigureDemoServices` (`DemoBlockPatternRepository`); both targets compile. Help: a "Folding days" section in
+`navigating.html` (the only listed topic about the Schedule view; `schedule-grid.html` is not in the topic tree) and
+one sentence in `exporting.html`. The WASM demo was checked by eye in task 4/5 and not re-run. Not checked: the desktop
+app by eye, macOS.
 
 ### Pointers for later phases (not decisions)
 
