@@ -2,7 +2,10 @@
 
 **Status:** ✅ Phase 1 (Problem Statement) complete 2026-11-05: Q1–Q10 and Q2a settled (see "Phase 1
 decisions"). ✅ Phase 2 (Domain Model) complete
-2026-11-05: P2-1–P2-5 settled. **Next: Phase 3 (UX Sketch).**
+2026-11-05: P2-1–P2-5 settled. ✅ Phase 3 (UX Sketch) complete 2026-11-05:
+P3-1–P3-5 settled. ✅ Phase 4 (Data Design): nothing stored, folded into Phase 5 (Greg, 2026-11-05).
+✅ Phase 5 (Architecture) complete 2026-11-05: P5-1–P5-3 settled.
+✅ Phase 6 (Implementation Plan) signed off 2026-11-05. **Spec locked; next: task 1 (tile padding).**
 **Target release:** 1.2.4. **Expands** summary item 2.13. The summary's "Design direction" (toolbar toggles, narrow
 strips, MWF/TR/All shortcuts) is treated here as one candidate, not a decision. UI waits for Phase 3.
 
@@ -150,7 +153,7 @@ days". A strip is the folded header, so clicking it brings the day back. To chec
 header is discoverable enough, and how a header shows it can be clicked. (Day headers handle no clicks or right-clicks today, so nothing clashes.)
 
 **Reading of Q2a, to confirm in Phase 3:** filter-bar changes, detaching or reattaching the Schedule view, the grid's
-font size, and the app reopening the *same* database (e.g. after taking the lock back) keep the folded days. These
+font size keep the folded days. (Reopening the *same* database resets them after all: P5-1.) These
 narrow or redraw the same timetable rather than switching to another one. If Saturday or Sunday is turned off while
 it's folded, it simply drops out; turned back on, it comes back unfolded.
 
@@ -251,11 +254,267 @@ was already folded: a new selection, new ghosts, a new conflict, or a filter bei
 that already has a mark doesn't flash it (the user just saw it there). Plain redraws (font size, detaching the view)
 flash nothing.
 
+---
+
+## Phase 3: UX Sketch
+
+**Constraint from Q5:** very easy, little clutter. Any set of days, "just this day" and a block pattern each take a
+click or two.
+
+### What's on screen today (facts)
+
+- The day headers ("Monday" …) are drawn on the grid canvas, so they **scroll away** when the user scrolls down. They
+  handle no clicks.
+- The grid's **footer bar** never scrolls: licence text on the left, "Text:" font size and "Zoom:" slider on the
+  right. It has room for one more small group.
+- Tiles already have a right-click menu (a popup in `ScheduleGridView.axaml`); headers don't.
+
+### Stories
+
+**Placing an MWF lecture.** Alice clicks the "Tuesday" header; Tuesday shrinks to a narrow strip reading "T / 41".
+She clicks "Thursday"; same. Monday, Wednesday and Friday now sit side by side. Two clicks. When she's done she clicks
+each strip to bring the day back, or right-clicks any header or strip and picks "Show all days".
+
+**Using a block pattern.** Bob right-clicks any header. The menu lists "Show only Tuesday", then the department's
+patterns ("Show MWF", "Show TR", "Show MW"), then "Show all days". He picks "Show TR". Two clicks.
+
+**A lab day.** Carol is placing a Thursday lab. Right-click "Thursday" → "Show only Thursday". Two clicks; the other
+days become strips.
+
+**Something behind a strip.** With Tuesday folded, Alice clicks MECH 361 (TR) in the Section list. The Tuesday strip
+gets a small mark **at 14:00**, the time the section meets, and the strip flashes amber twice. She hovers: "Tuesday is
+folded: 41 sections, 2 events. MECH 361 001 (selected) at 14:00. Click to show Tuesday." She clicks; Tuesday opens
+and MECH 361's tile is highlighted as usual.
+
+**Scrolled down.** Bob has scrolled to the evening. The headers are off screen, but the strips still run the full
+height, so he can see Tuesday is folded, and a Room Browser ghost's mark at 19:00 sits right where he's looking.
+
+### The control: the day headers
+
+| Action | Gesture |
+|---|---|
+| Fold a day | Click its header |
+| Open a folded day | Click its strip (anywhere on it) |
+| Only this day | Right-click a header or strip → "Show only Tuesday" |
+| A block pattern | Right-click → "Show MWF" (one entry per pattern, from Settings → Block patterns) |
+| Everything back | Right-click → "Show all days" (only when something is folded) |
+
+- **Showing it can be clicked:** on hover, the header gets the hover fill and a small fold icon (a `Path` in AXAML,
+  per the icon rule) at its right end, plus a tooltip "Click to fold Tuesday away. Right-click for more." The pointer
+  becomes a hand.
+- **The last open day** (P2-5) shows no fold icon and does nothing on click; its menu has no "Show only".
+- **Nothing new in the toolbar or filter bar.**
+
+### The strip
+
+```
+ ┌─────┐
+ │  T  │  ← one-letter day name, header font (FontSizeXLarge), same row height as other headers
+ │ 41  │  ← section count (P2-1), smaller font
+ │  •  │  ← "other things" sign: only when the day also has events/commitments/shared tiles (P2-1)
+ ├─────┤
+ │░░░░░│  ← full height of the grid, a muted hatch fill so it never reads as an empty day
+ │░░▬░░│  ← a mark, drawn at the time of what it marks (selection, ghost, conflict, filter match)
+ │░░░░░│
+ └─────┘
+```
+
+- **Width:** just enough for the letter or the count (whichever is wider) plus side padding, about 24 px at the
+  default size. Folding two days saves their full width minus about 50 px.
+- **Name:** one letter (P3-2), the app's own set: M T W R F (as `ScheduleText` already uses), with **Sa** and **Su**
+  for the weekend, since one letter can't tell those apart. The tooltip always gives the full name ("Thursday is
+  folded…"), so "R" is never the only clue. The export banner still uses short names ("Mon, Wed, Fri only").
+- **Marks:** a short horizontal bar across the strip at the marked item's start time, in that thing's own colour
+  (selection blue, ghost dashed, conflict red, filter-highlight blue). Several marks at one time stack as one bar.
+  Like the match marks on an editor's scrollbar, they say *when* as well as *that*.
+- **Flash** (P2-3, P2-4): the strip's background pulses to an attention colour and back, twice, about one second in
+  all. Then it stays as drawn. No sound, no repeated blinking.
+- **Hover** shows a tooltip: what's folded, what it holds, what's marked and when.
+- **Multi-semester:** one strip for all semester sub-columns (Q6), no semester bars.
+- **Font sizes:** the strip's name follows the header font; the count follows the grid's "Text:" size. All sizes,
+  colours and the width padding are resources in App.axaml / AppColors.axaml.
+
+### Export (Q7)
+
+The PNG shows the strips as drawn. Its title banner adds the open days: "Mon, Wed, Fri only".
+
+### Phase 3 decisions
+
+| # | Decision (Greg, 2026-11-05) | What it means |
+|---|---|---|
+| P3-1 | **The day headers are the only control:** click to fold, click a strip to open, right-click for "Show only …", the block patterns and "Show all days". No footer or toolbar picker. | Nothing new in the toolbar, filter bar or footer. The full-height strips show the state at any scroll position. |
+| P3-2 | **One letter on the strip** (M T W R F; Sa, Su for the weekend). | About 24 px per strip. The tooltip names the day in full. |
+| P3-3 | **Marks sit at their time** on the strip, as a short bar. | The user sees *when*, and marks stay visible when scrolled down. |
+| P3-4 | **Muted hatch fill**, full height. | A folded day never reads as an empty one. Colours are resources in AppColors.axaml. |
+| P3-5 | **"Show MWF" means exactly MWF:** the pattern's days open and every other shown day folds. | One click gives a known state, whatever was folded before. A pattern day that isn't shown (Saturday turned off) is ignored (Phase 2 edge cases). |
+
+---
+
+## Phase 4: Data Design (folded into Phase 5)
+
+Nothing is stored: no table, no JSON field, no AppSettings entry, no `settings.json` change. The folded days live in
+memory for the session (Q2). Block patterns are only *read*, through the existing repository.
+
+- **Version gate** ("Could the new version save anything the old version wouldn't have?"): **No.**
+- **The four rules for the shared database:** not touched. Nothing here saves, locks, exits, switches, restores or
+  recovers; folding only changes what the grid draws.
+
+---
+
+## Phase 5: Architecture
+
+### How a fold flows (story)
+
+Alice clicks the "Tuesday" header. The header's click handler (drawn by the view, like tile handlers today) calls
+`ScheduleGridViewModel.ToggleDay(2)`. The VM adds 2 to its folded set and rebuilds `GridData` from the blocks it
+already built on the last reload, **without touching the database**. The view sees `GridData` change and redraws:
+Tuesday's columns get the strip width, no tiles, a strip with "T", the count and the "other" sign. Selecting MECH 361
+in the Section list then changes `SelectedSectionIds` as today; the view's light selection repaint also repaints the
+strips' marks, and the Tuesday strip flashes because its selection mark just arrived.
+
+### Where things live
+
+| Piece | Where | What it does |
+|---|---|---|
+| Folded days | `ScheduleGridViewModel` (a singleton per open database) | `IReadOnlySet<int> FoldedDays`. The docked and detached Schedule views share the VM, so they share it (Q6). |
+| Commands | `ScheduleGridViewModel` | `ToggleDay(day)`, `ShowOnlyDay(day)`, `ShowPattern(pattern)`, `ShowAllDays()`. Each refuses to fold the last open day (P2-5). Each rebuilds `GridData` from the cached blocks. |
+| Block patterns for the menu | `ScheduleGridViewModel`, read from the existing block-pattern repository when the menu opens | So a pattern edited in Settings shows next time, with no new event. |
+| Day columns | `GridDayColumn` gains **`DayNumber`** and **`IsFolded`** | Fixes the gapped-day trap: nothing works out a day from a column position any more. |
+| Strip summary | `FoldedDaySummary` on the first column of a folded day: section count, "has other things", and the section meetings there (id + start time) | Built in `UpdateDisplayProperties`, where the day list is built today. |
+| Marks | `FoldedDayMarks` (new, pure, no Avalonia): from a summary + selected ids + ghosts + conflicts + "real filter on" → a list of (time, kind) | Pure so it can be unit-tested; called by the view whenever selection, ghosts or `GridData` change. |
+| Flash | `StripAttention` (new, pure): remembers each folded day's marks; returns the days whose mark set gained something new | Implements P2-4: a day that was just folded is seeded with its current marks, so it doesn't flash. Plain redraws don't flash. |
+| Header and strip clicks, right-click menu | `ScheduleGridView` code-behind (the renderer, which already wires tile clicks), plus a header menu popup in `ScheduleGridView.axaml` beside `TileContextPopup` | The popup's items bind to the VM. |
+| Flash animation | The view: animate the strip's background to `FoldedDayFlashBrush` and back, twice (an Avalonia `Animation` in code) | The colour and timing are resources. |
+| Export banner | `ScheduleGridViewModel.FoldedDaysCaption` ("Mon, Wed, Fri only", empty when nothing is folded), appended to the PNG title | |
+| Look | Resources: `FoldedDayStripPadding`, `FoldedDayHatchBrush`, `FoldedDayMarkHeight`, the mark brushes (reusing selection/conflict/ghost colours), `FoldedDayFlashBrush` | Per CLAUDE.md: no hardcoded sizes or colours. |
+
+### Resets (Q2a)
+
+| Trigger | Hook |
+|---|---|
+| Semester switch (or which semesters are shown together) | `ReloadCore` already detects this (`_lastSemesterKey`) and clears the filters there; clear the folded days in the same place. |
+| Subject-focus change | `FocusService.FocusChanged`: clear the folded days, then reload as today. |
+| Opening a database | Free: services are rebuilt on every open (`App.InitializeServices`), so a new VM starts with nothing folded. See P5-1. |
+| Saturday/Sunday turned off | `UpdateDisplayProperties` drops folded days that aren't shown. |
+
+### Renderer changes (`ScheduleGridView.axaml.cs`)
+
+- **Measuring:** folded columns are skipped (no tiles, no text measuring), so folding makes rendering a little faster.
+- **Widths:** a folded day's columns together get the strip width (wider of the letter and the count, plus padding).
+- **Drawing:** one strip per folded day across all its semester sub-columns; no semester bars there.
+- **Day from column:** every `(d / semCount) + 1` and `(ghost.Day - 1) * semCount` becomes a lookup on
+  `DayNumber`. A ghost on a folded day becomes a strip mark instead of a tile.
+- **Conflict lines** (Access watches) between two open days draw as today; an end on a folded day becomes a mark.
+- **The tile-padding change (Q10)** is a separate first task in the same file.
+
+### Tests
+
+- VM: the day list with gaps, the last-open-day rule, pattern semantics (P3-5), each reset trigger and the
+  non-triggers (filter, font size), Saturday turned off while folded, the export caption.
+- `FoldedDayMarks`: each kind of mark, the filter test (`hasActualFilter` only), times, several marks at one time.
+- `StripAttention`: new marks flash; folding a day with marks doesn't; redraws don't.
+- Columns: clicks, ghosts and conflicts map to the right day with a gap in the week (the trap's regression test).
+
+### Phase 5 decisions (all settled 2026-11-05, Greg accepted each suggestion)
+
+| # | Decision |
+|---|---|
+| P5-1 | **Any database open resets the folded days**, including reopening the same database (taking the lock back, recovery). This replaces the Phase 1 "Reading of Q2a" on same-database reopens. |
+| P5-2 | **With a filter on, a bar at each matching section's time** on a folded strip. |
+| P5-3 | **Keep flat per-semester columns with `DayNumber` and `IsFolded`**; `GridData` isn't reshaped. |
+
+The questions as asked:
+
+- **P5-1. Reopening the *same* database resets the folded days.** Phase 2 assumed it would keep them, but every open,
+  including taking the lock back or a recovery reopen, rebuilds the services, so the VM starts over. *Suggestion:*
+  accept the reset. A reopen is rare and comes with its own message, and keeping the state across it would mean
+  holding it outside the services just for this.
+- **P5-2. With a filter on, every section on a folded day is a match** (the grid already hides the rest), so the
+  filter marks are one bar at each of the day's section times. *Suggestion:* accept: it reads like an editor's
+  scrollbar showing where the matches are. The alternative is one filter mark per strip, at the top.
+- **P5-3. A folded day keeps its flat sub-columns (one per semester) with a flag,** rather than reshaping `GridData`
+  into a list of days. *Suggestion:* the flag. It's a smaller change to a renderer that's been field-tested, at the
+  cost of a little special-casing for strips.
+
+---
+
+## Phase 6: Implementation Plan
+
+Signed off 2026-11-05. Six tasks, each about one session, in this order. Each ends with the
+compile check, the relevant tests, and a commit only when Greg asks. Tasks that touch `.axaml` files say so: **Greg
+closes those tabs in VS first** (CLAUDE.md).
+
+### Release facts
+
+- **`MinimumVersionToWrite`: No.** Nothing reaches the database or `settings.json`.
+- **Four rules for the shared database:** not engaged (Phase 4).
+- **Production risk:** low, but it's in the renderer every user sees. **With nothing folded, the grid must look
+  exactly as in 1.2.3** after tasks 2–5 (task 1 deliberately changes widths). The risks are clipped tile text from
+  task 1 and a wrong day from task 2; both get tests and an eye check.
+
+### Order and why
+
+The two changes that help or protect everyone come first and could ship on their own: the padding (Q10), then the
+real day numbers (the trap, with no visible change). Then the model without UI (all unit-tested), then the strips,
+then marks and the flash, then export and the release check. Each UI task can be checked by eye on the real UBC
+slices.
+
+### Task 1: Tighter tile padding (Q10)
+
+- `ScheduleGridView.axaml.cs`: `TileTextOverhead` (28 px) becomes worked out from its parts: the tile border is
+  1 px with one semester shown and 3 px with several, and the 8 px safety margin shrinks to what measuring needs.
+  The parts move to resources where they're design values.
+- **Measure first:** before and after widths for the two UBC slices (2,642 and 2,961 px today) and Monday alone.
+- **Check:** no ellipsis on any tile at each "Text:" size, one and several semesters, Windows and the WASM demo
+  (its fonts measure differently: `PlatformCapabilities`). macOS on the next signed build.
+- **Tests:** the overhead for one vs several semesters.
+
+### Task 2: Real day numbers on columns (no visible change)
+
+- `GridDayColumn` gains `DayNumber`; `UpdateDisplayProperties` sets it.
+- `ScheduleGridView.axaml.cs`: replace `clickDay = (d / semCount) + 1` and `(ghost.Day - 1) * semCount` with
+  lookups on `DayNumber` (one small helper that maps a day to its columns). Check the conflict-line code and the
+  Room Browser and Slot Browser callers for the same assumption.
+- **Tests:** the helper with a gap in the week (Tuesday missing), with Saturday on, and with several semesters.
+
+### Task 3: Fold state and commands (no UI)
+
+- `ScheduleGridViewModel`: `FoldedDays`, `ToggleDay`, `ShowOnlyDay`, `ShowPattern`, `ShowAllDays`, the last-open-day
+  rule, and the cached blocks so a fold rebuilds `GridData` without reloading.
+- `GridDayColumn.IsFolded`; `FoldedDaySummary` (section count, "has other things", section meetings with times).
+- Resets: in the semester-change branch of `ReloadCore`, on `FocusService.FocusChanged`, and dropping days that
+  aren't shown.
+- `FoldedDaysCaption` for export.
+- **Tests:** everything in Phase 5's VM list.
+
+### Task 4: Strips and header controls (AXAML edits)
+
+- Renderer: skip measuring folded columns, strip width, the hatch strip with letter, count and "other" sign, the
+  tooltip, header hover (fill, fold icon, hand pointer), header and strip clicks.
+- `ScheduleGridView.axaml`: the header right-click popup beside `TileContextPopup`, with "Show only …", the block
+  patterns and "Show all days" (**AXAML edit**).
+- App.axaml / AppColors.axaml: strip padding, hatch, mark height, the fold icon `Path` (**AXAML edit**).
+- **Check by eye** on the real slices: MWF and TR fit (or nearly) on one monitor; nothing folded looks like 1.2.3.
+
+### Task 5: Marks and the flash
+
+- `FoldedDayMarks` and `StripAttention` (pure classes) with their tests from Phase 5.
+- View: draw marks on strips after `Render`, `UpdateSelectionHighlight` and `RenderGhostOverlay`; ghosts and
+  conflict ends on folded days become marks; run the flash for the days `StripAttention` returns.
+- `FoldedDayFlashBrush` and the timing as resources (**AXAML edit**).
+- **Check by eye:** the four stories in Phase 3 (selection, a lab day, a ghost when scrolled down, a filter).
+
+### Task 6: Export and release check
+
+- PNG export: append `FoldedDaysCaption` to the title banner.
+- The WASM demo: fold, unfold, a pattern, a selection mark (no new DI services, but check `ConfigureDemoServices`
+  anyway, per CLAUDE.md).
+- The full test suite.
+- Docs: the 1.2.4 summary item 2.13, repo `HANDOFF.md`, and the user-facing help if it lists the Schedule view's
+  controls.
+
 ### Pointers for later phases (not decisions)
 
-- Phase 3: where the control lives (toolbar, the day headers themselves, a right-click on a header), and how the
-  strip looks at the grid's different font sizes.
-- Phase 5: the gapped-day trap above; the Room Browser and Slot Browser both draw onto this grid.
 - Later: the Slot Browser could fold the grid to the days of the pattern it's searching.
 - Mocks from the real data (local only, ignored `tmp/` on GregDesktop): `tmp/monday_tile_layouts.html`,
   `tmp/week_fit_mock.html`, `tmp/week_more_mock.html`.

@@ -229,7 +229,7 @@ About 80 items in nine groups. Most were deferred from 1.2.3 or found while test
 > Sections should show the credits available. Should really attach credit to a course, then propagate to sections, with an over-ride in section editor.
 
 > [!note]- **2.13 Collapse days in the Schedule view** (Greg's idea, 2026-11-04) `AXAML`
-> **Now specced in `designs/collapse-days.md`** (Phases 1–2 done 2026-11-05). That file supersedes the design direction
+> **Now specced in `designs/collapse-days.md`** (spec locked 2026-11-05; next: task 1, tile padding). That file supersedes the design direction
 > below: folded days show as strips with a count, the full week on every launch, any set of days, export says what it
 > shows, padding change first.
 >
