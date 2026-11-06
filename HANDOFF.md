@@ -17,7 +17,7 @@ Written so a fresh conversation can pick up. Claude Code's memory and `CLAUDE.md
   every finished item has a "Done" note). Greg chose to do group 8 (testing) first.
 - **Colour by subject (summary 2.3):** implemented through task 4 plus Revision 1 (markers, not chips), `c33861f`.
   Left: Greg's by-eye pass on real data; palette kept as is (summary 2.3's Done note). Spec `designs/subject-colours.md`.
-- **Other open specs:** `designs/slot-browser.md` (Phase 1, awaiting Greg's lock), `designs/access-analyzer.md` (Phase 1, Q1–Q12 open).
+- **Other open specs:** `designs/slot-browser.md` (Phase 1, awaiting Greg's lock), `designs/access-analyzer.md` (Phase 1 locked 2026-11-06; Phase 2 next, see `designs/access-analyzer-handoff.md`).
 
 ## Done in 1.2.4 so far
 
