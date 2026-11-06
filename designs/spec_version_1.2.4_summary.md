@@ -287,8 +287,15 @@ About 80 items in nine groups. Most were deferred from 1.2.3 or found while test
 > reloads the grid when one of those three flyouts closes (`EditsGridLookups`). Read-only reload; ticks survive (the
 > rebuild matches by ID). No data risk, no version gate. Left: eye check in the app.
 
->[!note]- **2.18 Is the Room Browser functional? Consider CIVL 215 T1A in Winter Term 1 UBC
-
+>[!note]- **2.18 Is the Room Browser functional? Consider CIVL 215 T1B in Winter Term 1 UBC
+> **Cause (2026-11-05):** the Room Browser's campus filter (`RoomAvailabilityService.ApplyFilter`) kept only rooms
+> whose campus matched the section's, so a room with no campus was dropped. In UBC1-TT, T1B is on Vancouver and the
+> only room, A121, had no campus, so every search said "No solutions", with the meeting's own time or with an open
+> start. The editor's room picker and the import warnings already treat a room with no campus as a match. **Fixed
+> (`fa0fba0`):** rooms with no campus are kept; rooms on another campus are still dropped. Also: with only Remote
+> meetings the browser said "Every meeting must have a duration…"; both editors now say Remote meetings don't need a
+> room. Test: `ApplyFilter_ByCampus_KeepsRoomsWithNoCampus`. Suggestions only; no data risk, no version gate. Left:
+> eye check in the app with A121's campus blank.
 
 ---
 ---
