@@ -1,10 +1,10 @@
 # Access Analyzer and Easy Access Watches — Progressive Design Spec
 
 ## Status
-Current phase: **1 — Problem Statement** (first draft 2026-10-30; terms, partial slates and Greg's review comments
-2026-11-06; D1–D8 decided; Q1–Q7, Q11–Q12, Q14–Q16 open; not yet locked by Greg)
+Current phase: **1 — Problem Statement, LOCKED by Greg 2026-11-06** (D1–D8 decided; the recommendations to Q1, Q3–Q7,
+Q11–Q12 and Q14–Q16 adopted as answers; Q2 carried into Phase 2)
 Last session: 2026-11-06
-Next step: Greg settles the open questions, then locks Phase 1; Phase 2 (Domain Model) follows
+Next step: Phase 2 (Domain Model), starting with Q2 (how lectures and labs are modelled in real data)
 
 ---
 
@@ -228,9 +228,11 @@ watches (D4).)
 | D7 | **Pinning is for stepping (2026-11-06).** The user can pin one or more sections and step through only the full or partial slates that contain them | The advisor's case: the student says "I want that one"; show every slate that keeps it |
 | D8 | **The access-watch code is a general API (2026-11-06).** Watch coverage, the clash test and the slate analysis are one UI-free service with a "what if" entry point for unsaved or proposed changes (see "How the analysis works") | The Slot Browser will need it later to rank placements (Q12); one engine means the finder and the panel never disagree |
 
-### Open questions
+### Questions settled at lock (2026-11-06)
+At the Phase 1 lock Greg adopted each recommendation below as the answer, except **Q2**, which has no recommendation
+to adopt and is carried into Phase 2. Later phases may still refine the details each answer leaves to them.
 
-| Q | Question | Recommendation |
+| Q | Question | Answer (recommendation adopted) |
 |---|---|---|
 | Q1 | **Which watches does the analyzer judge?** "Students take every course" fits an explicit course list. It doesn't fit a tag-mode watch like "all 300-level BIOL". Worse, in tag mode the course set is implicit: untag the only tagged section of a course and the course drops out, so access looks *better* | Course-list watches only. Tag-mode watches keep their boxes but get no health line, with a quiet note saying why |
 | Q2 | **Lectures and labs.** If a course has lecture and lab sections, a slate needs one of each: one section per course *and section type*, not per course. How is this modelled in real data: sections of the same course with a section type, separate courses, or meetings inside one section? Are particular labs tied to particular lectures? | Needs Greg's knowledge of the data. If labs are sections with a section type, group by (course, section type); tied labs are a later step |
