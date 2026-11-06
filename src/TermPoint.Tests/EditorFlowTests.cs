@@ -853,6 +853,137 @@ public class EditorFlowTests
         Assert.NotNull(vm.LastErrorMessage);
     }
 
+    // ── Re-running an open Room Browser when criteria change ───────────────────
+    //
+    // Every search run ends by pushing ghost blocks (null when, as with the empty stub
+    // data, there are no solutions), so counting setGhostBlocks calls counts runs.
+
+    /// <summary>
+    /// Returns a <c>CreateRoomBrowser</c> factory like <see cref="MakeStubBrowser"/> whose
+    /// ghost-block callback increments <paramref name="runs"/>[0] on every search run.
+    /// </summary>
+    private static Func<IReadOnlyList<MeetingSpec>, Action<IReadOnlyList<SpecSolution>>, Action,
+        RoomAvailabilityBrowserViewModel> CountingBrowserFactory(int[] runs) =>
+        (specs, accept, cancel) => new RoomAvailabilityBrowserViewModel(
+            specs, new List<Room>(), new List<LegalStartTime>(), new List<BlockPattern>(),
+            new List<Section>(), new List<Meeting>(),
+            excludeSectionId: null, excludeMeetingId: null,
+            semesterId: "sem-1", semesterName: "Fall", semesterColor: "#FFFFFF",
+            setGhostBlocks: _ => runs[0]++,
+            onAccept: accept, onCancel: cancel);
+
+    [Fact]
+    public void SectionEdit_OpenRoomBrowser_MeetingLengthChange_ReRunsSameBrowser()
+    {
+        var vm = MakeSectionEditVm(new Section());
+        var meeting = AddMeetingWithDuration(vm, blockLengthHours: 1.0);
+        var runs = new int[1];
+        vm.CreateRoomBrowser = CountingBrowserFactory(runs);
+        vm.OpenRoomBrowserCommand.Execute(null);
+        var browser = vm.RoomBrowserVm;
+        int afterOpen = runs[0];
+
+        meeting.SelectedBlockLength = 2.0;
+
+        Assert.True(runs[0] > afterOpen, "Changing a meeting's length must re-run the open browser.");
+        Assert.Same(browser, vm.RoomBrowserVm);
+    }
+
+    [Fact]
+    public void SectionEdit_OpenRoomBrowser_MeetingAdded_ReRunsOnceItHasALength()
+    {
+        var vm = MakeSectionEditVm(new Section());
+        AddMeetingWithDuration(vm);
+        var runs = new int[1];
+        vm.CreateRoomBrowser = CountingBrowserFactory(runs);
+        vm.OpenRoomBrowserCommand.Execute(null);
+        int afterOpen = runs[0];
+
+        vm.AddMeetingCommand.Execute(null);   // new row, no length yet
+        Assert.Equal(afterOpen, runs[0]);
+        Assert.True(vm.IsRoomBrowserOpen, "An incomplete new meeting must not close the browser.");
+
+        vm.Meetings[^1].SelectedBlockLength = 1.0;
+        Assert.True(runs[0] > afterOpen, "Giving the new meeting a length must re-run the browser.");
+    }
+
+    [Fact]
+    public void SectionEdit_OpenRoomBrowser_CapacityChange_ReRuns_UnparsableCapacityDoesNot()
+    {
+        var vm = MakeSectionEditVm(new Section());
+        AddMeetingWithDuration(vm);
+        var runs = new int[1];
+        vm.CreateRoomBrowser = CountingBrowserFactory(runs);
+        vm.OpenRoomBrowserCommand.Execute(null);
+        int afterOpen = runs[0];
+
+        vm.CapacityText = "abc";   // parses to no capacity, same as before
+        Assert.Equal(afterOpen, runs[0]);
+
+        vm.CapacityText = "40";
+        Assert.True(runs[0] > afterOpen, "Changing the section capacity must re-run the browser.");
+    }
+
+    [Fact]
+    public void SectionEdit_OpenRoomBrowser_AllMeetingsBecomeRemote_ClosesWithMessage()
+    {
+        var vm = MakeSectionEditVm(new Section());
+        var meeting = AddMeetingWithDuration(vm);
+        vm.CreateRoomBrowser = MakeStubBrowser;
+        vm.OpenRoomBrowserCommand.Execute(null);
+
+        meeting.SelectedRoomType =
+            meeting.RoomTypeOptions.First(o => o.Id == SectionDaySchedule.RemoteRoomTypeId);
+
+        Assert.False(vm.IsRoomBrowserOpen);
+        Assert.NotNull(vm.LastErrorMessage);
+    }
+
+    [Fact]
+    public void SectionEdit_AcceptBrowserSolution_DoesNotReRunBrowser()
+    {
+        var vm = MakeSectionEditVm(new Section());
+        AddMeetingWithDuration(vm);
+        var runs = new int[1];
+        Action<IReadOnlyList<SpecSolution>>? capturedAccept = null;
+        var factory = CountingBrowserFactory(runs);
+        vm.CreateRoomBrowser = (specs, accept, cancel) =>
+        {
+            capturedAccept = accept;
+            return factory(specs, accept, cancel);
+        };
+        vm.OpenRoomBrowserCommand.Execute(null);
+        int beforeAccept = runs[0];
+
+        capturedAccept!(new List<SpecSolution>
+        {
+            new(SpecIndex: 0, Day: 3, StartMinutes: 540, DurationMinutes: 60,
+                RoomId: "room-1", RoomLabel: "A 101")
+        });
+
+        // Filling in the row must not re-run the (now closed) browser and re-push ghosts.
+        Assert.Equal(beforeAccept, runs[0]);
+        Assert.False(vm.IsRoomBrowserOpen);
+        Assert.Equal("room-1", vm.Meetings[0].SelectedRoomId);
+    }
+
+    [Fact]
+    public void MeetingEdit_OpenRoomBrowser_SlotLengthChange_ReRunsSameBrowser()
+    {
+        var (vm, _, _) = MakeMeetingEditVm();
+        var slot = AddSlotWithDuration(vm, blockLengthHours: 1.0);
+        var runs = new int[1];
+        vm.CreateRoomBrowser = CountingBrowserFactory(runs);
+        vm.OpenRoomBrowserCommand.Execute(null);
+        var browser = vm.RoomBrowserVm;
+        int afterOpen = runs[0];
+
+        slot.SelectedBlockLength = 2.0;
+
+        Assert.True(runs[0] > afterOpen, "Changing a slot's length must re-run the open browser.");
+        Assert.Same(browser, vm.RoomBrowserVm);
+    }
+
     [Fact]
     public void SectionEdit_AcceptBrowserSolution_FillsBlankMeetingFields_AndClosesPanel()
     {

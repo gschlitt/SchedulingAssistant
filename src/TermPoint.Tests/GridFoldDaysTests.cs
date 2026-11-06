@@ -486,15 +486,13 @@ public sealed class GridFoldDaysTests : IDisposable
         Assert.False(Cols(1).Single().IsFolded);
     }
 
-    /// <summary>Folding doesn't change the selection or the section count shown.</summary>
+    /// <summary>Folding doesn't change the selection.</summary>
     [Fact]
-    public void Fold_DoesNotChangeStatsOrSelection()
+    public void Fold_DoesNotChangeSelection()
     {
         Open(_fall);
         _sectionStore.SetSelection(_fallB);
-        var stats = _grid.StatsLine;
         _grid.ShowOnlyDay(1);
-        Assert.Equal(stats, _grid.StatsLine);
         Assert.Contains(_fallB, _grid.SelectedSectionIds);
     }
 

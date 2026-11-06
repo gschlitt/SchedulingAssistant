@@ -41,8 +41,20 @@ public sealed partial class FocusSubjectItem : ObservableObject
 }
 
 /// <summary>
+/// One subject chip in the focus statement (spec 1.2.4 item 2.14): the subject's short name and, when colour by
+/// subject is on, its marker colour. Immutable; the list is rebuilt whenever the focus or the colours change.
+/// </summary>
+/// <param name="Label">The short name: the calendar abbreviation, or the subject's name when that is blank.</param>
+/// <param name="ColorHex">The marker colour as <c>#RRGGBB</c>, or empty for no marker.</param>
+public sealed record FocusSubjectChip(string Label, string ColorHex)
+{
+    /// <summary>Whether the chip shows a colour marker.</summary>
+    public bool HasColor => ColorHex.Length > 0;
+}
+
+/// <summary>
 /// The view model behind every place that shows the subject focus (spec item 20): the reusable focus statement
-/// ("Focus: BIOL, CHEM" with a Show all link, shown prominently in the Section View and Schedule View headers) and the Focus picker (a checklist of subjects with
+/// ("Subjects:" followed by subject chips, shown in the Schedule View header) and the Focus picker (a checklist of subjects with
 /// All, None, Apply and Cancel). A singleton shared by all of them, built over <see cref="FocusService"/> and
 /// <see cref="ISubjectRepository"/>, and exposed as <c>MainWindowViewModel.FocusVm</c>.
 /// <para>
@@ -54,13 +66,21 @@ public sealed partial class FocusSubjectItem : ObservableObject
 public sealed partial class FocusViewModel : ObservableObject, IDisposable
 {
     /// <summary>The focus statement under None (and under a Subjects focus whose subjects have all gone).</summary>
-    public const string NoSubjectsText = "Focus: no subjects";
+    public const string NoSubjectsText = "Subjects: none";
+
+    /// <summary>
+    /// How many subject chips the focus statement shows before the rest fold into a "+N" chip (spec 1.2.4 item
+    /// 2.14). One over the cap shows them all, since a "+1" chip takes as much room as the subject it hides.
+    /// A count of items, not a size: the chips' sizes live in App.axaml.
+    /// </summary>
+    public const int IndicatorMaxChips = 6;
 
     /// <summary>Tooltip of a focus-changing control while an editor is open.</summary>
     public const string FinishEditingFirst = "Finish editing first";
 
     private readonly FocusService _focus;
     private readonly ISubjectRepository _subjectRepo;
+    private readonly SubjectColorPresenter? _colors;
 
     /// <summary>Whether the picker popup is open. Two-way bound to the popup, so a light dismiss closes it.</summary>
     [ObservableProperty] private bool _isPickerOpen;
@@ -71,13 +91,19 @@ public sealed partial class FocusViewModel : ObservableObject, IDisposable
     /// </summary>
     /// <param name="focus">The focus service.</param>
     /// <param name="subjectRepo">Subjects, for labels, the total count and the picker's rows.</param>
-    public FocusViewModel(FocusService focus, ISubjectRepository subjectRepo)
+    /// <param name="colors">
+    /// Subject colours, for the chips' markers. Optional: without it the chips have no markers (tests).
+    /// Its <see cref="SubjectColorPresenter.Changed"/> rebuilds the chips.
+    /// </param>
+    public FocusViewModel(FocusService focus, ISubjectRepository subjectRepo, SubjectColorPresenter? colors = null)
     {
         _focus = focus;
         _subjectRepo = subjectRepo;
+        _colors = colors;
 
         _focus.FocusChanged += OnFocusChanged;
         _focus.PropertyChanged += OnFocusServicePropertyChanged;
+        if (_colors is not null) _colors.Changed += OnColorsChanged;
 
         RefreshIndicator();
         RefreshSubjectsLabel();
@@ -86,12 +112,49 @@ public sealed partial class FocusViewModel : ObservableObject, IDisposable
     // ── Indicator ──────────────────────────────────────────────────────────────
 
     /// <summary>
-    /// The focus statement: "Focus: BIOL, CHEM" under a Subjects focus (labels sorted; a blank abbreviation falls
-    /// back to the subject's name), "Focus: no subjects" under None, and empty under All (where the statement is
-    /// hidden anyway). It carries no "N of M subjects" count: the labels are the point, and a count would go stale
-    /// whenever subjects are added or removed.
+    /// The focus statement as plain text, never capped: "Subjects: BIOL, CHEM" under a Subjects focus (labels
+    /// sorted; a blank abbreviation falls back to the subject's name), "Subjects: none" under None, and empty
+    /// under All (where the statement is hidden anyway). The statement itself shows <see cref="IndicatorChips"/>;
+    /// this full list is its tooltip, so subjects folded into "+N" can still be read. No "N of M subjects" count:
+    /// the labels are the point, and a count would go stale whenever subjects are added or removed.
     /// </summary>
     [ObservableProperty] private string _indicatorText = string.Empty;
+
+    /// <summary>
+    /// The chips the focus statement shows: the first <see cref="IndicatorMaxChips"/> chosen subjects, sorted by
+    /// label (all of them when only one more would be hidden). Empty under All and None.
+    /// </summary>
+    [ObservableProperty] private IReadOnlyList<FocusSubjectChip> _indicatorChips = Array.Empty<FocusSubjectChip>();
+
+    /// <summary>How many chosen subjects are folded into the "+N" chip; 0 when every chip is shown.</summary>
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(IndicatorMoreText))]
+    [NotifyPropertyChangedFor(nameof(HasIndicatorMore))]
+    private int _indicatorMoreCount;
+
+    /// <summary>The "+N" chip's text, e.g. "+9"; empty when nothing is folded.</summary>
+    public string IndicatorMoreText => IndicatorMoreCount > 0 ? $"+{IndicatorMoreCount}" : string.Empty;
+
+    /// <summary>Whether the "+N" chip shows.</summary>
+    public bool HasIndicatorMore => IndicatorMoreCount > 0;
+
+    /// <summary>
+    /// The word shown after "Subjects:" when there are no chips to show: "none" under None, "some" when the
+    /// subjects could not be read; empty otherwise (including All, where the statement is hidden).
+    /// </summary>
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(HasIndicatorFallback))]
+    private string _indicatorFallbackText = string.Empty;
+
+    /// <summary>Whether <see cref="IndicatorFallbackText"/> shows.</summary>
+    public bool HasIndicatorFallback => IndicatorFallbackText.Length > 0;
+
+    /// <summary>
+    /// The chosen subjects as short plain text with the same cap as the chips, e.g. "CIVL, ECON, MATH, MECH,
+    /// PHYS, STAT +9", "none" under None, empty under All. For places that cannot show chips, such as a detached
+    /// Schedule View window's title bar.
+    /// </summary>
+    [ObservableProperty] private string _shortSubjectsText = string.Empty;
 
     /// <summary>False under All (nothing is hidden, so there is nothing to indicate); true under None and Subjects.</summary>
     [ObservableProperty] private bool _isIndicatorVisible;
@@ -176,8 +239,10 @@ public sealed partial class FocusViewModel : ObservableObject, IDisposable
         string.IsNullOrWhiteSpace(subject.CalendarAbbreviation) ? subject.Name : subject.CalendarAbbreviation;
 
     /// <summary>
-    /// Rebuilds <see cref="IndicatorText"/> and <see cref="IsIndicatorVisible"/> from the current focus and the
-    /// subjects in the database. A subject list that cannot be read is logged and leaves a generic text.
+    /// Rebuilds the focus statement (<see cref="IndicatorText"/>, <see cref="IndicatorChips"/>,
+    /// <see cref="IndicatorMoreCount"/>, <see cref="IndicatorFallbackText"/>, <see cref="ShortSubjectsText"/>) and
+    /// <see cref="IsIndicatorVisible"/> from the current focus, the subjects in the database and the subject
+    /// colours. A subject list that cannot be read is logged and leaves a generic "some".
     /// </summary>
     private void RefreshIndicator()
     {
@@ -187,10 +252,10 @@ public sealed partial class FocusViewModel : ObservableObject, IDisposable
         switch (focus.Kind)
         {
             case FocusKind.All:
-                IndicatorText = string.Empty;
+                SetIndicator(string.Empty, Array.Empty<FocusSubjectChip>(), 0, string.Empty, string.Empty);
                 return;
             case FocusKind.None:
-                IndicatorText = NoSubjectsText;
+                SetNoSubjects();
                 return;
         }
 
@@ -202,25 +267,62 @@ public sealed partial class FocusViewModel : ObservableObject, IDisposable
         catch (Exception ex)
         {
             App.Logger.LogInfo($"[FocusViewModel] Could not read subjects for the indicator: {ex.Message}");
-            IndicatorText = "Focus: some subjects";
+            SetIndicator("Subjects: some", Array.Empty<FocusSubjectChip>(), 0, "some", "some subjects");
             return;
         }
 
         // Only subjects that still exist are named; a deleted one is pruned by the service and never shown.
-        var labels = subjects
+        var chosen = subjects
             .Where(s => focus.ContainsSubject(s.Id))
-            .Select(LabelOf)
-            .OrderBy(l => l, StringComparer.OrdinalIgnoreCase)
+            .Select(s => new FocusSubjectChip(LabelOf(s), _colors?.ColorForSubject(s.CalendarAbbreviation) ?? ""))
+            .OrderBy(c => c.Label, StringComparer.OrdinalIgnoreCase)
             .ToList();
 
-        IndicatorText = labels.Count == 0
-            ? NoSubjectsText
-            : $"Focus: {string.Join(", ", labels)}";
+        if (chosen.Count == 0)
+        {
+            SetNoSubjects();
+            return;
+        }
+
+        var (shown, more) = CapChips(chosen, IndicatorMaxChips);
+        var shortText = string.Join(", ", shown.Select(c => c.Label)) + (more > 0 ? $" +{more}" : "");
+        SetIndicator($"Subjects: {string.Join(", ", chosen.Select(c => c.Label))}", shown, more, string.Empty, shortText);
     }
 
-    /// <summary>Sets the focus to All (the indicator's Show all link). Disabled while an editor is open.</summary>
-    [RelayCommand(CanExecute = nameof(CanChangeFocus))]
-    private void ShowAll() => _focus.SetFocus(SubjectFocus.All);
+    /// <summary>Sets the statement for "no subjects chosen" (None, or a Subjects focus whose subjects are all gone).</summary>
+    private void SetNoSubjects() =>
+        SetIndicator(NoSubjectsText, Array.Empty<FocusSubjectChip>(), 0, "none", "none");
+
+    /// <summary>Sets every part of the focus statement at once.</summary>
+    /// <param name="text">The full plain-text statement (the tooltip).</param>
+    /// <param name="chips">The chips to show.</param>
+    /// <param name="more">How many subjects fold into "+N".</param>
+    /// <param name="fallback">The word shown when there are no chips ("none", "some"), or empty.</param>
+    /// <param name="shortText">The capped plain text for title bars.</param>
+    private void SetIndicator(string text, IReadOnlyList<FocusSubjectChip> chips, int more, string fallback, string shortText)
+    {
+        IndicatorText = text;
+        IndicatorChips = chips;
+        IndicatorMoreCount = more;
+        IndicatorFallbackText = fallback;
+        ShortSubjectsText = shortText;
+    }
+
+    /// <summary>
+    /// Applies the chip cap: the first <paramref name="max"/> items and how many are left over, except that when
+    /// only one would be left over every item is shown (a "+1" chip takes as much room as the item it hides).
+    /// </summary>
+    /// <typeparam name="T">The item type.</typeparam>
+    /// <param name="all">Every item, already in display order.</param>
+    /// <param name="max">The cap; must be at least 1.</param>
+    /// <returns>The items to show, and the count folded into "+N" (0 when everything is shown).</returns>
+    /// <exception cref="ArgumentOutOfRangeException"><paramref name="max"/> is less than 1.</exception>
+    internal static (IReadOnlyList<T> Shown, int More) CapChips<T>(IReadOnlyList<T> all, int max)
+    {
+        ArgumentOutOfRangeException.ThrowIfLessThan(max, 1);
+        if (all.Count <= max + 1) return (all, 0);
+        return (all.Take(max).ToList(), all.Count - max);
+    }
 
     /// <summary>Sets the focus to All and closes the picker (the picker's and the empty state's All button).</summary>
     [RelayCommand(CanExecute = nameof(CanChangeFocus))]
@@ -310,6 +412,12 @@ public sealed partial class FocusViewModel : ObservableObject, IDisposable
     }
 
     /// <summary>
+    /// Subject colours changed (a colour edit, the display mode, or colours turning on or off): rebuild the chips
+    /// so their markers match the tiles.
+    /// </summary>
+    private void OnColorsChanged() => RefreshIndicator();
+
+    /// <summary>
     /// Re-evaluates every focus-changing command (and the tooltip) when the service's
     /// <see cref="FocusService.CanChangeFocus"/> flips, which is when a section editor opens or closes.
     /// </summary>
@@ -320,7 +428,6 @@ public sealed partial class FocusViewModel : ObservableObject, IDisposable
         OnPropertyChanged(nameof(CanChangeFocus));
         OnPropertyChanged(nameof(ChangeFocusToolTip));
         OnPropertyChanged(nameof(SubjectsToolTip));
-        ShowAllCommand.NotifyCanExecuteChanged();
         AllCommand.NotifyCanExecuteChanged();
         NoneCommand.NotifyCanExecuteChanged();
         OpenPickerCommand.NotifyCanExecuteChanged();
@@ -332,5 +439,6 @@ public sealed partial class FocusViewModel : ObservableObject, IDisposable
     {
         _focus.FocusChanged -= OnFocusChanged;
         _focus.PropertyChanged -= OnFocusServicePropertyChanged;
+        if (_colors is not null) _colors.Changed -= OnColorsChanged;
     }
 }

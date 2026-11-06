@@ -909,6 +909,19 @@ public partial class SectionMeetingViewModel : ViewModelBase
     }
 
     /// <summary>
+    /// Builds the Room Browser's search criteria from an editor's meeting rows: one spec per
+    /// row that has a length, skipping remote meetings (they need no room). Shared by the
+    /// section and meeting editors, both when the browser opens and when it re-runs.
+    /// </summary>
+    /// <param name="rows">The editor's meeting rows, in display order (the order sets each spec's index).</param>
+    /// <returns>The non-remote specs; empty when every meeting with a length is remote.</returns>
+    public static List<MeetingSpec> ToBrowserSpecs(IEnumerable<SectionMeetingViewModel> rows) =>
+        rows.Select((m, i) => m.ToMeetingSpec(i))
+            .Where(s => s != null && !s.IsRemote)
+            .Cast<MeetingSpec>()
+            .ToList();
+
+    /// <summary>
     /// Converts the form state back to a <see cref="SectionDaySchedule"/> model.
     /// Returns null if the start time or block length have not been committed yet.
     /// <para>

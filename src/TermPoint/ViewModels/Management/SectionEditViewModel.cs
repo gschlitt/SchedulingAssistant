@@ -61,7 +61,11 @@ public partial class SectionEditViewModel : ViewModelBase
     [RelayCommand]
     private void DismissCapacityWarning() => CapacityWarning = null;
 
-    partial void OnCapacityTextChanged(string value) => CheckRoomCapacities();
+    partial void OnCapacityTextChanged(string value)
+    {
+        CheckRoomCapacities();
+        RefreshRoomBrowser();
+    }
 
     /// <summary>
     /// Scans every meeting's selected room and flags any whose known capacity is below the
@@ -394,6 +398,7 @@ public partial class SectionEditViewModel : ViewModelBase
     {
         foreach (var meeting in Meetings)
             meeting.SetSectionCampus(value);
+        RefreshRoomBrowser();
     }
 
     /// <summary>
@@ -728,8 +733,9 @@ public partial class SectionEditViewModel : ViewModelBase
     }
 
     /// <summary>
-    /// Subscribes to <see cref="Meetings"/> collection changes and each meeting's
-    /// <c>SelectedBlockLength</c> so the Room Browser command re-evaluates CanExecute.
+    /// Subscribes to <see cref="Meetings"/> collection changes and each meeting's property
+    /// changes so the Room Browser command re-evaluates CanExecute, and an open Room Browser
+    /// re-runs its search when a meeting is added, removed or changed.
     /// </summary>
     private void WireMeetingDurationWatch()
     {
@@ -738,19 +744,31 @@ public partial class SectionEditViewModel : ViewModelBase
 
         Meetings.CollectionChanged += (_, e) =>
         {
+            // Unsubscribe removed rows before subscribing added ones, so a Move (same row in
+            // both lists) stays subscribed.
+            if (e.OldItems is not null)
+                foreach (SectionMeetingViewModel m in e.OldItems)
+                    m.PropertyChanged -= OnMeetingBlockLengthChanged;
             if (e.NewItems is not null)
                 foreach (SectionMeetingViewModel m in e.NewItems)
                     m.PropertyChanged += OnMeetingBlockLengthChanged;
             OpenRoomBrowserCommand.NotifyCanExecuteChanged();
+            RefreshRoomBrowser();
         };
     }
 
+    /// <summary>
+    /// Handles a property change on any meeting row: re-evaluates the Room Browser command,
+    /// re-checks room capacities, and re-runs an open Room Browser. The re-run is cheap to
+    /// request on every change: it only recomputes when the search criteria actually differ.
+    /// </summary>
     private void OnMeetingBlockLengthChanged(object? sender, PropertyChangedEventArgs e)
     {
         if (e.PropertyName == nameof(SectionMeetingViewModel.SelectedBlockLength))
             OpenRoomBrowserCommand.NotifyCanExecuteChanged();
         else if (e.PropertyName == nameof(SectionMeetingViewModel.SelectedRoomId))
             CheckRoomCapacities();
+        RefreshRoomBrowser();
     }
 
     private static ObservableCollection<SchedulingEnvironmentValue> BuildSentinelList(
@@ -820,16 +838,11 @@ public partial class SectionEditViewModel : ViewModelBase
     {
         if (CreateRoomBrowser == null) return;
 
-        var specs = Meetings
-            .Select((m, i) => m.ToMeetingSpec(i))
-            .Where(s => s != null)
-            .Cast<MeetingSpec>()
-            .Where(s => !s.IsRemote)
-            .ToList();
+        var specs = SectionMeetingViewModel.ToBrowserSpecs(Meetings);
 
         if (specs.Count == 0)
         {
-            LastErrorMessage = "Remote meetings don't need a room, so there is nothing to browse.";
+            LastErrorMessage = RemoteOnlyBrowseMessage;
             return;
         }
 
@@ -850,12 +863,42 @@ public partial class SectionEditViewModel : ViewModelBase
         OnPropertyChanged(nameof(IsRoomBrowserOpen));
     }
 
+    /// <summary>Shown when every meeting is remote, so the Room Browser has nothing to search.</summary>
+    private const string RemoteOnlyBrowseMessage =
+        "Remote meetings don't need a room, so there is nothing to browse.";
+
+    /// <summary>
+    /// Re-runs an open Room Browser with the editor's current criteria (meeting rows,
+    /// capacity, campus). Does nothing when the browser is closed, or while a meeting has no
+    /// length yet (the search resumes once it has one). If every meeting has become remote,
+    /// the browser closes with the same message the Room Browser button gives.
+    /// </summary>
+    private void RefreshRoomBrowser()
+    {
+        if (RoomBrowserVm is null || !CanOpenRoomBrowser()) return;
+
+        var specs = SectionMeetingViewModel.ToBrowserSpecs(Meetings);
+        if (specs.Count == 0)
+        {
+            CloseRoomBrowser();
+            LastErrorMessage = RemoteOnlyBrowseMessage;
+            return;
+        }
+
+        RoomBrowserVm.UpdateCriteria(specs, CurrentSectionCapacity, CurrentSectionCampusId);
+    }
+
     /// <summary>
     /// Accepts a browser solution by filling in blank fields on existing meeting rows
     /// rather than creating new rows.
     /// </summary>
     private void AcceptBrowserSolution(IReadOnlyList<SpecSolution> solutions)
     {
+        // Close the browser first: filling in the meeting rows below would otherwise re-run it
+        // and push new ghost blocks onto the grid after Accept has cleared them.
+        RoomBrowserVm = null;
+        OnPropertyChanged(nameof(IsRoomBrowserOpen));
+
         // Disconnect pattern coupling so per-day solutions don't fight the propagation handler.
         TearDownPatternCoupling();
 
@@ -878,9 +921,6 @@ public partial class SectionEditViewModel : ViewModelBase
             if (string.IsNullOrEmpty(meeting.SelectedRoomId))
                 meeting.SelectedRoomId = sol.RoomId;
         }
-
-        RoomBrowserVm = null;
-        OnPropertyChanged(nameof(IsRoomBrowserOpen));
     }
 
     [RelayCommand]

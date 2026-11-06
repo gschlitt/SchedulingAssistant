@@ -175,7 +175,11 @@ public partial class MeetingEditViewModel : ViewModelBase
         foreach (var slot in meeting.Schedule)
             _slots.Add(CreateSlotVm(slot));
 
-        _slots.CollectionChanged += (_, _) => OpenRoomBrowserCommand.NotifyCanExecuteChanged();
+        _slots.CollectionChanged += (_, _) =>
+        {
+            OpenRoomBrowserCommand.NotifyCanExecuteChanged();
+            RefreshRoomBrowser();
+        };
 
         // Populate attendees (all instructors listed; assigned ones pre-checked).
         // No workload concept for meetings — IsSelected is all that matters.
@@ -305,10 +309,14 @@ public partial class MeetingEditViewModel : ViewModelBase
             _meetingTypes, _allRooms, _roomTypeOptions, existing,
             unit: AppSettings.Current.BlockLengthUnit);
 
+        // Re-evaluate the Room Browser command, and re-run an open Room Browser (it only
+        // recomputes when the slot's search criteria actually changed). A removed slot is
+        // ignored: it is no longer in Slots, so it contributes nothing to the criteria.
         vm.PropertyChanged += (_, e) =>
         {
             if (e.PropertyName == nameof(SectionMeetingViewModel.SelectedBlockLength))
                 OpenRoomBrowserCommand.NotifyCanExecuteChanged();
+            RefreshRoomBrowser();
         };
 
         return vm;
@@ -368,16 +376,11 @@ public partial class MeetingEditViewModel : ViewModelBase
     {
         if (CreateRoomBrowser == null) return;
 
-        var specs = Slots
-            .Select((m, i) => m.ToMeetingSpec(i))
-            .Where(s => s != null)
-            .Cast<MeetingSpec>()
-            .Where(s => !s.IsRemote)
-            .ToList();
+        var specs = SectionMeetingViewModel.ToBrowserSpecs(Slots);
 
         if (specs.Count == 0)
         {
-            LastErrorMessage = "Remote meetings don't need a room, so there is nothing to browse.";
+            LastErrorMessage = RemoteOnlyBrowseMessage;
             return;
         }
 
@@ -399,11 +402,45 @@ public partial class MeetingEditViewModel : ViewModelBase
         OnPropertyChanged(nameof(IsRoomBrowserOpen));
     }
 
+    /// <summary>Shown when every slot is remote, so the Room Browser has nothing to search.</summary>
+    private const string RemoteOnlyBrowseMessage =
+        "Remote meetings don't need a room, so there is nothing to browse.";
+
+    /// <summary>Re-runs an open Room Browser when the meeting's campus changes.</summary>
+    partial void OnSelectedCampusIdChanged(string? value) => RefreshRoomBrowser();
+
+    /// <summary>
+    /// Re-runs an open Room Browser with the editor's current slots and campus. Does nothing
+    /// when the browser is closed, or while a slot has no length yet (the search resumes once
+    /// it has one). If every slot has become remote, the browser closes with the same message
+    /// the Room Browser button gives.
+    /// </summary>
+    private void RefreshRoomBrowser()
+    {
+        if (RoomBrowserVm is null || !CanOpenRoomBrowser()) return;
+
+        var specs = SectionMeetingViewModel.ToBrowserSpecs(Slots);
+        if (specs.Count == 0)
+        {
+            CloseRoomBrowser();
+            LastErrorMessage = RemoteOnlyBrowseMessage;
+            return;
+        }
+
+        RoomBrowserVm.UpdateCriteria(specs, minCapacity: null,
+            campusId: string.IsNullOrEmpty(SelectedCampusId) ? null : SelectedCampusId);
+    }
+
     /// <summary>
     /// Accepts a browser solution by filling in blank fields on existing slot rows.
     /// </summary>
     private void AcceptBrowserSolution(IReadOnlyList<SpecSolution> solutions)
     {
+        // Close the browser first: filling in the slots below would otherwise re-run it and
+        // push new ghost blocks onto the grid after Accept has cleared them.
+        RoomBrowserVm = null;
+        OnPropertyChanged(nameof(IsRoomBrowserOpen));
+
         foreach (var sol in solutions)
         {
             if (sol.SpecIndex < 0 || sol.SpecIndex >= Slots.Count) continue;
@@ -421,9 +458,6 @@ public partial class MeetingEditViewModel : ViewModelBase
             if (string.IsNullOrEmpty(slot.SelectedRoomId))
                 slot.SelectedRoomId = sol.RoomId;
         }
-
-        RoomBrowserVm = null;
-        OnPropertyChanged(nameof(IsRoomBrowserOpen));
     }
 
     // ── Save / Cancel ─────────────────────────────────────────────────────────

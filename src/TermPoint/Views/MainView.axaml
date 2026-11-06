@@ -712,24 +712,13 @@
 								</ItemsControl.ItemTemplate>
 							</ItemsControl>
 
-							<Border
-								Width="1"
-								Margin="0,3,6,3"
-								Background="{StaticResource SeparatorLine}"
-								IsVisible="{Binding ScheduleGridVm.StatsLine, Converter={x:Static StringConverters.IsNotNullOrEmpty}}" />
-							<TextBlock
-								Margin="0,0,6,0"
-								VerticalAlignment="Center"
-								FontSize="{StaticResource FontSizeLarge}"
-								IsVisible="{Binding ScheduleGridVm.StatsLine, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"
-								Text="{Binding ScheduleGridVm.StatsLine}" />
-
 							<!--
 								Subject focus: the outermost layer, so it comes before "Filtered by:". Same pattern as the statements
-								below (separator + statement), in its own colour. The statement hides itself under All; the separator
-								follows the same condition.
+								below (separator + statement), in its own colour: "Subjects:" then one chip per subject (with its colour
+								marker when colour by subject is on), capped with "+N" (1.2.4 item 2.14). The top bar shows the subjects
+								too, but this one travels with the panel when it is detached. The statement hides itself under All; the
+								separator follows the same condition. A detached window builds the same header in MainWindow.axaml.cs.
 							-->
-							<!--  Prototype 2026-10-23: subjects shown in the top bar instead; restore if the header statement is wanted back.
 							<Border
 								Width="1"
 								Margin="0,3,6,3"
@@ -739,7 +728,6 @@
 								Margin="0,0,6,0"
 								VerticalAlignment="Center"
 								DataContext="{Binding FocusVm}" />
-							-->
 
 							<Border
 								Width="1"
@@ -751,7 +739,7 @@
 								VerticalAlignment="Center"
 								FontSize="{StaticResource FontSizeLarge}"
 								FontWeight="Bold"
-								Foreground="{StaticResource FilterBadgeText}"
+								Foreground="{StaticResource TextPrimary}"
 								IsVisible="{Binding ScheduleGridVm.Filter.IsActive}"
 								Text="Filtered by:" />
 							<TextBlock
@@ -759,7 +747,7 @@
 								VerticalAlignment="Center"
 								FontSize="{StaticResource FontSizeLarge}"
 								FontWeight="Bold"
-								Foreground="{StaticResource FilterBadgeText}"
+								Foreground="{StaticResource TextPrimary}"
 								IsVisible="{Binding ScheduleGridVm.Filter.IsActive}"
 								Text="{Binding ScheduleGridVm.Filter.ActiveSummary}"
 								TextWrapping="Wrap" />

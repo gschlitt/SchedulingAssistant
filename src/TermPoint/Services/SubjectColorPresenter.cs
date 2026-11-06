@@ -117,6 +117,19 @@ public sealed class SubjectColorPresenter : IDisposable
     }
 
     /// <summary>
+    /// The marker colour for a subject, by its calendar abbreviation (the Schedule View header's subject chips,
+    /// spec 1.2.4 item 2.14). Same on/off rule as <see cref="ColorFor"/>, so the header agrees with the tiles.
+    /// </summary>
+    /// <param name="abbreviation">The subject's calendar abbreviation; null or blank means no colour.</param>
+    /// <returns><c>#RRGGBB</c>, or an empty string when colours are off or the abbreviation has no colour.</returns>
+    public string ColorForSubject(string? abbreviation)
+    {
+        var abbr = abbreviation?.Trim() ?? "";
+        if (abbr.Length == 0 || !IsOn) return "";
+        return _store.GetColor(abbr) ?? "";
+    }
+
+    /// <summary>
     /// Drops every cache and raises <see cref="Changed"/> if colours were or now are on. For code that changes a
     /// course's subject or a subject's abbreviation without reloading the <see cref="SectionStore"/> (the reload
     /// already does this).

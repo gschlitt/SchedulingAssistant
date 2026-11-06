@@ -94,8 +94,6 @@ public partial class ScheduleGridViewModel : ViewModelBase
     /// <summary>Selected subject filter names, e.g. "History · Mathematics". Empty when no subject filter active.</summary>
     [ObservableProperty] private string _subjectFilterSummary = string.Empty;
 
-    /// <summary>e.g. "12 sections · 28 meetings shown"</summary>
-    [ObservableProperty] private string _statsLine = string.Empty;
 
     /// <summary>Academic Unit name, e.g. "College of Arts & Sciences"</summary>
     [ObservableProperty] private string _academicUnitName = string.Empty;
@@ -343,7 +341,6 @@ public partial class ScheduleGridViewModel : ViewModelBase
             App.Logger.LogError(ex, "ScheduleGridViewModel.Reload");
             _gridInputs = null;
             GridData = GridData.Empty;
-            StatsLine = string.Empty;
             LastErrorMessage = "An error occurred loading the schedule grid. See logs for details.";
         }
     }
@@ -745,7 +742,6 @@ public partial class ScheduleGridViewModel : ViewModelBase
         SemesterLine         = string.Empty;
         SemesterLineSegments = [];
         SubjectFilterSummary = string.Empty;
-        StatsLine            = string.Empty;
         SharedScheduleBadge  = string.Empty;
     }
 
@@ -1553,11 +1549,6 @@ public partial class ScheduleGridViewModel : ViewModelBase
     ///     Updates <see cref="SubjectFilterSummary"/> (e.g. "History · Mathematics" when
     ///     subject filters are active).
     ///   </item>
-    ///   <item>
-    ///     Updates <see cref="StatsLine"/> (e.g. "12 sections · 28 meetings shown").
-    ///     Only <see cref="SectionMeetingBlock"/> objects are counted; commitment blocks
-    ///     are excluded because including them would make the counts misleading.
-    ///   </item>
     /// </list>
     /// </summary>
     /// <param name="semesters">The selected semesters; used for column headers and line building.</param>
@@ -1657,29 +1648,6 @@ public partial class ScheduleGridViewModel : ViewModelBase
         SubjectFilterSummary = selectedSubjectNames.Count > 0
             ? string.Join(" · ", selectedSubjectNames)
             : string.Empty;
-
-        // ── Stats line ─────────────────────────────────────────────────────────
-        // Counts distinct section IDs (not commitment blocks), total meeting slots,
-        // and event (MeetingBlock) count when events are visible.
-        var sectionBlocks = allBlocks.OfType<SectionMeetingBlock>().ToList();
-        int sectionCount  = sectionBlocks.Select(b => b.SectionId).Distinct().Count();
-        int meetingCount  = sectionBlocks.Count;
-        int eventCount    = allBlocks.OfType<MeetingBlock>().Count();
-
-        if (sectionCount == 0)
-        {
-            StatsLine = "No sections shown";
-        }
-        else
-        {
-            var sb = new System.Text.StringBuilder();
-            sb.Append($"{sectionCount} {(sectionCount == 1 ? "section" : "sections")} · ");
-            sb.Append($"{meetingCount} {(meetingCount == 1 ? "meeting" : "meetings")}");
-            if (eventCount > 0)
-                sb.Append($" · {eventCount} {(eventCount == 1 ? "event" : "events")}");
-            sb.Append(" shown");
-            StatsLine = sb.ToString();
-        }
 
         // Update shared schedule header badge
         if (_sharedScheduleService.HasAny)

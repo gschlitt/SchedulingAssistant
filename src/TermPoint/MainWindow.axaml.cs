@@ -1571,10 +1571,28 @@ public partial class MainWindow : Window, ILifecyclePrompts, ISessionHost
                 _scheduleGridWindow = null;
             },
             headerContext);
+
+        // The window's title bar names the chosen subjects too (1.2.4 item 2.14), as plain text with the same
+        // "+N" cap, so a minimised or background window still says it is not the whole timetable.
+        _scheduleGridWindow?.Bind(Window.TitleProperty, new Binding(nameof(FocusViewModel.ShortSubjectsText))
+        {
+            Source = Vm.FocusVm,
+            Converter = new FuncValueConverter<string?, string>(subjects => ScheduleViewWindowTitle(slot.Header, subjects))
+        });
     }
 
     /// <summary>
-    /// Builds the header shown above a detached Schedule View window: academic unit, semesters, stats, focus,
+    /// The title of a detached Schedule View window: the panel's name, then the chosen subjects when there is a
+    /// subject focus, e.g. "Schedule View — Subjects: CIVL, ECON +4". Under focus All it is just the panel's name.
+    /// </summary>
+    /// <param name="panelName">The panel's header text ("Schedule View").</param>
+    /// <param name="shortSubjects"><see cref="FocusViewModel.ShortSubjectsText"/>; empty or null under All.</param>
+    /// <returns>The window title.</returns>
+    private static string ScheduleViewWindowTitle(string panelName, string? shortSubjects) =>
+        string.IsNullOrEmpty(shortSubjects) ? panelName : $"{panelName} — Subjects: {shortSubjects}";
+
+    /// <summary>
+    /// Builds the header shown above a detached Schedule View window: academic unit, semesters, focus,
     /// filter, overlay and shared-schedule statements, mirroring the inline header in MainView.axaml.
     /// A <see cref="WrapPanel"/>, like the inline header, so in a narrow window the statements move onto further
     /// lines instead of running off the edge (a horizontal StackPanel never wraps).
@@ -1654,46 +1672,18 @@ public partial class MainWindow : Window, ILifecyclePrompts, ISessionHost
             new Binding("ScheduleGridVm.SemesterLineSegments") { Source = Vm });
         stack.Children.Add(semItemsControl);
 
-        // Stats separator
-        var statsSeparator = new Border
+        // Subject focus (outermost layer, so before "Filtered by:"): separator + the shared statement control
+        // (subject chips capped with "+N", 1.2.4 item 2.14), both hidden under focus All. In a detached window
+        // this is the only place the chosen subjects show, since the main window's top bar is out of sight.
+        var focusSeparator = new Border
         {
             Width = 1,
             Background = (IBrush)(this.FindResource("SeparatorLine") ?? Brushes.Gray),
             Margin = new Thickness(0, 3)
         };
-        statsSeparator.Bind(IsVisibleProperty, new Binding("ScheduleGridVm.StatsLine")
-        {
-            Source = Vm,
-            Converter = StringConverters.IsNotNullOrEmpty
-        });
-        stack.Children.Add(statsSeparator);
-
-        // Stats
-        var statsTextBlock = new TextBlock
-        {
-            FontSize = (double)(this.FindResource("FontSizeLarge") ?? 14d),
-            VerticalAlignment = VerticalAlignment.Center
-        };
-        statsTextBlock.Bind(TextBlock.TextProperty, new Binding("ScheduleGridVm.StatsLine") { Source = Vm });
-        statsTextBlock.Bind(IsVisibleProperty, new Binding("ScheduleGridVm.StatsLine")
-        {
-            Source = Vm,
-            Converter = StringConverters.IsNotNullOrEmpty
-        });
-        stack.Children.Add(statsTextBlock);
-
-        // Subject focus (outermost layer, so before "Filtered by:"): separator + the shared statement control,
-        // both hidden under focus All.
-        // Prototype 2026-10-23: subjects shown in the top bar instead; restore if the header statement is wanted back.
-        //var focusSeparator = new Border
-        //{
-        //    Width = 1,
-        //    Background = (IBrush)(this.FindResource("SeparatorLine") ?? Brushes.Gray),
-        //    Margin = new Thickness(0, 3)
-        //};
-        //focusSeparator.Bind(IsVisibleProperty, new Binding("IsIndicatorVisible") { Source = Vm.FocusVm });
-        //stack.Children.Add(focusSeparator);
-        //stack.Children.Add(new FocusIndicator { DataContext = Vm.FocusVm, VerticalAlignment = VerticalAlignment.Center });
+        focusSeparator.Bind(IsVisibleProperty, new Binding("IsIndicatorVisible") { Source = Vm.FocusVm });
+        stack.Children.Add(focusSeparator);
+        stack.Children.Add(new FocusIndicator { DataContext = Vm.FocusVm, VerticalAlignment = VerticalAlignment.Center });
 
         // Filter separator
         var filterSeparator = new Border
@@ -1711,7 +1701,7 @@ public partial class MainWindow : Window, ILifecyclePrompts, ISessionHost
             Text = "Filtered by:",
             FontSize = (double)(this.FindResource("FontSizeLarge") ?? 14d),
             FontWeight = FontWeight.Bold,
-            Foreground = (IBrush)(this.FindResource("FilterBadgeText") ?? Brushes.Black),
+            Foreground = (IBrush)(this.FindResource("TextPrimary") ?? Brushes.Black),
             VerticalAlignment = VerticalAlignment.Center
         };
         filteredByLabel.Bind(IsVisibleProperty, new Binding("Filter.IsActive") { Source = Vm.ScheduleGridVm });
@@ -1722,7 +1712,7 @@ public partial class MainWindow : Window, ILifecyclePrompts, ISessionHost
         {
             FontSize = (double)(this.FindResource("FontSizeLarge") ?? 14d),
             FontWeight = FontWeight.Bold,
-            Foreground = (IBrush)(this.FindResource("FilterBadgeText") ?? Brushes.Black),
+            Foreground = (IBrush)(this.FindResource("TextPrimary") ?? Brushes.Black),
             VerticalAlignment = VerticalAlignment.Center,
             TextTrimming = TextTrimming.CharacterEllipsis,
             MaxWidth = 400

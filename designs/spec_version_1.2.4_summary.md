@@ -274,10 +274,62 @@ About 80 items in nine groups. Most were deferred from 1.2.3 or found while test
 > colour marker when colour by subject is on (for example "Schedule View · ■ CIVL ■ MECH"). The title is a fixed
 > "Schedule View" today (the panel header in `MainView.axaml`); the detached window needs the same text. Keep it short
 > when many subjects are chosen (the first few, then "+N"). Display only: no data risk, no version gate.
+>
+> **Scheme (2026-11-05):**
+> - **Already there:** the header is a `WrapPanel` of statements (`MainView.axaml`, Schedule View panel) and the
+>   detached window builds a copy in `CreateScheduleGridHeaderContext` (`MainWindow.axaml.cs`). A focus statement
+>   (`FocusIndicator`, "Focus: BIOL, CHEM" + Show all) sat in both and was commented out on 2026-10-23 when subjects
+>   moved to the top bar. This item brings it back with markers and a cap.
+> - **Chips, not a string:** each subject is a chip (colour marker + short name) in an `ItemsControl` with a
+>   `WrapPanel` panel, so lines break between chips, never inside one. Colours off: the markers collapse.
+>   Example: `Science · Fall 2026 · 212 sections │ Subjects: ■CIVL ■ECON ■MATH ■MECH ■PHYS ■STAT +9 · Show all │ Filtered by: …`
+> - **Cap by count:** the first 6 subjects (alphabetical), then a "+N" chip whose tooltip lists them all (reuse
+>   `FocusVm.SubjectsToolTip`). One over the cap shows them all (a "+1" chip costs as much as the subject it hides).
+>   Worst case about one header line, two in a narrow detached window. Not a width-based cap: that needs a custom
+>   panel re-measuring on every resize, and the count jumps as the splitter moves.
+> - **Wrapping:** the whole statement ("Subjects:", chips, Show all) is one child of the header `WrapPanel`: it stays
+>   after the stats if it fits, otherwise starts its own line and wraps inside itself, like "Filtered by:" today.
+> - **Long names:** a subject with no abbreviation falls back to its full name; each chip label gets a max width (new
+>   `App.axaml` resource) with ellipsis and the full name in the tooltip.
+> - **Filtered down later:** the statement describes the focus only; "Filtered by:" right after it says what the
+>   filter removed. No merging the two, no dimming subjects with nothing on the grid.
+> - **Build it once:** change `FocusIndicator` to chips + cap and use it in both the inline and detached headers
+>   (restoring the commented-out lines). The Section View header can reuse it later.
+> - **Detached window title bar:** plain text from the same VM, e.g. "Schedule View — CIVL, ECON, MATH +12".
+> - **States:** focus All hides the statement (as now); None shows "Subjects: none".
+> - **Test:** one VM test pins the cap: first 6 + "+N", 7 shows all 7, tooltip lists everyone, None and All.
+>   Edits `MainView.axaml` and `FocusIndicator.axaml` (close those tabs in VS first).
+>
+> **Coded (2026-11-05, not committed):** `FocusViewModel` builds `IndicatorChips` / `IndicatorMoreCount` /
+> `IndicatorFallbackText` / `ShortSubjectsText` (cap in `CapChips`, `IndicatorMaxChips = 6`) and rebuilds on
+> `SubjectColorPresenter.Changed`; markers come from the new `SubjectColorPresenter.ColorForSubject`, so the header
+> agrees with the tiles. `FocusIndicator` docks "Subjects:" left and wraps the chips beside it (hanging indent, so the
+> label is never orphaned at a line end). Restored in the inline header and the detached header; the detached window's
+> title follows `ShortSubjectsText`. Sizes in `App.axaml` (`FocusChipMarkerSize`, `FocusChipSpacing`,
+> `FocusChipLineSpacing`, `FocusChipLabelMaxWidth`). Plain text now says "Subjects: …" / "Subjects: none" (was
+> "Focus: …"). Tests: 7 new in `FocusViewModelTests`; full suite green. Left: eye check in the app (colours on and
+> off, 7 vs 9+ subjects, a narrow detached window, the title bar).
+>
+> **Revision 1 (Greg, 2026-11-05):** the "45 sections · 83 meetings shown" stats line is gone from both headers (it
+> helped nobody and took space); `ScheduleGridViewModel.StatsLine` removed. "Subjects:" (with Show all) and "Filtered
+> by:" now use the standard text colour (`TextPrimary`): their own colours (teal, dark blue) appeared nowhere else and
+> only raised the question of what they meant. Overlays (purple) and shared schedules (orange) keep theirs.
+> `FocusBadgeText`, `FocusLinkText`, `FocusColor` and `FilterBadgeText` retired from `AppColors.axaml`
+> (`FilterColor` stays for the filter bar's headings).
+>
+> **Revision 2 (Greg, 2026-11-05):** the subjects statement uses the normal weight of the academic unit and semester
+> (only the "Schedule View" title stays bold). The "Show all" link is gone (no real need; the top bar's Subjects
+> picker changes the focus), and with it `FocusViewModel.ShowAllCommand` and its test.
 
 >[!note]- **2.15 Mute instructor conflicts, mute room conflicts
 
 >[!note]- **2.16 Events editor meeting editor is completely messed up.
+> **Cause (2026-11-05):** in the meeting editor (`MeetingListView.axaml`), the Schedule column headings and each
+> meeting-time row were separate grids with their own `Auto` columns, so each sized itself to its own contents and the
+> headings drifted away from the choosers under them. **Fixed (`ad04fd0`):** headings and rows now share column
+> widths (`SharedSizeGroup` inside a `Grid.IsSharedSizeScope` panel), as the section editor already does; Day, Start,
+> Length and Freq got minimum widths in place of the old fixed 42 px Start/Length columns. Layout only: no data risk,
+> no version gate. Left: eye check in the app, including a slot with Custom frequency.
 
 >[!note]- **2.17 Rooms and possibly other Scheduling Environment fields don't show up in the Filter Bar until after a semester change
 > **Cause (2026-11-05):** the filter lists (and the names on tiles) are rebuilt only when the grid reloads, and the

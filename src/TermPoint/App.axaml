@@ -73,6 +73,18 @@
 			<x:Double x:Key="SectionListSubjectMarkerSize">11</x:Double>
 			<Thickness x:Key="SectionListSubjectMarkerMargin">2,0,1,0</Thickness>
 
+			<!--
+				Subject chips in the Schedule View header's focus statement (1.2.4 item 2.14, Controls/FocusIndicator.axaml).
+				FocusChipMarkerSize: the marker's side beside the 16 px header text (FontSizeLarge × SubjectMarkerSizeRatio, rounded).
+				FocusChipSpacing: horizontal gap between chips; FocusChipLineSpacing: gap between wrapped lines.
+				FocusChipLabelMaxWidth: widest a chip's name grows before it is trimmed (a subject with no abbreviation
+				shows its full name); the chip's tooltip shows the full name.
+			-->
+			<x:Double x:Key="FocusChipMarkerSize">14</x:Double>
+			<x:Double x:Key="FocusChipSpacing">6</x:Double>
+			<x:Double x:Key="FocusChipLineSpacing">2</x:Double>
+			<x:Double x:Key="FocusChipLabelMaxWidth">160</x:Double>
+
 			<!--  Converters  -->
 			<conv:MinutesToTimeConverter x:Key="MinutesToTimeConverter" />
 			<conv:MultiSemesterLeftBorderThicknessConverter x:Key="MultiSemesterLeftBorderThicknessConverter" />
