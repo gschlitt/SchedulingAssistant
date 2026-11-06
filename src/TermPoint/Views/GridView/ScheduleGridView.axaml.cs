@@ -874,7 +874,8 @@ public partial class ScheduleGridView : UserControl
             double creaseW     = Layout("FoldedDayCreaseThickness");
             double edgeInset   = Layout("FoldedDayBandEdgeInset");
             double vInset      = Layout("FoldedDayBandVerticalInset");
-            double otherBarW   = Layout("FoldedDayOtherBarWidth");
+            double laneW       = Layout("FoldedDayLaneWidth");
+            double laneGap     = Layout("FoldedDayLaneGap");
 
             // Canvas Y of a time, exactly as the tiles compute it.
             double YOf(int minutes) => effectiveHeaderHeight + TimeToY(minutes, data.FirstRowMinutes)
@@ -893,7 +894,7 @@ public partial class ScheduleGridView : UserControl
             // The brush the grid's own tiles use for each kind of other thing.
             IBrush OtherBrush(FoldedOtherKind kind) => kind switch
             {
-                FoldedOtherKind.Meeting        => MeetingTileFill,
+                FoldedOtherKind.Meeting        => Res("FoldedDayMeetingBar"),
                 FoldedOtherKind.SharedSchedule => Res("SharedScheduleBorder"),
                 _                              => OverlayFrameBorder,   // commitments and overlay sections are drawn in the overlay style
             };
@@ -949,14 +950,16 @@ public partial class ScheduleGridView : UserControl
                 double creaseTop = countY + entryLineH + contentGap;
                 AddFlat(stripX + half - creaseW / 2, creaseTop, creaseW, totalHeight - creaseTop, creaseBrush);
 
-                // Other things: bars centred on the crease, on top of the section bands, merged per kind.
-                foreach (var kindGroup in (col.Folded?.OtherSpans ?? []).GroupBy(o => o.Kind))
+                // Other things (Revision 3): side-by-side lanes centred on the crease, on top of the section bands. The
+                // lane of each kind comes from FoldedDayStrip.OtherLanes; kinds sharing a lane are merged together.
+                foreach (var laneGroup in (col.Folded?.OtherSpans ?? []).GroupBy(o => FoldedDayStrip.LaneOf(o.Kind)))
                 {
-                    var brush = OtherBrush(kindGroup.Key);
-                    foreach (var (start, end) in FoldedDayStrip.MergeSpans(kindGroup.Select(o => (o.StartMinutes, o.EndMinutes))))
+                    var brush = OtherBrush(laneGroup.First().Kind);
+                    double laneX = stripX + FoldedDayStrip.LaneLeft(laneGroup.Key, stripW, laneW, laneGap);
+                    foreach (var (start, end) in FoldedDayStrip.MergeSpans(laneGroup.Select(o => (o.StartMinutes, o.EndMinutes))))
                     {
                         double top = YOf(start) + vInset;
-                        AddFlat(stripX + (stripW - otherBarW) / 2, top, otherBarW, YOf(end) - vInset - top, brush);
+                        AddFlat(laneX, top, laneW, YOf(end) - vInset - top, brush);
                     }
                 }
 
@@ -1479,6 +1482,8 @@ public partial class ScheduleGridView : UserControl
         try
         {
             double markHeight = Layout("FoldedDayMarkHeight");
+            double edgeW      = Layout("FoldedDayMarkEdgeWidth");
+            double lineT      = Layout("FoldedDayMarkLineThickness");
             double YOf(int minutes) => _cachedEffectiveHeaderHeight + TimeToY(minutes, _cachedFirstRowMinutes)
                                      + GetGridlineOffset(_cachedGridlineYOffsets, minutes);
 
@@ -1492,18 +1497,17 @@ public partial class ScheduleGridView : UserControl
                 var marks = marksByDay[day];
                 foreach (var mark in marks)
                 {
+                    // A bracket (Revision 3): a bar down BOTH outer edges for the span, and a thin line across the
+                    // strip at its start and end, so the bands and lanes inside stay visible. Everything stays inside
+                    // the strip's own bounds.
                     double top = YOf(mark.Start);
-                    var bar = new Border
-                    {
-                        Width = strip.Width,
-                        Height = Math.Max(YOf(mark.End) - top, markHeight),
-                        Background = Res(FoldedDayMarks.InfoFor(mark.Kind).BrushKey),
-                        IsHitTestVisible = false,
-                    };
-                    Canvas.SetLeft(bar, strip.X);
-                    Canvas.SetTop(bar, top);
-                    _canvas.Children.Add(bar);
-                    _markControls.Add(bar);
+                    double height = Math.Max(YOf(mark.End) - top, markHeight);
+                    var brush = Res(FoldedDayMarks.InfoFor(mark.Kind).BrushKey);
+                    double side = Math.Min(edgeW, strip.Width / 2);
+                    AddMarkPiece(strip.X, top, side, height, brush);
+                    AddMarkPiece(strip.X + strip.Width - side, top, side, height, brush);
+                    AddMarkPiece(strip.X, top, strip.Width, lineT, brush);
+                    AddMarkPiece(strip.X, top + height - lineT, strip.Width, lineT, brush);
                 }
                 ToolTip.SetTip(strip.Hit, BuildTileTooltipContent(new TileTooltip(
                     FoldedDayStrip.StripTooltip(strip.DayName, strip.Summary, FoldedDayMarks.TooltipLines(marks)))));
@@ -1513,6 +1517,24 @@ public partial class ScheduleGridView : UserControl
         {
             App.Logger.LogError(ex, "Strip marks failed to render");
         }
+    }
+
+    /// <summary>
+    /// Adds one click-through rectangle of an attention-mark bracket to the canvas and records it, so the next
+    /// <see cref="RefreshStripMarks"/> can remove it.
+    /// </summary>
+    /// <param name="x">Left edge on the canvas.</param>
+    /// <param name="y">Top edge on the canvas.</param>
+    /// <param name="width">Width.</param>
+    /// <param name="height">Height.</param>
+    /// <param name="fill">The mark kind's brush.</param>
+    private void AddMarkPiece(double x, double y, double width, double height, IBrush fill)
+    {
+        var piece = new Border { Width = width, Height = height, Background = fill, IsHitTestVisible = false };
+        Canvas.SetLeft(piece, x);
+        Canvas.SetTop(piece, y);
+        _canvas!.Children.Add(piece);
+        _markControls.Add(piece);
     }
 
     /// <summary>

@@ -73,11 +73,27 @@ public sealed class FoldedDayStripTests
         var plain = FoldedDayStrip.StripTooltip("Tuesday", new FoldedDaySummary(41, false, new List<FoldedSectionMeeting>(), new List<FoldedOtherSpan>()));
         Assert.Equal(new[] { "Tuesday is folded: 41 sections.", "Click to show Tuesday." }, plain.ToArray());
 
-        var other = FoldedDayStrip.StripTooltip("Tuesday", new FoldedDaySummary(1, true, new List<FoldedSectionMeeting>(), new List<FoldedOtherSpan>()));
-        Assert.Equal(new[] { "Tuesday is folded: 1 section.", "Also has meetings or commitments.", "Click to show Tuesday." }, other.ToArray());
+        var other = FoldedDayStrip.StripTooltip("Tuesday", new FoldedDaySummary(1, true, new List<FoldedSectionMeeting>(),
+            new List<FoldedOtherSpan> { new(FoldedOtherKind.Commitment, 600, 660), new(FoldedOtherKind.Meeting, 780, 840) }));
+        Assert.Equal(new[] { "Tuesday is folded: 1 section.", "Also shows meetings and overlays.", "Click to show Tuesday." }, other.ToArray());
 
         var none = FoldedDayStrip.StripTooltip("Thursday", null);
         Assert.Equal("Thursday is folded: 0 sections.", none[0]);
+    }
+
+    /// <summary>
+    /// The "also shows" line names each lane group once, in lane order, calls commitments and overlay sections
+    /// "overlays" (they share a lane), and is absent when there is nothing else.
+    /// </summary>
+    [Fact]
+    public void OtherThingsLine_NamesLaneGroupsInOrder()
+    {
+        Assert.Null(FoldedDayStrip.OtherThingsLine([]));
+        Assert.Equal("Also shows overlays.", FoldedDayStrip.OtherThingsLine(
+            [new(FoldedOtherKind.Commitment, 600, 660), new(FoldedOtherKind.OverlaySection, 700, 760)]));
+        Assert.Equal("Also shows meetings, overlays and shared schedules.", FoldedDayStrip.OtherThingsLine(
+            [new(FoldedOtherKind.SharedSchedule, 500, 560), new(FoldedOtherKind.OverlaySection, 700, 760),
+             new(FoldedOtherKind.Meeting, 800, 860)]));
     }
 
     /// <summary>An open header says how to fold; the last open day only advertises the menu.</summary>

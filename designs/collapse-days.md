@@ -381,6 +381,16 @@ need: a proposed placement, the section that would move (its current time and it
 differently), and a section a placement breaks ("overlaps PSYCH 340 A"). Several marks at one time: show the most
 important (selection, then a proposal, then a conflict), not a split bar.
 
+**Revision 3 (Greg, 2026-11-05): lanes and brackets** (mock `lanes_mock.svg`, option 3). Before this, every kind of
+"other thing" was drawn in the same spot on the crease, so whichever kind was drawn last hid the others (an order
+nobody chose), and an attention mark covered everything at its time.
+
+| # | Decision | Replaces |
+|---|---|---|
+| R3-1 | **Other things get lanes** on the crease, left to right: meetings, overlay sections and commitments (one lane, same colour), shared schedules. Each lane merges its own spans. Nothing hides anything. | R1-3's single bar. |
+| R3-2 | **Meetings on a strip get a stronger colour of their own** (the pale meeting-tile fill was barely visible). | The task 4 open point. |
+| R3-3 | **Attention marks are brackets**: the mark's colour down both outer edges of the strip, with a thin line at its start and end, so the bands and lanes stay visible inside. The flash pulses as before. Priority between attention marks (R2) is unchanged. | Task 5's full-width bars. |
+
 ---
 
 ## Phase 4: Data Design (folded into Phase 5)
@@ -578,7 +588,7 @@ folded). Strips (after Revision 1): a folded page (light face, shadowed face, cr
 "B2" bands wherever sections meet (`FoldedDayStrip.MergeSpans`: overlaps merge, touching spans keep a hairline),
 other things as narrow bars on the crease in their tiles' colours, and a tooltip. New: `FoldedDayStrip` (strip width), `DayHeaderMenuViewModel` (the menu, exposed as
 `ScheduleGridViewModel.DayHeaderMenu`), resources in AppLayout/AppColors, `FoldDayIcon` in Icons.axaml. The view
-model now takes `IBlockPatternRepository` (both service setups already register it). Strips are about 21–27 px. Open point: the meeting bar uses the pale `MeetingTile` fill and is barely visible.
+model now takes `IBlockPatternRepository` (both service setups already register it). Strips are about 21–27 px. (The pale meeting bar was fixed by Revision 3.)
 UBC 400-level CIVL + MECH at size 11: MWF 1,599 px and TR 990 px with one semester (2,419 unfolded); 1,790 / 1,115
 with two. Nothing folded renders exactly as before (probe, byte-identical PNGs against the previous commit). Checked
 by eye in the WASM demo: fold, unfold, the menu, a pattern, the last-open-day rule, Show all days. Not yet checked
@@ -602,8 +612,20 @@ after the ghost overlay; ghosts and conflict ends on folded days become marks. T
 twice (about 1 s, resources), click-through. Tests: `FoldedDayMarksTests` (25). Checked by eye in the WASM demo:
 selecting a Mon/Wed section with Monday folded marks and flashes the M strip; folding Wednesday with it selected
 shows the mark (no flash seen). Conflict marks were not seen on real data (no watches in the probe or demo). Small
-points: the mark bars stick out a pixel or two past the strip edges; stepping through Room Browser slots flashes the
-strip at every step (each slot is a new mark); a full redraw within a second of a flash cuts it short.
+points: stepping through Room Browser slots flashes the strip at every step (each slot is a new mark); a full
+redraw within a second of a flash cuts it short. (The mark bars that stuck out past the strip edges were replaced by
+brackets in Revision 3.)
+
+**Revision 3 outcome (2026-11-05).** Built to R3-1..R3-3. Other things are three 3 px lanes with 1 px gaps centred on
+the crease (`FoldedDayStrip.OtherLanes`: the one table mapping kind to lane, with `LaneOf` and `LaneLeft`; overlay
+sections and commitments share lane 1), each lane merged with `MergeSpans`. Meetings use the new strip-only
+`FoldedDayMeetingBar` (#7B5EB8) instead of the pale tile fill. Attention marks are brackets: a 3 px bar of the kind's
+colour down both outer edges for the span plus a 1 px line across the strip at its start and end, kept inside the
+strip's bounds and never shorter than `FoldedDayMarkHeight`. `FoldedDayOtherBarWidth` was replaced by
+`FoldedDayLaneWidth`, `FoldedDayLaneGap`, `FoldedDayMarkEdgeWidth` and `FoldedDayMarkLineThickness`. Flash and
+`StripAttention` are unchanged; `RefreshStripMarks` still redraws only the marks. Tests: `FoldedDayLaneTests` (3).
+Checked in the probe on UBC data: only the overlay lane (instructor overlay) and the selection bracket could be
+exercised; meetings and shared schedules are not in that database, so those lanes are unseen.
 
 ### Task 6: Export and release check
 

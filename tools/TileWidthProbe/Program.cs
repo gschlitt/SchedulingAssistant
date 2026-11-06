@@ -243,6 +243,28 @@ static class Program
         vm.SetGhostBlocks(null);
         vm.ShowAllDays();
 
+        // 7. Lanes (Revision 3): an instructor overlay, so the overlay lane shows. The UBC copy has no meetings and no
+        // shared schedules, so only that lane (and the selection bracket on top of it) can be exercised. Picks the
+        // first instructor whose overlay puts "other things" on a folded M/W/F strip.
+        string? overlayInstructor = null;
+        foreach (var iid in store.Sections.SelectMany(sec => sec.InstructorIds).Distinct())
+        {
+            vm.Filter.SetInstructorOverlay(iid);
+            vm.ShowPattern([2, 4]);
+            if (vm.GridData.DayColumns.Any(col => col.IsFolded && col.Folded is { OtherSpans.Count: > 0 })) { overlayInstructor = iid; break; }
+            vm.Filter.SetInstructorOverlay(iid);   // toggles it off again
+            vm.ShowAllDays();
+        }
+        Console.WriteLine("overlay instructor for lanes: " + (overlayInstructor is null ? "NONE FOUND" : overlayInstructor));
+        if (overlayInstructor is not null)
+        {
+            Run("s7_lanes_overlay_TR_open", () => vm.ShowPattern([2, 4]));
+            Run("s7_lanes_overlay_selection_TR_open", () => { vm.ShowPattern([2, 4]); store.SetMultiSelection([mwfPick]); });
+            store.SetMultiSelection([]);
+            vm.Filter.SetInstructorOverlay(overlayInstructor);   // off
+            vm.ShowAllDays();
+        }
+
         WriteReport(outDir, results, defaultFont, Layout("TileMeasuringMargin"), Layout("TilePaddingHorizontal"));
         Console.WriteLine("Done.");
         Environment.Exit(0);

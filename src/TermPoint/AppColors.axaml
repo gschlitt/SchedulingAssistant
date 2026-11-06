@@ -346,6 +346,8 @@
 	<SolidColorBrush x:Key="FoldedDayMarkSelection" Color="#3c647f" />
 	<SolidColorBrush x:Key="FoldedDayMarkProposal" Color="#4CAF50" />
 	<SolidColorBrush x:Key="FoldedDayMarkConflict" Color="{StaticResource ProgramConflictColor}" />
+	<!--  A meeting's lane on a folded strip (Revision 3): stronger than the pale MeetingTile fill, which was barely visible there  -->
+	<SolidColorBrush x:Key="FoldedDayMeetingBar" Color="#7B5EB8" />
 	<!--  The colour a strip's faces pulse toward when something new is marked on it (translucent amber, so the strip stays readable)  -->
 	<SolidColorBrush x:Key="FoldedDayFlashBrush" Color="#CCFFB300" />
 	<!--  Fill of an OPEN day's header while the pointer is over it (translucent: the day name stays readable)  -->

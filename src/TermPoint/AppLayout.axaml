@@ -67,9 +67,19 @@
     <x:Double x:Key="FoldedDayBandEdgeInset">3</x:Double>
     <!--  Gap at the top and bottom of every band, so two back-to-back sections show a hairline between them  -->
     <x:Double x:Key="FoldedDayBandVerticalInset">1</x:Double>
-    <!--  Width of a bar for an "other thing" (meeting, commitment, shared tile, overlay tile), centred on the crease  -->
-    <x:Double x:Key="FoldedDayOtherBarWidth">6</x:Double>
-    <!--  Height of a mark drawn across a strip at the time of what it marks (selection, ghost...); task 5  -->
+    <!--
+        Revision 3: "other things" (meetings, overlay sections and commitments, shared tiles) get side-by-side lanes
+        centred on the crease. Width of ONE lane, and the gap between neighbouring lanes.
+    -->
+    <x:Double x:Key="FoldedDayLaneWidth">3</x:Double>
+    <x:Double x:Key="FoldedDayLaneGap">1</x:Double>
+    <!--
+        Revision 3: an attention mark is a bracket. Width of the vertical bar down EACH outer edge of the strip, and
+        thickness of the horizontal line across the strip at the mark's start and end.
+    -->
+    <x:Double x:Key="FoldedDayMarkEdgeWidth">3</x:Double>
+    <x:Double x:Key="FoldedDayMarkLineThickness">1</x:Double>
+    <!--  Minimum height of a mark bracket (selection, ghost...), so a very short span still shows  -->
     <x:Double x:Key="FoldedDayMarkHeight">3</x:Double>
     <!--
         The attention flash on a folded strip (task 5): the strip's faces pulse toward FoldedDayFlashBrush and back.
