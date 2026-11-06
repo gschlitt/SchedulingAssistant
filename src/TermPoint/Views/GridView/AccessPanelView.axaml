@@ -175,13 +175,16 @@
 							<ItemsControl ItemsSource="{Binding Watches}">
 								<ItemsControl.ItemTemplate>
 									<DataTemplate>
+										<!-- Hovering a watch names its tags/levels or courses (Details); Transparent so gaps are hoverable too -->
 										<Border
 											Padding="4,3"
 											Margin="0,0,0,2"
+											Background="Transparent"
+											ToolTip.Tip="{Binding Details}"
 											BorderBrush="{StaticResource FilterGroupBorder}"
 											BorderThickness="1"
 											CornerRadius="3">
-											<Grid ColumnDefinitions="*,Auto,Auto">
+											<Grid ColumnDefinitions="*,Auto,Auto,Auto">
 												<StackPanel Grid.Column="0" Spacing="1" VerticalAlignment="Center">
 													<TextBlock
 														Text="{Binding Name}"
@@ -226,9 +229,23 @@
 													MinHeight="0"
 													ToolTip.Tip="Enable or disable this watch" />
 
-												<!-- Delete button -->
+												<!-- Edit button: opens the watch form below, pre-filled with this watch -->
 												<Button
 													Grid.Column="2"
+													Background="Transparent"
+													BorderThickness="0"
+													Padding="2"
+													VerticalAlignment="Center"
+													Command="{Binding RequestEditCommand}"
+													ToolTip.Tip="Edit this watch">
+													<Viewbox Width="10" Height="10">
+														<Path Data="{StaticResource PencilIcon}" Fill="Gray" />
+													</Viewbox>
+												</Button>
+
+												<!-- Delete button -->
+												<Button
+													Grid.Column="3"
 													Background="Transparent"
 													BorderThickness="0"
 													Padding="2"
@@ -262,7 +279,7 @@
 								Command="{Binding BeginCreateWatchCommand}"
 								IsVisible="{Binding !Creation.IsVisible}" />
 
-							<!-- Inline creation form -->
+							<!-- Inline watch form: creates a new watch, or edits one (Edit button on a watch) -->
 							<Border
 								IsVisible="{Binding Creation.IsVisible}"
 								Padding="6"
@@ -385,7 +402,7 @@
 									<!-- Save / Cancel buttons -->
 									<StackPanel Orientation="Horizontal" Spacing="6">
 										<Button
-											Content="Create"
+											Content="{Binding SaveButtonText}"
 											FontSize="10"
 											Padding="8,3"
 											Command="{Binding SaveCommand}" />

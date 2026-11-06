@@ -156,6 +156,44 @@ public sealed class AccessPanelReadOnlyTests
         rig.Repo.Verify(r => r.Save(It.IsAny<string>(), It.IsAny<ProgramWatch>()), Times.Never);
     }
 
+    /// <summary>
+    /// As a reader, editing a watch replaces it in the panel and the grid's set, in place, without touching the
+    /// repository (strict mock); the edit survives a semester switch like other reader edits.
+    /// </summary>
+    [Fact]
+    public void Reader_UpdateWatch_ReplacesItInMemoryOnly()
+    {
+        var rig = NewRig(canWrite: false);
+        var watch = NewWatch("Before");
+        rig.Panel.CreateWatch(NewWatch("Other"));
+        rig.Panel.CreateWatch(watch);
+        var before = rig.GridNotifications;
+
+        rig.Panel.UpdateWatch(new ProgramWatch { Id = watch.Id, Name = "After", Mode = ProgramWatchMode.Course, CourseIds = ["c1"] });
+
+        Assert.Equal(["Other", "After"], rig.Panel.Watches.Select(w => w.Name));
+        Assert.Equal("Courses: 1 course", rig.Panel.Watches[1].ModeSummary);
+        Assert.Equal(before + 1, rig.GridNotifications);
+
+        SelectSemester(rig, "sem-2");
+        SelectSemester(rig, "sem-1");
+        Assert.Equal(["Other", "After"], rig.Panel.Watches.Select(w => w.Name));
+    }
+
+    /// <summary>Updating a watch that is no longer shown (deleted while the form was open) changes nothing.</summary>
+    [Fact]
+    public void UpdateWatch_UnknownId_DoesNothing()
+    {
+        var rig = NewRig(canWrite: false);
+        rig.Panel.CreateWatch(NewWatch("A"));
+        var before = rig.GridNotifications;
+
+        rig.Panel.UpdateWatch(NewWatch("Ghost"));
+
+        Assert.Equal("A", Assert.Single(rig.Panel.Watches).Name);
+        Assert.Equal(before, rig.GridNotifications);
+    }
+
     // ── A writer: unchanged ───────────────────────────────────────────────────
 
     /// <summary>As a writer, create / toggle / delete are saved to the repository exactly as before.</summary>
@@ -177,6 +215,23 @@ public sealed class AccessPanelReadOnlyTests
         item.RequestDeleteCommand.Execute(null);
         rig.Repo.Verify(r => r.Delete(watch.Id), Times.Once);
         Assert.Empty(rig.Panel.Watches);
+    }
+
+    /// <summary>As a writer, editing a watch saves the rebuilt watch to the repository under the same Id.</summary>
+    [Fact]
+    public void Writer_UpdateWatch_IsSavedToTheRepository()
+    {
+        var rig = NewRig(canWrite: true);
+        var watch = NewWatch("Before");
+        rig.Repo.Setup(r => r.GetAll("sem-1")).Returns(new List<ProgramWatch> { watch });
+        rig.Panel.CreateWatch(watch);
+
+        var edited = new ProgramWatch { Id = watch.Id, Name = "After" };
+        rig.Repo.Setup(r => r.GetAll("sem-1")).Returns(new List<ProgramWatch> { edited });
+        rig.Panel.UpdateWatch(edited);
+
+        rig.Repo.Verify(r => r.Save("sem-1", edited), Times.Once);
+        Assert.Equal("After", Assert.Single(rig.Panel.Watches).Name);
     }
 
     /// <summary>

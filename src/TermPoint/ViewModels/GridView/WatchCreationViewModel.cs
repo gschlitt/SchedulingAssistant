@@ -9,7 +9,8 @@ using System.Collections.ObjectModel;
 namespace TermPoint.ViewModels.GridView;
 
 /// <summary>
-/// Manages the inline creation form for a new <see cref="ProgramWatch"/>. Handles mode
+/// Manages the inline form that creates a new <see cref="ProgramWatch"/> (<see cref="Show"/>) or edits an
+/// existing one (<see cref="ShowForEdit"/>). Handles mode
 /// selection, tag/course multi-select, auto-name generation, and validation.
 /// </summary>
 public partial class WatchCreationViewModel : ObservableObject
@@ -49,6 +50,22 @@ public partial class WatchCreationViewModel : ObservableObject
     /// <summary>Validation error shown when trying to save without selections.</summary>
     [ObservableProperty] private string? _validationError;
 
+    /// <summary>
+    /// The watch being edited, or <c>null</c> when the form is creating a new watch. Set by
+    /// <see cref="ShowForEdit"/>; <see cref="Save"/> rebuilds this watch (same Id, on/off state and
+    /// unknown JSON fields) instead of making a new one.
+    /// </summary>
+    private ProgramWatch? _editingWatch;
+
+    /// <summary>True while the form is editing an existing watch rather than creating one.</summary>
+    public bool IsEditing => _editingWatch is not null;
+
+    /// <summary>The confirm button's caption: "Create" for a new watch, "Save" when editing.</summary>
+    public string SaveButtonText => IsEditing ? "Save" : "Create";
+
+    /// <summary>The Id of the watch being edited, or <c>null</c> when creating.</summary>
+    public string? EditingWatchId => _editingWatch?.Id;
+
     /// <param name="envRepo">Repository for loading tags.</param>
     /// <param name="courseRepo">Repository for loading courses.</param>
     /// <param name="onSave">Callback invoked with the new watch when the user saves.</param>
@@ -68,6 +85,7 @@ public partial class WatchCreationViewModel : ObservableObject
     /// <summary>Opens the creation form and loads available tags and courses.</summary>
     public void Show()
     {
+        SetEditingWatch(null);
         _nameManuallyEdited = false;
         _lastAutoName = string.Empty;
         ValidationError = null;
@@ -79,10 +97,50 @@ public partial class WatchCreationViewModel : ObservableObject
         IsVisible = true;
     }
 
+    /// <summary>
+    /// Opens the form pre-filled with an existing watch's mode, selections and name, so the user can change it.
+    /// Saving calls the save callback with a rebuilt watch that keeps <paramref name="watch"/>'s Id, on/off state
+    /// and unknown JSON fields; the callback tells it apart from a new watch by that Id.
+    ///
+    /// <para>Inactive courses the watch still names are added to the course list (already ticked), so they stay
+    /// visible and are not silently dropped on save. Tags that no longer exist cannot be shown and are dropped.</para>
+    /// </summary>
+    /// <param name="watch">The watch to edit. It is not modified; the rebuilt copy goes to the save callback.</param>
+    public void ShowForEdit(ProgramWatch watch)
+    {
+        SetEditingWatch(watch);
+        ValidationError = null;
+
+        // Mode first: its change handler regenerates the name, which is overwritten below.
+        IsTagMode = watch.Mode == ProgramWatchMode.Tag;
+        LoadTags();
+        LoadLevels();
+        LoadCourses(watch.CourseIds);
+
+        if (watch.Mode == ProgramWatchMode.Tag)
+        {
+            SelectIds(Tags, watch.TagIds);
+            SelectIds(Levels, watch.LevelIds);
+        }
+        else
+        {
+            SelectIds(Courses, watch.CourseIds);
+        }
+
+        // Selecting regenerated the auto-name. Keep auto-naming on only if the saved name is that auto-name;
+        // a name the user typed earlier stays as typed (OnWatchNameChanged marks it as manually edited).
+        _nameManuallyEdited = false;
+        RegenerateName();
+        WatchName = watch.Name;
+
+        IsVisible = true;
+    }
+
     /// <summary>Resets and hides the creation form.</summary>
     public void Hide()
     {
         IsVisible = false;
+        SetEditingWatch(null);
         _nameManuallyEdited = false;
         _lastAutoName = string.Empty;
         Tags.Clear();
@@ -135,54 +193,78 @@ public partial class WatchCreationViewModel : ObservableObject
         ValidationError = null;
     }
 
-    /// <summary>Validates and saves the new watch.</summary>
+    /// <summary>
+    /// Validates the form and hands the resulting watch to the save callback, then hides the form. When creating,
+    /// the watch is new (fresh Id, enabled). When editing, it is a rebuilt copy of the edited watch: same Id and
+    /// on/off state, its unknown JSON fields carried over (spec item 3), and only the current mode's selections
+    /// kept (switching mode clears the other mode's lists, as for a new watch).
+    /// </summary>
     [RelayCommand]
     private void Save()
     {
+        List<string> tagIds = [], levelIds = [], courseIds = [];
+
         if (IsTagMode)
         {
-            var selectedTagIds = GetSelectedIdsFrom(Tags);
-            var selectedLevelIds = GetSelectedIdsFrom(Levels);
+            tagIds = GetSelectedIdsFrom(Tags);
+            levelIds = GetSelectedIdsFrom(Levels);
 
-            if (selectedTagIds.Count == 0 && selectedLevelIds.Count == 0)
+            if (tagIds.Count == 0 && levelIds.Count == 0)
             {
                 ValidationError = "Select at least one tag or level.";
                 return;
             }
-
-            var watch = new ProgramWatch
-            {
-                Name = string.IsNullOrWhiteSpace(WatchName) ? GenerateDefaultName() : WatchName.Trim(),
-                Mode = ProgramWatchMode.Tag,
-                IsEnabled = true,
-                TagIds = selectedTagIds,
-                LevelIds = selectedLevelIds
-            };
-
-            _onSave(watch);
         }
         else
         {
-            var selectedCourseIds = GetSelectedIdsFrom(Courses);
+            courseIds = GetSelectedIdsFrom(Courses);
 
-            if (selectedCourseIds.Count == 0)
+            if (courseIds.Count == 0)
             {
                 ValidationError = "Select at least one course.";
                 return;
             }
-
-            var watch = new ProgramWatch
-            {
-                Name = string.IsNullOrWhiteSpace(WatchName) ? GenerateDefaultName() : WatchName.Trim(),
-                Mode = ProgramWatchMode.Course,
-                IsEnabled = true,
-                CourseIds = selectedCourseIds
-            };
-
-            _onSave(watch);
         }
 
+        var original = _editingWatch;
+        var watch = new ProgramWatch
+        {
+            Name = string.IsNullOrWhiteSpace(WatchName) ? GenerateDefaultName() : WatchName.Trim(),
+            Mode = IsTagMode ? ProgramWatchMode.Tag : ProgramWatchMode.Course,
+            IsEnabled = original?.IsEnabled ?? true,
+            TagIds = tagIds,
+            LevelIds = levelIds,
+            CourseIds = courseIds
+        }.WithExtensionDataFrom(original);
+        if (original is not null)
+            watch.Id = original.Id;
+
+        _onSave(watch);
         Hide();
+    }
+
+    /// <summary>
+    /// Records which watch the form is editing (or <c>null</c> for a new watch) and refreshes the properties
+    /// that depend on it.
+    /// </summary>
+    /// <param name="watch">The watch being edited, or <c>null</c>.</param>
+    private void SetEditingWatch(ProgramWatch? watch)
+    {
+        _editingWatch = watch;
+        OnPropertyChanged(nameof(IsEditing));
+        OnPropertyChanged(nameof(SaveButtonText));
+        OnPropertyChanged(nameof(EditingWatchId));
+    }
+
+    /// <summary>Ticks every item in <paramref name="source"/> whose Id is in <paramref name="ids"/>.</summary>
+    /// <param name="source">The selectable list to update.</param>
+    /// <param name="ids">The Ids to tick.</param>
+    private static void SelectIds(ObservableCollection<SelectableItem> source, IEnumerable<string> ids)
+    {
+        var wanted = ids.ToHashSet();
+        foreach (var item in source)
+            if (wanted.Contains(item.Id))
+                item.IsSelected = true;
     }
 
     /// <summary>Cancels creation and hides the form.</summary>
@@ -254,12 +336,23 @@ public partial class WatchCreationViewModel : ObservableObject
             Levels.Add(new SelectableItem(level, level, OnItemSelectionChanged));
     }
 
-    private void LoadCourses()
+    /// <summary>
+    /// Fills <see cref="Courses"/> with the active courses, plus any course in <paramref name="alsoInclude"/> that
+    /// exists but is inactive (so an edited watch's inactive courses stay visible and are kept on save).
+    /// </summary>
+    /// <param name="alsoInclude">Course Ids to show even if inactive; <c>null</c> for none.</param>
+    private void LoadCourses(IEnumerable<string>? alsoInclude = null)
     {
         Courses.Clear();
         var courses = _courseRepo.GetAllActive();
         foreach (var c in courses)
             Courses.Add(new SelectableItem(c.Id, c.CalendarCode, OnItemSelectionChanged));
+
+        if (alsoInclude is null) return;
+        var shown = courses.Select(c => c.Id).ToHashSet();
+        foreach (var id in alsoInclude)
+            if (shown.Add(id) && _courseRepo.GetById(id) is { } extra)
+                Courses.Add(new SelectableItem(extra.Id, extra.CalendarCode, OnItemSelectionChanged));
     }
 
     private void OnItemSelectionChanged() => OnSelectionChanged();

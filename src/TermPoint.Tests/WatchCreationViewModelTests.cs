@@ -241,6 +241,122 @@ public sealed class WatchCreationViewModelTests
         Assert.True(_cancelCalled);
     }
 
+    // ── Edit ─────────────────────────────────────────────────────────────────
+
+    /// <summary>Editing pre-fills mode, selections and name, and the button reads "Save".</summary>
+    [Fact]
+    public void ShowForEdit_PrefillsModeSelectionsAndName()
+    {
+        _envRepo.Tags.Add(new SchedulingEnvironmentValue { Id = "t1", Name = "Core" });
+        _envRepo.Tags.Add(new SchedulingEnvironmentValue { Id = "t2", Name = "Upper" });
+        var vm = CreateVm();
+        var watch = new ProgramWatch { Name = "My name", Mode = ProgramWatchMode.Tag, TagIds = ["t2"], LevelIds = ["300"] };
+
+        vm.ShowForEdit(watch);
+
+        Assert.True(vm.IsVisible);
+        Assert.True(vm.IsEditing);
+        Assert.Equal("Save", vm.SaveButtonText);
+        Assert.True(vm.IsTagMode);
+        Assert.False(vm.Tags.Single(t => t.Id == "t1").IsSelected);
+        Assert.True(vm.Tags.Single(t => t.Id == "t2").IsSelected);
+        Assert.True(vm.Levels.Single(l => l.Id == "300").IsSelected);
+        Assert.Equal("My name", vm.WatchName);
+    }
+
+    /// <summary>A name the user typed is kept when selections change during an edit.</summary>
+    [Fact]
+    public void ShowForEdit_CustomName_IsNotOverwrittenBySelectionChanges()
+    {
+        _envRepo.Tags.Add(new SchedulingEnvironmentValue { Id = "t1", Name = "Core" });
+        _envRepo.Tags.Add(new SchedulingEnvironmentValue { Id = "t2", Name = "Upper" });
+        var vm = CreateVm();
+        vm.ShowForEdit(new ProgramWatch { Name = "BSc Year 1", Mode = ProgramWatchMode.Tag, TagIds = ["t1"] });
+
+        vm.Tags.Single(t => t.Id == "t2").IsSelected = true;
+
+        Assert.Equal("BSc Year 1", vm.WatchName);
+    }
+
+    /// <summary>An auto-generated name keeps following the selections during an edit.</summary>
+    [Fact]
+    public void ShowForEdit_AutoName_FollowsSelectionChanges()
+    {
+        _envRepo.Tags.Add(new SchedulingEnvironmentValue { Id = "t1", Name = "Core" });
+        _envRepo.Tags.Add(new SchedulingEnvironmentValue { Id = "t2", Name = "Upper" });
+        var vm = CreateVm();
+        vm.ShowForEdit(new ProgramWatch { Name = "Core", Mode = ProgramWatchMode.Tag, TagIds = ["t1"] });
+
+        vm.Tags.Single(t => t.Id == "t2").IsSelected = true;
+
+        Assert.Equal("Core + Upper", vm.WatchName);
+    }
+
+    /// <summary>
+    /// Saving an edit keeps the watch's Id, on/off state and unknown JSON fields (spec item 3), takes the new
+    /// selections, and does not touch the original object.
+    /// </summary>
+    [Fact]
+    public void ShowForEdit_Save_KeepsIdEnabledAndExtensionData()
+    {
+        _courseRepo.Courses.Add(new Course { Id = "c1", CalendarCode = "BIOL101", IsActive = true });
+        _courseRepo.Courses.Add(new Course { Id = "c2", CalendarCode = "CHEM201", IsActive = true });
+        var original = new ProgramWatch
+        {
+            Name = "BIOL101", Mode = ProgramWatchMode.Course, IsEnabled = false, CourseIds = ["c1"],
+            ExtensionData = new() { ["future"] = System.Text.Json.JsonDocument.Parse("42").RootElement }
+        };
+        var vm = CreateVm();
+        vm.ShowForEdit(original);
+
+        vm.Courses.Single(c => c.Id == "c2").IsSelected = true;
+        vm.SaveCommand.Execute(null);
+
+        Assert.NotNull(_savedWatch);
+        Assert.NotSame(original, _savedWatch);
+        Assert.Equal(original.Id, _savedWatch!.Id);
+        Assert.False(_savedWatch.IsEnabled);
+        Assert.Equal(["c1", "c2"], _savedWatch.CourseIds);
+        Assert.Equal(42, _savedWatch.ExtensionData!["future"].GetInt32());
+        Assert.Equal(["c1"], original.CourseIds);
+        Assert.False(vm.IsVisible);
+        Assert.False(vm.IsEditing);
+    }
+
+    /// <summary>An inactive course the watch still names is listed (ticked) and kept on save, not silently dropped.</summary>
+    [Fact]
+    public void ShowForEdit_InactiveCourse_IsListedAndKept()
+    {
+        _courseRepo.Courses.Add(new Course { Id = "c1", CalendarCode = "BIOL101", IsActive = true });
+        _courseRepo.Courses.Add(new Course { Id = "old", CalendarCode = "BIOL099", IsActive = false });
+        var vm = CreateVm();
+        vm.ShowForEdit(new ProgramWatch { Name = "x", Mode = ProgramWatchMode.Course, CourseIds = ["c1", "old"] });
+
+        Assert.True(vm.Courses.Single(c => c.Id == "old").IsSelected);
+        vm.SaveCommand.Execute(null);
+
+        Assert.Equal(["c1", "old"], _savedWatch!.CourseIds);
+    }
+
+    /// <summary>Opening the form for a new watch after an edit goes back to create mode (fresh Id, enabled).</summary>
+    [Fact]
+    public void Show_AfterEdit_ReturnsToCreateMode()
+    {
+        _envRepo.Tags.Add(new SchedulingEnvironmentValue { Id = "t1", Name = "Core" });
+        var vm = CreateVm();
+        var original = new ProgramWatch { Name = "Core", Mode = ProgramWatchMode.Tag, TagIds = ["t1"], IsEnabled = false };
+        vm.ShowForEdit(original);
+        vm.CancelCommand.Execute(null);
+
+        vm.Show();
+        Assert.Equal("Create", vm.SaveButtonText);
+        vm.Tags[0].IsSelected = true;
+        vm.SaveCommand.Execute(null);
+
+        Assert.NotEqual(original.Id, _savedWatch!.Id);
+        Assert.True(_savedWatch.IsEnabled);
+    }
+
     // ── Stubs ────────────────────────────────────────────────────────────────
 
     private sealed class StubEnvRepo : ISchedulingEnvironmentRepository
