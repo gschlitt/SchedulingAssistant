@@ -1039,7 +1039,22 @@ public partial class MainWindowViewModel : ViewModelBase
             (oldValue as IDisposable)?.Dispose();
 
         IsMoreOpen = ReferenceEquals(newValue, MoreMenuVm);
+
+        // Spec item 2.17: these flyouts add, rename and delete the things the grid's filter lists and tiles
+        // are built from, but save straight to the repositories without telling the grid. Reloading on close
+        // brings the filter lists and tile names up to date (ticks survive; the rebuild matches by ID).
+        if (EditsGridLookups(oldValue))
+            _scheduleGridVm.Reload();
     }
+
+    /// <summary>
+    /// Tells whether a flyout page edits data the schedule grid reads as lookups (rooms, campuses, subjects,
+    /// courses, instructors, scheduling environment values), so the grid must reload when the page closes.
+    /// </summary>
+    /// <param name="page">The flyout page that is closing, or null.</param>
+    /// <returns>True for the Courses, Instructors and Scheduling Environment flyouts; false otherwise.</returns>
+    private static bool EditsGridLookups(object? page) =>
+        page is CourseListViewModel or InstructorListViewModel or SchedulingEnvironmentViewModel;
 
     /// <summary>
     /// Handles the Escape key for flyouts. If the current flyout page has an active inline

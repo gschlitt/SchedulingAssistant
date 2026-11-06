@@ -280,6 +280,12 @@ About 80 items in nine groups. Most were deferred from 1.2.3 or found while test
 >[!note]- **2.16 Events editor meeting editor is completely messed up.
 
 >[!note]- **2.17 Rooms and possibly other Scheduling Environment fields don't show up in the Filter Bar until after a semester change
+> **Cause (2026-11-05):** the filter lists (and the names on tiles) are rebuilt only when the grid reloads, and the
+> Courses, Instructors and Scheduling Environment flyouts save straight to the repositories without telling the grid.
+> So added, renamed or deleted rooms, campuses, subjects, courses, instructors, section types, tags and meeting types
+> stayed stale until something else reloaded it (a semester change). **Fixed:** `MainWindowViewModel.OnFlyoutPageChanged`
+> reloads the grid when one of those three flyouts closes (`EditsGridLookups`). Read-only reload; ticks survive (the
+> rebuild matches by ID). No data risk, no version gate. Left: eye check in the app.
 
 >[!note]- **2.18 Is the Room Browser functional? Consider CIVL 215 T1A in Winter Term 1 UBC
 
