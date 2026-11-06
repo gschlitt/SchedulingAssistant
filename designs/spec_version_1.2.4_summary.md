@@ -321,7 +321,21 @@ About 80 items in nine groups. Most were deferred from 1.2.3 or found while test
 > (only the "Schedule View" title stays bold). The "Show all" link is gone (no real need; the top bar's Subjects
 > picker changes the focus), and with it `FocusViewModel.ShowAllCommand` and its test.
 
->[!note]- **2.15 Mute instructor conflicts, mute room conflicts
+>[!note]- **2.15 Mute instructor conflicts, mute room conflicts** `version gate`
+> **Moved to the next release (Greg, 2026-11-06)** because it raises `MinimumVersionToWrite`. Designed: right-click a
+> red conflict notice to mute it (hover says so); it becomes a light *Conflicts muted* line on both cards; right-click
+> that to unmute. Stored on the section as pairs (kind, other section, instructor or room), so deleted or changed
+> sections need no clean-up; a copied section clears its mutes. Full design: `designs/conflict-muting.md`, Part B.
+
+>[!note]- **2.19 Show instructor and room conflicts in the section editor before saving** `AXAML`
+> Today conflicts appear only on the card after saving. A live, non-blocking notice in the editor (like the capacity
+> warning) re-checks the semester with the unsaved edits whenever an instructor or a meeting's time or room changes.
+> No dialog on save. No data change, no version gate. Design: `designs/conflict-muting.md`, Part A.
+> **Done (2026-11-06):** `DraftConflictCheck` (runs the card detectors on the unsaved draft); the editor re-checks on
+> instructor ticks and meeting changes; `Save()` and the check share one builder for schedule and instructors. **No
+> Dismiss button** (Greg): it would look like muting, which doesn't exist yet; the card keeps its flag after saving.
+> Tests: `DraftConflictCheckTests`. Greg's eye check passed. Note: the editor also checks in multi-semester mode,
+> where the cards show no conflicts.
 
 >[!note]- **2.16 Events editor meeting editor is completely messed up.
 > **Cause (2026-11-05):** in the meeting editor (`MeetingListView.axaml`), the Schedule column headings and each

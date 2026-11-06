@@ -829,13 +829,8 @@ public partial class SectionListViewModel : ViewModelBase, IDisposable
             return;
         }
 
-        var courseCodeById = courseLookup.ToDictionary(
-            kv => kv.Key,
-            kv => kv.Value.CalendarCode ?? kv.Value.Id);
-
-        var roomNameById = roomLookup.ToDictionary(
-            kv => kv.Key,
-            kv => $"{kv.Value.Building} {kv.Value.RoomNumber}".Trim());
+        var courseCodeById = BuildCourseCodeLabels(courseLookup);
+        var roomNameById = BuildRoomLabels(roomLookup);
 
         // Detect conflicts per semester independently.
         var allConflicts = new Dictionary<string, List<string>>();
@@ -875,13 +870,8 @@ public partial class SectionListViewModel : ViewModelBase, IDisposable
             return;
         }
 
-        var courseCodeById = courseLookup.ToDictionary(
-            kv => kv.Key,
-            kv => kv.Value.CalendarCode ?? kv.Value.Id);
-
-        var instructorLabelById = instructorLookup.ToDictionary(
-            kv => kv.Key,
-            kv => FormatInstructorLabel(kv.Value));
+        var courseCodeById = BuildCourseCodeLabels(courseLookup);
+        var instructorLabelById = BuildInstructorLabels(instructorLookup);
 
         var allConflicts = new Dictionary<string, List<string>>();
         foreach (var (semesterId, sections) in _sectionStore.SectionsBySemester)
@@ -898,6 +888,27 @@ public partial class SectionListViewModel : ViewModelBase, IDisposable
                 : null;
         }
     }
+
+    /// <summary>
+    /// Builds the course labels used in conflict descriptions: the calendar code, or the ID when there is none.
+    /// Shared by the section cards and the editor's live conflict notice so both word conflicts the same way.
+    /// </summary>
+    /// <param name="courseLookup">Courses keyed by ID.</param>
+    /// <returns>Course ID → label (e.g. "CHEM101").</returns>
+    private static Dictionary<string, string> BuildCourseCodeLabels(Dictionary<string, Course> courseLookup) =>
+        courseLookup.ToDictionary(kv => kv.Key, kv => kv.Value.CalendarCode ?? kv.Value.Id);
+
+    /// <summary>Builds the room labels used in conflict descriptions ("Building Number").</summary>
+    /// <param name="roomLookup">Rooms keyed by ID.</param>
+    /// <returns>Room ID → label (e.g. "A 121").</returns>
+    private static Dictionary<string, string> BuildRoomLabels(Dictionary<string, Room> roomLookup) =>
+        roomLookup.ToDictionary(kv => kv.Key, kv => $"{kv.Value.Building} {kv.Value.RoomNumber}".Trim());
+
+    /// <summary>Builds the instructor labels used in conflict descriptions ("F. LastName").</summary>
+    /// <param name="instructorLookup">Instructors keyed by ID.</param>
+    /// <returns>Instructor ID → label (e.g. "J. Smith").</returns>
+    private static Dictionary<string, string> BuildInstructorLabels(Dictionary<string, Instructor> instructorLookup) =>
+        instructorLookup.ToDictionary(kv => kv.Key, kv => FormatInstructorLabel(kv.Value));
 
     /// <summary>Formats an instructor as "F. LastName" for conflict descriptions.</summary>
     private static string FormatInstructorLabel(Instructor instructor)
@@ -1298,6 +1309,19 @@ public partial class SectionListViewModel : ViewModelBase, IDisposable
             defaultBlockLength: ctx.DefaultBlockLength,
             defaultSectionCapacity: AppSettings.Current.DefaultSectionCapacity,
             outOfFocusInstructorIds: instructorOrder.OutOfFocusIds);
+
+        // Live conflict notice (design: designs/conflict-muting.md, Part A). The labels are built once here, from
+        // the lists the editor already loaded; the semester's sections are read from the store at each check, so a
+        // check always sees the latest saved state. Unlike the cards, this also runs in multi-semester mode: the
+        // editor's own semester is always well defined.
+        var conflictCourseLabels     = BuildCourseCodeLabels(ctx.AllCourses.ToDictionary(c => c.Id));
+        var conflictRoomLabels       = BuildRoomLabels(ctx.Rooms.ToDictionary(r => r.Id));
+        var conflictInstructorLabels = BuildInstructorLabels(ctx.Instructors.ToDictionary(i => i.Id));
+        editVm.CheckConflicts = draft =>
+            DraftConflictCheck.Check(
+                draft,
+                _sectionStore.SectionsBySemester.TryGetValue(semesterId, out var semSections) ? semSections : [],
+                conflictRoomLabels, conflictInstructorLabels, conflictCourseLabels);
 
         // Wire the Room Availability Browser factory (disabled in multi-semester mode)
         if (!_semesterContext.IsMultiSemesterMode)

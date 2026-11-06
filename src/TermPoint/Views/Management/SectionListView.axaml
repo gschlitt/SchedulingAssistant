@@ -134,6 +134,22 @@
                     </Grid>
                 </Border>
 
+                <!--  Conflict advisory: room and instructor conflicts this section would have if saved now, one per line (designs/conflict-muting.md, Part A).  -->
+                <!--  No Dismiss button on purpose: it would look like muting, which does not exist yet; the card keeps its flag after saving.  -->
+                <Border
+                    Padding="6,3"
+                    Background="{StaticResource FilterExpanderContent}"
+                    BorderBrush="{StaticResource SubduedBorder}"
+                    BorderThickness="1"
+                    CornerRadius="3"
+                    IsVisible="{Binding ConflictWarning, Converter={x:Static StringConverters.IsNotNullOrEmpty}}">
+                    <TextBlock
+                        FontSize="10"
+                        Foreground="{DynamicResource TextAttention}"
+                        Text="{Binding ConflictWarning}"
+                        TextWrapping="Wrap" />
+                </Border>
+
                 <!--  Subject + Course Number + Pattern + Section Code + Section Type side by side  -->
                 <!--  The Pattern column (col 2) is Auto-width and collapses when HasCodePatterns is false  -->
                 <Grid Margin="0,0,0,0" ColumnDefinitions="100,80,Auto,80,90,60">

@@ -633,6 +633,15 @@ public partial class SectionEditViewModel : ViewModelBase
             }).ToList());
         WireSelectionSummary(InstructorSelections, nameof(InstructorSummary));
 
+        // Ticking or unticking an instructor can make or clear an instructor conflict (live conflict notice).
+        // The rows are fixed for the editor's lifetime, so per-row subscriptions are enough.
+        foreach (var row in InstructorSelections)
+            row.PropertyChanged += (_, e) =>
+            {
+                if (e.PropertyName == nameof(InstructorSelectionViewModel.IsSelected))
+                    RefreshConflictWarning();
+            };
+
         // Build single-select lists with a leading "(none)" sentinel
         SectionTypes = BuildSentinelList(sectionTypes);
 
@@ -754,6 +763,7 @@ public partial class SectionEditViewModel : ViewModelBase
                     m.PropertyChanged += OnMeetingBlockLengthChanged;
             OpenRoomBrowserCommand.NotifyCanExecuteChanged();
             RefreshRoomBrowser();
+            RefreshConflictWarning();
         };
     }
 
@@ -769,6 +779,10 @@ public partial class SectionEditViewModel : ViewModelBase
         else if (e.PropertyName == nameof(SectionMeetingViewModel.SelectedRoomId))
             CheckRoomCapacities();
         RefreshRoomBrowser();
+
+        // Any change to a meeting (day, start, length, frequency, room) can make or clear a conflict. Changes
+        // that can't (meeting type, say) re-check too: the check is cheap and a same result changes nothing.
+        RefreshConflictWarning();
     }
 
     private static ObservableCollection<SchedulingEnvironmentValue> BuildSentinelList(
@@ -1128,22 +1142,10 @@ public partial class SectionEditViewModel : ViewModelBase
         var originalAssignments = _section.InstructorAssignments;
         var originalReserves    = _section.Reserves;
 
-        // Meetings: each row remembers the schedule entry it was created from and carries its
-        // unknown fields in ToSchedule(). Rows added in this session have no original; rows
-        // removed here simply drop theirs.
-        _section.Schedule = Meetings
-            .Select(m => m.ToSchedule())
-            .Where(s => s is not null)
-            .Cast<SectionDaySchedule>()
-            .ToList();
-
-        // Multi-select instructors with workload. Rows map back to their original assignment by
-        // instructor id; a newly ticked instructor has no original, so FirstOrDefault gives null.
-        _section.InstructorAssignments = InstructorSelections
-            .Where(i => i.IsSelected)
-            .Select(i => new InstructorAssignment { InstructorId = i.Value.Id, Workload = i.ParsedWorkload }
-                .WithExtensionDataFrom(originalAssignments.FirstOrDefault(a => a.InstructorId == i.Value.Id)))
-            .ToList();
+        // Meetings and instructors are built by the same methods the live conflict check uses,
+        // so the check always sees exactly what a save stores.
+        _section.Schedule = BuildScheduleFromRows();
+        _section.InstructorAssignments = BuildAssignmentsFromRows(originalAssignments);
 
         // Single-select properties (treat empty string sentinel as null)
         _section.SectionTypeId = string.IsNullOrEmpty(SelectedSectionTypeId) ? null : SelectedSectionTypeId;
@@ -1169,6 +1171,89 @@ public partial class SectionEditViewModel : ViewModelBase
 
         await _onSave(_section);
         RequestClose?.Invoke();
+    }
+
+    /// <summary>
+    /// Builds the section's schedule from the meeting rows. Used by <see cref="Save"/> and by the live conflict
+    /// check, so the check sees exactly what a save would store. Each row remembers the schedule entry it was
+    /// created from and carries that entry's unknown JSON fields in <see cref="SectionMeetingViewModel.ToSchedule"/>.
+    /// Rows added in this session have no original; rows removed here simply drop theirs. Rows without a start
+    /// time or a length are left out.
+    /// </summary>
+    /// <returns>A new list of new schedule entries; nothing in <c>_section</c> is changed.</returns>
+    private List<SectionDaySchedule> BuildScheduleFromRows() =>
+        Meetings
+            .Select(m => m.ToSchedule())
+            .Where(s => s is not null)
+            .Cast<SectionDaySchedule>()
+            .ToList();
+
+    /// <summary>
+    /// Builds the section's instructor assignments from the ticked instructor rows. Used by <see cref="Save"/> and
+    /// by the live conflict check. Rows map back to their original assignment by instructor ID, so each rebuilt
+    /// assignment keeps its original's unknown JSON fields; a newly ticked instructor has no original.
+    /// </summary>
+    /// <param name="originalAssignments">The assignments the section was loaded with.</param>
+    /// <returns>A new list of new assignments; nothing in <c>_section</c> is changed.</returns>
+    private List<InstructorAssignment> BuildAssignmentsFromRows(IReadOnlyList<InstructorAssignment> originalAssignments) =>
+        InstructorSelections
+            .Where(i => i.IsSelected)
+            .Select(i => new InstructorAssignment { InstructorId = i.Value.Id, Workload = i.ParsedWorkload }
+                .WithExtensionDataFrom(originalAssignments.FirstOrDefault(a => a.InstructorId == i.Value.Id)))
+            .ToList();
+
+    // ── Live conflict notice (designs/conflict-muting.md, Part A) ─────────────
+
+    /// <summary>
+    /// Returns the room and instructor conflicts a draft of this section would have, one description each
+    /// (empty when none). Set by the parent VM after construction, like <see cref="CreateRoomBrowser"/>; while
+    /// null (tests, or no parent) no conflict notice is shown. Setting it runs a first check at once, so an
+    /// existing section that already has a conflict shows it as soon as the editor opens.
+    /// </summary>
+    public Func<Section, IReadOnlyList<string>>? CheckConflicts
+    {
+        get => _checkConflicts;
+        set
+        {
+            _checkConflicts = value;
+            RefreshConflictWarning();
+        }
+    }
+    private Func<Section, IReadOnlyList<string>>? _checkConflicts;
+
+    /// <summary>
+    /// Advisory listing the room and instructor conflicts this section would have if saved now, one per line,
+    /// or null when there are none. Non-blocking: Save still works, since some conflicts are intended.
+    /// Deliberately has no Dismiss: hiding it here would suggest the conflict had been muted, and it still shows
+    /// on the card after saving (muting is designs/conflict-muting.md, Part B, a later release).
+    /// </summary>
+    [ObservableProperty] private string? _conflictWarning;
+
+    /// <summary>
+    /// Re-checks the unsaved edits for room and instructor conflicts and updates <see cref="ConflictWarning"/>.
+    /// Called when an instructor is ticked or unticked, and when a
+    /// meeting is added, removed or changed. The check reads a throwaway draft section built from the editor's
+    /// rows: <c>_section</c> is never touched, so Cancel still discards everything. Cheap (well under a
+    /// millisecond for a semester of a few hundred sections), so no debouncing is needed.
+    /// </summary>
+    private void RefreshConflictWarning()
+    {
+        if (_checkConflicts is null) return;
+
+        // Only the fields the detectors read are filled in. The draft is never saved, so it needs none of the
+        // other fields and no WithExtensionDataFrom: nothing of the original can be lost through it.
+        var draft = new Section
+        {
+            Id = _section.Id,
+            SemesterId = _section.SemesterId,
+            CourseId = SelectedCourseId,
+            SectionCode = SectionCode.Trim(),
+            Schedule = BuildScheduleFromRows(),
+            InstructorAssignments = BuildAssignmentsFromRows(_section.InstructorAssignments),
+        };
+
+        var lines = _checkConflicts(draft);
+        ConflictWarning = lines.Count == 0 ? null : string.Join("\n", lines);
     }
 
     [RelayCommand]
