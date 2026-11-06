@@ -4,22 +4,53 @@
     {
       "name": "wasm-demo",
       "runtimeExecutable": "python",
-      "runtimeArgs": ["-m", "http.server", "8091", "--directory", "C:/Users/gregs/source/repos/SchedulingAssistant/src/TermPoint.Browser/bin/Release/net10.0-browser/browser-wasm/AppBundle"],
+      "runtimeArgs": [
+        "-m",
+        "http.server",
+        "8091",
+        "--directory",
+        "C:/Users/gregs/source/repos/SchedulingAssistant/src/TermPoint.Browser/bin/Release/net10.0-browser/browser-wasm/AppBundle"
+      ],
       "port": 8091,
       "autoPort": false
     },
     {
       "name": "termpoint-landing",
       "runtimeExecutable": "python",
-      "runtimeArgs": ["-m", "http.server", "8754", "--directory", "C:/Users/gregs/Documents/TermPointMedia"],
+      "runtimeArgs": [
+        "-m",
+        "http.server",
+        "8754",
+        "--directory",
+        "C:/Users/gregs/Documents/TermPointMedia"
+      ],
       "port": 8754,
       "autoPort": false
     },
     {
       "name": "termpoint-pages",
       "runtimeExecutable": "python",
-      "runtimeArgs": ["-m", "http.server", "8755", "--directory", "C:/Users/gregs/source/repos/TermPointPages"],
+      "runtimeArgs": [
+        "-m",
+        "http.server",
+        "8755",
+        "--directory",
+        "C:/Users/gregs/source/repos/TermPointPages"
+      ],
       "port": 8755,
+      "autoPort": false
+    },
+    {
+      "name": "termpoint-help",
+      "runtimeExecutable": "python",
+      "runtimeArgs": [
+        "-m",
+        "http.server",
+        "8756",
+        "--directory",
+        "C:/Users/gregs/source/repos/SchedulingAssistant/src/TermPoint/Help"
+      ],
+      "port": 8756,
       "autoPort": false
     }
   ]

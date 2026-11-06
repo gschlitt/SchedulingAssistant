@@ -320,21 +320,7 @@ public static class HelpTip
     /// <c>HelpViewModel.OpenArticle</c>.
     /// </summary>
     /// <param name="target">An external URL or a bare Help/ file name (e.g. "access.html").</param>
-    private static void OpenMoreHelp(string target)
-    {
-        if (target.StartsWith("http", StringComparison.OrdinalIgnoreCase))
-        {
-            PlatformProcess.OpenUri(target);
-            return;
-        }
-
-#if BROWSER
-        PlatformProcess.OpenLocalFile("Help/" + target);
-#else
-        var path = System.IO.Path.Combine(AppContext.BaseDirectory, "Help", target);
-        PlatformProcess.OpenLocalFile(path);
-#endif
-    }
+    private static void OpenMoreHelp(string target) => HelpArticles.Open(target);
 
     // ── Resource helpers ───────────────────────────────────────────────────────
 

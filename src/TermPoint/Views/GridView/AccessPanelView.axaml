@@ -5,6 +5,7 @@
 	xmlns:conv="using:TermPoint.Converters"
 	xmlns:converters="clr-namespace:Avalonia.Controls.Converters;assembly=Avalonia.Controls"
 	xmlns:b="using:TermPoint.Behaviors"
+	xmlns:controls="using:TermPoint.Controls"
 	xmlns:vm="using:TermPoint.ViewModels.GridView"
 	x:CompileBindings="False"
 	x:DataType="vm:AccessPanelViewModel">
@@ -133,6 +134,11 @@
 					<TextBlock Text="Access" Margin="5,0"
 							   b:HelpTip.Text="'Watches' can advise you if student access is affected by a scheduling decision."
 							   b:HelpTip.MoreHelpUrl="access.html" />
+					<!--  Help "?" (raised, like an exponent): opens the Access Watches article, as on Filters and Overlays.  -->
+					<controls:HelpMarker
+						Margin="-2,0,3,0"
+						Article="access.html"
+						ToolTip.Tip="How to use Access Watches (opens Help)" />
 				</StackPanel>
 			</GroupBox.Header>
 

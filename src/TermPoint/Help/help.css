@@ -194,3 +194,50 @@ kbd {
 
 .card h3 { margin: 0 0 6px; font-size: 13px; color: var(--heading); }
 .card p  { margin: 0; font-size: 12px; color: var(--subtle); }
+
+/* ── Screenshots (drawn by tools/HelpShots at 2x; shown at half size) ─── */
+figure.shot {
+    margin: 12px 0 16px;
+}
+
+figure.shot img {
+    display: block;
+    max-width: 100%;
+    height: auto;
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    box-shadow: var(--shadow);
+}
+
+figure.shot figcaption {
+    font-size: 12px;
+    color: var(--subtle);
+    margin-top: 6px;
+}
+
+/* ── "Which sections show?" example tables ────────────────────────────── */
+table.matches {
+    border-collapse: collapse;
+    margin: 10px 0 16px;
+    font-size: 12.5px;
+}
+
+table.matches th,
+table.matches td {
+    border: 1px solid var(--border);
+    padding: 4px 10px;
+    text-align: left;
+    vertical-align: top;
+}
+
+table.matches th { background: var(--accent-light); color: var(--heading); font-weight: 600; }
+
+table.matches td.yes { color: #2e7d4f; font-weight: 600; white-space: nowrap; }
+table.matches td.no  { color: #a33a3a; white-space: nowrap; }
+
+/* ── "On this page:" line under an article's title ────────────────────── */
+p.contents {
+    font-size: 12.5px;
+    color: var(--subtle);
+    margin: -8px 0 18px;
+}

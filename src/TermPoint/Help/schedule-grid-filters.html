@@ -3,81 +3,284 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Grid Filters — TermPoint Help</title>
+<title>Filters and Overlays — TermPoint Help</title>
 <link rel="stylesheet" href="help.css">
 </head>
 <body>
 
-<h1>Filtering the Schedule Grid</h1>
+<!--
+    The pictures in images/filters/ are drawn from the app's real Schedule View title bar and filter bar, filled with
+    made-up names, by tools/HelpShots (see its README). After either changes, re-run the tool rather than editing the PNGs.
+-->
 
-<p>
-    The filter panel lets you narrow the grid to show only the sections you care about. Open it
-    by clicking the <strong>filter icon</strong> (funnel) in the top-right corner of the Schedule
-    Grid panel.
+<h1>Filters and Overlays: Seeing Just the Sections You Want</h1>
+
+<p class="contents">
+    On this page:
+    <a href="#rule">The one rule</a> ·
+    <a href="#example-1">Examples</a> ·
+    <a href="#meetings">Rooms and meeting types</a> ·
+    <a href="#overlays">Overlays</a> ·
+    <a href="#good-to-know">Good to know</a> ·
+    <a href="#at-a-glance">At a glance</a>
 </p>
 
-<!-- ── VIDEO ──────────────────────────────────────────────────────────── -->
-<div class="video-section">
-    <p class="video-label">Video: Using Grid Filters</p>
-    <div class="video-placeholder">
-        <div class="icon">🎬</div>
-        <strong>Grid Filters Video — Coming Soon</strong>
-        <p>Uncomment the <code>&lt;iframe&gt;</code> block in <code>schedule-grid-filters.html</code> and add your YouTube video ID.</p>
-    </div>
-    <!--
-    <div class="video-container">
-        <iframe
-            src="https://www.youtube.com/embed/VIDEO_ID_HERE"
-            title="TermPoint — Using Grid Filters"
-            allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-            allowfullscreen>
-        </iframe>
-    </div>
-    -->
+<p>
+    The <strong>Filters</strong> bar above the Schedule Grid lets you narrow the grid down to the sections you care
+    about: one instructor's teaching, all the labs, everything second-year, and so on. Next to it, the
+    <strong>Overlays</strong> bar does the opposite job: it <em>adds</em> one person's, room's or tag's sections to
+    whatever you are looking at, marked in red.
+</p>
+
+<figure class="shot">
+    <img src="images/filters/bar_empty.png" width="905" alt="The Schedule View title bar above the Filters and Overlays bars, with nothing chosen">
+    <figcaption>The top of the Schedule View with nothing chosen: the Filters bar (left), the Overlays bar (right), and a
+    title bar that names only the department and semester, because the grid shows everything.</figcaption>
+</figure>
+
+<p>
+    Click any word in the Filters bar (<em>Instructor</em>, <em>Room</em>, <em>Subject</em>…) to open its list, and tick
+    what you want. The <strong>bin</strong> at the start of the bar clears every filter at once.
+</p>
+
+<div class="note">
+    <p>
+        <strong>To see what you are filtering by, look at the title bar.</strong> As soon as anything is ticked, the
+        Schedule View's title bar spells it out in words, for example
+        <strong>Filtered by: Instructor: Sally Ford, Joe Smith · Type: Lecture</strong>. Each part between the dots
+        is one list you are using, followed by what you ticked in it. An overlay gets its own note there too, in
+        colour. It's the quickest way to answer "why am I seeing only these?"
+    </p>
 </div>
 
-<!-- ── CONTENT ────────────────────────────────────────────────────────── -->
-<h2>Filter Dimensions</h2>
-<p>You can filter by any combination of these eight dimensions:</p>
+<!-- ── THE RULE ──────────────────────────────────────────────────────── -->
+<h2 id="rule">The one rule to remember</h2>
+
+<p>Think of each list in the bar as a question about a section: <em>Who teaches it? What subject is it?</em></p>
+
 <ul>
-    <li><strong>Instructors</strong> — show only sections taught by selected instructors</li>
-    <li><strong>Rooms</strong> — show only sections meeting in selected rooms</li>
-    <li><strong>Subjects</strong> — e.g. HIST, MATH, ENGL</li>
-    <li><strong>Campuses</strong> — if your institution uses multiple campus codes</li>
-    <li><strong>Section Types</strong> — e.g. Lecture, Lab, Seminar</li>
-    <li><strong>Tags</strong> — arbitrary labels you can attach to sections</li>
-    <li><strong>Meeting Types</strong> — e.g. In-Person, Online, Hybrid</li>
-    <li><strong>Levels</strong> — e.g. 100-level, 200-level, Graduate</li>
+    <li>
+        <strong>Ticking more in the same list lets more sections in.</strong>
+        Ticking two instructors means "taught by <em>this one or that one</em>".
+    </li>
+    <li>
+        <strong>Using another list narrows things down.</strong>
+        Each list you use selects one more thing a section must be. Choosing an Instructor  plus a Section Type (perhaps 'lecture') means
+        "taught by this person, <em>and also</em> a lecture", so, all lecture sections taught by this person.
+    </li>
 </ul>
 
-<h2>AND / OR Logic</h2>
-<p>The filter uses two-level logic:</p>
+<p>
+    So a section stays on the grid only if it fits <strong>every list you have used</strong>, and for each list it
+    only has to fit <strong>one of the things you ticked</strong>. Lists you have not touched don't matter at all.
+</p>
+
+<div class="note">
+    <p>
+        <strong>Tags are the one exception.</strong> Ticking two tags normally means "sections that have
+        <em>both</em> tags". You can switch it to "either tag" at the top of the Tags list. See
+        <a href="#example-2">Example 2</a>.
+    </p>
+</div>
+
+<!-- ── EXAMPLE 1 ──────────────────────────────────────────────────────── -->
+<h2 id="example-1">Example 1: all the lectures taught by Joe Smith or Sally Ford</h2>
+
+<ol>
+    <li>Open <strong>Instructor</strong> and tick <em>Joe Smith</em> and <em>Sally Ford</em>.</li>
+    <li>Open <strong>Section Type</strong> and tick <em>Lecture</em>.</li>
+</ol>
+
+<figure class="shot">
+    <img src="images/filters/ex1_open.png" width="967" alt="Instructor list with Joe Smith and Sally Ford ticked; Section Type list with Lecture ticked; the title bar reads Filtered by: Instructor: Sally Ford, Joe Smith · Type: Lecture">
+    <figcaption>
+        The title bar reads it back: <strong>Instructor: Sally Ford, Joe Smith · Type: Lecture</strong>. Both lists
+        are shown open here so you can see every tick. In TermPoint only one list is open at a time; it closes when
+        you click elsewhere, and your ticks stay.
+    </figcaption>
+</figure>
+
+<p>Two people in one list means <em>either</em> of them; the Section Type list adds "and it must be a lecture":</p>
+
+<table class="matches">
+    <tr><th>Section</th><th>Taught by</th><th>Type</th><th>On the grid?</th></tr>
+    <tr><td>BIOL101 A</td><td>Joe Smith</td><td>Lecture</td><td class="yes">✔ shown</td></tr>
+    <tr><td>MATH225 B</td><td>Sally Ford</td><td>Lecture</td><td class="yes">✔ shown</td></tr>
+    <tr><td>MATH101 A</td><td>Joe Smith and Grace Kim</td><td>Lecture</td><td class="yes">✔ shown (one of them is enough)</td></tr>
+    <tr><td>CHEM110 L01</td><td>Sally Ford</td><td>Lab</td><td class="no">✘ hidden: not a lecture</td></tr>
+    <tr><td>BIOL210 A</td><td>Marcus Chen</td><td>Lecture</td><td class="no">✘ hidden: neither Joe nor Sally</td></tr>
+</table>
+
+<div class="tip">
+    <p>
+        <strong>Section Type or Meeting Type?</strong> <em>Section Type</em> is what kind of section it is as a whole
+        (a lecture section, a lab section). <em>Meeting Type</em> describes each of its weekly meetings separately.
+        To find "the lectures", Section Type is usually the one you want.
+    </p>
+</div>
+
+<!-- ── EXAMPLE 2 ──────────────────────────────────────────────────────── -->
+<h2 id="example-2">Example 2: every section tagged Cohort1 or Cohort2 (or both)</h2>
+
+<ol>
+    <li>Open <strong>Tags</strong> and tick <em>Cohort1</em> and <em>Cohort2</em>.</li>
+    <li>At the top of the list, choose <strong>any of the checked tags</strong>.</li>
+</ol>
+
+<figure class="shot">
+    <img src="images/filters/ex2_any_open.png" width="985" alt="Tags list set to 'any of the checked tags', with Cohort1 and Cohort2 ticked; the title bar reads Filtered by: Tags (any): Cohort1, Cohort2">
+    <figcaption>"any of the checked tags": a section needs just one of them. The title bar says so: <strong>Tags (any): Cohort1, Cohort2</strong>.</figcaption>
+</figure>
+
+<p>
+    Out of the box, the Tags list is set to <strong>all of the checked tags</strong> instead. That suits tags that
+    describe a combination, such as <em>First-year</em> and <em>Writing-intensive</em> together:
+</p>
+
+<figure class="shot">
+    <img src="images/filters/ex2_all_open.png" width="940" alt="Tags list set to 'all of the checked tags', with Cohort1 and Cohort2 ticked; the title bar reads Filtered by: Tags: Cohort1, Cohort2">
+    <figcaption>"all of the checked tags" (the usual setting): a section needs every tag you ticked. The title bar reads
+    just <strong>Tags: Cohort1, Cohort2</strong>, without "(any)".</figcaption>
+</figure>
+
+<table class="matches">
+    <tr><th>Section's tags</th><th>"all of the checked tags"</th><th>"any of the checked tags"</th></tr>
+    <tr><td>Cohort1</td><td class="no">✘ hidden</td><td class="yes">✔ shown</td></tr>
+    <tr><td>Cohort2</td><td class="no">✘ hidden</td><td class="yes">✔ shown</td></tr>
+    <tr><td>Cohort1 and Cohort2</td><td class="yes">✔ shown</td><td class="yes">✔ shown</td></tr>
+    <tr><td>First-year only</td><td class="no">✘ hidden</td><td class="no">✘ hidden</td></tr>
+</table>
+
+<p>
+    The Tags list goes back to "all" whenever you clear the filters with the bin, and each time TermPoint starts.
+</p>
+
+<!-- ── EXAMPLE 3 ──────────────────────────────────────────────────────── -->
+<h2 id="example-3">Example 3: all second-year Biology, Chemistry and Mathematics</h2>
+
+<ol>
+    <li>Open <strong>Subject</strong> and tick <em>Biology</em>, <em>Chemistry</em> and <em>Mathematics</em>.</li>
+    <li>Open <strong>Level</strong> and tick <em>200</em> (the 200-level courses).</li>
+</ol>
+
+<figure class="shot">
+    <img src="images/filters/ex3_open.png" width="964" alt="Subject list with Biology, Chemistry and Mathematics ticked; Level list with 200 ticked; the title bar reads Filtered by: Subject: Biology, Chemistry, Mathematics · Level: 200">
+    <figcaption>Three subjects (any of them) and one level: sections that are in one of those subjects <em>and</em> at the 200 level.</figcaption>
+</figure>
+
+<table class="matches">
+    <tr><th>Section</th><th>On the grid?</th></tr>
+    <tr><td>BIOL210 A</td><td class="yes">✔ shown</td></tr>
+    <tr><td>CHEM201 A</td><td class="yes">✔ shown</td></tr>
+    <tr><td>MATH225 B</td><td class="yes">✔ shown</td></tr>
+    <tr><td>MATH101 A</td><td class="no">✘ hidden: first-year</td></tr>
+    <tr><td>PHYS120 A</td><td class="no">✘ hidden: Physics wasn't ticked</td></tr>
+</table>
+
+<div class="tip">
+    <p>
+        <strong>Want second- <em>and</em> third-year?</strong> Tick <em>200</em> and <em>300</em> in the same Level
+        list: more ticks in one list let more in.
+    </p>
+</div>
+
+<div class="warn">
+    <p>
+        <strong>Why is my grid empty?</strong> Usually because two lists ask for things no section can be at once.
+        Ticking <em>Mathematics</em> under Subject and <em>BIOL210</em> under Course asks for "a Mathematics section
+        that is also BIOL210", and there is none. Read the <strong>Filtered by:</strong> line in the title bar to see
+        what you have asked for, or click the bin to start again.
+    </p>
+</div>
+
+<!-- ── EXAMPLE 4 ──────────────────────────────────────────────────────── -->
+<h2 id="example-4">Example 4: sections that still need an instructor</h2>
+
+<p>The first two items in the Instructor list are special:</p>
+
 <ul>
-    <li>Selections <em>within</em> a dimension are combined with <strong>OR</strong>
-        (a section matches if it belongs to <em>any</em> of the chosen values).</li>
-    <li>Selections <em>across</em> dimensions are combined with <strong>AND</strong>
-        (a section must satisfy <em>all</em> active filters simultaneously).</li>
+    <li><strong>Unstaffed (Isolate)</strong> shows <em>only</em> the sections with no instructor yet.</li>
+    <li><strong>Unstaffed (Emphasize)</strong> keeps every section on the grid but strikes through the ones that are
+        already staffed, so the gaps stand out in context.</li>
+</ul>
+
+<figure class="shot">
+    <img src="images/filters/ex4_unstaffed_open.png" width="940" alt="Instructor list with Unstaffed (Isolate) ticked">
+    <figcaption>While one of the special items is ticked, the other items in the list can't be ticked, and the other way round.</figcaption>
+</figure>
+
+<p>The Room list has a similar item, <strong>Unroomed</strong>, for meetings that don't have a room yet.</p>
+
+<!-- ── MEETING BY MEETING ─────────────────────────────────────────────── -->
+<h2 id="meetings">Room and Meeting Type look at each meeting</h2>
+
+<p>
+    Most lists decide about a whole section. <strong>Room</strong> and <strong>Meeting Type</strong> decide about each
+    weekly meeting on its own. Say BIOL210 A has its lectures on Monday and Wednesday in SCI 101 and its lab on
+    Thursday in SCI 204. Tick <em>SCI 101</em> under Room, and the grid shows the Monday and Wednesday meetings, but
+    not the Thursday lab, because that meeting is somewhere else.
+</p>
+
+<!-- ── OVERLAYS ───────────────────────────────────────────────────────── -->
+<h2 id="overlays">Overlays: add one person, room or tag on top</h2>
+
+<p>
+    A filter <em>hides</em> what doesn't fit. An overlay <em>adds</em>: pick one instructor, room or tag under
+    <strong>Overlays</strong>, and their sections are drawn on the grid in red, on top of whatever your filters show,
+    <strong>even the sections your filters are hiding</strong>.
+</p>
+
+<p><strong>Example 5: all of Mathematics, plus everything Joe Smith teaches.</strong></p>
+
+<ol>
+    <li>Under Filters, open <strong>Subject</strong> and tick <em>Mathematics</em>.</li>
+    <li>Under Overlays, open <strong>Instructor</strong> and click <em>Joe Smith</em>.</li>
+</ol>
+
+<figure class="shot">
+    <img src="images/filters/ex5_overlay_open.png" width="941" alt="Subject filter in use, and the Overlays Instructor list with a tick beside Joe Smith; the title bar reads Filtered by: Subject: Mathematics, then Overlay: Instructor Joe Smith">
+    <figcaption>The grid shows every Mathematics section, and Joe Smith's sections in red, his Biology ones included.
+    The title bar names both: the filter, then <strong>Overlay: Instructor Joe Smith</strong>.</figcaption>
+</figure>
+
+<ul>
+    <li>Only one overlay is shown at a time. Picking another replaces it.</li>
+    <li>Click the same name again, or the bin in the Overlays bar, to turn it off.</li>
+    <li>The bin in the <em>Filters</em> bar leaves the overlay alone.</li>
 </ul>
 
 <div class="tip">
-    <p><strong>Example:</strong> Checking <em>Prof. Smith</em> and <em>Prof. Jones</em> under
-    Instructors, plus <em>Room 201</em> under Rooms, will show sections taught by <em>either</em>
-    Smith or Jones that <em>also</em> meet in Room 201.</p>
+    <p>
+        <strong>Filter or overlay?</strong> Use a filter to focus on a group and hide the rest. Use an overlay to see
+        where one person or room is busy against the background of everything else, for instance to spot a clash
+        before you assign someone.
+    </p>
 </div>
 
-<h2>The Filter Badge</h2>
-<p>
-    When any filter is active, an amber badge appears on the filter icon showing how many
-    dimensions are currently filtering. This reminds you that the grid is not showing everything.
-    Click the icon again and choose <strong>Clear All</strong> to reset.
-</p>
+<!-- ── ELSEWHERE ──────────────────────────────────────────────────────── -->
+<h2 id="good-to-know">Good to know</h2>
 
-<h2>Overlays vs. Filters</h2>
-<p>
-    Overlays are different from filters. An overlay <em>highlights</em> matching sections in red
-    while keeping all other sections visible (greyed out). Access overlays by right-clicking a
-    tile or from the filter panel's Overlay tab.
-</p>
+<ul>
+    <li><strong>The section list follows along.</strong> While filters are in use, the sections that pass are
+        highlighted in the list on the left. Under <em>Preferences</em> you can choose to have them opened instead,
+        with the others folded away ("When a filter passes a section").</li>
+    <li><strong>The lists show everything you have set up,</strong> not only what this semester uses. A tick can
+        therefore match nothing at all.</li>
+    <li><strong>Switching semesters starts afresh:</strong> filters and the overlay are cleared.</li>
+    <li><strong>Showing only some subjects?</strong> If you have narrowed TermPoint to some subjects
+        (the <em>Subjects:</em> note above the grid), filters work within those subjects. Overlays look everywhere.</li>
+</ul>
+
+<h2 id="at-a-glance">At a glance</h2>
+
+<table class="matches">
+    <tr><th>You tick…</th><th>The grid shows…</th></tr>
+    <tr><td>two things in one list</td><td>sections that fit <em>either</em></td></tr>
+    <tr><td>one thing in each of two lists</td><td>sections that fit <em>both</em></td></tr>
+    <tr><td>two tags, "all of the checked tags"</td><td>sections with <em>both</em> tags</td></tr>
+    <tr><td>two tags, "any of the checked tags"</td><td>sections with <em>either</em> tag</td></tr>
+    <tr><td>an overlay</td><td>your filtered sections, <em>plus</em> the overlay's in red</td></tr>
+</table>
 
 </body>
 </html>
