@@ -844,8 +844,15 @@ kindly than reality. So: close the harness gaps first, then make the remaining h
 > - An external switch on the wired adapter.
 > - A copy mode for the third computer.
 >
-> Next: Greg downloads the Windows 11 ISO and creates TPVM1. The first `Suspend-TestComputer` shows whether a paused
-> VM's clock jumps on resume. If it doesn't, the wake check won't fire; try `-Mode Save`.
+> **TPVM1 built (6 Nov 2026)** on the Default Switch rather than an external switch (the README has the share
+> sign-in lessons); checkpoint `Ready` taken after one clean TermPoint run on the test database.
+>
+> **Clock answer (6 Nov 2026):** both freeze modes step the guest clock forward at once. After 240 s frozen, the
+> offset at the first PowerShell Direct answer was 0.7 s (Pause) and 0.8 s (Save), and 0.2 s thirty seconds later.
+> The wake check compares only wall-clock time between its 30 s ticks, so TermPoint sees a ~240 s gap and treats it
+> as a wake: **a paused VM stands in for a sleeping laptop.** Pause is the default (seconds to resume); Save also
+> works but drops an open VM Connection window. Neither reproduces item 6.12 (clock behind), which still needs a
+> clock set back by hand.
 
 > [!note]- **8.10 Later: an automated two-machine rig**
 > Extend `tools/NetworkProbe` so each machine runs the real checkout and lock services as an agent, coordinated by a

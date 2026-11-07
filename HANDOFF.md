@@ -62,12 +62,15 @@ Written so a fresh conversation can pick up. Claude Code's memory and `CLAUDE.md
        Private had to be enabled.
      - An enhanced-session (Remote Desktop-style) sign-in isn't the console user; `Invoke-InDesktopSession` now falls
        back to explorer.exe's owner.
-   - **Next:** start TermPoint in TPVM1 once on the test database and close it; `Checkpoint-TestComputer -Machine
-     TPVM1 -Name Ready`.
-   - **Then:**
-     - The first live run of the VM commands: Start, Stop and Suspend-TestComputer. Connect-TestComputer,
-       Invoke-TestComputer and Install-TermPoint have worked on TPVM1.
-     - Note whether a paused VM's clock jumps on resume; the wake check needs the jump.
+   - **Checkpoint `Ready` taken on TPVM1 (2026-11-06 20:26)** after one TermPoint run on the test database, closed
+     cleanly. `Restore-TestComputer -Machine TPVM1` returns to it.
+   - **Suspend-TestComputer works (2026-11-06):** Pause and Save both step the guest clock forward at once (0.7 s /
+     0.8 s off at first answer after 240 s frozen), so the wake check fires: a paused VM stands in for sleep. Recorded
+     in the 8.9 note and the FieldTest README. The FieldTest work folder moved to `D:\fieldtest` (E: was unplugged).
+   - **Next:**
+     - Stop-TermPoint by PID (soft and `-Hard`), Suspend/Resume-TermPoint, and a first real scenario run (M5 example
+       in the README). Connect-, Invoke-, Suspend- and Checkpoint-TestComputer, Install- and Start-TermPoint have
+       worked on TPVM1.
      - Then 8.10/8.11, and finish 8.12 (two flaky tests).
 2. **Open findings (summary items):** 4.13 F20 (own leftover lock after a switch → read-only on return); 6.10 F17
    (two messages for one save problem); 6.11 F18 (two lock-lost banners); 6.12 false "Inactive" prompt when the

@@ -127,13 +127,13 @@ Test-TermPointLog -Scenario M5-sleep-takeover -Roles @{ Writer='TPVM1'; Reader='
 Get-TestSections                          # which edits are in D, which are kept on TPVM1
 ```
 
-## Not known yet (first run answers it)
+## A frozen VM counts as a sleep (measured 6 Nov 2026)
 
 TermPoint notices a sleep when its **wall clock** jumps by more than 90 s between wake checks. A paused VM's clock
-stops. Whether Hyper-V's time sync then steps it forward on resume (wake noticed, like a real sleep) or catches up
-slowly (no wake noticed, and the clock runs behind, which is item 6.12's case) is unknown. `Suspend-TestComputer`
-prints the offset. If Pause doesn't behave like sleep, try `-Mode Save`. Record what you see in the 8.9 note of
-`designs/spec_version_1.2.4_summary.md`.
+stops, but Hyper-V's time sync steps it forward at once on resume: after 240 s frozen, the guest clock was 0.7 s off
+(Pause) and 0.8 s off (Save) at the first answer, and 0.2 s off 30 s later. So the wake check fires, as after a real
+sleep. Use Pause (the default). Save works too, but disconnects any open VM Connection window. Neither leaves the
+clock behind (item 6.12's case); set the guest clock back by hand for that.
 
 ## Rules the scripts keep
 

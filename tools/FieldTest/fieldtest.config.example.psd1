@@ -17,7 +17,7 @@
     ShareUser  = 'SERVER\user'
 
     # Local folder (not on the share) for copies of D, collected logs, lock-watch output and run notes.
-    WorkFolder = 'E:\fieldtest'
+    WorkFolder = 'D:\fieldtest'
 
     # How to run Python for the helper scripts in python\. -I = isolated mode.
     PythonExe  = 'py'
