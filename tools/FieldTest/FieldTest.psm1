@@ -380,13 +380,57 @@ function Invoke-TestComputer {
     return (Invoke-Command -Session $s -ScriptBlock $ScriptBlock -ArgumentList $ArgumentList)
 }
 
-<# Copies one file from a machine to a local path (Copy-Item -FromSession when remote). #>
+<#
+.SYNOPSIS
+    Internal: copies one file from a machine to a local path (Copy-Item -FromSession when remote).
+.DESCRIPTION
+    Copy-Item opens the source allowing only other readers, so it fails on a file a running TermPoint has open for
+    writing (its read-only snapshot, for example). Then the file is read on that machine with every kind of sharing
+    allowed (which never blocks TermPoint) into a temp file, the temp file is copied, and deleted. Such a copy may be
+    torn; the callers already warn when TermPoint is running.
+.PARAMETER Name
+    Machine name.
+.PARAMETER Path
+    The file on that machine.
+.PARAMETER Destination
+    Local destination path (its folder is created).
+.NOTES
+    Writes a warning and skips the file (no exception) when even the shared read fails.
+#>
 function Copy-FromTestComputer {
     param([Parameter(Mandatory)][string]$Name, [Parameter(Mandatory)][string]$Path, [Parameter(Mandatory)][string]$Destination)
     $s = Connect-TestComputer -Name $Name
     Initialize-Folder -Path (Split-Path -Parent $Destination) | Out-Null
-    if ($s) { Copy-Item -FromSession $s -LiteralPath $Path -Destination $Destination -Force }
-    else { Copy-Item -LiteralPath $Path -Destination $Destination -Force }
+    try {
+        if ($s) { Copy-Item -FromSession $s -LiteralPath $Path -Destination $Destination -Force -ErrorAction Stop }
+        else { Copy-Item -LiteralPath $Path -Destination $Destination -Force -ErrorAction Stop }
+        return
+    } catch [System.IO.IOException] { }
+
+    # The file is in use: read it with full sharing into a temp file on that machine.
+    $sharedCopy = {
+        param($src)
+        $tmp = Join-Path $env:TEMP ('fieldtest-' + [guid]::NewGuid().ToString('N') + '.copy')
+        $in = [System.IO.File]::Open($src, 'Open', 'Read', [System.IO.FileShare]'ReadWrite, Delete')
+        try {
+            $out = [System.IO.File]::Create($tmp)
+            try { $in.CopyTo($out) } finally { $out.Dispose() }
+        } finally { $in.Dispose() }
+        $tmp
+    }
+    try {
+        if ($s) {
+            $tmp = Invoke-Command -Session $s -ScriptBlock $sharedCopy -ArgumentList $Path -ErrorAction Stop
+            try { Copy-Item -FromSession $s -LiteralPath $tmp -Destination $Destination -Force -ErrorAction Stop }
+            finally { Invoke-Command -Session $s -ScriptBlock { param($t) Remove-Item -LiteralPath $t -Force -ErrorAction SilentlyContinue } -ArgumentList $tmp }
+        }
+        else {
+            $tmp = & $sharedCopy $Path
+            try { Copy-Item -LiteralPath $tmp -Destination $Destination -Force -ErrorAction Stop }
+            finally { Remove-Item -LiteralPath $tmp -Force -ErrorAction SilentlyContinue }
+        }
+    }
+    catch { Write-Warning "Could not copy $Path from ${Name}: $($_.Exception.Message) Skipped." }
 }
 
 <# Base64 of a script in the form powershell.exe -EncodedCommand wants (avoids all quoting problems). #>
@@ -1496,8 +1540,10 @@ function Get-TestScenario {
     End of the window (default: no limit).
 .PARAMETER Timeline
     Also print all entries matching any Expect/Forbid pattern, from all roles, merged by time.
+.PARAMETER PassThru
+    Also return the result object (otherwise only the printed report, which already says PASS or FAIL).
 .OUTPUTS
-    Object with Passed, Expectations, ForbiddenHits, Errors, Versions.
+    With -PassThru: object with Scenario, Passed, Expectations, ForbiddenHits, Errors, Versions.
 .EXAMPLE
     Test-TermPointLog -Scenario M4-B2-close-then-takeover -Roles @{ Writer='TPVM1'; Reader='DEVPC' } -Timeline
 .NOTES
@@ -1510,7 +1556,8 @@ function Test-TermPointLog {
         [Parameter(Mandatory)][hashtable]$Roles,
         [datetime]$Since,
         [datetime]$Until,
-        [switch]$Timeline
+        [switch]$Timeline,
+        [switch]$PassThru
     )
     $sc = Get-TestScenario -Scenario $Scenario
     if (-not $PSBoundParameters.ContainsKey('Since')) { $Since = Get-DefaultSince }
@@ -1620,7 +1667,7 @@ function Test-TermPointLog {
 
     Write-Host ''
     if ($passed) { Write-Host 'PASS' -ForegroundColor Green } else { Write-Host 'FAIL' -ForegroundColor Red }
-    [pscustomobject]@{ Scenario = $sc.Name; Passed = $passed; Expectations = $expectResults.ToArray(); ForbiddenHits = $forbidHits.ToArray(); Errors = $errorHits.ToArray(); Versions = $versions }
+    if ($PassThru) { [pscustomobject]@{ Scenario = $sc.Name; Passed = $passed; Expectations = $expectResults.ToArray(); ForbiddenHits = $forbidHits.ToArray(); Errors = $errorHits.ToArray(); Versions = $versions } }
 }
 
 <#

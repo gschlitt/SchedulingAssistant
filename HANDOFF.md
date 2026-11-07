@@ -72,7 +72,13 @@ Written so a fresh conversation can pick up. Claude Code's memory and `CLAUDE.md
      `Checkpoint-TestComputer -Replace`; `*-VMSnapshot` instead of `*-VMCheckpoint` (missing on Windows 10 Hyper-V).
      TermPoint's Choose Database window opens **behind** other windows on a scripted start, so `Ready` was retaken
      (21:00) with "Always open my most recent database" ticked.
-   - **Next:** the first real scenario, M5 (README example), then the other scenario files.
+   - **M5 passed (2026-11-06 21:10-21:21, both computers on 1.2.3):** TPVM1 writer with unsaved ZZZTW1, paused 600 s;
+     GregDeskTop judged the lock stale (180 s), took over, saved ZZZTR1; TPVM1 logged the wake (gap 631 s), then lost
+     the lock and demoted. D has ZZZTR1; TPVM1's kept changes have ZZZTW1 with its dirty marker; integrity ok.
+     Fixes after it: `Get-TestSections` copies files a running TermPoint holds open (shared read, else warn and skip);
+     `Test-TermPointLog` returns its object only with `-PassThru`.
+   - **Next:** scenario files for M6-M12 and S1-S11 (README "Not covered yet"), run them; M5 again on 1.2.4 bits
+     (170 s confirmation) once a 1.2.4 sideload exists.
      - Then 8.10/8.11, and finish 8.12 (two flaky tests).
 2. **Open findings (summary items):** 4.13 F20 (own leftover lock after a switch → read-only on return); 6.10 F17
    (two messages for one save problem); 6.11 F18 (two lock-lost banners); 6.12 false "Inactive" prompt when the

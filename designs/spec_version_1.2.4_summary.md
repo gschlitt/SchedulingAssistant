@@ -853,6 +853,10 @@ kindly than reality. So: close the harness gaps first, then make the remaining h
 > as a wake: **a paused VM stands in for a sleeping laptop.** Pause is the default (seconds to resume); Save also
 > works but drops an open VM Connection window. Neither reproduces item 6.12 (clock behind), which still needs a
 > clock set back by hand.
+>
+> **First scripted scenario (6 Nov 2026): M5 passed** on the 1.2.3 build. TPVM1 (writer, one unsaved section) was
+> paused for 600 s; GregDeskTop took over the stale lock and saved; TPVM1 noticed the wake and the lost lock, and
+> kept its unsaved section in its kept changes. All four log checks matched, no errors, integrity ok.
 
 > [!note]- **8.10 Later: an automated two-machine rig**
 > Extend `tools/NetworkProbe` so each machine runs the real checkout and lock services as an agent, coordinated by a
