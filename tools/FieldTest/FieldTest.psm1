@@ -560,6 +560,28 @@ function Assert-TermPointNotRunning {
     }
 }
 
+<#
+.SYNOPSIS
+    Internal: turns what the user passed as -Id into a PID.
+.PARAMETER Value
+    A number, or an object with an Id property (what Start-TermPoint and Get-TermPointProcess return).
+.OUTPUTS
+    The PID as an int.
+.NOTES
+    Throws when the value is neither.
+#>
+function Resolve-TermPointId {
+    param([Parameter(Mandatory)][object]$Value)
+    if ($Value -is [System.Array]) {
+        if ($Value.Count -ne 1) { throw "-Id got $($Value.Count) processes; pass one." }
+        $Value = $Value[0]
+    }
+    if ($null -ne $Value.PSObject.Properties['Id']) { $Value = $Value.Id }
+    $n = 0
+    if (-not [int]::TryParse([string]$Value, [ref]$n)) { throw "-Id must be a PID or the object Start-TermPoint returns; got '$Value'." }
+    return $n
+}
+
 <# Internal: refuses (throws) unless the PID on the machine is a TermPoint process. #>
 function Assert-IsTermPointProcess {
     param([Parameter(Mandatory)][string]$Name, [Parameter(Mandatory)][int]$Id)
@@ -580,7 +602,7 @@ function Assert-IsTermPointProcess {
 .PARAMETER Machine
     Machine name.
 .PARAMETER Id
-    PID (from Get-TermPointProcess); must be a process named TermPoint.
+    PID, or the object Start-TermPoint / Get-TermPointProcess returns; must be a process named TermPoint.
 .PARAMETER Hard
     Stop-Process -Force: a true crash; the lock file should stay on the share.
 .DESCRIPTION
@@ -593,7 +615,8 @@ function Assert-IsTermPointProcess {
 #>
 function Stop-TermPoint {
     [CmdletBinding()]
-    param([Parameter(Mandatory)][string]$Machine, [Parameter(Mandatory)][int]$Id, [switch]$Hard)
+    param([Parameter(Mandatory)][string]$Machine, [Parameter(Mandatory)][object]$Id, [switch]$Hard)
+    $Id = Resolve-TermPointId -Value $Id
     $m = Get-TestMachine -Name $Machine
     Assert-IsTermPointProcess -Name $m.Name -Id $Id
     if ($Hard) {
@@ -625,13 +648,14 @@ function Set-TermPointSuspension {
 .PARAMETER Machine
     Machine name.
 .PARAMETER Id
-    PID of a TermPoint process.
+    PID of a TermPoint process, or the object Start-TermPoint returns.
 .NOTES
     Throws when the PID is not TermPoint or the call fails.
 #>
 function Suspend-TermPoint {
     [CmdletBinding()]
-    param([Parameter(Mandatory)][string]$Machine, [Parameter(Mandatory)][int]$Id)
+    param([Parameter(Mandatory)][string]$Machine, [Parameter(Mandatory)][object]$Id)
+    $Id = Resolve-TermPointId -Value $Id
     Set-TermPointSuspension -Machine $Machine -Id $Id -Resume $false
     Write-Step "Suspended TermPoint PID $Id on $Machine."
 }
@@ -642,11 +666,12 @@ function Suspend-TermPoint {
 .PARAMETER Machine
     Machine name.
 .PARAMETER Id
-    PID of the TermPoint process.
+    PID of the TermPoint process, or the object Start-TermPoint returns.
 #>
 function Resume-TermPoint {
     [CmdletBinding()]
-    param([Parameter(Mandatory)][string]$Machine, [Parameter(Mandatory)][int]$Id)
+    param([Parameter(Mandatory)][string]$Machine, [Parameter(Mandatory)][object]$Id)
+    $Id = Resolve-TermPointId -Value $Id
     Set-TermPointSuspension -Machine $Machine -Id $Id -Resume $true
     Write-Step "Resumed TermPoint PID $Id on $Machine."
 }
@@ -1243,15 +1268,30 @@ function Suspend-TestComputer {
     A VM machine name.
 .PARAMETER Name
     The checkpoint name (e.g. Ready).
+.PARAMETER Replace
+    Delete an existing checkpoint of the same name first (after the new one is taken, so the VM always has one).
+    Without it, an existing name is refused: two checkpoints with one name make Restore-TestComputer ambiguous.
+.EXAMPLE
+    Checkpoint-TestComputer -Machine TPVM1 -Name Ready -Replace
 .NOTES
-    Throws when not elevated, or the VM does not exist.
+    Throws when not elevated, the VM does not exist, or the name exists and -Replace is not given.
 #>
 function Checkpoint-TestComputer {
     [CmdletBinding()]
-    param([Parameter(Mandatory)][string]$Machine, [Parameter(Mandatory)][string]$Name)
+    param([Parameter(Mandatory)][string]$Machine, [Parameter(Mandatory)][string]$Name, [switch]$Replace)
+    # Any failure must stop here: carrying on after a failed lookup would take a duplicate checkpoint.
+    $ErrorActionPreference = 'Stop'
     $m = Get-CreatedVmMachine -Name $Machine
+    # Get-VMSnapshot / Remove-VMSnapshot: the *-VMCheckpoint names are missing from older Hyper-V modules (Windows 10).
+    $old = @(Get-VMSnapshot -VMName $m.VMName | Where-Object { $_.Name -eq $Name })
+    if ($old.Count -gt 0 -and -not $Replace) {
+        throw "$($m.Name) already has a checkpoint named '$Name'. Add -Replace to take a new one in its place."
+    }
     Checkpoint-VM -Name $m.VMName -SnapshotName $Name -ErrorAction Stop
-    Write-Step "Checkpoint '$Name' taken on $($m.Name)."
+    # Remove the old ones only once the new checkpoint exists, so a failure never leaves the VM without one.
+    foreach ($c in $old) { Remove-VMSnapshot -VMSnapshot $c -Confirm:$false }
+    if ($old.Count -gt 0) { Write-Step "Checkpoint '$Name' retaken on $($m.Name); the old one was deleted." }
+    else { Write-Step "Checkpoint '$Name' taken on $($m.Name)." }
 }
 
 <#
@@ -1265,14 +1305,18 @@ function Checkpoint-TestComputer {
 .PARAMETER Checkpoint
     Checkpoint name (default Ready).
 .NOTES
-    Throws when not elevated, the VM or checkpoint does not exist.
+    Throws when not elevated, the VM or checkpoint does not exist, or two checkpoints share the name.
 #>
 function Restore-TestComputer {
     [CmdletBinding()]
     param([Parameter(Mandatory)][string]$Machine, [string]$Checkpoint = 'Ready')
     $m = Get-CreatedVmMachine -Name $Machine
     Remove-CachedSession -Name $m.Name
-    Restore-VMCheckpoint -VMName $m.VMName -Name $Checkpoint -Confirm:$false -ErrorAction Stop
+    # *-VMSnapshot, not *-VMCheckpoint: the latter names are missing from older Hyper-V modules (Windows 10).
+    $snap = @(Get-VMSnapshot -VMName $m.VMName -ErrorAction Stop | Where-Object { $_.Name -eq $Checkpoint })
+    if ($snap.Count -eq 0) { throw "$($m.Name) has no checkpoint named '$Checkpoint'." }
+    if ($snap.Count -gt 1) { throw "$($m.Name) has $($snap.Count) checkpoints named '$Checkpoint'. Delete the extra ones in Hyper-V Manager first." }
+    Restore-VMSnapshot -VMSnapshot $snap[0] -Confirm:$false -ErrorAction Stop
     if ((Get-TestVmState -Machine $m) -ne 'Running') { Start-VM -Name $m.VMName -ErrorAction Stop }
     Write-Step "$($m.Name) restored to '$Checkpoint'; waiting for it to answer..."
     $o = Wait-GuestAnswer -Machine $m -TimeoutSeconds 180

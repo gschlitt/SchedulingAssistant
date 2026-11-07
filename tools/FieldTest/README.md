@@ -51,9 +51,11 @@ The computers:
      `C:\Windows\System32\drivers\etc\hosts`, so every computer uses the same `\\server\...` path.
    - Then save it in the VM: `cmdkey /add:<server> /user:<account> /pass`.
 3. **Install TermPoint in the VM** from the console (next section): `Install-TermPoint -Machine TPVM1`, then
-   `Start-TermPoint -Machine TPVM1`. Choose the test database in its window, then close it.
+   `Start-TermPoint -Machine TPVM1`. Its Choose Database window opens **behind** other windows (Windows won't let a
+   background launch take the focus; the taskbar icon flashes). Tick **"Always open my most recent database"**,
+   choose the test database, then close TermPoint. Without the tick, every scripted start waits at that window.
 4. **Clean-state checkpoint:** `Set-VMDvdDrive -VMName TPVM1 -Path $null`, then
-   `Checkpoint-TestComputer -Machine TPVM1 -Name Ready`. Checkpoints hold memory, so restoring one brings back a
+   `Checkpoint-TestComputer -Machine TPVM1 -Name Ready` (add `-Replace` to retake it). Checkpoints hold memory, so restoring one brings back a
    signed-in, running computer.
 5. **Third computer** (only when a scenario needs it): shut TPVM1 down, then
    `.\New-TestComputer.ps1 -Name TPVM2 -CopyFrom TPVM1`. Two VMs at 4 GB each leave this computer 8 of its 16 GB.

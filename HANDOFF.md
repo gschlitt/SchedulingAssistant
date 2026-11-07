@@ -67,10 +67,12 @@ Written so a fresh conversation can pick up. Claude Code's memory and `CLAUDE.md
    - **Suspend-TestComputer works (2026-11-06):** Pause and Save both step the guest clock forward at once (0.7 s /
      0.8 s off at first answer after 240 s frozen), so the wake check fires: a paused VM stands in for sleep. Recorded
      in the 8.9 note and the FieldTest README. The FieldTest work folder moved to `D:\fieldtest` (E: was unplugged).
-   - **Next:**
-     - Stop-TermPoint by PID (soft and `-Hard`), Suspend/Resume-TermPoint, and a first real scenario run (M5 example
-       in the README). Connect-, Invoke-, Suspend- and Checkpoint-TestComputer, Install- and Start-TermPoint have
-       worked on TPVM1.
+   - **Smoke test passed (2026-11-06 21:02):** Start-, Suspend-, Resume-, Stop-TermPoint (soft releases the lock,
+     `-Hard` leaves it), Reset-TestDatabase `-Force`. Fixes on the way: `-Id` takes Start-TermPoint's object;
+     `Checkpoint-TestComputer -Replace`; `*-VMSnapshot` instead of `*-VMCheckpoint` (missing on Windows 10 Hyper-V).
+     TermPoint's Choose Database window opens **behind** other windows on a scripted start, so `Ready` was retaken
+     (21:00) with "Always open my most recent database" ticked.
+   - **Next:** the first real scenario, M5 (README example), then the other scenario files.
      - Then 8.10/8.11, and finish 8.12 (two flaky tests).
 2. **Open findings (summary items):** 4.13 F20 (own leftover lock after a switch → read-only on return); 6.10 F17
    (two messages for one save problem); 6.11 F18 (two lock-lost banners); 6.12 false "Inactive" prompt when the
