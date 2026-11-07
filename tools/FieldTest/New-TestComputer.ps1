@@ -41,7 +41,8 @@
     Copy only: the finished, shut-down VM to copy.
 
 .PARAMETER VmRoot
-    Folder that holds every test VM (one subfolder each). Default E:\Hyper-V (drive C has no room).
+    Folder that holds every test VM (one subfolder each). Default D:\Hyper-V (an internal SSD; drive C is
+    nearly full and drive E is a USB hard disk, far too slow for a VM).
 
 .PARAMETER SwitchName
     The virtual switch to connect the VM to. Default 'Default Switch' (Hyper-V's built-in NAT switch: no change to
@@ -60,10 +61,10 @@
     Memory at boot. Default 4GB (Windows 11 setup refuses less).
 
 .PARAMETER MinimumMemoryBytes
-    Least memory dynamic memory may shrink to. Default 1GB.
+    Least memory dynamic memory may shrink to. Default 2GB (Windows 11 with TermPoint pages heavily below that).
 
 .PARAMETER MaximumMemoryBytes
-    Most memory dynamic memory may grow to. Default 4GB. This host has 8 GB: two VMs at once need Visual Studio closed.
+    Most memory dynamic memory may grow to. Default 4GB. This host has 16 GB: two VMs at 4 GB leave it 8 GB.
 
 .PARAMETER DiskBytes
     New VM only: the virtual disk's maximum size. Default 64GB (Windows 11's minimum); the file grows as it fills,
@@ -92,12 +93,12 @@ param(
     [Parameter(Mandatory)][ValidateLength(1, 15)][string]$Name,
     [Parameter(Mandatory, ParameterSetName = 'New')][string]$IsoPath,
     [Parameter(Mandatory, ParameterSetName = 'Copy')][string]$CopyFrom,
-    [string]$VmRoot = 'E:\Hyper-V',
+    [string]$VmRoot = 'D:\Hyper-V',
     [string]$SwitchName = 'Default Switch',
     [string]$NetAdapterName = 'Ethernet',
     [int]$ProcessorCount = 2,
     [long]$StartupMemoryBytes = 4GB,
-    [long]$MinimumMemoryBytes = 1GB,
+    [long]$MinimumMemoryBytes = 2GB,
     [long]$MaximumMemoryBytes = 4GB,
     [long]$DiskBytes = 64GB
 )
@@ -335,5 +336,5 @@ Next:
  1. vmconnect.exe localhost $Name : sign in; check the share still opens in File Explorer.
  2. Start TermPoint there once (it opens the test database) and close it, so its title and lock show $Name.
  3. Take its own clean-state checkpoint:  Checkpoint-VM -Name $Name -SnapshotName Ready
- Two VMs at once share this computer's 8 GB: close Visual Studio while both run.
+ Two VMs at 4 GB each leave this computer 8 of its 16 GB.
 "@

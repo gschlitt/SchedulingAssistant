@@ -439,7 +439,18 @@ function Invoke-InDesktopSession {
         return $null
     }
 
-    $user = Invoke-TestComputer -Name $Name -ScriptBlock { (Get-CimInstance Win32_ComputerSystem).UserName }
+    # Win32_ComputerSystem.UserName names only the CONSOLE user. A VMConnect enhanced session (and any Remote Desktop
+    # sign-in) is not the console, so fall back to the owner of a running explorer.exe: that user has a desktop.
+    $user = Invoke-TestComputer -Name $Name -ScriptBlock {
+        $u = (Get-CimInstance Win32_ComputerSystem).UserName
+        if (-not $u) {
+            $owner = Get-CimInstance Win32_Process -Filter "Name='explorer.exe'" |
+                ForEach-Object { Invoke-CimMethod -InputObject $_ -MethodName GetOwner } |
+                Where-Object { $_.ReturnValue -eq 0 } | Select-Object -First 1
+            if ($owner) { $u = $owner.Domain + '\' + $owner.User }
+        }
+        $u
+    }
     if (-not $user) { throw "Nobody is signed in on $($m.Name): sign in there (or restore its Ready checkpoint) first." }
     $taskName = 'TermPointFieldTest-' + [guid]::NewGuid().ToString('N').Substring(0, 8)
     $block = {

@@ -40,13 +40,27 @@ The computers:
      Switch Manager. This computer's network drops for a few seconds while Windows moves its settings.
    - Then run `Connect-VMNetworkAdapter -VMName TPVM1 -SwitchName 'TermPoint test LAN'`.
    - To undo: `Remove-VMSwitch -Name 'TermPoint test LAN' -Force`.
+
+   **Share sign-in, if it fails** (learned setting up TPVM1):
+   - Test from the VM's Terminal with `net use \\<server>\<share> /user:<account> *`: it gives a real error number.
+   - **1272** (guest access blocked): the account wasn't recognised, so the server offered guest. Name the account in
+     full: `SERVER\user`, or `MicrosoftAccount\name@example.com` when the server signs in with a Microsoft account.
+   - **53** or a timeout, and `Test-NetConnection <server> -Port 445` fails from this computer too: the server's
+     firewall. Enable its "File and Printer Sharing" rules for the Private profile.
+   - The VM can't find the server by name on the Default Switch: add `<server address> <server name>` to the VM's
+     `C:\Windows\System32\drivers\etc\hosts`, so every computer uses the same `\\server\...` path.
+   - Then save it in the VM: `cmdkey /add:<server> /user:<account> /pass`.
 3. **Install TermPoint in the VM** from the console (next section): `Install-TermPoint -Machine TPVM1`, then
    `Start-TermPoint -Machine TPVM1`. Choose the test database in its window, then close it.
 4. **Clean-state checkpoint:** `Set-VMDvdDrive -VMName TPVM1 -Path $null`, then
    `Checkpoint-TestComputer -Machine TPVM1 -Name Ready`. Checkpoints hold memory, so restoring one brings back a
    signed-in, running computer.
 5. **Third computer** (only when a scenario needs it): shut TPVM1 down, then
-   `.\New-TestComputer.ps1 -Name TPVM2 -CopyFrom TPVM1`. Two VMs share this computer's 8 GB: close Visual Studio.
+   `.\New-TestComputer.ps1 -Name TPVM2 -CopyFrom TPVM1`. Two VMs at 4 GB each leave this computer 8 of its 16 GB.
+
+**Where VMs live.** `D:\Hyper-V` (internal SSD), the script's default. Never on a USB hard disk: Windows 11 there
+was unusably slow (the disk was 100% busy at 60-130 ms per read or write). To move one:
+`Move-VMStorage -VMName TPVM1 -DestinationStoragePath D:\Hyper-V\TPVM1`.
 
 The Windows 11 install checks the VM's virtual TPM and Secure Boot, not the host's CPU, so it works on a host that
 can't run Windows 11 itself.

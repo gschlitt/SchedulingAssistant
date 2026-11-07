@@ -51,15 +51,22 @@ Written so a fresh conversation can pick up. Claude Code's memory and `CLAUDE.md
      - `New-TestComputer.ps1` makes the VMs.
      - Greg's machine list is `tools/FieldTest/fieldtest.config.psd1`: GregDeskTop, TPVM1 and TPVM2, plus GregSurface
        switched off. It is gitignored.
-   - **Next, by Greg:**
-     - Download the Windows 11 ISO to E:.
-     - Run `New-TestComputer.ps1 -Name TPVM1 -IsoPath ...`, elevated.
-       - The VM starts on Hyper-V's Default Switch (NAT, now the script's default), so the host network is untouched.
-       - If the VM can't open `\\mekler` by name, use `\\192.168.1.81` (Mekler's address on 2026-11-03), or move the
-         VM to an external switch (README, "Network").
-     - Install Windows, then `Install-TermPoint`, then the `Ready` checkpoint.
+   - **TPVM1 is set up (2026-11-06):** Windows 11 in `D:\Hyper-V\TPVM1` (GregDeskTop now has 16 GB and an internal SSD
+     D:; never put VMs on E:, a USB hard disk), 4 GB startup / 2-4 GB dynamic, Default Switch, ISO ejected, renamed
+     TPVM1, time zone set, Windows Update paused, the 1.2.3.4 sideload TermPoint installed and running. Lessons:
+     - The VM finds Mekler by name only through a hosts-file line (`192.168.1.81 mekler`); update it if Mekler's address
+       changes.
+     - Mekler's account for the share is Greg's Microsoft account, as `MicrosoftAccount\<email>` (`ShareUser` in the
+       gitignored config; saved in the VM with `cmdkey`). A bare user name falls back to guest, which Windows 11 refuses (error 1272).
+     - Mekler's firewall blocked file sharing even on a Private network; the "File and Printer Sharing" rules for
+       Private had to be enabled.
+     - An enhanced-session (Remote Desktop-style) sign-in isn't the console user; `Invoke-InDesktopSession` now falls
+       back to explorer.exe's owner.
+   - **Next:** start TermPoint in TPVM1 once on the test database and close it; `Checkpoint-TestComputer -Machine
+     TPVM1 -Name Ready`.
    - **Then:**
-     - The first live run of the VM commands: Install, Start, Stop and Suspend-TestComputer. Nothing VM-side has run yet.
+     - The first live run of the VM commands: Start, Stop and Suspend-TestComputer. Connect-TestComputer,
+       Invoke-TestComputer and Install-TermPoint have worked on TPVM1.
      - Note whether a paused VM's clock jumps on resume; the wake check needs the jump.
      - Then 8.10/8.11, and finish 8.12 (two flaky tests).
 2. **Open findings (summary items):** 4.13 F20 (own leftover lock after a switch → read-only on return); 6.10 F17
