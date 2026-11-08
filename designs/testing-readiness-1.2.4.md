@@ -28,15 +28,17 @@ Read this at every handoff. Started 2026-11-07.
 8.7 is built but has never run end to end. TPVM1 runs the 1.2.3.4 sideload, which is why the M5 run on 2026-11-06
 took about 11 minutes of lock-timer waiting.
 
-- [ ] Build a 1.2.4 sideload MSIX.
-- [ ] `Install-TermPoint` on TPVM1 and on GregDeskTop. A lower version can't install over a higher one; uninstall
+**Done 2026-11-08.** Every item below is checked; details in the Log.
+
+- [x] Build a 1.2.4 sideload MSIX.
+- [x] `Install-TermPoint` on TPVM1 and on GregDeskTop. A lower version can't install over a higher one; uninstall
       first if needed (that deletes logs and kept changes).
-- [ ] Set 8.7's environment variable so launches by `Start-TermPoint` (through explorer.exe in the VM's desktop
+- [x] Set 8.7's environment variable so launches by `Start-TermPoint` (through explorer.exe in the VM's desktop
       session) inherit it.
-- [ ] Check: "Test timings" in the title bar, the scale recorded in the lock file (`Get-TestDatabaseState` shows
+- [x] Check: "Test timings" in the title bar, the scale recorded in the lock file (`Get-TestDatabaseState` shows
       it), and the 8.7 guards (a ×3 computer and a normal one never misjudge each other's lock).
-- [ ] Re-run M5 at ×3 and compare with the 1.2.3 run (summary 8.9 note).
-- [ ] Retake TPVM1's `Ready` checkpoint (`-Replace`) with the 1.2.4 build installed.
+- [x] Re-run M5 at ×3 and compare with the 1.2.3 run (summary 8.9 note).
+- [x] Retake TPVM1's `Ready` checkpoint (`-Replace`) with the 1.2.4 build installed.
 
 Until this works, every field check of a 1.2.4 fix (F20, F17, F18, F23, 6.12) runs at full lock timings.
 
@@ -143,3 +145,25 @@ takeover, answer "Restore?").
     close, `Checkpoint-TestComputer -Replace`).
   - Seen in passing: when TPVM1 froze, GregDeskTop's next lock-file read timed out once (5 s), handled as designed.
     Store and sideload TermPoint on one computer write the same log; `Test-TermPointLog` flags it as two versions.
+- 2026-11-08, **real sleep after a save on GregSurface (1.2.4.0 sideload, normal timings): the stale "lock confirmed"
+  did not reproduce.** The candidate finding is closed: a VM frozen right after a save over-reports this case.
+  - Run 1, lid close (Modern Standby; Kernel-Power 506 confirmed it entered standby): save 11:31:15.8, takeover
+    (`Set-TestLock -Kind Takeover`) 11:31:43. TermPoint **kept running**: its heartbeat at 11:32:28.7 found another
+    session's lock, verified NotOurs and demoted; one report; lock file not deleted. No wake check ran, so the wake
+    path was not tested. On Modern Standby laptops the heartbeat catches a takeover during "sleep".
+  - Run 2, Hibernate (freezes Windows with TermPoint, as the VM did): save 11:53:56.0, takeover while hibernated,
+    wake at 11:59:40 (gap 358 s). The wake check timed out ("network unreachable, keeping current state"), as in M5
+    run 2. The next heartbeat (12:00:39.9, 60 s after the wake) found the lock NotOurs and demoted; one report;
+    lock file not deleted. The banner showed about a minute after the wake.
+  - Still true in both: TermPoint thinks it is the writer for up to one heartbeat (~60 s) after a wake whose check
+    timed out; the save and heartbeat re-check the lock before writing, so rule 2 holds.
+- 2026-11-08, **Step 1 finished.**
+  - TPVM1 `Ready` retaken on 1.2.4.0 with ×3 (`Restore-TestComputer`, `Install-TermPoint`, `Set-TestTimings 3`,
+    one clean start and close at 12:09, `Checkpoint-TestComputer -Name Ready -Replace`). Restoring `Ready` now gives
+    1.2.4 at ×3; the log's first line says "Test timings x3: heartbeat every 20 s, a lock is stale after 60 s".
+  - **Reverse guard: PASS.** GregDeskTop (normal timings) took the lock, then was hard-killed (last heartbeat
+    12:12:16). TPVM1 (×3) opened read-only at 12:12:34 and offered write access only at 12:15:34 ("heartbeat
+    unchanged for 180s"), not after 60 s. The ×3 computer counts from when it first saw the lock, so the offer came
+    198 s after the last heartbeat; that errs on the safe side.
+  - Seen in passing: closing TermPoint always runs a save, even with no edits (`ReleaseAsync` calls `SaveAsync`
+    unconditionally), so D's hash changes after a start-and-close. Existing behaviour, not new in 1.2.4.

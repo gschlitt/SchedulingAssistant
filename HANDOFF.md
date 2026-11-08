@@ -15,8 +15,8 @@ Written so a fresh conversation can pick up. Claude Code's memory and `CLAUDE.md
 - **1.2.3 is released on the Microsoft Store** (Store only), built from `cf4d4cb`. `MinimumVersionToWrite`: No for
   1.2.3 and (so far) No for 1.2.4.
 - **Testing readiness (section 8):** `designs/testing-readiness-1.2.4.md` tracks what's left of section 8 and the
-  order (test-timings build on the rig, then 8.12, then 8.11). **Read it at every handoff; its Log has the latest
-  field-test state**, including the open save-then-freeze question below.
+  order (test-timings build on the rig: done 2026-11-08; then 8.12, then 8.11). **Read it at every handoff; its Log has the latest
+  field-test state**.
 - **Version:** the csproj says **1.2.4** since 2026-11-07 (so the sideload, MSIX 1.2.4.0, installs over 1.2.3.4).
   TPVM1 and GregDeskTop run that sideload. Test timings: **×3 on TPVM1, off on GregDeskTop** (`Set-TestTimings`;
   keep it off on GregDeskTop between sessions, since Visual Studio runs honour it too).
@@ -90,15 +90,15 @@ Written so a fresh conversation can pick up. Claude Code's memory and `CLAUDE.md
      `tools/FieldTest/probes/Probe-SaveThenFreeze.ps1`); freezing only TermPoint gives the right answer (2/2). No
      relock seen (slow reconnect + F19 re-check). Whether a **real sleep** reproduces it decides if it's a rule-2
      finding.
+   - **2026-11-08: the save-then-freeze question is closed, and readiness Step 1 is done.**
+     - A real Hibernate on GregSurface (1.2.4.0 sideload) right after a save did **not** reproduce the stale "lock
+       confirmed": the wake check timed out and the next heartbeat demoted correctly. A lid close (Modern Standby)
+       never froze TermPoint at all. So the VM over-reports this case.
+     - Reverse guard passed. TPVM1 `Ready` now holds **1.2.4.0 at ×3**. The 1.2.4 sideload is also on GregSurface
+       (`\\mekler\Users\gregs\temp\msix-1.2.4.0\`).
    - **Next (in order):**
-     1. Real sleep right after a save, by hand on GregSurface (install the 1.2.4 sideload there, or test on 1.2.3:
-        the wake check is the same): Save, close the lid at once; while asleep, take over from GregDeskTop (or
-        `Set-TestLock -Kind Takeover`); open the lid; look for "wake check — lock confirmed" in its log.
-     2. Finish readiness Step 1: the reverse guard (a ×3 computer must not judge a normal computer's lock stale
-        early); retake TPVM1 `Ready` on 1.2.4 with ×3 (restore `Ready`, install, `Set-TestTimings`, one clean start
-        and close, `Checkpoint-TestComputer -Replace`). Note: `Ready` currently holds 1.2.3.4.
-     3. Readiness Step 2 (8.12 flaky tests), Step 3 (8.11 release test list).
-     4. Scenario files only alongside the fixes they check (M7, M12, M6 recommended when wanted).
+     1. Readiness Step 2 (8.12 flaky tests), then Step 3 (8.11 release test list).
+     2. Scenario files only alongside the fixes they check (M7, M12, M6 recommended when wanted).
 2. **Open findings (summary items):** 4.13 F20 (own leftover lock after a switch → read-only on return); 6.10 F17
    (two messages for one save problem); 6.11 F18 (two lock-lost banners); 6.12 false "Inactive" prompt when the
    writer's clock is behind; 6.13 F23 (kept-changes banner outlives a Discard).
