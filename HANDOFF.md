@@ -1,4 +1,4 @@
-# Handoff: TermPoint 1.2.4 in progress on branch `Version_1.2.4` (dev machine, 2026-11-03)
+# Handoff: TermPoint 1.2.4 in progress on branch `Version_1.2.4` (dev machine, updated 2026-11-07)
 
 Written so a fresh conversation can pick up. Claude Code's memory and `CLAUDE.md` don't travel between machines
 (`CLAUDE.md` is gitignored), so everything a new agent needs is here or in the files this points to.
@@ -7,14 +7,19 @@ Written so a fresh conversation can pick up. Claude Code's memory and `CLAUDE.md
 
 ## Where things are
 
-- **Branches:** all 1.2.4 work is on **`Version_1.2.4`**, pushed to origin (tracking set) at `b2ec398` + this file.
+- **Branches:** all 1.2.4 work is on **`Version_1.2.4`**. Last pushed at `761329b`; the commits since (field tests,
+  readiness doc, Access Analyzer Phase 2 draft, the 1.2.4 version bump) are **not pushed**.
   **`master`** = released 1.2.3 code (`cf4d4cb`) plus doc commits, kept hotfixable; it is 7 doc-only commits ahead of
   origin and **not pushed** (pushing `master` redeploys the WASM demo; pushing a `v*` tag starts the macOS workflow).
   Greg controls branches, commits and pushes: never create a branch, ask before each commit and each push.
 - **1.2.3 is released on the Microsoft Store** (Store only), built from `cf4d4cb`. `MinimumVersionToWrite`: No for
   1.2.3 and (so far) No for 1.2.4.
 - **Testing readiness (section 8):** `designs/testing-readiness-1.2.4.md` tracks what's left of section 8 and the
-  order (test-timings build on the rig, then 8.12, then 8.11). Read it at every handoff.
+  order (test-timings build on the rig, then 8.12, then 8.11). **Read it at every handoff; its Log has the latest
+  field-test state**, including the open save-then-freeze question below.
+- **Version:** the csproj says **1.2.4** since 2026-11-07 (so the sideload, MSIX 1.2.4.0, installs over 1.2.3.4).
+  TPVM1 and GregDeskTop run that sideload. Test timings: **×3 on TPVM1, off on GregDeskTop** (`Set-TestTimings`;
+  keep it off on GregDeskTop between sessions, since Visual Studio runs honour it too).
 - **The plan:** `designs/spec_version_1.2.4_summary.md` (progressive-reveal summary of `designs/spec_version_1.2.4.md`;
   every finished item has a "Done" note). Greg chose to do group 8 (testing) first.
 - **Colour by subject (summary 2.3):** implemented through task 4 plus Revision 1 (markers, not chips), `c33861f`.
@@ -79,9 +84,21 @@ Written so a fresh conversation can pick up. Claude Code's memory and `CLAUDE.md
      the lock and demoted. D has ZZZTR1; TPVM1's kept changes have ZZZTW1 with its dirty marker; integrity ok.
      Fixes after it: `Get-TestSections` copies files a running TermPoint holds open (shared read, else warn and skip);
      `Test-TermPointLog` returns its object only with `-PassThru`.
-   - **Next:** scenario files for M6-M12 and S1-S11 (README "Not covered yet"), run them; M5 again on 1.2.4 bits
-     (170 s confirmation) once a 1.2.4 sideload exists.
-     - Then 8.10/8.11, and finish 8.12 (two flaky tests).
+   - **2026-11-07 (details in the readiness doc's Log):** 1.2.4 sideload at ×3 works on the rig; a normal-speed
+     computer judges a ×3 lock at ×3 speed; M5 at ×3 passes. **Open question (candidate finding):** a VM frozen
+     within ~0.2 s of a save answers "lock confirmed" at the wake although the lock was taken over (3/3, probe
+     `tools/FieldTest/probes/Probe-SaveThenFreeze.ps1`); freezing only TermPoint gives the right answer (2/2). No
+     relock seen (slow reconnect + F19 re-check). Whether a **real sleep** reproduces it decides if it's a rule-2
+     finding.
+   - **Next (in order):**
+     1. Real sleep right after a save, by hand on GregSurface (install the 1.2.4 sideload there, or test on 1.2.3:
+        the wake check is the same): Save, close the lid at once; while asleep, take over from GregDeskTop (or
+        `Set-TestLock -Kind Takeover`); open the lid; look for "wake check — lock confirmed" in its log.
+     2. Finish readiness Step 1: the reverse guard (a ×3 computer must not judge a normal computer's lock stale
+        early); retake TPVM1 `Ready` on 1.2.4 with ×3 (restore `Ready`, install, `Set-TestTimings`, one clean start
+        and close, `Checkpoint-TestComputer -Replace`). Note: `Ready` currently holds 1.2.3.4.
+     3. Readiness Step 2 (8.12 flaky tests), Step 3 (8.11 release test list).
+     4. Scenario files only alongside the fixes they check (M7, M12, M6 recommended when wanted).
 2. **Open findings (summary items):** 4.13 F20 (own leftover lock after a switch → read-only on return); 6.10 F17
    (two messages for one save problem); 6.11 F18 (two lock-lost banners); 6.12 false "Inactive" prompt when the
    writer's clock is behind; 6.13 F23 (kept-changes banner outlives a Discard).

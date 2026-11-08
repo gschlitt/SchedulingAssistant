@@ -99,7 +99,11 @@ you on this computer. Windows PowerShell 5.1 and PowerShell 7 both work. Every c
 **TermPoint** (by PID only; every PID is checked to be TermPoint first)
 - `Install-TermPoint -Machine <m> [-MsixPath] [-CertPath]`: the sideload MSIX from `C:\temp\termpoint-msix\`.
 - `Start-TermPoint -Machine <m>`: launches it on that computer's desktop and returns the PID.
-- `Get-TermPointProcess [-Machine]`: PID, start time, responding, suspended.
+- `Set-TestTimings -Machine <m>[,<m>] -Scale 1|2|3`: spec item 8.7's lock timers at ×2 or ×3 (Sideload and
+  Development builds only), as the user-level `TERMPOINT_TEST_TIMINGS`; `-Scale 1` removes it. Read at TermPoint's
+  start; the title bar then says "(Test timings ×N)" and `Get-TestDatabaseState` shows the lock's timing scale.
+  Switch it off on a development computer afterwards: Visual Studio runs honour it too.
+- `Get-TermPointProcess [-Machine]`: PID, start time, responding (unreliable for a frozen process), suspended.
 - `Stop-TermPoint -Machine <m> -Id <pid> [-Hard]`: `-Hard` is a true crash (the lock file stays). Without it, a close
   request, like clicking the X.
 - `Suspend-TermPoint` / `Resume-TermPoint -Machine <m> -Id <pid>`: freeze only the process (the 1.2.3 "sleep").

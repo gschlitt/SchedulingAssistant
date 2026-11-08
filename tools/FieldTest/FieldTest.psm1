@@ -405,7 +405,14 @@ function Copy-FromTestComputer {
         if ($s) { Copy-Item -FromSession $s -LiteralPath $Path -Destination $Destination -Force -ErrorAction Stop }
         else { Copy-Item -LiteralPath $Path -Destination $Destination -Force -ErrorAction Stop }
         return
-    } catch [System.IO.IOException] { }
+    } catch {
+        # A local copy throws IOException; a copy from a session arrives wrapped (the remote IOException becomes a
+        # remote error record), so test the whole chain and the error id, not just the outer type.
+        $inUse = $false
+        for ($ex = $_.Exception; $ex; $ex = $ex.InnerException) { if ($ex -is [System.IO.IOException]) { $inUse = $true } }
+        if ($_.FullyQualifiedErrorId -like '*IOException*' -or $_.CategoryInfo.Reason -eq 'IOException') { $inUse = $true }
+        if (-not $inUse) { throw }
+    }
 
     # The file is in use: read it with full sharing into a temp file on that machine.
     $sharedCopy = {
@@ -847,6 +854,48 @@ function Start-TermPoint {
     if (-not $found) { throw "TermPoint did not start on $($m.Name) within 30 s." }
     Write-Step "TermPoint started on $($m.Name): PID $($found.Id)."
     return [pscustomobject]@{ Machine = $m.Name; Id = [int]$found.Id; StartTime = $found.StartTime }
+}
+
+<#
+.SYNOPSIS
+    Switches TermPoint's test timings (spec item 8.7) on or off for the signed-in user of a machine.
+.DESCRIPTION
+    Sets or removes the user-level environment variable TERMPOINT_TEST_TIMINGS. TermPoint honours it only on a Sideload
+    or Development build, and only the values 2 and 3; it reads it once at start, so a running TermPoint keeps its
+    timings until restarted. With a factor above 1 the title bar says "(Test timings xN)" and the lock file records the
+    factor. A machine's TermPoint started through explorer.exe picks the variable up from the user environment; if the
+    first start afterwards still shows normal timings, sign out and in once on that machine (explorer kept its old
+    environment).
+    Visual Studio runs on the same user (Development channel) honour it too, so switch it off (-Scale 1) on a
+    development computer after a field-test session.
+.PARAMETER Machine
+    Machine name(s).
+.PARAMETER Scale
+    2 or 3 to switch on; 1 removes the variable (normal timings).
+.OUTPUTS
+    Machine and the variable's value now (empty when off).
+.EXAMPLE
+    Set-TestTimings -Machine TPVM1, GregDeskTop -Scale 3
+.EXAMPLE
+    Set-TestTimings -Machine GregDeskTop -Scale 1
+.NOTES
+    Throws when a machine is unknown or cannot be reached.
+#>
+function Set-TestTimings {
+    [CmdletBinding()]
+    param([Parameter(Mandatory)][string[]]$Machine, [Parameter(Mandatory)][ValidateSet(1, 2, 3)][int]$Scale)
+    foreach ($name in $Machine) {
+        $m = Get-TestMachine -Name $name
+        if ($Scale -eq 1) { $value = $null } else { $value = [string]$Scale }
+        $now = Invoke-TestComputer -Name $m.Name -ArgumentList @($value) -ScriptBlock {
+            param($v)
+            [Environment]::SetEnvironmentVariable('TERMPOINT_TEST_TIMINGS', $v, 'User')
+            [Environment]::GetEnvironmentVariable('TERMPOINT_TEST_TIMINGS', 'User')
+        }
+        if ($Scale -eq 1) { Write-Step "Test timings off on $($m.Name) (variable removed)." }
+        else { Write-Step "Test timings x$Scale on $($m.Name); takes effect at TermPoint's next start." }
+        [pscustomobject]@{ Machine = $m.Name; TERMPOINT_TEST_TIMINGS = [string]$now }
+    }
 }
 
 #endregion
@@ -1699,6 +1748,6 @@ function Show-SaveStall {
 
 Export-ModuleMember -Function Get-TestConfig, Connect-TestComputer, Invoke-TestComputer, Connect-TestShare,
     Reset-TestDatabase, Get-TestDatabaseState, Watch-TestLock, Get-TestSections, Set-TestLock, Edit-TestDatabaseAsColleague,
-    Install-TermPoint, Start-TermPoint, Get-TermPointProcess, Stop-TermPoint, Suspend-TermPoint, Resume-TermPoint,
+    Install-TermPoint, Start-TermPoint, Set-TestTimings, Get-TermPointProcess, Stop-TermPoint, Suspend-TermPoint, Resume-TermPoint,
     Suspend-TestComputer, Checkpoint-TestComputer, Restore-TestComputer, Get-TestComputer,
     Get-TermPointLog, Test-TermPointLog, Show-SaveStall

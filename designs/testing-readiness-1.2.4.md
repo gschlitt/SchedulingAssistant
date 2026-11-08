@@ -109,3 +109,37 @@ takeover, answer "Restore?").
 - 2026-11-06: TPVM1 `Ready` checkpoint; paused/saved VM clock steps at once (wake fires); FieldTest smoke test passed;
   M5 passed on 1.2.3 (commits `ad1143b`, `8b0a141`, `e02fa31`).
 - 2026-11-07: this document.
+- 2026-11-07, Step 1 in progress. csproj bumped to **1.2.4** (MSIX 1.2.4.0) so the sideload installs over 1.2.3.4;
+  installed on TPVM1 and GregDeskTop. New `Set-TestTimings` command. ×3 works: title "(Test timings ×3)", lock file
+  `timing scale 3`. **Guard: a normal-speed GregDeskTop judged TPVM1's ×3 lock at ×3 speed** (stale at 60 s).
+  - M5 at ×3, run 1 (19:24–19:31): PASS, but TPVM1 had saved its "unsaved" edit 0.5 s before the freeze, and its
+    **wake check answered "lock confirmed" in 11 ms**, 3.5 min after GregDeskTop had taken the lock; the heartbeat
+    renewal it then started failed only because the share connection was still down. Had it succeeded, TPVM1 would
+    have rewritten GregDeskTop's lock (invariant I9, rule 2).
+  - Probe (19:39–19:42), no TermPoint: warm read in TPVM1, freeze, change the lock, resume, read. The first read
+    waited 19.4 s, then returned the **new** lock. A paused VM does not simply serve stale cached contents.
+  - M5 at ×3, run 2 (20:43–20:51), nothing saved near the freeze: PASS and clean. Wake check timed out
+    ("network unreachable, keeping current state") as on 1.2.3; demoted 10 s later keeping ZZZTW3; D has ZZZTR3.
+  - **Open (candidate finding):** a stale "lock confirmed" at the wake when the freeze comes right after a save.
+  - **Reproduced 3/3 (20:58–21:20)** with `tools/FieldTest/probes/Probe-SaveThenFreeze.ps1` (click Save; the VM
+    freezes 129–191 ms after "Save completed"; Alice takes over while frozen; 240 s): each wake check answered
+    "lock confirmed" 4–115 ms after the wake; the heartbeat renewal timed out (share reconnect ~20 s); demoted 20–30 s
+    later; the lock always stayed Alice's (no relock). Summary lines in `D:\fieldtest\probe-save-then-freeze.txt`.
+  - The earlier no-TermPoint probe does not rule caching out: its read after the resume came from a new PowerShell
+    Direct session (a separate sign-in), which cannot use the first session's cached file.
+  - Likely mechanism: the save's last lock check leaves the SMB client a cached copy under a lease; the server
+    revokes the lease while the VM is frozen; on resume the client serves the cache until it reconnects. What limits
+    harm today: the heartbeat re-checks before its move if more than 2 s passed (F19), and the save's checks run after
+    its writes, i.e. after the reconnect.
+  - **Process freeze, 2/2 CORRECT (21:28–21:40)**, `-Mode Process` (only TermPoint frozen, Windows awake): the wake
+    check ran and answered "lock is no longer ours" within ~0.1 s of the wake; one message (the second report was
+    "already being handled"). So the stale answer needs Windows itself frozen with TermPoint.
+  - **Next:** one real Surface sleep right after a save, by hand (the real-world answer); if it does not reproduce,
+    note that a VM frozen right after a save over-reports this case. If real sleep reproduces it:
+    a 1.2.4 finding against rule 2 (fix shape, to be risk-reviewed: after a wake, "ours" counts only once a write to
+    the share has succeeded).
+  - Still to do in Step 1: the reverse guard (a ×3 computer must not judge a normal computer's lock stale early);
+    retake TPVM1's `Ready` on 1.2.4 with ×3 set (restore `Ready`, install, `Set-TestTimings`, one clean start and
+    close, `Checkpoint-TestComputer -Replace`).
+  - Seen in passing: when TPVM1 froze, GregDeskTop's next lock-file read timed out once (5 s), handled as designed.
+    Store and sideload TermPoint on one computer write the same log; `Test-TermPointLog` flags it as two versions.
