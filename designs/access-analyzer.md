@@ -1,10 +1,9 @@
 # Access Analyzer and Easy Access Watches — Progressive Design Spec
 
 ## Status
-Current phase: **1 — Problem Statement, LOCKED by Greg 2026-11-06** (D1–D8 decided; the recommendations to Q1, Q3–Q7,
-Q11–Q12 and Q14–Q16 adopted as answers; Q2 carried into Phase 2)
+Current phase: **2 — Domain Model, DRAFT** (Phase 1 locked 2026-11-06)
 Last session: 2026-11-06
-Next step: Phase 2 (Domain Model), starting with Q2 (how lectures and labs are modelled in real data)
+Next step: Greg answers Q17–Q25 (Q18 first) and confirms D9; then Phase 2 can be locked
 
 ---
 
@@ -253,3 +252,198 @@ to adopt and is carried into Phase 2. Later phases may still refine the details 
    boxes).
 3. **The Slot Browser** uses the engine for D3.
 4. Later: expected intake, shared-seat splitting and reserves (Q4); creating watches from the grid (D5).
+
+---
+
+## Phase 2: Domain Model (DRAFT)
+
+Entities, relationships and the rules that always hold. No code, tables or screens (Phases 5, 4, 3).
+
+### What the real data says about labs (Q2 probe, 2026-11-06)
+Two databases, two opposite models. Section types are user-defined, so **what a section type means differs by
+institution**.
+
+**UFV BIOL** (336 sections, 15 semesters): labs are **separate courses** (BIO 111 and BIO 111LAB). Section type
+means **delivery mode** (F2F, Blend, Online Asynch, Online Synch); BIO 105 has F2F and online sections, which are
+alternatives. "Lab" is a meeting type, occasionally inside a lecture section. Codes suggest a campus tie (AB/A# at
+Abbotsford, CH/C# at Chilliwack). No capacities set.
+
+**UBC** (563 sections, Winter Term 1 2026-27, from the Workday scrape): labs and tutorials are **sections of the
+lecture's course**, told apart by section type (Lecture, Laboratory, Discussion, Studio, Seminar, Workshop, Thesis,
+Independent Study). Of 228 courses, 59 are Lecture + Discussion, 51 Lecture + Laboratory, 28 all three. BMEG 230:
+lecture 101, labs L1A–L1D, tutorials T1A–T1D; a student takes one of *each*. Seven courses have two or more lectures
+(MECH 463: 101, 102, two labs, four tutorials). Nothing links a lab to a lecture. No capacities set; 52 sections have
+no times; one watch exists ("Prior Biomed Sequence", course list of six).
+
+Consequences:
+- "One section per course" is right for UFV and **wrong for UBC**: a BMEG 230 slate needs a lecture, a lab and a
+  tutorial.
+- "One per (course, section type)" is right for UBC and **wrong for UFV**: it would demand one F2F *and* one online
+  BIO 105.
+- So the app must be told, per section type, whether it is a **component** (students take one of each: Lecture,
+  Laboratory, Discussion) or an **alternative** (students take one of them: F2F, Online). See D9 and Q18.
+- Data caveat: in 4 UBC courses a lab and a tutorial meet at exactly the same time (BMEG 230 L1A and T1A, Tue
+  15:00). They probably alternate weeks, which the scrape doesn't record; as entered they clash, and the analyzer will
+  say so.
+
+### Stories
+
+**Labs as components (UBC).** Bob's "Biomed Y2" watch lists BMEG 230, CHBE 201 and ELEC 203. A slate for it holds
+five sections: BMEG 230's lecture, one of its labs and one of its tutorials, plus a CHBE 201 lecture and an ELEC 203
+lecture. Bob moves BMEG 230 L1C to Wed 13:00, onto CHBE 201's only free lecture slot. L1A, L1B and L1D still fit, so
+nothing is lost and no notice appears. Had L1C been the only lab free of CHBE 201, it would have been *essential by
+timing*, and the panel would have said so before he saved.
+
+**Labs as courses (UFV).** Alice's "Bio Y1" watch lists BIO 111, BIO 111LAB, CHEM 113 and MATH 111. Here the lab is
+its own course, so it is in the course set by name. BIO 111 has F2F and online sections; those are alternatives, and
+a slate takes one of them. Same engine, same answers; only the section types are marked differently.
+
+**A part disappears.** BMEG 230 normally has labs. Bob deletes the last lab section by mistake. Slates get *easier*
+(no lab needed), so without a rule the panel would look better. Instead: "BMEG 230 has no lab sections left."
+
+**Chilliwack.** Bio Y1 shows "32 slates". Most of them pair an Abbotsford lecture with a Chilliwack lab, a 30-minute
+drive away. Nobody takes those. Whether the app should count them is Q17.
+
+**Only section vs. essential by timing.** CHEM 213 has one section, A. It is in every slate simply because it is the
+only one; Alice knows that already. PSYCH 101 has three sections, but B and C both clash with CHEM 213 A, so every
+slate uses PSYCH 101 A. *That* is news. The health line names PSYCH 101 A, not CHEM 213 A (Q19).
+
+**What if.** Alice has PSYCH 101 A open in the editor at Tue 10:00, not yet saved. The panel and the editor pointer
+both answer from the same picture: the saved semester with that one change laid over it. Bob, viewing the same
+database, sees the saved semester only.
+
+### Entities
+
+| Entity | What it is | Relationships |
+|---|---|---|
+| **Course** | A catalogue course (BIO 111, BMEG 230). Shared by all semesters | Has sections, per semester |
+| **Section type** | User-defined kind of section (Lecture, Laboratory; or F2F, Online). Either a **component** or an **alternative** (D9) | Shared by all semesters; sections may have one |
+| **Part** | Within one course in one view: the sections a student picks one of. Each component type present is a part; all other sections of the course (alternative types, or no type) form one more part | Derived from the course's sections in the view; never stored |
+| **Section** | One offering of a course in one semester | Belongs to one course and one semester; has meetings; may have a section type, a capacity and a campus |
+| **Meeting** | One weekly time a section meets: day, start, end, which weeks (every week, odd, even, or a week list). In person or remote | Part of one section |
+| **Access watch** | A named, user-defined statement that some students need these courses together this term. Enabled or not | Belongs to one semester; has one course set (or, the advanced kind, a tag/level rule) |
+| **Course set** | The courses a course-list watch names | Part of one watch; refers to courses |
+| **Semester view** | The semester's sections as the analyzer sees them: the saved sections, with any *proposal* laid over them | One per question asked; never stored |
+| **Proposal** | Changes not yet saved: a section moved or edited, added, or removed | Part of a semester view; may be empty |
+| **Slate / partial slate** | A choice of sections, one per course for some courses, none clashing (D2) | Drawn from one semester view, for one watch |
+| **Analysis** | Everything reported about one watch in one view: slates, roles, best partial slate, seats, flags | Derived; never stored (D10) |
+| **Notice** | A message on a watch saying its access got worse (or came back) after a change | Derived by comparing two analyses (Q21) |
+
+Subsets and pins are not entities: they are choices made while browsing, held only by the screen (D3, D7).
+
+### Rules (invariants)
+
+**Coverage**
+1. A course-list watch covers every section in the view whose course is in its course set. A tag/level watch covers
+   sections by today's rule (all listed tags, any listed level). One coverage rule, used by every caller.
+2. Only **enabled course-list watches** are analysed (Q1). Disabled watches get no analysis, no notices, no boxes.
+   Tag/level watches keep today's pairwise boxes and get no health line.
+3. A course in the course set is **offered** if the view has at least one section of it, **not offered** otherwise.
+   "Offered" is computed every time, never stored. Analysis runs on the offered courses and says so ("4 of 5 courses
+   offered"). A course whose sections all lack times is offered.
+
+**The clash test**
+4. Two sections **clash** if some meeting of one and some meeting of the other fall on the same day, overlap in time
+   (half-open: one ending at 10:00 and one starting at 10:00 don't clash), and share at least one week (every week
+   shares with everything; odd and even never share; week lists share if they have a week in common). One test, used
+   by the detector, the analyzer and the Slot Browser.
+5. Remote meetings with times are ordinary meetings. A section with **no meeting times** clashes with nothing; it is
+   reported wherever it affects a number (Q3).
+6. Campus and travel time play no part in the clash test (but see Q17).
+
+**Slates**
+7. A **slate** for a set of courses has exactly one section of each **part** of each course, and no two of its
+   sections clash. Two sections of the same part are never in one slate; sections of different parts of one course
+   (a lecture and its lab) must be. Where no section type is a component (UFV), every course has one part and this is
+   "one section per course".
+8. A course's parts are whatever the view holds this semester: if a course has no lab sections this term, no lab is
+   needed.
+9. A **full slate** is a slate for all offered courses of the course set. A **partial slate** for a subset is exactly
+   a full slate of that subset (D3); nothing else distinguishes them. Subsets are chosen by course, never by part: a
+   student taking BMEG 230 takes all of it.
+10. A **pin** is a section that must be in every slate shown. A pinned section is the only candidate for its part.
+   Pinning a section whose course isn't in the chosen subset adds nothing; pinning two clashing sections leaves no
+   slate, and the screen says why.
+11. Slates are counted up to a cap; beyond it the count is "more than N".
+
+**Section roles** (always relative to a set of courses and pins)
+12. **Usable:** in at least one slate. **Stranded:** in none. **Essential:** in every slate (only defined when at
+    least one slate exists).
+13. An essential section is either the **only section** of its part (BMEG 230's single lecture), or **essential by
+    timing**: its part has other sections, but each of them is in no slate (Q19).
+14. The health line and notices are always about the **full offered course set with no pins**. The grid picture
+    and stepping follow whatever subset and pins the user has chosen (D12).
+
+**Best partial slate**
+15. When no full slate exists, the **best partial slate** is a slate for the largest subset that has one. The
+    courses outside it are "the courses that can't fit". When several subsets tie, all their left-out courses are
+    named ("CHEM 101 or MATH 111 can't fit with the rest").
+
+**Seats**
+16. **Seats** for a set of courses is the largest number of students who can each be given a slate such that no
+    section is given to more students than its capacity. Never the smallest course total (the seats trap).
+17. A section's capacity is a ceiling on *all* its students, not just the watch's: seats is a ceiling, worded "up to".
+18. Each watch's seats are computed on their own. A section covered by two analysed watches has its seats counted by
+    both; that is flagged, naming the other watch, never split (Q4).
+19. Sections with no capacity: see Q20. Reserves play no part yet (Q4).
+
+**What if (D8)**
+20. Every answer is a function of (semester view, watch, subset, pins). The saved state is the view with an empty
+    proposal; there is no second code path for it.
+21. The view is the **whole semester**: grid filters never change it.
+22. A proposal can move a section between courses (a course change in the editor); coverage follows the new course.
+
+**Notices** (Q5)
+23. A notice compares the analysis before a change with the analysis after it, for each analysed watch the change
+    touches. Only these count:
+    - **Lost:** had a full slate, now has none.
+    - **Not offered:** a course in the set lost its last section.
+    - **Part gone:** a course lost the last section of one of its parts ("BMEG 230 has no lab sections left"),
+      because that makes slates look easier.
+    - **Newly essential by timing:** a section is essential by timing now and wasn't before.
+    - **Restored:** had no full slate, now has one (good news; it replaces a Lost notice).
+    - *(Later)* seats fall below an expected intake.
+    A drop in slate count or seats alone is not a notice. Each notice names the sections involved and a next step.
+24. Unsaved changes produce the editor pointer, never a notice. Notices come from saved changes.
+
+**Costly overlaps (teal boxes, Q16)**
+25. A clash between two covered sections of different parts (different courses, or a lecture and a lab of one
+    course) **costs something** if, with that one clash ignored, a
+    stranded section would become usable, or the best partial slate would cover more courses. Only costly clashes are
+    boxed. The fallback when no single clash qualifies is Q22.
+
+**Carrying watches forward (Q6)**
+26. A copied watch is the same watch (name, enabled, course set, tag/level rule) in the new semester, with its own
+    identity. Courses and tags are shared across semesters, so its references stay valid.
+27. A course "kept while not offered" is simply a course left in the course set; rule 3 flags it every time. Nothing
+    extra is recorded (Q23).
+
+### Decisions (proposed; Greg confirms at lock)
+
+| # | Decision | Rationale |
+|---|---|---|
+| D9 | **One section per part (answers Q2's main part).** Each section type is either a component (students take one of each: Lecture, Laboratory, Discussion) or an alternative (students take one: F2F, Online). A slate takes one section of every part of every course (rule 7) | UBC models labs as typed sections of the lecture's course; UFV models them as separate courses and uses section type for delivery mode. Neither "per course" nor "per section type" is right for both. How the app learns which types are components is Q18 |
+| D10 | **Nothing the analyzer reports is stored.** Slates, roles, seats, flags, subsets and pins are recomputed from the view | No new data, no save-path change, `MinimumVersionToWrite` No; nothing to go stale between users |
+| D11 | **One view for saved and what-if (rule 20)** | The editor pointer, the panel and the Slot Browser can never disagree with each other |
+| D12 | **Health and notices are about the whole course set; the grid picture follows the browsing choices** | An advisor's pins must not change what Alice is told about the watch's health |
+
+### Open questions
+
+| Q | Question | Recommendation |
+|---|---|---|
+| Q17 | **Campus.** Should a slate be allowed to mix in-person sections at different campuses (an Abbotsford lecture with a Chilliwack lab)? Counting them inflates slates and seats with choices nobody takes | Don't mix campuses by default: a slate's in-person sections share one campus; online and campus-less sections fit any campus. Is that right at UFV, and do some students genuinely split campuses? (UBC has one campus, so it's unaffected. If it must be switchable per watch, that is a stored setting: `MinimumVersionToWrite` Yes) |
+| Q18 | **How the app knows which section types are components.** Options: (a) a "students take one of each" mark on each section type, set in the scheduling environment; (b) guess from the type's name (Lecture, Lab, Tutorial…); (c) per watch | (a), defaulting to *alternative*, so existing databases behave as today's per-course rule. The section importer and the UBC scraper set it for the types they create. A course that has sections of several types none of which is a component gets a quiet hint in the watch's detail ("BMEG 230: Lecture, Laboratory and Discussion are counted as alternatives"). This is a new stored field on an existing record: `MinimumVersionToWrite` Yes, but older versions keep it through `PersistedRecord` |
+| Q24 | **Tied components.** Is a particular lab ever tied to a particular lecture (MECH 463: lectures 101 and 102; are labs L1A/L1B open to both)? Same question for UFV's AB lectures and A# labs | Leave ties out of this release: any section of a part goes with any section of another part. Add ties later if real data needs them |
+| Q25 | **Untyped sections in a course that has components.** BMEG 210 has lecture 101, tutorial T1A, and "ab1" with no type at the same time as lecture "ab2" | Untyped sections join the course's alternatives part, so ab1 would be *required* alongside the lecture. That is wrong here, so instead: in a course with components, an untyped section is left out of the analysis and named ("BMEG 210 ab1 has no section type, so it isn't counted") |
+| Q19 | **Which essential sections to name.** Every single-section course is trivially essential | The health line names only sections *essential by timing*; only-sections are mentioned in the watch's detail, not the line. Newly-essential notices are for timing only |
+| Q20 | **Seats with no capacities.** Neither UFV nor UBC has any set, so "seats unknown" would be all either ever shows | If any usable section lacks a capacity, show no seat number; say once, quietly, "Set section capacities to see how many students fit." Treating unknown as unlimited gives numbers that look real and aren't |
+| Q21 | **How long notices live, and whose saves make them.** | Kept in memory for the session; cleared when dismissed or when no longer true. They come from any change this app sees (own saves, and other users' saves when the semester reloads). Not stored: the health line already shows the current state after a restart. Storing them would be new data (Yes) |
+| Q22 | **Costly-overlap fallback.** With no full slate, it can take two moves to restore one, so no single clash is "costly" and no boxes would show while access is broken | In that case box the clashes involving the courses that can't fit, and the hover says "more than one change needed" |
+| Q23 | **"Keep anyway" for not-offered courses.** Phase 1's Q6 mentioned a possible per-semester mark | No mark: leaving the course in the list *is* keeping it, and the flag is computed (rule 27). Phase 1's "one-time offer" to bring watches over needs remembering that it was declined; that is Phase 4's to settle |
+
+### Production and data safety (Phase 2)
+The analysis stores nothing (D10). **D9 does need one stored fact:** whether each section type is a component
+(Q18). That is a new field on section types (`MinimumVersionToWrite` Yes; older versions preserve it, since the
+record derives from `PersistedRecord`). Defaulting to *alternative* means existing databases analyse exactly as the
+per-course rule would until someone marks a type. Two other answers would add stored data if chosen: a per-watch
+campus switch (Q17) and stored notices (Q21); both recommendations avoid it.
