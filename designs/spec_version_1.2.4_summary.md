@@ -765,6 +765,8 @@ whether the work is safe, and what to do next.
 The 1.2.3 field tests took about 18 hours. Nearly every finding came from something the harness simulates more
 kindly than reality. So: close the harness gaps first, then make the remaining hand tests cheaper.
 
+*What's left of this section, and in what order: [`testing-readiness-1.2.4.md`](testing-readiness-1.2.4.md).*
+
 > [!note]- **8.1 Harness: run the wake check and the heartbeat together**
 > The harness's sleep step runs them one after the other, but a real wake (or a frozen process resuming) fires both at
 > once. Both field bugs that needed new test builds came from this. Run them concurrently (consider the reader poll

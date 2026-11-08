@@ -13,6 +13,8 @@ Written so a fresh conversation can pick up. Claude Code's memory and `CLAUDE.md
   Greg controls branches, commits and pushes: never create a branch, ask before each commit and each push.
 - **1.2.3 is released on the Microsoft Store** (Store only), built from `cf4d4cb`. `MinimumVersionToWrite`: No for
   1.2.3 and (so far) No for 1.2.4.
+- **Testing readiness (section 8):** `designs/testing-readiness-1.2.4.md` tracks what's left of section 8 and the
+  order (test-timings build on the rig, then 8.12, then 8.11). Read it at every handoff.
 - **The plan:** `designs/spec_version_1.2.4_summary.md` (progressive-reveal summary of `designs/spec_version_1.2.4.md`;
   every finished item has a "Done" note). Greg chose to do group 8 (testing) first.
 - **Colour by subject (summary 2.3):** implemented through task 4 plus Revision 1 (markers, not chips), `c33861f`.
