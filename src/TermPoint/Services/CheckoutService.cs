@@ -431,6 +431,40 @@ public sealed class CheckoutService : IDisposable
     public bool SessionDirty { get; private set; }
 
     /// <summary>
+    /// Count of user writes made in this session (spec item 3.2). Changed only with <see cref="Interlocked"/>, through
+    /// <see cref="NoteEdit"/>. A save reads it before its snapshot and again at step 6; a difference means an edit
+    /// arrived while the save ran, so the save must keep the dirty marker.
+    /// </summary>
+    private long _editGeneration;
+
+    /// <summary>The current edit count (see <c>_editGeneration</c>). Read with <see cref="Interlocked.Read"/>.</summary>
+    internal long EditGeneration => Interlocked.Read(ref _editGeneration);
+
+    /// <summary>
+    /// Serialises the two things that touch the dirty marker file for an edit or a save's final step: the marker write
+    /// in <see cref="MarkDirty"/>, and step 6 of the save (reset the first-write flag, compare the counters, then delete
+    /// or rewrite the marker). An edit's marker write therefore waits for step 6 to finish and can never fall between
+    /// the save's comparison and its delete. Held for one local file operation, never across a network call.
+    /// </summary>
+    private readonly object _markerGate = new();
+
+    /// <summary>
+    /// True when the most recent <see cref="SaveAsync"/> succeeded but KEPT the dirty marker because an edit arrived
+    /// while it ran (spec item 3.2). Reset to false at the start of every save. Read by
+    /// <see cref="SaveUntilMarkerClearAsync"/> and by the restore from backup, which must not treat such a save as
+    /// "everything is saved". Not a <see cref="SaveOutcome"/>: the save did succeed, and every caller tests
+    /// <c>== Success</c>.
+    /// </summary>
+    internal bool LastSaveKeptMarker { get; private set; }
+
+    /// <summary>
+    /// Counts one user write. Called by <see cref="Data.DatabaseContext"/> on EVERY repository write, BEFORE the write
+    /// touches the database (so a save that reads the count and then snapshots can never miss a write that starts
+    /// after its reading). Lock-free and cheap: one interlocked increment.
+    /// </summary>
+    public void NoteEdit() => Interlocked.Increment(ref _editGeneration);
+
+    /// <summary>
     /// Identity of the process (user, machine) holding the write lock when this instance is in
     /// read-only mode. Null in write mode or before checkout.
     /// </summary>
@@ -1625,6 +1659,40 @@ public sealed class CheckoutService : IDisposable
     }
 
     /// <summary>
+    /// Saves, and when that save succeeded but KEPT the dirty marker because an edit arrived while it ran
+    /// (<see cref="LastSaveKeptMarker"/>, spec item 3.2), saves exactly one more time with the same flag. The one shared
+    /// helper for callers that need "everything is saved" before they go on: the exit/switch save
+    /// (<see cref="ReleaseAsync"/>) and the save before a restore from backup.
+    ///
+    /// <para>With <paramref name="releaseLockAfter"/> a kept marker means the first save did not release the lock; the
+    /// second pass does. If the second pass ALSO kept the marker (an edit during both exit saves while the "Saving and
+    /// closing" curtain blocks input: practically impossible) the lock is released anyway and Success is returned;
+    /// <see cref="CleanupWorkingCopy"/> then keeps D' because its marker exists, so the edit is offered back at the
+    /// next open. Without it, a still-kept marker is left for the caller to test (<see cref="LastSaveKeptMarker"/>).</para>
+    /// </summary>
+    /// <param name="releaseLockAfter">Release the write lock after the save that clears the marker (exit only).</param>
+    /// <returns>
+    /// The last save's outcome. Does not throw (neither does <see cref="SaveAsync"/>).
+    /// </returns>
+    internal async Task<SaveOutcome> SaveUntilMarkerClearAsync(bool releaseLockAfter)
+    {
+        var outcome = await SaveAsync(releaseLockAfter: releaseLockAfter);
+        if (outcome != SaveOutcome.Success || !LastSaveKeptMarker)
+            return outcome;
+
+        _logger.LogBreadcrumb("Save: second pass for an edit made during the save");
+        outcome = await SaveAsync(releaseLockAfter: releaseLockAfter);
+
+        if (outcome == SaveOutcome.Success && LastSaveKeptMarker && releaseLockAfter)
+        {
+            // Both passes kept the marker: give the lock back anyway (the exit must finish). The copy and marker stay.
+            _logger.LogInfo("CheckoutService: an edit arrived during both exit saves — releasing the lock; the edit stays kept for recovery.");
+            _lockService.Release();
+        }
+        return outcome;
+    }
+
+    /// <summary>
     /// Raises <see cref="SaveFailed"/> for a transient <see cref="SaveOutcome.CopyError"/>.
     /// The banner text is <see cref="SavePrompt.ForTransientFailure"/> of <paramref name="message"/>:
     /// the retry note that fits how the save started (autosave: "TermPoint will try again
@@ -1955,7 +2023,29 @@ public sealed class CheckoutService : IDisposable
             WriteDirtyMarker();
     }
 
+    /// <summary>
+    /// Runs one save. A thin wrapper that owns the <see cref="SaveSnapshotState"/> (the open source connection on D'
+    /// and the edit counters read before the snapshot, spec item 3.2) so it is disposed on EVERY exit path of
+    /// <see cref="SaveAsyncCoreBody"/>, however the save ends, and resets <see cref="LastSaveKeptMarker"/>.
+    /// </summary>
+    /// <param name="releaseLockAfter">See <see cref="SaveAsync"/>.</param>
+    /// <param name="isAutoSave">See <see cref="SaveAsync"/>.</param>
+    /// <returns>The save's outcome, exactly as <see cref="SaveAsyncCoreBody"/> returns it.</returns>
     private async Task<SaveOutcome> SaveAsyncCore(bool releaseLockAfter, bool isAutoSave)
+    {
+        LastSaveKeptMarker = false;
+        using var snapshot = new SaveSnapshotState();
+        return await SaveAsyncCoreBody(releaseLockAfter, isAutoSave, snapshot);
+    }
+
+    /// <summary>
+    /// The save pipeline itself (steps 1–6; see <see cref="SaveAsync"/>).
+    /// </summary>
+    /// <param name="releaseLockAfter">See <see cref="SaveAsync"/>. Ignored at step 6 when an edit arrived during the save (the lock is then kept for one more pass).</param>
+    /// <param name="isAutoSave">See <see cref="SaveAsync"/>.</param>
+    /// <param name="snapshot">Receives the source connection and the counters of step 3a; disposed by the caller.</param>
+    /// <returns>The save's outcome.</returns>
+    private async Task<SaveOutcome> SaveAsyncCoreBody(bool releaseLockAfter, bool isAutoSave, SaveSnapshotState snapshot)
     {
         var saveStart = Stopwatch.GetTimestamp();   // field reporting (1.2.4 item 7.1): times this save, real time
 
@@ -1991,7 +2081,7 @@ public sealed class CheckoutService : IDisposable
         CrashPoints.Hit("Save.AfterSourceCheck");
 
         // ── Step 3: Snapshot D' locally, then stream the snapshot to D.tmp ───
-        // 3a. BackupSqliteDatabase coordinates with the SQLite engine rather than
+        // 3a. SnapshotWorkingCopy coordinates with the SQLite engine rather than
         //     copying raw bytes. This guarantees a consistent snapshot even if a
         //     write transaction is mid-commit on the DatabaseContext connection
         //     (something a raw File.Copy cannot guarantee). The backup targets a
@@ -2009,11 +2099,20 @@ public sealed class CheckoutService : IDisposable
         {
             try
             {
-                await Task.Run(() => BackupSqliteDatabase(WorkingPath, localTmp));
+                // The source connection is kept (snapshot.Source) until step 6. On its own connection, immediately
+                // BEFORE the pages are read, the save reads the edit count (G0) and SQLite's data_version (v0):
+                //   a write committed before v0 is in the snapshot; one committed after v0 changes data_version;
+                //   a write that starts after G0 changes the edit count. Step 6 compares both (spec item 3.2).
+                // snapshot.Source is assigned only on success; on a failure SnapshotWorkingCopy disposes it itself.
+                snapshot.Source = await Task.Run(() => SnapshotWorkingCopy(WorkingPath, localTmp, source =>
+                {
+                    snapshot.EditGenerationBefore = EditGeneration;
+                    snapshot.DataVersionBefore    = ReadDataVersion(source);
+                }));
             }
             catch (Exception ex)
             {
-                // D' itself is the failing party here (the share has not been touched yet). BackupSqliteDatabase
+                // D' itself is the failing party here (the share has not been touched yet). SnapshotWorkingCopy
                 // opens D' with Mode=ReadWrite, so a working copy that has vanished (on macOS an open file can
                 // be deleted under a running app) fails the open instead of being re-created EMPTY and pushed
                 // over D. Say so plainly rather than quoting SQLite's "unable to open database file".
@@ -2215,19 +2314,66 @@ public sealed class CheckoutService : IDisposable
         // ── Step 6: Update state ─────────────────────────────────────────────
         HashAtCheckout   = newSourceHash;
         _pendingSaveHash = null;   // this save is confirmed — no ghost outstanding
-        SessionDirty     = false;
 
-        // D' now matches D — delete the dirty marker. If the user makes further
-        // edits, DatabaseContext.MarkDirty() will re-write it (after ResetDirty rearms it).
-        // This keeps the marker as an accurate signal: present = unsaved changes exist.
-        //
-        // Fire BeforeDirtyMarkerDeleted SYNCHRONOUSLY first so subscribers (notably
-        // DatabaseContext.ResetDirty) can rearm MarkDirty before the marker file is
-        // removed. See the event docstring for the F2 race rationale.
-        BeforeDirtyMarkerDeleted?.Invoke();
-        DeleteDirtyMarker();
+        // D' now matches D — UNLESS an edit arrived while this save ran (spec item 3.2, finding F2). The save's
+        // snapshot was taken before that edit, so the edit is in D' only; deleting the marker would leave it
+        // unmarked, and a lost lock, a failed exit save or a crash would then throw it away. So the marker is
+        // deleted only when BOTH counters say nothing happened since the snapshot:
+        //   * the edit count (every user write counts itself BEFORE touching the database), and
+        //   * SQLite's data_version on the save's own connection (changes when another connection commits).
+        // The whole decision runs under _markerGate, which MarkDirty also takes around its marker write: an edit's
+        // marker write waits here, so it can never fall between the comparison and the delete. Local work only —
+        // no network call is made under the lock.
+        bool markerKept;
+        bool markerRewriteFailed = false;
+        lock (_markerGate)
+        {
+            // Fire BeforeDirtyMarkerDeleted SYNCHRONOUSLY first so subscribers (notably
+            // DatabaseContext.ResetDirty) can rearm MarkDirty before the marker file is
+            // removed. See the event docstring for the F2 race rationale. (Resetting the flag first also makes
+            // the next edit write the marker again; that write waits for this lock.)
+            BeforeDirtyMarkerDeleted?.Invoke();
+
+            markerKept = EditArrivedDuringSave(snapshot);
+            if (!markerKept)
+            {
+                // Nothing arrived: today's behaviour. D' matches D, so the marker (present = unsaved changes) goes.
+                SessionDirty = false;
+                DeleteDirtyMarker();
+            }
+            else
+            {
+                // Keep the marker, rewritten so it carries the hash of the D this save just landed (HashAtCheckout,
+                // updated above) and no pending hash: if the edit is ever offered back, the restore works because
+                // D is exactly what this session's own save left there. Retried once, as in MarkDirty.
+                SessionDirty        = true;
+                LastSaveKeptMarker  = true;
+                markerRewriteFailed = !WriteDirtyMarker() && !WriteDirtyMarker();
+            }
+        }
+
+        // The source connection has served its purpose; free D' before anything slow (the lock release is a network call).
+        snapshot.Dispose();
+
+        if (markerKept)
+        {
+            _logger.LogInfo("CheckoutService: an edit arrived during the save — the dirty marker is kept for it.");
+            _logger.LogBreadcrumb("Save: edit arrived during save");
+            if (markerRewriteFailed)
+            {
+                // Same warning, same report as MarkDirty: the marker is what protects the edit through a crash.
+                ReportSaveFailure(SaveStep.CrashProtectionMarker, null,
+                    "could not rewrite the dirty marker after a save — crash protection degraded for this session.",
+                    isAutoSave: false);
+                RaiseSaveError(SavePrompt.CrashProtectionMessage, autoDismiss: true);
+            }
+        }
+
         CrashPoints.Hit("Save.AfterMarkerDelete");
-        if (releaseLockAfter)
+
+        // With a kept marker the lock is NOT released even at exit: the edit is not saved yet, and
+        // ReleaseAsync (via SaveUntilMarkerClearAsync) runs one more save while the lock is still ours.
+        if (releaseLockAfter && !markerKept)
             _lockService.Release();
 
         _logger.LogInfo("CheckoutService: Save completed successfully.");
@@ -2239,7 +2385,38 @@ public sealed class CheckoutService : IDisposable
             ["autoSave"]  = isAutoSave.ToString(),
         });
         _dispatch(() => SaveCompleted?.Invoke());
+
+        // The unsaved-changes indicator was just cleared by SaveCompleted; the edit that arrived during this save
+        // is still unsaved, so turn it back on (posted after SaveCompleted so the order is preserved).
+        if (markerKept)
+            _dispatch(() => BecameDirty?.Invoke());
+
         return SaveOutcome.Success;
+    }
+
+    /// <summary>
+    /// Step 6's question: did an edit arrive while this save ran? True when the edit count has changed since the
+    /// reading taken before the snapshot, or SQLite's <c>data_version</c> has (another connection committed since).
+    /// A failure to read <c>data_version</c> counts as "yes" — keeping a marker that was not needed is a mild
+    /// surprise, deleting one that was needed loses an edit. Called under <c>_markerGate</c>.
+    /// </summary>
+    /// <param name="snapshot">The counters and the open source connection of this save's snapshot.</param>
+    /// <returns>True when the marker must be kept.</returns>
+    private bool EditArrivedDuringSave(SaveSnapshotState snapshot)
+    {
+        if (EditGeneration != snapshot.EditGenerationBefore)
+            return true;
+
+        try
+        {
+            return snapshot.Source is null
+                || ReadDataVersion(snapshot.Source) != snapshot.DataVersionBefore;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogInfo($"CheckoutService: could not read the data version after the save ({ex.GetType().Name}) — keeping the marker.");
+            return true;
+        }
     }
 
     /// <summary>
@@ -2516,6 +2693,19 @@ public sealed class CheckoutService : IDisposable
 
         try
         {
+            // Backstop (spec item 3.2, audit finding): while the dirty marker exists there are edits that are in D'
+            // only. A confirmed restore ends the session and DiscardCrash then deletes D' and the marker, which would
+            // destroy them. SessionLifecycle's save-first already refuses to start in that case; this keeps any other
+            // caller honest. Checked after the in-flight gate (a running save is answered "Busy" first, and the marker
+            // is only meaningful once no save is rewriting it). Reported as Failed with no detail, whose text is
+            // "Something went wrong, so the restore was stopped. Your database is unchanged." (true, and no new
+            // wording). Nothing is touched.
+            if (HasDirtyMarker)
+            {
+                _logger.LogInfo("CheckoutService: RestoreFromBackupAsync refused — unsaved changes exist (the dirty marker is present).");
+                return new RestoreResult(RestoreOutcome.Failed);
+            }
+
             _logger.LogBreadcrumb("Restore: started");
 
             var result = await DatabaseRestore.ReplaceAsync(
@@ -2982,7 +3172,14 @@ public sealed class CheckoutService : IDisposable
             // sweep deleting D' as "no edits were made" — a silent write failure here
             // would silently disarm crash protection. Retry once (transient AV holds
             // clear in milliseconds), then warn the user honestly.
-            if (!WriteDirtyMarker() && !WriteDirtyMarker())
+            //
+            // Taken under _markerGate: step 6 of a save resets the first-write flag, compares the edit counters and
+            // then deletes or rewrites the marker under the same lock, so this write cannot fall between that
+            // comparison and that delete (spec item 3.2). The lock covers only the local file write.
+            bool written;
+            lock (_markerGate)
+                written = WriteDirtyMarker() || WriteDirtyMarker();
+            if (!written)
             {
                 // ReportSaveFailure, not LogError: one banner (the warning below), one path-free report.
                 ReportSaveFailure(SaveStep.CrashProtectionMarker, null,
@@ -3120,7 +3317,7 @@ public sealed class CheckoutService : IDisposable
     /// resumed, and this keeps them as a separate file the user can open later.
     ///
     /// <para><b>Snapshot, then place.</b> D' is copied with the SQLite Online Backup API into a temporary LOCAL file
-    /// (<see cref="BackupSqliteDatabase"/>, exactly as a save does), and only that finished, quiescent snapshot is
+    /// (<see cref="SnapshotWorkingCopy"/>, exactly as a save does), and only that finished, quiescent snapshot is
     /// placed at <paramref name="destPath"/> with <see cref="NewFilePlacement.PlaceAsync"/>. The snapshot is needed
     /// because D' is a WAL-mode database: recent commits may live only in its <c>-wal</c> file, which a raw
     /// <c>File.Copy</c> of the <c>.db</c> would silently leave behind. The backup reads through the WAL and writes a
@@ -3204,7 +3401,7 @@ public sealed class CheckoutService : IDisposable
     private async Task<NewDatabaseResult> SnapshotAndPlaceRecoveredCopyAsync(
         string sourcePath, string destPath, string localPath)
     {
-        // Nothing to export: report it without creating anything (BackupSqliteDatabase would also refuse to
+        // Nothing to export: report it without creating anything (SnapshotWorkingCopy would also refuse to
         // create a missing D', but saying so up front gives a clear error).
         var workingPath = ComputeWorkingPath(sourcePath);
         if (!File.Exists(workingPath))
@@ -3218,7 +3415,9 @@ public sealed class CheckoutService : IDisposable
         // Snapshot D' locally (WAL-proof, rollback mode), then place it without overwrite. PlaceAsync re-checks the
         // destination just before writing, because the snapshot takes a moment. The leftover-.tmp removal is
         // awaited: nothing else would ever sweep a stray dest.tmp beside a file the user chose.
-        await Task.Run(() => BackupSqliteDatabase(workingPath, localPath)).ConfigureAwait(false);
+        // The export needs only the finished file, so the source connection SnapshotWorkingCopy hands back is
+        // disposed at once (only a save keeps it, to read data_version at its step 6).
+        await Task.Run(() => SnapshotWorkingCopy(workingPath, localPath).Dispose()).ConfigureAwait(false);
         CrashPoints.Hit("Export.AfterLocalSnapshot");
         return await NewFilePlacement.PlaceAsync(localPath, destPath, awaitTmpCleanup: true, logger: _logger)
             .ConfigureAwait(false);
@@ -3611,7 +3810,8 @@ public sealed class CheckoutService : IDisposable
             // _saveInFlight gate and being skipped.
             await WaitForInFlightSaveAsync();
 
-            outcome = await SaveAsync(releaseLockAfter: true);
+            // One more pass when an edit arrived during the first one (spec item 3.2): SaveUntilMarkerClearAsync.
+            outcome = await SaveUntilMarkerClearAsync(releaseLockAfter: true);
             CrashPoints.Hit("Release.AfterFinalSave");
 
             if (outcome == SaveOutcome.CopyError)
@@ -5139,15 +5339,28 @@ public sealed class CheckoutService : IDisposable
     /// the slowest possible I/O pattern for SMB and impossible to bound with a
     /// deadline. The save pipeline snapshots locally, then streams the finished file
     /// to the network with the stall-aware <see cref="NetworkFileOps.CopyAsync"/>.</para>
+    /// <para><b>The source connection is handed back, still open</b> (renamed from <c>BackupSqliteDatabase</c> in 1.2.4: "backup"
+    /// meant SQLite's backup API and was easily confused with TermPoint's backup files). The save keeps it open from
+    /// before the snapshot until step 6 and reads <c>PRAGMA data_version</c> on it, which changes whenever ANOTHER
+    /// connection (the app's) has committed since the last reading (spec item 3.2). The caller owns it and must dispose
+    /// it on every path; the export caller disposes it at once.</para>
     /// </summary>
     /// <param name="sourcePath">Path to the source SQLite database (typically D').</param>
     /// <param name="destPath">Path for the destination file (created or overwritten; should be local).</param>
+    /// <param name="beforeSnapshot">
+    /// Optional action run on the open source connection immediately BEFORE the snapshot is taken (the save reads its
+    /// edit count and <c>data_version</c> there). If it throws, the connection is disposed and the exception propagates.
+    /// </param>
+    /// <returns>
+    /// The source connection, open (<c>Mode=ReadWrite;Pooling=False</c>), holding no transaction. The caller disposes it.
+    /// </returns>
     /// <exception cref="Exception">
     /// Propagates any SQLite or I/O error to the caller — including a SQLite "unable to open database
     /// file" error when <paramref name="sourcePath"/> does not exist (see the remarks on the source
-    /// connection below). In that case <paramref name="destPath"/> is not created either.
+    /// connection below). In that case <paramref name="destPath"/> is not created either, and no connection is left open.
     /// </exception>
-    private static void BackupSqliteDatabase(string sourcePath, string destPath)
+    private static SqliteConnection SnapshotWorkingCopy(
+        string sourcePath, string destPath, Action<SqliteConnection>? beforeSnapshot = null)
     {
         // Pooling=False is essential: with the default connection pool, Dispose()
         // returns connections to the pool rather than closing them, leaving the
@@ -5162,20 +5375,77 @@ public sealed class CheckoutService : IDisposable
         // SaveAsync reports as a clean CopyError before anything is written to the share. (ReadWrite rather
         // than ReadOnly changes only the create flag, so WAL handling stays exactly as it was.)
         // The DESTINATION is a brand-new local snapshot file and must be created.
-        using var source = new SqliteConnection($"Data Source={sourcePath};Mode=ReadWrite;Pooling=False");
-        using var dest   = new SqliteConnection($"Data Source={destPath};Pooling=False");
-        // Source first: if it cannot be opened, the destination is never created.
-        source.Open();
-        dest.Open();
-        source.BackupDatabase(dest);
+        var source = new SqliteConnection($"Data Source={sourcePath};Mode=ReadWrite;Pooling=False");
+        try
+        {
+            using var dest = new SqliteConnection($"Data Source={destPath};Pooling=False");
+            // Source first: if it cannot be opened, the destination is never created.
+            source.Open();
+            dest.Open();
 
-        // The page-for-page backup inherits D's journal-mode header from D', which
-        // DatabaseContext opens in WAL mode. This snapshot becomes the new D on the
-        // network, and WAL must never be active on a network file — normalize to
-        // rollback mode so the shipped file is a self-contained single .db.
-        using var journalMode = dest.CreateCommand();
-        journalMode.CommandText = "PRAGMA journal_mode=DELETE";
-        journalMode.ExecuteScalar();
+            // The save reads its edit count and data_version here, on THIS connection, before the pages are read:
+            // a write committed before this point is in the snapshot, one committed after it changes data_version.
+            beforeSnapshot?.Invoke(source);
+
+            source.BackupDatabase(dest);
+
+            // The page-for-page backup inherits D's journal-mode header from D', which
+            // DatabaseContext opens in WAL mode. This snapshot becomes the new D on the
+            // network, and WAL must never be active on a network file — normalize to
+            // rollback mode so the shipped file is a self-contained single .db.
+            using var journalMode = dest.CreateCommand();
+            journalMode.CommandText = "PRAGMA journal_mode=DELETE";
+            journalMode.ExecuteScalar();
+        }
+        catch
+        {
+            // Nothing is handed over on a failure: never leave the source (D') open behind a failed snapshot.
+            source.Dispose();
+            throw;
+        }
+
+        return source;
+    }
+
+    /// <summary>
+    /// Reads SQLite's <c>PRAGMA data_version</c> on a connection. The value changes whenever ANOTHER connection to the
+    /// same file has committed since this connection's previous reading, and never for this connection's own writes
+    /// (this one only reads). A save compares a reading taken just before its snapshot with one taken at step 6: a
+    /// difference means a write committed in between that the snapshot may not contain (spec item 3.2).
+    /// </summary>
+    /// <param name="connection">An open connection to the working copy D'.</param>
+    /// <returns>The current data version.</returns>
+    /// <exception cref="SqliteException">The pragma could not be read.</exception>
+    private static long ReadDataVersion(SqliteConnection connection)
+    {
+        using var cmd = connection.CreateCommand();
+        cmd.CommandText = "PRAGMA data_version";
+        return Convert.ToInt64(cmd.ExecuteScalar());
+    }
+
+    /// <summary>
+    /// What one save knows about the edits made while it ran (spec item 3.2): the edit count and SQLite's
+    /// <c>data_version</c> as read just before the snapshot, and the open source connection the second reading is
+    /// taken on at step 6. Disposed by <see cref="SaveAsyncCore"/> on every exit path, so D' is never left held open.
+    /// </summary>
+    private sealed class SaveSnapshotState : IDisposable
+    {
+        /// <summary>The source connection handed back by <see cref="SnapshotWorkingCopy"/>; null before the snapshot and after disposal.</summary>
+        public SqliteConnection? Source;
+
+        /// <summary>The edit count read before the snapshot (<c>G0</c>).</summary>
+        public long EditGenerationBefore;
+
+        /// <summary>The <c>data_version</c> read before the snapshot (<c>v0</c>).</summary>
+        public long DataVersionBefore;
+
+        /// <summary>Disposes the source connection, if any. Safe to call more than once.</summary>
+        public void Dispose()
+        {
+            var source = Source;
+            Source = null;
+            source?.Dispose();
+        }
     }
 
     /// <summary>Best-effort file deletion. Non-throwing — failures are silently ignored.</summary>

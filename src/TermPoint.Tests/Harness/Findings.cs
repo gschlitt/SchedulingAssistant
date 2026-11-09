@@ -57,7 +57,8 @@ internal static class HarnessTitles
 /// moment of the save's rename (invariant I4, observed at <c>Save.AfterFinalCheck</c>); and, in the same step, an I1 violation
 /// whose lost committed edits another computer committed while the save was held before its rename (the rename landed over
 /// them). Step 9.3c-2b.</description></item>
-/// <item><description><b>F2</b> (spec item 15): an edit was lost whose computer applied it while its own operation was held in the
+/// <item><description><b>F2</b> (spec item 15; FIXED in 1.2.4, item 3.2: the save compares an edit count and SQLite's <c>data_version</c> before its
+/// snapshot and at step 6, and keeps the marker when either moved; the rule stays as the regression detector): an edit was lost whose computer applied it while its own operation was held in the
 /// edit-loss window (<see cref="PausePoints.EditLossWindow"/>: from a save's snapshot to the cleanup of the working copy). It
 /// missed the save, and what protected it was thrown away when the operation ended: the save's last step deleted the marker and the
 /// computer then crashed before another save landed, or, for a close or a switch, the working copy itself was cleaned up. Step 9.3c-2b.</description></item>
@@ -104,10 +105,11 @@ internal static class Findings
             case ViolationKind.EditLost when DiscardedWithoutConfirmation(violation.ComputerPrompts):
                 return "F1";
 
-            // An edit applied while its computer's own operation was held in the edit-loss window (from a save's snapshot to the
-            // cleanup of the working copy): it missed the save, and what protected it is thrown away when the operation ends. The
-            // save's last step deletes the marker, so a crash before another save lands makes the next start delete the unmarked
-            // working file; a close or a switch is followed by the cleanup of the working copy itself (spec item 15, step 9.3c-2b).
+            // F2, FIXED in 1.2.4 (item 3.2); the rule stays so a regression is reported. An edit applied while its computer's own
+            // operation was held in the edit-loss window (from a save's snapshot to the cleanup of the working copy) misses the save.
+            // The save now keeps the marker when an edit arrived (edit count and data_version compared before the snapshot and at
+            // step 6); before the fix its last step deleted the marker, so a crash before another save landed made the next start
+            // delete the unmarked working file, and a close or switch cleaned up the working copy itself (spec item 15, step 9.3c-2b).
             case ViolationKind.EditLost when violation.EditAppliedDuringHeldSave == true:
                 return "F2";
 

@@ -458,7 +458,7 @@ public class BackupService : IDisposable
         // database at D' if the working copy had been deleted while the app ran (on macOS unlinking an
         // open file succeeds), and this backup would then ship an empty "backup" to the backup folder
         // and rotate real ones out. With ReadWrite a missing D' is a failed open, reported by the
-        // caller's catch as a failed backup. (Same rule as CheckoutService.BackupSqliteDatabase.)
+        // caller's catch as a failed backup. (Same rule as CheckoutService.SnapshotWorkingCopy.)
         using (var conn = new SqliteConnection($"Data Source={sourcePath};Mode=ReadWrite;Pooling=False"))
         {
             conn.Open();

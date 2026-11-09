@@ -275,6 +275,7 @@ internal sealed class FakeSessionHost : ISessionHost, IDisposable
     /// <exception cref="InvalidOperationException">No connection is open.</exception>
     public void Edit(string value)
     {
+        _checkout.NoteEdit();   // like DatabaseContext's onEveryWrite: counted BEFORE the database is touched
         Exec($"INSERT INTO _test VALUES('{value}')");
         _checkout.MarkDirty();
     }
@@ -288,6 +289,7 @@ internal sealed class FakeSessionHost : ISessionHost, IDisposable
     /// <exception cref="InvalidOperationException">No connection is open.</exception>
     public void EditWith(string sql)
     {
+        _checkout.NoteEdit();   // like DatabaseContext's onEveryWrite: counted BEFORE the database is touched
         Exec(sql);
         _checkout.MarkDirty();
     }

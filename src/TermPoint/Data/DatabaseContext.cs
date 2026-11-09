@@ -30,6 +30,13 @@ public class DatabaseContext : IDatabaseContext
     private readonly Action? _onFirstWrite;
     private int _dirtyFired; // 0 = not yet fired; 1 = fired. Interlocked for thread safety.
 
+    /// <summary>
+    /// Called on EVERY user write, after the read-only check and before the first-write compare-and-swap, so the
+    /// checkout service can count edits (<c>CheckoutService.NoteEdit</c>). A save compares that count before and after
+    /// its snapshot to learn that an edit arrived while it ran (spec item 3.2). Null in tests and demo contexts.
+    /// </summary>
+    private readonly Action? _onEveryWrite;
+
     private string _dbPath;
 
     /// <summary>
@@ -64,6 +71,10 @@ public class DatabaseContext : IDatabaseContext
         if (_readOnly)
             throw new WriteAccessLostException();
 
+        // Count the edit BEFORE anything touches the database: a save that reads the counter, snapshots, and reads
+        // it again must never miss a write that started after its first reading (spec item 3.2).
+        _onEveryWrite?.Invoke();
+
         if (Interlocked.CompareExchange(ref _dirtyFired, 1, 0) == 0)
             _onFirstWrite?.Invoke();
     }
@@ -93,9 +104,17 @@ public class DatabaseContext : IDatabaseContext
     /// the constructor, after the schema, migrations and seed data have run, so a snapshot of an older database
     /// still gets the tables and columns the readers need. Defaults to false (a writer session).
     /// </param>
-    public DatabaseContext(string dbPath, Action? onFirstWrite = null, bool readOnly = false)
+    /// <param name="onEveryWrite">
+    /// Optional callback invoked on every user-initiated write, before the database is touched (after the
+    /// read-only check, before the first-write callback). <see cref="Services.CheckoutService"/> counts edits with
+    /// it (<c>NoteEdit</c>) so a save can tell that an edit arrived while it ran. Last parameter so positional callers
+    /// of the earlier overload keep compiling. Kept for the context's lifetime, including across
+    /// <see cref="ReinitializeConnection"/>. Pass <c>null</c> in tests and demo contexts.
+    /// </param>
+    public DatabaseContext(string dbPath, Action? onFirstWrite = null, bool readOnly = false, Action? onEveryWrite = null)
     {
         _onFirstWrite = onFirstWrite;
+        _onEveryWrite = onEveryWrite;
         _dbPath       = dbPath;
 
         // Constructing the connection does not touch the filesystem; the folder is created and the
@@ -154,7 +173,7 @@ public class DatabaseContext : IDatabaseContext
     /// concurrently, eliminating that contention class. The working copy is always on a
     /// local disk, so WAL's no-network-filesystem caveat does not apply; files written back
     /// to the network are normalized to rollback mode by
-    /// <c>CheckoutService.BackupSqliteDatabase</c>.</para>
+    /// <c>CheckoutService.SnapshotWorkingCopy</c>.</para>
     ///
     /// <para><b>5-second busy timeout:</b> repository calls run synchronously on the UI
     /// thread. Should a lock ever be contended despite WAL, fail after 5&#160;s with a clean

@@ -5,8 +5,10 @@ namespace TermPoint.Tests.Harness;
 
 /// <summary>
 /// Proof that fixed findings of the data-persistence review (section 3) stay fixed. F1, F8 and F12 were fixed on 2026-10-21 (1.2.3); F19 in 1.2.4 (item 4.12);
-/// F16, F17 and F23 in 1.2.4 by the close/switch sequence (<c>designs/close-switch-sequence.md</c>):
+/// F2 in 1.2.4 (item 3.2); F16, F17 and F23 in 1.2.4 by the close/switch sequence (<c>designs/close-switch-sequence.md</c>):
 /// <list type="bullet">
+/// <item><description><b>F2</b>: an edit made while a save runs keeps the unsaved-changes marker (the save compares an edit count and SQLite's
+/// <c>data_version</c> before its snapshot and at step 6), so a crash or lost lock no longer throws the edit away.</description></item>
 /// <item><description><b>F16</b>: the checkout has a session id and the release waits for a running lost-lock demotion, so a demotion still running when the
 /// user switches no longer lands on the new session (its pause form replays here; the production route is <c>CheckoutServiceTests.F16_...</c>).</description></item>
 /// <item><description><b>F17</b>: while the checkout is ending, the final save's banners and lock loss are not delivered, so a close or switch save problem shows
@@ -489,13 +491,40 @@ public sealed class FixedFindingsProofTests
     }
 
     /// <summary>
+    /// The old F2 known sequence (1.2.4 item 3.2): Bob presses Save; his save has taken its snapshot (<c>Save.AfterLocalSnapshot</c>) and is held
+    /// there while Bob makes another edit. The edit is not in the snapshot. The save's last step used to delete the unsaved-changes marker, so when
+    /// Bob's computer crashed before another save landed, the next start deleted his unmarked working file as "nothing was edited".
+    /// </summary>
+    private static readonly string[] OldF2KnownSequence =
+    {
+        "Open(bob)", "Pause(Save(bob) at Save.AfterLocalSnapshot; BobEdits)", "Crash(bob)"
+    };
+
+    /// <summary>
+    /// F2: the old route (the edit made during the save, then the crash, then Bob starts again). The save now notices the edit (the edit count and
+    /// SQLite's data_version moved since its snapshot) and KEEPS the marker, so the next start offers the edit back ("Restore Unsaved Changes?")
+    /// instead of deleting it: no violation at all, known or new, and the pause really interleaved.
+    /// </summary>
+    [HarnessFact]
+    public async Task F2_AnEditDuringTheOwnSave_KeepsItsMarker_AndIsOfferedBackAfterACrash()
+    {
+        var run = await RunKeysAsync(OldF2KnownSequence.Append("Open(bob)").ToArray());
+        _output.WriteLine(run.Story);
+
+        Assert.Empty(run.Violations);
+        Assert.Empty(run.NewViolations);
+        Assert.Equal(PauseOutcome.Interleaved, Assert.Single(run.PauseResults).Outcome);
+        Assert.Contains("Restore Unsaved Changes?", run.Story);
+    }
+
+    /// <summary>
     /// The fixed findings are off the lists: no id is a known finding, no known sequence names any, and the classifier still has its
     /// rules for them (a regression is reported as a "new" violation of that kind, not hidden). A plain unit test.
     /// </summary>
     [Fact]
     public void TheFixedFindings_AreOffTheKnownLists_SoARegressionFailsAsNew()
     {
-        foreach (var id in new[] { "F1", "F8", "F12", "F16", "F17", "F18", "F19", "F23" })
+        foreach (var id in new[] { "F1", "F2", "F8", "F12", "F16", "F17", "F18", "F19", "F23" })
         {
             Assert.False(KnownFindings.IsKnown(id), $"{id} is fixed and must not be a known finding");
             Assert.DoesNotContain(id, KnownFindings.Ids);

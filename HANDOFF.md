@@ -71,8 +71,16 @@ Written so a fresh conversation can pick up. Claude Code's memory and `CLAUDE.md
       summary 1.2–1.5): `build-msix.ps1` leaves out the DLL (both modes) and every `.pdb` (Store), so the Store MSIX
       is 55.5 MB; flight procedure in `docs/testing/release-tests-1.2.4.md` Part 5 (Greg: set up the known user
       group); 1.5 was already green on the 1.2.3 push.
-   - Then, if still early enough in the release: **E** (3.2 crash route via an edit counter, 3.4 no-edit rewrite);
-     otherwise to 1.2.5. Also waiting: 2.2 licence warning, group 5 experiments (5.8) then 5.3/5.4, 6.12, harness
+      **Postponed (Greg, 2026-11-09), keep listed:** (a) the first Store flight with 1.2.4 (run it on GregDeskTop
+      with Phone Link running: the 1.2.3 → 1.2.4 update can still hit 1.1 once, since the 1.2.3 package has the DLL;
+      consider a "restart if it doesn't open" line in 1.2.4's What's new); (b) the stack-trace check (look at any
+      logged stack trace on the 1.2.4 sideload during the Part 4 MSIX upgrade check; near-zero risk); (c) the
+      Microsoft support case for 1.1.
+   5. **E: 3.2 + 3.4** (design `designs/mid-save-edits-and-no-edit-saves.md`, order of work tasks 1–6).
+      **3.2 DONE 2026-11-09, uncommitted** (tasks 1–3: edit count + `data_version`, save-once-more helper for the exit
+      and Restore from Backup, `SnapshotWorkingCopy` rename, F2 retired; full suite with harness 4537 passed, 0 failed).
+      Spin-offs logged: 3.13 (edit during a restore's copy), 6.14 (double message when the restore's save fails).
+      **Next: 3.4 = tasks 4–6** (content fingerprint, the skip, harness F5/F6). Also waiting: 2.2 licence warning, group 5 experiments (5.8) then 5.3/5.4, 6.12, harness
      85 s model (retires F22).
    - **Version gate:** leave 2.8 and 2.9 out of 1.2.4 (each raises `MinimumVersionToWrite` and would need 1.6
      first). Everything chosen above is MinimumVersionToWrite **No**. 3.5 and 2.1 A/B are too big for now.

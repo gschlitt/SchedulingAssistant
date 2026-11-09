@@ -464,7 +464,8 @@ public partial class App : Application
         // or fallback snapshot D''). Checkout has already run by the time this is resolved, so Mode is final.
         // Mode, not IsReadOnlyMode: IsReadOnlyMode is sticky after a switch from reader to writer.
         services.AddSingleton<IDatabaseContext>(_ => new DatabaseContext(
-            dbPath, App.Checkout.MarkDirty, readOnly: App.Checkout.Mode != CheckoutMode.WriteAccess));
+            dbPath, App.Checkout.MarkDirty, readOnly: App.Checkout.Mode != CheckoutMode.WriteAccess,
+            onEveryWrite: App.Checkout.NoteEdit));   // counts every edit so a save can tell one arrived while it ran (spec item 3.2)
         services.AddSingleton<IAcademicYearRepository, AcademicYearRepository>();
         services.AddSingleton<ISemesterRepository, SemesterRepository>();
         services.AddSingleton<IInstructorRepository, InstructorRepository>();

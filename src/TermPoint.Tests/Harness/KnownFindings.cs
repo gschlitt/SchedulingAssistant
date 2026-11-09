@@ -7,9 +7,14 @@ namespace TermPoint.Tests.Harness;
 /// and FAILS the run with its shrunk story.
 ///
 /// <para>As the redesign steps (8.9) fix findings, their ids come out of this list and the harness then proves each is
-/// gone: a generated run that meets one again fails as a new violation. F2 needs a pause in the middle of an operation
-/// so that another event happens meanwhile (the pause sweep, step 9.3c-2b, finds it). Hand-written walks declare their own
+/// gone: a generated run that meets one again fails as a new violation. Hand-written walks declare their own
 /// findings (<see cref="World.ExpectFindings"/>) and do not read this list.</para>
+///
+/// <para><b>F2 is fixed (1.2.4, item 3.2)</b> and so is off the list: an edit made while a save runs now keeps the unsaved-changes marker. The
+/// save reads an edit count (<c>CheckoutService.NoteEdit</c>) and SQLite's <c>PRAGMA data_version</c> on its own source connection before the
+/// snapshot and again at step 6; if either moved, the marker is kept (rewritten with the hash of the D the save just landed), the lock is kept
+/// at exit for one more save, and the next save carries the edit. Its old route is a proof test in <see cref="FixedFindingsProofTests"/>, and the
+/// classifier's rule for it stays in <see cref="Findings"/>.</para>
 ///
 /// <para><b>F1, F8 and F12 are fixed (2026-10-21, 1.2.3)</b> and so are off the list: the X on either recovery question asks it again
 /// and Discard asks "Discard Unsaved Changes?" first (F1), the save records its fingerprint in the dirty marker before the rename (F8),
@@ -38,7 +43,6 @@ internal static class KnownFindings
     /// <summary>Finding id to a one-line description, in id order.</summary>
     private static readonly Dictionary<string, string> Descriptions = new(StringComparer.OrdinalIgnoreCase)
     {
-        ["F2"]  = "An edit made while a save is running (after the save's snapshot) is not in the save, and what protected it is thrown away when the save ends: its unsaved-changes marker (a crash before the next save deletes the edit) or, for the exit or switch save, the whole working copy.",
         ["F5"]  = "A restore is refused although nobody changed any data: every editing session rewrites the shared database at its first save, even with no edits.",
         ["F6"]  = "A kept-changes message promises that TermPoint will offer the changes back at the next open, unless someone else changes the database first, and the offer fails although nobody changed any data (the F5 shape), or is not made, or does not bring the work back.",
         ["F7"]  = "\"Restore Unsaved Changes?\" is asked, Restore is chosen, and then \"Can't Restore Unsaved Changes\" follows because someone changed data.",
@@ -47,8 +51,8 @@ internal static class KnownFindings
         ["A13"] = "When someone else holds the lock and the copy of the database for reading fails (the network drops), the person sees two messages for one problem: \"Checkout Failed\" (which says the program will open read-only) and then \"Couldn't Open the Database\" (Try again / Close). Spec item 6.5."
     };
 
-    /// <summary>Every known finding id, in order (F2, F5, F6, F7, F20, F22, A13). F1, F8, F12, F16, F17, F18, F19, F21 and F23 are fixed and so are no longer on the list.</summary>
-    public static IReadOnlyList<string> Ids { get; } = new[] { "F2", "F5", "F6", "F7", "F20", "F22", "A13" };
+    /// <summary>Every known finding id, in order (F5, F6, F7, F20, F22, A13). F1, F2, F8, F12, F16, F17, F18, F19, F21 and F23 are fixed and so are no longer on the list.</summary>
+    public static IReadOnlyList<string> Ids { get; } = new[] { "F5", "F6", "F7", "F20", "F22", "A13" };
 
     /// <summary>True when <paramref name="findingId"/> is a finding expected on today's code.</summary>
     /// <param name="findingId">A finding id as the classifier gives it ("F1" ... or "new").</param>

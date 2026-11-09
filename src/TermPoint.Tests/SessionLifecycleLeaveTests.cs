@@ -588,6 +588,41 @@ public sealed class SessionLifecycleLeaveTests : SessionLifecycleTestBase
         AssertScriptConsumed();
     }
 
+    /// <summary>
+    /// An edit arrives during the save that precedes the restore (spec item 3.2): the save keeps the marker, the shared
+    /// helper saves once more, and an edit arriving during THAT save too leaves the marker kept. The restore is then never
+    /// started, so the confirmed restore cannot end the session and delete the working copy and marker that hold the
+    /// edit: the user sees "Restore Not Started" with the edit-during-save message (not the save-failed one: nothing
+    /// failed), and D', the marker and D are untouched
+    /// (D is not replaced, no pre-restore copy exists, the window stays open).
+    /// </summary>
+    [Fact]
+    public async Task Restore_AnEditDuringTheSaveBeforeIt_RestoreNotStarted_TheEditIsKept()
+    {
+        var db = NewDb();
+        await OpenCleanAsync(db);
+        var working = _checkout.WorkingPath;
+        _host.Edit("edit-before-restore");
+        var backup = NewBackup("from-backup");
+        AppSettings.Current.AutoSaveEnabled = false;
+        _checkout.BeforeTmpVerifyAsync = _ => { _host.Edit("edit-during-save"); return Task.CompletedTask; };
+        ResetRecords();
+        _prompts.ExpectWait(RestorePrompt.WaitTitle, RestorePrompt.WaitMessage)
+                .ExpectMessage(RestorePrompt.NotStartedTitle, RestorePrompt.EditDuringSaveMessage);
+
+        await _lifecycle.RestoreFromBackupAsync(backup);
+        MakeSavesWork();
+
+        AssertPrompts("Wait:Restoring the Backup", "Message:Restore Not Started");
+        Assert.DoesNotContain("host:CloseWindow", _trace);
+        Assert.True(File.Exists(working));
+        Assert.True(File.Exists(MarkerOf(working)), "the edit made during the save is still marked");
+        Assert.NotEqual("from-backup", NewestValue(db));
+        Assert.Empty(Directory.GetFiles(_shareDir, "dept (before restore *"));
+        Assert.Equal(CheckoutMode.WriteAccess, _checkout.Mode);
+        AssertScriptConsumed();
+    }
+
     /// <summary>The same refusal with autosave switched off: it is NOT started again.</summary>
     [Fact]
     public async Task Restore_TheSaveBeforeItFails_AutoSaveSwitchedOff_AutoSaveStaysStopped()

@@ -52,17 +52,6 @@ internal static class KnownSequences
                 "Open(bob)", "Edit(bob)", "AdvanceTime(4m)", "Open(alice)", "SwitchAway(bob)", "Close(alice)", "SwitchBack(bob)"
             }),
 
-        new("F2: an edit made while the save is running loses its marker",
-            "F2",
-            "Bob presses Save. His save has taken its snapshot of the working file (Save.AfterLocalSnapshot) and is held there " +
-            "while Bob makes another edit. The edit is not in the snapshot, and the save's last step still deletes the " +
-            "unsaved-changes marker. When Bob's computer crashes before another save lands, his kept working file has no marker and " +
-            "the next start deletes it as \"nothing was edited\": the edit is gone. Found by the pause sweep (step 9.3c-2b).",
-            new[]
-            {
-                "Open(bob)", "Pause(Save(bob) at Save.AfterLocalSnapshot; BobEdits)", "Crash(bob)"
-            }),
-
         new("F20: another program holds the lock file while the session goes read-only",
             "F20",
             "Alice's save conflicts (a 1.2.2 colleague changed the database, found by the autosave), another program opens the lock file " +

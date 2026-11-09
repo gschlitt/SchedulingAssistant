@@ -76,7 +76,7 @@ public sealed class CheckoutServiceTests : IDisposable
     /// <summary>
     /// Creates a minimal valid SQLite database file at <paramref name="path"/>.
     /// Required for any test that exercises <see cref="CheckoutService.SaveAsync"/>,
-    /// because <c>BackupSqliteDatabase</c> uses the SQLite Online Backup API which
+    /// because <c>SnapshotWorkingCopy</c> uses the SQLite Online Backup API which
     /// requires a well-formed SQLite file as its source.
     /// <para><c>Pooling=False</c> ensures the connection is truly closed on Dispose
     /// rather than returned to the pool, preventing stale OS file handles.</para>
@@ -5292,7 +5292,7 @@ public sealed class CheckoutServiceTests : IDisposable
     // exit save reached OnClosing by an unplanned path. Now every one returns SaveOutcome.CopyError with
     // the normal transient banner, D untouched and D' + its dirty marker intact — so ReleaseAsync at exit
     // takes its deliberate CopyError branch (lock parked via Suspend, D' + marker kept). A final safety
-    // net in SaveAsync does the same for any exception nobody anticipated. And BackupSqliteDatabase
+    // net in SaveAsync does the same for any exception nobody anticipated. And SnapshotWorkingCopy
     // opens D' with Mode=ReadWrite, so a deleted working copy is never re-created EMPTY and pushed over D.
     //
     // FileShare.None is only OS-enforced on Windows, hence FactWindowsOnly for those tests.
@@ -5929,8 +5929,10 @@ public sealed class CheckoutServiceTests : IDisposable
     {
         var db = DbPath();
         var (svc, lockSvc) = await CheckoutWriterWithValueAsync(db);
+        // An edit that is in D' only, but WITHOUT a dirty marker: the real restore saves first (clearing the marker),
+        // and RestoreFromBackupAsync refuses while a marker exists (spec item 3.2), so this models what is left after
+        // that save, which is what this test is about (a stale working copy must never overwrite the restore).
         InsertTestValue(svc.WorkingPath, "unsaved-edit");
-        svc.MarkDirty();
         var hashAtCheckout = svc.HashAtCheckout;
         var oldBytes = File.ReadAllBytes(db);
         var backup = CreateBackupWithMarker("from-backup");

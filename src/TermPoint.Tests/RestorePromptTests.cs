@@ -60,6 +60,10 @@ public sealed class RestorePromptTests
             "Your latest changes couldn't be saved, so the restore wasn't started. Your database is unchanged.",
             RestorePrompt.SaveFailedMessage);
         Assert.Equal(
+            "You made a change while TermPoint was saving before the restore, so the restore wasn't started. " +
+            "Your change is kept and will be saved as usual. Start the restore again when you're ready.",
+            RestorePrompt.EditDuringSaveMessage);
+        Assert.Equal(
             "Restoring replaces the database for everyone with the selected backup, then restarts TermPoint. " +
             "The database as it was before the restore is kept beside it.",
             RestorePrompt.PanelDescription);

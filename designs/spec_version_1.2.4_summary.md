@@ -36,10 +36,10 @@ About 97 items in nine groups. Most were deferred from 1.2.3 or found while test
 |---|---|---|---|---|
 | 1 | [Store release](#1.%20Store%20release) | The 1.2.3 update that wouldn't open; a smaller package; test flights | 6 | 4 |
 | 2 | [Features and user-facing gaps](#2.%20Features%20and%20user-facing%20gaps) | Requests from Greg and clients; the licence-expiry warning | 19 | 8 |
-| 3 | [Protecting unsaved work](#3.%20Protecting%20unsaved%20work) | The remaining ways edits can be lost or stranded; the recovery redesign | 12 | 3 |
+| 3 | [Protecting unsaved work](#3.%20Protecting%20unsaved%20work) | The remaining ways edits can be lost or stranded; the recovery redesign | 13 | 3 |
 | 4 | [Lock, save, open and restore](#4.%20Lock,%20save,%20open%20and%20restore) | Correctness gaps in the persistence paths | 14 | 4 |
 | 5 | [Network shares](#5.%20Network%20shares) | What SMB caching, antivirus and unusual storage do to us | 8 | 0 |
-| 6 | [Messages](#6.%20Messages) | Wrong, doubled, hidden or jargon messages | 13 | 3 |
+| 6 | [Messages](#6.%20Messages) | Wrong, doubled, hidden or jargon messages | 14 | 3 |
 | 7 | [Field reporting](#7.%20Field%20reporting) | Learning from BugSnag whether a failure ended well | 5 | 3 |
 | 8 | [Testing](#8.%20Testing) | Harness gaps that let field bugs through; cheaper hand tests | 12 | 11 |
 | 9 | [Smaller fixes and housekeeping](#9.%20Smaller%20fixes%20and%20housekeeping) | Bugs, consistency, upstream | 8 | 0 |
@@ -409,7 +409,7 @@ Everything in this group is checked against rule 3 (never delete the only copy o
 >
 > **Done (8 Nov 2026, `454a38c`; design `designs/close-switch-sequence.md`; full suite with harness 4501 passed, 0 failed; MinimumVersionToWrite No):** Greg chose *always ask*. Before a close or switch, a writer with an editor holding unapplied changes is asked once: "Unapplied Changes" (Apply / Discard / Cancel). Apply runs the editor's own Save; a refusal stops the close. All 15 editors covered (snapshot compare). The lost-lock banner gains "Changes you hadn't applied in the open editor couldn't be saved." By-hand check that an unchanged editor never triggers the question (Avalonia re-fires combo setters): passed, Greg, 9 Nov 2026.
 
-> [!note]- **3.2 An edit made during a save can be lost** `not started` `data risk` `save path`
+> [!note]- **3.2 An edit made during a save can be lost** `done` `data risk` `save path`
 > An edit made while a save is running isn't covered by that save. The save clears the "unsaved" marker anyway, so if
 > the computer crashes before the next save, or the exit save finishes, the edit is deleted. The harness reproduces
 > this in three steps. 1.2.3 added the exit guard (repeated X, "Saving and closing…") but not the fix. **Fix
@@ -417,6 +417,8 @@ Everything in this group is checked against rule 3 (never delete the only copy o
 > **Partly fixed (2 Nov 2026) by 3.12:** when the edit lands after the save's marker delete (it re-writes the marker),
 > the close or switch no longer deletes it; it is offered back at the next open. The crash route remains.
 > *Source: spec, data-loss table (F2 / item 15).*
+>
+> **Done (9 Nov 2026, uncommitted; design `designs/mid-save-edits-and-no-edit-saves.md`; full suite with harness 4537 passed, 0 failed, 2 skipped; MinimumVersionToWrite No):** a save reads an edit count and SQLite's `data_version` before its snapshot and again at the end. If either moved, the marker is kept, rewritten with the new hash. This covers the crash, the lost-lock and the failed-exit routes. The exit and Restore from Backup save once more before going on. If the marker is still kept, the restore isn't started and Bob sees the new message "You made a change while TermPoint was saving before the restore…" (wording approved by Greg). `BackupSqliteDatabase` is renamed `SnapshotWorkingCopy`. F2 is retired to `FixedFindingsProofTests`. Spin-offs: 3.13 and 6.14.
 
 > [!note]- **3.3 A demotion still running during a database switch lands on the new session** `done` `data risk` `save path`
 > Losing the lock starts a demotion that copies a read-only snapshot. If Bob switches database during that copy, the
@@ -491,6 +493,16 @@ Everything in this group is checked against rule 3 (never delete the only copy o
 > unsaved changes (rule 3 at the data layer); the end of a restore deletes it through the discard path.
 > **Done (2 Nov 2026):** with a regression test; it also closes the close-time route of 3.2.
 > *Source: harness, another program holding a file (8.3), known finding F21.*
+
+> [!note]- **3.13 An edit made during Restore from Backup is deleted** `not started` `data risk`
+> Bob clicks Restore… in Save and Backup. TermPoint saves his work, then copies the chosen backup onto the shared
+> database. The wait dialog blocks only the main window, so during that copy Bob can still apply an edit in a detached
+> panel or a sticky note. When the restore ends, the session's local copy is deleted along with its marker
+> (`EndSessionAfterRestoreAsync` → `DiscardCrash`), and the edit with it. He isn't told. This happens in today's code,
+> not only with 3.2. **Fix direction:** the session refuses writes from the start of the save-first until the restore
+> ends (rule 3 at the data layer, not the dialog), with plain wording for a refused edit (Greg approves). 3.2's backstop
+> (the restore refuses while a marker exists) narrows this but can't close it.
+> *Source: audit for 3.2 (2026-11-09), `designs/mid-save-edits-and-no-edit-saves.md` step 7.*
 
 ---
 
@@ -765,6 +777,14 @@ whether the work is safe, and what to do next.
 > *Source: harness clock skew walks (8.4), known finding F23.*
 >
 > **Done (8 Nov 2026, `454a38c`; design `designs/close-switch-sequence.md`; full suite with harness 4501 passed, 0 failed; MinimumVersionToWrite No):** the post-open "save restored changes at once" ran after a Can't Restore + Discard (3.4's second route). It now runs only when the open really restored kept changes.
+
+> [!note]- **6.14 Restore from Backup: two messages when the save before it fails** `not started`
+> Bob clicks Restore… while the share is unreachable. The save before the restore fails, so Bob sees that save's banner
+> (for example "TermPoint can't reach…") and then the dialog "Restore Not Started: Your latest changes couldn't be saved,
+> so the restore wasn't started…". That's one problem shown twice. The code says the banner has already been shown
+> (`SessionLifecycle.RestoreFromBackupAsync`). **Fix direction:** like F17 for close and switch, the restore's save
+> reports only to the restore, so only the dialog shows.
+> *Source: conversation about 3.2 (2026-11-09).*
 
 ---
 

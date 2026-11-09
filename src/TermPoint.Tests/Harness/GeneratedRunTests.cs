@@ -98,10 +98,9 @@ public sealed class GeneratedRunTests
     }
 
     /// <summary>
-    /// Across the known-sequence replays and both strategies at the budget, the generated runs find F2, F6 and F7.
-    /// F7 comes from the search; F6 needs a route longer than the search reaches by default; F2 needs a pause in the
-    /// middle of a save so that another event happens meanwhile (the search has none), so it comes from the replay list
-    /// (<see cref="KnownSequences"/>) and the report says so. The pause sweep finds F2. F5 is reported. F1, F8 and F12 (2026-10-21)
+    /// Across the known-sequence replays and both strategies at the budget, the generated runs find F6 and F7.
+    /// F7 comes from the search; F6 needs a route longer than the search reaches by default, so it comes from the replay list
+    /// (<see cref="KnownSequences"/>) and the report says so. F5 is reported. F1, F8 and F12 (2026-10-21), F2 (1.2.4, item 3.2)
     /// and F16, F17 and F23 (1.2.4, the close/switch sequence) are fixed and no longer expected: their old routes are proof tests
     /// (<see cref="FixedFindingsProofTests"/>).
     /// </summary>
@@ -123,7 +122,7 @@ public sealed class GeneratedRunTests
         Say("Known findings found by a replay: " + (byReplay.Count == 0 ? "none" : string.Join(", ", byReplay.OrderBy(f => f))));
         Say($"F5 reached: {found.Contains("F5")}.");
 
-        foreach (var id in new[] { "F2", "F6", "F7" })
+        foreach (var id in new[] { "F6", "F7" })
             Assert.True(found.Contains(id), $"{id} was not found by a replay, the exhaustive search or the random walks at this budget.");
     }
 

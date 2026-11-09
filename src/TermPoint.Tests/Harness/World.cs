@@ -1388,7 +1388,8 @@ internal sealed class World : IDisposable
     /// <summary>
     /// Called by a computer when one of its edits has been applied (the row is in its working file and the marker is written). An edit
     /// applied while that computer's own operation is held in the edit-loss window (<see cref="PausePoints.EditLossWindow"/>) is not in the save,
-    /// yet the save's last step deletes the marker that protected it and a close or switch deletes the working copy: finding F2. Remembered so that, if the edit is later lost, the classifier can say so.
+    /// so before 1.2.4 item 3.2 the save's last step deleted the marker that protected it and a close or switch deleted the working copy: finding F2
+    /// (now fixed: the save keeps the marker for such an edit, and this stays only as the regression detector). Remembered so that, if the edit is later lost, the classifier can say so.
     /// </summary>
     /// <param name="computer">The computer that edited.</param>
     /// <param name="editId">The edit's id.</param>

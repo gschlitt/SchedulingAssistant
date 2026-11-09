@@ -122,7 +122,7 @@ public static class NewDatabaseFile
         using (new DatabaseContext(localPath)) { }
 
         // WAL must never be active on a network file (the shipped file must be a self-contained
-        // single .db). Same normalisation CheckoutService.BackupSqliteDatabase applies to D.
+        // single .db). Same normalisation CheckoutService.SnapshotWorkingCopy applies to D.
         // Pooling=False is essential: a pooled connection would keep the file open after Dispose.
         using (var conn = new SqliteConnection($"Data Source={localPath};Pooling=False"))
         {

@@ -1484,6 +1484,13 @@ public sealed class SessionLifecycle
     /// </summary>
     private bool _restoreInProgress;
 
+    /// <summary>
+    /// Set by <see cref="SaveThenRestoreAsync"/> when the save before a restore worked but an edit arrived while it ran
+    /// (twice in a row, spec item 3.2), so the restore was not started although nothing failed. Read once by
+    /// <see cref="RestoreFromBackupAsync"/> to choose the true "not started" message; reset at the start of each restore.
+    /// </summary>
+    private bool _restoreStoppedForEdit;
+
     // ── Save conflict (spec item 10, step 10a) ───────────────────────────────
 
     /// <summary>
@@ -1672,7 +1679,8 @@ public sealed class SessionLifecycle
         // Captured now, before anything is torn down: OnClosing needs it to discard this session's crash marker.
         var sourcePath = _checkout.SourcePath;
 
-        _restoreInProgress = true;
+        _restoreInProgress     = true;
+        _restoreStoppedForEdit = false;
         _checkout.StopAutoSave();
 
         // Null means "the save failed, so the restore was never started".
@@ -1695,10 +1703,15 @@ public sealed class SessionLifecycle
             _restoreInProgress = false;
         }
 
-        // The save failed: the restore was not started. (SaveAsync has already shown its own save banner.)
+        // The restore was not started: either the save failed (SaveAsync has already shown its own save banner), or
+        // the save worked but an edit arrived while it ran, twice in a row, so that edit is not in D yet (spec item
+        // 3.2). The second is not a failure and gets its own, true message.
         if (result is null)
         {
-            await _prompts.ShowMessageAsync(RestorePrompt.NotStartedTitle, RestorePrompt.SaveFailedMessage);
+            var notStartedMessage = _restoreStoppedForEdit
+                ? RestorePrompt.EditDuringSaveMessage
+                : RestorePrompt.SaveFailedMessage;
+            await _prompts.ShowMessageAsync(RestorePrompt.NotStartedTitle, notStartedMessage);
             ResumeAutoSave();
             return;
         }
@@ -1752,10 +1765,23 @@ public sealed class SessionLifecycle
         // "already in progress" — reported to the user as a failed save. Same as ReleaseAsync's exit save.
         await _checkout.WaitForInFlightSaveAsync();
 
-        var save = await _checkout.SaveAsync();
+        // SaveUntilMarkerClearAsync: when an edit arrives while the save runs, the save keeps the marker (the edit is
+        // not in D) and the helper saves once more (spec item 3.2).
+        var save = await _checkout.SaveUntilMarkerClearAsync(releaseLockAfter: false);
         if (save != SaveOutcome.Success)
         {
             _logger().LogInfo($"MainWindow: restore not started — the save before it ended with {save}.");
+            return null;
+        }
+
+        // Success, but the latest edit is still not in D (it arrived during the second save too, or after the
+        // first): a confirmed restore would end the session and delete the working copy and its marker, losing it.
+        // So the restore is not started; returning null shows the "couldn't be saved, restore wasn't started" message,
+        // which is true. (CheckoutService.RestoreFromBackupAsync refuses on the marker as well, as a backstop.)
+        if (_checkout.LastSaveKeptMarker || _checkout.HasDirtyMarker)
+        {
+            _logger().LogInfo("MainWindow: restore not started — unsaved changes remain after the save before it.");
+            _restoreStoppedForEdit = true;   // nothing failed: the caller shows EditDuringSaveMessage, not SaveFailedMessage
             return null;
         }
 

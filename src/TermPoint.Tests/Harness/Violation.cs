@@ -128,7 +128,7 @@ internal sealed class Violation
     /// <summary>
     /// For <see cref="ViolationKind.EditLost"/>: true when the lost edit was applied by its computer WHILE that computer's own
     /// operation was held in the edit-loss window (<see cref="PausePoints.EditLossWindow"/>: from a save's snapshot to the cleanup of the
-    /// working copy; the edit missed the save, and what protected it was thrown away: the marker, or for a close or switch the whole working copy: finding F2). Null for every other kind.
+    /// working copy; the edit missed the save, and what protected it was thrown away: the marker, or for a close or switch the whole working copy: finding F2, FIXED in 1.2.4 item 3.2; the rule stays to report a regression). Null for every other kind.
     /// </summary>
     public bool? EditAppliedDuringHeldSave { get; init; }
 

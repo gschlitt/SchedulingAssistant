@@ -9,8 +9,8 @@ namespace TermPoint.Tests.Harness;
 /// Proof tests for the pause (spec item 9.3, step 9.3c-2b): an operation held at a named crash point while one other event happens,
 /// then released. Like the other proof tests they make the thing really happen and assert what the harness sees: that the operation
 /// is really held and really released, that a case replays to the same story and shrinks, that a deadlock becomes a Hang and not a
-/// hung test run, that designed waiting is not a violation, that the F2 route (and invariant I6, on planted states) classify as the design note
-/// says, and that the F12 route, fixed 2026-10-21, now ends with the save refused. (The F16 route, fixed in 1.2.4, is a proof test in
+/// hung test run, that designed waiting is not a violation, that invariant I6 (on planted states) classifies as the design note
+/// says, that the F2 route, fixed in 1.2.4 (item 3.2), now keeps the edit, and that the F12 route, fixed 2026-10-21, now ends with the save refused. (The F16 route, fixed in 1.2.4, is a proof test in
 /// <see cref="FixedFindingsProofTests"/>.) They run only with <c>TERMPOINT_HARNESS=1</c> (<see cref="HarnessFactAttribute"/>), except the plain key test.
 /// </summary>
 public sealed class PauseProofTests
@@ -35,7 +35,7 @@ public sealed class PauseProofTests
             new RunOptions { Title = "a pause proof", ExtraEvents = EventCatalogue.ExtrasFor(keys) });
     }
 
-    /// <summary>The keys of the F2 route: Bob edits while his own save is held after its snapshot, then his computer crashes.</summary>
+    /// <summary>The keys of the old F2 route (fixed in 1.2.4, item 3.2): Bob edits while his own save is held after its snapshot, then his computer crashes.</summary>
     private static readonly string[] F2Route =
     {
         "Open(bob)", "Edit(bob)", "Pause(Save(bob) at Save.AfterLocalSnapshot; BobEdits)", "Crash(bob)", "Open(bob)"
@@ -120,32 +120,33 @@ public sealed class PauseProofTests
     }
 
     /// <summary>
-    /// The existing shrinker shortens a long pause case: Bob opens, edits, saves, edits again, and in his NEXT save, held after the
-    /// snapshot, edits once more, then crashes: the loss (F2) is shrunk to the few events that matter, and the pause stays in it.
+    /// The existing shrinker still shortens a long case. It used to be shown on a long pause case that ended in F2; F2 is fixed (1.2.4
+    /// item 3.2) and no pause route ends in a known finding any more, so the case is now the F20 route (the one known finding the
+    /// shrinker can still be shown on; its known sequence is 5 events) padded with events that do not matter: an edit and a save by Alice,
+    /// time passing, and a second edit. The shrunk case keeps the finding's signature and drops the padding.
     /// </summary>
     [HarnessFact]
-    public async Task PauseCase_IsShrunkByTheExistingShrinker()
+    public async Task LongCase_IsShrunkByTheExistingShrinker()
     {
         var keys = new[]
         {
-            "Open(bob)", "Edit(bob)", "Save(bob)", "Edit(bob)", "AdvanceTime(30s)", "Edit(bob)",
-            "Pause(Save(bob) at Save.AfterLocalSnapshot; BobEdits)", "Crash(bob)", "Open(bob)"
+            "Open(alice)", "Edit(alice)", "Save(alice)", "AdvanceTime(30s)", "Edit(alice)",
+            "ColleagueWrites", "AutosaveTick(alice)", "OtherProgramOpens(lockfile,none)", "ResolveSaveCopy(alice)"
         };
-        var options = new RunOptions { Title = "a long pause case", ExtraEvents = EventCatalogue.ExtrasFor(keys) };
+        var options = new RunOptions { Title = "a long case", ExtraEvents = EventCatalogue.ExtrasFor(keys) };
         var record  = new RunRecord();
         foreach (var key in keys) record.Steps.Add(new RecordedStep { EventKey = key });
 
         var run = await RunExecutor.ExecuteAsync(new ReplaySource(record), options);
-        var f2  = run.Violations.FirstOrDefault(v => v.FindingId == "F2");
-        Assert.NotNull(f2);
+        var f20 = run.Violations.FirstOrDefault(v => v.FindingId == "F20");
+        Assert.NotNull(f20);
 
-        var shrunk = await Shrinker.ShrinkAsync(run.Record.Take(f2!.EventIndex), f2.Signature, options);
+        var shrunk = await Shrinker.ShrinkAsync(run.Record.Take(f20!.EventIndex), f20.Signature, options);
         _output.WriteLine(shrunk.Story);
 
         Assert.True(shrunk.Reproduced);
         Assert.True(shrunk.Events < keys.Length, $"the case was not shortened: {shrunk.Events} of {keys.Length} events");
-        Assert.True(shrunk.Events <= 4, $"the shrunk case still has {shrunk.Events} events");
-        Assert.Contains("is held there", shrunk.Story);
+        Assert.True(shrunk.Events <= 5, $"the shrunk case still has {shrunk.Events} events");
     }
 
     /// <summary>
@@ -509,26 +510,25 @@ public sealed class PauseProofTests
     }
 
     // ═════════════════════════════════════════════════════════════════════════
-    // F2 and F12 routes (F16 is a proof test in FixedFindingsProofTests)
+    // F2 and F12 routes, both fixed (F16 is a proof test in FixedFindingsProofTests)
     // ═════════════════════════════════════════════════════════════════════════
 
     /// <summary>
-    /// F2: Bob edits while his own save is held after its snapshot. The edit misses the snapshot, the save's last step deletes the
-    /// marker, and when Bob's computer crashes before another save, his kept working file has no marker: the edit is nowhere. The
-    /// loss is found at the crash and classified F2 (not "new"); nothing else is wrong.
+    /// F2, FIXED in 1.2.4 (item 3.2): Bob edits while his own save is held after its snapshot. The edit misses the snapshot, but the
+    /// save notices it (the edit count and SQLite's data_version moved) and keeps the marker, so when Bob's computer crashes before
+    /// another save his kept working file still has its marker: the edit is offered back at the next start. No violation at all.
+    /// (Until 1.2.4 the save deleted the marker and the next start deleted the unmarked file: the edit was lost and classified F2.)
     /// </summary>
     [HarnessFact]
-    public async Task F2_AnEditDuringTheOwnSave_IsLostAtTheNextCrash_AndClassifiedF2()
+    public async Task F2_AnEditDuringTheOwnSave_IsKeptAtTheNextCrash_AndOfferedBack()
     {
         var run = await RunKeysAsync(F2Route);
         _output.WriteLine(run.Story);
 
-        var lost = Assert.Single(run.Violations);
-        Assert.Equal("F2", lost.FindingId);
-        Assert.Equal("I2", lost.Invariant);
-        Assert.Contains("bob-2", lost.Reason);
+        Assert.Empty(run.Violations);
         Assert.Empty(run.NewViolations);
         Assert.Equal(PauseOutcome.Interleaved, Assert.Single(run.PauseResults).Outcome);
+        Assert.Contains("Restore Unsaved Changes?", run.Story);
     }
 
 
@@ -614,31 +614,10 @@ public sealed class PauseProofTests
         Assert.Contains("Bob saved the database — LockLost", run.Story);
     }
 
-    /// <summary>
-    /// The pause entries of <see cref="KnownSequences"/> (F2; F12 and F16 are fixed and their entries are gone) are already as short as they
-    /// can be: each shows its finding, has no breach nobody explains, and the shrinker cannot take an event out of it. (A sequence
-    /// that could be shortened is a sequence that says more than it needs to.)
-    /// </summary>
-    [HarnessFact]
-    public async Task KnownSequences_OfThePauseFindings_AreAlreadyShrunk()
-    {
-        foreach (var finding in new[] { "F2" })
-        {
-            var sequence = KnownSequences.All.Single(s => s.Finding == finding);
-            var options  = new RunOptions { Title = sequence.Name, ExtraEvents = EventCatalogue.ExtrasFor(sequence.Events) };
-            var run      = await RunExecutor.ExecuteAsync(new ReplaySource(sequence.ToRecord()), options);
+    // RETIRED (1.2.4 item 3.2): KnownSequences_OfThePauseFindings_AreAlreadyShrunk. It checked that the pause entries of KnownSequences
+    // (F2 was the last one; F12 and F16 went earlier) were as short as they can be. F2 is fixed and no known sequence uses a pause any
+    // more, so there is nothing for it to check. A pause entry that is added to KnownSequences again should bring the test back.
 
-            var shown = run.Violations.FirstOrDefault(v => v.FindingId == finding);
-            Assert.NotNull(shown);
-            Assert.Empty(run.NewViolations);
-
-            var shrunk = await Shrinker.ShrinkAsync(run.Record.Take(shown!.EventIndex), shown.Signature, options);
-            _output.WriteLine($"{finding}: {sequence.Events.Count} events listed, {shrunk.Events} after shrinking.\n{shrunk.Story}");
-            Assert.True(shrunk.Reproduced);
-            Assert.True(shrunk.Events >= sequence.Events.Count,
-                $"{finding}'s known sequence can be shortened to {shrunk.Events} events: {string.Join(", ", shrunk.Record.Steps.Select(s => s.EventKey))}");
-        }
-    }
     /// <summary>
     /// I6 does NOT fire on an ordinary demotion that nobody interrupts: Bob's computer wakes to find his lock gone, the demotion runs
     /// to the end on dept.db, and Bob is a read-only reader that holds no lock.

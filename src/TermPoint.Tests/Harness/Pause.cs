@@ -56,7 +56,8 @@ internal sealed record PauseLimits(TimeSpan Grace, TimeSpan ReachLimit, TimeSpan
 internal static class PausePoints
 {
     /// <summary>
-    /// The edit-loss window (finding F2; spec item 15): from a save's local snapshot to the cleanup of the working copy. An edit applied
+    /// The edit-loss window (finding F2, FIXED in 1.2.4 item 3.2: the save now keeps the marker for an edit made in this window, and the
+    /// classifier rule stays as the regression detector; spec item 15): from a save's local snapshot to the cleanup of the working copy. An edit applied
     /// while the computer's own operation is held at one of these points is not in the save, and what protected it is thrown away when
     /// the operation ends: the save's last step deletes the unsaved-changes marker (a crash before another save then makes the next
     /// start delete the unmarked working file), and a final save (close, switch) is followed by the release and the cleanup of the
