@@ -21,7 +21,10 @@
         These come from Partner Center -> Product -> Product identity.
       - Does NOT sign the package (the Store re-signs on submission) and
         does NOT export a .cer.
-      - Drops the .pdb from the payload to keep the package lean.
+      - Drops every .pdb from the payload (TermPoint's own and the
+        Skia/HarfBuzz native ones) to keep the package lean.
+    Both modes leave out Microsoft.DiaSymReader.Native.amd64.dll (see the
+    mapping-file section for why).
     The result is still a single TermPoint.msix — upload that one file.
 
 .EXAMPLE
@@ -191,10 +194,30 @@ Get-ChildItem (Join-Path $MsixDir "assets") -File | ForEach-Object {
     [void]$lines.Add("`"$($_.FullName)`" `"Assets\$($_.Name)`"")
 }
 
+# Files left out of the package (1.2.4 items 1.2 and 1.4):
+#   - Microsoft.DiaSymReader.Native.amd64.dll (both modes). The self-contained
+#     .NET runtime ships it for reading Windows-format PDBs, which TermPoint
+#     never does (stack traces use portable PDBs read by managed code). Windows
+#     stores identical package files once and shares them between apps; when
+#     another app (Phone Link) had this shared copy loaded, removing the old
+#     TermPoint package failed and left a stale package record, so the 1.2.3
+#     Store update wouldn't open until a restart.
+#   - Every *.pdb in Store mode. DebugType=none removes TermPoint's own PDB, but
+#     the graphics packages bring libSkiaSharp.pdb (~84 MB) and
+#     libHarfBuzzSharp.pdb (~21 MB), which no user ever needs.
+$excludedNames = @('Microsoft.DiaSymReader.Native.amd64.dll')
+$excludedCount = 0
+
 Get-ChildItem $PublishDir -File -Recurse -Force | ForEach-Object {
+    if ($excludedNames -contains $_.Name -or ($Store -and $_.Extension -eq '.pdb')) {
+        Write-Host "  Leaving out: $($_.Name)" -ForegroundColor DarkGray
+        $excludedCount++
+        return   # skips this file only (return inside ForEach-Object = continue)
+    }
     $rel = $_.FullName.Substring("$PublishDir\".Length)
     [void]$lines.Add("`"$($_.FullName)`" `"$rel`"")
 }
+Write-Host "Left out $excludedCount file(s)" -ForegroundColor Cyan
 
 $lines -join "`n" | Set-Content $MappingPath -Encoding UTF8
 Write-Host "Mapping file: $($lines.Count - 1) entries" -ForegroundColor Cyan

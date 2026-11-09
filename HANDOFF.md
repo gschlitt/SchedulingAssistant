@@ -67,7 +67,10 @@ Written so a fresh conversation can pick up. Claude Code's memory and `CLAUDE.md
       `CrashSweep_EveryPointIsCutOrExplained` ("planned cut did not fire", `Lock.AfterDeleted` on Close, background
       lock delete), which passed 3/3 re-run alone: a flake to watch, maybe settle `PendingRelease` there.
    4. **F: 1.2 + 1.4** (drop the shared DiaSymReader DLL and the Skia/HarfBuzz PDBs from the Store package), **1.3**
-      test flights, **1.5** the failing GitHub Tests workflow.
+      test flights, **1.5** the failing GitHub Tests workflow. **DONE 2026-11-09, uncommitted** (Done notes on
+      summary 1.2–1.5): `build-msix.ps1` leaves out the DLL (both modes) and every `.pdb` (Store), so the Store MSIX
+      is 55.5 MB; flight procedure in `docs/testing/release-tests-1.2.4.md` Part 5 (Greg: set up the known user
+      group); 1.5 was already green on the 1.2.3 push.
    - Then, if still early enough in the release: **E** (3.2 crash route via an edit counter, 3.4 no-edit rewrite);
      otherwise to 1.2.5. Also waiting: 2.2 licence warning, group 5 experiments (5.8) then 5.3/5.4, 6.12, harness
      85 s model (retires F22).

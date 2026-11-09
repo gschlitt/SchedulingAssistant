@@ -77,18 +77,31 @@ About 80 items in nine groups. Most were deferred from 1.2.3 or found while test
 > publish output or from `build-msix.ps1`. This helps from 1.2.4 on. The 1.2.3 → 1.2.4 update can still hit the bug
 > once, because the 1.2.3 package contains the file. Check that crash and log stack traces still work. Other shared
 > .NET files could in principle cause the same problem.
+>
+> **Done 2026-11-09 (with 1.4):** `build-msix.ps1` leaves `Microsoft.DiaSymReader.Native.amd64.dll` out of the
+> mapping in both modes and prints each file it leaves out. Check on the sideload that a logged error still has its stack
+> trace (`docs/testing/release-tests-1.2.4.md`, Part 5).
 
 > [!note]- **1.3 Test flights before every Store release**
 > In Partner Center, release each submission first to a flight group that holds only our own accounts. Update a
 > computer that has the previous Store version, click TermPoint, and only then release to everyone. This would have
 > caught 1.1. A flight is also the place to test the Store-only paths (the "Store" install channel, the update link).
+>
+> **Done 2026-11-09 (procedure only):** step-by-step flight procedure in `docs/testing/release-tests-1.2.4.md`, Part 5.
+> Greg sets up the known user group and runs the first flight with the 1.2.4 submission.
 
 > [!note]- **1.4 Remove 105 MB of graphics-library debug files from the Store package**
 > The Store build carries `libSkiaSharp.pdb` (84 MB) and `libHarfBuzzSharp.pdb` (21 MB). Store mode drops only
 > TermPoint's own PDB today. Excluding these two makes the download noticeably smaller.
+>
+> **Done 2026-11-09:** Store mode leaves every `.pdb` out of the mapping. The 1.2.4 Store MSIX is 55.5 MB.
 
 > [!note]- **1.5 The GitHub Tests workflow fails on `master`**
 > It has failed since at least 1.2.2. The local suite and the harness pass. Not investigated.
+>
+> **Done (nothing to change, checked 2026-11-09):** the last `master` run (1.2.3 push, 2026-10-28) passed: 3923
+> passed, 110 skipped. The runs that failed (July to 2026-10-07) failed in `WizardRoutingTests`, which were fixed before
+> 1.2.3. The workflow runs only on `master` and on PRs into it, so 1.2.4 is first checked when it merges.
 
 > [!note]- **1.6 In-app updates for the Store build** `decide`
 > Use the Store API to check for updates while TermPoint runs, show "An update is available — Update now", and honour

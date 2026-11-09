@@ -96,7 +96,25 @@ front:
 
 ## Part 5 — Store
 
-- [ ] Package flight (summary 1.3) before the public release.
+- [ ] **Package contents** (summary 1.2, 1.4): `build-msix.ps1 -Store` prints "Leaving out:" for
+  `libHarfBuzzSharp.pdb`, `libSkiaSharp.pdb` and `Microsoft.DiaSymReader.Native.amd64.dll` (1.2.4 build:
+  55.5 MB). On the sideload, a logged error still shows its stack trace (method names; no line numbers in Store
+  builds, as before).
+- [ ] **Package flight** (summary 1.3) before the public release. Every Store release from now on:
+  1. Once only: Partner Center → Engage → Customers → **Known user groups**: a group "TermPoint testers" holding
+     the Microsoft accounts signed in to the Store on GregDeskTop and GregSurface.
+  2. Partner Center → TermPoint → **Package flights → New package flight**: name it for the version (e.g.
+     "1.2.4"), pick "TermPoint testers", upload the Store `TermPoint.msix`, submit. It goes through certification
+     like a public submission.
+  3. On a computer that has the **previous Store version** installed and has opened it at least once: Microsoft
+     Store → Library → Get updates (or wait). Leave other apps running as normal (Phone Link was the trigger in 1.1).
+  4. Click TermPoint in the Start menu. **Pass:** it opens straight away, the version in Help is the new one, the
+     install channel is "Store", and it opens a copy of the test database. If it doesn't open: note it, restart,
+     check again, and add it to the support case (summary 1.1).
+  5. Only then create the public submission with the same `TermPoint.msix`, set mandatory if
+     `MinimumVersionToWrite` was raised, and submit.
+  - For 1.2.4 the 1.2.3 → 1.2.4 update can still hit 1.1 once (the 1.2.3 package carries the DLL); from
+    1.2.4 → 1.2.5 on it shouldn't.
 - [ ] After certification: the Store update from 1.2.3 opens without a restart (summary 1.1; the support case).
 - [ ] N4, the Store update link (1.2.3 doc).
 
