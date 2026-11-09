@@ -1337,18 +1337,36 @@ public sealed class SessionLifecycle
         {
             var answer = await _prompts.ShowChoiceOrCloseAsync(title, message, keepLabel, discardLabel);
 
+            // Field reporting (1.2.4 item 7.4): one local INFO line per answer, so a log can say which button was
+            // pressed. Titles and labels are our own fixed text; no paths.
             if (answer == ChoiceResult.Affirmative)
+            {
+                _logger().LogInfo($"Recovery: \"{title}\" answered {keepLabel}.");
                 return true;
+            }
 
             if (answer == ChoiceResult.Negative)
             {
+                _logger().LogInfo($"Recovery: \"{title}\" answered {discardLabel}; asking to confirm.");
+
                 // Discard is asked about before it is done. The confirmation's X is Go Back (ShowChoiceAsync folds
                 // the X into its negative button), so only the Discard button deletes anything.
                 var confirmed = await _prompts.ShowChoiceAsync(
                     RecoveryConflictPrompt.DiscardConfirmTitle, confirmMessage,
                     RecoveryConflictPrompt.DiscardConfirmButton, RecoveryConflictPrompt.GoBackButton);
                 if (confirmed)
+                {
+                    _logger().LogInfo($"Recovery: \"{RecoveryConflictPrompt.DiscardConfirmTitle}\" answered " +
+                                      $"{RecoveryConflictPrompt.DiscardConfirmButton}; the kept changes will be discarded.");
                     return false;
+                }
+
+                _logger().LogInfo($"Recovery: \"{RecoveryConflictPrompt.DiscardConfirmTitle}\" answered " +
+                                  $"{RecoveryConflictPrompt.GoBackButton}; asking again.");
+            }
+            else
+            {
+                _logger().LogInfo($"Recovery: \"{title}\" closed with the window's X; asking again.");
             }
 
             // Closed with the X, or Go Back: ask the original question again.

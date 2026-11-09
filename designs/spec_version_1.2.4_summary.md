@@ -382,7 +382,7 @@ Everything in this group is checked against rule 3 (never delete the only copy o
 > Surviving a hang or crash is out of scope (that would need saved drafts).
 > *Source: 1.2.3 spec, item 14; field-test open issue A3.*
 >
-> **Done (8 Nov 2026, uncommitted; design `designs/close-switch-sequence.md`; full suite with harness 4501 passed, 0 failed; MinimumVersionToWrite No):** Greg chose *always ask*. Before a close or switch, a writer with an editor holding unapplied changes is asked once: "Unapplied Changes" (Apply / Discard / Cancel). Apply runs the editor's own Save; a refusal stops the close. All 15 editors covered (snapshot compare). The lost-lock banner gains "Changes you hadn't applied in the open editor couldn't be saved." **Left:** a by-hand check that an unchanged editor never triggers the question (Avalonia re-fires combo setters).
+> **Done (8 Nov 2026, uncommitted; design `designs/close-switch-sequence.md`; full suite with harness 4501 passed, 0 failed; MinimumVersionToWrite No):** Greg chose *always ask*. Before a close or switch, a writer with an editor holding unapplied changes is asked once: "Unapplied Changes" (Apply / Discard / Cancel). Apply runs the editor's own Save; a refusal stops the close. All 15 editors covered (snapshot compare). The lost-lock banner gains "Changes you hadn't applied in the open editor couldn't be saved." By-hand check that an unchanged editor never triggers the question (Avalonia re-fires combo setters): passed, Greg, 9 Nov 2026.
 
 > [!note]- **3.2 An edit made during a save can be lost** `data risk` `save path`
 > An edit made while a save is running isn't covered by that save. The save clears the "unsaved" marker anyway, so if
@@ -753,6 +753,8 @@ whether the work is safe, and what to do next.
 > mean a slow server; fast saves followed by a sudden failure mean an outage. It's a breadcrumb and a metadata field
 > only, so it can ship first. If a slow server is confirmed, ask whether 5 s is too short; changing it is a save-path
 > change, so a risk review comes first.
+>
+> **Done (9 Nov 2026, uncommitted; design `designs/field-reporting-1.2.4.md`, with 7.3 and 7.4; full suite with harness 4521 passed, 1 failed (CrashSweep "planned cut did not fire" at `Lock.AfterDeleted` on Close, a timing flake: 3/3 passes alone), 2 skipped; MinimumVersionToWrite No):** `Save: Success` carries `elapsedMs` and `autoSave`. `SaveLocationNotResponding` (once per run) carries `autoSave`, `stalledAt` (LockCheck / SourceStat / SourceHash / CopyToLocation / VerifyAtLocation / Rename), `deadlineMs` (5000), `elapsedMs`, `recentSaveMs` (last 5 successes, oldest first, or `none`); every such failure also leaves a `Save: LocationNotResponding` breadcrumb (`stalledAt`, `elapsedMs`). Real time (Stopwatch); all reporting inside try/catch; nothing written or decided changes. Tests `SaveFieldReportingTests` (17).
 
 > [!note]- **7.2 Report when a save recovers after a failure** `save path`
 > BugSnag shows that a save failed, but never that a later one worked: success is only a breadcrumb, and each failure
@@ -763,11 +765,15 @@ whether the work is safe, and what to do next.
 > [!note]- **7.3 Report a rename blocked by another program**
 > Today this goes only to the local log. Send one counted event (numbers only, through the scrubber). It can ship
 > before 5.3 and 5.4, to learn whether that problem happens at all.
+>
+> **Done (9 Nov 2026, uncommitted; design `designs/field-reporting-1.2.4.md`; with 7.1 and 7.4; MinimumVersionToWrite No):** a rename refused "in use or access denied" after its 3 retries sends `HandledEvent.SaveRenameBlocked` ("Save rename refused: the file was in use or access was denied") once per run, metadata `autoSave`, `exceptionType`, `hresult`, `attempts`; every one leaves a `Save: rename blocked` breadcrumb with `count` and `hresult`. Copy/verify in-use stay local-only. Tests `SaveFieldReportingTests`.
 
 > [!note]- **7.4 Log the choice on "Restore Unsaved Changes?"**
 > In the field tests a kept edit vanished, and the log couldn't say whether Restore or Discard had been chosen. Log one
 > INFO line per choice. The redesign removes the question later.
 > *Source: field-test open issue A5.*
+>
+> **Done (9 Nov 2026, uncommitted; design `designs/field-reporting-1.2.4.md`):** `SessionLifecycle.AskKeepOrDiscardAsync` writes one `Recovery: "<title>" answered <button>…` INFO line per answer (Restore, Discard → confirm, the X, Discard confirmed, Go Back), for "Restore Unsaved Changes?" and "Can't Restore Unsaved Changes". Local log only. Tests in `SessionLifecycleTests`.
 
 > [!note]- **7.5 Gaps in the exception-reporting tests** (test-only)
 > 1. **Most important:** nothing tests that the production BugSnag client goes through the privacy scrubber. Remove

@@ -36,6 +36,9 @@ internal sealed class RecordingAppLogger : IAppLogger
     /// <summary>Every <see cref="ReportHandled"/> call, in order.</summary>
     public List<HandledReport> Handled { get; } = new();
 
+    /// <summary>Every <see cref="LogBreadcrumb"/> call (message and a copy of its metadata, or null), in order.</summary>
+    public List<(string Message, Dictionary<string, string>? Metadata)> Breadcrumbs { get; } = new();
+
     /// <summary>Every <see cref="NotifyUser"/> message, in order.</summary>
     public List<string> UserNotices { get; } = new();
 
@@ -62,7 +65,10 @@ internal sealed class RecordingAppLogger : IAppLogger
     public void LogInfo(string message, string? context = null) { lock (Infos) Infos.Add(message); }
 
     /// <inheritdoc/>
-    public void LogBreadcrumb(string message, Dictionary<string, string>? metadata = null) { }
+    public void LogBreadcrumb(string message, Dictionary<string, string>? metadata = null)
+    {
+        lock (Breadcrumbs) Breadcrumbs.Add((message, metadata is null ? null : new Dictionary<string, string>(metadata)));
+    }
 
     /// <inheritdoc/>
     public void ReportHandled(

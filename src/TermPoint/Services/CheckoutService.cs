@@ -1,5 +1,6 @@
 using Avalonia.Threading;
 using Microsoft.Data.Sqlite;
+using System.Diagnostics;
 using TermPoint.Exceptions;
 using TermPoint.Models;
 using System.Security.Cryptography;
@@ -1664,11 +1665,101 @@ public sealed class CheckoutService : IDisposable
     /// a save and calls <see cref="RaiseLocationUnreachable"/> directly.
     /// </summary>
     /// <param name="isAutoSave">Whether the save was an autosave (goes into the report's metadata).</param>
-    private void RaiseSaveLocationUnreachable(bool isAutoSave)
+    /// <param name="stalledAt">Which of the save's waits ran out (goes into the report and the breadcrumb).</param>
+    /// <param name="saveStartTimestamp">The <see cref="Stopwatch.GetTimestamp"/> value taken when the save started, to work out how long it ran.</param>
+    private void RaiseSaveLocationUnreachable(bool isAutoSave, SaveStall stalledAt, long saveStartTimestamp)
     {
-        HandledEventReporter.Report(HandledEvent.SaveLocationNotResponding, _logger,
-            new Dictionary<string, string> { ["autoSave"] = isAutoSave.ToString() });
+        // Field reporting (1.2.4 item 7.1): nothing here may throw into the save. Every value is a number, a
+        // True/False or a fixed name, so no path or message text can leak.
+        try
+        {
+            var elapsedMs = ElapsedWholeMs(saveStartTimestamp).ToString();
+
+            _logger.LogBreadcrumb("Save: LocationNotResponding", new()
+            {
+                ["stalledAt"] = stalledAt.ToString(),
+                ["elapsedMs"] = elapsedMs,
+            });
+
+            HandledEventReporter.Report(HandledEvent.SaveLocationNotResponding, _logger,
+                new Dictionary<string, string>
+                {
+                    ["autoSave"]     = isAutoSave.ToString(),
+                    ["stalledAt"]    = stalledAt.ToString(),
+                    ["deadlineMs"]   = NetworkFileOps.TimeoutMs.ToString(),
+                    ["elapsedMs"]    = elapsedMs,
+                    ["recentSaveMs"] = RecentSaveMsText(),
+                });
+        }
+        catch (Exception)
+        {
+            // Reporting must never turn a handled save failure into a crash.
+        }
         RaiseLocationUnreachable();
+    }
+
+    /// <summary>
+    /// The wait of a save that ran out (<see cref="RaiseSaveLocationUnreachable"/>). The names are sent to the
+    /// developers as the report's <c>stalledAt</c> value, so they must not be renamed.
+    /// </summary>
+    private enum SaveStall
+    {
+        /// <summary>Verifying that the lock file is still ours.</summary>
+        LockCheck,
+        /// <summary>The stat of the shared database (is it unchanged?).</summary>
+        SourceStat,
+        /// <summary>The hash of the shared database.</summary>
+        SourceHash,
+        /// <summary>The upload of the snapshot to its temporary file.</summary>
+        CopyToLocation,
+        /// <summary>The hash of the uploaded temporary file.</summary>
+        VerifyAtLocation,
+        /// <summary>The rename of the temporary file onto the database.</summary>
+        Rename,
+    }
+
+    /// <summary>How many recent successful save times are kept for the failure report.</summary>
+    private const int RecentSaveCapacity = 5;
+
+    /// <summary>
+    /// The durations (whole ms) of this session's last <see cref="RecentSaveCapacity"/> successful saves, oldest
+    /// first. Guarded by <c>lock</c> on itself.
+    /// </summary>
+    private readonly List<long> _recentSaveMs = new();
+
+    /// <summary>Blocked renames so far this session (the <c>count</c> of the "Save: rename blocked" breadcrumb).</summary>
+    private int _renameBlockedCount;
+
+    /// <summary>
+    /// Whole milliseconds of real time since <paramref name="startTimestamp"/>. Real time on purpose: this measures
+    /// the share, not the test clock.
+    /// </summary>
+    /// <param name="startTimestamp">A <see cref="Stopwatch.GetTimestamp"/> value.</param>
+    /// <returns>The elapsed milliseconds, never negative.</returns>
+    private static long ElapsedWholeMs(long startTimestamp)
+        => (long)Stopwatch.GetElapsedTime(startTimestamp).TotalMilliseconds;
+
+    /// <summary>
+    /// Appends one successful save's duration to <see cref="_recentSaveMs"/>, dropping the oldest beyond
+    /// <see cref="RecentSaveCapacity"/>. In-memory only, no await.
+    /// </summary>
+    /// <param name="elapsedMs">The save's duration in whole milliseconds.</param>
+    private void RecordSuccessfulSaveMs(long elapsedMs)
+    {
+        lock (_recentSaveMs)
+        {
+            _recentSaveMs.Add(elapsedMs);
+            if (_recentSaveMs.Count > RecentSaveCapacity)
+                _recentSaveMs.RemoveAt(0);
+        }
+    }
+
+    /// <summary>The recent successful save times, comma-joined, oldest first; "none" when there were none.</summary>
+    /// <returns>The text for the report's <c>recentSaveMs</c> field.</returns>
+    private string RecentSaveMsText()
+    {
+        lock (_recentSaveMs)
+            return _recentSaveMs.Count == 0 ? "none" : string.Join(",", _recentSaveMs);
     }
 
     /// <summary>
@@ -1767,6 +1858,34 @@ public sealed class CheckoutService : IDisposable
         if (DatabaseValidator.IsLockedOrAccessDenied(ex))
         {
             _logger.LogInfo($"CheckoutService: {logContext} — file in use or access denied ({ex.GetType().Name}: {ex.Message})");
+
+            // Field reporting (1.2.4 item 7.3): a rename refused after its own retries is counted and reported
+            // (once per run). Only numbers, names and the HRESULT are sent. Never throws.
+            if (step == SaveStep.Rename)
+            {
+                try
+                {
+                    var count   = Interlocked.Increment(ref _renameBlockedCount);
+                    var hresult = $"0x{ex.HResult:X8}";
+                    _logger.LogBreadcrumb("Save: rename blocked", new()
+                    {
+                        ["count"]   = count.ToString(),
+                        ["hresult"] = hresult,
+                    });
+                    HandledEventReporter.Report(HandledEvent.SaveRenameBlocked, _logger,
+                        new Dictionary<string, string>
+                        {
+                            ["autoSave"]      = isAutoSave.ToString(),
+                            ["exceptionType"] = ex.GetType().Name,
+                            ["hresult"]       = hresult,
+                            ["attempts"]      = NetworkFileOps.MoveRetryAttempts.ToString(),
+                        });
+                }
+                catch (Exception)
+                {
+                    // Reporting must never turn a handled save failure into a crash.
+                }
+            }
             return SavePrompt.InUseMessage;
         }
 
@@ -1838,6 +1957,8 @@ public sealed class CheckoutService : IDisposable
 
     private async Task<SaveOutcome> SaveAsyncCore(bool releaseLockAfter, bool isAutoSave)
     {
+        var saveStart = Stopwatch.GetTimestamp();   // field reporting (1.2.4 item 7.1): times this save, real time
+
         _logger.LogBreadcrumb("Save: started", new()
         {
             ["autoSave"] = isAutoSave.ToString(),
@@ -1863,7 +1984,7 @@ public sealed class CheckoutService : IDisposable
         // The same two checks run again, as the final check, immediately before the rename (step 4b).
         // The stamp of D taken here is what that final check compares against (the cheap path).
         var (firstRefusal, sourceStamp, _) = await CheckLockAndSourceAsync(
-            isAutoSave, isFinalCheck: false, stampAtFirstCheck: null);
+            isAutoSave, isFinalCheck: false, stampAtFirstCheck: null, saveStart);
         if (firstRefusal is { } refused)
             return refused;
 
@@ -1935,7 +2056,7 @@ public sealed class CheckoutService : IDisposable
                 {
                     _logger.LogInfo("CheckoutService: snapshot → D.tmp copy stalled — network unreachable");
                     await NetworkFileOps.DeleteAsync(tmpPath);
-                    RaiseSaveLocationUnreachable(isAutoSave);
+                    RaiseSaveLocationUnreachable(isAutoSave, SaveStall.CopyToLocation, saveStart);
                     return SaveOutcome.CopyError;
                 }
             }
@@ -1989,7 +2110,7 @@ public sealed class CheckoutService : IDisposable
         {
             _logger.LogInfo("CheckoutService: D.tmp verification hash stalled — network unreachable");
             await NetworkFileOps.DeleteAsync(tmpPath);
-            RaiseSaveLocationUnreachable(isAutoSave);
+            RaiseSaveLocationUnreachable(isAutoSave, SaveStall.VerifyAtLocation, saveStart);
             return SaveOutcome.CopyError;
         }
 
@@ -2025,7 +2146,7 @@ public sealed class CheckoutService : IDisposable
         // server to arbitrate; the lock and the final check make it a matter of microseconds instead of
         // the length of the upload, and it is accepted.
         var (finalRefusal, _, _) = await CheckLockAndSourceAsync(
-            isAutoSave, isFinalCheck: true, stampAtFirstCheck: sourceStamp);
+            isAutoSave, isFinalCheck: true, stampAtFirstCheck: sourceStamp, saveStart);
         if (finalRefusal is { } refusedAtFinalCheck)
         {
             _logger.LogInfo($"CheckoutService: the final check before the rename refused the save ({refusedAtFinalCheck}) — " +
@@ -2071,7 +2192,7 @@ public sealed class CheckoutService : IDisposable
                     // restart — is recognized as ours instead of as a foreign write.
                     RecordPendingSaveHash(newSourceHash);
                     _logger.LogInfo("CheckoutService: D.tmp rename timed out — network unreachable");
-                    RaiseSaveLocationUnreachable(isAutoSave);
+                    RaiseSaveLocationUnreachable(isAutoSave, SaveStall.Rename, saveStart);
                     return SaveOutcome.CopyError;
                 }
             }
@@ -2110,7 +2231,13 @@ public sealed class CheckoutService : IDisposable
             _lockService.Release();
 
         _logger.LogInfo("CheckoutService: Save completed successfully.");
-        _logger.LogBreadcrumb("Save: Success");
+        var elapsedMs = ElapsedWholeMs(saveStart);
+        RecordSuccessfulSaveMs(elapsedMs);
+        _logger.LogBreadcrumb("Save: Success", new()
+        {
+            ["elapsedMs"] = elapsedMs.ToString(),
+            ["autoSave"]  = isAutoSave.ToString(),
+        });
         _dispatch(() => SaveCompleted?.Invoke());
         return SaveOutcome.Success;
     }
@@ -2211,8 +2338,9 @@ public sealed class CheckoutService : IDisposable
     /// being someone else's (LockLost). No caller acts on it any more (the final check's caller used to delete its
     /// temporary file only when this was true, spec item 32 change (d); since 1.2.4 item 4.1 it always does).
     /// </returns>
+    /// <param name="saveStartTimestamp">The <see cref="Stopwatch.GetTimestamp"/> value taken when the save started (for the timeout report's elapsed time).</param>
     private async Task<(SaveOutcome? Refusal, SourceStamp? Stamp, bool LockConfirmed)> CheckLockAndSourceAsync(
-        bool isAutoSave, bool isFinalCheck, SourceStamp? stampAtFirstCheck)
+        bool isAutoSave, bool isFinalCheck, SourceStamp? stampAtFirstCheck, long saveStartTimestamp)
     {
         // ── Step 1: Verify we still hold the lock ─────────────────────────────
         var lockResult = await VerifyLockIsOursAsync();
@@ -2220,7 +2348,7 @@ public sealed class CheckoutService : IDisposable
         if (lockResult == LockVerificationResult.Unreachable)
         {
             _logger.LogInfo("CheckoutService: lock verification timed out — network unreachable");
-            RaiseSaveLocationUnreachable(isAutoSave);
+            RaiseSaveLocationUnreachable(isAutoSave, SaveStall.LockCheck, saveStartTimestamp);
             return (SaveOutcome.CopyError, null, false);   // nothing was confirmed: whose lock it is stays unknown
         }
 
@@ -2271,7 +2399,7 @@ public sealed class CheckoutService : IDisposable
         if (!statCompleted)
         {
             _logger.LogInfo("CheckoutService: source stat timed out — network unreachable");
-            RaiseSaveLocationUnreachable(isAutoSave);
+            RaiseSaveLocationUnreachable(isAutoSave, SaveStall.SourceStat, saveStartTimestamp);
             return (SaveOutcome.CopyError, null, lockConfirmed);
         }
 
@@ -2295,7 +2423,7 @@ public sealed class CheckoutService : IDisposable
         if (!hashCompleted)
         {
             _logger.LogInfo("CheckoutService: source hash timed out — network unreachable");
-            RaiseSaveLocationUnreachable(isAutoSave);
+            RaiseSaveLocationUnreachable(isAutoSave, SaveStall.SourceHash, saveStartTimestamp);
             return (SaveOutcome.CopyError, null, lockConfirmed);
         }
 

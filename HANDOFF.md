@@ -1,4 +1,4 @@
-# Handoff: TermPoint 1.2.4 in progress on branch `Version_1.2.4` (dev machine, updated 2026-11-07)
+# Handoff: TermPoint 1.2.4 in progress on branch `Version_1.2.4` (dev machine, updated 2026-11-09)
 
 Written so a fresh conversation can pick up. Claude Code's memory and `CLAUDE.md` don't travel between machines
 (`CLAUDE.md` is gitignored), so everything a new agent needs is here or in the files this points to.
@@ -7,7 +7,7 @@ Written so a fresh conversation can pick up. Claude Code's memory and `CLAUDE.md
 
 ## Where things are
 
-- **Branches:** all 1.2.4 work is on **`Version_1.2.4`**, pushed up to `426cb90` (2026-11-08).
+- **Branches:** all 1.2.4 work is on **`Version_1.2.4`**, pushed up to `454a38c` (2026-11-08).
   **`master`** = released 1.2.3 code (`cf4d4cb`) plus doc commits, kept hotfixable; it is 7 doc-only commits ahead of
   origin and **not pushed** (pushing `master` redeploys the WASM demo; pushing a `v*` tag starts the macOS workflow).
   Greg controls branches, commits and pushes: never create a branch, ask before each commit and each push.
@@ -59,8 +59,13 @@ Written so a fresh conversation can pick up. Claude Code's memory and `CLAUDE.md
    2. **A + B, the close/switch sequence: DONE 2026-11-08, uncommitted** (design `designs/close-switch-sequence.md`;
       Done notes on summary 3.1, 3.3, 4.13, 6.10, 6.11, 6.13). F16, F17, F18, F23 fixed (proof tests); F20 partly
       (remainder accepted, stays known); 3.1 always asks (Apply / Discard / Cancel). Full suite with harness 4501
-      passed, 0 failed. **Left:** by-hand check in the app that an unchanged editor never triggers the 3.1 question.
+      passed, 0 failed. Committed and pushed as `454a38c`. By-hand check that an unchanged editor never triggers
+      the 3.1 question: passed (Greg, 2026-11-09).
    3. **D: 7.1** save timings in breadcrumbs/failure report, with **7.3** and **7.4** (reporting only).
+      **DONE 2026-11-09, uncommitted** (design `designs/field-reporting-1.2.4.md`; Done notes on summary 7.1, 7.3,
+      7.4). Full suite with harness 4521 passed, 1 failed, 2 skipped: the failure was
+      `CrashSweep_EveryPointIsCutOrExplained` ("planned cut did not fire", `Lock.AfterDeleted` on Close, background
+      lock delete), which passed 3/3 re-run alone: a flake to watch, maybe settle `PendingRelease` there.
    4. **F: 1.2 + 1.4** (drop the shared DiaSymReader DLL and the Skia/HarfBuzz PDBs from the Store package), **1.3**
       test flights, **1.5** the failing GitHub Tests workflow.
    - Then, if still early enough in the release: **E** (3.2 crash route via an edit counter, 3.4 no-edit rewrite);

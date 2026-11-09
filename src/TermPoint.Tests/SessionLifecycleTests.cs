@@ -359,6 +359,94 @@ public sealed class SessionLifecycleTests : SessionLifecycleTestBase
         AssertScriptConsumed();
     }
 
+    /// <summary>The "Recovery:" lines the keep-or-discard questions wrote to the log so far, in order (field reporting, 1.2.4 item 7.4).</summary>
+    private List<string> RecoveryLines()
+    {
+        lock (_logger.Infos) return _logger.Infos.Where(l => l.StartsWith("Recovery:", StringComparison.Ordinal)).ToList();
+    }
+
+    /// <summary>Restore on "Restore Unsaved Changes?" writes exactly one line.</summary>
+    [Fact]
+    public async Task Open_KeptChanges_Restore_LogsTheAnswer()
+    {
+        var db = NewDb();
+        await LeaveKeptChangesAsync(db, colleagueChangedD: false);
+        _prompts.ExpectChoice("Restore Unsaved Changes?", true);
+
+        await StartupAsync(db);
+
+        Assert.Equal(new[] { "Recovery: \"Restore Unsaved Changes?\" answered Restore." }, RecoveryLines());
+    }
+
+    /// <summary>
+    /// Every path of the "Restore Unsaved Changes?" loop writes its line, in order: the window's X, Discard, Go Back
+    /// (by button), Discard again, the confirmation's own X (folded into Go Back), then Discard and the confirmed discard.
+    /// </summary>
+    [Fact]
+    public async Task Open_KeptChanges_EveryAnswerPath_LogsExactlyTheListedLinesInOrder()
+    {
+        var db = NewDb();
+        await LeaveKeptChangesAsync(db, colleagueChangedD: false);
+        _prompts.ExpectChoice("Restore Unsaved Changes?", ChoiceAnswer.ClosedWithX)
+                .ExpectChoice("Restore Unsaved Changes?", false)
+                .ExpectChoice("Discard Unsaved Changes?", false /* Go Back */)
+                .ExpectChoice("Restore Unsaved Changes?", false)
+                .ExpectChoice("Discard Unsaved Changes?", ChoiceAnswer.ClosedWithX)
+                .ExpectChoice("Restore Unsaved Changes?", false)
+                .ExpectChoice("Discard Unsaved Changes?", true);
+
+        await StartupAsync(db);
+
+        const string ask = "Recovery: \"Restore Unsaved Changes?\"";
+        const string confirm = "Recovery: \"Discard Unsaved Changes?\"";
+        Assert.Equal(new[]
+        {
+            ask + " closed with the window's X; asking again.",
+            ask + " answered Discard; asking to confirm.",
+            confirm + " answered Go Back; asking again.",
+            ask + " answered Discard; asking to confirm.",
+            confirm + " answered Go Back; asking again.",
+            ask + " answered Discard; asking to confirm.",
+            confirm + " answered Discard; the kept changes will be discarded.",
+        }, RecoveryLines());
+        AssertScriptConsumed();
+    }
+
+    /// <summary>"Can't Restore Unsaved Changes" logs the same shapes with its own title and labels (Save a Copy… / Discard).</summary>
+    [Fact]
+    public async Task Open_CantRestore_Answers_LogWithTheirOwnTitleAndLabels()
+    {
+        var db = NewDb();
+        await LeaveKeptChangesAsync(db, colleagueChangedD: true);
+        _prompts.ExpectChoice("Restore Unsaved Changes?", true)
+                .ExpectChoice("Can't Restore Unsaved Changes", false)
+                .ExpectChoice("Discard Unsaved Changes?", true);
+
+        await StartupAsync(db);
+
+        Assert.Equal(new[]
+        {
+            "Recovery: \"Restore Unsaved Changes?\" answered Restore.",
+            "Recovery: \"Can't Restore Unsaved Changes\" answered Discard; asking to confirm.",
+            "Recovery: \"Discard Unsaved Changes?\" answered Discard; the kept changes will be discarded.",
+        }, RecoveryLines());
+    }
+
+    /// <summary>The keep button of "Can't Restore Unsaved Changes" logs its own label, "Save a Copy…" as written.</summary>
+    [Fact]
+    public async Task Open_CantRestore_SaveACopy_LogsTheButtonLabelAsWritten()
+    {
+        var db = NewDb();
+        await LeaveKeptChangesAsync(db, colleagueChangedD: true);
+        _prompts.ExpectChoice("Restore Unsaved Changes?", true)
+                .ExpectChoice("Can't Restore Unsaved Changes", true)
+                .ExpectPick("Save Recovered Copy", Path.Combine(_shareDir, "recovered-log.db"));
+
+        await StartupAsync(db);
+
+        Assert.Equal("Recovery: \"Can't Restore Unsaved Changes\" answered Save a Copy….", RecoveryLines()[1]);
+    }
+
     /// <summary>
     /// Discard, then Discard, on "Can't Restore Unsaved Changes": "Discard Unsaved Changes?" follows with the extra line that
     /// points back to Save a Copy…, and only its [Discard] deletes the kept changes — with no export. The database opens normally.

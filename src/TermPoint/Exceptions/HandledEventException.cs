@@ -48,6 +48,9 @@ public enum HandledEvent
 
     /// <summary>The previous TermPoint session on this computer ended without exiting normally (crash, force-quit, power loss).</summary>
     PreviousSessionEndedUnexpectedly,
+
+    /// <summary>A save's rename onto the database was refused: the file was in use or access was denied (after the rename's own retries).</summary>
+    SaveRenameBlocked,
 }
 
 /// <summary>
@@ -87,6 +90,7 @@ public sealed class HandledEventException : Exception
         HandledEvent.RefreshNotResponding               => "Refresh failed: the database location did not respond",
         HandledEvent.RefreshConnectionLost              => "Refresh failed and lost the connection to the database",
         HandledEvent.PreviousSessionEndedUnexpectedly   => "The previous session ended without exiting normally",
+        HandledEvent.SaveRenameBlocked                  => "Save rename refused: the file was in use or access was denied",
         _                                               => "Handled event: " + kind,
     };
 }
