@@ -40,8 +40,8 @@ internal sealed record AllowedMessagePair(string First, string Second, string Re
 
 /// <summary>
 /// The allow-list for invariant I8 (b), "one message per problem": the pairs of different messages that may legitimately appear on one computer in
-/// one step. Empty: every pair the harness has seen so far is one problem told twice, recorded as a known finding (F17, F18 and A13 in
-/// <see cref="KnownFindings"/>) until it is fixed. Add a pair here only when its two messages really are about two different problems.
+/// one step. Empty: every pair the harness has seen so far is one problem told twice, recorded as a known finding (A13 in
+/// <see cref="KnownFindings"/>; F17 and F18 were, both fixed in 1.2.4) until it is fixed. Add a pair here only when its two messages really are about two different problems.
 /// </summary>
 internal static class MessageAllowList
 {

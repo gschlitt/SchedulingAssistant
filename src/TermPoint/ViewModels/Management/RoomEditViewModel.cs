@@ -18,7 +18,7 @@ public record RoomTypeOption(string? Id, string Name);
 /// ViewModel for the inline Add/Edit form in the Rooms management panel.
 /// Communicates results back to the parent list via callbacks.
 /// </summary>
-public partial class RoomEditViewModel : ViewModelBase
+public partial class RoomEditViewModel : UnappliedChangesEditor
 {
     [ObservableProperty] private string _building = string.Empty;
     [ObservableProperty] private string _roomNumber = string.Empty;
@@ -86,7 +86,20 @@ public partial class RoomEditViewModel : ViewModelBase
                          ?? campusOptions[0]; // "(none)" sentinel
         SelectedRoomType = roomTypeOptions.FirstOrDefault(t => t.Id == room.RoomTypeId)
                            ?? roomTypeOptions[0]; // "(none)" sentinel
+
+        TakeSnapshot();
     }
+
+    /// <inheritdoc/>
+    protected override string CaptureState() => UnappliedChangesKey.Of(
+        Building.Trim(), RoomNumber.Trim(), CapacityText.Trim(), Features.Trim(), Notes.Trim(),
+        SelectedCampus?.Id, SelectedRoomType?.Id);
+
+    /// <inheritdoc/>
+    protected override System.Windows.Input.ICommand ApplyCommand => SaveCommand;
+
+    /// <inheritdoc/>
+    protected override System.Windows.Input.ICommand CancelCommandForDiscard => CancelCommand;
 
     /// <summary>Writes field values back to the model and invokes the save callback.</summary>
     [RelayCommand]
@@ -100,6 +113,7 @@ public partial class RoomEditViewModel : ViewModelBase
         _room.CampusId   = SelectedCampus?.Id; // null when "(none)" is selected
         _room.RoomTypeId = SelectedRoomType?.Id; // null when "(none)" is selected
         _onSave(_room);
+        MarkApplied();
     }
 
     /// <summary>Discards changes and invokes the cancel callback.</summary>

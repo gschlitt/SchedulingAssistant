@@ -10,7 +10,7 @@ using System.ComponentModel;
 
 namespace TermPoint.ViewModels.Management;
 
-public partial class SectionEditViewModel : ViewModelBase
+public partial class SectionEditViewModel : UnappliedChangesEditor
 {
     [ObservableProperty] private string? _selectedCourseId;
     [ObservableProperty] private string _sectionCode = string.Empty;
@@ -687,7 +687,31 @@ public partial class SectionEditViewModel : ViewModelBase
         // adds missing ones.
         if (isNew && !string.IsNullOrEmpty(SelectedCourseId))
             MergeCourseTags(SelectedCourseId);
+
+        // Last of all, so "as opened" includes the merged tags and every other value set above (spec item 3.1).
+        TakeSnapshot();
     }
+
+    /// <summary>
+    /// The values this editor would save, as comparable text, for the unapplied-changes check (spec item 3.1).
+    /// Compared against the values at open, so a setter Avalonia re-fires with the same value changes nothing.
+    /// Unselected instructor and reserve rows are left out (their text is not saved).
+    /// </summary>
+    /// <returns>Comparable text; equal for equal values.</returns>
+    protected override string CaptureState() => UnappliedChangesKey.Of(
+        SelectedCourseId ?? "", SectionCode.Trim(), Notes.Trim(), SelectedFlag, CapacityText.Trim(),
+        SelectedSectionTypeId ?? "", SelectedCampusId ?? "",
+        InstructorSelections.Where(i => i.IsSelected).Select(i => UnappliedChangesKey.Of(i.Value.Id, i.ParsedWorkload ?? (object)i.WorkloadText.Trim())),
+        TagSelections.Where(t => t.IsSelected).Select(t => t.Value.Id),
+        ResourceSelections.Where(r => r.IsSelected).Select(r => r.Value.Id),
+        ReserveSelections.Where(r => r.IsSelected).Select(r => UnappliedChangesKey.Of(r.Value.Id, r.CodeText?.Trim())),
+        Meetings.Select(m => m.StateKey()));
+
+    /// <inheritdoc/>
+    protected override System.Windows.Input.ICommand ApplyCommand => SaveCommand;
+
+    /// <inheritdoc/>
+    protected override System.Windows.Input.ICommand CancelCommandForDiscard => CancelCommand;
 
     /// <summary>
     /// Wires up collection + per-item PropertyChanged so that the named summary property
@@ -1170,6 +1194,7 @@ public partial class SectionEditViewModel : ViewModelBase
             .ToList();
 
         await _onSave(_section);
+        MarkApplied();
         RequestClose?.Invoke();
     }
 

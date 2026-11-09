@@ -1,5 +1,6 @@
 using Microsoft.Data.Sqlite;
 using TermPoint.Services;
+using TermPoint.ViewModels;
 
 namespace TermPoint.Tests;
 
@@ -111,6 +112,15 @@ internal sealed class FakeSessionHost : ISessionHost, IDisposable
 
     /// <inheritdoc/>
     public bool IsInlineEditorOpen => InlineEditorOpen;
+
+    /// <summary>
+    /// What <see cref="FindUnappliedChanges"/> reports; null (no editor with unapplied changes) by default. A 3.1
+    /// test sets it to a fake editor to model "an open editor holds changes the user has not applied".
+    /// </summary>
+    public IUnappliedChanges? UnappliedEditor { get; set; }
+
+    /// <inheritdoc/>
+    public IUnappliedChanges? FindUnappliedChanges() => UnappliedEditor;
 
     /// <summary>Runs inside <see cref="ReleaseServices"/>, before it closes the connection (lets a test observe the world at that moment); null for none.</summary>
     public Action? OnReleaseServices { get; set; }

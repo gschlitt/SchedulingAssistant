@@ -59,6 +59,15 @@ public partial class MainWindowViewModel : ViewModelBase
     /// </summary>
     public bool IsAnyPanelEditing => SectionListVm.IsEditing || MeetingListVm.IsEditing;
 
+    /// <summary>
+    /// Finds the one open editor that holds changes the user has not applied (spec item 3.1), looking in the
+    /// section list, the meeting list and the open flyout page. Detached panels share these same view models,
+    /// so they are covered. Asked before a close or a database switch.
+    /// </summary>
+    /// <returns>The editor with unapplied changes, or null when there is none.</returns>
+    public IUnappliedChanges? FindUnappliedChanges() =>
+        UnappliedChangesFinder.First(SectionListVm, MeetingListVm, FlyoutPage);
+
     /// <summary>Title shown in the left panel header — changes with the active view.</summary>
     public string LeftPanelTitle => IsShowingMeetings ? "Events View" : "Section View";
 

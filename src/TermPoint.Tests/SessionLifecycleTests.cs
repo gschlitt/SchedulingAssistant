@@ -322,11 +322,10 @@ public sealed class SessionLifecycleTests : SessionLifecycleTestBase
         Assert.False(File.Exists(MarkerOf(kept)));                               // kept files deleted only after the copy landed
         Assert.Equal(ColleagueValue, NewestValue(_host.OpenCalls.Single().WorkingPath));   // normal open: a fresh copy of the changed D
 
-        // Quirk, pinned as it is today: `recoverUnsaved` stays true after the user chose Restore even though the
-        // conflict made the checkout run again as a normal one, so the "make restored changes durable" save still
-        // runs after the window is wired up. It copies the fresh D' (identical to D) back over D: needless but
-        // harmless, and D still holds the colleague's change.
-        AssertInOrder(_trace, "host:SetupWindow", "checkout:SaveCompleted");
+        // F23 fixed: the user chose Restore, but the conflict made the checkout run again as a normal one, so nothing was
+        // restored and the "make restored changes durable" save must NOT run (a failing one would claim the changes are kept).
+        AssertInOrder(_trace, "host:SetupWindow");
+        Assert.DoesNotContain("checkout:SaveCompleted", _trace);
         Assert.Equal(ColleagueValue, NewestValue(db));
         Assert.True(_lockSvc.IsWriter);
         AssertScriptConsumed();
@@ -385,6 +384,29 @@ public sealed class SessionLifecycleTests : SessionLifecycleTestBase
         Assert.False(File.Exists(MarkerOf(kept)));
         Assert.Equal(ColleagueValue, NewestValue(_host.OpenCalls.Single().WorkingPath));
         Assert.Empty(Directory.GetFiles(_shareDir, "*.db").Where(f => f != db));    // nothing was exported
+        Assert.DoesNotContain("checkout:SaveCompleted", _trace);                    // F23: nothing restored, so no post-open save
+        AssertScriptConsumed();
+    }
+
+    /// <summary>
+    /// F23, the harness route: the recovery conflicts and the person discards the kept changes. No post-open save may START at
+    /// all: it is the one that, with the database in use by another program, fails with a banner saying "your changes are kept".
+    /// (Counting started saves proves it without needing a failing share.)
+    /// </summary>
+    [Fact]
+    public async Task Open_CantRestore_Discard_StartsNoPostOpenSave_F23Fixed()
+    {
+        var db = NewDb();
+        await LeaveKeptChangesAsync(db, colleagueChangedD: true);
+        _prompts.ExpectChoice("Restore Unsaved Changes?", true)
+                .ExpectChoice("Can't Restore Unsaved Changes", false)
+                .ExpectChoice("Discard Unsaved Changes?", true);
+        var savesStarted = 0;
+        _checkout.SaveStarted += () => savesStarted++;
+
+        await StartupAsync(db);
+
+        Assert.Equal(0, savesStarted);
         AssertScriptConsumed();
     }
 
@@ -999,6 +1021,89 @@ public sealed class SessionLifecycleTests : SessionLifecycleTestBase
         Assert.Equal(b, _checkout.SourcePath);
         Assert.True(_host.IsDatabaseOpen);
         Assert.False(_guard.IsHeld(a));
+        AssertScriptConsumed();
+    }
+
+    /// <summary>
+    /// Asserts that no save started or completed after the last "host:SetupWindow" in the trace: the post-open save of restored changes
+    /// (F23). Saves BEFORE it (a switch saves the database it leaves) are legitimate and ignored.
+    /// </summary>
+    private void AssertNoSaveAfterTheWindowWasWired()
+    {
+        var wired = _trace.LastIndexOf("host:SetupWindow");
+        Assert.True(wired >= 0, "the window was never wired");
+        Assert.DoesNotContain(_trace.Skip(wired + 1), t => t == "test:SaveStarted" || t == "checkout:SaveCompleted");
+    }
+
+    /// <summary>
+    /// F23 on the switch route: B has kept changes that conflict (a colleague changed B) and the person chooses Discard (confirmed).
+    /// The switch opens B normally and no post-open save starts, because nothing was restored.
+    /// </summary>
+    [Fact]
+    public async Task Switch_KeptChangesConflict_Discard_StartsNoPostOpenSave_F23Fixed()
+    {
+        var a = NewDb("a.db");
+        var b = NewDb("b.db");
+        await LeaveKeptChangesAsync(b, colleagueChangedD: true);
+        await OpenCleanAsync(a);
+        _prompts.ExpectChoice("Restore Unsaved Changes?", true)
+                .ExpectChoice("Can't Restore Unsaved Changes", false)
+                .ExpectChoice("Discard Unsaved Changes?", true);
+        _checkout.SaveStarted += () => _trace.Add("test:SaveStarted");
+
+        var opened = await _lifecycle.SwitchDatabaseAsync(b);
+
+        Assert.True(opened);
+        Assert.Equal(b, _checkout.SourcePath);
+        AssertNoSaveAfterTheWindowWasWired();
+        Assert.Equal(ColleagueValue, NewestValue(b));
+        AssertScriptConsumed();
+    }
+
+    /// <summary>
+    /// F23 on the switch route, the other answer: Save a Copy… of the conflicting kept changes, then the switch opens B normally
+    /// and again no post-open save starts.
+    /// </summary>
+    [Fact]
+    public async Task Switch_KeptChangesConflict_SaveACopy_StartsNoPostOpenSave_F23Fixed()
+    {
+        var a = NewDb("a.db");
+        var b = NewDb("b.db");
+        await LeaveKeptChangesAsync(b, colleagueChangedD: true);
+        await OpenCleanAsync(a);
+        var export = Path.Combine(_shareDir, "recovered.db");
+        _prompts.ExpectChoice("Restore Unsaved Changes?", true)
+                .ExpectChoice("Can't Restore Unsaved Changes", true)
+                .ExpectPick("Save Recovered Copy", export);
+        _checkout.SaveStarted += () => _trace.Add("test:SaveStarted");
+
+        var opened = await _lifecycle.SwitchDatabaseAsync(b);
+
+        Assert.True(opened);
+        AssertNoSaveAfterTheWindowWasWired();
+        Assert.Equal(UnsavedValue, NewestValue(export));
+        Assert.Equal(ColleagueValue, NewestValue(b));
+        AssertScriptConsumed();
+    }
+
+    /// <summary>
+    /// F23 must not break the real thing: a switch to a database with restorable kept changes (nobody changed it) restores them and
+    /// the post-open save makes them durable in the shared database at once.
+    /// </summary>
+    [Fact]
+    public async Task Switch_KeptChanges_Restore_RunsThePostOpenSave()
+    {
+        var a = NewDb("a.db");
+        var b = NewDb("b.db");
+        await LeaveKeptChangesAsync(b, colleagueChangedD: false);
+        await OpenCleanAsync(a);
+        _prompts.ExpectChoice("Restore Unsaved Changes?", true);
+
+        var opened = await _lifecycle.SwitchDatabaseAsync(b);
+
+        Assert.True(opened);
+        AssertInOrder(_trace, "host:SetupWindow", "checkout:SaveCompleted");
+        Assert.Equal(UnsavedValue, NewestValue(b));
         AssertScriptConsumed();
     }
 

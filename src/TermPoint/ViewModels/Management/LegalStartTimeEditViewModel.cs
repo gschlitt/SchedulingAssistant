@@ -6,7 +6,7 @@ using System.Collections.ObjectModel;
 
 namespace TermPoint.ViewModels.Management;
 
-public partial class LegalStartTimeEditViewModel : ViewModelBase
+public partial class LegalStartTimeEditViewModel : UnappliedChangesEditor
 {
     /// <summary>Block length in hours — internal storage unit. Never exposed directly to the UI.</summary>
     private double _blockLengthHours;
@@ -84,7 +84,19 @@ public partial class LegalStartTimeEditViewModel : ViewModelBase
         _blockLengthHours = entry.BlockLength;
         StartTimeRows = new ObservableCollection<StartTimeRowViewModel>(
             entry.StartTimes.Select(m => new StartTimeRowViewModel(m, Remove)));
+
+        TakeSnapshot();
     }
+
+    /// <inheritdoc/>
+    protected override string CaptureState() =>
+        UnappliedChangesKey.Of(_blockLengthHours, StartTimeRows.Select(r => r.Minutes));
+
+    /// <inheritdoc/>
+    protected override System.Windows.Input.ICommand ApplyCommand => SaveCommand;
+
+    /// <inheritdoc/>
+    protected override System.Windows.Input.ICommand CancelCommandForDiscard => CancelCommand;
 
     private void Remove(StartTimeRowViewModel row) => StartTimeRows.Remove(row);
 
@@ -158,6 +170,7 @@ public partial class LegalStartTimeEditViewModel : ViewModelBase
         _entry.BlockLength = _blockLengthHours;
         _entry.StartTimes  = StartTimeRows.Select(r => r.Minutes).ToList();
         await _onSave(_entry);
+        MarkApplied();
     }
 
     [RelayCommand]

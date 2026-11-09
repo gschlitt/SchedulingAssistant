@@ -4,7 +4,7 @@ using TermPoint.Models;
 
 namespace TermPoint.ViewModels.Management;
 
-public partial class ReleaseEditViewModel : ViewModelBase
+public partial class ReleaseEditViewModel : UnappliedChangesEditor
 {
     private readonly Action _onCancel;
     private readonly Func<Release, Task> _onSave;
@@ -31,7 +31,18 @@ public partial class ReleaseEditViewModel : ViewModelBase
             if (e.PropertyName == nameof(Title) || e.PropertyName == nameof(WorkloadText))
                 ValidationError = null;
         };
+
+        TakeSnapshot();
     }
+
+    /// <inheritdoc/>
+    protected override string CaptureState() => UnappliedChangesKey.Of(Title.Trim(), WorkloadText.Trim());
+
+    /// <inheritdoc/>
+    protected override System.Windows.Input.ICommand ApplyCommand => SaveCommand;
+
+    /// <inheritdoc/>
+    protected override System.Windows.Input.ICommand CancelCommandForDiscard => CancelCommand;
 
     [RelayCommand]
     private async Task Save()
@@ -60,6 +71,7 @@ public partial class ReleaseEditViewModel : ViewModelBase
         }.WithExtensionDataFrom(_originalRelease); // this replaces the stored record: keep its unknown JSON fields (spec item 3)
 
         await _onSave(release);
+        MarkApplied();
     }
 
     [RelayCommand]

@@ -11,7 +11,7 @@ namespace TermPoint.ViewModels.Management;
 /// ViewModel for the Section Code Patterns configuration panel.
 /// Supports full CRUD for <see cref="SectionCodePattern"/> entities.
 /// </summary>
-public partial class SectionCodePatternListViewModel : ViewModelBase, IDismissableEditor, IDisposable
+public partial class SectionCodePatternListViewModel : ViewModelBase, IDismissableEditor, IUnappliedChangesHost, IDisposable
 {
     private readonly ISectionCodePatternRepository _repo;
     private readonly ICampusRepository _campusRepo;
@@ -30,6 +30,9 @@ public partial class SectionCodePatternListViewModel : ViewModelBase, IDismissab
     [ObservableProperty] private ObservableCollection<SectionCodePattern> _items = new();
     [ObservableProperty] private SectionCodePattern? _selectedItem;
     [ObservableProperty] private SectionCodePatternEditViewModel? _editVm;
+
+    /// <inheritdoc/>
+    public IUnappliedChanges? FindUnappliedChanges() => UnappliedChangesFinder.First(EditVm);
 
     /// <inheritdoc/>
     public bool DismissActiveEditor()
@@ -184,7 +187,7 @@ public record SectionTypeOption(string? Id, string Name);
 /// Inline Add/Edit form ViewModel for a single <see cref="SectionCodePattern"/>.
 /// Communicates results back to the parent list via callbacks.
 /// </summary>
-public partial class SectionCodePatternEditViewModel : ViewModelBase
+public partial class SectionCodePatternEditViewModel : UnappliedChangesEditor
 {
     private readonly SectionCodePattern _target;
     private readonly Action<SectionCodePattern> _onSave;
@@ -419,7 +422,20 @@ public partial class SectionCodePatternEditViewModel : ViewModelBase
 
         SelectedCampus      = campusOptions.FirstOrDefault(c => c.Id == target.CampusId) ?? campusOptions[0];
         SelectedSectionType = sectionTypeOptions.FirstOrDefault(t => t.Id == target.SectionTypeId) ?? sectionTypeOptions[0];
+
+        TakeSnapshot();
     }
+
+    /// <inheritdoc/>
+    protected override string CaptureState() => UnappliedChangesKey.Of(
+        Name.Trim(), Prefix, Suffix, UseLetters, FirstNumberText, IncrementText, FirstLetterText,
+        SelectedCampus?.Id, SelectedSectionType?.Id);
+
+    /// <inheritdoc/>
+    protected override System.Windows.Input.ICommand ApplyCommand => SaveCommand;
+
+    /// <inheritdoc/>
+    protected override System.Windows.Input.ICommand CancelCommandForDiscard => CancelCommand;
 
     // ── Commands ──────────────────────────────────────────────────────────────
 
@@ -455,6 +471,7 @@ public partial class SectionCodePatternEditViewModel : ViewModelBase
         _target.Examples = string.Join(", ", SectionCodeGenerator.GetPreviewCodes(_target, 2));
 
         _onSave(_target);
+        MarkApplied();
     }
 
     /// <summary>Discards changes and invokes the cancel callback.</summary>

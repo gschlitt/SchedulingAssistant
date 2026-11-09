@@ -14,7 +14,7 @@ namespace TermPoint.ViewModels.Management;
 /// available. Reuses <see cref="SectionMeetingViewModel"/> for day/time/room slots
 /// and <see cref="InstructorSelectionViewModel"/> for attendees.
 /// </summary>
-public partial class MeetingEditViewModel : ViewModelBase
+public partial class MeetingEditViewModel : UnappliedChangesEditor
 {
     private readonly Meeting _meeting;
     private readonly IMeetingRepository _meetingRepo;
@@ -224,7 +224,23 @@ public partial class MeetingEditViewModel : ViewModelBase
         foreach (var resource in allResources.OrderBy(r => r.Name))
             ResourceSelections.Add(new ResourceSelectionViewModel(resource, meetingResourceSet.Contains(resource.Id)));
         WireSelectionSummary(ResourceSelections, nameof(ResourceSummary));
+
+        TakeSnapshot();
     }
+
+    /// <inheritdoc/>
+    protected override string CaptureState() => UnappliedChangesKey.Of(
+        Title.Trim(), Notes.Trim(), SelectedCampusId ?? "",
+        Slots.Select(s => s.StateKey()),
+        AttendeeSelections.Where(a => a.IsSelected).Select(a => a.Value.Id),
+        TagSelections.Where(t => t.IsSelected).Select(t => t.Value.Id),
+        ResourceSelections.Where(r => r.IsSelected).Select(r => r.Value.Id));
+
+    /// <inheritdoc/>
+    protected override System.Windows.Input.ICommand ApplyCommand => SaveCommand;
+
+    /// <inheritdoc/>
+    protected override System.Windows.Input.ICommand CancelCommandForDiscard => CancelCommand;
 
     /// <summary>
     /// Subscribes to <see cref="INotifyPropertyChanged.PropertyChanged"/> on each item in
@@ -523,6 +539,8 @@ public partial class MeetingEditViewModel : ViewModelBase
             _meetingRepo.Insert(_meeting);
         else
             _meetingRepo.Update(_meeting);
+
+        MarkApplied();
 
         // Fire EditCompleted BEFORE reloading the store.
         // MeetingStore.Reload fires MeetingsChanged synchronously, which triggers

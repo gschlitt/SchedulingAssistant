@@ -945,6 +945,16 @@ public partial class SectionMeetingViewModel : ViewModelBase
             Frequency       = BuildStoredFrequency(),
         }.WithExtensionDataFrom(_original);
     }
+
+    /// <summary>
+    /// The values of this row the user can edit, as comparable text, for an editor's unapplied-changes snapshot
+    /// (spec item 3.1). Unlike <see cref="ToSchedule"/> it also covers a half-filled row (a day chosen but no
+    /// start time yet), because typing into such a row is a change the user would lose.
+    /// </summary>
+    /// <returns>Comparable text; equal for equal values.</returns>
+    public string StateKey() => UnappliedChangesKey.Of(
+        SelectedDay, SelectedStartTime, SelectedBlockLength, SelectedMeetingTypeId ?? "",
+        SelectedRoomId ?? "", SelectedRoomType?.Id, SelectedFrequencyOption, BuildStoredFrequency());
 }
 
 public record DayOption(int Day, string Name);

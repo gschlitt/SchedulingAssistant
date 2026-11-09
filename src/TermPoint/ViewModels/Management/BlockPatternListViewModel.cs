@@ -10,7 +10,7 @@ namespace TermPoint.ViewModels.Management;
 /// Manages up to five block-pattern favourite slots shown in the Block Patterns flyout.
 /// Patterns are stored in the database so all users of the same database see the same patterns.
 /// </summary>
-public partial class BlockPatternListViewModel : ViewModelBase, IDismissableEditor, IDisposable
+public partial class BlockPatternListViewModel : ViewModelBase, IDismissableEditor, IUnappliedChangesHost, IDisposable
 {
     private readonly IBlockPatternRepository _patternRepository;
     private readonly WriteLockService _lockService;
@@ -24,6 +24,9 @@ public partial class BlockPatternListViewModel : ViewModelBase, IDismissableEdit
 
     /// <summary>True while any slot is being edited; used to disable other slots' buttons.</summary>
     public bool IsEditingAny => Slots.Any(s => s.IsEditing);
+
+    /// <inheritdoc/>
+    public IUnappliedChanges? FindUnappliedChanges() => UnappliedChangesFinder.First(Slots.Cast<object?>().ToArray());
 
     /// <summary>True when the current user holds the write lock; controls whether Edit/Clear buttons are enabled.</summary>
     public bool IsWriteEnabled => _lockService.IsWriter;
@@ -84,12 +87,15 @@ public partial class BlockPatternListViewModel : ViewModelBase, IDismissableEdit
 /// View model for one fixed pattern slot (1 or 2).
 /// Handles Edit and Clear in place, persisting immediately to the database.
 /// </summary>
-public partial class BlockPatternSlotViewModel : ViewModelBase
+public partial class BlockPatternSlotViewModel : ViewModelBase, IUnappliedChangesHost
 {
     public int SlotNumber { get; }
 
     [ObservableProperty] private BlockPattern? _pattern;
     [ObservableProperty] private BlockPatternEditViewModel? _editVm;
+
+    /// <inheritdoc/>
+    public IUnappliedChanges? FindUnappliedChanges() => UnappliedChangesFinder.First(EditVm);
 
     /// <summary>True while the inline editor is open for this slot.</summary>
     public bool IsEditing => EditVm is not null;

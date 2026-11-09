@@ -8,7 +8,7 @@ using System.Collections.ObjectModel;
 
 namespace TermPoint.ViewModels.Management;
 
-public partial class InstructorListViewModel : ViewModelBase, IDisposable, IDismissableEditor
+public partial class InstructorListViewModel : ViewModelBase, IDisposable, IDismissableEditor, IUnappliedChangesHost
 {
     private readonly IInstructorRepository _repo;
     private readonly ISchedulingEnvironmentRepository _propertyRepo;
@@ -65,6 +65,9 @@ public partial class InstructorListViewModel : ViewModelBase, IDisposable, IDism
         }
     }
     [ObservableProperty] private InstructorEditViewModel? _editVm;
+
+    /// <inheritdoc/>
+    public IUnappliedChanges? FindUnappliedChanges() => UnappliedChangesFinder.First(EditVm, ReleaseVm, CommitmentsVm);
 
     /// <inheritdoc/>
     public bool DismissActiveEditor()

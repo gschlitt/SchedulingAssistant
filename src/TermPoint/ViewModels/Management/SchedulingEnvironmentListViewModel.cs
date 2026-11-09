@@ -9,7 +9,7 @@ using System.Data.Common;
 
 namespace TermPoint.ViewModels.Management;
 
-public partial class SchedulingEnvironmentListViewModel : ViewModelBase, IDismissableEditor, IDisposable
+public partial class SchedulingEnvironmentListViewModel : ViewModelBase, IDismissableEditor, IUnappliedChangesHost, IDisposable
 {
     private readonly ISchedulingEnvironmentRepository _repo;
     private readonly ISectionRepository _sectionRepo;
@@ -45,6 +45,9 @@ public partial class SchedulingEnvironmentListViewModel : ViewModelBase, IDismis
     [ObservableProperty] private ObservableCollection<SchedulingEnvironmentValue> _items = new();
     [ObservableProperty] private SchedulingEnvironmentValue? _selectedItem;
     [ObservableProperty] private SchedulingEnvironmentEditViewModel? _editVm;
+
+    /// <inheritdoc/>
+    public IUnappliedChanges? FindUnappliedChanges() => UnappliedChangesFinder.First(EditVm);
 
     /// <inheritdoc/>
     public bool DismissActiveEditor()

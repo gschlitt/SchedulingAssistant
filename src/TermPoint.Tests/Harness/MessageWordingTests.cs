@@ -106,7 +106,7 @@ public sealed class MessageWordingTests
         Assert.Equal("before the event; after release", sighting.Phases);
     }
 
-    /// <summary>A banner with "Changes Not Saved" is the known finding F17; two banners are F18.</summary>
+    /// <summary>A banner with "Changes Not Saved" is classified F17 (fixed in 1.2.4, so it is no longer a known finding and a regression fails as new); two banners are F18 (also fixed in 1.2.4; the rule stays so a regression is reported).</summary>
     [Fact]
     public void BannerWithChangesNotSaved_IsF17_AndTwoBanners_AreF18()
     {

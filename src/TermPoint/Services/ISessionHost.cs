@@ -1,4 +1,5 @@
 using TermPoint.Exceptions;
+using TermPoint.ViewModels;
 
 namespace TermPoint.Services;
 
@@ -65,6 +66,13 @@ public interface ISessionHost
     /// exist that a session-ending action would discard.
     /// </summary>
     bool IsInlineEditorOpen { get; }
+
+    /// <summary>
+    /// Finds the one open editor (in any panel, flyout or detached window) that holds changes the user has typed
+    /// but not applied (spec item 3.1), or null when there is none or no database is wired to the window.
+    /// </summary>
+    /// <returns>The editor with unapplied changes, or null.</returns>
+    IUnappliedChanges? FindUnappliedChanges();
 
     /// <summary>
     /// Wires a freshly opened database to the window: data context, panels, curtain lift and the rest of the

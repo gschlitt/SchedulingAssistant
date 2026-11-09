@@ -63,27 +63,16 @@ internal static class KnownSequences
                 "Open(bob)", "Pause(Save(bob) at Save.AfterLocalSnapshot; BobEdits)", "Crash(bob)"
             }),
 
-        new("F16: a demotion still running when the user switches database",
-            "F16",
-            "Bob's computer wakes to find his lock was taken over, and the demotion that starts (it makes Bob's session read-only) " +
-            "is held before it copies the database. Bob switches to the other database: it gets write access and the other " +
-            "database's lock. The old demotion goes on against the service's current database: it copies the NEW database and " +
-            "leaves Bob's session read-only while it holds the new lock (I6, both clauses). The harness runs the lost-lock handler " +
-            "inline where production posts it, so the production route is the unit test CheckoutServiceTests.F16_...; this is the " +
-            "same race, held deterministically (step 9.3c-2b).",
-            new[]
-            {
-                "Open(bob)", "AdvanceTime(4m)", "Open(alice)", "Pause(Sleep(bob,10m) at Demote.AfterWorkingCopyHandled; BobSwitches)"
-            }),
-
-        new("F20: another program holds the lock file while the person switches away",
+        new("F20: another program holds the lock file while the session goes read-only",
             "F20",
-            "Bob switches to the other database while another program has the lock file of the first open (so TermPoint cannot delete it). The lock file is " +
-            "left behind naming Bob's own session; when the other program lets go and Bob switches back, he is read-only, because the leftover lock " +
-            "is held by his own live process (invariant I6 a). Found by the other-program survey (item 8.3).",
+            "Alice's save conflicts (a 1.2.2 colleague changed the database, found by the autosave), another program opens the lock file " +
+            "(so TermPoint cannot delete it), and Alice chooses Save a Copy on the conflict banner. Her session goes read-only but the lock " +
+            "file is still there naming her own session, so a read-only session holds the database's lock until the other program lets go or " +
+            "the lock goes stale (invariant I6 a). This is the route of F20 that remains after 1.2.4 (the switch away and back route is fixed: " +
+            "a leftover lock naming our own session is taken back); it is accepted. Found by the generated search in 5 runs, shrunk to 5 events.",
             new[]
             {
-                "Open(bob)", "OtherProgramOpens(lockfile,none)", "SwitchAway(bob)", "OtherProgramReleases", "SwitchBack(bob)"
+                "Open(alice)", "ColleagueWrites", "AutosaveTick(alice)", "OtherProgramOpens(lockfile,none)", "ResolveSaveCopy(alice)"
             }),
     };
 }

@@ -936,7 +936,9 @@ public sealed class WriteLockService : IDisposable
     /// <list type="number">
     ///   <item>Try to create the file atomically (<see cref="TryCreateOnce"/>). Success ⇒ writer.</item>
     ///   <item>Otherwise an existing lock is present and <see cref="CurrentHolder"/> is populated.
-    ///         Decide based on whether the <b>holding process is alive</b>:
+    ///         If it names <b>our own</b> <see cref="SessionGuid"/> it is our own leftover (finding F20) and is
+    ///         taken back by <see cref="TryTakeBackOwnLeftoverLock"/> (no <see cref="ReclaimedDeadSession"/>).
+    ///         Otherwise decide based on whether the <b>holding process is alive</b>:
     ///     <list type="bullet">
     ///       <item><b>Dead</b> (same machine, recorded PID gone or reused): auto-reclaim — delete
     ///             and re-create the lock. Sets <see cref="ReclaimedDeadSession"/>.</item>
@@ -959,6 +961,14 @@ public sealed class WriteLockService : IDisposable
             return true;
 
         // An existing lock blocked us; CurrentHolder is now populated.
+        //
+        // Finding F20: a lock naming OUR OWN session was written by this very process (a release whose delete was
+        // refused, or a lock parked by Suspend), so no other program can own it: take it back instead of judging our own
+        // live process as a rival. If that cannot be done safely we fall through to the ordinary path (read-only).
+        if (!IsWriter && CurrentHolder is { SessionGuid: { Length: > 0 } ownGuid } && ownGuid == SessionGuid
+            && TryTakeBackOwnLeftoverLock())
+            return true;
+
         switch (GetHolderLiveness(CurrentHolder))
         {
             case HolderLiveness.Dead:
@@ -1047,30 +1057,8 @@ public sealed class WriteLockService : IDisposable
     {
         var deadHolder = CurrentHolder;
 
-        // The dead holder was read earlier in the open path (ReadCurrentHolder). A read counts for LockCheckFreshness; if
-        // this computer froze since (it slept, or the share stalled), someone may have replaced the lock with a live one.
-        // Read it again and delete only a lock that still names the same dead session.
-        if (deadHolder is not null && !IsLockCheckFresh(_currentHolderStamp, out var readAge))
-        {
-            App.Logger.LogInfo(
-                $"[WriteLockService] Reclaim: the lock check is {readAge.TotalSeconds:F0} s old " +
-                "(the computer was probably asleep) — checking again before deleting.");
-            var recheck = RecheckStaleHolder(deadHolder, out _);
-            if (recheck == StaleRecheck.Changed)
-            {
-                // Not the dead session any more (or unreadable): leave it alone. The caller re-reads the holder and judges it afresh.
-                App.Logger.LogInfo("[WriteLockService] TryReclaimDeadHolder: the lock changed since it was read — leaving it alone.");
-                return false;
-            }
-            // Missing: nothing to delete, the create below arbitrates. Unchanged: still the dead session, delete it.
-        }
-
-        try { File.Delete(_lockFilePath!); }
-        catch (Exception ex)
-        {
-            App.Logger.LogInfo($"[WriteLockService] Could not delete dead holder's lock: {ex.Message}");
+        if (!DeleteJudgedLockFile(deadHolder, "TryReclaimDeadHolder", "dead holder's"))
             return false;
-        }
 
         if (TryCreateOnce())
         {
@@ -1083,6 +1071,117 @@ public sealed class WriteLockService : IDisposable
 
         App.Logger.LogInfo("[WriteLockService] TryReclaimDeadHolder: lost race — another instance re-created the lock.");
         return false;
+    }
+
+    /// <summary>
+    /// The one checked delete of a lock file another route has judged it may break (a dead holder's, or this process's own
+    /// leftover). A read counts for <see cref="LockCheckFreshness"/> (finding F22 family): the judgement was made on the read
+    /// that <see cref="ReadCurrentHolder"/> stamped, and if this computer froze since (it slept, or the share stalled),
+    /// someone may have replaced the lock. A read older than that is repeated first, and only a lock that still names the same
+    /// session and heartbeat as <paramref name="judged"/> is deleted. Never creates anything: the caller's atomic
+    /// <see cref="TryCreateOnce"/> arbitrates against anyone else doing the same.
+    /// </summary>
+    /// <param name="judged">The holder the caller judged breakable (<see cref="CurrentHolder"/> as read).</param>
+    /// <param name="caller">Who is asking, for the log line.</param>
+    /// <param name="what">What is being deleted, for the log line ("dead holder's", "own leftover").</param>
+    /// <returns>
+    /// True when the file is gone (deleted, or already missing) and the caller may now try to create the lock; false when the lock
+    /// changed since it was judged (nothing was deleted) or the delete failed (the file is still there).
+    /// </returns>
+    private bool DeleteJudgedLockFile(LockFileData? judged, string caller, string what)
+    {
+        if (judged is not null && !IsLockCheckFresh(_currentHolderStamp, out var readAge))
+        {
+            App.Logger.LogInfo(
+                $"[WriteLockService] Reclaim: the lock check is {readAge.TotalSeconds:F0} s old " +
+                "(the computer was probably asleep) — checking again before deleting.");
+            var recheck = RecheckStaleHolder(judged, out _);
+            if (recheck == StaleRecheck.Changed)
+            {
+                // Not the judged session any more (or unreadable): leave it alone. The caller re-reads the holder and judges it afresh.
+                App.Logger.LogInfo($"[WriteLockService] {caller}: the lock changed since it was read — leaving it alone.");
+                return false;
+            }
+            // Missing: nothing to delete, the create arbitrates. Unchanged: still the judged session, delete it.
+        }
+
+        try { File.Delete(_lockFilePath!); }
+        catch (Exception ex)
+        {
+            App.Logger.LogInfo($"[WriteLockService] Could not delete {what} lock: {ex.Message}");
+            return false;
+        }
+        return true;
+    }
+
+    /// <summary>How long <see cref="TryTakeBackOwnLeftoverLock"/> waits for this service's own pending release before giving up (finding F20).</summary>
+    internal TimeSpan OwnLeftoverReleaseWait { get; set; } = TimeSpan.FromSeconds(10);
+
+    /// <summary>
+    /// Finding F20: the lock file that blocks us names <b>our own</b> <see cref="SessionGuid"/>. That GUID is per process
+    /// (one <see cref="WriteLockService"/> per process in the app), so the file was written by THIS running program: a release
+    /// whose delete failed because another program held the file, or a lock deliberately parked by <see cref="Suspend"/> after
+    /// a failed final save. Its liveness check would find our own PID alive and leave us read-only against ourselves; nobody else
+    /// can own this file, so it is safe to take back.
+    ///
+    /// <para><b>Rule 2 (never write unless the lock is ours and D is as we saw it).</b> (a) Only a file naming our own GUID reaches
+    /// here, and <see cref="DeleteJudgedLockFile"/> repeats the read right before the delete when the earlier one is older than
+    /// <see cref="LockCheckFreshness"/>: a file that now names another session (someone took over the stale lock meanwhile) is
+    /// never deleted. (b) The new lock is made with <see cref="TryCreateOnce"/> (<see cref="FileMode.CreateNew"/>): atomic, a lost
+    /// race falls through to the ordinary path. (c) A release of ours still queued in the background is waited for first
+    /// (bounded by <see cref="OwnLeftoverReleaseWait"/>) and, if it will not finish, nothing is taken back; so no delete of ours
+    /// can land after the new lock exists.</para>
+    ///
+    /// <para>Runs synchronously on a thread-pool thread: <see cref="TryAcquire"/> is only ever called inside a
+    /// <see cref="NetworkFileOps"/> deadline task (<c>Task.Run</c>), never on the UI thread, so the bounded wait is safe. Does not
+    /// set <see cref="ReclaimedDeadSession"/>: that would raise the "previous session closed unexpectedly" notice, which is wrong here.</para>
+    /// </summary>
+    /// <returns>True when this instance now holds the lock; false when the caller should carry on with the ordinary liveness path
+    /// (<see cref="CurrentHolder"/> then holds the file's latest contents, or null).</returns>
+    private bool TryTakeBackOwnLeftoverLock()
+    {
+        var pending = _pendingReleaseTask;
+        if (pending is not null && !pending.IsCompleted)
+        {
+            // A delete of ours is still queued: it could land on whatever we create. Wait for it (non-faulting task), bounded.
+            if (!pending.Wait(OwnLeftoverReleaseWait))
+            {
+                App.Logger.LogInfo("[WriteLockService] Own leftover lock: our own release is still pending — leaving the lock alone.");
+                return false;
+            }
+
+            // The release finished, so the file may be gone: look again before judging anything.
+            ReadCurrentHolder();
+            if (CurrentHolder is null && !File.Exists(_lockFilePath!))
+            {
+                if (!TryCreateOnce()) return false;
+                LogOwnLeftoverTakenBack();
+                return true;
+            }
+            if (CurrentHolder?.SessionGuid != SessionGuid) return false;   // someone else's now: the ordinary path judges it
+        }
+
+        if (!DeleteJudgedLockFile(CurrentHolder, "Own leftover lock", "own leftover"))
+        {
+            ReadCurrentHolder();       // changed (or the delete failed): see what is there now
+            return false;
+        }
+
+        if (!TryCreateOnce())
+        {
+            App.Logger.LogInfo("[WriteLockService] Own leftover lock: lost race — another instance re-created the lock.");
+            return false;
+        }
+
+        LogOwnLeftoverTakenBack();
+        return true;
+    }
+
+    /// <summary>Logs, and leaves a breadcrumb for, the take-back of our own leftover lock (see <see cref="TryTakeBackOwnLeftoverLock"/>).</summary>
+    private void LogOwnLeftoverTakenBack()
+    {
+        App.Logger.LogInfo($"[WriteLockService] Own leftover lock taken back: {_lockFilePath}");
+        App.Logger.LogBreadcrumb("Lock: own leftover lock taken back");
     }
 
     /// <summary>

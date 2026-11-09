@@ -6,8 +6,12 @@ using System.Collections.ObjectModel;
 
 namespace TermPoint.ViewModels.Management;
 
-public partial class SchedulingEnvironmentViewModel : ViewModelBase, IDismissableEditor
+public partial class SchedulingEnvironmentViewModel : ViewModelBase, IDismissableEditor, IUnappliedChangesHost
 {
+    /// <inheritdoc/>
+    public IUnappliedChanges? FindUnappliedChanges() =>
+        UnappliedChangesFinder.First(Categories.Cast<object?>().ToArray());
+
     public ObservableCollection<ViewModelBase> Categories { get; }
 
     [ObservableProperty]

@@ -60,6 +60,13 @@ public static class LockLossPrompt
     /// <summary>The banner's second part when there were NO unsaved changes. Starts with a space.</summary>
     public const string WithoutUnsavedChanges = " There were no unsaved changes at the time.";
 
+    /// <summary>
+    /// The extra sentence when an editor was open with changes the user had not applied (spec item 3.1): with the
+    /// lock gone nothing can be applied, and the reload closes the editor. Starts with a space.
+    /// </summary>
+    public const string UnappliedEditorChangesLost =
+        " Changes you hadn't applied in the open editor couldn't be saved.";
+
     // ── The lock-lost banner, last sentence (how to edit again) ───────────────
 
     /// <summary>Last sentence after a takeover: wait for the other person to finish. Starts with a space.</summary>
@@ -80,8 +87,10 @@ public static class LockLossPrompt
     /// <param name="holderUsername">The new holder's user name, or null or blank when unknown. Read only when <paramref name="takenOver"/>.</param>
     /// <param name="holderMachine">The new holder's machine name, or null or blank when unknown. Read only when <paramref name="takenOver"/> and the user name is known.</param>
     /// <param name="hadUnsavedChanges">True when the session had unsaved changes (its dirty marker existed) when the lock was lost.</param>
+    /// <param name="hadUnappliedEditorChanges">True when an open editor held changes the user had not applied when the lock was lost; adds <see cref="UnappliedEditorChangesLost"/> after the changes part.</param>
     /// <returns>The banner text.</returns>
-    public static string Banner(bool takenOver, string? holderUsername, string? holderMachine, bool hadUnsavedChanges)
+    public static string Banner(bool takenOver, string? holderUsername, string? holderMachine, bool hadUnsavedChanges,
+        bool hadUnappliedEditorChanges = false)
     {
         string first;
         if (!takenOver)
@@ -101,6 +110,7 @@ public static class LockLossPrompt
 
         return first
                + (hadUnsavedChanges ? WithUnsavedChanges : WithoutUnsavedChanges)
+               + (hadUnappliedEditorChanges ? UnappliedEditorChangesLost : "")
                + (takenOver ? EditAgainAfterTakeover : EditAgainOtherwise);
     }
 

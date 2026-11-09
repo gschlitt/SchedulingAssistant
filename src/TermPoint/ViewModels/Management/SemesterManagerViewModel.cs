@@ -58,7 +58,7 @@ public partial class SemesterRowViewModel : ViewModelBase
 /// Scoped to one year by <see cref="AcademicYearId"/>; can be embedded in any view
 /// or wizard panel. Instantiated manually by the parent ViewModel — not DI-registered.
 /// </summary>
-public partial class SemesterManagerViewModel : ViewModelBase, IDisposable
+public partial class SemesterManagerViewModel : ViewModelBase, IUnappliedChangesHost, IDisposable
 {
     private readonly string _academicYearId;
     private readonly IAcademicYearRepository _ayRepo;
@@ -82,6 +82,9 @@ public partial class SemesterManagerViewModel : ViewModelBase, IDisposable
 
     /// <summary>Non-null when the inline Add or Rename form is open.</summary>
     [ObservableProperty] private SemesterEditViewModel? _editVm;
+
+    /// <inheritdoc/>
+    public IUnappliedChanges? FindUnappliedChanges() => UnappliedChangesFinder.First(EditVm);
 
     /// <param name="academicYearId">The academic year whose semesters are managed.</param>
     /// <param name="ayRepo">Academic year repository; required by SemesterContext.Reload.</param>

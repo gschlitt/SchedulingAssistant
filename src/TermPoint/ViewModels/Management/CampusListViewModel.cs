@@ -10,7 +10,7 @@ namespace TermPoint.ViewModels.Management;
 /// <summary>
 /// ViewModel for the Campuses settings panel. Supports full CRUD and manual ordering.
 /// </summary>
-public partial class CampusListViewModel : ViewModelBase, IDismissableEditor, IDisposable
+public partial class CampusListViewModel : ViewModelBase, IDismissableEditor, IUnappliedChangesHost, IDisposable
 {
     private readonly ICampusRepository _repo;
     private readonly IDialogService _dialog;
@@ -27,6 +27,9 @@ public partial class CampusListViewModel : ViewModelBase, IDismissableEditor, ID
     [ObservableProperty] private ObservableCollection<Campus> _items = new();
     [ObservableProperty] private Campus? _selectedItem;
     [ObservableProperty] private CampusEditViewModel? _editVm;
+
+    /// <inheritdoc/>
+    public IUnappliedChanges? FindUnappliedChanges() => UnappliedChangesFinder.First(EditVm);
 
     /// <inheritdoc/>
     public bool DismissActiveEditor()
@@ -136,7 +139,7 @@ public partial class CampusListViewModel : ViewModelBase, IDismissableEditor, ID
 /// Inline Add/Edit form ViewModel for a single <see cref="Campus"/>.
 /// Communicates results back to the parent list via callbacks.
 /// </summary>
-public partial class CampusEditViewModel : ViewModelBase
+public partial class CampusEditViewModel : UnappliedChangesEditor
 {
     private readonly Campus _target;
     private readonly Action<Campus> _onSave;
@@ -197,7 +200,18 @@ public partial class CampusEditViewModel : ViewModelBase
 
         Name         = target.Name;
         Abbreviation = target.Abbreviation ?? string.Empty;
+
+        TakeSnapshot();
     }
+
+    /// <inheritdoc/>
+    protected override string CaptureState() => UnappliedChangesKey.Of(Name.Trim(), Abbreviation.Trim());
+
+    /// <inheritdoc/>
+    protected override System.Windows.Input.ICommand ApplyCommand => SaveCommand;
+
+    /// <inheritdoc/>
+    protected override System.Windows.Input.ICommand CancelCommandForDiscard => CancelCommand;
 
     /// <summary>Writes field values back to the model and invokes the save callback.</summary>
     [RelayCommand(CanExecute = nameof(CanSave))]
@@ -206,6 +220,7 @@ public partial class CampusEditViewModel : ViewModelBase
         _target.Name         = Name.Trim();
         _target.Abbreviation = string.IsNullOrWhiteSpace(Abbreviation) ? null : Abbreviation.Trim();
         _onSave(_target);
+        MarkApplied();
     }
 
     /// <summary>Discards changes and invokes the cancel callback.</summary>

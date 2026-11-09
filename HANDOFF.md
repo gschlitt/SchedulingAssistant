@@ -56,10 +56,10 @@ Written so a fresh conversation can pick up. Claude Code's memory and `CLAUDE.md
       holder's temp file). Save path, small. **DONE 2026-11-08, uncommitted** (design
       `designs/own-temp-file-names.md`; summary 4.1 Done note): full suite with harness 4460 passed, 0 failed.
       Heartbeat `.lock.tmp` left as is (Greg agreed).
-   2. **A + B, the close/switch sequence, designed as one:**
-      - A: 3.3 F16 (demotion lands on the new session), 6.11 F18, 4.13 F20, 6.10 F17, 6.13 F23;
-      - B: 3.1 unapplied editor changes at close/switch (decide first: always ask, or apply silently when valid).
-      Save path for A: Alice-and-Bob risk review against the four rules before the design.
+   2. **A + B, the close/switch sequence: DONE 2026-11-08, uncommitted** (design `designs/close-switch-sequence.md`;
+      Done notes on summary 3.1, 3.3, 4.13, 6.10, 6.11, 6.13). F16, F17, F18, F23 fixed (proof tests); F20 partly
+      (remainder accepted, stays known); 3.1 always asks (Apply / Discard / Cancel). Full suite with harness 4501
+      passed, 0 failed. **Left:** by-hand check in the app that an unchanged editor never triggers the 3.1 question.
    3. **D: 7.1** save timings in breadcrumbs/failure report, with **7.3** and **7.4** (reporting only).
    4. **F: 1.2 + 1.4** (drop the shared DiaSymReader DLL and the Skia/HarfBuzz PDBs from the Store package), **1.3**
       test flights, **1.5** the failing GitHub Tests workflow.
@@ -125,8 +125,7 @@ Written so a fresh conversation can pick up. Claude Code's memory and `CLAUDE.md
    (then F22 can retire); test-timing builds scale the 170 s but not the 85 s; maybe record each writer's SessTimeout
    in the lock file, probe SessTimeout=30 and macOS; place the save's dirty-marker write that sits between its final
    check and the rename.
-4. **Known findings now** (`src/TermPoint.Tests/Harness/KnownFindings.cs`): F2, F5, F6, F7, F16, F17, F18, F20, F22,
-   F23, A13.
+4. **Known findings now** (`src/TermPoint.Tests/Harness/KnownFindings.cs`): F2, F5, F6, F7, F20, F22, A13.
 5. **Still open from the 1.2.3 release (check status with Greg):** Microsoft support case for the Store-update failure
    ("won't open until restart"; evidence in `designs/spec_version_1.2.4.md`, "Release and distribution", Process
    Monitor export `C:\temp\temp.CSV`); uninstall the sideload TermPoint and delete the test MSIX folders

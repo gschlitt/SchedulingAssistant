@@ -188,6 +188,12 @@ public partial class MainWindow : Window, ILifecyclePrompts, ISessionHost
     private readonly ExitCloseGuard _exitGuard = new();
 
     /// <summary>
+    /// True while the "Unapplied Changes" question (spec item 3.1) is showing for a close request, so a second close
+    /// request in the meantime is ignored rather than stacking a second question.
+    /// </summary>
+    private bool _unappliedQuestionShowing;
+
+    /// <summary>
     /// Called whenever the window is about to close — whether via Files → Exit or the title-bar X.
     /// The first request cancels the close, hides the secondary windows, covers the window with the loading
     /// curtain and runs the async shutdown (save to D, release lock); the teardown then calls Close() again, which
@@ -222,6 +228,22 @@ public partial class MainWindow : Window, ILifecyclePrompts, ISessionHost
                 App.Logger.LogInfo("MainWindow: close request ignored — a save-conflict resolution is in progress.");
                 return;
             }
+        }
+
+        // Spec item 3.1: a writer with an editor holding unapplied changes is asked once, BEFORE the exit guard
+        // moves on. The close is cancelled while the question shows; a second close request in the meantime is
+        // ignored. On "carry on" Close() runs again and finds nothing left to ask, so the exit proceeds as always.
+        // All the behaviour is in SessionLifecycle.ResolveUnappliedChangesAsync / UnappliedChangesGate.
+        if (_exitGuard.State == ExitCloseState.Open && Lifecycle.NeedsUnappliedChangesQuestion)
+        {
+            e.Cancel = true;
+            if (_unappliedQuestionShowing) return;
+            _unappliedQuestionShowing = true;
+            bool carryOn;
+            try { carryOn = await Lifecycle.ResolveUnappliedChangesAsync(); }
+            finally { _unappliedQuestionShowing = false; }
+            if (carryOn) Close();
+            return;
         }
 
         switch (_exitGuard.OnCloseRequested())
@@ -1349,7 +1371,52 @@ public partial class MainWindow : Window, ILifecyclePrompts, ISessionHost
     internal static async Task<ChoiceResult> ShowChoiceOrCloseDialogAsync(
         Window owner, string title, string message, string affirmative, string negative)
     {
-        var result = ChoiceResult.Closed; // stays Closed unless a button sets it first
+        var pressed = await ShowButtonsDialogAsync(owner, title, message, affirmative, negative);
+        return pressed switch
+        {
+            0 => ChoiceResult.Affirmative,
+            1 => ChoiceResult.Negative,
+            _ => ChoiceResult.Closed
+        };
+    }
+
+    /// <summary>
+    /// The three-button dialog behind <see cref="ILifecyclePrompts.ShowThreeChoiceAsync"/>, built by the same code as
+    /// the two-button ones (<see cref="ShowButtonsDialogAsync"/>). The window's X is reported as the third button.
+    /// </summary>
+    /// <param name="owner">Window to parent the dialog to.</param>
+    /// <param name="title">Dialog window title.</param>
+    /// <param name="message">Body text; wraps automatically.</param>
+    /// <param name="first">Label of the first button.</param>
+    /// <param name="second">Label of the second button.</param>
+    /// <param name="third">Label of the third button (also the window's X).</param>
+    /// <returns>Which button was pressed; <see cref="ThreeChoiceResult.Third"/> for the third button or the X.</returns>
+    internal static async Task<ThreeChoiceResult> ShowThreeChoiceDialogAsync(
+        Window owner, string title, string message, string first, string second, string third)
+    {
+        var pressed = await ShowButtonsDialogAsync(owner, title, message, first, second, third);
+        return pressed switch
+        {
+            0 => ThreeChoiceResult.First,
+            1 => ThreeChoiceResult.Second,
+            _ => ThreeChoiceResult.Third
+        };
+    }
+
+    /// <summary>
+    /// The one builder behind every two- and three-button dialog: built in code and Topmost (see
+    /// <see cref="ShowFatalAsync"/>). Buttons are given in order of preference, first = the main answer, and shown
+    /// right to left (the first rightmost, the last leftmost), exactly as the two-button dialogs always were.
+    /// </summary>
+    /// <param name="owner">Window to parent the dialog to.</param>
+    /// <param name="title">Dialog window title.</param>
+    /// <param name="message">Body text; wraps automatically.</param>
+    /// <param name="labels">The button labels, in order of preference (at least one).</param>
+    /// <returns>The zero-based index of the button pressed; -1 when the window was closed without a button.</returns>
+    private static async Task<int> ShowButtonsDialogAsync(
+        Window owner, string title, string message, params string[] labels)
+    {
+        var result = -1; // stays -1 (closed with the X) unless a button sets it first
         var dlg = new Window
         {
             Title = title,
@@ -1361,19 +1428,21 @@ public partial class MainWindow : Window, ILifecyclePrompts, ISessionHost
             Topmost = true // see ShowFatalAsync — modal dialogs must never be occluded
         };
 
-        var yes   = new Button { Content = affirmative, HorizontalAlignment = HorizontalAlignment.Right, Padding = new Thickness(16, 4) };
-        var no    = new Button { Content = negative,    HorizontalAlignment = HorizontalAlignment.Right, Padding = new Thickness(16, 4) };
-        var btns  = new StackPanel { Orientation = Orientation.Horizontal, HorizontalAlignment = HorizontalAlignment.Right, Spacing = 8 };
-        btns.Children.Add(no);
-        btns.Children.Add(yes);
+        // Added last-to-first so the first label ends up rightmost (the layout is a left-to-right row).
+        var btns = new StackPanel { Orientation = Orientation.Horizontal, HorizontalAlignment = HorizontalAlignment.Right, Spacing = 8 };
+        for (var i = labels.Length - 1; i >= 0; i--)
+        {
+            var index  = i; // captured by the click handler below
+            var button = new Button { Content = labels[i], HorizontalAlignment = HorizontalAlignment.Right, Padding = new Thickness(16, 4) };
+            button.Click += (_, _) => { result = index; Dispatcher.UIThread.Post(() => dlg.Close()); };
+            btns.Children.Add(button);
+        }
 
         var panel = new StackPanel { Margin = new Thickness(24), Spacing = 16 };
         panel.Children.Add(new TextBlock { Text = message, TextWrapping = TextWrapping.Wrap, FontSize = 13 });
         panel.Children.Add(btns);
         dlg.Content = panel;
 
-        yes.Click += (_, _) => { result = ChoiceResult.Affirmative; Dispatcher.UIThread.Post(() => dlg.Close()); };
-        no.Click  += (_, _) => { result = ChoiceResult.Negative;    Dispatcher.UIThread.Post(() => dlg.Close()); };
         await dlg.ShowDialog(owner);
         return result;
     }
@@ -1813,6 +1882,10 @@ public partial class MainWindow : Window, ILifecyclePrompts, ISessionHost
     Task<ChoiceResult> ILifecyclePrompts.ShowChoiceOrCloseAsync(string title, string message, string affirmative, string negative)
         => ShowChoiceOrCloseDialogAsync(this, title, message, affirmative, negative);
 
+    /// <inheritdoc cref="ILifecyclePrompts.ShowThreeChoiceAsync"/>
+    Task<ThreeChoiceResult> ILifecyclePrompts.ShowThreeChoiceAsync(string title, string message, string first, string second, string third)
+        => ShowThreeChoiceDialogAsync(this, title, message, first, second, third);
+
     /// <inheritdoc cref="ILifecyclePrompts.RunWithWaitAsync{T}"/>
     Task<T> ILifecyclePrompts.RunWithWaitAsync<T>(string title, string message, Func<Task<T>> work)
         => RunWithWaitDialogAsync(title, message, work);
@@ -1862,6 +1935,9 @@ public partial class MainWindow : Window, ILifecyclePrompts, ISessionHost
 
     /// <inheritdoc cref="ISessionHost.IsInlineEditorOpen"/>
     bool ISessionHost.IsInlineEditorOpen => DataContext is MainWindowViewModel { IsAnyPanelEditing: true };
+
+    /// <inheritdoc cref="ISessionHost.FindUnappliedChanges"/>
+    IUnappliedChanges? ISessionHost.FindUnappliedChanges() => (DataContext as MainWindowViewModel)?.FindUnappliedChanges();
 
     /// <inheritdoc cref="ISessionHost.SetupWindowAsync"/>
     /// <exception cref="InvalidCastException"><paramref name="opened"/> was not produced by <see cref="ISessionHost.OpenServices"/> of this window.</exception>

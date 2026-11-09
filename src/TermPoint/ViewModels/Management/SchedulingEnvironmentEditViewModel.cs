@@ -4,7 +4,7 @@ using TermPoint.Models;
 
 namespace TermPoint.ViewModels.Management;
 
-public partial class SchedulingEnvironmentEditViewModel : ViewModelBase
+public partial class SchedulingEnvironmentEditViewModel : UnappliedChangesEditor
 {
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(ValidationError))]
@@ -58,7 +58,18 @@ public partial class SchedulingEnvironmentEditViewModel : ViewModelBase
         ShowAbbreviation = showAbbreviation;
         Name = value.Name;
         Abbreviation = value.SectionCodeAbbreviation ?? string.Empty;
+
+        TakeSnapshot();
     }
+
+    /// <inheritdoc/>
+    protected override string CaptureState() => UnappliedChangesKey.Of(Name.Trim(), Abbreviation.Trim());
+
+    /// <inheritdoc/>
+    protected override System.Windows.Input.ICommand ApplyCommand => SaveCommand;
+
+    /// <inheritdoc/>
+    protected override System.Windows.Input.ICommand CancelCommandForDiscard => CancelCommand;
 
     [RelayCommand(CanExecute = nameof(CanSave))]
     private void Save()
@@ -68,6 +79,7 @@ public partial class SchedulingEnvironmentEditViewModel : ViewModelBase
             ? Abbreviation.Trim()
             : null;
         _onSave(_value);
+        MarkApplied();
     }
 
     [RelayCommand]

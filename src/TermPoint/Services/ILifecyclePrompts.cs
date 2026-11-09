@@ -48,6 +48,18 @@ public interface ILifecyclePrompts
     Task<ChoiceResult> ShowChoiceOrCloseAsync(string title, string message, string affirmative, string negative);
 
     /// <summary>
+    /// Shows a modal three-button dialog (today only the unapplied-changes question: "Apply" / "Discard" /
+    /// "Cancel"). Closing the dialog with the window's X counts as the third button, the one that backs out.
+    /// </summary>
+    /// <param name="title">Dialog window title.</param>
+    /// <param name="message">Body text; wraps automatically.</param>
+    /// <param name="first">Label of the first button.</param>
+    /// <param name="second">Label of the second button.</param>
+    /// <param name="third">Label of the third button (also the window's X).</param>
+    /// <returns>Which button was pressed; <see cref="ThreeChoiceResult.Third"/> for the third button OR for closing the dialog without a button.</returns>
+    Task<ThreeChoiceResult> ShowThreeChoiceAsync(string title, string message, string first, string second, string third);
+
+    /// <summary>
     /// Runs <paramref name="work"/> under a modal wait dialog that the user cannot dismiss until the work ends.
     /// The work is started before the dialog is shown and is always awaited to completion, even if the dialog
     /// itself fails to show.

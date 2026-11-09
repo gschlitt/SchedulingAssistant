@@ -9,8 +9,9 @@ namespace TermPoint.Tests.Harness;
 /// Proof tests for the pause (spec item 9.3, step 9.3c-2b): an operation held at a named crash point while one other event happens,
 /// then released. Like the other proof tests they make the thing really happen and assert what the harness sees: that the operation
 /// is really held and really released, that a case replays to the same story and shrinks, that a deadlock becomes a Hang and not a
-/// hung test run, that designed waiting is not a violation, that the F2 and F16 routes (and invariant I6) classify as the design note
-/// says, and that the F12 route, fixed 2026-10-21, now ends with the save refused. They run only with <c>TERMPOINT_HARNESS=1</c> (<see cref="HarnessFactAttribute"/>), except the plain key test.
+/// hung test run, that designed waiting is not a violation, that the F2 route (and invariant I6, on planted states) classify as the design note
+/// says, and that the F12 route, fixed 2026-10-21, now ends with the save refused. (The F16 route, fixed in 1.2.4, is a proof test in
+/// <see cref="FixedFindingsProofTests"/>.) They run only with <c>TERMPOINT_HARNESS=1</c> (<see cref="HarnessFactAttribute"/>), except the plain key test.
 /// </summary>
 public sealed class PauseProofTests
 {
@@ -47,13 +48,6 @@ public sealed class PauseProofTests
     private static readonly string[] F12Route =
     {
         "Open(bob)", "Edit(bob)", "Pause(Save(bob) at Save.AfterLocalSnapshot; AliceTakesOverAndSaves)", "Crash(bob)", "Open(bob)"
-    };
-
-    /// <summary>The keys of the F16 route: Bob's computer wakes to find his lock gone; the demotion that starts is held while Bob switches database.</summary>
-    private static readonly string[] F16Route =
-    {
-        "Open(bob)", "Edit(bob)", "AdvanceTime(4m)", "Open(alice)",
-        "Pause(Sleep(bob,10m) at Demote.AfterWorkingCopyHandled; BobSwitches)", "Crash(bob)", "Open(bob)"
     };
 
     // ═════════════════════════════════════════════════════════════════════════
@@ -515,7 +509,7 @@ public sealed class PauseProofTests
     }
 
     // ═════════════════════════════════════════════════════════════════════════
-    // F2, F12 and F16 routes
+    // F2 and F12 routes (F16 is a proof test in FixedFindingsProofTests)
     // ═════════════════════════════════════════════════════════════════════════
 
     /// <summary>
@@ -621,35 +615,14 @@ public sealed class PauseProofTests
     }
 
     /// <summary>
-    /// F16 through invariant I6: Bob's computer wakes to find his lock gone, and the demotion that starts is held in the middle while
-    /// Bob switches database. When it goes on it copies the NEW database and leaves a session that holds the new lock read-only.
-    /// Both clauses fire and are F16: (b) the demotion started on dept.db and finds the session on other.db, and (a) the read-only
-    /// session on other.db holds other.db's lock.
-    /// </summary>
-    [HarnessFact]
-    public async Task F16_ADemotionHeldWhileTheUserSwitches_FiresBothClausesOfI6()
-    {
-        var run = await RunKeysAsync(F16Route);
-        _output.WriteLine(run.Story);
-
-        var i6 = run.Violations.Where(v => v.Invariant == "I6").ToList();
-        Assert.Equal(2, i6.Count);
-        Assert.All(i6, v => Assert.Equal("F16", v.FindingId));
-        Assert.Contains(i6, v => v.Reason.Contains("started on dept.db") && v.Reason.Contains("other.db"));
-        Assert.Contains(i6, v => v.Reason.Contains("read-only") && v.Reason.Contains("holds a lock it cannot use"));
-        Assert.Empty(run.NewViolations);
-    }
-
-
-    /// <summary>
-    /// The pause entries of <see cref="KnownSequences"/> (F2, F16; F12 is fixed and its entry is gone) are already as short as they
+    /// The pause entries of <see cref="KnownSequences"/> (F2; F12 and F16 are fixed and their entries are gone) are already as short as they
     /// can be: each shows its finding, has no breach nobody explains, and the shrinker cannot take an event out of it. (A sequence
     /// that could be shortened is a sequence that says more than it needs to.)
     /// </summary>
     [HarnessFact]
     public async Task KnownSequences_OfThePauseFindings_AreAlreadyShrunk()
     {
-        foreach (var finding in new[] { "F2", "F16" })
+        foreach (var finding in new[] { "F2" })
         {
             var sequence = KnownSequences.All.Single(s => s.Finding == finding);
             var options  = new RunOptions { Title = sequence.Name, ExtraEvents = EventCatalogue.ExtrasFor(sequence.Events) };

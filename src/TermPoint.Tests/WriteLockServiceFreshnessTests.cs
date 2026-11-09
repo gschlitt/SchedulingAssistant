@@ -464,4 +464,129 @@ public sealed class WriteLockServiceFreshnessTests : IDisposable
         Assert.True(carol.ReclaimedDeadSession);
         Assert.Equal(carol.SessionGuid, ReadLock().SessionGuid);
     }
+
+    // ── Our own leftover lock (finding F20) ───────────────────────────────────
+
+    /// <summary>A process the identity's lookup reports as running, started at <see cref="Start"/>.</summary>
+    private sealed class RunningProcess : ILockProcess
+    {
+        /// <inheritdoc/>
+        public DateTime StartTimeUtc => Start.UtcDateTime;
+
+        /// <inheritdoc/>
+        public void Dispose() { }
+    }
+
+    /// <summary>
+    /// F20: a lock parked by <c>Suspend</c> (a failed final save) names this very process. The next acquire takes it back and is
+    /// the writer, with no "previous session closed unexpectedly" flag and no read-only "another window" flag. The process lookup is
+    /// never consulted (the default lookup in these tests throws if it is).
+    /// </summary>
+    [Fact]
+    public void OwnLeftoverLock_ParkedBySuspend_IsTakenBack_WithoutTheDeadSessionNotice()
+    {
+        var clock = new FakeTimeProvider(Start);
+        using var bob = NewService(clock, "BOB-PC");
+        bob.TryAcquire(_db);
+        Assert.True(bob.IsWriter);
+        bob.Suspend();
+        Assert.Equal(bob.SessionGuid, ReadLock().SessionGuid);   // the lock is left behind, naming bob's own session
+
+        bob.TryAcquire(_db);
+
+        Assert.True(bob.IsWriter);
+        Assert.False(bob.ReclaimedDeadSession);
+        Assert.False(bob.HolderIsLiveSameMachine);
+        Assert.Equal(bob.SessionGuid, ReadLock().SessionGuid);
+    }
+
+    /// <summary>
+    /// A lock naming ANOTHER session, written by a process with this process's id (a genuine second instance cannot have our GUID),
+    /// keeps today's behaviour: the holder is alive on this machine, so this instance is read-only and says so.
+    /// </summary>
+    [Fact]
+    public void LockOfAnotherSession_WithOurProcessId_StaysReadOnly()
+    {
+        var clock = new FakeTimeProvider(Start);
+        using var bob = NewService(clock, "BOB-PC", _ => new RunningProcess());
+        File.WriteAllText(LockPath, JsonSerializer.Serialize(new LockFileData
+        {
+            Username = "user-BOB-PC", Machine = "BOB-PC", SessionGuid = "someone-elses-session", ProcessId = 100,
+            ProcessStartTimeUtc = Start.UtcDateTime, Acquired = Start.UtcDateTime, Heartbeat = Start.UtcDateTime
+        }));
+
+        bob.TryAcquire(_db);
+
+        Assert.False(bob.IsWriter);
+        Assert.True(bob.HolderIsLiveSameMachine);
+        Assert.False(bob.ReclaimedDeadSession);
+        Assert.Equal("someone-elses-session", ReadLock().SessionGuid);
+    }
+
+    /// <summary>
+    /// Our own leftover was read, then the computer froze (10 s) and another computer took over the stale lock before the delete.
+    /// The check is made again, the lock is no longer ours, and NOTHING is deleted: bob stays read-only behind the new holder.
+    /// </summary>
+    [Fact]
+    public void OwnLeftoverLock_ReplacedByAnotherSessionBeforeTheDelete_DeletesNothing()
+    {
+        var clock = new JumpingClock();
+        using var bob = NewService(clock, "BOB-PC");
+        bob.TryAcquire(_db);
+        bob.Suspend();
+
+        // The read of the leftover stamps the check with the 1st steady-clock reading, its age test is the 2nd: freeze between them.
+        clock.Arm(2, () =>
+        {
+            clock.Inner.Advance(Freeze);
+            PlaceAlicesLock(clock.Inner.GetUtcNow().UtcDateTime);
+        });
+
+        bob.TryAcquire(_db);
+
+        Assert.False(bob.IsWriter);
+        Assert.False(bob.ReclaimedDeadSession);
+        Assert.Equal("alice-session", ReadLock().SessionGuid);
+    }
+
+    /// <summary>The same freeze, but the leftover is still exactly ours: it is checked again and taken back as usual.</summary>
+    [Fact]
+    public void OwnLeftoverLock_FrozenBeforeTheDelete_LockUnchanged_StillTakenBack()
+    {
+        var clock = new JumpingClock();
+        using var bob = NewService(clock, "BOB-PC");
+        bob.TryAcquire(_db);
+        bob.Suspend();
+        clock.Arm(2, () => clock.Inner.Advance(Freeze));
+
+        bob.TryAcquire(_db);
+
+        Assert.True(bob.IsWriter);
+        Assert.Equal(bob.SessionGuid, ReadLock().SessionGuid);
+    }
+
+    /// <summary>
+    /// A release of ours is still running in the background when the leftover is judged: nothing is taken back (its delete could land on
+    /// the lock we create), and the ordinary path leaves the session read-only. Calls the private step directly, because
+    /// <c>TryAcquire</c> itself already waits for a pending release before it gets this far.
+    /// </summary>
+    [Fact]
+    public void OwnLeftoverLock_WhileOurOwnReleaseIsStillPending_IsNotTakenBack()
+    {
+        var clock = new FakeTimeProvider(Start);
+        using var bob = NewService(clock, "BOB-PC");
+        bob.TryAcquire(_db);
+        bob.Suspend();
+        bob.OwnLeftoverReleaseWait = TimeSpan.FromMilliseconds(100);
+
+        var flags = System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance;
+        typeof(WriteLockService).GetField("_lockFilePath", flags)!.SetValue(bob, LockPath);
+        typeof(WriteLockService).GetField("_pendingReleaseTask", flags)!
+            .SetValue(bob, new TaskCompletionSource().Task);   // never completes
+        var taken = (bool)typeof(WriteLockService).GetMethod("TryCreateLockFile", flags)!.Invoke(bob, null)!;
+
+        Assert.False(taken);
+        Assert.False(bob.IsWriter);
+        Assert.Equal(bob.SessionGuid, ReadLock().SessionGuid);   // the leftover was not touched
+    }
 }

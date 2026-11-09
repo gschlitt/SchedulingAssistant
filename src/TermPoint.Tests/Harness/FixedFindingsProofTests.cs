@@ -4,8 +4,16 @@ using Xunit.Abstractions;
 namespace TermPoint.Tests.Harness;
 
 /// <summary>
-/// Proof that fixed findings of the data-persistence review (section 3) stay fixed. F1, F8 and F12 were fixed on 2026-10-21 (1.2.3); F19 in 1.2.4 (item 4.12):
+/// Proof that fixed findings of the data-persistence review (section 3) stay fixed. F1, F8 and F12 were fixed on 2026-10-21 (1.2.3); F19 in 1.2.4 (item 4.12);
+/// F16, F17 and F23 in 1.2.4 by the close/switch sequence (<c>designs/close-switch-sequence.md</c>):
 /// <list type="bullet">
+/// <item><description><b>F16</b>: the checkout has a session id and the release waits for a running lost-lock demotion, so a demotion still running when the
+/// user switches no longer lands on the new session (its pause form replays here; the production route is <c>CheckoutServiceTests.F16_...</c>).</description></item>
+/// <item><description><b>F17</b>: while the checkout is ending, the final save's banners and lock loss are not delivered, so a close or switch save problem shows
+/// only the "Changes Not Saved" dialog.</description></item>
+/// <item><description><b>F23</b>: the post-open save runs only when the open really restored kept changes, so a Discard is not followed by a "changes are kept" banner.</description></item>
+/// <item><description><b>F18</b> (also 1.2.4): a save that puts back a removed lock file shows the "lock put back" notice only if it then succeeds, so a failing
+/// save shows its failure banner alone.</description></item>
 /// <item><description><b>F1</b>: the window's X on "Restore Unsaved Changes?" / "Can't Restore Unsaved Changes" asks the question again
 /// instead of deleting the kept changes, and Discard asks "Discard Unsaved Changes?" ([Discard] / [Go Back]) before it deletes anything.</description></item>
 /// <item><description><b>F12</b>: the save re-checks the lock and the shared database immediately before the rename, so a save whose
@@ -61,6 +69,48 @@ public sealed class FixedFindingsProofTests
     };
 
     /// <summary>
+    /// The old F16 known sequence (1.2.4, the close/switch sequence): Bob's computer wakes to find his lock taken over; the demotion that starts is
+    /// held before it copies the database (<c>Demote.AfterWorkingCopyHandled</c>) while Bob switches to the other database. The harness runs the
+    /// lost-lock handler inline where production posts it, so the production route is the unit test <c>CheckoutServiceTests.F16_...</c>.
+    /// </summary>
+    private static readonly string[] OldF16KnownSequence =
+    {
+        "Open(bob)", "AdvanceTime(4m)", "Open(alice)", "Pause(Sleep(bob,10m) at Demote.AfterWorkingCopyHandled; BobSwitches)"
+    };
+
+    /// <summary>The old F16 pause route: as <see cref="OldF16KnownSequence"/> with an edit of Bob's, then his crash and restart.</summary>
+    private static readonly string[] OldF16PauseRoute =
+    {
+        "Open(bob)", "Edit(bob)", "AdvanceTime(4m)", "Open(alice)",
+        "Pause(Sleep(bob,10m) at Demote.AfterWorkingCopyHandled; BobSwitches)", "Crash(bob)", "Open(bob)"
+    };
+
+    /// <summary>The old F17 route: Bob edits, his lock is taken over (Alice), he switches database and his final save finds the lock gone.</summary>
+    private static readonly string[] OldF17Route =
+    {
+        "Open(bob)", "Edit(bob)", "AdvanceTime(4m)", "Open(alice)", "SwitchAway(bob)"
+    };
+
+    /// <summary>
+    /// The old F18 route (the generated search's shrunk story): another program has the database open for reading only, Alice opens it for
+    /// editing, somebody deletes the lock file, and Alice saves: the save puts the lock file back and then fails because the file is in use.
+    /// </summary>
+    private static readonly string[] OldF18Route =
+    {
+        "OtherProgramOpens(database,read)", "Open(alice)", "DeleteLockFile", "Save(alice)"
+    };
+
+    /// <summary>
+    /// The old F23 route: Bob's kept changes cannot be restored because Alice took over, changed the database and left; another program has the
+    /// database open when Bob switches back. The answers to the last event's dialogs are given by the test.
+    /// </summary>
+    private static readonly string[] OldF23Route =
+    {
+        "Open(bob)", "Edit(bob)", "AdvanceTime(4m)", "Open(alice)", "SwitchAway(bob)", "Edit(alice)", "Save(alice)", "Close(alice)",
+        "OtherProgramOpens(database,read)", "SwitchBack(bob)"
+    };
+
+    /// <summary>
     /// The old F8 known sequence: Bob edits and presses Save; his computer loses power at Save.AfterRename, after the shared database has been
     /// replaced and before the unsaved-changes marker is deleted. When he starts again he is offered a restore and chooses it. It used to
     /// end in "Can't Restore" although the database already held his edit.
@@ -78,6 +128,9 @@ public sealed class FixedFindingsProofTests
 
     /// <summary>The label of the "Restore Unsaved Changes?" dialog as the decision source sees it (computer name, then the title).</summary>
     private const string RestoreQuestion = "bob: " + HarnessTitles.RestoreUnsavedChanges;
+
+    /// <summary>The label of the "Can't Restore Unsaved Changes" question as the decision source sees it.</summary>
+    private const string CantRestoreQuestion = "bob: " + HarnessTitles.CantRestore;
 
     /// <summary>The label of the "Discard Unsaved Changes?" confirmation as the decision source sees it.</summary>
     private const string DiscardConfirmation = "bob: " + HarnessTitles.DiscardUnsavedConfirm;
@@ -163,6 +216,109 @@ public sealed class FixedFindingsProofTests
         Assert.DoesNotContain(run.Violations, v => v.FindingId == "F19");
         Assert.DoesNotContain(run.Violations, v => v.Invariant == "I9");
         Assert.Empty(run.Violations);
+    }
+
+    /// <summary>
+    /// F16, the pause form (the old known sequence of <see cref="KnownSequences"/>, moved here): Bob's computer wakes to find his lock was taken
+    /// over, and the demotion that starts is held before it has copied the database while Bob switches to the other database. It used to go on
+    /// against the service's CURRENT database: it copied the NEW database and left Bob's session read-only while it held the new lock (I6, both
+    /// clauses). Now the release waits for the running demotion (and a demotion of an ended session stops), so the switch lands cleanly.
+    /// </summary>
+    [HarnessFact]
+    public async Task F16_TheOldKnownSequence_ADemotionHeldWhileTheUserSwitches_LandsNothingOnTheNewSession()
+    {
+        var run = await RunKeysAsync(OldF16KnownSequence);
+        _output.WriteLine(run.Story);
+
+        Assert.NotEmpty(run.PauseResults);
+        Assert.DoesNotContain(run.Violations, v => v.FindingId == "F16");
+        Assert.DoesNotContain(run.Violations, v => v.Invariant == "I6");
+        Assert.Empty(run.Violations);
+    }
+
+    /// <summary>
+    /// F16, the longer pause route of the old pause proof (Bob edits first, and after the held demotion and the switch he crashes and
+    /// starts again). Both clauses of I6 used to fire; now nothing is reported, known or new.
+    /// </summary>
+    [HarnessFact]
+    public async Task F16_TheOldPauseRoute_WithAnEditAndARestart_ShowsNoViolation()
+    {
+        var run = await RunKeysAsync(OldF16PauseRoute);
+        _output.WriteLine(run.Story);
+
+        Assert.DoesNotContain(run.Violations, v => v.Invariant == "I6");
+        Assert.DoesNotContain(run.Violations, v => v.FindingId == "F16");
+        Assert.Empty(run.NewViolations);
+    }
+
+    /// <summary>
+    /// F17, the route the invariant walks used to declare: Bob edits, Alice takes over his stale lock, Bob switches database. His final save finds
+    /// the lock gone. He used to be shown the lock-lost banner AND "Changes Not Saved" (I8 b, two messages for one problem). Now the ending save's
+    /// banner is not delivered: only the "Changes Not Saved" dialog is shown, and nothing is reported (neither F17 nor the F16 these walks used to carry).
+    /// </summary>
+    [HarnessFact]
+    public async Task F17_TheOldRoute_ASwitchWhoseFinalSaveFindsATakeover_ShowsOnlyTheDialog()
+    {
+        var run = await RunKeysAsync(OldF17Route);
+        _output.WriteLine(run.Story);
+
+        Assert.DoesNotContain(run.Violations, v => v.FindingId == "F17");
+        Assert.DoesNotContain(run.Violations, v => v.Invariant == "I8");
+        Assert.Empty(run.Violations);
+        Assert.Contains("Changes Not Saved", run.Story);
+    }
+
+    /// <summary>
+    /// F18: the old route. Alice's save put back the deleted lock file (the auto-dismissing "lock put back" notice) and then failed because
+    /// another program had the database open ("couldn't save because the database file is in use"): two banners for one save (I8). Now a
+    /// save shows the "lock put back" notice only if it succeeds, so this save shows its failure banner alone and nothing is reported.
+    /// </summary>
+    [HarnessFact]
+    public async Task F18_TheOldRoute_ASaveThatPutsTheLockBackAndThenFails_ShowsOneBanner()
+    {
+        var run = await RunKeysAsync(OldF18Route);
+        _output.WriteLine(run.Story);
+
+        Assert.DoesNotContain(run.Violations, v => v.FindingId == "F18");
+        Assert.DoesNotContain(run.Violations, v => v.Invariant == "I8");
+        Assert.Empty(run.Violations);
+    }
+
+    /// <summary>
+    /// F23, the replay of the random-walk route (1.2.4 item 8.4) as closely as the harness events allow: Bob's kept changes cannot be restored
+    /// (Alice took over, changed the database and left), another program has the shared database open when Bob switches back, and Bob answers
+    /// the questions with Restore, then Save a Copy (cancelling the save dialog), then Discard on "Can't Restore" when it is asked again, then Discard
+    /// on the confirmation. (The other program holds the database with sharing for reads only: the database can be read, so the questions are asked, but
+    /// not written, which is what made the post-open save fail. Holding it with no sharing at all makes the open fail outright, a different route.)
+    /// The open used to run a post-open save that failed with a banner saying the changes are kept, although Bob had just discarded them (I5, ChangesKept).
+    /// Now the post-open save runs only when the open really restored kept changes, so that banner is never shown. The route still shows F7 ("Restore?"
+    /// then "Can't Restore", a separate known finding), and nothing else.
+    /// </summary>
+    [HarnessFact]
+    public async Task F23_TheOldRoute_DiscardAfterACantRestore_WithTheDatabaseHeld_ShowsNoKeptChangesBanner()
+    {
+        var record = new RunRecord();
+        foreach (var key in OldF23Route) record.Steps.Add(new RecordedStep { EventKey = key });
+        record.Steps[^1].Answers.AddRange(new[]
+        {
+            new RecordedAnswer(RestoreQuestion, "Affirmative", GeneratedPrompts.ChoiceOptions),
+            new RecordedAnswer(CantRestoreQuestion, "Affirmative", GeneratedPrompts.ChoiceOptions),                 // Save a Copy...
+            new RecordedAnswer("bob: Save Recovered Copy", "cancel", GeneratedPrompts.PickerOptions),             // ... and cancel the save dialog
+            new RecordedAnswer(CantRestoreQuestion, "Negative", GeneratedPrompts.ChoiceOptions),                    // asked again: Discard
+            new RecordedAnswer(DiscardConfirmation, "Affirmative", GeneratedPrompts.ChoiceOptions)
+        });
+        var run = await RunExecutor.ExecuteAsync(new ReplaySource(record),
+            new RunOptions { Title = "a fixed-finding proof", ExtraEvents = EventCatalogue.ExtrasFor(OldF23Route) });
+        _output.WriteLine(run.Story);
+
+        Assert.Equal(2, TimesAsked(run.Story, HarnessTitles.CantRestore));
+        Assert.Equal(1, TimesAsked(run.Story, HarnessTitles.DiscardUnsavedConfirm));
+        Assert.DoesNotContain(run.Violations, v => v.FindingId == "F23");
+        Assert.Empty(run.NewViolations);
+
+        // The only thing the route still shows is F7 (the restore question is asked and then refused: a separate, known finding, not about
+        // the "changes are kept" promise), so no breach of invariant I5 other than F7 and no "kept" promise broken.
+        Assert.All(run.Violations, v => Assert.Equal("F7", v.FindingId));
     }
 
     /// <summary>
@@ -337,9 +493,9 @@ public sealed class FixedFindingsProofTests
     /// rules for them (a regression is reported as a "new" violation of that kind, not hidden). A plain unit test.
     /// </summary>
     [Fact]
-    public void F1F8F12AndF19_AreOffTheKnownLists_SoARegressionFailsAsNew()
+    public void TheFixedFindings_AreOffTheKnownLists_SoARegressionFailsAsNew()
     {
-        foreach (var id in new[] { "F1", "F8", "F12", "F19" })
+        foreach (var id in new[] { "F1", "F8", "F12", "F16", "F17", "F18", "F19", "F23" })
         {
             Assert.False(KnownFindings.IsKnown(id), $"{id} is fixed and must not be a known finding");
             Assert.DoesNotContain(id, KnownFindings.Ids);

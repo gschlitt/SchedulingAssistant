@@ -126,8 +126,8 @@ internal sealed class PauseSweepResult
 /// other event while the operation is held, then a follow-up, with every invariant checked through the normal funnel. It is the
 /// crash sweep's twin: where that one ends an operation with a power cut, this one only delays it, so that someone else acts in
 /// the middle. That is how it found the route of F12 (Alice takes over between Bob's checks and his rename; fixed 2026-10-21: the save
-/// now re-checks before the rename, so the sweep proves the route gone), and how it finds F2 (Bob edits during his own save) and F16
-/// (Bob switches while a demotion is copying). It never pauses at <c>Save.AfterFinalCheck</c> (<see cref="PausePoints.NeverPaused"/>).
+/// now re-checks before the rename, so the sweep proves the route gone), and how it finds F2 (Bob edits during his own save); it found F16
+/// (Bob switches while a demotion is copying) until 1.2.4 fixed it (now a proof test). It never pauses at <c>Save.AfterFinalCheck</c> (<see cref="PausePoints.NeverPaused"/>).
 ///
 /// <para><b>How a case is made.</b> From the crash sweep's starting situations and operations: (1) a DRY RUN does the situation's
 /// prefix and then the operation with a survey on, which records every crash point the computer reaches AND which pause events

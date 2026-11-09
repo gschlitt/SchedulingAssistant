@@ -502,9 +502,9 @@ public sealed class InvariantProofTests
 
     /// <summary>
     /// Bob opens dept.db and edits; four minutes pass; Alice takes over his stale lock; Bob switches to other.db. His
-    /// final save finds the lock gone, so he is told twice (the lock-lost banner and "Changes Not Saved") that TermPoint
-    /// will offer to restore his changes next time he opens dept.db. Leaves Bob with other.db open and the
-    /// promise pending, and Alice holding dept.db.
+    /// final save finds the lock gone, so he is told once (the "Changes Not Saved" dialog; since 1.2.4 the ending save's lock-lost
+    /// banner is not delivered, F17) that TermPoint will offer to restore his changes next time he opens dept.db. Leaves Bob
+    /// with other.db open and the promise pending, and Alice holding dept.db.
     /// </summary>
     /// <param name="world">The world (already created with dept.db).</param>
     /// <param name="bob">Bob.</param>
@@ -523,11 +523,9 @@ public sealed class InvariantProofTests
 
         bob.Prompts.ExpectMessage(ChangesNotSavedTitle);
         Assert.True(await bob.SwitchToAsync(world.EnsureOtherDatabase()));
-        // Bob's mode on other.db is deliberately not asserted: the harness runs the lost-lock handler inline, so the demotion
-        // his final save starts can land after the new checkout and flip it to read-only (see F16 in the design note and
-        // CheckoutServiceTests.F16_...). The promise is about dept.db whichever way that race goes. Since step 9.3c-2b invariant I6
-        // sees that race (a demotion that goes on against other.db, and a read-only session that holds other.db's lock), so the
-        // tests that use this walk declare F16: here it is the harness form of the race, not the production form (the unit test).
+        // Bob's mode on other.db is deliberately not asserted: the promise is about dept.db. (Until 1.2.4 the demotion his final save
+        // started could land after the new checkout and flip it to read-only, F16, and the walk declared F16 and F17; both are fixed, see
+        // FixedFindingsProofTests, so the walks that use this one now declare no finding about the switch.)
     }
 
     /// <summary>
@@ -540,7 +538,7 @@ public sealed class InvariantProofTests
     public async Task I5_ARestorePromisedForOneDatabase_IsNotJudgedAtTheOpenOfAnother()
     {
         using var world = new World(_output, nameof(I5_ARestorePromisedForOneDatabase_IsNotJudgedAtTheOpenOfAnother));
-        world.ExpectFindings("F16", "F17");   // the promise is not broken, it is not yet due. F17: the takeover banner and "Changes Not Saved" in one step. F16: the harness-inline form of the switch race (see BobLeavesDeptAfterAliceTookOverAsync)
+        world.ExpectFindings();   // the promise is not broken, it is not yet due, and nothing else is wrong (F16 and F17 are fixed)
         world.CreateDatabase();
         var bob   = world.AddComputer("bob");
         var alice = world.AddComputer("alice");
@@ -549,33 +547,34 @@ public sealed class InvariantProofTests
 
         Assert.True(world.HasPendingPromise(bob), "the promise is about dept.db; opening other.db does not judge it");
         Assert.Equal("d", world.PendingPromiseCode(bob));
-        Assert.All(world.Violations, v => Assert.Contains(v.FindingId, new[] { "F16", "F17" }));   // nothing about the promise: only the inline-handler form of F16, and F17's two messages
+        Assert.Empty(world.Violations);   // nothing about the promise, and nothing else
         Assert.True(bob.HasDirtyMarker, "Bob's kept changes to dept.db are still on his disk");
         world.AssertAllScriptsConsumed();
         world.Finish();
     }
 
     /// <summary>
-    /// One failure shows the same promise twice (the lock-lost banner, then "Changes Not Saved"): that is ONE claim, so
-    /// it is held once and, if it turned out false, would be reported once (the review's smallest F6 story listed the
-    /// identical violation twice). Pins that two messages made one pending promise.
+    /// One failure promises the restore ONCE since 1.2.4 (F17 fixed): the ending save's lock-lost banner is not delivered, and
+    /// "Changes Not Saved" is the only message. (Before, the banner and the dialog both promised it: two messages made one claim,
+    /// which the tracker held once and would have reported once, the review's smallest F6 story having listed the identical violation
+    /// twice.) Pins that the one message makes one pending promise.
     /// </summary>
     [HarnessFact]
-    public async Task I5_TwoMessagesPromisingTheSameRestore_AreOnePromise()
+    public async Task I5_TheOneMessagePromisingTheRestore_IsOnePromise()
     {
-        using var world = new World(_output, nameof(I5_TwoMessagesPromisingTheSameRestore_AreOnePromise));
-        world.ExpectFindings("F16", "F17");   // F17: the takeover banner and "Changes Not Saved" in one step. F16: the harness-inline form of the switch race (see BobLeavesDeptAfterAliceTookOverAsync)
+        using var world = new World(_output, nameof(I5_TheOneMessagePromisingTheRestore_IsOnePromise));
+        world.ExpectFindings();   // F16 and F17 are fixed: one message, no breach
         world.CreateDatabase();
         var bob   = world.AddComputer("bob");
         var alice = world.AddComputer("alice");
 
         await BobLeavesDeptAfterAliceTookOverAsync(world, bob, alice);
 
-        // Both messages really were shown to Bob ...
-        Assert.Single(bob.Host.LockLossSurface.SaveErrors);
+        // Only the dialog was shown to Bob: the banner of the ending save was not delivered ...
+        Assert.Empty(bob.Host.LockLossSurface.SaveErrors);
         Assert.Contains(bob.Prompts.Calls, c => c.Kind == PromptKind.Message && c.Title == ChangesNotSavedTitle);
 
-        // ... and they are one pending promise, so the closing notes name it once.
+        // ... and it is one pending promise, so the closing notes name it once.
         var pending = world.PendingPromiseLines();
         var line = Assert.Single(pending);
         Assert.Contains("dept.db", line);
@@ -595,7 +594,7 @@ public sealed class InvariantProofTests
     public async Task I5_ARestorePromisedForOneDatabase_IsJudgedAtTheNextOpenOfThatDatabase()
     {
         using var world = new World(_output, nameof(I5_ARestorePromisedForOneDatabase_IsJudgedAtTheNextOpenOfThatDatabase));
-        world.ExpectFindings("F5", "F6", "F16", "F17");   // F17: the takeover banner and "Changes Not Saved" in one step. F16: the harness-inline form of the switch race (see BobLeavesDeptAfterAliceTookOverAsync)
+        world.ExpectFindings("F5", "F6");
         world.CreateDatabase();
         var bob   = world.AddComputer("bob");
         var alice = world.AddComputer("alice");
@@ -638,7 +637,7 @@ public sealed class InvariantProofTests
     public async Task I5_ARestoreRefusedBecauseSomeoneElseChangedData_KeepsThePromise()
     {
         using var world = new World(_output, nameof(I5_ARestoreRefusedBecauseSomeoneElseChangedData_KeepsThePromise));
-        world.ExpectFindings("F7", "F16", "F17");   // F17: the takeover banner and "Changes Not Saved" in one step. F7: "Restore?" then "Can't Restore". F16: the harness-inline form of the switch race (see BobLeavesDeptAfterAliceTookOverAsync)
+        world.ExpectFindings("F7");   // F7: "Restore?" then "Can't Restore"
         world.CreateDatabase();
         var bob   = world.AddComputer("bob");
         var alice = world.AddComputer("alice");

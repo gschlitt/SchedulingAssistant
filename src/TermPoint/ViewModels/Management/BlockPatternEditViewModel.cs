@@ -5,7 +5,7 @@ using System.Collections.ObjectModel;
 
 namespace TermPoint.ViewModels.Management;
 
-public partial class BlockPatternEditViewModel : ViewModelBase
+public partial class BlockPatternEditViewModel : UnappliedChangesEditor
 {
     [ObservableProperty] private string _name = string.Empty;
     [ObservableProperty] private string? _validationError;
@@ -54,7 +54,19 @@ public partial class BlockPatternEditViewModel : ViewModelBase
             dayList.Add(new(7, "Sun", existing?.Days.Contains(7) ?? false));
 
         Days = new ObservableCollection<DayCheckViewModel>(dayList);
+
+        TakeSnapshot();
     }
+
+    /// <inheritdoc/>
+    protected override string CaptureState() =>
+        UnappliedChangesKey.Of(Name.Trim(), Days.Where(d => d.IsChecked).Select(d => d.Day));
+
+    /// <inheritdoc/>
+    protected override System.Windows.Input.ICommand ApplyCommand => SaveCommand;
+
+    /// <inheritdoc/>
+    protected override System.Windows.Input.ICommand CancelCommandForDiscard => CancelCommand;
 
     [RelayCommand]
     private void Save()
@@ -75,6 +87,7 @@ public partial class BlockPatternEditViewModel : ViewModelBase
 
         ValidationError = null;
         _onSave(new BlockPattern { Name = trimmedName, Days = selectedDays }.WithExtensionDataFrom(_existing));
+        MarkApplied();
     }
 
     [RelayCommand]

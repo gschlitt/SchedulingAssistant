@@ -10,7 +10,7 @@ using System.Threading.Tasks;
 
 namespace TermPoint.ViewModels.Management;
 
-public partial class SectionListViewModel : ViewModelBase, IDisposable
+public partial class SectionListViewModel : ViewModelBase, IUnappliedChangesHost, IDisposable
 {
     private readonly ISectionRepository _sectionRepo;
     private readonly ICourseRepository _courseRepo;
@@ -80,6 +80,9 @@ public partial class SectionListViewModel : ViewModelBase, IDisposable
 
     [ObservableProperty] private SectionListItemViewModel? _expandedItem;
     [ObservableProperty] private SectionEditViewModel? _editVm;
+
+    /// <inheritdoc/>
+    public IUnappliedChanges? FindUnappliedChanges() => UnappliedChangesFinder.First(EditVm);
     [ObservableProperty] private int _selectedSortModeIndex;
 
     /// <summary>

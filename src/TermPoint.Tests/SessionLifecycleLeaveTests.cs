@@ -450,7 +450,10 @@ public sealed class SessionLifecycleLeaveTests : SessionLifecycleTestBase
         await Task.WhenAll(demotions);
         SettleLocks();
 
-        Assert.Equal(new[] { WriteLockLostReason.TakenOver }, reasons);
+        // F17 (close/switch design, step 4): the exit save reports only to the close, so no lost-lock event is raised
+        // (the handler loop above is kept to prove nothing runs it) and the user sees the one message.
+        Assert.Empty(reasons);
+        Assert.Empty(demotions);
         AssertPrompts("Message:Changes Not Saved");
         AssertScriptConsumed();
         AssertInOrder(_trace,
@@ -502,7 +505,8 @@ public sealed class SessionLifecycleLeaveTests : SessionLifecycleTestBase
         await Task.WhenAll(started);   // the demotion must finish without throwing
         SettleLocks();
 
-        Assert.Single(started);
+        // F17 (close/switch design, step 4): the exit save raises no lost-lock event, so no demotion starts at all.
+        Assert.Empty(started);
         Assert.Empty(_prompts.Violations);
         Assert.True(_prompts.Calls.Count <= 1, "at most the one 'Changes Not Saved' message");
         Assert.All(_prompts.Calls, call => Assert.Equal("Changes Not Saved", call.Title));

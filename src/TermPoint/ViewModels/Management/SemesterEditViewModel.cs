@@ -4,7 +4,7 @@ using TermPoint.Models;
 
 namespace TermPoint.ViewModels.Management;
 
-public partial class SemesterEditViewModel : ViewModelBase
+public partial class SemesterEditViewModel : UnappliedChangesEditor
 {
     [ObservableProperty] private string _name = string.Empty;
 
@@ -23,13 +23,25 @@ public partial class SemesterEditViewModel : ViewModelBase
         _onCancel = onCancel;
 
         Name = semester.Name;
+
+        TakeSnapshot();
     }
+
+    /// <inheritdoc/>
+    protected override string CaptureState() => UnappliedChangesKey.Of(Name.Trim());
+
+    /// <inheritdoc/>
+    protected override System.Windows.Input.ICommand ApplyCommand => SaveCommand;
+
+    /// <inheritdoc/>
+    protected override System.Windows.Input.ICommand CancelCommandForDiscard => CancelCommand;
 
     [RelayCommand]
     private void Save()
     {
         _semester.Name = Name.Trim();
         _onSave(_semester);
+        MarkApplied();
     }
 
     [RelayCommand]

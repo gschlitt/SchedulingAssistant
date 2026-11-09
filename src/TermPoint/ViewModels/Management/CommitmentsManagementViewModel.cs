@@ -20,7 +20,7 @@ namespace TermPoint.ViewModels.Management;
 /// is called. This fires a shared event that ScheduleGridViewModel subscribes to, causing the
 /// grid to reload and immediately reflect the change.
 /// </summary>
-public partial class CommitmentsManagementViewModel : ViewModelBase
+public partial class CommitmentsManagementViewModel : ViewModelBase, IUnappliedChangesHost
 {
     private readonly IInstructorCommitmentRepository _commitmentRepo;
 
@@ -37,6 +37,9 @@ public partial class CommitmentsManagementViewModel : ViewModelBase
 
     /// <summary>Non-null while an Add or Edit form is open inline. Null when no form is active.</summary>
     [ObservableProperty] private CommitmentEditViewModel? _editVm;
+
+    /// <inheritdoc/>
+    public IUnappliedChanges? FindUnappliedChanges() => UnappliedChangesFinder.First(EditVm);
 
     /// <summary>Exposed to XAML to bind button panels' IsEnabled in read-only mode.</summary>
     public bool IsWriteEnabled => _lockService.IsWriter;

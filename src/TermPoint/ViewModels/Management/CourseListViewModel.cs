@@ -7,7 +7,7 @@ using System.Collections.ObjectModel;
 
 namespace TermPoint.ViewModels.Management;
 
-public partial class CourseListViewModel : ViewModelBase, IDismissableEditor, IDisposable
+public partial class CourseListViewModel : ViewModelBase, IDismissableEditor, IUnappliedChangesHost, IDisposable
 {
     private readonly ICourseRepository _courseRepo;
     private readonly ISectionRepository _sectionRepo;
@@ -36,6 +36,9 @@ public partial class CourseListViewModel : ViewModelBase, IDismissableEditor, ID
     [ObservableProperty] private ObservableCollection<Course> _courses = new();
     [ObservableProperty] private Course? _selectedCourse;
     [ObservableProperty] private CourseEditViewModel? _editVm;
+
+    /// <inheritdoc/>
+    public IUnappliedChanges? FindUnappliedChanges() => UnappliedChangesFinder.First(EditVm, SubjectEditVm);
 
     /// <inheritdoc/>
     public bool DismissActiveEditor()

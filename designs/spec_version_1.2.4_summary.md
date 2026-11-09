@@ -381,6 +381,8 @@ Everything in this group is checked against rule 3 (never delete the only copy o
 > **Decide:** always ask, or apply silently when the changes are valid? Fit this into one close sequence with 2.1.
 > Surviving a hang or crash is out of scope (that would need saved drafts).
 > *Source: 1.2.3 spec, item 14; field-test open issue A3.*
+>
+> **Done (8 Nov 2026, uncommitted; design `designs/close-switch-sequence.md`; full suite with harness 4501 passed, 0 failed; MinimumVersionToWrite No):** Greg chose *always ask*. Before a close or switch, a writer with an editor holding unapplied changes is asked once: "Unapplied Changes" (Apply / Discard / Cancel). Apply runs the editor's own Save; a refusal stops the close. All 15 editors covered (snapshot compare). The lost-lock banner gains "Changes you hadn't applied in the open editor couldn't be saved." **Left:** a by-hand check that an unchanged editor never triggers the question (Avalonia re-fires combo setters).
 
 > [!note]- **3.2 An edit made during a save can be lost** `data risk` `save path`
 > An edit made while a save is running isn't covered by that save. The save clears the "unsaved" marker anyway, so if
@@ -398,6 +400,8 @@ Everything in this group is checked against rule 3 (never delete the only copy o
 > until fixed) and the harness both reproduce it. **Fix direction:** tie each demotion to the session it started for,
 > and check that before every state change. Refuse a switch while a demotion is running.
 > *Source: spec, data-loss table (F16).*
+>
+> **Done (8 Nov 2026, uncommitted; design `designs/close-switch-sequence.md`; full suite with harness 4501 passed, 0 failed; MinimumVersionToWrite No):** a session id in CheckoutService; the release waits (60 s) for a running demotion; a demotion or session-bound post stops or is dropped when its session ended. F16 is a proof test.
 
 > [!note]- **3.4 A session with no edits still rewrites the shared database** `data risk` `save path`
 > **Problem:** when the shared database was last written by something other than TermPoint's save (a new database, a
@@ -583,6 +587,8 @@ Everything in this group is checked against rule 3 (never delete the only copy o
 > when the user switches database, the old lock stays, naming their own live session. Switching back, they are told
 > "Someone else is editing this database right now" and their kept changes can't be restored yet. No data loss.
 > *Source: harness, another program holding a file (8.3), known finding F20.*
+>
+> **Partly done (8 Nov 2026, uncommitted; design `designs/close-switch-sequence.md`; full suite with harness 4501 passed, 0 failed; MinimumVersionToWrite No):** a leftover lock naming this very TermPoint is taken back (checked delete + CreateNew, own pending release waited for first; no "closed unexpectedly" notice). Accepted remainder, F20 stays known: another program still holds the lock file when the session goes read-only.
 
 > [!note]- **4.14 A held release deletes the new holder's lock**
 > A release checks the lock file is its own, then deletes it. A computer that sleeps between the two deletes the lock
@@ -711,12 +717,16 @@ whether the work is safe, and what to do next.
 > what happens to their changes. **Fix:** in that case show only the dialog. Also check that a switch never leaves the old
 > database's "read-only for you now" banner showing over the new database. No data risk.
 > *Source: harness message checks (8.6), known finding F17.*
+>
+> **Done (8 Nov 2026, uncommitted; design `designs/close-switch-sequence.md`; full suite with harness 4501 passed, 0 failed; MinimumVersionToWrite No):** while a close or switch is ending the session, its final save's banners and lock loss are not delivered: only "Changes Not Saved" (wording unchanged). Old database's banners can no longer land on the new one (session id).
 
 > [!note]- **6.11 Two different lock-lost banners for one loss**
 > Seen once in the harness: a heartbeat check still running while the user switches database shows "Another program
 > removed the file…" and then "… has taken over editing". Not investigated yet; possibly related to the demotion that
 > lands on the new session (F16).
 > *Source: harness message checks (8.6), known finding F18.*
+>
+> **Done (8 Nov 2026, uncommitted; design `designs/close-switch-sequence.md`; full suite with harness 4501 passed, 0 failed; MinimumVersionToWrite No):** not switch-related after all: a save that put back a deleted lock file and then failed showed two banners. The "lock put back" notice now shows only when that save succeeds.
 
 > [!note]- **6.12 A writer whose clock is behind looks inactive**
 > Bob edits with his clock an hour behind. Alice opens and is told his lock "hasn't been active for 55 minutes". Taking
@@ -728,6 +738,8 @@ whether the work is safe, and what to do next.
 > After a failed switch save, Can't Restore, and a confirmed Discard, a banner still says the changes are kept. Long
 > route with another program holding the database; not investigated.
 > *Source: harness clock skew walks (8.4), known finding F23.*
+>
+> **Done (8 Nov 2026, uncommitted; design `designs/close-switch-sequence.md`; full suite with harness 4501 passed, 0 failed; MinimumVersionToWrite No):** the post-open "save restored changes at once" ran after a Can't Restore + Discard (3.4's second route). It now runs only when the open really restored kept changes.
 
 ---
 

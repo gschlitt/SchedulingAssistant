@@ -86,6 +86,7 @@
     <Compile Remove="ViewModels\Management\NewDatabaseViewModel.cs" />
     <Compile Remove="MainWindow.axaml.cs" />
     <Compile Remove="Services\ILifecyclePrompts.cs" />
+    <Compile Remove="Services\UnappliedChangesGate.cs" />
     <Compile Remove="Services\ISessionHost.cs" />
     <Compile Remove="Services\SessionLifecycle.cs" />
     <Compile Remove="Views\SplashScreen.axaml.cs" />

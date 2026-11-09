@@ -3610,12 +3610,11 @@ public sealed class CheckoutServiceTests : IDisposable
     /// mismatch, retrying" line), copies other.db again, and sets <see cref="CheckoutService.Mode"/> to read-only and
     /// <see cref="CheckoutService.WorkingPath"/> to D''.</description></item>
     /// </list>
-    /// The CORRECT behaviour asserted here: a demotion belongs to the session it was started for, so the new session
-    /// stays a writer on its own working copy. Today the new session ends read-only while it holds other.db's lock, so
-    /// the test is skipped until F16 is fixed.
+    /// The CORRECT behaviour asserted here (close/switch design, steps 1-3): the switch's release WAITS for the running
+    /// demotion (so it has not finished while the demotion is held), the demotion then finishes normally on its own
+    /// database, and the new session is a writer on its own working copy.
     /// </summary>
-    [Fact(Skip = "F16: a lost-lock demotion still copying D'' when the user switches database lands on the new session " +
-                 "(read-only while it holds the new lock). See data-persistence-review-2026-10.md, section 3, F16.")]
+    [Fact]
     public async Task F16_ADemotionStillRunningWhenTheUserSwitches_DoesNotTouchTheNewSession()
     {
         var (svc, lockSvc) = CreateService();
@@ -3649,16 +3648,22 @@ public sealed class CheckoutServiceTests : IDisposable
             var demotion = Task.Run(() => svc.DemoteToReadOnlyAsync());
             Assert.True(copyReached.Wait(TimeSpan.FromSeconds(30)), "the demotion never reached its D'' copy");
 
-            // The switch, to completion, while the demotion is held.
-            await svc.ReleaseAsync(saveFirst: true);
-            lockSvc.PendingRelease?.Wait(TimeSpan.FromSeconds(10));
-            Assert.Equal(CheckoutOutcome.WriteAccess, await svc.CheckoutAsync(other));
-            Assert.Equal(CheckoutMode.WriteAccess, svc.Mode);
-            Assert.True(lockSvc.IsWriter);
+            // The switch starts while the demotion is held: its release must WAIT for the demotion, not overtake it.
+            var release = Task.Run(() => svc.ReleaseAsync(saveFirst: true));
+            await Task.Delay(300);
+            Assert.False(release.IsCompleted, "the release must wait for the running demotion");
+            Assert.False(svc.IsEnding, "the session is not marked ending until the demotion has finished");
 
-            // Let the old demotion finish.
+            // Let the demotion finish (normally): the release then completes, the session ends, the switch goes on.
             letCopyGo.Set();
             await demotion.WaitAsync(TimeSpan.FromSeconds(30));
+            await release.WaitAsync(TimeSpan.FromSeconds(30));
+            Assert.True(svc.IsEnding);
+            lockSvc.PendingRelease?.Wait(TimeSpan.FromSeconds(10));
+            Assert.Equal(CheckoutOutcome.WriteAccess, await svc.CheckoutAsync(other));
+            Assert.False(svc.IsEnding, "a new checkout starts a new session");
+            Assert.Equal(CheckoutMode.WriteAccess, svc.Mode);
+            Assert.True(lockSvc.IsWriter);
 
             // The new session is still a writer on its own working copy.
             Assert.Equal(other, svc.SourcePath);
@@ -3672,6 +3677,152 @@ public sealed class CheckoutServiceTests : IDisposable
             letCopyGo.Set();
             NetworkFaults.Decide = null;
         }
+    }
+
+    /// <summary>
+    /// F16, the long-demotion route: a demotion that outlasts the release's bounded wait (shortened here to 300 ms; 60 s
+    /// in production) is stopped by its own session check. The switch goes on without it, and when the held copy is
+    /// finally let go the demotion changes nothing: the new session stays a writer on its own working copy.
+    /// </summary>
+    [Fact]
+    public async Task F16_ADemotionThatOutlastsTheReleaseWait_StopsItself_AndTheNewSessionIsUntouched()
+    {
+        var (svc, lockSvc) = CreateService();
+        svc.DemotionWaitLimit = TimeSpan.FromMilliseconds(300);
+        var dept  = DbPath("dept");
+        var other = DbPath("other");
+        CreateSqliteDb(dept);
+        CreateSqliteDb(other);
+        Assert.Equal(CheckoutOutcome.WriteAccess, await svc.CheckoutAsync(dept));
+        WriteExternalFreshLock(dept);
+
+        using var copyReached = new ManualResetEventSlim(false);
+        using var letCopyGo   = new ManualResetEventSlim(false);
+        var held = 0;
+        NetworkFaults.Decide = request =>
+        {
+            if (request.Label == "CopyFile"
+                && string.Equals(request.Path, dept, StringComparison.OrdinalIgnoreCase)
+                && request.DestinationPath is { } destination && destination.Contains("_ro")
+                && Interlocked.Exchange(ref held, 1) == 0)
+            {
+                copyReached.Set();
+                letCopyGo.Wait(TimeSpan.FromSeconds(30));
+            }
+            return NetworkFaultDecision.None;
+        };
+
+        try
+        {
+            var demotion = Task.Run(() => svc.DemoteToReadOnlyAsync());
+            Assert.True(copyReached.Wait(TimeSpan.FromSeconds(30)), "the demotion never reached its D'' copy");
+
+            await svc.ReleaseAsync(saveFirst: true);   // gives up waiting after 300 ms
+            lockSvc.PendingRelease?.Wait(TimeSpan.FromSeconds(10));
+            Assert.Equal(CheckoutOutcome.WriteAccess, await svc.CheckoutAsync(other));
+
+            letCopyGo.Set();
+            Assert.False(await demotion.WaitAsync(TimeSpan.FromSeconds(30)), "a demotion whose session ended reports failure");
+
+            Assert.Equal(other, svc.SourcePath);
+            Assert.True(lockSvc.IsWriter, "the new session still holds other.db's lock");
+            Assert.Equal(CheckoutMode.WriteAccess, svc.Mode);
+            Assert.False(svc.IsReadOnlyMode, "a writer must not be marked read-only");
+            Assert.DoesNotContain("_ro", Path.GetFileName(svc.WorkingPath));
+        }
+        finally
+        {
+            letCopyGo.Set();
+            NetworkFaults.Decide = null;
+        }
+    }
+
+    /// <summary>
+    /// F16, the posted-but-not-yet-run route: the lock loss of the OLD session is posted to the window, and the user
+    /// switches before the post is delivered. Delivered late, it must be dropped (so no demotion is started for the new
+    /// database) and the new session stays a writer. The post is held in a queue and delivered by hand.
+    /// </summary>
+    [Fact]
+    public async Task F16_ALockLossPostedBeforeTheSwitch_ButDeliveredAfter_IsDropped()
+    {
+        var posted  = new System.Collections.Concurrent.ConcurrentQueue<Action>();
+        var clock   = new FakeTimeProvider();
+        var lockSvc = new WriteLockService(clock, null, startTimers: false);
+        var svc     = new CheckoutService(lockSvc, new NullLogger(), posted.Enqueue, _workingDir, startTimers: false);
+        var dept  = DbPath("dept");
+        var other = DbPath("other");
+        CreateSqliteDb(dept);
+        CreateSqliteDb(other);
+        Assert.Equal(CheckoutOutcome.WriteAccess, await svc.CheckoutAsync(dept));
+        var lockLossDelivered = 0;
+        svc.WriteLockLost += _ => lockLossDelivered++;
+
+        WriteExternalFreshLock(dept);                 // Alice took over while Bob's laptop slept
+        clock.Advance(TimeSpan.FromMinutes(5));
+        lockSvc.TickWakeCheck();                      // the wake check finds it and POSTS the lock loss
+        await svc.WhenBackgroundChecksDoneAsync();
+        Assert.False(posted.IsEmpty, "the lock loss must have been posted");
+
+        // Bob switches before the post runs.
+        await svc.ReleaseAsync(saveFirst: false);
+        lockSvc.PendingRelease?.Wait(TimeSpan.FromSeconds(10));
+        Assert.Equal(CheckoutOutcome.WriteAccess, await svc.CheckoutAsync(other));
+
+        while (posted.TryDequeue(out var action)) action();   // the window finally runs what was posted
+
+        Assert.Equal(0, lockLossDelivered);
+        Assert.Equal(CheckoutMode.WriteAccess, svc.Mode);
+        Assert.True(lockSvc.IsWriter);
+    }
+
+    /// <summary>
+    /// F17 / session-bound posts: a <see cref="CheckoutService.SaveFailed"/> raised by a save in a LIVE session is
+    /// delivered; the same failure raised by the final save inside <see cref="CheckoutService.ReleaseAsync"/> is not (it
+    /// is reported through the returned outcome only, so the caller shows one message).
+    /// </summary>
+    [Fact]
+    public async Task SaveFailed_IsDeliveredInALiveSession_ButNotFromTheEndingsFinalSave()
+    {
+        var (svc, _) = CreateService();
+        var db = DbPath();
+        CreateSqliteDb(db);
+        await svc.CheckoutAsync(db);
+
+        var delivered = 0;
+        svc.SaveFailed += (_, _) => delivered++;
+        var lockPath = Path.ChangeExtension(db, ".lock");
+
+        // The same contended-lock-file fault as above makes a save fail with a CopyError and a SaveFailed banner.
+        using (new FileStream(lockPath, FileMode.Open, FileAccess.Read, FileShare.None))
+        {
+            Assert.Equal(SaveOutcome.CopyError, await svc.SaveAsync());
+            Assert.Equal(1, delivered);                 // live session: delivered
+
+            Assert.Equal(SaveOutcome.CopyError, await svc.ReleaseAsync(saveFirst: true));
+        }
+
+        Assert.Equal(1, delivered);                     // the ending's final save: nothing more reached the window
+        Assert.True(svc.IsEnding);
+    }
+
+    /// <summary>
+    /// F17: a save conflict found by the ending's final save is not posted to the window (the caller reports it), while
+    /// the same conflict in a live session is.
+    /// </summary>
+    [Fact]
+    public async Task SaveConflict_FromTheEndingsFinalSave_IsNotPosted()
+    {
+        var (svc, _) = CreateService();
+        var db = DbPath();
+        CreateFile(db, "original");
+        await svc.CheckoutAsync(db);
+
+        var conflicts = 0;
+        svc.SaveConflictDetected += () => conflicts++;
+        File.WriteAllText(db, "externally-changed");
+
+        Assert.Equal(SaveOutcome.SourceModified, await svc.ReleaseAsync(saveFirst: true));
+        Assert.Equal(0, conflicts);
     }
 
     /// <summary>
@@ -7314,7 +7465,9 @@ public sealed class CheckoutServiceTests : IDisposable
         lockSvc.PendingRelease?.Wait(TimeSpan.FromSeconds(10));   // let the release's background lock-file handling finish
 
         Assert.Equal(SaveOutcome.LockLost, outcome);
-        Assert.Equal(1, lockLostCount);
+        // F17 (close/switch design, step 4): the ending's final save reports only to its caller, so no lock loss is
+        // raised (it would only start a demotion during teardown).
+        Assert.Equal(0, lockLostCount);
         Assert.Equal(before, DbFileTestHelpers.HashOf(db));
         Assert.True(File.Exists(svc.WorkingPath), "D' must be kept");
         Assert.True(File.Exists(svc.WorkingPath + ".dirty"), "the dirty marker must be kept");

@@ -24,6 +24,24 @@ public sealed class LockLossPromptTests
             " To edit again once they've finished, close TermPoint and open it again.",
             LockLossPrompt.Banner(takenOver: true, "alice", "ALICE-PC", hadUnsavedChanges: true));
 
+    /// <summary>
+    /// An open editor held unapplied changes (spec item 3.1): the banner gains exactly one sentence after the
+    /// changes part, and not otherwise.
+    /// </summary>
+    [Fact]
+    public void Banner_WithUnappliedEditorChanges_AddsTheSentenceAfterTheChangesPart()
+    {
+        Assert.Equal(
+            "Someone else has taken over editing this database, so it's read-only for you now. " +
+            "There were no unsaved changes at the time. " +
+            "Changes you hadn't applied in the open editor couldn't be saved. " +
+            "To edit again once they've finished, close TermPoint and open it again.",
+            LockLossPrompt.Banner(takenOver: true, null, null, hadUnsavedChanges: false, hadUnappliedEditorChanges: true));
+
+        Assert.DoesNotContain("hadn't applied",
+            LockLossPrompt.Banner(takenOver: true, null, null, hadUnsavedChanges: false, hadUnappliedEditorChanges: false));
+    }
+
     /// <summary>Taken over, holder unknown (no name), no unsaved changes.</summary>
     [Theory]
     [InlineData(null)]

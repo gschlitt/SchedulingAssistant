@@ -260,6 +260,102 @@ public sealed class CheckoutService : IDisposable
     private int     _heartbeatVerifyInFlight;
 
     /// <summary>
+    /// The number of the current session. Goes up when a session ends (the start of <see cref="ReleaseAsync"/>) and when a
+    /// new one starts (the start of every checkout attempt, read-only or not). Work started for one session (a demotion, a
+    /// posted banner, a lock check) captures the number when it starts and acts only while it is still the current one, so
+    /// nothing that belongs to the old database can land on the new one (close/switch design, items F16, F17, F18).
+    /// Mutated only via <see cref="Interlocked"/>.
+    /// </summary>
+    private int     _sessionId;
+
+    /// <summary>1 from the start of <see cref="ReleaseAsync"/> until the next checkout begins, else 0. See <see cref="IsEnding"/>.</summary>
+    private int     _isEnding;
+
+    /// <summary>
+    /// The lost-lock demotion that is running (or last ran), or null. <see cref="ReleaseAsync"/> waits for it (bounded) before
+    /// it ends the session, so a switch never overlaps a demotion. A finished task here is harmless: awaiting it is instant.
+    /// </summary>
+    private Task? _demotionTask;
+
+    /// <summary>
+    /// How long <see cref="ReleaseAsync"/> waits for a running demotion before going on without it (the demotion is then
+    /// stopped by its own session check). The same ceiling as <see cref="WaitForInFlightSaveAsync"/>. Internal so a test can
+    /// shorten it.
+    /// </summary>
+    internal TimeSpan DemotionWaitLimit { get; set; } = TimeSpan.FromSeconds(60);
+
+    /// <summary>
+    /// True from the moment a close or switch begins ending the session (<see cref="ReleaseAsync"/>) until the next
+    /// checkout starts. While true, the ending's own final save reports only to its caller: its banners and lock loss
+    /// are dropped by <see cref="PostForSession"/> and no demotion is started (item F17).
+    /// </summary>
+    public bool IsEnding => Volatile.Read(ref _isEnding) == 1;
+
+    /// <summary>The number of the current session (see <see cref="_sessionId"/>). Internal: for the checks in this class and tests.</summary>
+    internal int SessionId => Volatile.Read(ref _sessionId);
+
+    /// <summary>
+    /// Starts a new session: moves <see cref="SessionId"/> on and clears <see cref="IsEnding"/>. Called first thing by
+    /// every checkout entry point, so a read-only session is a new session too and anything still posted for the previous
+    /// one is recognised as stale.
+    /// </summary>
+    private void BeginSession()
+    {
+        Interlocked.Increment(ref _sessionId);
+        Volatile.Write(ref _isEnding, 0);
+        // A new session starts as not read-only; a read-only snapshot sets this again. Without it a writer opened after a
+        // demotion on the same service kept the previous session's flag (documented as "false in write-access mode").
+        IsReadOnlyMode = false;
+    }
+
+    /// <summary>
+    /// Ends the current session: marks it ending first (so a post made at this instant is already refused), then moves
+    /// <see cref="SessionId"/> on so every piece of work captured under the old number is stale.
+    /// </summary>
+    private void EndSession()
+    {
+        Volatile.Write(ref _isEnding, 1);
+        Interlocked.Increment(ref _sessionId);
+    }
+
+    /// <summary>
+    /// Posts <paramref name="raise"/> to the window like <c>_dispatch</c>, but only if the session it was raised under is
+    /// still current and not ending when the post is delivered; otherwise drops it and logs one line. Used for every event
+    /// the window turns into a banner or a state change (lock lost, save failed, conflict, location reachable or not), so
+    /// a message for database 1 never shows over database 2. Progress and dirty events are not session-bound.
+    /// </summary>
+    /// <param name="eventName">What is being posted, for the log line when it is dropped.</param>
+    /// <param name="raise">The action that raises the event.</param>
+    private void PostForSession(string eventName, Action raise)
+    {
+        var sessionAtRaise = SessionId;
+        _dispatch(() =>
+        {
+            if (SessionId != sessionAtRaise || IsEnding)
+            {
+                _logger.LogInfo($"CheckoutService: dropped {eventName} — its session " +
+                                (IsEnding ? "is ending." : "has ended."));
+                return;
+            }
+            raise();
+        });
+    }
+
+    /// <summary>
+    /// Waits for <paramref name="task"/> to finish, but no longer than <paramref name="limit"/>. Never throws the task's own
+    /// exception (its owner observes that).
+    /// </summary>
+    /// <param name="task">The task to wait for.</param>
+    /// <param name="limit">The longest time to wait.</param>
+    /// <returns>True when the task finished within the limit.</returns>
+    private static async Task<bool> WaitBoundedAsync(Task task, TimeSpan limit)
+    {
+        if (task.IsCompleted) return true;
+        var finished = await Task.WhenAny(task, Task.Delay(limit)).ConfigureAwait(true);
+        return ReferenceEquals(finished, task);
+    }
+
+    /// <summary>
     /// 0 = this write session has not yet reported losing the lock, 1 = it has (A12). Makes
     /// <see cref="HandleLockLossAsync"/> run AT MOST ONCE per write session: the first check to find the lock
     /// gone raises <see cref="WriteLockLost"/>, and every later check — the wake check and the heartbeat both run
@@ -638,6 +734,7 @@ public sealed class CheckoutService : IDisposable
     public async Task<CheckoutOutcome> CheckoutAsync(
         string sourcePath, bool recoverWorkingCopy = false, bool ignoreObserverMode = false)
     {
+        BeginSession();   // a new session from the first line, read-only or not: stale work for the last one is now recognised
         SourcePath = sourcePath;
         LockLossNewHolder = null;
         HasSaveConflict = false;    // a new checkout starts from a fresh copy of D — no conflict yet
@@ -937,6 +1034,7 @@ public sealed class CheckoutService : IDisposable
     /// </returns>
     public async Task<CheckoutOutcome> ForceCheckoutAsync(bool recoverWorkingCopy = false)
     {
+        BeginSession();
         RequiredAppVersion = null;  // version gate has not tripped for this checkout (yet)
 
         // The snapshot the user's yes was given on. Single use: a second takeover needs a new
@@ -1486,7 +1584,14 @@ public sealed class CheckoutService : IDisposable
         try
         {
             _dispatch(() => SaveStarted?.Invoke());
-            return await SaveAsyncCore(releaseLockAfter, isAutoSave);
+            _lockPutBackDuringSave = false;
+            var outcome = await SaveAsyncCore(releaseLockAfter, isAutoSave);
+
+            // F18: a save that put back a removed lock file tells the user only if it then succeeded. When it failed,
+            // its failure banner is the one message for this save (the lock is ours again either way).
+            if (_lockPutBackDuringSave && outcome == SaveOutcome.Success)
+                RaiseLockPutBackNotice();
+            return outcome;
         }
         catch (Exception ex)
         {
@@ -1573,7 +1678,7 @@ public sealed class CheckoutService : IDisposable
     /// <param name="text">The complete banner text.</param>
     /// <param name="autoDismiss">True when the banner may disappear by itself; false when it must stay.</param>
     private void RaiseSaveError(string text, bool autoDismiss)
-        => _dispatch(() => SaveFailed?.Invoke(text, autoDismiss));
+        => PostForSession("SaveFailed", () => SaveFailed?.Invoke(text, autoDismiss));
 
     /// <summary>
     /// The save steps already sent to the error reporter this session (see <see cref="ReportSaveFailure"/>).
@@ -2123,8 +2228,10 @@ public sealed class CheckoutService : IDisposable
         {
             // If the lock file was merely REMOVED (antivirus, cloud-sync — no new
             // holder), try to re-create it atomically before giving up the session.
-            if (await TryRecoverRemovedLockAsync())
+            if (await TryRecoverRemovedLockAsync(announce: false))
             {
+                // The notice waits for the save's outcome (F18, see SaveAsync).
+                _lockPutBackDuringSave = true;
                 _logger.LogBreadcrumb("Save: lock re-acquired after external removal — continuing");
                 // Fall through — the save proceeds normally under the restored lock.
             }
@@ -2222,7 +2329,7 @@ public sealed class CheckoutService : IDisposable
                 // banner: the sticky state is HasSaveConflict, and the main window shows its own
                 // persistent banner (Save a Copy… / Discard Changes) when SaveConflictDetected fires.
                 HasSaveConflict = true;
-                _dispatch(() => SaveConflictDetected?.Invoke());
+                PostForSession("SaveConflictDetected", () => SaveConflictDetected?.Invoke());
                 return (SaveOutcome.SourceModified, null, lockConfirmed);
             }
         }
@@ -3355,6 +3462,18 @@ public sealed class CheckoutService : IDisposable
         StopAutoSave();
         _lockService.WakeDetected -= OnWake;
 
+        // A lost-lock demotion that is still running finishes first (normally a second or two): it leaves the session
+        // read-only, so the save below is skipped and the release sees the read-only snapshot, never the marked D'
+        // (item F16). Bounded, like the in-flight save wait; a demotion that outlasts it is stopped by its own session
+        // check once the session is marked ending next. Waiting BEFORE EndSession is what lets it finish normally.
+        var demotion = _demotionTask;
+        if (demotion is not null && !await WaitBoundedAsync(demotion, DemotionWaitLimit))
+            _logger.LogInfo("CheckoutService: ReleaseAsync — the demotion is still running after the wait; ending the session anyway (the demotion will stop itself).");
+
+        // From here on this session is over: anything still posted or running for it is stale, and the final save
+        // below reports only to the caller (item F17).
+        EndSession();
+
         var outcome = SaveOutcome.Success;
 
         if (saveFirst && Mode == CheckoutMode.WriteAccess)
@@ -3688,6 +3807,10 @@ public sealed class CheckoutService : IDisposable
         if (Mode != CheckoutMode.WriteAccess) return;
         _logger.LogBreadcrumb("Wake detected");
 
+        // The session this check belongs to. If a close or switch moves on while the check waits on the network, its
+        // conclusion is about a database that is no longer open and must not touch (or post to) the new session.
+        var sessionAtStart = SessionId;
+
         // Fire-and-forget — VerifyLockIsOursAsync uses NetworkFileOps internally
         // so the UI stays responsive during the SMB reconnect delay.
         StartBackgroundCheck(async () =>
@@ -3696,6 +3819,11 @@ public sealed class CheckoutService : IDisposable
             {
                 var result = await VerifyLockIsOursAsync();
                 CrashPoints.Hit("WakeCheck.AfterVerify");
+                if (SessionId != sessionAtStart || IsEnding)
+                {
+                    _logger.LogInfo("CheckoutService: wake check — the session ended while it ran; its result is dropped.");
+                    return;
+                }
                 switch (result)
                 {
                     case LockVerificationResult.NotOurs:
@@ -3742,8 +3870,12 @@ public sealed class CheckoutService : IDisposable
     /// the heartbeat and wake timers; our event subscriptions were never removed) and
     /// an auto-dismissing banner tells the user what happened.</para>
     /// </summary>
+    /// <param name="announce">
+    /// True (the wake and heartbeat checks) to show the "lock put back" notice at once. False from a save, which shows it
+    /// only if the save then succeeds, so a save that fails shows its failure banner alone (F18, one message per save).
+    /// </param>
     /// <returns>True when the lock was re-acquired and the session continues as writer.</returns>
-    private async Task<bool> TryRecoverRemovedLockAsync()
+    private async Task<bool> TryRecoverRemovedLockAsync(bool announce = true)
     {
         // A takeover has a new holder — never contest it.
         if (LockLossNewHolder is not null) return false;
@@ -3756,11 +3888,25 @@ public sealed class CheckoutService : IDisposable
 
         _logger.LogInfo("CheckoutService: lock file was removed externally; re-acquired atomically — session continues.");
         _logger.LogBreadcrumb("Lock re-acquired after external removal");
-        _dispatch(() => SaveFailed?.Invoke(
-            LockLossPrompt.LockFilePutBack,
-            true)); // auto-dismiss — informational, nothing is wrong anymore
+        if (announce)
+            RaiseLockPutBackNotice();
         return true;
     }
+
+    /// <summary>
+    /// Shows the informational, auto-dismissing "lock put back" notice (<see cref="LockLossPrompt.LockFilePutBack"/>)
+    /// for the current session (dropped if the session has ended, see <see cref="PostForSession"/>).
+    /// </summary>
+    private void RaiseLockPutBackNotice()
+        => PostForSession("SaveFailed (lock put back)", () => SaveFailed?.Invoke(
+            LockLossPrompt.LockFilePutBack,
+            true)); // auto-dismiss — informational, nothing is wrong anymore
+
+    /// <summary>
+    /// True when the save in flight put back a removed lock file (set by <see cref="CheckLockAndSourceAsync"/>, reset at the
+    /// start of each <see cref="SaveAsync"/>). Saves never overlap (<see cref="_saveInFlight"/>), so a plain field is enough.
+    /// </summary>
+    private bool _lockPutBackDuringSave;
 
     /// <summary>
     /// Stops autosave and unhooks the wake handler, then raises
@@ -3791,6 +3937,15 @@ public sealed class CheckoutService : IDisposable
     /// </summary>
     private Task HandleLockLossAsync()
     {
+        // F17: a close or switch is already ending this session, and its final save may find the lock gone (a takeover).
+        // That outcome goes to the caller alone ("Changes Not Saved"): raising WriteLockLost would only start a demotion
+        // during teardown (and PostForSession would drop it anyway, since IsEnding is true). So say so and stop here.
+        if (IsEnding)
+        {
+            _logger.LogInfo("CheckoutService: the lock was found lost while the session is ending; no lock loss is raised (the caller reports it).");
+            return Task.CompletedTask;
+        }
+
         if (Interlocked.Exchange(ref _lockLossRaised, 1) != 0)
         {
             _logger.LogInfo("CheckoutService: the lock loss is already being handled for this write session; not raising it again.");
@@ -3813,7 +3968,7 @@ public sealed class CheckoutService : IDisposable
         HandledEventReporter.Report(
             reason == WriteLockLostReason.TakenOver ? HandledEvent.LockLostTakenOver : HandledEvent.LockLostFileRemoved,
             _logger, new Dictionary<string, string> { ["newHolder"] = newHolder });
-        _dispatch(() => WriteLockLost?.Invoke(reason));
+        PostForSession("WriteLockLost", () => WriteLockLost?.Invoke(reason));
         return Task.CompletedTask;
     }
 
@@ -3874,6 +4029,10 @@ public sealed class CheckoutService : IDisposable
             return;
         }
 
+        // The session this check belongs to (see OnWake): a result that arrives after the session ended is dropped, so it
+        // can neither post a banner over the new database nor renew a heartbeat for a lock that is no longer ours to hold.
+        var sessionAtStart = SessionId;
+
         StartBackgroundCheck(async () =>
         {
             try
@@ -3881,6 +4040,11 @@ public sealed class CheckoutService : IDisposable
                 _logger.LogInfo("CheckoutService: HeartbeatFailed — verifying lock ownership before acting.");
                 var result = await VerifyLockIsOursAsync();
                 CrashPoints.Hit("HeartbeatVerify.AfterVerify");
+                if (SessionId != sessionAtStart || IsEnding)
+                {
+                    _logger.LogInfo("CheckoutService: heartbeat verify — the session ended while it ran; its result is dropped.");
+                    return;
+                }
                 switch (result)
                 {
                     case LockVerificationResult.NotOurs:
@@ -3906,7 +4070,7 @@ public sealed class CheckoutService : IDisposable
                         // The lock file was just read: the location responds. Tell the window so it can clear the
                         // outage notice (and only that notice). A report of a fact already found; the renewal below
                         // is exactly as before.
-                        _dispatch(() => LocationReachableAgain?.Invoke());
+                        PostForSession("LocationReachableAgain", () => LocationReachableAgain?.Invoke());
                         await _lockService.ForceRenewHeartbeat();
                         break;
                 }
@@ -3977,6 +4141,42 @@ public sealed class CheckoutService : IDisposable
         if (Mode != CheckoutMode.WriteAccess)
             return false;
 
+        // Remembered, BEFORE the body starts (its first part runs synchronously), so ReleaseAsync can wait for it
+        // (item F16). The signal completes when the body ends however it ends; it never carries an exception, so
+        // nobody has to observe it.
+        var finished = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        _demotionTask = finished.Task;
+        try
+        {
+            return await DemoteCoreAsync(beforeClose, afterOpen);
+        }
+        finally
+        {
+            finished.TrySetResult();
+        }
+    }
+
+    /// <summary>
+    /// The body of <see cref="DemoteToReadOnlyAsync"/>. Captures the session it belongs to when it starts and, after every
+    /// await, stops if that session has ended (a switch or close moved on): it then returns false WITHOUT touching
+    /// <see cref="Mode"/>, <see cref="WorkingPath"/>, <see cref="SessionDirty"/>, reader mode or the
+    /// <paramref name="afterOpen"/> callback, so it can never act on the database that replaced its own. It never deletes a
+    /// working copy that has a dirty marker, on any route.
+    /// </summary>
+    /// <param name="beforeClose">See <see cref="DemoteToReadOnlyAsync"/>.</param>
+    /// <param name="afterOpen">See <see cref="DemoteToReadOnlyAsync"/>.</param>
+    /// <returns>True on a successful demotion; false on failure or when the session ended first.</returns>
+    private async Task<bool> DemoteCoreAsync(Func<Task>? beforeClose, Func<Task>? afterOpen)
+    {
+        var sessionAtStart = SessionId;
+        bool Ended() => SessionId != sessionAtStart;
+        bool StopIfEnded(string step)
+        {
+            if (!Ended()) return false;
+            _logger.LogInfo($"CheckoutService: DemoteToReadOnly — the session ended during '{step}'; stopping without changing anything.");
+            return true;
+        }
+
         _logger.LogBreadcrumb("Demoting to read-only");
 
         // 1 & 2 — stop timers and release the lock (safe against foreign holders).
@@ -3995,6 +4195,7 @@ public sealed class CheckoutService : IDisposable
             }
         }
         CrashPoints.Hit("Demote.AfterConnectionClosed");
+        if (StopIfEnded("closing the connection")) return false;
 
         // 4 — dispose of D' now that the connection is closed. When unsaved edits
         // exist (dirty marker present), D' and the marker are deliberately PRESERVED:
@@ -4029,9 +4230,12 @@ public sealed class CheckoutService : IDisposable
         SessionDirty = false;
 
         // 5 — create D''. SetupReadOnlySnapshotAsync updates WorkingPath and Mode.
-        var readOnlyPath = await SetupReadOnlySnapshotAsync();
-        var success = readOnlyPath is not null;
+        // The copy checks the session itself right before it records anything (it returns null and keeps the state
+        // untouched when the session ended while it copied).
+        var readOnlyPath = await SetupReadOnlySnapshotAsync(sessionEnded: Ended);
         CrashPoints.Hit("Demote.AfterSnapshotCreated");
+        if (StopIfEnded("copying the database")) return false;
+        var success = readOnlyPath is not null;
 
         if (!success)
         {
@@ -4046,8 +4250,11 @@ public sealed class CheckoutService : IDisposable
         // cleanly and would stay stuck in read-only until restart.
         // EnterReaderMode reads the lock file on the share to populate CurrentHolder;
         // deadline-wrap it so a dead share cannot stall this (UI-thread) continuation.
+        // SourcePath is still this session's here: the session check above has just passed with no await since.
+        var readerSource = SourcePath;
         await NetworkFileOps.RunAsync(
-            () => _lockService.EnterReaderMode(SourcePath), "enter reader mode");
+            () => _lockService.EnterReaderMode(readerSource), "enter reader mode");
+        if (StopIfEnded("entering reader mode")) return false;
 
         // 6 — let the caller reopen the DatabaseContext connection. Called even on
         // failure so the caller can decide how to surface the problem, but WorkingPath
@@ -4465,7 +4672,13 @@ public sealed class CheckoutService : IDisposable
     /// holds it open. Tell the user and offer to try again, or give up; see
     /// <see cref="SetupReadOnlySnapshotWithRetryAsync"/>.
     /// </returns>
-    public async Task<string?> SetupReadOnlySnapshotAsync()
+    /// <param name="sessionEnded">
+    /// Optional. When given (the lost-lock demotion does), it is asked right before the finished copy is put in place
+    /// and its state recorded; if it says the session has ended while the copy ran, the copy is thrown away and the method
+    /// returns null WITHOUT touching <see cref="WorkingPath"/>, <see cref="Mode"/> or the other state, so a copy made for a
+    /// database that is no longer open can never become the new session's state. Every other caller passes nothing.
+    /// </param>
+    public async Task<string?> SetupReadOnlySnapshotAsync(Func<bool>? sessionEnded = null)
     {
         // DEBUG-ONLY fault injection (see FaultPlan): report "the local copy could not be made" without
         // touching any state, exactly as a failed copy does, so the Try again / Close prompt appears.
@@ -4477,13 +4690,17 @@ public sealed class CheckoutService : IDisposable
             return null;
         }
 
-        ReadOnlyWorkingPath = ComputeReadOnlyWorkingPath(SourcePath);
+        // This method awaits several times; a caller (the demotion) may be superseded by a switch meanwhile, which changes
+        // SourcePath and ReadOnlyWorkingPath. So the session's own values are held in locals from here on.
+        var source = SourcePath;
+        ReadOnlyWorkingPath = ComputeReadOnlyWorkingPath(source);
+        var roPath = ReadOnlyWorkingPath;
         Directory.CreateDirectory(_workingDir);
-        var roTmpPath = ReadOnlyWorkingPath + ".tmp";
+        var roTmpPath = roPath + ".tmp";
 
         try
         {
-            var copyCompleted = await NetworkFileOps.CopyAsync(SourcePath, roTmpPath);
+            var copyCompleted = await NetworkFileOps.CopyAsync(source, roTmpPath);
 
             if (!copyCompleted)
             {
@@ -4506,7 +4723,7 @@ public sealed class CheckoutService : IDisposable
 
         // An I/O or permission failure reading D must make this method return null (the caller then
         // shows the Try again / Close prompt) — never escape as an exception.
-        var (hashCompleted, roSourceHash, hashUnreadable) = await HashSourceAsync(SourcePath, "read-only setup hash");
+        var (hashCompleted, roSourceHash, hashUnreadable) = await HashSourceAsync(source, "read-only setup hash");
 
         if (hashUnreadable)
         {
@@ -4529,7 +4746,7 @@ public sealed class CheckoutService : IDisposable
             bool retryCompleted;
             try
             {
-                retryCompleted = await NetworkFileOps.CopyAsync(SourcePath, roTmpPath);
+                retryCompleted = await NetworkFileOps.CopyAsync(source, roTmpPath);
             }
             catch (Exception ex)
             {
@@ -4556,9 +4773,18 @@ public sealed class CheckoutService : IDisposable
             }
         }
 
+        // The session this copy was made for has ended (a switch or close moved on while it ran): throw the copy away and
+        // record nothing. There is no await between this check and the assignments below.
+        if (sessionEnded?.Invoke() == true)
+        {
+            _logger.LogInfo("CheckoutService: read-only setup — the session ended while the copy ran; the copy is discarded.");
+            TryDelete(roTmpPath);
+            return null;
+        }
+
         // Drop any WAL sidecars from a previous session before the fresh copy lands.
-        TryDeleteWalSidecars(ReadOnlyWorkingPath);
-        try { File.Move(roTmpPath, ReadOnlyWorkingPath, overwrite: true); }
+        TryDeleteWalSidecars(roPath);
+        try { File.Move(roTmpPath, roPath, overwrite: true); }
         catch (Exception ex)
         {
             _logger.LogError(ex, "CheckoutService: failed to rename D''.tmp to D''");
@@ -4566,12 +4792,12 @@ public sealed class CheckoutService : IDisposable
             return null;
         }
 
-        WorkingPath    = ReadOnlyWorkingPath;
+        WorkingPath    = roPath;
         HashAtCheckout = roSourceHash;
         Mode           = CheckoutMode.ReadOnly;
         IsReadOnlyMode = true;
         _logger.LogInfo("CheckoutService: read-only setup — D'' created.");
-        return ReadOnlyWorkingPath;
+        return roPath;
     }
 
     /// <summary>

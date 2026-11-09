@@ -23,6 +23,14 @@ public sealed class SessionLifecycle
     /// <summary>The checkout service (was <c>App.Checkout</c>; created once and never replaced).</summary>
     private readonly CheckoutService _checkout;
 
+    /// <summary>
+    /// Whether the checkout that <see cref="RunCheckoutAsync"/> finally ran (after any recovery-conflict re-run) was asked to
+    /// restore a crashed session's unsaved changes (finding F23). The caller's own "restore" answer is NOT enough: when the
+    /// recovery conflicts, the user saves a copy or discards, the checkout re-runs as a normal one, and nothing was restored.
+    /// Read only by <see cref="SaveRestoredChangesAsync"/>.
+    /// </summary>
+    private bool _lastCheckoutRestoredChanges;
+
     /// <summary>The single-instance guard (was <c>App.InstanceGuard</c>).</summary>
     private readonly DatabaseInstanceGuard _instanceGuard;
 
@@ -215,14 +223,25 @@ public sealed class SessionLifecycle
         vm.SetDatabaseName(Path.GetFileNameWithoutExtension(canonicalPath), canonicalPath);
         await _host.SetupWindowAsync(canonicalPath, vm);
 
-        // Restored unsaved changes are still only in the working copy — make them
-        // durable right away rather than leaving them one crash away from a second
-        // recovery. Failure is non-fatal: the standard save-error banner (wired by
-        // SetupMainWindowAsync) surfaces it and autosave/manual save will retry.
-        if (recoverUnsaved && _checkout.Mode == CheckoutMode.WriteAccess)
-            await _checkout.SaveAsync();
+        // Restored unsaved changes are still only in the working copy — make them durable right away.
+        await SaveRestoredChangesAsync();
 
         return null;
+    }
+
+    /// <summary>
+    /// The post-open step shared by startup and <see cref="SwitchCoreAsync"/>: when the open really restored a crashed
+    /// session's unsaved changes, they are still only in the working copy, so save them at once rather than leaving them one
+    /// crash away from a second recovery. Runs only when the checkout that finally succeeded was a recovery
+    /// (<see cref="_lastCheckoutRestoredChanges"/>; finding F23: not when a recovery conflict was dealt with by Save a Copy or
+    /// Discard, where nothing was restored and a failing save would wrongly say the changes are kept) and the session has
+    /// write access. A failure is non-fatal: the standard save-error banner surfaces it and autosave/manual save will retry.
+    /// </summary>
+    /// <returns>A task that completes when the save (if any) has finished.</returns>
+    private async Task SaveRestoredChangesAsync()
+    {
+        if (_lastCheckoutRestoredChanges && _checkout.Mode == CheckoutMode.WriteAccess)
+            await _checkout.SaveAsync();
     }
 
     /// <summary>
@@ -327,6 +346,10 @@ public sealed class SessionLifecycle
     private async Task<string?> RunCheckoutAsync(
         string sourcePath, bool recoverUnsaved = false, bool ignoreObserverMode = false)
     {
+        // Each (re-)run overwrites this, so after a recovery conflict re-runs us with recoverUnsaved: false the final
+        // value is false: the post-open save (SaveRestoredChangesAsync) then does not run for changes that were not restored.
+        _lastCheckoutRestoredChanges = recoverUnsaved;
+
         var outcome = await _checkout.CheckoutAsync(sourcePath, recoverUnsaved, ignoreObserverMode);
 
         switch (outcome)
@@ -811,12 +834,63 @@ public sealed class SessionLifecycle
         string newDatabasePath, bool isNewDatabase = false, bool createIfMissing = false,
         Func<string, Task>? resolveKeptChanges = null)
     {
+        // Spec item 3.1: before anything else (before the pre-check records the new path in the settings and the
+        // recents, and before the instance guard), ask about an open editor's unapplied changes. Stop leaves the
+        // open database exactly as it is.
+        if (!await ResolveUnappliedChangesAsync())
+        {
+            _logger().LogBreadcrumb("SwitchDatabase: stopped by the unapplied-changes question");
+            return false;
+        }
+
         var result = await SwitchCoreAsync(newDatabasePath, isNewDatabase, createIfMissing, resolveKeptChanges);
 
         if (result == SwitchResult.NoDatabaseOpen)
             await RecoverToDatabaseChooserAsync(newDatabasePath);
 
         return result == SwitchResult.Opened;
+    }
+
+    /// <summary>
+    /// True while this session holds the write lock and is not ending: the only state in which an editor's
+    /// unapplied changes could still be applied and saved, so the only state in which they are asked about.
+    /// </summary>
+    private bool IsWriterSession =>
+        _checkout.Mode == CheckoutMode.WriteAccess && !_checkout.IsEnding;
+
+    /// <summary>
+    /// True when a close or switch must first ask about unapplied changes (spec item 3.1): a writer session with an
+    /// open editor that has them. Read synchronously by the window's closing handler, so it can cancel the close
+    /// before the question is shown.
+    /// </summary>
+    public bool NeedsUnappliedChangesQuestion => IsWriterSession && OpenEditorWithChanges() is not null;
+
+    /// <summary>
+    /// The open editor that really holds unapplied changes, or null. The host is trusted to find it; the editor is
+    /// asked once more, so a host that returns a clean editor can never cause a question with nothing to decide.
+    /// </summary>
+    /// <returns>The editor, or null.</returns>
+    private IUnappliedChanges? OpenEditorWithChanges() =>
+        _host.FindUnappliedChanges() is { HasUnappliedChanges: true } editor ? editor : null;
+
+    /// <summary>
+    /// Asks the one "Unapplied Changes" question (<see cref="UnappliedChangesGate"/>) for each open editor that has
+    /// unapplied changes, until none is left. Normally that is one question; a second editor in another panel
+    /// asks once more. If the same editor is still open with changes after the user's answer (an Apply the editor
+    /// accepted but its list refused to complete), it stops rather than ask again.
+    /// </summary>
+    /// <returns>True to carry on with the close or switch; false to stop (Cancel, X, or an Apply that was refused).</returns>
+    public async Task<bool> ResolveUnappliedChangesAsync()
+    {
+        IUnappliedChanges? previous = null;
+        while (IsWriterSession && OpenEditorWithChanges() is { } editor)
+        {
+            if (ReferenceEquals(editor, previous)) return false;
+            if (!await UnappliedChangesGate.ResolveAsync(editor, IsWriterSession, _prompts, () => IsWriterSession))
+                return false;
+            previous = editor;
+        }
+        return true;
     }
 
     /// <summary>
@@ -1058,10 +1132,8 @@ public sealed class SessionLifecycle
                     vm.RestoreSemesterSelection(savedYearId, savedSemesterIds);
 
                 // Restored unsaved changes are still only in the working copy — make them
-                // durable right away (mirrors the startup path; failure surfaces through
-                // the standard save-error banner).
-                if (recoverUnsaved && _checkout.Mode == CheckoutMode.WriteAccess)
-                    await _checkout.SaveAsync();
+                // durable right away (the same shared step as the startup path).
+                await SaveRestoredChangesAsync();
             }
             catch (Exception ex)
             {
@@ -1906,7 +1978,8 @@ public sealed class SessionLifecycle
     {
         try
         {
-            var banner = BuildLockLossBanner(reason);
+            // Detected BEFORE the demotion runs (it closes the connection and the reload closes the editor).
+            var banner = BuildLockLossBanner(reason, hadUnappliedEditorChanges: OpenEditorWithChanges() is not null);
 
             var surface = _host.CaptureLockLossSurface();
 
@@ -1967,8 +2040,9 @@ public sealed class SessionLifecycle
     /// (pure text, pinned by tests); this method only gathers the three facts it needs.
     /// </summary>
     /// <param name="reason">Why the write lock was lost: a takeover, or the lock file was deleted or is unreadable.</param>
+    /// <param name="hadUnappliedEditorChanges">True when an open editor held changes the user had not applied (adds one sentence).</param>
     /// <returns>The banner text (sticky; the caller shows it before demotion starts).</returns>
-    private string BuildLockLossBanner(WriteLockLostReason reason)
+    private string BuildLockLossBanner(WriteLockLostReason reason, bool hadUnappliedEditorChanges)
     {
         var holder = _checkout.LockLossNewHolder;
 
@@ -1978,6 +2052,7 @@ public sealed class SessionLifecycle
             takenOver:         reason == WriteLockLostReason.TakenOver,
             holderUsername:    holder?.Username,
             holderMachine:     holder?.Machine,
-            hadUnsavedChanges: _checkout.HasDirtyMarker);
+            hadUnsavedChanges: _checkout.HasDirtyMarker,
+            hadUnappliedEditorChanges: hadUnappliedEditorChanges);
     }
 }

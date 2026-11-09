@@ -28,7 +28,7 @@ public sealed class PauseSweepTests
     /// <summary>
     /// Every case of the sweep ends without a breach that no known finding explains: no hang, no torn database, no committed edit
     /// lost (F12 is fixed, so nothing explains one), no applied edit lost that the F2 route does not explain, no read-only session
-    /// holding a lock that the F16 route does not explain. Fails with each new breach's shrunk story; the known ones are counted and reported.
+    /// holding a lock that the F20 route does not explain (F16 is fixed). Fails with each new breach's shrunk story; the known ones are counted and reported.
     /// </summary>
     [HarnessFact]
     public async Task PauseSweep_NoNewViolations()
@@ -59,26 +59,27 @@ public sealed class PauseSweepTests
     }
 
     /// <summary>
-    /// The sweep finds F2 and F16 on its own, each by its own route: Bob edits during his save (F2), Bob switches while a demotion is
-    /// copying (F16). Reports each with its smallest story. It no longer finds F12 (Alice takes over between Bob's checks and his
-    /// rename), fixed 2026-10-21: the save re-checks the lock and D before the rename, so the route ends with Bob's save refused; the
-    /// sweep proves the route gone by finding no F12 (and any other violation fails <see cref="PauseSweep_NoNewViolations"/>).
+    /// The sweep finds F2 on its own: Bob edits during his save. Reports it with its smallest story. It no longer finds F12 (Alice
+    /// takes over between Bob's checks and his rename), fixed 2026-10-21: the save re-checks the lock and D before the rename, so the
+    /// route ends with Bob's save refused; nor F16 (Bob switches while a demotion is copying), fixed in 1.2.4 by the close/switch
+    /// sequence: the release waits for the demotion and a demotion of an ended session stops. The sweep proves the routes gone by finding
+    /// no F12 and no F16 (and any other violation fails <see cref="PauseSweep_NoNewViolations"/>).
     /// </summary>
     [HarnessFact]
-    public async Task PauseSweep_FindsF2_AndF16_AndNoLongerF12()
+    public async Task PauseSweep_FindsF2_AndNoLongerF12OrF16()
     {
         var budget  = HarnessBudget.FromEnvironment();
         var outcome = await GeneratedSuite.PauseSweepAsync(budget, Say);
         GeneratedRunTests.PublishReportTo(budget, Say);
 
-        foreach (var id in new[] { "F2", "F16" })
+        foreach (var id in new[] { "F2" })
         {
             var tallies = outcome.Log.Tallies.Values.Where(t => t.FindingId == id).ToList();
             Assert.True(tallies.Count > 0, $"the pause sweep did not find {id}");
             foreach (var tally in tallies) Say($"{id} found in {tally.Runs} runs; smallest story {tally.BestEvents} events.\n{tally.BestStory}");
         }
 
-        Assert.DoesNotContain(outcome.Log.Tallies.Values, t => t.FindingId == "F12");
+        Assert.DoesNotContain(outcome.Log.Tallies.Values, t => t.FindingId is "F12" or "F16");
     }
 
     /// <summary>

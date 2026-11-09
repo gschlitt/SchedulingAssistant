@@ -6,7 +6,7 @@ using System.Collections.ObjectModel;
 
 namespace TermPoint.ViewModels.Management;
 
-public partial class CourseEditViewModel : ViewModelBase
+public partial class CourseEditViewModel : UnappliedChangesEditor
 {
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(ValidationError))]
@@ -186,7 +186,20 @@ public partial class CourseEditViewModel : ViewModelBase
         // Keep TagSummary fresh as checkboxes change.
         foreach (var tag in TagSelections)
             tag.PropertyChanged += (_, e) => { if (e.PropertyName == "IsSelected") OnPropertyChanged(nameof(TagSummary)); };
+
+        TakeSnapshot();
     }
+
+    /// <inheritdoc/>
+    protected override string CaptureState() => UnappliedChangesKey.Of(
+        SelectedSubject?.Id, CourseNumber.Trim(), SelectedLevel ?? "", CourseTitle.Trim(), CapacityText.Trim(),
+        IsActive, TagSelections.Where(t => t.IsSelected).Select(t => t.Value.Id));
+
+    /// <inheritdoc/>
+    protected override System.Windows.Input.ICommand ApplyCommand => SaveCommand;
+
+    /// <inheritdoc/>
+    protected override System.Windows.Input.ICommand CancelCommandForDiscard => CancelCommand;
 
     [RelayCommand(CanExecute = nameof(CanSave))]
     private async Task Save()
@@ -202,6 +215,7 @@ public partial class CourseEditViewModel : ViewModelBase
             .Select(t => t.Value.Id)
             .ToList();
         await _onSave(_course);
+        MarkApplied();
     }
 
     [RelayCommand]

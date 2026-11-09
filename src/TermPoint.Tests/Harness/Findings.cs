@@ -31,7 +31,7 @@ internal static class HarnessTitles
 }
 
 /// <summary>
-/// Maps a <see cref="Violation"/> to a finding id of the data-persistence review (section 3, F1 to F16) where a rule
+/// Maps a <see cref="Violation"/> to a finding id of the data-persistence review (section 3, F1 to F23) where a rule
 /// applies, or to <see cref="NewFinding"/> when none does. A walk declares the findings it expects
 /// (<see cref="World.ExpectFindings"/>); the set that occurs must equal the declared set.
 ///
@@ -70,16 +70,23 @@ internal static class HarnessTitles
 /// pause sweep, held at <c>Release.AfterLockReleased</c>) deletes the lock of whoever took over meanwhile. Found once in three full runs of the pause sweep (item 8.2):
 /// whether the held release was past its read when the hold began depends on thread timing, so it appears in about one run in twenty of that pause and has no
 /// replay sequence.</description></item>
-/// <item><description><b>F20</b>: invariant I6 (a) in a run where another program had a file of the share open (spec item 8.3): a switch away from the database
-/// whose final save failed (the database was in use) or whose lock-file delete was refused (the lock file was in use) leaves the lock file naming the person's own
-/// session, and the session is read-only on that database. Cause not separated from F16 by the checker beyond that condition.</description></item>
+/// <item><description><b>F20</b> (partly fixed in 1.2.4: switching back to a database whose leftover lock names our own session takes the lock back; the
+/// route that remains is accepted and stays known): invariant I6 (a) in a run where another program had a file of the share open (spec item 8.3): the other
+/// program still holds the lock file when the session goes read-only (Save a Copy on the save-conflict banner, a demotion whose lock-file delete was refused), so
+/// the lock file names the person's own session and the read-only session holds that database's lock until the other program lets go or the lock goes stale.
+/// Any I6 (a) in such a run is F20: the checker does not separate the routes beyond that condition.</description></item>
+/// <item><description><b>F17</b> (FIXED in 1.2.4, the close/switch sequence: while the checkout is ending, the final save's banners and lock loss are not
+/// delivered; the rule stays as the regression detector): a save during a close or a switch found the problem and the person was shown its banner AND "Changes
+/// Not Saved". <b>F23</b> (FIXED in 1.2.4: the post-open save runs only when the open really restored kept changes; the rule stays as the regression detector):
+/// the open's banner said the changes were kept after the person's own confirmed Discard. <b>F18</b> (fixed in 1.2.4, rule kept): two lock-lost banners in one step.</description></item>
 /// <item><description><b>F19</b> (FIXED in 1.2.4, item 4.12: a lock-file check counts for 2 seconds, so the heartbeat repeats it before the temporary-file write and
 /// before the move; the rules stay as the regression detector): invariant I9 saw a heartbeat renewal (a move onto the lock file) land over a lock file that names
 /// another session. The heartbeat reads the lock, checks that it is its own, writes a temporary file and then moves it onto the lock file: these are separate
 /// operations on the share, and a computer that was held between the last two (it slept; the pause sweep) renewed a lock that someone took over meanwhile. Step 8.5.
 /// Now it only fires for a move within 2 seconds of the check.</description></item>
-/// <item><description><b>F16</b>: any I6 violation: a read-only session holds its database's lock, or a lost-lock demotion
-/// carried on against a database other than the one it started on. Step 9.3c-2b.</description></item>
+/// <item><description><b>F16</b> (FIXED in 1.2.4, the close/switch sequence: the checkout has a session id, the release waits for a running demotion, and a
+/// demotion of an ended session stops; the rule stays as the regression detector): any other I6 violation: a read-only session holds its database's lock, or a
+/// lost-lock demotion carried on against a database other than the one it started on. Step 9.3c-2b.</description></item>
 /// </list>
 /// </summary>
 internal static class Findings
@@ -151,7 +158,8 @@ internal static class Findings
             case ViolationKind.TwoMessagesForOneProblem when IsBannerThenChangesNotSaved(violation.MessageIdentities):
                 return "F17";
 
-            // F18: two different lock-lost banners for one loss (seen with a held heartbeat check that finishes while the person switches database).
+            // F18: two different lock-lost banners for one problem (now seen in a live session: a save puts back a deleted lock file, then fails because the
+            // database is in use by another program).
             case ViolationKind.TwoMessagesForOneProblem when IsTwoBanners(violation.MessageIdentities):
                 return "F18";
 
