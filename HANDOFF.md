@@ -46,28 +46,28 @@ Written so a fresh conversation can pick up. Claude Code's memory and `CLAUDE.md
   user pointed at; the PNG title says which days are open). Nothing stored (MinimumVersionToWrite No). Tasks:
   1 tile padding `1eb90c9`, 2 real day numbers `233488a`, 3 fold state `043eaea`, 4 strips and header `68c9a0f`,
   5 marks and flash `98a02df`, 6 export + release check + help `76ad875`. Revision 3 (lanes for other things, stronger meeting colour,
-  bracket marks) is built, uncommitted. Open small points: stepping through Room Browser slots
+  bracket marks) is committed (`04631f4`). Open small points: stepping through Room Browser slots
   flashes at every step; a redraw within a second of a flash cuts it short. **macOS check on the next signed build.**
 
 ## Next steps
 
 0. **Chosen 2026-11-08 (Greg), in this order** (summary item numbers; group 8 is done apart from 8.10):
    1. **C: 4.1** each session gets its own temporary upload name (rule 2: a woken writer can delete the new
-      holder's temp file). Save path, small. **DONE 2026-11-08, uncommitted** (design
+      holder's temp file). Save path, small. **DONE 2026-11-08, `30fcb84`** (design
       `designs/own-temp-file-names.md`; summary 4.1 Done note): full suite with harness 4460 passed, 0 failed.
       Heartbeat `.lock.tmp` left as is (Greg agreed).
-   2. **A + B, the close/switch sequence: DONE 2026-11-08, uncommitted** (design `designs/close-switch-sequence.md`;
+   2. **A + B, the close/switch sequence: DONE 2026-11-08, `454a38c`** (design `designs/close-switch-sequence.md`;
       Done notes on summary 3.1, 3.3, 4.13, 6.10, 6.11, 6.13). F16, F17, F18, F23 fixed (proof tests); F20 partly
       (remainder accepted, stays known); 3.1 always asks (Apply / Discard / Cancel). Full suite with harness 4501
       passed, 0 failed. Committed and pushed as `454a38c`. By-hand check that an unchanged editor never triggers
       the 3.1 question: passed (Greg, 2026-11-09).
    3. **D: 7.1** save timings in breadcrumbs/failure report, with **7.3** and **7.4** (reporting only).
-      **DONE 2026-11-09, uncommitted** (design `designs/field-reporting-1.2.4.md`; Done notes on summary 7.1, 7.3,
+      **DONE 2026-11-09, `7d54a7d`** (design `designs/field-reporting-1.2.4.md`; Done notes on summary 7.1, 7.3,
       7.4). Full suite with harness 4521 passed, 1 failed, 2 skipped: the failure was
       `CrashSweep_EveryPointIsCutOrExplained` ("planned cut did not fire", `Lock.AfterDeleted` on Close, background
       lock delete), which passed 3/3 re-run alone: a flake to watch, maybe settle `PendingRelease` there.
    4. **F: 1.2 + 1.4** (drop the shared DiaSymReader DLL and the Skia/HarfBuzz PDBs from the Store package), **1.3**
-      test flights, **1.5** the failing GitHub Tests workflow. **DONE 2026-11-09, uncommitted** (Done notes on
+      test flights, **1.5** the failing GitHub Tests workflow. **DONE 2026-11-09, `8969832`, pushed** (Done notes on
       summary 1.2–1.5): `build-msix.ps1` leaves out the DLL (both modes) and every `.pdb` (Store), so the Store MSIX
       is 55.5 MB; flight procedure in `docs/testing/release-tests-1.2.4.md` Part 5 (Greg: set up the known user
       group); 1.5 was already green on the 1.2.3 push.
@@ -77,7 +77,7 @@ Written so a fresh conversation can pick up. Claude Code's memory and `CLAUDE.md
    - **Version gate:** leave 2.8 and 2.9 out of 1.2.4 (each raises `MinimumVersionToWrite` and would need 1.6
      first). Everything chosen above is MinimumVersionToWrite **No**. 3.5 and 2.1 A/B are too big for now.
 1. **Rest of group 8:**
-   - **8.8 built and 8.9 started (2026-11-03), not committed:** `tools/FieldTest/`. Read its `README.md` first.
+   - **8.8 built and 8.9 started (2026-11-03), committed:** `tools/FieldTest/`. Read its `README.md` first.
      - The module drives every test computer from one elevated console.
      - `New-TestComputer.ps1` makes the VMs.
      - Greg's machine list is `tools/FieldTest/fieldtest.config.psd1`: GregDeskTop, TPVM1 and TPVM2, plus GregSurface
