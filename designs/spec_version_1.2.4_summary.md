@@ -772,6 +772,9 @@ kindly than reality. So: close the harness gaps first, then make the remaining h
 > once. Both field bugs that needed new test builds came from this. Run them concurrently (consider the reader poll
 > too), and harden the 40 ms quiet window when settling background work; that window caused the crash-sweep timing
 > failure.
+> **Done (2 Nov 2026, `aa34e6a`):** pause actions hold the wake check while the heartbeat ticks, and the reverse; four
+> proof tests pin the once-per-session lock-loss guard (field bug A12). The quiet window is gone: the harness awaits the
+> checkout service's background checks instead. The reader poll was not added.
 
 > [!note]- **8.2 Harness: a network fault that hangs instead of failing at once**
 > Today "network down" answers every call with an immediate timeout, so a call that blocks before its deadline starts
@@ -831,7 +834,9 @@ kindly than reality. So: close the harness gaps first, then make the remaining h
 > **Built (3 Nov 2026), VM parts not yet run:** the `tools/FieldTest` module (`README.md` there). Machines are listed
 > in a gitignored config: this computer, VMs over PowerShell Direct, and an optional WinRM computer. Scenario files
 > check the logs for M1 B, M2 C1/C3, M4 B2/B3 and M5. The handtest scripts are folded in. The local commands pass a
-> self-test in PowerShell 5.1 and 7. The VM commands are untested until a VM exists.
+> self-test in PowerShell 5.1 and 7. ~~The VM commands are untested until a VM exists.~~ **The VM commands work
+> (2026-11-06 to 11-08, on TPVM1):** checkpoints, install, test timings, start/suspend/stop TermPoint, log collection;
+> M5 passed through them.
 > Dialog-only outcomes (the restore offer, the banners) have no log line, so they're still checked by eye.
 
 > [!note]- **8.9 A Hyper-V VM as the second and third computer**
@@ -876,6 +881,10 @@ kindly than reality. So: close the harness gaps first, then make the remaining h
 > - one real sleep;
 > - macOS;
 > - Store flights.
+>
+> **Done (8 Nov 2026):** `docs/testing/release-tests-1.2.4.md`. It lists what the harness covers (M1 B, M2, M3, M9,
+> M10, M12, S2; S1 and S6 by unit tests), the field tests kept (M1 A, M4, M5, M6, M7, M8 with 1.2.3, M11, S3, S4), one
+> wording pass, platforms and 1.2.4 features, and the Store steps. Later fixes add their own checks to it.
 
 > [!note]- **8.12 Flaky tests and small harness cleanups**
 > - A pause-proof test fails about 2–7% of the time; its wake-check settle waits 5 × 8 ms of real time.
@@ -893,6 +902,18 @@ kindly than reality. So: close the harness gaps first, then make the remaining h
 > other full runs that day and when run alone or with its class. Guess (unconfirmed): something left in a shared temp
 > folder by an earlier test, since tests run one at a time. Seen during collapse-days task 2, which doesn't touch the
 > wizard.
+>
+> **Done (8 Nov 2026), test code only:**
+> - Pause-proof: its real-time settle was already replaced on 2 Nov (`aa34e6a`: the harness awaits the checkout
+>   service's background checks). No failures since; 20 back-to-back runs of the 29 pause-proof tests were clean.
+> - Fault seam: the recorders in `FaultSeamTests` keep only calls from their own test (an async-local token,
+>   `ClaimFlow`), so another test's leftover background work can't add to an exact sequence.
+> - Wizard join: the extra entry was the wizard's own write probe. Setting `DbPath`/`BackupFolder` starts a
+>   fire-and-forget folder check that creates and deletes `.sa-write-probe-*.tmp` in the test folder. The test now
+>   ignores those files.
+> - Found on the way: `SubjectPaletteTests` (3 tests) failed in every run built with `-o E:/...`, because they
+>   looked for `AppColors.axaml` above the test binaries. They now start from their own source file
+>   (`[CallerFilePath]`).
 
 ---
 

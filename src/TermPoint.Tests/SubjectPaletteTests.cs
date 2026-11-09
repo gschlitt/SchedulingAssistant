@@ -1,3 +1,4 @@
+using System.Runtime.CompilerServices;
 using System.Xml.Linq;
 using TermPoint.Services;
 using Xunit;
@@ -13,10 +14,15 @@ public sealed class SubjectPaletteTests
 {
     private static readonly XNamespace Xaml = "http://schemas.microsoft.com/winfx/2006/xaml";
 
-    /// <summary>Walks up from the test binaries to find AppColors.axaml and reads SubjectPalette01.. in order.</summary>
-    private static List<string> ReadPalette()
+    /// <summary>
+    /// Finds AppColors.axaml by walking up from THIS SOURCE FILE's folder (not from the test binaries, which may be
+    /// built outside the repository, e.g. <c>dotnet test -o E:/...</c>) and reads SubjectPalette01.. in order.
+    /// </summary>
+    /// <param name="sourceFile">Filled in by the compiler with this file's path; callers leave it out.</param>
+    /// <returns>The palette's hex strings, in order.</returns>
+    private static List<string> ReadPalette([CallerFilePath] string sourceFile = "")
     {
-        var dir = new DirectoryInfo(AppContext.BaseDirectory);
+        var dir = new DirectoryInfo(Path.GetDirectoryName(sourceFile)!);
         while (dir is not null && !File.Exists(Path.Combine(dir.FullName, "src", "TermPoint", "AppColors.axaml")))
             dir = dir.Parent;
         Assert.NotNull(dir);

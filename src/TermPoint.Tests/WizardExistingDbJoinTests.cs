@@ -51,6 +51,20 @@ public sealed class WizardExistingDbJoinTests : IDisposable
         return Convert.ToHexString(SHA256.HashData(s));
     }
 
+    /// <summary>
+    /// The entries of <see cref="_tempDir"/>, leaving out the wizard's own write-probe files.
+    /// Setting <c>DbPath</c> or <c>BackupFolder</c> on step 1a starts a fire-and-forget folder assessment
+    /// (<see cref="FolderAssessor.AssessAsync"/>) that creates and at once deletes a
+    /// <c>.sa-write-probe-*.tmp</c> file in the folder (<see cref="WriteAccessProbe.CanCreateFileIn"/>). A listing
+    /// taken in that instant shows it (seen once, 2026-11-05: "expected one path, got two"). It is not one of the
+    /// files these tests look for (lock, WAL, journal, a created database), so it is ignored here.
+    /// </summary>
+    /// <returns>The remaining entries, as full paths.</returns>
+    private string[] EntriesBesidesWriteProbes()
+        => Directory.GetFileSystemEntries(_tempDir)
+            .Where(p => !Path.GetFileName(p).StartsWith(".sa-write-probe-", StringComparison.Ordinal))
+            .ToArray();
+
     /// <summary>Creates a real TermPoint database file "shared.db" and returns its path.</summary>
     private async Task<string> CreateSharedDatabaseAsync()
     {
@@ -106,7 +120,7 @@ public sealed class WizardExistingDbJoinTests : IDisposable
         Assert.True(wizard.IsComplete, $"Wizard should finish. Error: {step.ErrorMessage}");
         Assert.Equal(string.Empty, step.ErrorMessage);
         Assert.Equal(hashBefore, HashOf(db));                                   // D untouched
-        Assert.Equal(new[] { db }, Directory.GetFileSystemEntries(_tempDir));   // no .lock, -wal, -shm, -journal
+        Assert.Equal(new[] { db }, EntriesBesidesWriteProbes());                // no .lock, -wal, -shm, -journal
         Assert.Equal(0, initCalls());                                           // no services built on D
         Assert.False(App.LockService.IsWriter);                                 // no lock taken
 
@@ -226,6 +240,6 @@ public sealed class WizardExistingDbJoinTests : IDisposable
         Assert.Equal("Please choose an existing database file.", step.ErrorMessage);
         Assert.Equal(0, initCalls());
         Assert.False(File.Exists(missing));
-        Assert.Empty(Directory.GetFileSystemEntries(_tempDir));
+        Assert.Empty(EntriesBesidesWriteProbes());
     }
 }

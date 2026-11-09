@@ -46,21 +46,26 @@ Until this works, every field check of a 1.2.4 fix (F20, F17, F18, F23, 6.12) ru
 
 A full harness run takes about 38 minutes; a random red result costs a re-run and doubt about every real failure.
 
-- [ ] The pause-proof test that fails 2–7% of the time (its wake-check settle waits 5 × 8 ms of real time).
-- [ ] The fault-seam test that caught a background task from an earlier test.
-- [ ] `WizardExistingDbJoinTests.Step1a_JoinExistingDb_DoesNotOpenOrChangeD` (`readerMode: True`), failed once on
-      2026-11-05 (two temp paths instead of one); not looked at yet.
+**Done 2026-11-08** (summary 8.12's Done note has the causes).
+
+- [x] The pause-proof test that fails 2–7% of the time (its wake-check settle waits 5 × 8 ms of real time).
+- [x] The fault-seam test that caught a background task from an earlier test.
+- [x] `WizardExistingDbJoinTests.Step1a_JoinExistingDb_DoesNotOpenOrChangeD` (`readerMode: True`), failed once on
+      2026-11-05 (two temp paths instead of one).
+- [x] Found on the way: `SubjectPaletteTests` failed in every run built with `-o E:/...`.
 
 ### Step 3: 8.11, written as the 1.2.4 release test list (about half a session)
 
-- [ ] One short document: the hand tests that stay, and the ones the harness now covers (per summary item T5, M1 B,
+**Done 2026-11-08:** [docs/testing/release-tests-1.2.4.md](../docs/testing/release-tests-1.2.4.md).
+
+- [x] One short document: the hand tests that stay, and the ones the harness now covers (per summary item T5, M1 B,
       M2, M3, M9, M10, M12, S1 and S6 found nothing new in 1.2.3).
-- [ ] Keep by hand only what can't be simulated: real SMB behaviour, on-screen messages, Avalonia and process
+- [x] Keep by hand only what can't be simulated: real SMB behaviour, on-screen messages, Avalonia and process
       shutdown, MSIX install and upgrade, a real 1.2.2 alongside, one real sleep, macOS, Store flights.
 
 ### Housekeeping
 
-- [ ] Done note on 8.1; update 8.8's note.
+- [x] Done note on 8.1; update 8.8's note (2026-11-08).
 
 ### Not needed for goal 1
 
@@ -167,3 +172,8 @@ takeover, answer "Restore?").
     198 s after the last heartbeat; that errs on the safe side.
   - Seen in passing: closing TermPoint always runs a save, even with no edits (`ReleaseAsync` calls `SaveAsync`
     unconditionally), so D's hash changes after a start-and-close. Existing behaviour, not new in 1.2.4.
+- 2026-11-08, **Step 2 finished** (test code only; causes in summary 8.12's Done note). Checks: the fixed wizard
+  and fault-seam classes 30 runs in a row, clean; the 29 pause-proof tests 20 runs in a row with the harness, clean;
+  full suite with the harness (`E:/sa-812.trx`, 12:40-13:13): 4431 passed, 0 failed, 3 skipped. Next: Step 3.
+- 2026-11-08, **Step 3 finished:** `docs/testing/release-tests-1.2.4.md`. Goal 1 is met apart from
+  Housekeeping (Done note on 8.1, 8.8's note).

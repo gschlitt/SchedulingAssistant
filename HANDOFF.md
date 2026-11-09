@@ -97,7 +97,10 @@ Written so a fresh conversation can pick up. Claude Code's memory and `CLAUDE.md
      - Reverse guard passed. TPVM1 `Ready` now holds **1.2.4.0 at ×3**. The 1.2.4 sideload is also on GregSurface
        (`\\mekler\Users\gregs\temp\msix-1.2.4.0\`).
    - **Next (in order):**
-     1. Readiness Step 2 (8.12 flaky tests), then Step 3 (8.11 release test list).
+     1. **Readiness goal 1 is met (2026-11-08):** Step 2 (8.12 flaky tests; full harness suite 4431 passed, 0 failed)
+        and Step 3 (8.11: `docs/testing/release-tests-1.2.4.md`, the 1.2.4 release test list) are done. Group 8 is
+        finished apart from 8.10 (the automated rig, later). Next: pick the next 1.2.4 group with Greg (open findings
+        below are the obvious candidates).
      2. Scenario files only alongside the fixes they check (M7, M12, M6 recommended when wanted).
 2. **Open findings (summary items):** 4.13 F20 (own leftover lock after a switch → read-only on return); 6.10 F17
    (two messages for one save problem); 6.11 F18 (two lock-lost banners); 6.12 false "Inactive" prompt when the

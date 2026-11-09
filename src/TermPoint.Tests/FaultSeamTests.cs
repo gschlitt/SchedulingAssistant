@@ -53,6 +53,31 @@ public sealed class FaultSeamTests : IDisposable
 
     // ── Helpers ───────────────────────────────────────────────────────────────
 
+    /// <summary>This test instance's token: what <see cref="FlowOwner"/> holds in code this test started.</summary>
+    private readonly object _owner = new();
+
+    /// <summary>
+    /// Which test started the code running on the current async flow. It flows into every await, <c>Task.Run</c> and
+    /// timer the test's code starts, but not into work an EARLIER test left running in the background (a lock-file
+    /// delete finishing after its test ended, say): that work carries its own test's token, or none.
+    /// </summary>
+    private static readonly AsyncLocal<object?> FlowOwner = new();
+
+    /// <summary>
+    /// Marks the current flow as this test's and returns a check for it, so a recorder installed in the static
+    /// <see cref="CrashPoints.Hook"/> or <see cref="NetworkFaults.Decide"/> keeps only this test's calls. Both hooks
+    /// are process-wide: without the check, a background task from another test can hit them while this test records,
+    /// which made an exact-sequence assertion fail once (spec item 8.12).
+    /// <para>Must be called from the test method itself, not from inside an <c>async</c> helper: an async method
+    /// restores the caller's async-local values when it returns, so the mark would be lost.</para>
+    /// </summary>
+    /// <returns>True while running on a flow this test started.</returns>
+    private Func<bool> ClaimFlow()
+    {
+        FlowOwner.Value = _owner;
+        return () => ReferenceEquals(FlowOwner.Value, _owner);
+    }
+
     /// <summary>Path of D inside the fake share.</summary>
     private string DbPath => Path.Combine(_shareDir, "test.db");
 
@@ -493,7 +518,8 @@ public sealed class FaultSeamTests : IDisposable
         CreateSqliteDb(a);
 
         var seen = new ConcurrentQueue<NetworkFaultRequest>();
-        NetworkFaults.Decide = r => { seen.Enqueue(r); return NetworkFaultDecision.None; };
+        var mine = ClaimFlow();
+        NetworkFaults.Decide = r => { if (mine()) seen.Enqueue(r); return NetworkFaultDecision.None; };
 
         async Task<NetworkFaultRequest> Single(Func<Task> call)
         {
@@ -530,7 +556,8 @@ public sealed class FaultSeamTests : IDisposable
     {
         var svc = await CheckoutWithUnsavedEditAsync(new RecordingLogger());
         var hits = new ConcurrentQueue<string>();
-        CrashPoints.Hook = hits.Enqueue;
+        var mine = ClaimFlow();
+        CrashPoints.Hook = name => { if (mine()) hits.Enqueue(name); };
 
         Assert.Equal(SaveOutcome.Success, await svc.SaveAsync());
 
@@ -547,7 +574,8 @@ public sealed class FaultSeamTests : IDisposable
         var svc = CreateService(new RecordingLogger());
         CreateSqliteDb(DbPath);
         var hits = new ConcurrentQueue<string>();
-        CrashPoints.Hook = hits.Enqueue;
+        var mine = ClaimFlow();
+        CrashPoints.Hook = name => { if (mine()) hits.Enqueue(name); };
 
         Assert.Equal(CheckoutOutcome.WriteAccess, await svc.CheckoutAsync(DbPath));
         InsertTestValue(svc.WorkingPath, "edit");
