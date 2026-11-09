@@ -1441,6 +1441,89 @@ public sealed class CheckoutServiceTests : IDisposable
     }
 
     /// <summary>
+    /// The sweep (1.2.4 item 4.1) deletes every leftover of the database, the per-attempt names and the legacy
+    /// <c>D.tmp</c> alike, and leaves look-alikes, other databases' files and D itself alone.
+    /// </summary>
+    [Fact]
+    public async Task CleanupOrphanedTmp_DeletesPerAttemptAndLegacyLeftovers_LeavesLookAlikesAlone()
+    {
+        var (svc, _) = CreateService();
+        var db = DbPath();
+        CreateFile(db);
+        var leftovers = new[] { ShareTempFile.NewPath(db), ShareTempFile.NewPath(db), db + ".tmp" };
+        var keepers   = new[]
+        {
+            db + ".backup.tmp", db + ".3f2a9c1e.tmp.x", db + ".3f2a9c1.tmp", db + ".3f2a9c1ea.tmp",
+            db + ".lock.tmp", Path.Combine(Path.GetDirectoryName(db)!, "OTHER.db.3f2a9c1e.tmp"),
+        };
+        foreach (var f in leftovers.Concat(keepers)) CreateFile(f, "x");
+
+        await svc.CleanupOrphanedTmpAsync(db);
+
+        Assert.All(leftovers, f => Assert.False(File.Exists(f), f));
+        Assert.All(keepers, f => Assert.True(File.Exists(f), f));
+        Assert.True(File.Exists(db));
+    }
+
+    /// <summary>
+    /// A leftover that cannot be deleted (another program holds it open) is skipped; the others are still
+    /// deleted, and the sweep does not throw.
+    /// </summary>
+    [FactWindowsOnly]
+    public async Task CleanupOrphanedTmp_OneLeftoverHeldOpen_OthersStillDeleted_NoException()
+    {
+        var (svc, _) = CreateService();
+        var db = DbPath();
+        CreateFile(db);
+        var held = ShareTempFile.NewPath(db);
+        var free = ShareTempFile.NewPath(db);
+        CreateFile(held, "x");
+        CreateFile(free, "x");
+
+        Exception? ex;
+        using (DbFileTestHelpers.LockExclusively(held))
+            ex = await Record.ExceptionAsync(() => svc.CleanupOrphanedTmpAsync(db));
+
+        Assert.Null(ex);
+        Assert.True(File.Exists(held));
+        Assert.False(File.Exists(free));
+    }
+
+    /// <summary>
+    /// A folder listing that times out or throws ends the sweep quietly: no exception, nothing deleted, and a
+    /// log line saying so.
+    /// </summary>
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task CleanupOrphanedTmp_ListingTimesOutOrThrows_DoesNotThrow_AndDeletesNothing(bool throws)
+    {
+        var logger = new RecordingAppLogger();
+        var (svc, _) = CreateService(logger: logger);
+        var db = DbPath();
+        CreateFile(db);
+        var leftover = ShareTempFile.NewPath(db);
+        CreateFile(leftover, "x");
+
+        Exception? ex;
+        try
+        {
+            NetworkFaults.Decide = r => r.Label == "Directory.GetFiles"
+                ? (throws ? NetworkFaultDecision.Throwing(new IOException("share gone")) : NetworkFaultDecision.TimeOut)
+                : NetworkFaultDecision.None;
+            ex = await Record.ExceptionAsync(() => svc.CleanupOrphanedTmpAsync(db));
+        }
+        finally
+        {
+            NetworkFaults.Decide = null;
+        }
+
+        Assert.Null(ex);
+        Assert.True(File.Exists(leftover));
+        Assert.Contains(logger.Infos, l => l.Contains("temporary-file sweep skipped"));
+    }
+
+    /// <summary>
     /// CleanupOrphanedTmpAsync does not throw when there is no D.tmp to delete.
     /// </summary>
     [Fact]
@@ -5028,12 +5111,12 @@ public sealed class CheckoutServiceTests : IDisposable
     }
 
     /// <summary>
-    /// A D.tmp that is still there when a save runs (the cleanup was skipped or failed) is simply
-    /// overwritten: the save streams its snapshot to D.tmp with <c>FileMode.Create</c> and renames it
-    /// over D, so it succeeds, D gets the edit, and no D.tmp remains.
+    /// A D.tmp that is still there when a save runs (the cleanup was skipped or failed) is not this save's
+    /// business: the save uploads to a temporary name of its own (1.2.4 item 4.1), so it succeeds, D gets the
+    /// edit, the save's own temporary file is gone, and the leftover is untouched (the next sweep removes it).
     /// </summary>
     [Fact]
-    public async Task SaveAsync_WithLeftoverTmp_OverwritesItAndSucceeds()
+    public async Task SaveAsync_WithLeftoverTmp_SucceedsAndLeavesItAlone()
     {
         var (svc, _) = CreateService();
         var db = DbPath();
@@ -5046,7 +5129,8 @@ public sealed class CheckoutServiceTests : IDisposable
 
         Assert.Equal(SaveOutcome.Success, outcome);
         Assert.Equal("edited-content", ReadTestValue(db));
-        Assert.False(File.Exists(tmp), "The rename consumed D.tmp.");
+        AssertTmpUntouched(tmp);
+        Assert.Equal(new[] { tmp }, ShareTemp.Leftovers(db));   // nothing but the planted file: the save's own was consumed
     }
 
     // ═════════════════════════════════════════════════════════════════════════
@@ -5122,7 +5206,7 @@ public sealed class CheckoutServiceTests : IDisposable
         Assert.Equal(SaveOutcome.CopyError, outcome);
         Assert.Equal((SavePrompt.ForTransientFailure(SavePrompt.InUseMessage, isAutoSave: false), false), Assert.Single(banners));
         Assert.Equal(before, DbFileTestHelpers.HashOf(db));
-        Assert.False(File.Exists(db + ".tmp"), "Nothing may be written to the share when D cannot be read.");
+        ShareTemp.AssertNone(db, "Nothing may be written to the share when D cannot be read.");
         AssertSessionKept(svc, lockSvc);
 
         Assert.Equal(SaveOutcome.Success, await svc.SaveAsync());
@@ -5149,27 +5233,60 @@ public sealed class CheckoutServiceTests : IDisposable
     }
 
     /// <summary>
-    /// D.tmp held exclusively by another program while the snapshot is streamed to it: the copy's open
-    /// fails with a sharing violation. CopyError plus the in-use banner, no exception, D unchanged, the
-    /// other program's file left as it was, D' + marker kept; the next save (after release) succeeds.
+    /// The field case (1.2.4 item 4.1): another program (a frozen writer's server-side handle) holds D.tmp open
+    /// exclusively. The save uploads to a temporary name of its own, so it is not blocked: it succeeds at once,
+    /// with no banner, D gets the edit, and the other program's file is left exactly as it was.
     /// </summary>
     [FactWindowsOnly]
-    public async Task SaveAsync_TmpHeldExclusivelyDuringCopy_ReturnsCopyError_AndDIsUnchanged()
+    public async Task SaveAsync_AnotherProgramHoldsTheOldSharedTmp_StillSucceedsAtOnce()
     {
         var db = DbPath();
-        var (svc, lockSvc) = await CheckoutWithUnsavedEditAsync(db);   // checkout's own D.tmp cleanup is already done
+        var (svc, _) = await CheckoutWithUnsavedEditAsync(db);   // checkout's own sweep is already done
         var banners = CaptureSaveBanners(svc);
-        var before = DbFileTestHelpers.HashOf(db);
         var tmp = PlantTmp(db);
 
         SaveOutcome outcome;
         using (DbFileTestHelpers.LockExclusively(tmp))
             outcome = await svc.SaveAsync();
 
-        Assert.Equal(SaveOutcome.CopyError, outcome);
-        Assert.Equal((SavePrompt.ForTransientFailure(SavePrompt.InUseMessage, isAutoSave: false), false), Assert.Single(banners));
-        Assert.Equal(before, DbFileTestHelpers.HashOf(db));
+        Assert.Equal(SaveOutcome.Success, outcome);
+        Assert.Empty(banners);
+        Assert.Equal("unsaved-edit", ReadTestValue(db));
         AssertTmpUntouched(tmp);
+        Assert.Equal(new[] { tmp }, ShareTemp.Leftovers(db));
+    }
+
+    /// <summary>
+    /// The copy of the snapshot to the share fails with a sharing violation on THIS save's own temporary file
+    /// (injected through the network-fault seam, since its name is not predictable): CopyError plus the in-use
+    /// banner, no exception, D unchanged, no temporary file left of the save's own, D' + marker kept; the next
+    /// save succeeds.
+    /// </summary>
+    [Fact]
+    public async Task SaveAsync_OwnTmpRefusedDuringCopy_ReturnsCopyError_LeavesNoTmp_AndDIsUnchanged()
+    {
+        var db = DbPath();
+        var (svc, lockSvc) = await CheckoutWithUnsavedEditAsync(db);
+        var banners = CaptureSaveBanners(svc);
+        var before = DbFileTestHelpers.HashOf(db);
+
+        SaveOutcome outcome;
+        try
+        {
+            NetworkFaults.Decide = r => r.Label == "CopyFile" && r.DestinationPath is { } d && ShareTempFile.IsLeftoverOf(db, d)
+                ? NetworkFaultDecision.Throwing(new IOException("The process cannot access the file because it is being used by another process."))
+                : NetworkFaultDecision.None;
+            outcome = await svc.SaveAsync();
+        }
+        finally
+        {
+            NetworkFaults.Decide = null;
+        }
+
+        Assert.Equal(SaveOutcome.CopyError, outcome);
+        Assert.Single(banners);
+        Assert.Equal(before, DbFileTestHelpers.HashOf(db));
+        ShareTemp.AssertNone(db);
         AssertSessionKept(svc, lockSvc);
 
         Assert.Equal(SaveOutcome.Success, await svc.SaveAsync());
@@ -5196,7 +5313,7 @@ public sealed class CheckoutServiceTests : IDisposable
         Assert.Equal(SaveOutcome.CopyError, outcome);
         Assert.Equal((SavePrompt.ForTransientFailure(SavePrompt.InUseMessage, isAutoSave: false), false), Assert.Single(banners));
         Assert.Equal(before, DbFileTestHelpers.HashOf(db));
-        Assert.False(File.Exists(db + ".tmp"));
+        ShareTemp.AssertNone(db);
         AssertSessionKept(svc, lockSvc);
 
         svc.BeforeTmpVerifyAsync = null;
@@ -5207,8 +5324,9 @@ public sealed class CheckoutServiceTests : IDisposable
     /// <summary>
     /// D.tmp becomes unreadable at the verify (another program grabs it exclusively right after the
     /// copy): sharing violation on the step-4 hash. CopyError plus the in-use banner, no rename, D
-    /// unchanged. The best-effort delete of D.tmp cannot succeed while the other program holds it, which
-    /// is harmless — the next save overwrites it, and that save succeeds once the hold is released.
+    /// unchanged. The best-effort delete of the save's temporary file cannot succeed while the other program
+    /// holds it, which is harmless — the next save uses a name of its own and succeeds, and the sweep removes
+    /// the leftover later.
     /// </summary>
     [FactWindowsOnly]
     public async Task SaveAsync_TmpHeldExclusivelyAtVerify_ReturnsCopyError_AndDIsUnchanged()
@@ -5238,7 +5356,11 @@ public sealed class CheckoutServiceTests : IDisposable
         svc.BeforeTmpVerifyAsync = null;
         Assert.Equal(SaveOutcome.Success, await svc.SaveAsync());
         Assert.Equal("unsaved-edit", ReadTestValue(db));
-        Assert.False(File.Exists(db + ".tmp"), "The successful save consumed D.tmp.");
+        // The first attempt could not delete its file while the other program held it: that one leftover stays
+        // (the second save used a name of its own) until the sweep at the next write-access open removes it.
+        Assert.Single(ShareTemp.Leftovers(db));
+        await svc.CleanupOrphanedTmpAsync(db);
+        ShareTemp.AssertNone(db, "The sweep removes the leftover once it is released.");
     }
 
     /// <summary>
@@ -5265,7 +5387,7 @@ public sealed class CheckoutServiceTests : IDisposable
         Assert.Equal((SavePrompt.SessionFileMissingMessage, false), Assert.Single(banners));
         Assert.False(File.Exists(workingCopy), "A missing working copy must never be re-created (empty) by the save.");
         Assert.False(File.Exists(workingCopy + ".savetmp"));
-        Assert.False(File.Exists(db + ".tmp"));
+        ShareTemp.AssertNone(db);
         Assert.Equal(before, DbFileTestHelpers.HashOf(db));
     }
 
@@ -5675,7 +5797,7 @@ public sealed class CheckoutServiceTests : IDisposable
         Assert.Matches(@"^test \(before restore \d{4}-\d{2}-\d{2} \d{2}-\d{2}\)\.db$", Path.GetFileName(result.PreRestoreCopyPath)!);
         Assert.Equal(oldBytes, File.ReadAllBytes(result.PreRestoreCopyPath!));
         Assert.Equal("old-d", ReadTestValue(result.PreRestoreCopyPath!));
-        Assert.False(File.Exists(db + ".tmp"));
+        ShareTemp.AssertNone(db);
 
         // The session is stale but intact: the hash is untouched on purpose, the lock still ours, D' still holds the edit.
         Assert.Equal(hashAtCheckout, svc.HashAtCheckout);
@@ -5827,7 +5949,7 @@ public sealed class CheckoutServiceTests : IDisposable
         Assert.Equal(RestoreOutcome.RenameUnconfirmed, result.Outcome);
         Assert.False(result.TargetUnchanged);
         Assert.Equal(oldBytes, File.ReadAllBytes(result.PreRestoreCopyPath!));
-        Assert.Equal(result.RestoredHash, DbFileTestHelpers.HashOf(db + ".tmp"));
+        Assert.Equal(result.RestoredHash, DbFileTestHelpers.HashOf(ShareTemp.Single(db)));
     }
 
     // ═════════════════════════════════════════════════════════════════════════
@@ -6594,9 +6716,8 @@ public sealed class CheckoutServiceTests : IDisposable
     /// <summary>
     /// F12, the lock: another user takes over the lock while the save is uploading. The final check before the
     /// rename finds a foreign lock and refuses with LockLost, so the rename never happens. D is byte-for-byte what it
-    /// was, and D' and its dirty marker stay: the user's edit is not lost. The D.tmp is NOT deleted: without the lock
-    /// this save must not write to the share (rule 2), and D.tmp's one shared name may by now be the new holder's save
-    /// in progress. The new holder's checkout or save deals with a leftover one.
+    /// was, and D' and its dirty marker stay: the user's edit is not lost. The save's temporary file IS deleted even
+    /// without the lock (1.2.4 item 4.1): it has a name of its own, so it is nobody else's and deleting it needs no lock.
     /// </summary>
     [Fact]
     public async Task SaveAsync_LockTakenOverWhileUploading_IsRefusedAtTheFinalCheck_AndDIsUntouched()
@@ -6609,7 +6730,7 @@ public sealed class CheckoutServiceTests : IDisposable
 
         Assert.Equal(SaveOutcome.LockLost, outcome);
         Assert.Equal(before, DbFileTestHelpers.HashOf(db));
-        Assert.True(File.Exists(db + ".tmp"), "Without the lock the save must leave D.tmp alone (it may be the new holder's).");
+        ShareTemp.AssertNone(db, "A refused save deletes its own temporary file, lock or no lock.");
         Assert.True(File.Exists(svc.WorkingPath), "D' must survive the refusal.");
         Assert.True(File.Exists(svc.WorkingPath + ".dirty"), "The dirty marker must survive the refusal.");
     }
@@ -6639,7 +6760,7 @@ public sealed class CheckoutServiceTests : IDisposable
         Assert.True(svc.HasSaveConflict);
         Assert.Equal(1, conflictsRaised);
         Assert.Equal("other-writers-save", ReadTestValue(db));   // D keeps the other writer's content
-        Assert.False(File.Exists(db + ".tmp"), "The D.tmp of a refused save must be deleted.");
+        ShareTemp.AssertNone(db, "The temporary file of a refused save must be deleted.");
         Assert.True(File.Exists(svc.WorkingPath));
         Assert.True(File.Exists(svc.WorkingPath + ".dirty"));
     }
@@ -6703,7 +6824,7 @@ public sealed class CheckoutServiceTests : IDisposable
         Assert.Equal(SaveOutcome.CopyError, outcome);
         Assert.Equal((SavePrompt.OutageNotice(hasUnsavedChanges: true, autoSaveEnabled: false), false), Assert.Single(banners));   // the one sticky outage notice (spec item 28)
         Assert.Equal(before, DbFileTestHelpers.HashOf(db));
-        Assert.False(File.Exists(db + ".tmp"));
+        ShareTemp.AssertNone(db);
         AssertSessionKept(svc, lockSvc);
     }
 
@@ -6725,7 +6846,7 @@ public sealed class CheckoutServiceTests : IDisposable
         Assert.Equal(SaveOutcome.CopyError, outcome);
         Assert.Equal((SavePrompt.ForTransientFailure(SavePrompt.InUseMessage, isAutoSave: false), false), Assert.Single(banners));
         Assert.Equal(before, DbFileTestHelpers.HashOf(db));
-        Assert.False(File.Exists(db + ".tmp"));
+        ShareTemp.AssertNone(db);
         AssertSessionKept(svc, lockSvc);
     }
 
@@ -7098,11 +7219,11 @@ public sealed class CheckoutServiceTests : IDisposable
     /// <summary>
     /// Change (d), the new behaviour: the final check cannot reach the lock file (the share stopped answering during
     /// the upload), so it can NOT tell whose lock it is. The save is a CopyError with the outage notice, D is
-    /// byte-identical, D' and its marker stay, and D.tmp is LEFT in place (it may be another computer's save in
-    /// progress); the log says why. The leftover is harmless: the next save overwrites it and succeeds.
+    /// byte-identical, D' and its marker stay, and the save's own temporary file is deleted (1.2.4 item 4.1: it has
+    /// a name of its own, so no lock is needed to delete it); the log names the refusal.
     /// </summary>
     [Fact]
-    public async Task SaveAsync_LockCannotBeCheckedAtTheFinalCheck_LeavesD_tmpInPlace_AsACopyError()
+    public async Task SaveAsync_LockCannotBeCheckedAtTheFinalCheck_DeletesItsOwnTmp_AsACopyError()
     {
         var db = DbPath();
         var logger = new RecordingAppLogger();
@@ -7120,23 +7241,23 @@ public sealed class CheckoutServiceTests : IDisposable
         Assert.Equal(SaveOutcome.CopyError, outcome);
         Assert.Equal((SavePrompt.OutageNotice(hasUnsavedChanges: true, autoSaveEnabled: false), false), Assert.Single(banners));
         Assert.Equal(before, DbFileTestHelpers.HashOf(db));
-        Assert.True(File.Exists(db + ".tmp"), "Without a confirmed lock the save must leave D.tmp alone.");
-        Assert.EndsWith("the lock could not be checked, D.tmp left in place.", FinalCheckRefusalLine(logger));
+        ShareTemp.AssertNone(db, "Even without a confirmed lock the save deletes its own temporary file.");
+        Assert.EndsWith("this save's temporary file discarded.", FinalCheckRefusalLine(logger));
         AssertSessionKept(svc, lockSvc);
 
-        // The leftover D.tmp does no harm: the next save overwrites it, saves, and consumes it.
+        // The next save works as usual.
         Assert.Equal(SaveOutcome.Success, await svc.SaveAsync());
         Assert.Equal("unsaved-edit", ReadTestValue(db));
-        Assert.False(File.Exists(db + ".tmp"));
+        ShareTemp.AssertNone(db);
     }
 
     /// <summary>
     /// Change (d) with change (a), Story 3: another session's name in the lock at the final check is LockLost
-    /// after reading the lock file ONCE; D is untouched, D' and its marker stay, D.tmp is left for the new
-    /// holder's cleanup, and the log says exactly that.
+    /// after reading the lock file ONCE; D is untouched, D' and its marker stay, and the save's own temporary file
+    /// is deleted (it has a name of its own, so it cannot be the new holder's).
     /// </summary>
     [Fact]
-    public async Task SaveAsync_LockLostAtTheFinalCheck_ReadsTheLockOnce_AndLeavesD_tmpForTheNewHolder()
+    public async Task SaveAsync_LockLostAtTheFinalCheck_ReadsTheLockOnce_AndDeletesItsOwnTmp()
     {
         var db = DbPath();
         var logger = new RecordingAppLogger();
@@ -7155,17 +7276,18 @@ public sealed class CheckoutServiceTests : IDisposable
         Assert.Equal(1, counter.Count("File.Exists"));
         Assert.Equal(1, counter.Count("File.ReadAllText"));
         Assert.Equal(before, DbFileTestHelpers.HashOf(db));
-        Assert.True(File.Exists(db + ".tmp"));
+        ShareTemp.AssertNone(db);
         Assert.True(File.Exists(svc.WorkingPath));
         Assert.True(File.Exists(svc.WorkingPath + ".dirty"));
-        Assert.EndsWith("lock lost, D.tmp left for the new holder's cleanup.", FinalCheckRefusalLine(logger));
+        Assert.Contains("(LockLost)", FinalCheckRefusalLine(logger));
+        Assert.EndsWith("this save's temporary file discarded.", FinalCheckRefusalLine(logger));
     }
 
     /// <summary>
     /// Spec item 32, design risk 3, at the checkout service: the EXIT save (<c>ReleaseAsync(saveFirst: true)</c>) is
     /// refused at the final check because Alice took the lock over while Bob's upload was finishing. ReleaseAsync
     /// returns LockLost and raises WriteLockLost once; D is byte-identical; D' and its dirty marker are kept (the edit
-    /// is still in D'); D.tmp is left (the save must not touch the share without the lock); and the lock file still
+    /// is still in D'); the save's own temporary file is deleted (a file of its own name needs no lock); and the lock file still
     /// names Alice, because the release re-reads the lock and skips the delete when it is not ours. Bob is no longer
     /// a writer, and the service is read-only.
     /// </summary>
@@ -7197,7 +7319,7 @@ public sealed class CheckoutServiceTests : IDisposable
         Assert.True(File.Exists(svc.WorkingPath), "D' must be kept");
         Assert.True(File.Exists(svc.WorkingPath + ".dirty"), "the dirty marker must be kept");
         Assert.Equal("unsaved-edit", ReadTestValue(svc.WorkingPath));
-        Assert.True(File.Exists(db + ".tmp"), "without the lock the exit save must leave D.tmp alone");
+        ShareTemp.AssertNone(db, "the refused exit save deletes its own temporary file");
         Assert.Equal(alices, File.ReadAllBytes(lockPath));       // the release did not delete the other session's lock
         Assert.False(lockSvc.IsWriter);
         Assert.Equal(CheckoutMode.ReadOnly, svc.Mode);
@@ -7221,8 +7343,8 @@ public sealed class CheckoutServiceTests : IDisposable
         });
 
         Assert.Equal(SaveOutcome.SourceModified, outcome);
-        Assert.False(File.Exists(db + ".tmp"), "The lock was confirmed ours, so the refused save discards its D.tmp.");
-        Assert.EndsWith("D.tmp discarded.", FinalCheckRefusalLine(logger));
+        ShareTemp.AssertNone(db, "The refused save discards its temporary file.");
+        Assert.EndsWith("this save's temporary file discarded.", FinalCheckRefusalLine(logger));
         Assert.True(File.Exists(svc.WorkingPath + ".dirty"));
     }
 
@@ -7247,8 +7369,8 @@ public sealed class CheckoutServiceTests : IDisposable
         });
 
         Assert.Equal(SaveOutcome.SourceModified, outcome);
-        Assert.False(File.Exists(db + ".tmp"));
-        Assert.EndsWith("D.tmp discarded.", FinalCheckRefusalLine(logger));
+        ShareTemp.AssertNone(db);
+        Assert.EndsWith("this save's temporary file discarded.", FinalCheckRefusalLine(logger));
         Assert.True(File.Exists(lockPath), "The check must have put the removed lock file back.");
         Assert.Equal(lockSvc.SessionGuid, JsonSerializer.Deserialize<TermPoint.Models.LockFileData>(File.ReadAllText(lockPath))!.SessionGuid);
         Assert.True(lockSvc.IsWriter);

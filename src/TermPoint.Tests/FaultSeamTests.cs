@@ -204,7 +204,7 @@ public sealed class FaultSeamTests : IDisposable
             $"A faulted timeout must not wait the deadline (took {clock.ElapsedMilliseconds} ms).");
         Assert.Equal(SavePrompt.OutageNotice(hasUnsavedChanges: true, autoSaveEnabled: false), Assert.Single(banners));   // the one sticky outage notice (spec item 28)
         Assert.Equal(before, NetworkFileOps.ComputeHash(DbPath));
-        Assert.False(File.Exists(DbPath + ".tmp"));
+        ShareTemp.AssertNone(DbPath);
         Assert.True(File.Exists(svc.WorkingPath));
         Assert.True(File.Exists(svc.WorkingPath + ".dirty"));
 
@@ -317,7 +317,7 @@ public sealed class FaultSeamTests : IDisposable
         Assert.Equal(SaveOutcome.CopyError, outcome);
         Assert.Equal(SavePrompt.OutageNotice(hasUnsavedChanges: true, autoSaveEnabled: false), Assert.Single(banners));   // the one sticky outage notice (spec item 28)
         Assert.Equal("unsaved-edit", ReadTestValue(DbPath));   // the abandoned rename landed
-        Assert.False(File.Exists(DbPath + ".tmp"));
+        ShareTemp.AssertNone(DbPath);
         var marker = JsonSerializer.Deserialize<DirtyMarkerData>(File.ReadAllText(svc.WorkingPath + ".dirty"));
         Assert.NotNull(marker?.PendingSaveHash);
         Assert.Equal(NetworkFileOps.ComputeHash(DbPath), marker!.PendingSaveHash, ignoreCase: true);
@@ -341,7 +341,7 @@ public sealed class FaultSeamTests : IDisposable
         var banners = CaptureBanners(svc);
         var before = NetworkFileOps.ComputeHash(DbPath);
 
-        NetworkFaults.Decide = r => r.Label == "CopyFile" && r.DestinationPath == DbPath + ".tmp"
+        NetworkFaults.Decide = r => r.Label == "CopyFile" && r.DestinationPath is { } d && ShareTempFile.IsLeftoverOf(DbPath, d)
             ? NetworkFaultDecision.Throwing(new IOException("simulated: the share refused the write"))
             : NetworkFaultDecision.None;
 
@@ -350,7 +350,7 @@ public sealed class FaultSeamTests : IDisposable
         Assert.Equal(SaveOutcome.CopyError, outcome);
         Assert.Equal(SavePrompt.ForTransientFailure(SavePrompt.WriteFailedMessage, isAutoSave: false), Assert.Single(banners));
         Assert.Equal(before, NetworkFileOps.ComputeHash(DbPath));
-        Assert.False(File.Exists(DbPath + ".tmp"));
+        ShareTemp.AssertNone(DbPath);
         Assert.True(File.Exists(svc.WorkingPath));
         Assert.True(File.Exists(svc.WorkingPath + ".dirty"));
     }
@@ -608,7 +608,7 @@ public sealed class FaultSeamTests : IDisposable
         Assert.Equal(SaveOutcome.CopyError, outcome);
         Assert.Equal(SavePrompt.ForTransientFailure(SavePrompt.UnexpectedMessage, isAutoSave: false), Assert.Single(banners));
         Assert.Equal(before, NetworkFileOps.ComputeHash(DbPath));
-        Assert.True(File.Exists(DbPath + ".tmp"), "A crash after the copy leaves D.tmp behind.");
+        Assert.Single(ShareTemp.Leftovers(DbPath));   // a crash after the copy leaves the save's temporary file behind
         Assert.True(File.Exists(svc.WorkingPath));
         Assert.True(File.Exists(svc.WorkingPath + ".dirty"));
     }
@@ -629,7 +629,7 @@ public sealed class FaultSeamTests : IDisposable
         Assert.Equal(SaveOutcome.CopyError, await svc.SaveAsync());
 
         Assert.Equal("unsaved-edit", ReadTestValue(DbPath));
-        Assert.False(File.Exists(DbPath + ".tmp"));
+        ShareTemp.AssertNone(DbPath);
         Assert.True(File.Exists(svc.WorkingPath + ".dirty"));
     }
 

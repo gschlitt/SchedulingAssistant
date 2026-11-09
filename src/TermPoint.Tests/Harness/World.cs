@@ -404,14 +404,28 @@ internal sealed class World : IDisposable
         get { lock (_gate) return _otherProgram; }
     }
 
-    /// <summary>Full path of a file another program may open.</summary>
+    /// <summary>
+    /// Full path of a file another program may open. A save uploads to a temporary name of its own (1.2.4 item 4.1), so
+    /// <see cref="OtherProgramFile.SaveTemp"/> is whichever temporary file of the database exists on the share right now
+    /// (found by pattern, <see cref="ShareTempFile.IsLeftoverOf"/>; the first by name when there are several); when there is none
+    /// it is the legacy <c>D.tmp</c> name, a file that does not exist, so <see cref="OtherProgramCanOpen"/> says no.
+    /// </summary>
     /// <param name="file">Which file.</param>
     public string OtherProgramPath(OtherProgramFile file) => file switch
     {
         OtherProgramFile.Database => DatabasePath,
-        OtherProgramFile.SaveTemp => DatabasePath + ".tmp",
+        OtherProgramFile.SaveTemp => CurrentSaveTempFile() ?? DatabasePath + ".tmp",
         _                         => LockFilePath
     };
+
+    /// <summary>
+    /// The temporary file of the database that exists on the share right now, or null. When more than one exists (a leftover
+    /// beside a save in flight) the first by name is returned, which is deterministic though arbitrary.
+    /// </summary>
+    /// <returns>The file's full path, or null when no save has a temporary file there.</returns>
+    public string? CurrentSaveTempFile()
+        => Directory.GetFiles(ShareDir).Where(f => ShareTempFile.IsLeftoverOf(DatabasePath, f))
+                    .OrderBy(f => f, StringComparer.OrdinalIgnoreCase).FirstOrDefault();
 
     /// <summary>True when another program could open <paramref name="file"/> now: it holds nothing yet and the file exists.</summary>
     /// <param name="file">Which file.</param>

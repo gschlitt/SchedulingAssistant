@@ -387,7 +387,7 @@ public sealed class DatabaseRestoreTests : IDisposable
         Assert.Equal("old-d", ReadMarker(expectedPre));
 
         // Nothing else was left on the share, and the backup was only copied.
-        Assert.False(File.Exists(target + ".tmp"));
+        ShareTemp.AssertNone(target);
         Assert.False(File.Exists(expectedPre + ".tmp"));
         Assert.Equal(new[] { target, expectedPre }.OrderBy(e => e, StringComparer.Ordinal), ShareEntries());
         Assert.Equal(backupBytes, File.ReadAllBytes(backup));
@@ -508,7 +508,7 @@ public sealed class DatabaseRestoreTests : IDisposable
         var result = await AssertBackupRefusedAsync(backup, RestoreOutcome.NotTermPointDatabase);
 
         Assert.Null(result.Error);
-        Assert.False(File.Exists(TargetPath() + ".tmp"));
+        ShareTemp.AssertNone(TargetPath());
         Assert.False(File.Exists(ExpectedPreRestorePath()));
     }
 
@@ -697,7 +697,7 @@ public sealed class DatabaseRestoreTests : IDisposable
         var pre = ExpectedPreRestorePath();
         var debrisPresentAtFinalCheck = false;
         var script = new LockScript(
-            call => { if (call == 2) debrisPresentAtFinalCheck = File.Exists(pre) && File.Exists(target + ".tmp"); },
+            call => { if (call == 2) debrisPresentAtFinalCheck = File.Exists(pre) && ShareTemp.Leftovers(target).Length == 1; },
             RestoreLockCheck.Ours, RestoreLockCheck.NotOurs);
 
         var result = await ReplaceAsync(backup, target, oldHash, script.CheckAsync);
@@ -887,9 +887,9 @@ public sealed class DatabaseRestoreTests : IDisposable
         Assert.Equal(pre, result.PreRestoreCopyPath);
         Assert.Equal(oldBytes, File.ReadAllBytes(pre));      // kept, and byte-identical to the old D
 
-        Assert.True(File.Exists(target + ".tmp"));           // kept: the abandoned move may still land
-        Assert.Equal(result.RestoredHash, Hash(target + ".tmp"));
-        Assert.Equal("from-backup", ReadMarker(target + ".tmp"));
+        var tmp = ShareTemp.Single(target);                  // kept: the abandoned move may still land
+        Assert.Equal(result.RestoredHash, Hash(tmp));
+        Assert.Equal("from-backup", ReadMarker(tmp));
     }
 
     /// <summary>
@@ -1140,7 +1140,7 @@ public sealed class DatabaseRestoreTests : IDisposable
         Assert.Equal(((byte)1, (byte)1), FormatVersions(target));
         Assert.Equal("delete", JournalModeOfCopy(target), ignoreCase: true);
 
-        Assert.False(File.Exists(target + ".tmp"));
+        ShareTemp.AssertNone(target);
         Assert.Equal(new[] { target }, ShareEntries());
         Assert.Empty(Directory.GetFileSystemEntries(_localDir));
         Assert.Equal(backupBytes, File.ReadAllBytes(backup));
@@ -1264,7 +1264,7 @@ public sealed class DatabaseRestoreTests : IDisposable
         Assert.Equal(RestoreOutcome.Unreachable, result.Outcome);
         AssertNothingCreated(result);
         Assert.False(File.Exists(target));
-        Assert.False(File.Exists(target + ".tmp"));
+        ShareTemp.AssertNone(target);
         Assert.Contains(_log.Infos, m => m.Contains("fault injection", StringComparison.OrdinalIgnoreCase) && m.Contains("cut part-way", StringComparison.OrdinalIgnoreCase));
     }
 

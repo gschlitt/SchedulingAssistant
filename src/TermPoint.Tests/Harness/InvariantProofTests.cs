@@ -242,8 +242,8 @@ public sealed class InvariantProofTests
     /// share (the walk writes it from <see cref="World.AtCrashPoint"/>). Before this fix the save did not look at the lock
     /// again, the rename landed and I4 reported it. Now the save's final check, made immediately before the rename, finds the
     /// lock is not Bob's: his save is refused (LockLost), D is byte-for-byte what it was, and his edit stays in his kept working
-    /// file with its marker. His D.tmp is left where it is: without the lock his save may not write to the share (rule 2), and the
-    /// file's one shared name may by now be Alice's save in progress. I4 has nothing to report because there is no rename.
+    /// file with its marker. His temporary file is deleted (1.2.4 item 4.1): it has a name of its own, so it is his and nobody
+    /// else's, and deleting it needs no lock. D is untouched. I4 has nothing to report because there is no rename.
     /// </summary>
     [HarnessFact]
     public async Task I4_ALockThatChangesHandsBeforeTheRename_IsRefusedByTheFinalCheck_F12IsFixed()
@@ -264,7 +264,7 @@ public sealed class InvariantProofTests
         Assert.Empty(world.Violations);                                    // I4 had no rename to look at
         Assert.Equal(databaseBefore, world.CurrentDatabaseHash());         // D was never touched
         Assert.Empty(world.EditsInDatabase());
-        Assert.Contains("dept.db.tmp", world.ShareFiles());                // without the lock, the refused save leaves D.tmp alone
+        Assert.Null(world.CurrentSaveTempFile());                          // the refused save deleted its own temporary file, lock or no lock
         Assert.True(bob.HasWorkingFile, "D' is kept");
         Assert.True(bob.HasDirtyMarker, "and so is its marker");
         Assert.Equal(new[] { "bob-1" }, bob.WorkingFileEdits());
@@ -742,7 +742,7 @@ public sealed class InvariantProofTests
     /// <summary>
     /// What the program does after the cut is thrown away. A <c>finally</c> block around Bob's save deletes two files after
     /// the power went (one on the share, one on Bob's own disk); after the frozen disk is put back, both are still there, as
-    /// they would be after a real power cut, and so is the verified <c>dept.db.tmp</c> the save had written at the cut.
+    /// they would be after a real power cut, and so is the verified <c>dept.db.&lt;8 hex&gt;.tmp</c> the save had written at the cut.
     /// </summary>
     [HarnessFact]
     public async Task PowerCut_WhatAFinallyBlockDoesAfterTheCut_IsThrownAway()
@@ -771,7 +771,7 @@ public sealed class InvariantProofTests
         Assert.True(fired);
         Assert.True(File.Exists(shareCanary), "the file the finally block deleted on the share must be back");
         Assert.True(File.Exists(localCanary), "the file the finally block deleted on Bob's disk must be back");
-        Assert.Contains("dept.db.tmp", world.ShareFiles());   // the save's verified temp file, as the cut left it
+        Assert.NotNull(world.CurrentSaveTempFile());          // the save's verified temp file (its own per-save name), as the cut left it
         Assert.Empty(world.EditsInDatabase());                // the rename never happened
         world.Finish();
     }

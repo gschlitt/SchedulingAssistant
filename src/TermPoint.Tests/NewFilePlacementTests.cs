@@ -58,11 +58,38 @@ public sealed class NewFilePlacementTests : IDisposable
 
     // ── Tmp path ──────────────────────────────────────────────────────────────
 
-    /// <summary>The tmp sibling is the target plus ".tmp" — the name the orphan sweep looks for.</summary>
+    /// <summary>The tmp sibling is a fresh per-attempt name beside the target — one the orphan sweep recognises.</summary>
     [Fact]
-    public void TmpPathFor_IsTheTargetPlusTmp()
+    public void TmpPathFor_IsAFreshPerAttemptNameTheSweepRecognises()
     {
-        Assert.Equal(Target() + ".tmp", NewFilePlacement.TmpPathFor(Target()));
+        var first  = NewFilePlacement.TmpPathFor(Target());
+        var second = NewFilePlacement.TmpPathFor(Target());
+
+        Assert.NotEqual(first, second);
+        Assert.True(ShareTempFile.IsLeftoverOf(Target(), first));
+        Assert.Equal(Path.GetDirectoryName(Target()), Path.GetDirectoryName(first));
+    }
+
+    /// <summary>One placement writes, verifies, moves and (on failure) cleans up ONE temporary name, never several.</summary>
+    [Fact]
+    public async Task PlaceAsync_UsesOneTmpNameThroughout()
+    {
+        var local = LocalFile();
+        var target = Target();
+        var seen = new List<string>();
+
+        var result = await NewFilePlacement.PlaceAsync(
+            local, target, awaitTmpCleanup: true,
+            copyAsync: async (source, destination) =>
+            {
+                seen.Add(destination);
+                return await NetworkFileOps.CopyAsync(source, destination);
+            });
+
+        Assert.Equal(NewDatabaseOutcome.Created, result.Outcome);
+        var only = Assert.Single(seen);
+        Assert.True(ShareTempFile.IsLeftoverOf(target, only));
+        Assert.Equal(new[] { target }, ShareEntries());   // that one name was moved into place: nothing else left
     }
 
     // ── Folder ────────────────────────────────────────────────────────────────

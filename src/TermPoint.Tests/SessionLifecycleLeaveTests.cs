@@ -463,7 +463,7 @@ public sealed class SessionLifecycleLeaveTests : SessionLifecycleTestBase
         Assert.True(File.Exists(working), "D' must be kept");
         Assert.True(File.Exists(MarkerOf(working)), "the dirty marker must be kept");
         Assert.Equal("edit-at-close", NewestValue(working));
-        Assert.True(File.Exists(db + ".tmp"), "without the lock the exit save must leave D.tmp alone");
+        ShareTemp.AssertNone(db, "the refused exit save deletes its own temporary file");
         Assert.Equal(foreignLock, File.ReadAllText(LockOf(db)));
         Assert.False(_guard.IsHeld(db));
         Assert.Contains(CheckpointLine, _logger.Infos);
@@ -510,7 +510,7 @@ public sealed class SessionLifecycleLeaveTests : SessionLifecycleTestBase
         Assert.True(File.Exists(working), "D' must be kept");
         Assert.True(File.Exists(MarkerOf(working)), "the dirty marker must be kept");
         Assert.Equal("edit-at-close", NewestValue(working));
-        Assert.True(File.Exists(db + ".tmp"));
+        ShareTemp.AssertNone(db);
         Assert.Equal(foreignLock, File.ReadAllText(LockOf(db)));
         Assert.False(_guard.IsHeld(db));
         Assert.Contains(CheckpointLine, _logger.Infos);
@@ -633,7 +633,7 @@ public sealed class SessionLifecycleLeaveTests : SessionLifecycleTestBase
         Assert.DoesNotContain("host:CloseWindow", _trace);
         Assert.Equal("edit-before-restore", NewestValue(db));            // saved first; the restore did not touch it
         Assert.Empty(Directory.GetFiles(_shareDir, "dept (before restore *"));
-        Assert.False(File.Exists(db + ".tmp"));
+        ShareTemp.AssertNone(db);
         Assert.True(File.Exists(working));
         Assert.Equal(CheckoutMode.WriteAccess, _checkout.Mode);
         Assert.True(_lockSvc.IsWriter);

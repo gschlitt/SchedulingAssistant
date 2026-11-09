@@ -271,7 +271,7 @@ public static class DatabaseRestore
             _creating           = creating;
 
             _stagedPath    = Path.Combine(localDirectory, $"termpoint-restore-{Guid.NewGuid():N}.db");
-            _targetTmpPath = targetPath + ".tmp";
+            _targetTmpPath = ShareTempFile.NewPath(targetPath);
         }
 
         // ── Driver ────────────────────────────────────────────────────────────
@@ -590,7 +590,7 @@ public static class DatabaseRestore
 
             if (Inject(InjectedRestoreFault.Copy, "the transfer to D.tmp is cut part-way"))
             {
-                await WritePartialTargetTmpAsync().ConfigureAwait(false);
+                await WritePartialTargetTmpAsync(_targetTmpPath).ConfigureAwait(false);
                 return Stalled("streaming the backup to D.tmp");
             }
 
@@ -649,7 +649,9 @@ public static class DatabaseRestore
         {
             if (Inject(InjectedRestoreFault.Copy, "the transfer to D.tmp is cut part-way"))
             {
-                await WritePartialTargetTmpAsync().ConfigureAwait(false);
+                // The placement pipeline picked its own temporary name (the one it will clean up), not
+                // _targetTmpPath, so the debris must be left at the name it was handed.
+                await WritePartialTargetTmpAsync(destination).ConfigureAwait(false);
                 return false;
             }
 
@@ -848,14 +850,15 @@ public static class DatabaseRestore
         /// DEBUG-fault helper: leaves a truncated D.tmp, the debris a severed transfer really leaves, so the
         /// cleanup of a half-written D.tmp is exercised too. Best effort.
         /// </summary>
-        private async Task WritePartialTargetTmpAsync()
+        /// <param name="tmpPath">The temporary file the interrupted transfer was writing to.</param>
+        private async Task WritePartialTargetTmpAsync(string tmpPath)
         {
             try
             {
                 await NetworkFileOps.RunAsync(() =>
                 {
                     var bytes = File.ReadAllBytes(_stagedPath);
-                    File.WriteAllBytes(_targetTmpPath, bytes.AsSpan(0, bytes.Length / 2).ToArray());
+                    File.WriteAllBytes(tmpPath, bytes.AsSpan(0, bytes.Length / 2).ToArray());
                 }, "write partial D.tmp (debug fault)").ConfigureAwait(false);
             }
             catch

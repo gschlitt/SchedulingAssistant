@@ -75,7 +75,6 @@ public sealed class PauseProofTests
         await bob.OpenAsync();
         bob.Edit();
 
-        var tmp = world.DatabasePath + ".tmp";
         List<string>? editsDuring = null;
         bool tmpDuring = false, savedDuring = true;
         Task<SaveOutcome>? save = null;
@@ -86,7 +85,7 @@ public sealed class PauseProofTests
             pauseEvent: () =>
             {
                 editsDuring = world.EditsInDatabase();
-                tmpDuring   = File.Exists(tmp);
+                tmpDuring   = world.CurrentSaveTempFile() is not null;   // the save's own, per-attempt temporary file
                 savedDuring = save is { IsCompleted: true };
                 return Task.CompletedTask;
             });
@@ -97,7 +96,7 @@ public sealed class PauseProofTests
         Assert.False(savedDuring);       // and was still held
         Assert.Equal(SaveOutcome.Success, await save!);
         Assert.Equal(new[] { "bob-1" }, world.EditsInDatabase());
-        Assert.False(File.Exists(tmp));
+        Assert.Null(world.CurrentSaveTempFile());
 
         var story = world.PrintStory(Array.Empty<string>());
         Assert.True(story.IndexOf("is held there", StringComparison.Ordinal) > 0);
@@ -604,8 +603,8 @@ public sealed class PauseProofTests
     }
 
     /// <summary>
-    /// When Alice takes over and saves while Bob's save is held AFTER his D.tmp is verified, her save uses the same D.tmp (the
-    /// name is shared) and moves it onto D. Before the fix Bob's rename then found no D.tmp and failed (CopyError), and only I4 saw that the lock
+    /// When Alice takes over and saves while Bob's save is held AFTER his temporary file is verified, her save uses a temporary file of
+    /// its own (since 1.2.4 item 4.1; the name used to be shared) and moves it onto D. Before the F12 fix Bob's rename then found no D.tmp and failed (CopyError), and only I4 saw that the lock
     /// was Alice's. Now Bob's final check refuses the save first (LockLost): nothing is overwritten, no committed edit is lost, his edit
     /// stays kept, and I4 has nothing to report.
     /// </summary>

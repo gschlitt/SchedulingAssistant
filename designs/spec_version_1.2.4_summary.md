@@ -475,6 +475,14 @@ Everything in this group is checked against rule 3 (never delete the only copy o
 > under the same name. When Bob wakes, his failed upload deletes the temporary file, which may be Alice's. That is a
 > write to the share without the lock.
 > **Fix direction:** give each session its own temporary name. That removes every such delete at once.
+>
+> **Done (8 Nov 2026, uncommitted):** design `designs/own-temp-file-names.md`. Every save attempt, restore and new-file
+> placement uploads to `<db>.<8 hex>.tmp` (`ShareTempFile`); every failure path, including a final-check refusal, deletes
+> only its own file; the checkout sweep (lock held) removes the database's own leftovers incl. 1.2.3's `<db>.tmp`,
+> strictly matched. Heartbeat `.lock.tmp` unchanged. Two harness proofs (`OwnTempFileProofTests`): a frozen writer's held
+> file no longer blocks the next writer; a lock-lost writer's late save can't touch the new holder's upload. Full suite
+> with harness 4460 passed, 0 failed. MinimumVersionToWrite: **No**. Left: the now-unread `LockConfirmed` return of
+> `CheckLockAndSourceAsync` (tidy-up).
 > *Source: spec, follow-ups table (F12); field-test open issue A11; 1.2.3 spec item 32, "Not fixed now".*
 
 > [!note]- **4.2 An exit save that loses the lock starts a demotion while the window closes** `save path`

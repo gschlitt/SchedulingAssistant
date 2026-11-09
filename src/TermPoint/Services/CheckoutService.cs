@@ -1501,9 +1501,9 @@ public sealed class CheckoutService : IDisposable
             // ReportSaveFailure (not LogError): an exception we did not anticipate must still reach
             // Bugsnag, but as ONE path-free handled report — LogError would also raise ErrorLogged and
             // put a second, red banner next to the save banner (spec item 12).
-            // Nothing is deleted here — we cannot know whether D.tmp or the local snapshot belong to
-            // this save; a leftover D.tmp is overwritten by the next save, and the local snapshot is
-            // swept at startup.
+            // Nothing is deleted here — we cannot know whether the temporary file on the share or the
+            // local snapshot got as far as being written; a leftover on the share is removed by the sweep
+            // at the next write-access open, and the local snapshot is swept at startup.
             ReportSaveFailure(SaveStep.Unexpected, ex,
                 "unexpected exception in SaveAsync — treating as a failed save", isAutoSave);
             RaiseTransientSaveError(SavePrompt.UnexpectedMessage, isAutoSave);
@@ -1773,7 +1773,10 @@ public sealed class CheckoutService : IDisposable
         //     coordinated READ of D'; the network only ever sees the finished,
         //     quiescent snapshot. This keeps SQLite's page-level writes off SMB
         //     and out from under any network deadline (finding #7).
-        var tmpPath   = SourcePath  + ".tmp";
+        // The upload gets a name of its own for THIS attempt (ShareTempFile, 1.2.4 item 4.1): a frozen upload
+        // another writer's (or an earlier attempt's) server-side handle still holds can never block this one, and
+        // nothing below can delete or rename a file this save did not write.
+        var tmpPath   = ShareTempFile.NewPath(SourcePath);
         var localTmp  = WorkingPath + ".savetmp";
         string newSourceHash;
         try
@@ -1833,10 +1836,10 @@ public sealed class CheckoutService : IDisposable
             }
             catch (Exception ex)
             {
-                // A D.tmp another program holds open (or a read of the local snapshot that is refused)
-                // is a retryable lock/access condition — see DescribeSaveFileError. The delete is
-                // best effort: it fails harmlessly while the other program still holds D.tmp, and a
-                // leftover D.tmp is simply overwritten by the next save.
+                // A temporary file another program holds open (or a read of the local snapshot that is
+                // refused) is a retryable lock/access condition — see DescribeSaveFileError. The delete is
+                // best effort: it fails harmlessly while the other program still holds this file, and a
+                // leftover is removed by the sweep at the next write-access open.
                 var msg = DescribeSaveFileError(ex, SaveStep.CopyToLocation, "D.tmp copy failed", isAutoSave);
                 await NetworkFileOps.DeleteAsync(tmpPath);
                 RaiseTransientSaveError(msg, isAutoSave);
@@ -1907,34 +1910,23 @@ public sealed class CheckoutService : IDisposable
         // read and one stat of D (the stamp from the first check is compared; D is hashed again only if
         // the stamp changed). If either refuses, D is untouched: return the refusal; the working copy D'
         // and its dirty marker stay, exactly as for a refusal at the start, so nothing the user typed is
-        // lost. D.tmp is deleted only when THIS check confirmed the lock is ours (rule 2: no write to the
-        // share without the lock; spec item 32, change (d)). D.tmp has one name for every writer, so once
-        // the lock has changed hands the file may be the new holder's save in progress, and when the check
-        // could not tell whose lock it is (the share did not answer) the file may be anyone's. In both
-        // cases ours is left for the next lock holder, whose checkout deletes an orphaned D.tmp
-        // (CleanupOrphanedTmpAsync) and whose save overwrites it; a leftover can never become D, because a
-        // save only renames the D.tmp it has just written and verified. A refusal AFTER the lock was
-        // confirmed (D changed, or D could not be read) still discards D.tmp: the lock was ours a moment ago.
+        // lost. The temporary file is deleted on EVERY refusal, with or without the lock: it has a name of
+        // its own (ShareTempFile, 1.2.4 item 4.1), so it is ours and nobody else's, and deleting a file we
+        // created needs no lock (rule 2). A delete that fails (the share is down) is only logged; the sweep
+        // at the next write-access open removes the leftover (CleanupOrphanedTmpAsync).
         //
         // A gap of microseconds between the last check and the rename remains: another user's rename can
         // land in it. It cannot be closed on a plain file share, which has no compare-and-swap and no
         // server to arbitrate; the lock and the final check make it a matter of microseconds instead of
         // the length of the upload, and it is accepted.
-        var (finalRefusal, _, lockConfirmed) = await CheckLockAndSourceAsync(
+        var (finalRefusal, _, _) = await CheckLockAndSourceAsync(
             isAutoSave, isFinalCheck: true, stampAtFirstCheck: sourceStamp);
         if (finalRefusal is { } refusedAtFinalCheck)
         {
-            // Three cases, three log wordings: the lock was confirmed (discard D.tmp), the lock was found to be
-            // someone else's (leave it for their cleanup), or the check could not be made (leave it in place).
-            _logger.LogInfo("CheckoutService: the final check before the rename refused the save — " +
-                            (lockConfirmed
-                                ? "D.tmp discarded."
-                                : refusedAtFinalCheck == SaveOutcome.LockLost
-                                    ? "lock lost, D.tmp left for the new holder's cleanup."
-                                    : "the lock could not be checked, D.tmp left in place."));
+            _logger.LogInfo($"CheckoutService: the final check before the rename refused the save ({refusedAtFinalCheck}) — " +
+                            "this save's temporary file discarded.");
             _logger.LogBreadcrumb("Save: refused at final check", new() { ["outcome"] = refusedAtFinalCheck.ToString() });
-            if (lockConfirmed)
-                await NetworkFileOps.DeleteAsync(tmpPath);
+            await NetworkFileOps.DeleteAsync(tmpPath);
             return refusedAtFinalCheck;
         }
 
@@ -2095,8 +2087,8 @@ public sealed class CheckoutService : IDisposable
     /// the final check hits none (its own point, <c>Save.AfterFinalCheck</c>, is hit by the caller), so a save
     /// still reaches each point once and in catalogue order.</para>
     ///
-    /// <para>Writes nothing to D, D.tmp or D'. The caller owns any D.tmp cleanup after a refusal, and decides it
-    /// from the returned <c>LockConfirmed</c>: D.tmp is deleted only when this check confirmed the lock is ours.</para>
+    /// <para>Writes nothing to D, the temporary file or D'. The caller owns the temporary-file cleanup after a
+    /// refusal: it always deletes its own file (a file with a name of its own needs no lock to delete).</para>
     /// </summary>
     /// <param name="isAutoSave">True when the autosave timer started the save; selects the auto-dismissing banner text.</param>
     /// <param name="isFinalCheck">False for the check at the start of the save, true for the one before the rename.</param>
@@ -2111,8 +2103,8 @@ public sealed class CheckoutService : IDisposable
     /// <c>LockConfirmed</c>: true when step 1 CONFIRMED the lock is ours (the lock file named this session, or a
     /// merely removed lock file was re-created by <see cref="TryRecoverRemovedLockAsync"/>), so every return from
     /// step 2 on carries true; false on the two step-1 refusals, the share not answering (CopyError) and the lock
-    /// being someone else's (LockLost). The final check's caller deletes D.tmp only when this is true (spec item
-    /// 32, change (d)); the first check's caller ignores it.
+    /// being someone else's (LockLost). No caller acts on it any more (the final check's caller used to delete its
+    /// temporary file only when this was true, spec item 32 change (d); since 1.2.4 item 4.1 it always does).
     /// </returns>
     private async Task<(SaveOutcome? Refusal, SourceStamp? Stamp, bool LockConfirmed)> CheckLockAndSourceAsync(
         bool isAutoSave, bool isFinalCheck, SourceStamp? stampAtFirstCheck)
@@ -2145,7 +2137,7 @@ public sealed class CheckoutService : IDisposable
         }
 
         // Step 1 got Ours, or re-created a removed lock file: from here on the lock is CONFIRMED ours, and
-        // every return below says so (the final check's caller may then discard its D.tmp).
+        // every return below says so.
         const bool lockConfirmed = true;
 
         if (!isFinalCheck)
@@ -3250,42 +3242,70 @@ public sealed class CheckoutService : IDisposable
     }
 
     /// <summary>
-    /// Deletes any orphaned <c>D.tmp</c> file left alongside D from a previous crashed save.
+    /// Deletes every leftover temporary file of the database beside D: the per-attempt names
+    /// (<c>D.&lt;8 hex&gt;.tmp</c>, see <see cref="ShareTempFile"/>) that a crashed, frozen or abandoned save left
+    /// behind, and the old shared <c>D.tmp</c> that 1.2.3 wrote. Matching is strict
+    /// (<see cref="ShareTempFile.IsLeftoverOf"/>), so a user's own <c>D.backup.tmp</c> is never touched.
+    ///
+    /// <para>The folder is listed once under the network deadline; each match is then deleted with
+    /// <see cref="NetworkFileOps.DeleteAsync"/> and the outcome logged. A file that cannot be deleted (another
+    /// program still holds it open) is logged and left for the next sweep.</para>
     ///
     /// <para><b>Runs ONLY while this process holds the write lock</b>, through
     /// <see cref="CleanupOrphanedTmpOnceWriterAsync"/>, at the three write-access exits of a checkout
-    /// (spec item 4). D.tmp is the in-flight file of whoever is saving, and only the lock holder saves —
-    /// so before the lock is ours a D.tmp may be a colleague's save in progress, and deleting it makes
-    /// their save fail. No read-only, observer, licence-gated, version-gated, failed or refused open ever
-    /// calls this. It is <c>internal</c> (not public) so nothing outside the checkout can call it at the
-    /// wrong time; tests reach it directly.</para>
+    /// (spec item 4): a temporary file is the in-flight file of someone who is saving, and before the lock is ours
+    /// it could be a colleague's save in progress. No read-only, observer, licence-gated, version-gated, failed or
+    /// refused open ever calls this. It is <c>internal</c> (not public) so nothing outside the checkout can call it
+    /// at the wrong time; tests reach it directly.</para>
+    ///
+    /// <para>Never throws: a listing that times out or fails is logged and the sweep ends.</para>
     /// </summary>
-    /// <param name="sourcePath">The database path to check for an orphaned tmp file.</param>
+    /// <param name="sourcePath">The database path whose leftover temporary files are to be removed.</param>
     internal async Task CleanupOrphanedTmpAsync(string sourcePath)
     {
-        var tmpPath = sourcePath + ".tmp";
-        var (completed, exists) = await NetworkFileOps.ExistsAsync(tmpPath);
-        if (!completed || !exists) return;
+        var folder = Path.GetDirectoryName(sourcePath);
+        if (string.IsNullOrEmpty(folder)) folder = ".";
 
-        var deleted = await NetworkFileOps.DeleteAsync(tmpPath);
-        if (deleted)
-            _logger.LogInfo($"CheckoutService: cleaned up orphaned tmp file: {tmpPath}");
-        else
-            _logger.LogInfo($"CheckoutService: could not delete orphaned tmp (timeout or error)");
+        string[] leftovers;
+        try
+        {
+            var (completed, files) = await NetworkFileOps.RunAsync(
+                () => Directory.GetFiles(folder, Path.GetFileName(sourcePath) + "*.tmp"),
+                "Directory.GetFiles", folder, null).ConfigureAwait(false);
+            if (!completed || files is null)
+            {
+                _logger.LogInfo("CheckoutService: temporary-file sweep skipped — the folder listing timed out");
+                return;
+            }
+            leftovers = files.Where(f => ShareTempFile.IsLeftoverOf(sourcePath, f)).ToArray();
+        }
+        catch (Exception ex)
+        {
+            _logger.LogInfo($"CheckoutService: temporary-file sweep skipped — the folder listing failed ({ex.GetType().Name}: {ex.Message})");
+            return;
+        }
+
+        foreach (var leftover in leftovers)
+        {
+            var deleted = await NetworkFileOps.DeleteAsync(leftover).ConfigureAwait(false);
+            _logger.LogInfo(deleted
+                ? $"CheckoutService: cleaned up orphaned tmp file: {Path.GetFileName(leftover)}"
+                : $"CheckoutService: could not delete orphaned tmp {Path.GetFileName(leftover)} (timeout or error) — left for the next sweep");
+        }
     }
 
     /// <summary>
-    /// Housekeeping at the moment write access is confirmed: removes an orphaned <c>D.tmp</c> beside
+    /// Housekeeping at the moment write access is confirmed: removes the leftover temporary files beside
     /// <see cref="SourcePath"/> (<see cref="CleanupOrphanedTmpAsync"/>). Called from the three
     /// write-access exits — <see cref="CheckoutAsync"/>, <see cref="ForceCheckoutAsync"/> and
     /// <see cref="FinishRecoveryCheckoutAsync"/> — after the version gate has passed and just before
     /// <see cref="Mode"/> becomes <see cref="CheckoutMode.WriteAccess"/>, i.e. only when the lock is ours.
     ///
     /// <para><b>It can never fail the checkout.</b> The network calls inside are already deadline-bounded
-    /// and report failure as a result; anything that still throws is logged and swallowed. A D.tmp left
-    /// behind is harmless: <see cref="SaveAsync"/> streams its snapshot to D.tmp with
-    /// <c>FileMode.Create</c> (overwriting whatever is there) and then renames it over D, so the next save
-    /// simply replaces it.</para>
+    /// and report failure as a result; anything that still throws is logged and swallowed. A leftover that
+    /// stays behind is harmless debris: every save uploads to a fresh name of its own
+    /// (<see cref="ShareTempFile.NewPath"/>), so it can never be renamed onto D or block a later save, and the
+    /// next sweep tries again.</para>
     /// </summary>
     private async Task CleanupOrphanedTmpOnceWriterAsync()
     {

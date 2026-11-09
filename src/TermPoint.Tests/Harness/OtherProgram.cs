@@ -8,7 +8,7 @@ internal enum OtherProgramFile
     /// <summary>The shared database itself (<c>dept.db</c>).</summary>
     Database,
 
-    /// <summary>The temporary file a save uploads before it renames it onto the database (<c>dept.db.tmp</c>). It exists only part of the time.</summary>
+    /// <summary>The temporary file a save uploads before it renames it onto the database (<c>dept.db.&lt;8 hex&gt;.tmp</c>, a fresh name per save). It exists only part of the time.</summary>
     SaveTemp,
 
     /// <summary>The lock file (<c>dept.lock</c>). It exists while someone holds the lock.</summary>

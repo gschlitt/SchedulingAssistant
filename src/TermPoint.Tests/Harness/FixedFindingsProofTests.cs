@@ -42,8 +42,8 @@ public sealed class FixedFindingsProofTests
     };
 
     /// <summary>
-    /// The old F12 route with an edit of Bob's and the same pause one step later, after his D.tmp is verified (Alice's save then uses the
-    /// shared D.tmp name), followed by Bob's crash and restart.
+    /// The old F12 route with an edit of Bob's and the same pause one step later, after his D.tmp is verified (Alice's save then uses a
+    /// temporary file of its own; before 1.2.4 item 4.1 it was the shared D.tmp name), followed by Bob's crash and restart.
     /// </summary>
     private static readonly string[] OldF12VerifiedTmpRoute =
     {
@@ -131,8 +131,8 @@ public sealed class FixedFindingsProofTests
     }
 
     /// <summary>
-    /// F12, the other face of the route: Alice's save finishes while Bob's save is held with a verified D.tmp (she used the same D.tmp
-    /// name and moved it onto D). Bob's save is refused at its final check; her edit stays in D, none of his is lost (his kept change is
+    /// F12, the other face of the route: Alice's save finishes while Bob's save is held with a verified D.tmp (she used a temporary file
+    /// of her own and moved it onto D). Bob's save is refused at its final check; her edit stays in D, none of his is lost (his kept change is
     /// offered for restore later, and found not to fit the database Alice changed, which is F7, not F12), and neither I1, I2 nor I4 is reported.
     /// </summary>
     [HarnessFact]

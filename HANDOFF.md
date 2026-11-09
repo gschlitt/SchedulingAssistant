@@ -7,8 +7,7 @@ Written so a fresh conversation can pick up. Claude Code's memory and `CLAUDE.md
 
 ## Where things are
 
-- **Branches:** all 1.2.4 work is on **`Version_1.2.4`**. Last pushed at `761329b`; the commits since (field tests,
-  readiness doc, Access Analyzer Phase 2 draft, the 1.2.4 version bump) are **not pushed**.
+- **Branches:** all 1.2.4 work is on **`Version_1.2.4`**, pushed up to `426cb90` (2026-11-08).
   **`master`** = released 1.2.3 code (`cf4d4cb`) plus doc commits, kept hotfixable; it is 7 doc-only commits ahead of
   origin and **not pushed** (pushing `master` redeploys the WASM demo; pushing a `v*` tag starts the macOS workflow).
   Greg controls branches, commits and pushes: never create a branch, ask before each commit and each push.
@@ -52,6 +51,23 @@ Written so a fresh conversation can pick up. Claude Code's memory and `CLAUDE.md
 
 ## Next steps
 
+0. **Chosen 2026-11-08 (Greg), in this order** (summary item numbers; group 8 is done apart from 8.10):
+   1. **C: 4.1** each session gets its own temporary upload name (rule 2: a woken writer can delete the new
+      holder's temp file). Save path, small. **DONE 2026-11-08, uncommitted** (design
+      `designs/own-temp-file-names.md`; summary 4.1 Done note): full suite with harness 4460 passed, 0 failed.
+      Heartbeat `.lock.tmp` left as is (Greg agreed).
+   2. **A + B, the close/switch sequence, designed as one:**
+      - A: 3.3 F16 (demotion lands on the new session), 6.11 F18, 4.13 F20, 6.10 F17, 6.13 F23;
+      - B: 3.1 unapplied editor changes at close/switch (decide first: always ask, or apply silently when valid).
+      Save path for A: Alice-and-Bob risk review against the four rules before the design.
+   3. **D: 7.1** save timings in breadcrumbs/failure report, with **7.3** and **7.4** (reporting only).
+   4. **F: 1.2 + 1.4** (drop the shared DiaSymReader DLL and the Skia/HarfBuzz PDBs from the Store package), **1.3**
+      test flights, **1.5** the failing GitHub Tests workflow.
+   - Then, if still early enough in the release: **E** (3.2 crash route via an edit counter, 3.4 no-edit rewrite);
+     otherwise to 1.2.5. Also waiting: 2.2 licence warning, group 5 experiments (5.8) then 5.3/5.4, 6.12, harness
+     85 s model (retires F22).
+   - **Version gate:** leave 2.8 and 2.9 out of 1.2.4 (each raises `MinimumVersionToWrite` and would need 1.6
+     first). Everything chosen above is MinimumVersionToWrite **No**. 3.5 and 2.1 A/B are too big for now.
 1. **Rest of group 8:**
    - **8.8 built and 8.9 started (2026-11-03), not committed:** `tools/FieldTest/`. Read its `README.md` first.
      - The module drives every test computer from one elevated console.
