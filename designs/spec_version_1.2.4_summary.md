@@ -1,6 +1,6 @@
 # TermPoint 1.2.4: what's on the list
 
-A summary of `designs/spec_version_1.2.4.md` as of 2026-11-01 (statuses updated 2026-11-09). That file stays the record (history, evidence, file and
+A summary of `designs/spec_version_1.2.4.md` as of 2026-11-01 (statuses updated 2026-11-10). That file stays the record (history, evidence, file and
 line references). This one only says what is to be done. It also picks up the 1.2.4 items that live only in the
 field-test doc (`docs/testing/network-field-tests-1.2.3.md`, "Open issues"), in `HANDOFF.md` and in other design docs.
 
@@ -18,7 +18,8 @@ field-test doc (`docs/testing/network-field-tests-1.2.3.md`, "Open issues"), in 
 `not started · decide first` needs Greg's call before design ·
 `deferred` not in 1.2.4 ·
 `waiting on Greg` ·
-`later`.
+`later` ·
+`shelved` dropped for now, with Greg's reason in the item.
 Then any of these tags:
 `data risk` work can be lost or stranded today ·
 `save path` changes save, lock or exit code, so a risk review (Alice-and-Bob story, the four rules) comes before the
@@ -37,14 +38,17 @@ About 97 items in nine groups. Most were deferred from 1.2.3 or found while test
 | 1 | [Store release](#1.%20Store%20release) | The 1.2.3 update that wouldn't open; a smaller package; test flights | 6 | 4 |
 | 2 | [Features and user-facing gaps](#2.%20Features%20and%20user-facing%20gaps) | Requests from Greg and clients; the licence-expiry warning | 19 | 8 |
 | 3 | [Protecting unsaved work](#3.%20Protecting%20unsaved%20work) | The remaining ways edits can be lost or stranded; the recovery redesign | 13 | 5 |
-| 4 | [Lock, save, open and restore](#4.%20Lock,%20save,%20open%20and%20restore) | Correctness gaps in the persistence paths | 14 | 4 |
+| 4 | [Lock, save, open and restore](#4.%20Lock,%20save,%20open%20and%20restore) | Correctness gaps in the persistence paths | 14 | 9 (+1 shelved) |
 | 5 | [Network shares](#5.%20Network%20shares) | What SMB caching, antivirus and unusual storage do to us | 8 | 0 |
 | 6 | [Messages](#6.%20Messages) | Wrong, doubled, hidden or jargon messages | 14 | 3 |
 | 7 | [Field reporting](#7.%20Field%20reporting) | Learning from BugSnag whether a failure ended well | 5 | 3 |
 | 8 | [Testing](#8.%20Testing) | Harness gaps that let field bugs through; cheaper hand tests | 12 | 11 |
 | 9 | [Smaller fixes and housekeeping](#9.%20Smaller%20fixes%20and%20housekeeping) | Bugs, consistency, upstream | 8 | 0 |
 
-**The urgent and high-value items, and where they stand (2026-11-09)**
+**The urgent and high-value items, and where they stand (2026-11-10)**
+- **Section 4, Greg's priority from 2026-11-09:** 4.2, 4.6, 4.7, 4.8 and 4.9 done; 4.11 shelved. 4.7 D1 closed a
+  rule-3 hole (crash recovery could delete kept changes that antivirus was holding). Left: 4.3, 4.4, 4.5, 4.10, 4.13's
+  accepted remainder.
 - **Store package** (1.2–1.4): done. The shared Windows file and the graphics PDBs are left out (55.5 MB); the flight
   procedure is written. Left: the first flight with the 1.2.4 submission, and the support case for 1.1 (Greg).
 - **Unapplied editor changes dropped at close or switch** (3.1): done. TermPoint always asks Apply / Discard / Cancel.

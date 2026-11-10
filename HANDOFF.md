@@ -1,4 +1,4 @@
-# Handoff: TermPoint 1.2.4 in progress on branch `Version_1.2.4` (dev machine, updated 2026-11-09)
+# Handoff: TermPoint 1.2.4 in progress on branch `Version_1.2.4` (dev machine, updated 2026-11-10)
 
 Written so a fresh conversation can pick up. Claude Code's memory and `CLAUDE.md` don't travel between machines
 (`CLAUDE.md` is gitignored), so everything a new agent needs is here or in the files this points to.
@@ -7,7 +7,7 @@ Written so a fresh conversation can pick up. Claude Code's memory and `CLAUDE.md
 
 ## Where things are
 
-- **Branches:** all 1.2.4 work is on **`Version_1.2.4`**, pushed (up to and including this handoff's commit, 2026-11-09).
+- **Branches:** all 1.2.4 work is on **`Version_1.2.4`**, pushed (up to and including this handoff's commit, 2026-11-10).
   **`master`** = released 1.2.3 code (`cf4d4cb`) plus doc commits, kept hotfixable; it is 7 doc-only commits ahead of
   origin and **not pushed** (pushing `master` redeploys the WASM demo; pushing a `v*` tag starts the macOS workflow).
   Greg controls branches, commits and pushes: never create a branch, ask before each commit and each push.
@@ -32,6 +32,20 @@ Written so a fresh conversation can pick up. Claude Code's memory and `CLAUDE.md
   I8 one message per problem); 8.7 test-only lock timer scale; 8.12 partly (two flaky tests remain).
 - **F21 data loss (3.12, `8143c5a`):** `CheckoutService.CleanupWorkingCopy` refuses to delete a working copy that still
   has its dirty marker. Also closes F2's close-time route.
+- **Section 4 (2026-11-09/10; Done notes in the summary; all MinimumVersionToWrite No):**
+  - **4.2** (`fb2e0a5`): already fixed by F17/F16 in `454a38c`; a test now pins it.
+  - **4.6** (`fb2e0a5`, hand test `0b1744f`; design `designs/reader-refresh-reconnect.md`): a failed reader refresh
+    always reopens the connection (3 tries, 1 s apart); outcomes `ReplaceFailed` / `ConnectionLost`; DEBUG switch
+    `TERMPOINT_DEBUG_FAIL_REFRESH` (give a count: a bare value fails every call).
+  - **4.7** (design `designs/open-checks-1.2.4.md`): D1 `2b08cf8`, crash recovery never deletes kept changes another
+    program holds (it used to archive and, when the rename failed, delete them; rule 3), new wording W1 "Your unsaved
+    changes from last time are kept."; D2 `60d83f4`, the front-door check of the shared database is the 16-byte header
+    check (`DatabaseValidator.ValidateSharedAtOpenAsync`).
+  - **4.8** (`dc70926`): measured with clumsy; opens work up to ~330 ms added round trip, fail at ~500 ms (first file
+    open ~7 s vs the 5 s header-read limit). Greg: leave as is.
+  - **4.9** (`76732a5`, wording `f67b274`): backups keep the newest N + the last of each of the prior 7 days and 4 weeks
+    that have backups; rotation only touches files named exactly `{database}_{timestamp}.db`.
+  - **4.11** shelved (`f67b274`): the location is checked, and the caution given, when a database is created.
 - **E: 3.2 F2 + 3.4 F5/F6 (`1d13956`, `301252b`, 2026-11-09):** an edit made during a save keeps its marker (edit count
   + SQLite `data_version`); a save with no marker and the same content as D writes nothing. Details under Next steps 0.5.
 - **4.12 F19 + 4.14 F22 (`cf2bce9`, 2026-11-03):**
@@ -86,8 +100,15 @@ Written so a fresh conversation can pick up. Claude Code's memory and `CLAUDE.md
       F5/F6 retired; new known finding F24 = 3.13's crash variant; full suite with harness 4571 passed, 0 failed).
       Spin-offs logged: **3.13** (an edit during Restore from Backup is deleted, or after a crash refused: refuse edits
       while a restore runs; retires F24) and **6.14** (two messages when the restore's save fails).
-   - **Next: pick with Greg.** Candidates: 3.13 and 6.14 (small, just found), 2.2 licence warning, group 5 experiments
-     (5.8) then 5.3/5.4, 6.12, harness 85 s model (retires F22). Postponed items under F above stay listed.
+   6. **Section 4 (Greg's priority, 2026-11-09): 4.2, 4.6, 4.7, 4.8, 4.9 done, 4.11 shelved** (see "Done in 1.2.4").
+   - **Next: pick with Greg.** Left in section 4: **4.3** (restore leaves the old process running; relaunch should
+     reopen the restored database), **4.4 + 4.5** (SQLite `query_only` on read-only connections; audit the sticky
+     `IsReadOnlyMode`; small, pair well), **4.10** (24 network calls without a deadline, `tools/NetworkProbe/GAP-AUDIT.md`),
+     4.13's remaining route (accepted). Other candidates: 3.13 and 6.14 (Restore from Backup, small), 2.2 licence
+     warning, 5.8 then 5.3/5.4, 6.12, harness 85 s model (retires F22). Postponed items under F above stay listed.
+   - **Small item found 2026-11-10:** `WizardDataFlowTests` writes the developer's real `%AppData%\TermPoint\settings.json`
+     (its comment says "accepted for now"); it left `BackupFolderPath` pointing at a deleted `%TEMP%\WizardTests_…`
+     folder on GregDeskTop, so every open there says "couldn't make a backup". Fix: isolate `AppSettings` in that test.
    - **Version gate:** leave 2.8 and 2.9 out of 1.2.4 (each raises `MinimumVersionToWrite` and would need 1.6
      first). Everything chosen above is MinimumVersionToWrite **No**. 3.5 and 2.1 A/B are too big for now.
 1. **Rest of group 8:**
@@ -202,6 +223,12 @@ Written so a fresh conversation can pick up. Claude Code's memory and `CLAUDE.md
 - **Dev console:** `C:\Users\gregs\source\repos\dev-console\dev-console.bat` (sideload/Store MSIX, licenses, WASM,
   macOS); its `config.ps1` holds the Store identity values.
 - **Never kill processes by image name**; only by PID, and only your own.
+- **TermPoint settings on GregDeskTop (left by the 4.8 runs, 2026-11-10):** auto-open is on and points at the share test
+  database (`\\mekler\...\termpointdata\BIOL-TT.db`); the backup folder points at a deleted test folder (see the small
+  item above). The pre-4.8 copy is `tmp\settings.before-4.8.json` (pointed at a deleted test copy; not worth restoring).
+- **Slow-link open runs:** `tmp\run48.ps1` (starts `E:\sa-48\TermPoint.exe`, waits, prints the timeline, closes) and
+  `tmp\open_timeline.ps1` (timeline of the latest starts from today's log). Check the lag first: a missing-file probe on
+  the share should take ≈ the added round trip. Clickable `E:\` links in the Code tab don't start that exe.
 - `python` here is Inkscape's; use **`py -3.11`**. Controlled Folder Access blocks test runners writing into
   `Documents`. Git Bash `sed -i` turns CRLF files into LF.
 - `src/TermPoint/Properties/launchSettings.json` is local. `tools/ScrollAnchorProbe`: re-run after every Avalonia
