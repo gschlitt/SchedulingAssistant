@@ -625,12 +625,25 @@ Everything in this group is checked against rule 3 (never delete the only copy o
 > usually finishes in the background, so a retry would find the connection ready) and not taken: ~330 ms is far beyond
 > ordinary links.
 
-> [!note]- **4.9 Backups turn over too fast** `not started · decide first`
+> [!note]- **4.9 Backups turn over too fast** `done` (timing only)
 > A backup is made at every open and five are kept, so five opens in a row delete every older backup. A user who
 > restarts a few times while troubleshooting a bad edit loses the backups from before it. Consider count versus age:
 > for example, always keep the newest backup from each of the last few days. The persistence review adds two more
 > points: there is no "skip if unchanged", and a backup that fails its integrity check still counts toward the five.
 > *Source: field-test open issue A7.*
+>
+> **Done (10 Nov 2026, timing only; rule and wording L1 approved by Greg; MinimumVersionToWrite No):** rotation
+> (`BackupService.SelectBackupsToDelete`, called by `RotateBackups`) now keeps three things:
+> - the newest N (the setting, now labelled "Recent backups to keep", default 5);
+> - the last backup of each of the 7 most recent days **before today** that have backups;
+> - the last backup of each of the 4 most recent weeks **before this one** (Monday to Sunday) that have backups.
+>
+> It deletes the rest, at most N + 11 kept, and always keeps a superset of what the old rule kept. New line under the
+> setting: "TermPoint also keeps the last backup of each of the 7 days and 4 weeks before this one that it was used."
+> Also fixed: only files named exactly `{database}_{timestamp}.db` count, so `BIOL`'s rotation no longer deletes the
+> backups of a database named `BIOL_TT`. A 1.2.3 computer sharing the backup folder still trims to N. Tests:
+> `BackupRetentionTests`; full suite 4487 passed, 0 failed. **Not done (per Greg):** "skip if unchanged", and backups
+> that fail their check still counting.
 
 > [!note]- **4.10 24 network file calls outside the save path have no deadline** `not started`
 > `tools/NetworkProbe/GAP-AUDIT.md` lists them; each could freeze the UI on a dead share. 1.2.3 fixed the backup-cleanup

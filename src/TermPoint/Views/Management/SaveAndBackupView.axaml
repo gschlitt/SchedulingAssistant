@@ -100,7 +100,7 @@
                         <TextBlock
                             FontSize="{StaticResource FontSizeNormal}"
                             FontWeight="SemiBold"
-                            Text="Backups to keep" />
+                            Text="Recent backups to keep" />
                         <NumericUpDown
                             FontSize="{StaticResource FontSizeNormal}"
                             FormatString="0"
@@ -110,6 +110,13 @@
                             Value="{Binding MaxBackupCount, Mode=TwoWay}" />
                     </StackPanel>
                 </Grid>
+
+                <!--  Retention beyond the recent backups (1.2.4 item 4.9, BackupService.SelectBackupsToDelete)  -->
+                <TextBlock
+                    FontSize="{StaticResource FontSizeNormal}"
+                    Foreground="{StaticResource TextMuted}"
+                    Text="TermPoint also keeps the last backup of each of the 7 days and 4 weeks before this one that it was used."
+                    TextWrapping="Wrap" />
 
                 <!--  Status + manual trigger  -->
                 <Border

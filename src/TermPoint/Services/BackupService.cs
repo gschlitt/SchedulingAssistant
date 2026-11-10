@@ -85,8 +85,9 @@ public readonly record struct IntegrityCheckOutcome(IntegrityCheckResult Result,
 /// <see cref="StopSession"/> (or <see cref="Dispose"/>) to stop the timer on shutdown
 /// or database switch.</para>
 ///
-/// <para><b>Rotation:</b> After every backup, the oldest backup pairs are deleted until
-/// only <see cref="AppSettings.MaxBackupCount"/> remain.</para>
+/// <para><b>Rotation:</b> After every backup, <see cref="RotateBackups"/> keeps the newest
+/// <see cref="AppSettings.MaxBackupCount"/> backups plus the last backup of each of the 7 days and 4 weeks before
+/// this one that have backups (<see cref="SelectBackupsToDelete"/>, 1.2.4 item 4.9), and deletes the rest.</para>
 ///
 /// <para><b>Integrity check:</b> <see cref="CheckIntegrity"/> and
 /// <see cref="CheckIntegrityDetailed"/> are static methods that
@@ -212,7 +213,7 @@ public class BackupService : IDisposable
     ///   <item>VACUUM INTO — creates a compacted snapshot of the live database.</item>
     ///   <item>Integrity check — verifies the backup file is structurally sound.</item>
     ///   <item>CSV export — writes a human-readable section dump alongside the .db file.</item>
-    ///   <item>Rotation — deletes the oldest backup pair(s) to stay within <see cref="AppSettings.MaxBackupCount"/>.</item>
+    ///   <item>Rotation — deletes the backup pairs the retention rule does not keep (<see cref="RotateBackups"/>).</item>
     /// </list>
     /// Failures are logged and surfaced via <see cref="LastBackupResult"/>; they do not throw.
     /// </summary>
@@ -951,26 +952,102 @@ public class BackupService : IDisposable
     }
 
     /// <summary>
-    /// Enforces the backup retention limit. Oldest backup pairs (db + csv) are deleted
-    /// until the count is at or below <paramref name="maxCount"/>.
+    /// How many earlier days (before today) keep their last backup, on top of the most recent ones
+    /// (1.2.4 item 4.9). Counted over days that HAVE a backup, so a database nobody opened for a while keeps its
+    /// history instead of ageing out while idle.
+    /// </summary>
+    internal const int KeepDailyCount = 7;
+
+    /// <summary>
+    /// How many earlier weeks (before the current one, weeks starting on Monday) keep their last backup
+    /// (1.2.4 item 4.9). Counted over weeks that HAVE a backup.
+    /// </summary>
+    internal const int KeepWeeklyCount = 4;
+
+    /// <summary>
+    /// Decides which backups of one database to delete (1.2.4 item 4.9). Pure: looks only at the file names and
+    /// <paramref name="now"/>, so it is unit-tested without any files. A backup is KEPT when any of these holds:
+    /// <list type="number">
+    /// <item><description>it is one of the newest <paramref name="recentCount"/> (the "Recent backups to keep"
+    /// setting; at least 1);</description></item>
+    /// <item><description>it is the newest backup of one of the <see cref="KeepDailyCount"/> most recent days
+    /// BEFORE today that have a backup;</description></item>
+    /// <item><description>it is the newest backup of one of the <see cref="KeepWeeklyCount"/> most recent weeks
+    /// BEFORE the current week (Monday to Sunday) that have a backup.</description></item>
+    /// </list>
+    /// Every other backup is returned for deletion. What is kept is always a superset of what the old
+    /// "newest N only" rule kept, so this never deletes a backup that the old rule would have kept.
+    ///
+    /// <para><b>Only this database's backups are considered.</b> A file counts only when its name is exactly
+    /// <c>{prefix}_{yyyy-MM-dd_HH-mm-ss}.db</c> (<see cref="TryGetDatabaseNameFromBackupFilename"/>, compared
+    /// case-insensitively). Anything else the folder glob matches is never returned: for example the backups of a
+    /// database named <c>BIOL_TT</c> when this one is <c>BIOL</c>, which the old rule deleted.</para>
+    /// </summary>
+    /// <param name="files">Candidate file paths (the folder's <c>{prefix}_*.db</c> matches).</param>
+    /// <param name="prefix">The database name the backups belong to, e.g. "ComputerScience".</param>
+    /// <param name="recentCount">How many of the newest backups to keep regardless of date (clamped to at least 1).</param>
+    /// <param name="now">The current local time; the day and week of <paramref name="now"/> count as "today" and "this week".</param>
+    /// <returns>The paths to delete (never one that is not a backup of <paramref name="prefix"/>), oldest first.</returns>
+    internal static IReadOnlyList<string> SelectBackupsToDelete(
+        IEnumerable<string> files, string prefix, int recentCount, DateTime now)
+    {
+        // Only real backups of THIS database, newest first. The timestamp comes from the name (local time, as written).
+        var backups = files
+            .Where(f => string.Equals(TryGetDatabaseNameFromBackupFilename(f), prefix, StringComparison.OrdinalIgnoreCase))
+            .Select(f => (Path: f, Time: ParseTimestampFromFilename(f)!.Value))
+            .OrderByDescending(b => b.Time)
+            .ThenByDescending(b => b.Path, StringComparer.Ordinal)
+            .ToList();
+
+        var keep = new HashSet<string>(StringComparer.Ordinal);
+
+        // 1. The newest N.
+        foreach (var b in backups.Take(Math.Max(recentCount, 1)))
+            keep.Add(b.Path);
+
+        // 2. The newest backup of each of the last KeepDailyCount days before today that have one.
+        //    "backups" is newest first, so the first of each group is that group's newest.
+        var today = now.Date;
+        foreach (var day in backups.Where(b => b.Time.Date < today)
+                                   .GroupBy(b => b.Time.Date)
+                                   .Take(KeepDailyCount))
+            keep.Add(day.First().Path);
+
+        // 3. The newest backup of each of the last KeepWeeklyCount weeks before this one that have one.
+        var thisWeek = WeekStart(today);
+        foreach (var week in backups.Where(b => WeekStart(b.Time.Date) < thisWeek)
+                                    .GroupBy(b => WeekStart(b.Time.Date))
+                                    .Take(KeepWeeklyCount))
+            keep.Add(week.First().Path);
+
+        return backups.Where(b => !keep.Contains(b.Path))
+                      .OrderBy(b => b.Time)
+                      .Select(b => b.Path)
+                      .ToList();
+    }
+
+    /// <summary>The Monday that starts the week containing <paramref name="date"/> (weeks run Monday to Sunday).</summary>
+    /// <param name="date">A date (its time of day is ignored).</param>
+    /// <returns>The date of that week's Monday.</returns>
+    private static DateTime WeekStart(DateTime date)
+        => date.Date.AddDays(-(((int)date.DayOfWeek + 6) % 7));
+
+    /// <summary>
+    /// Enforces the backup retention rule (<see cref="SelectBackupsToDelete"/>, 1.2.4 item 4.9): deletes every backup
+    /// pair (db + csv) of this database that the rule does not keep. Files in the folder that are not backups of
+    /// <paramref name="prefix"/> are never touched.
     /// </summary>
     /// <param name="folder">Backup folder path.</param>
     /// <param name="prefix">Database name prefix, e.g. "ComputerScience".</param>
-    /// <param name="maxCount">Maximum number of periodic backup pairs to retain.</param>
-    internal static void RotateBackups(string folder, string prefix, int maxCount)
+    /// <param name="maxCount">How many of the newest backups to keep regardless of date (the "Recent backups to keep" setting).</param>
+    /// <param name="now">The current local time; null means <see cref="DateTime.Now"/>. Tests pass a fixed time.</param>
+    internal static void RotateBackups(string folder, string prefix, int maxCount, DateTime? now = null)
     {
-        // Clamp to a sensible minimum to prevent accidental deletion of everything.
-        maxCount = Math.Max(maxCount, 1);
+        var toDelete = SelectBackupsToDelete(
+            Directory.GetFiles(folder, $"{prefix}_*.db"), prefix, maxCount, now ?? DateTime.Now);
 
-        var files = Directory.GetFiles(folder, $"{prefix}_*.db")
-                             .OrderBy(f => f)   // ascending = oldest first
-                             .ToList();
-
-        while (files.Count > maxCount)
+        foreach (var oldest in toDelete)
         {
-            var oldest = files[0];
-            files.RemoveAt(0);
-
             TryDelete(oldest);
 
             // Delete companion CSV — the CSV name includes an academic year slug between

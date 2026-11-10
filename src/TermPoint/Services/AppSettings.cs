@@ -276,8 +276,10 @@ public class AppSettings
     public int BackupIntervalMinutes { get; set; } = 30;
 
     /// <summary>
-    /// Maximum number of backup files to retain per database.
-    /// When exceeded, the oldest backup pair (.db + _sections.csv) is deleted.
+    /// How many of the newest backups to keep per database regardless of date ("Recent backups to keep").
+    /// On top of these, the last backup of each of the 7 days and 4 weeks before this one that have backups is
+    /// also kept (1.2.4 item 4.9, <c>BackupService.SelectBackupsToDelete</c>); every other backup pair
+    /// (.db + _sections.csv) is deleted. The setting's name is kept so existing settings files still load.
     /// Default: 5.
     /// </summary>
     public int MaxBackupCount { get; set; } = 5;
