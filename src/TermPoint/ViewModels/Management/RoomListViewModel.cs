@@ -232,7 +232,7 @@ public partial class RoomListViewModel : ViewModelBase, IDismissableEditor, IUna
 
         // Desktop builds wrap this in a DB transaction for atomicity; the WASM demo
         // uses in-memory repositories with no real connection, so tx is null there.
-        DbTransaction? tx = _db.SupportsTransactions ? _db.Connection.BeginTransaction() : null;
+        DbTransaction? tx = _db.BeginWriteTransaction();
         try
         {
             var sections = _sectionRepo.GetAll();

@@ -253,7 +253,7 @@ public sealed class SemesterContentsService(
     /// <param name="work">The writes to perform; receives the transaction (or <c>null</c>).</param>
     private void RunInTransaction(Action<DbTransaction?> work)
     {
-        using var tx = db.SupportsTransactions ? db.Connection.BeginTransaction() : null;
+        using var tx = db.BeginWriteTransaction();
         try
         {
             work(tx);

@@ -469,7 +469,8 @@ public partial class App : Application
 
         // readOnly: any session that does not hold the write lock (reader / observer mode, the version-gate
         // or fallback snapshot D''). Checkout has already run by the time this is resolved, so Mode is final.
-        // Mode, not IsReadOnlyMode: IsReadOnlyMode is sticky after a switch from reader to writer.
+        // Mode, not IsReadOnlyMode: IsReadOnlyMode means "on a D'' snapshot", and a demoted writer is read-only before
+        // its snapshot exists. (It is no longer sticky: every checkout clears it, 1.2.4 items 3.3 / 4.5.)
         services.AddSingleton<IDatabaseContext>(_ => new DatabaseContext(
             dbPath, App.Checkout.MarkDirty, readOnly: App.Checkout.Mode != CheckoutMode.WriteAccess,
             onEveryWrite: App.Checkout.NoteEdit));   // counts every edit so a save can tell one arrived while it ran (spec item 3.2)

@@ -2233,6 +2233,33 @@ public sealed class CheckoutServiceTests : IDisposable
     }
 
     /// <summary>
+    /// 1.2.4 item 4.5: <see cref="CheckoutService.IsReadOnlyMode"/> is not sticky. A window that was a reader and then
+    /// opens a free database for writing (the same <see cref="CheckoutService"/>) is no longer marked read-only:
+    /// <c>BeginSession</c> clears the flag at the start of every checkout.
+    /// </summary>
+    [Fact]
+    public async Task ReaderThenWriter_OnTheSameService_IsReadOnlyModeIsCleared()
+    {
+        var shared = DbPath("shared");
+        var other  = DbPath("other");
+        CreateFile(shared);
+        CreateFile(other);
+        var (writer, _) = CreateService();
+        Assert.Equal(CheckoutOutcome.WriteAccess, await writer.CheckoutAsync(shared));
+
+        var (svc, lockSvc) = CreateService();
+        Assert.Equal(CheckoutOutcome.ReadOnly, await svc.CheckoutAsync(shared));
+        Assert.True(svc.IsReadOnlyMode);
+
+        await svc.ReleaseAsync(saveFirst: false);
+        Assert.Equal(CheckoutOutcome.WriteAccess, await svc.CheckoutAsync(other));
+
+        Assert.Equal(CheckoutMode.WriteAccess, svc.Mode);
+        Assert.True(lockSvc.IsWriter);
+        Assert.False(svc.IsReadOnlyMode, "a former reader that now writes must not be marked read-only");
+    }
+
+    /// <summary>
     /// When a writer modifies D and saves, then a reader calls RefreshReadOnlySnapshotAsync,
     /// D'' should be updated to reflect the changes.
     /// </summary>

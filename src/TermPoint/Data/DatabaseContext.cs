@@ -61,6 +61,17 @@ public class DatabaseContext : IDatabaseContext
     public bool SupportsTransactions => true;
 
     /// <summary>
+    /// Starts a write transaction. A writer gets the usual <c>BEGIN IMMEDIATE</c> (unchanged). A read-only session gets
+    /// a deferred <c>BEGIN</c>, which SQLite's <c>query_only</c> switch allows, so the first repository write inside it
+    /// reaches <see cref="MarkDirty"/> and is refused with the plain <see cref="WriteAccessLostException"/>, exactly as
+    /// before item 4.4. (<c>BEGIN IMMEDIATE</c> would fail at once with SQLITE_READONLY, usually outside the caller's
+    /// try block.)
+    /// </summary>
+    /// <returns>The open transaction (never null for this context).</returns>
+    public DbTransaction? BeginWriteTransaction()
+        => _readOnly ? _conn.BeginTransaction(deferred: true) : _conn.BeginTransaction();
+
+    /// <summary>
     /// Called by every repository write BEFORE it touches the database. In a read-only session it refuses the
     /// write: the change would only land in the throw-away read-only copy and silently disappear, so the user is
     /// told instead (see <see cref="WriteAccessLostException"/>). A writer session behaves as before.
@@ -86,7 +97,37 @@ public class DatabaseContext : IDatabaseContext
     /// it would hit a closed connection instead of getting the plain message. Deliberately NOT done in
     /// <see cref="CloseConnection"/>, which a switch or restore also uses and which must not report a lost lock.
     /// </summary>
+    /// <remarks>
+    /// Deliberately does NOT turn on SQLite's <c>query_only</c> switch (see <see cref="ApplyReadOnly"/>): this can run
+    /// off the UI thread while the UI is using the connection, and the demotion reopens the connection with the switch
+    /// on seconds later. <see cref="MarkDirty"/> covers the gap.
+    /// </remarks>
     public void MarkReadOnly() => _readOnly = true;
+
+    /// <summary>
+    /// Records the session's mode on the freshly opened connection. Sets <c>_readOnly</c> (the
+    /// <see cref="MarkDirty"/> refusal) and, for a read-only session, also turns on SQLite's own
+    /// <c>PRAGMA query_only</c> on <see cref="_conn"/> as a second, database-level guard (spec 1.2.4 item 4.4,
+    /// design <c>designs/read-only-guard-1.2.4.md</c>): a write that ever slips past <see cref="MarkDirty"/> then
+    /// fails at SQLite (SQLITE_READONLY) instead of landing silently in a throw-away copy.
+    /// <para>Must be called only after the open's schema setup, migrations and seeding (they legitimately write to a
+    /// snapshot of an older database) and after <see cref="ConfigureConnection"/>. The switch belongs to this one
+    /// connection, and background connections (backup, the save's snapshot) never see it. <see cref="ConfigureConnection"/>
+    /// turns it OFF at the start of every open, so a pooled connection a reader left with the switch on can never make
+    /// a writer (or the open's own setup) fail.</para>
+    /// </summary>
+    /// <param name="readOnly">True when this session may not write.</param>
+    /// <exception cref="SqliteException">The pragma could not be run on the open connection.</exception>
+    private void ApplyReadOnly(bool readOnly)
+    {
+        if (readOnly)
+        {
+            using var cmd = _conn.CreateCommand();
+            cmd.CommandText = "PRAGMA query_only=ON";
+            cmd.ExecuteNonQuery();
+        }
+        _readOnly = readOnly;
+    }
 
     /// <inheritdoc/>
     public void ResetDirty() => Interlocked.Exchange(ref _dirtyFired, 0);
@@ -134,7 +175,7 @@ public class DatabaseContext : IDatabaseContext
             SeedData.EnsureSeeded(_conn);
 
             // Last of all: the init above legitimately writes to a snapshot of an older database.
-            _readOnly = readOnly;
+            ApplyReadOnly(readOnly);
         }
         catch (Exception ex)
         {
@@ -178,12 +219,18 @@ public class DatabaseContext : IDatabaseContext
     /// <para><b>5-second busy timeout:</b> repository calls run synchronously on the UI
     /// thread. Should a lock ever be contended despite WAL, fail after 5&#160;s with a clean
     /// <see cref="SqliteException"/> instead of the driver default of 30&#160;s of frozen UI.</para>
+    ///
+    /// <para><b>query_only off:</b> a pooled connection keeps its pragmas, so one a read-only session left with SQLite's
+    /// <c>query_only</c> switch on (see <see cref="ApplyReadOnly"/>) is reset here, before the schema setup and before
+    /// the WAL pragma. <see cref="ApplyReadOnly"/> turns it back on, last, for a read-only session.</para>
     /// </summary>
     /// <param name="conn">The open connection to configure.</param>
     private static void ConfigureConnection(SqliteConnection conn)
     {
         conn.DefaultTimeout = 5;
         using var cmd = conn.CreateCommand();
+        cmd.CommandText = "PRAGMA query_only=OFF";
+        cmd.ExecuteNonQuery();
         cmd.CommandText = "PRAGMA journal_mode=WAL";
         cmd.ExecuteScalar();
     }
@@ -679,7 +726,7 @@ public class DatabaseContext : IDatabaseContext
             ConfigureConnection(_conn);
             // No need to call InitializeSchema or Migrate — the new file already has the schema
             // (it was a copy of the old D'', which was a consistent snapshot).
-            _readOnly = readOnly;
+            ApplyReadOnly(readOnly);
         }
         catch (Exception ex)
         {

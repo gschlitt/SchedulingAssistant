@@ -35,6 +35,17 @@ public interface IDatabaseContext : IDisposable
     bool SupportsTransactions { get; }
 
     /// <summary>
+    /// Starts the transaction that wraps a multi-step write, or returns <c>null</c> when the context has no
+    /// transactions (the WASM demo; its repositories accept <c>tx = null</c>). Use this instead of
+    /// <c>Connection.BeginTransaction()</c> for every write transaction.
+    /// <para>The SQLite context overrides it so that a read-only session starts a plain (deferred) <c>BEGIN</c>: the
+    /// default <c>BEGIN IMMEDIATE</c> asks for the write lock, which SQLite's <c>query_only</c> switch refuses with a
+    /// raw error before the first repository write could give the plain "no write access" refusal (1.2.4 item 4.4).</para>
+    /// </summary>
+    /// <returns>The open transaction, or <c>null</c> when <see cref="SupportsTransactions"/> is false.</returns>
+    DbTransaction? BeginWriteTransaction() => SupportsTransactions ? Connection.BeginTransaction() : null;
+
+    /// <summary>
     /// Signals that a user-initiated write is about to occur. On the first call per session
     /// this triggers the dirty marker so crash recovery detection works correctly.
     /// Subsequent calls are no-ops. Ignored in demo contexts. In a read-only SQLite session it REFUSES the

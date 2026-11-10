@@ -145,7 +145,7 @@ internal sealed class InvariantChecker
 
     /// <summary>
     /// <b>I6 clause (a), nobody holds a lock they cannot use:</b> a session whose checkout is read-only (<c>Mode == ReadOnly</c>;
-    /// <c>IsReadOnlyMode</c> is set with it, but production never clears it, so it is not read alone) must not hold its database's lock:
+    /// <c>IsReadOnlyMode</c> is not read: a demoted writer is read-only before its snapshot exists) must not hold its database's lock:
     /// neither the computer's lock service may say it is the writer, nor may the lock file of the checkout's <c>SourcePath</c> name the
     /// session. Such a session cannot save, so the lock keeps everyone else out of a database nobody can write to (finding F16: a
     /// demotion that lands on the session that replaced the one it was started for). Only computers whose process runs with a database

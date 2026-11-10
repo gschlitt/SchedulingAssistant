@@ -99,7 +99,7 @@ public sealed class SectionImportWriter
 
         // Nullable-tx pattern, as SemesterContentsService.RunInTransaction: a context without transactions
         // (the WASM demo) runs the same inserts with a null transaction.
-        using var tx = _db.SupportsTransactions ? _db.Connection.BeginTransaction() : null;
+        using var tx = _db.BeginWriteTransaction();
         try
         {
             var counts = InsertAll(plan, sections, tx);

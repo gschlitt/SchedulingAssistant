@@ -904,9 +904,9 @@ public partial class MainWindowViewModel : ViewModelBase
 
     /// <summary>
     /// True when the session should refresh by re-copying D to D'': it is a read-only (snapshot) session. Decided by
-    /// the checkout <see cref="CheckoutService.Mode"/> alone. <see cref="CheckoutService.IsReadOnlyMode"/> is NOT
-    /// used: it is set when a snapshot is made but never cleared when the same window later switches to write
-    /// access, so a former reader would otherwise be treated as a reader forever.
+    /// the checkout <see cref="CheckoutService.Mode"/> alone. <see cref="CheckoutService.IsReadOnlyMode"/> is not
+    /// needed here: <c>RefreshReadOnlySnapshotAsync</c> checks it itself. (It was once sticky after a switch from reader
+    /// to writer; since 1.2.4 items 3.3 / 4.5 every checkout clears it.)
     /// </summary>
     /// <param name="mode">The current <see cref="CheckoutService.Mode"/>.</param>
     /// <returns>True for <see cref="CheckoutMode.ReadOnly"/>.</returns>

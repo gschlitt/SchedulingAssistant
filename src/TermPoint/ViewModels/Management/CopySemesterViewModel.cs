@@ -195,7 +195,7 @@ public partial class CopySemesterViewModel : ViewModelBase, IDisposable
 
         // Use the nullable-tx pattern so WASM demo contexts (SupportsTransactions = false)
         // can complete without throwing NotSupportedException on Connection access. (F14.)
-        using var tx = _db.SupportsTransactions ? _db.Connection.BeginTransaction() : null;
+        using var tx = _db.BeginWriteTransaction();
         try
         {
             foreach (var source in _sourceSections!)

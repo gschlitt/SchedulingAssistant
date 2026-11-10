@@ -196,6 +196,95 @@ public sealed class ReadOnlySessionTests : IDisposable
             Assert.Equal(DatabaseContext.CurrentSchemaVersion, Convert.ToInt32(cmd.ExecuteScalar()));
         }
         Assert.Throws<WriteAccessLostException>(() => new SemesterRepository(db).Insert(MakeSemester("Fall")));
+        Assert.Throws<SqliteException>(() => RawInsert(db));   // and the database-level switch is on (item 4.4)
+    }
+
+    // ── The database-level guard (1.2.4 item 4.4) ────────────────────────────
+
+    /// <summary>
+    /// Writes one semester row straight through the context's connection, bypassing <see cref="DatabaseContext.MarkDirty"/>:
+    /// the "forgotten MarkDirty" case that SQLite's <c>query_only</c> switch must catch.
+    /// </summary>
+    /// <param name="db">The context under test.</param>
+    private static void RawInsert(DatabaseContext db)
+    {
+        using var cmd = db.Connection.CreateCommand();
+        cmd.CommandText = $"INSERT INTO Semesters (id, academic_year_id, name, data) VALUES ('{Guid.NewGuid():N}', 'ay-1', 'Raw', '{{}}')";
+        cmd.ExecuteNonQuery();
+    }
+
+    /// <summary>Asserts that <paramref name="ex"/> is SQLite's read-only refusal (SQLITE_READONLY, primary code 8).</summary>
+    /// <param name="ex">The exception thrown by the raw write.</param>
+    private static void AssertSqliteReadOnly(SqliteException ex) => Assert.Equal(8, ex.SqliteErrorCode);
+
+    /// <summary>
+    /// A read-only context also refuses a write that skips <see cref="DatabaseContext.MarkDirty"/>: SQLite itself rejects
+    /// it, so nothing lands in the file. Reads still work.
+    /// </summary>
+    [Fact]
+    public void ReadOnlyContext_RawWriteThatSkipsMarkDirty_IsRefusedBySqlite()
+    {
+        using var db = new DatabaseContext(_dbPath, readOnly: true);
+        var before = CountRows("Semesters");
+
+        AssertSqliteReadOnly(Assert.Throws<SqliteException>(() => RawInsert(db)));
+
+        Assert.Equal(before, CountRows("Semesters"));
+        Assert.Empty(new SemesterRepository(db).GetAll());
+    }
+
+    /// <summary>A writer context's raw write still works: the switch is never on for a writer.</summary>
+    [Fact]
+    public void WriterContext_RawWrite_Works()
+    {
+        using var db = new DatabaseContext(_dbPath);
+
+        RawInsert(db);
+
+        Assert.Equal(1, CountRows("Semesters"));
+    }
+
+    /// <summary>
+    /// <see cref="DatabaseContext.ReinitializeConnection"/> applies the switch to the reopened connection when it is
+    /// told the session is read-only (reader Refresh, a demotion's reopen), and leaves it off when it is not.
+    /// </summary>
+    [Fact]
+    public void ReinitializeConnection_AppliesTheSwitch_OnlyWhenReadOnly()
+    {
+        using var db = new DatabaseContext(_dbPath);
+
+        db.ReinitializeConnection(_dbPath, readOnly: true);
+        AssertSqliteReadOnly(Assert.Throws<SqliteException>(() => RawInsert(db)));
+        Assert.Equal(0, CountRows("Semesters"));
+
+        db.ReinitializeConnection(_dbPath, readOnly: false);
+        RawInsert(db);
+        Assert.Equal(1, CountRows("Semesters"));
+    }
+
+    /// <summary>
+    /// A writer context opened on a connection that still has the switch on (as a pooled connection left by a reader
+    /// could) turns it off: the reader's connection is returned to the pool WITHOUT clearing the pools, then a writer
+    /// on the same file must still write.
+    /// </summary>
+    [Fact]
+    public void WriterContext_AfterAReaderConnectionWentBackToThePool_StillWrites()
+    {
+        // A plain pooled connection with the switch on, returned to the pool (no ClearAllPools).
+        using (var _ = new DatabaseContext(_dbPath)) { }
+        using (var conn = new SqliteConnection($"Data Source={_dbPath}"))
+        {
+            conn.Open();
+            using var cmd = conn.CreateCommand();
+            cmd.CommandText = "PRAGMA query_only=ON";
+            cmd.ExecuteNonQuery();
+        }
+
+        using var writer = new DatabaseContext(_dbPath);
+        RawInsert(writer);
+        new SemesterRepository(writer).Insert(MakeSemester("Fall"));
+
+        Assert.Equal(2, CountRows("Semesters"));
     }
 
     // ── Setting and clearing the flag ─────────────────────────────────────────
@@ -277,8 +366,8 @@ public sealed class ReadOnlySessionTests : IDisposable
 
     /// <summary>
     /// The Refresh button re-copies D to D'' only in a read-only session, and decides that from the checkout
-    /// <see cref="CheckoutMode"/> — never from the sticky <c>IsReadOnlyMode</c> flag, which stays true after the
-    /// same window switches from reader to writer.
+    /// <see cref="CheckoutMode"/>, not from the <c>IsReadOnlyMode</c> flag (which was once sticky after the same window
+    /// switched from reader to writer; every checkout clears it since 1.2.4 items 3.3 / 4.5).
     /// </summary>
     [Theory]
     [InlineData(CheckoutMode.ReadOnly, true)]

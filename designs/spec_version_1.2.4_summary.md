@@ -46,8 +46,8 @@ About 97 items in nine groups. Most were deferred from 1.2.3 or found while test
 | 9 | [Smaller fixes and housekeeping](#9.%20Smaller%20fixes%20and%20housekeeping) | Bugs, consistency, upstream | 8 | 0 |
 
 **The urgent and high-value items, and where they stand (2026-11-10)**
-- **Section 4, Greg's priority from 2026-11-09:** 4.2, 4.6, 4.7, 4.8 and 4.9 done; 4.11 shelved. 4.7 D1 closed a
-  rule-3 hole (crash recovery could delete kept changes that antivirus was holding). Left: 4.3, 4.4, 4.5, 4.10, 4.13's
+- **Section 4, Greg's priority from 2026-11-09:** 4.2, 4.4, 4.5, 4.6, 4.7, 4.8 and 4.9 done; 4.11 shelved. 4.7 D1 closed a
+  rule-3 hole (crash recovery could delete kept changes that antivirus was holding). Left: 4.3, 4.10, 4.13's
   accepted remainder.
 - **Store package** (1.2–1.4): done. The shared Windows file and the graphics PDBs are left out (55.5 MB); the flight
   procedure is written. Left: the first flight with the 1.2.4 submission, and the support case for 1.1 (Greg).
@@ -556,13 +556,30 @@ Everything in this group is checked against rule 3 (never delete the only copy o
 > against "already shutting down"), and pass the restored path to the relaunched copy.
 > *Source: spec, "Item 5 (M11)"; the field-test doc has the stack and heap evidence.*
 
-> [!note]- **4.4 Read-only connections: a second, database-level guard** `not started`
+> [!note]- **4.4 Read-only connections: a second, database-level guard** `done`
 > 1.2.3 refuses writes in read-only sessions in TermPoint's code. Also turn on SQLite's own read-only switch
 > (`query_only`) for read-only connections. It must be applied after the open's schema setup, migration and seeding.
+>
+> **Done (10 Nov 2026; design `designs/read-only-guard-1.2.4.md`; MinimumVersionToWrite No; no new wording):**
+> `DatabaseContext.ApplyReadOnly` turns on `PRAGMA query_only` for a read-only session, last in the constructor and
+> in `ReinitializeConnection`, so a write that ever skips `MarkDirty()` fails at SQLite (SQLITE_READONLY) instead of
+> landing silently in the throw-away copy. Not in `MarkReadOnly()` (it can run off the UI thread; `MarkDirty()` covers
+> the seconds until the demotion reopens). `ConfigureConnection` turns the switch off at the start of every open, so a
+> pooled connection a reader left with it on can't affect a writer or the open's setup. Survey: every repository write
+> already calls `MarkDirty()`; the other writes are the open's setup or use their own connections. Found by the full
+> suite: `BeginTransaction()` is `BEGIN IMMEDIATE`, which `query_only` refuses, so the five write transactions now
+> start through `IDatabaseContext.BeginWriteTransaction()` (deferred `BEGIN` for a reader, unchanged for a writer); a
+> reader sees the same plain refusal as before. Tests in `ReadOnlySessionTests` (raw write refused / allowed, reopen
+> both ways, pooled connection) plus the import tests that caught it.
 
-> [!note]- **4.5 Audit the "read-only" flag that never clears** `not started`
+> [!note]- **4.5 Audit the "read-only" flag that never clears** `done`
 > `IsReadOnlyMode` is cleared only by a failed open. Refresh now goes by the session's mode instead; check the
 > remaining uses.
+>
+> **Done (10 Nov 2026):** no longer sticky: since `454a38c` (3.3) `BeginSession()` clears it at every checkout. Its one
+> production reader (the guard in `RefreshReadOnlySnapshotAsync`, with `Mode == ReadOnly`) is correct. Corrected four
+> stale comments; pin test `CheckoutServiceTests.ReaderThenWriter_OnTheSameService_IsReadOnlyModeIsCleared`. (A demoted
+> writer has `Mode == ReadOnly` with the flag false until its D'' exists: intended, the flag means "on a snapshot".)
 
 > [!note]- **4.6 Reader Refresh: reopen the connection after a failed refresh** `done`
 > If a reader's refresh fails after the connection was closed (for example, antivirus holding the file), the
