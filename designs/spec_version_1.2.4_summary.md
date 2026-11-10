@@ -531,12 +531,17 @@ Everything in this group is checked against rule 3 (never delete the only copy o
 > `CheckLockAndSourceAsync` (tidy-up).
 > *Source: spec, follow-ups table (F12); field-test open issue A11; 1.2.3 spec item 32, "Not fixed now".*
 
-> [!note]- **4.2 An exit save that loses the lock starts a demotion while the window closes** `not started` `save path`
+> [!note]- **4.2 An exit save that loses the lock starts a demotion while the window closes** `done` `save path`
 > When the exit save is refused because the lock was lost, the in-place demotion still starts, and its last steps can
 > run after services are disposed. The log gets an ERROR ("Cannot access a disposed object"), BugSnag probably gets a
 > report, and in a rare ordering "Changes Not Saved" isn't shown. No data risk: the local copy and its marker are kept,
 > and Restore is offered next time. Seen in the field. **Fix direction:** skip the demotion while closing, or read the
 > marker state before the save.
+>
+> **Done (9 Nov 2026; fixed by F17/F16 in `454a38c`, pinned now):** from the start of `ReleaseAsync` the session is
+> ending, so an exit save that finds the lock taken over raises no lock loss (`HandleLockLossAsync`); a demotion
+> already running is waited for before the save. Bob sees only "Changes Not Saved"; D' and its marker are kept.
+> Test `ExitSave_FindsTheLockTakenOver_StartsNoDemotion_AndKeepsTheChanges`. MinimumVersionToWrite No.
 
 > [!note]- **4.3 Restoring a backup leaves the old process running; the relaunch should reopen the restored database** `not started`
 > After a Save & Backup restore, the old TermPoint process stays alive with no windows until sign-out (about 265 MB).
@@ -555,12 +560,19 @@ Everything in this group is checked against rule 3 (never delete the only copy o
 > `IsReadOnlyMode` is cleared only by a failed open. Refresh now goes by the session's mode instead; check the
 > remaining uses.
 
-> [!note]- **4.6 Reader Refresh: reopen the connection after a failed refresh** `not started`
+> [!note]- **4.6 Reader Refresh: reopen the connection after a failed refresh** `done`
 > If a reader's refresh fails after the connection was closed (for example, antivirus holding the file), the
 > connection is never reopened, and the session is dead until restart. The plan was approved in October: always
 > reopen, on the new data or on the previous copy, retry a failed reopen, and report the outcome in the existing yellow
 > row. The honest messages shipped in 1.2.3; the reconnection didn't.
 > *Source: 1.2.3 spec, item 11.*
+>
+> **Done (9 Nov 2026; design `designs/reader-refresh-reconnect.md`; full suite with harness 4577 passed, 0 failed;
+> MinimumVersionToWrite No):** once the connection is closed for the swap, the refresh always reopens it (fresh copy,
+> or the previous one when the swap failed), 3 attempts 1 s apart, stopping if the session ends. New outcomes
+> `ReplaceFailed` ("Couldn't refresh just now…") and `ConnectionLost` (close-and-reopen line, now only after three
+> failed reopens). No new wording. DEBUG switch `TERMPOINT_DEBUG_FAIL_REFRESH=replace|reopen[:count[:skip]]`.
+> **Left:** the hand test with that switch (`replace`; `reopen:2`; `reopen:3`).
 
 > [!note]- **4.7 Opening: a lighter check of the shared database; locked vs damaged local copy** `not started · decide first`
 > Two leftovers from 1.2.3's open rework:

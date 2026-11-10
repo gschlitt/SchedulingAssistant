@@ -9,8 +9,9 @@ namespace TermPoint.Services;
 ///
 /// <para><b>What the wording promises.</b> A refresh that worked changes the tooltip to the time it worked; a refresh
 /// that failed leaves the tooltip alone and says, in one line, what the user is looking at ("Showing data from 2:14 PM",
-/// or "from when you opened the database" when no refresh has worked yet) and what to do. The one case where nothing in
-/// 1.2.3 can help, a connection that was closed for the swap and not reopened, says to close and reopen TermPoint.</para>
+/// or "from when you opened the database" when no refresh has worked yet) and what to do. The one case where nothing
+/// can help, a connection that was closed for the swap and that three reopen attempts could not reopen, says to close
+/// and reopen TermPoint.</para>
 ///
 /// <para><b>The wording rules</b> (rule 4 of the four rules for the shared database): plain words; no path, raw
 /// exception message or log text; never "SQLite", "snapshot" or "write access". Tests enforce them.</para>
@@ -40,8 +41,8 @@ public static class RefreshPrompt
     // ── The failure lines ─────────────────────────────────────────────────────
 
     /// <summary>
-    /// The line when the connection was closed for the swap and did not reopen. Nothing in 1.2.3 reopens it, so the
-    /// only next step is to restart.
+    /// The line when the connection was closed for the swap and three reopen attempts failed (outcome
+    /// <see cref="RefreshOutcome.ConnectionLost"/>), so the only next step is to restart.
     /// </summary>
     public const string ConnectionLost =
         "TermPoint couldn't refresh and lost its connection to the database. Close TermPoint and open it again.";
@@ -71,30 +72,28 @@ public static class RefreshPrompt
     /// Picks the one line to show for a refresh, from the facts the view model gathered, or null when the refresh
     /// worked (so "null" is also the test for "set the tooltip's time and reload the list"). In order:
     /// <list type="number">
-    /// <item><description><paramref name="connectionLost"/>: <see cref="ConnectionLost"/>;</description></item>
     /// <item><description><paramref name="threw"/>: <see cref="OtherFailure"/>;</description></item>
     /// <item><description>outcome <see cref="RefreshOutcome.Updated"/>: null;</description></item>
     /// <item><description>outcome <see cref="RefreshOutcome.SourceUnavailable"/>: <see cref="NotResponding"/>;</description></item>
+    /// <item><description>outcome <see cref="RefreshOutcome.ReplaceFailed"/>: <see cref="OtherFailure"/>;</description></item>
+    /// <item><description>outcome <see cref="RefreshOutcome.ConnectionLost"/>: <see cref="ConnectionLost"/>;</description></item>
     /// <item><description>anything else (no outcome, or one added later): <see cref="OtherFailure"/>.</description></item>
     /// </list>
     /// </summary>
     /// <param name="outcome">What <c>RefreshReadOnlySnapshotAsync</c> returned, or null when it did not return (it threw).</param>
-    /// <param name="connectionLost">
-    /// True when the view model's <c>BeforeOverwrite</c> callback ran (it closed the connection) but its
-    /// <c>AfterOverwrite</c> did not complete (not called, or threw): the connection is known to be closed.
-    /// </param>
     /// <param name="threw">True when the refresh call threw an exception.</param>
     /// <param name="lastRefreshedAt">When the last refresh that worked finished, or null when none has.</param>
     /// <returns>The line for the yellow row, or null when the refresh worked.</returns>
-    public static string? FailureLine(RefreshOutcome? outcome, bool connectionLost, bool threw, DateTime? lastRefreshedAt)
+    public static string? FailureLine(RefreshOutcome? outcome, bool threw, DateTime? lastRefreshedAt)
     {
-        if (connectionLost) return ConnectionLost;
         if (threw) return OtherFailure(lastRefreshedAt);
 
         return outcome switch
         {
             RefreshOutcome.Updated           => null,
             RefreshOutcome.SourceUnavailable => NotResponding(lastRefreshedAt),
+            RefreshOutcome.ReplaceFailed     => OtherFailure(lastRefreshedAt),
+            RefreshOutcome.ConnectionLost    => ConnectionLost,
             _                                => OtherFailure(lastRefreshedAt)
         };
     }

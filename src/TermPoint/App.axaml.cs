@@ -142,8 +142,9 @@ public partial class App : Application
     /// time it runs (static initializers run in textual order).
     ///
     /// <para>Also attaches the DEBUG-ONLY fault plans from the <c>TERMPOINT_DEBUG_FAIL_CHECKOUT</c>,
-    /// <c>TERMPOINT_DEBUG_FAIL_RESTORE</c> and <c>TERMPOINT_DEBUG_FAIL_INTEGRITY</c> environment variables (see
-    /// <see cref="CheckoutFaultPlan"/>, <see cref="RestoreFaultPlan"/> and <see cref="IntegrityFaultPlan"/>): their
+    /// <c>TERMPOINT_DEBUG_FAIL_RESTORE</c>, <c>TERMPOINT_DEBUG_FAIL_REFRESH</c> and <c>TERMPOINT_DEBUG_FAIL_INTEGRITY</c>
+    /// environment variables (see <see cref="CheckoutFaultPlan"/>, <see cref="RestoreFaultPlan"/>,
+    /// <see cref="RefreshFaultPlan"/> and <see cref="IntegrityFaultPlan"/>): their
     /// <c>FromEnvironment</c> methods return null in Release builds, so a shipped build never injects a fault. A
     /// plan that is attached is announced in the log, so a forgotten variable in a launch profile can't go
     /// unnoticed. The integrity plan is the SAME object as <see cref="IntegrityFaults"/> (one shared budget); the
@@ -156,6 +157,7 @@ public partial class App : Application
         {
             FaultPlan          = CheckoutFaultPlan.FromEnvironment(),
             RestoreFaultPlan   = RestoreFaultPlan.FromEnvironment(),
+            RefreshFaultPlan   = RefreshFaultPlan.FromEnvironment(),
             IntegrityFaultPlan = IntegrityFaults
         };
 
@@ -168,6 +170,11 @@ public partial class App : Application
             Logger.LogInfo(
                 $"[DEBUG fault injection] {RestoreFaultPlan.EnvironmentVariableName} is set: " +
                 $"restores will fail at the {restorePlan.Fault} stage; {restorePlan.Description}.");
+
+        if (service.RefreshFaultPlan is { } refreshPlan)
+            Logger.LogInfo(
+                $"[DEBUG fault injection] {RefreshFaultPlan.EnvironmentVariableName} is set: " +
+                $"read-only refreshes will fail as {refreshPlan.Fault}; {refreshPlan.Description}.");
 
         return service;
     }

@@ -919,11 +919,9 @@ public partial class MainWindowViewModel : ViewModelBase
     /// the facts and hands them to <see cref="RefreshPrompt.FailureLine"/>, which picks the one line to show.
     ///
     /// <para><b>How "the connection was lost" is known.</b> The service calls <c>BeforeOverwrite</c> (here: close the
-    /// connection to D'') just before it swaps the file and <c>AfterOverwrite</c> (here: reopen it) just after. If the
-    /// swap, or the reopen, fails, the service returns without the reopen having completed. So the flags
-    /// <c>connectionClosed</c> (set only once the close has really happened) and <c>connectionReopened</c> (set only
-    /// once the reopen has returned without throwing) say exactly that: closed and not reopened means the connection is
-    /// gone and, in 1.2.3, nothing reopens it.</para>
+    /// connection to D'') just before it swaps the file and <c>AfterOverwrite</c> (here: reopen it) just after, whatever
+    /// happened to the swap, retrying the reopen (3 attempts). The outcome it returns says it all:
+    /// <see cref="RefreshOutcome.ConnectionLost"/> means every reopen attempt failed.</para>
     ///
     /// <para>A failure is logged with <c>LogInfo</c> (type and message of any exception), never <c>LogError</c>, so no
     /// red log-text banner appears next to the plain line this method's caller shows.</para>
@@ -933,8 +931,6 @@ public partial class MainWindowViewModel : ViewModelBase
     {
         var dbContext = _services.GetRequiredService<IDatabaseContext>() as DatabaseContext;
 
-        var connectionClosed   = false;
-        var connectionReopened = false;
         RefreshOutcome? outcome = null;
         var threw = false;
 
@@ -943,16 +939,13 @@ public partial class MainWindowViewModel : ViewModelBase
             async Task BeforeOverwrite()
             {
                 await Task.CompletedTask;
-                if (dbContext is null) return;
-                dbContext.CloseConnection();
-                connectionClosed = true;      // known to be closed only from here
+                dbContext?.CloseConnection();
             }
 
             async Task AfterOverwrite()
             {
                 await Task.CompletedTask;
                 dbContext?.ReinitializeConnection(App.Checkout.WorkingPath, readOnly: true);
-                connectionReopened = true;    // reached only when the reopen did not throw
             }
 
             outcome = await App.Checkout.RefreshReadOnlySnapshotAsync(BeforeOverwrite, AfterOverwrite);
@@ -963,17 +956,16 @@ public partial class MainWindowViewModel : ViewModelBase
             App.Logger.LogInfo($"MainWindowViewModel: refresh threw ({ex.GetType().Name}: {ex.Message})");
         }
 
-        var connectionLost = connectionClosed && !connectionReopened;
-        var line = RefreshPrompt.FailureLine(outcome, connectionLost, threw, _lastRefreshedAt);
+        var line = RefreshPrompt.FailureLine(outcome, threw, _lastRefreshedAt);
         App.Logger.LogInfo(
             $"MainWindowViewModel: refresh {(line is null ? "worked" : "failed")} " +
-            $"(outcome: {outcome?.ToString() ?? "none"}, connection lost: {connectionLost}).");
+            $"(outcome: {outcome?.ToString() ?? "none"}).");
 
         // Spec item 7: the two refresh failures the developers count, once per run each (the "anything else" line is
         // not reported). Fully qualified: this file is also built for the browser, which has no TermPoint.Exceptions.
-        if (connectionLost)
+        if (!threw && outcome == RefreshOutcome.ConnectionLost)
             HandledEventReporter.Report(TermPoint.Exceptions.HandledEvent.RefreshConnectionLost, App.Logger);
-        else if (line is not null && outcome == RefreshOutcome.SourceUnavailable)
+        else if (!threw && outcome == RefreshOutcome.SourceUnavailable)
             HandledEventReporter.Report(TermPoint.Exceptions.HandledEvent.RefreshNotResponding, App.Logger);
         return line;
     }

@@ -225,6 +225,27 @@ public sealed class CheckoutService : IDisposable
     /// </summary>
     internal RestoreFaultPlan? RestoreFaultPlan { get; set; }
 
+    /// <summary>
+    /// DEBUG-ONLY fault injection for <see cref="RefreshReadOnlySnapshotAsync"/> (spec item 4.6): when non-null, the
+    /// rename of the fresh copy, or the reopen of the connection, fails on purpose as the plan dictates. Null (the
+    /// default) means every real code path runs untouched. Only <c>App.Checkout</c> ever gets a plan, from
+    /// <see cref="Services.RefreshFaultPlan.FromEnvironment"/>, which returns null in Release builds. Settable so
+    /// tests can drive the plan directly.
+    /// </summary>
+    internal RefreshFaultPlan? RefreshFaultPlan { get; set; }
+
+    /// <summary>
+    /// How many times <see cref="RefreshReadOnlySnapshotAsync"/> tries to reopen the connection after the swap
+    /// (counting the first try).
+    /// </summary>
+    private const int RefreshReopenAttempts = 3;
+
+    /// <summary>
+    /// The pause between two reopen attempts of <see cref="RefreshReadOnlySnapshotAsync"/>: one second, so a lock held
+    /// by a scanner has time to let go while the window stays responsive. Internal and settable so tests can skip the wait.
+    /// </summary>
+    internal Func<TimeSpan, Task> RefreshReopenDelay { get; set; } = delay => Task.Delay(delay);
+
     // ── State ──────────────────────────────────────────────────────────────────
 
     private Timer?  _autoSaveTimer;
@@ -3121,8 +3142,12 @@ public sealed class CheckoutService : IDisposable
     /// <paramref name="afterOverwrite"/> (reopen the connection).</para>
     /// </summary>
     /// <returns>
-    /// <see cref="RefreshOutcome.Updated"/> — D'' was successfully re-copied from D.<br/>
-    /// <see cref="RefreshOutcome.SourceUnavailable"/> — D could not be reached or the copy hash never matched; D'' is unchanged.
+    /// <see cref="RefreshOutcome.Updated"/> — D'' was successfully re-copied from D and the connection reopened on it.<br/>
+    /// <see cref="RefreshOutcome.SourceUnavailable"/> — D could not be reached or the copy hash never matched; D'' is
+    /// unchanged and the connection was never closed.<br/>
+    /// <see cref="RefreshOutcome.ReplaceFailed"/> — the swap failed (the rename, or <paramref name="beforeOverwrite"/>
+    /// threw); the connection is open again on the previous D''.<br/>
+    /// <see cref="RefreshOutcome.ConnectionLost"/> — all reopen attempts failed, or the session ended before a retry.
     /// </returns>
     /// <param name="beforeOverwrite">
     /// Optional async callback invoked after the new copy is verified but before D'' is overwritten.
@@ -3133,12 +3158,12 @@ public sealed class CheckoutService : IDisposable
     /// Optional async callback invoked after D'' has been atomically overwritten with the fresh copy.
     /// Use this to reopen the <c>DatabaseContext</c> connection
     /// (e.g. call <c>DatabaseContext.ReinitializeConnection(WorkingPath)</c>).
-    /// Called only when the overwrite worked; <b>not</b> called when the overwrite failed after
-    /// <paramref name="beforeOverwrite"/> had closed the connection, and a call that throws still returns
-    /// <see cref="RefreshOutcome.SourceUnavailable"/>. In 1.2.3 nothing here reopens the connection in those two
-    /// cases: a caller that supplied both callbacks can tell that the connection was lost by seeing that
-    /// <paramref name="beforeOverwrite"/> ran and <paramref name="afterOverwrite"/> did not complete
-    /// (<c>MainWindowViewModel.RefreshData</c> does, and says so: <see cref="RefreshPrompt.ConnectionLost"/>).
+    /// Once <paramref name="beforeOverwrite"/> has been called (even if it threw), this is ALWAYS called to end the
+    /// refresh: after a successful swap it reopens on the fresh copy, and after a failed swap (or a throwing
+    /// <paramref name="beforeOverwrite"/>) it reopens on the previous copy (the same path). A call that throws is
+    /// retried: 3 attempts in all, one second apart, and a retry is skipped when the session has ended (a close or a
+    /// switch). When every attempt fails the outcome is <see cref="RefreshOutcome.ConnectionLost"/>
+    /// (<see cref="RefreshPrompt.ConnectionLost"/>). When this callback is null, the reopen counts as done.
     /// Every failure is logged with <c>LogInfo</c>, never <c>LogError</c>, so none puts a log-text banner on screen.
     /// </param>
     /// <exception cref="InvalidOperationException">Thrown when not in read-only mode or <see cref="ReadOnlyWorkingPath"/> is null.</exception>
@@ -3148,6 +3173,9 @@ public sealed class CheckoutService : IDisposable
     {
         if (Mode != CheckoutMode.ReadOnly || !IsReadOnlyMode || ReadOnlyWorkingPath is null)
             throw new InvalidOperationException("RefreshReadOnlySnapshot called while not in read-only snapshot mode.");
+
+        // The session this refresh belongs to: a retry of the reopen stops if a close or switch moves it on.
+        var sessionAtStart = SessionId;
 
         // Add SMB cache delay before reading D to ensure we get fresh data.
         const int baseDelayMs = 500;
@@ -3201,50 +3229,68 @@ public sealed class CheckoutService : IDisposable
             var copyHash = ComputeHash(tmpPath);
             if (copyHash == sourceHash)
             {
-                // Close the DatabaseContext connection before overwriting D''.
+                // Close the DatabaseContext connection before overwriting D''. From the moment the callback has been
+                // CALLED (even if it threw: the connection may be half-closed) every exit below ends with a reopen.
+                var beforeCalled = false;
+                var beforeThrew  = false;
                 if (beforeOverwrite is not null)
                 {
+                    beforeCalled = true;
                     try { await beforeOverwrite(); }
                     catch (Exception ex)
                     {
+                        beforeThrew = true;
                         _logger.LogInfo(
                             $"CheckoutService: beforeOverwrite callback threw during refresh ({ex.GetType().Name}: {ex.Message})");
-                        TryDelete(tmpPath);
-                        return RefreshOutcome.SourceUnavailable;
                     }
                 }
                 CrashPoints.Hit("Refresh.AfterConnectionClosed");
 
-                try
+                // The swap. Skipped when the close threw: the connection may still be open on D'', so it is not touched.
+                var swapped = false;
+                if (!beforeThrew)
                 {
-                    // Connection is closed at this point (beforeOverwrite); drop any
-                    // WAL sidecars so the fresh copy is not paired with a stale -wal.
-                    TryDeleteWalSidecars(ReadOnlyWorkingPath);
-                    File.Move(tmpPath, ReadOnlyWorkingPath, overwrite: true);
-                }
-                catch (Exception ex)
-                {
-                    _logger.LogInfo(
-                        $"CheckoutService: failed to rename D''.tmp during refresh ({ex.GetType().Name}: {ex.Message})");
-                    TryDelete(tmpPath);
-                    return RefreshOutcome.SourceUnavailable;
-                }
+                    try
+                    {
+                        if (RefreshFaultPlan?.TryConsume(InjectedRefreshFault.Replace) == true)
+                        {
+                            _logger.LogInfo(
+                                $"[DEBUG fault injection] {Services.RefreshFaultPlan.EnvironmentVariableName}: failing the rename; {RefreshFaultPlan.Description}.");
+                            throw new IOException("Injected refresh fault: the rename failed.");
+                        }
 
-                CrashPoints.Hit("Refresh.AfterSwap");
-
-                HashAtCheckout = sourceHash;
-
-                // Reopen the DatabaseContext connection to the now-updated D''.
-                if (afterOverwrite is not null)
-                {
-                    try { await afterOverwrite(); }
+                        // Connection is closed at this point (beforeOverwrite); drop any
+                        // WAL sidecars so the fresh copy is not paired with a stale -wal.
+                        TryDeleteWalSidecars(ReadOnlyWorkingPath);
+                        File.Move(tmpPath, ReadOnlyWorkingPath, overwrite: true);
+                        swapped = true;
+                    }
                     catch (Exception ex)
                     {
+                        // A failed File.Move leaves the previous D'' in place, so the reopen below goes to the old data.
                         _logger.LogInfo(
-                            $"CheckoutService: afterOverwrite callback threw during refresh ({ex.GetType().Name}: {ex.Message})");
-                        return RefreshOutcome.SourceUnavailable;
+                            $"CheckoutService: failed to rename D''.tmp during refresh ({ex.GetType().Name}: {ex.Message})");
                     }
                 }
+
+                if (!swapped)
+                    TryDelete(tmpPath);
+                else
+                {
+                    CrashPoints.Hit("Refresh.AfterSwap");
+                    HashAtCheckout = sourceHash;      // only after a successful swap: D'' now matches this hash
+                }
+
+                // Reopen the connection (to the fresh copy if swapped, to the previous one if not): same path either way.
+                // Without a close callback nothing was closed, so there is nothing to reopen unless the swap happened.
+                var reopened = true;
+                if (beforeCalled || swapped)
+                    reopened = await ReopenAfterRefreshAsync(afterOverwrite, sessionAtStart);
+
+                if (!reopened)
+                    return RefreshOutcome.ConnectionLost;
+                if (!swapped)
+                    return RefreshOutcome.ReplaceFailed;
 
                 _logger.LogInfo("CheckoutService: read-only refresh — D'' updated successfully.");
                 return RefreshOutcome.Updated;
@@ -3260,6 +3306,56 @@ public sealed class CheckoutService : IDisposable
 
         _logger.LogInfo("CheckoutService: refresh failed — hash mismatch after 3 retries.");
         return RefreshOutcome.SourceUnavailable;
+    }
+
+    /// <summary>
+    /// Reopens the connection that <see cref="RefreshReadOnlySnapshotAsync"/> closed for the swap, through
+    /// <paramref name="afterOverwrite"/>: up to <see cref="RefreshReopenAttempts"/> attempts, <see cref="RefreshReopenDelay"/>
+    /// (one second) apart. Before each retry (not the first attempt) it stops if the session has moved on
+    /// (<see cref="SessionId"/> changed, or <see cref="IsEnding"/>), because teardown may already have disposed the
+    /// context. Every failed attempt is logged with <c>LogInfo</c> (exception type and message), never <c>LogError</c>.
+    /// </summary>
+    /// <param name="afterOverwrite">The reopen callback, or null (then there is nothing to do and the reopen counts as done).</param>
+    /// <param name="sessionAtStart">The <see cref="SessionId"/> when the refresh began.</param>
+    /// <returns>True when a reopen worked (or none was needed); false when all attempts failed or the session ended.</returns>
+    private async Task<bool> ReopenAfterRefreshAsync(Func<Task>? afterOverwrite, int sessionAtStart)
+    {
+        if (afterOverwrite is null)
+            return true;
+
+        for (int attempt = 1; attempt <= RefreshReopenAttempts; attempt++)
+        {
+            if (attempt > 1)
+            {
+                await RefreshReopenDelay(TimeSpan.FromSeconds(1));
+
+                if (SessionId != sessionAtStart || IsEnding)
+                {
+                    _logger.LogInfo("CheckoutService: refresh reopen stopped — the session has ended.");
+                    return false;
+                }
+            }
+
+            try
+            {
+                if (RefreshFaultPlan?.TryConsume(InjectedRefreshFault.Reopen) == true)
+                {
+                    _logger.LogInfo(
+                        $"[DEBUG fault injection] {Services.RefreshFaultPlan.EnvironmentVariableName}: failing reopen attempt {attempt}; {RefreshFaultPlan.Description}.");
+                    throw new IOException("Injected refresh fault: the reopen failed.");
+                }
+
+                await afterOverwrite();
+                return true;
+            }
+            catch (Exception ex)
+            {
+                _logger.LogInfo(
+                    $"CheckoutService: afterOverwrite callback threw during refresh, attempt {attempt}/{RefreshReopenAttempts} ({ex.GetType().Name}: {ex.Message})");
+            }
+        }
+
+        return false;
     }
 
     /// <summary>

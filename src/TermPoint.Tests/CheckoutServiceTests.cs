@@ -2306,60 +2306,170 @@ public sealed class CheckoutServiceTests : IDisposable
     }
 
     /// <summary>
-    /// Spec item 28 (from item 11): a refresh whose <c>beforeOverwrite</c> callback throws fails as
-    /// <see cref="RefreshOutcome.SourceUnavailable"/>, the connection is never reopened by the service (so
-    /// <c>afterOverwrite</c> is not called: the caller knows the connection was lost by seeing that "before" ran and
-    /// "after" did not complete), and the failure is logged with <c>LogInfo</c> (what failed, the exception's type and
-    /// message) and NEVER <c>LogError</c>, which would put a red log-text banner next to the plain line the window shows.
+    /// Opens a writer (so D has a lock holder) and a read-only reader on a fresh database that holds
+    /// <c>"original"</c>, with the reader's reopen pause removed so tests don't wait between attempts.
     /// </summary>
-    [Fact]
-    public async Task ReadOnlyRefresh_WhenBeforeOverwriteThrows_IsSourceUnavailable_LogsInfoNotError_AndSkipsAfterOverwrite()
+    /// <param name="log">The logger the reader writes to.</param>
+    /// <returns>The reader (opened read-only) and the path of the shared database D.</returns>
+    private async Task<(CheckoutService Reader, string Db)> OpenReaderForRefreshAsync(RecordingAppLogger log)
     {
         var db = DbPath("shared");
         CreateSqliteDb(db);
+        InsertTestValue(db, "original");
         var (writer, _) = CreateService();
         await writer.CheckoutAsync(db);
-        var log = new RecordingAppLogger();
         var (reader, _) = CreateService(logger: log);
         await reader.CheckoutAsync(db);
-        var afterCalled = false;
+        reader.RefreshReopenDelay = _ => Task.CompletedTask;
+        return (reader, db);
+    }
+
+    /// <summary>
+    /// Spec item 4.6: a refresh whose <c>beforeOverwrite</c> callback throws (the connection may be half-closed) still
+    /// reopens through <c>afterOverwrite</c>, and ends as <see cref="RefreshOutcome.ReplaceFailed"/> with
+    /// <c>HashAtCheckout</c> unchanged. The failure is logged with <c>LogInfo</c> (type and message), never <c>LogError</c>.
+    /// </summary>
+    [Fact]
+    public async Task ReadOnlyRefresh_WhenBeforeOverwriteThrows_IsReplaceFailed_StillReopens_LogsInfoNotError()
+    {
+        var log = new RecordingAppLogger();
+        var (reader, _) = await OpenReaderForRefreshAsync(log);
+        var hashBefore = reader.HashAtCheckout;
+        var afterCalls = 0;
 
         var outcome = await reader.RefreshReadOnlySnapshotAsync(
             beforeOverwrite: () => throw new InvalidOperationException("close failed"),
-            afterOverwrite:  () => { afterCalled = true; return Task.CompletedTask; });
+            afterOverwrite:  () => { afterCalls++; return Task.CompletedTask; });
 
-        Assert.Equal(RefreshOutcome.SourceUnavailable, outcome);
-        Assert.False(afterCalled);
+        Assert.Equal(RefreshOutcome.ReplaceFailed, outcome);
+        Assert.Equal(1, afterCalls);
+        Assert.Equal(hashBefore, reader.HashAtCheckout);
         Assert.Empty(log.Errors);
         Assert.Contains(log.Infos, i => i.Contains("beforeOverwrite") && i.Contains("InvalidOperationException") && i.Contains("close failed"));
     }
 
     /// <summary>
-    /// Spec item 28 (from item 11): a refresh whose <c>afterOverwrite</c> callback (the reopen of the connection)
-    /// throws fails as <see cref="RefreshOutcome.SourceUnavailable"/> after <c>beforeOverwrite</c> had run, which is
-    /// exactly the "connection lost" state the window detects; the failure is logged with <c>LogInfo</c>, with the
-    /// exception's type and message, and never <c>LogError</c>.
+    /// Spec item 4.6: when the rename of the fresh copy fails (the DEBUG fault plan <c>replace</c> stands in for a
+    /// scanner holding the old file), the outcome is <see cref="RefreshOutcome.ReplaceFailed"/>, <c>afterOverwrite</c>
+    /// is called once, the OLD D'' is still readable through it, and <c>HashAtCheckout</c> is unchanged.
     /// </summary>
     [Fact]
-    public async Task ReadOnlyRefresh_WhenAfterOverwriteThrows_IsSourceUnavailable_LogsInfoNotError()
+    public async Task ReadOnlyRefresh_WhenRenameFails_IsReplaceFailed_OldCopyReadable_HashUnchanged()
     {
-        var db = DbPath("shared");
-        CreateSqliteDb(db);
-        var (writer, _) = CreateService();
-        await writer.CheckoutAsync(db);
         var log = new RecordingAppLogger();
-        var (reader, _) = CreateService(logger: log);
-        await reader.CheckoutAsync(db);
-        var beforeRan = false;
+        var (reader, db) = await OpenReaderForRefreshAsync(log);
+        var hashBefore = reader.HashAtCheckout;
+
+        // D changes after the reader opened, so a successful swap would change D''.
+        File.Delete(db);
+        CreateSqliteDb(db);
+        InsertTestValue(db, "modified");
+
+        reader.RefreshFaultPlan = RefreshFaultPlan.Parse("replace");
+        var afterCalls = 0;
+        string? seenThroughReopen = null;
 
         var outcome = await reader.RefreshReadOnlySnapshotAsync(
-            beforeOverwrite: () => { beforeRan = true; return Task.CompletedTask; },
-            afterOverwrite:  () => throw new InvalidOperationException("reopen failed"));
+            beforeOverwrite: () => Task.CompletedTask,
+            afterOverwrite:  () => { afterCalls++; seenThroughReopen = ReadTestValue(reader.ReadOnlyWorkingPath!); return Task.CompletedTask; });
 
-        Assert.Equal(RefreshOutcome.SourceUnavailable, outcome);
-        Assert.True(beforeRan);
+        Assert.Equal(RefreshOutcome.ReplaceFailed, outcome);
+        Assert.Equal(1, afterCalls);
+        Assert.Equal("original", seenThroughReopen);
+        Assert.Equal(hashBefore, reader.HashAtCheckout);
+        Assert.False(File.Exists(reader.ReadOnlyWorkingPath + ".tmp"), "the .tmp copy should be cleaned up");
+        Assert.Empty(log.Errors);
+    }
+
+    /// <summary>
+    /// Spec item 4.6: a reopen that fails once and then works ends as <see cref="RefreshOutcome.Updated"/> after two
+    /// <c>afterOverwrite</c> calls; the failed attempt is logged with type and message, never as an error.
+    /// </summary>
+    [Fact]
+    public async Task ReadOnlyRefresh_WhenReopenFailsOnce_ThenWorks_IsUpdated_WithTwoCalls()
+    {
+        var log = new RecordingAppLogger();
+        var (reader, _) = await OpenReaderForRefreshAsync(log);
+        var calls = 0;
+
+        var outcome = await reader.RefreshReadOnlySnapshotAsync(
+            beforeOverwrite: () => Task.CompletedTask,
+            afterOverwrite:  () => { if (++calls == 1) throw new InvalidOperationException("reopen failed"); return Task.CompletedTask; });
+
+        Assert.Equal(RefreshOutcome.Updated, outcome);
+        Assert.Equal(2, calls);
         Assert.Empty(log.Errors);
         Assert.Contains(log.Infos, i => i.Contains("afterOverwrite") && i.Contains("InvalidOperationException") && i.Contains("reopen failed"));
+    }
+
+    /// <summary>
+    /// Spec item 4.6: three failed reopen attempts end as <see cref="RefreshOutcome.ConnectionLost"/>, with exactly
+    /// three <c>afterOverwrite</c> calls, each logged with <c>LogInfo</c> (type and message) and never <c>LogError</c>.
+    /// </summary>
+    [Fact]
+    public async Task ReadOnlyRefresh_WhenReopenFailsThreeTimes_IsConnectionLost_WithThreeCalls()
+    {
+        var log = new RecordingAppLogger();
+        var (reader, _) = await OpenReaderForRefreshAsync(log);
+        var calls = 0;
+
+        var outcome = await reader.RefreshReadOnlySnapshotAsync(
+            beforeOverwrite: () => Task.CompletedTask,
+            afterOverwrite:  () => { calls++; throw new InvalidOperationException("reopen failed"); });
+
+        Assert.Equal(RefreshOutcome.ConnectionLost, outcome);
+        Assert.Equal(3, calls);
+        Assert.Empty(log.Errors);
+        Assert.Equal(3, log.Infos.Count(i => i.Contains("afterOverwrite") && i.Contains("InvalidOperationException") && i.Contains("reopen failed")));
+    }
+
+    /// <summary>
+    /// Spec item 4.6: the DEBUG fault plan <c>reopen:2</c> makes two reopen attempts throw (before the callback is
+    /// reached) and the third work (<see cref="RefreshOutcome.Updated"/>); <c>reopen:3</c> gives
+    /// <see cref="RefreshOutcome.ConnectionLost"/> and the callback is never reached.
+    /// </summary>
+    /// <param name="spec">The fault plan text.</param>
+    /// <param name="expected">The outcome the refresh must end with.</param>
+    /// <param name="callbackCalls">How many times the reopen callback itself must have been reached.</param>
+    [Theory]
+    [InlineData("reopen:2", RefreshOutcome.Updated, 1)]
+    [InlineData("reopen:3", RefreshOutcome.ConnectionLost, 0)]
+    public async Task ReadOnlyRefresh_ReopenFaultPlan_BehavesAsDocumented(string spec, RefreshOutcome expected, int callbackCalls)
+    {
+        var log = new RecordingAppLogger();
+        var (reader, _) = await OpenReaderForRefreshAsync(log);
+        reader.RefreshFaultPlan = RefreshFaultPlan.Parse(spec);
+        var calls = 0;
+
+        var outcome = await reader.RefreshReadOnlySnapshotAsync(
+            beforeOverwrite: () => Task.CompletedTask,
+            afterOverwrite:  () => { calls++; return Task.CompletedTask; });
+
+        Assert.Equal(expected, outcome);
+        Assert.Equal(callbackCalls, calls);
+        Assert.Empty(log.Errors);
+    }
+
+    /// <summary>
+    /// Spec item 4.6: when the session ends while the reopen is being retried (a close or a switch during the pause),
+    /// no further <c>afterOverwrite</c> call is made and the outcome is <see cref="RefreshOutcome.ConnectionLost"/>.
+    /// </summary>
+    [Fact]
+    public async Task ReadOnlyRefresh_WhenSessionEndsDuringRetries_StopsAndIsConnectionLost()
+    {
+        var log = new RecordingAppLogger();
+        var (reader, _) = await OpenReaderForRefreshAsync(log);
+        // The pause before the first retry is where the window is closed.
+        reader.RefreshReopenDelay = _ => reader.ReleaseAsync(saveFirst: false);
+        var calls = 0;
+
+        var outcome = await reader.RefreshReadOnlySnapshotAsync(
+            beforeOverwrite: () => Task.CompletedTask,
+            afterOverwrite:  () => { calls++; throw new InvalidOperationException("reopen failed"); });
+
+        Assert.Equal(RefreshOutcome.ConnectionLost, outcome);
+        Assert.Equal(1, calls);
+        Assert.Empty(log.Errors);
     }
 
     /// <summary>
@@ -3823,6 +3933,39 @@ public sealed class CheckoutServiceTests : IDisposable
 
         Assert.Equal(SaveOutcome.SourceModified, await svc.ReleaseAsync(saveFirst: true));
         Assert.Equal(0, conflicts);
+    }
+
+    /// <summary>
+    /// Summary item 4.2 (pinned after F17 fixed it): Bob has unsaved changes and closes TermPoint, but Alice has taken
+    /// the lock over. The exit save is refused with <see cref="SaveOutcome.LockLost"/>. It must NOT start a lock-loss
+    /// demotion (which used to run while the window was torn down and hit disposed services), and Bob's changes must
+    /// stay kept: the working copy and its dirty marker survive for Restore at the next open. Posts go to a queue
+    /// drained by hand, the way the window would run them late.
+    /// </summary>
+    [Fact]
+    public async Task ExitSave_FindsTheLockTakenOver_StartsNoDemotion_AndKeepsTheChanges()
+    {
+        var posted  = new System.Collections.Concurrent.ConcurrentQueue<Action>();
+        var lockSvc = new WriteLockService(new FakeTimeProvider(), null, startTimers: false);
+        var svc     = new CheckoutService(lockSvc, new NullLogger(), posted.Enqueue, _workingDir, startTimers: false);
+        var db = DbPath();
+        CreateSqliteDb(db);
+        Assert.Equal(CheckoutOutcome.WriteAccess, await svc.CheckoutAsync(db));
+        InsertTestValue(svc.WorkingPath, "bobs-unsaved-edit");
+        svc.MarkDirty();
+
+        var lockLossDelivered = 0;
+        svc.WriteLockLost += _ => lockLossDelivered++;
+
+        WriteExternalFreshLock(db);                          // Alice took over
+
+        var outcome = await svc.ReleaseAsync(saveFirst: true);
+        while (posted.TryDequeue(out var action)) action();  // anything posted reaches the window late
+
+        Assert.Equal(SaveOutcome.LockLost, outcome);         // the caller shows "Changes Not Saved"
+        Assert.Equal(0, lockLossDelivered);                  // no demotion during teardown
+        Assert.True(svc.HasDirtyMarker, "Bob's changes must stay marked for Restore at the next open");
+        Assert.True(File.Exists(svc.WorkingPath), "the working copy holds Bob's only copy of his changes");
     }
 
     /// <summary>

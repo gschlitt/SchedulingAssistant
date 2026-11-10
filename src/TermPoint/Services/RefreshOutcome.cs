@@ -7,8 +7,21 @@ namespace TermPoint.Services;
 /// </summary>
 public enum RefreshOutcome
 {
-    /// <summary>D'' was successfully re-copied from D.</summary>
+    /// <summary>D'' was successfully re-copied from D, and the connection is open on the fresh copy.</summary>
     Updated,
-    /// <summary>D could not be reached or the copy hash never matched; D'' is unchanged.</summary>
+    /// <summary>
+    /// D could not be reached or the copy hash never matched; D'' is unchanged. Always means the connection to D'' was
+    /// never closed.
+    /// </summary>
     SourceUnavailable,
+    /// <summary>
+    /// The swap failed (the rename, or the callback that closes the connection, threw), and the connection is open
+    /// again on the previous data in D''.
+    /// </summary>
+    ReplaceFailed,
+    /// <summary>
+    /// The connection was closed for the swap and every reopen attempt failed, or the session ended (a close or a
+    /// switch) before a retry. Nothing is open on D''.
+    /// </summary>
+    ConnectionLost,
 }
