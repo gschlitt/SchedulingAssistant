@@ -7,7 +7,7 @@ Written so a fresh conversation can pick up. Claude Code's memory and `CLAUDE.md
 
 ## Where things are
 
-- **Branches:** all 1.2.4 work is on **`Version_1.2.4`**, pushed up to `454a38c` (2026-11-08).
+- **Branches:** all 1.2.4 work is on **`Version_1.2.4`**, pushed (up to and including this handoff's commit, 2026-11-09).
   **`master`** = released 1.2.3 code (`cf4d4cb`) plus doc commits, kept hotfixable; it is 7 doc-only commits ahead of
   origin and **not pushed** (pushing `master` redeploys the WASM demo; pushing a `v*` tag starts the macOS workflow).
   Greg controls branches, commits and pushes: never create a branch, ask before each commit and each push.
@@ -32,6 +32,8 @@ Written so a fresh conversation can pick up. Claude Code's memory and `CLAUDE.md
   I8 one message per problem); 8.7 test-only lock timer scale; 8.12 partly (two flaky tests remain).
 - **F21 data loss (3.12, `8143c5a`):** `CheckoutService.CleanupWorkingCopy` refuses to delete a working copy that still
   has its dirty marker. Also closes F2's close-time route.
+- **E: 3.2 F2 + 3.4 F5/F6 (`1d13956`, `301252b`, 2026-11-09):** an edit made during a save keeps its marker (edit count
+  + SQLite `data_version`); a save with no marker and the same content as D writes nothing. Details under Next steps 0.5.
 - **4.12 F19 + 4.14 F22 (`cf2bce9`, 2026-11-03):**
   - a lock-file check counts for 2 s (`WriteLockService.LockCheckFreshness`, not scaled; steady and wall clock): it is
     repeated before the heartbeat's temp write and move, the release's delete, and both takeover deletes;
@@ -77,13 +79,15 @@ Written so a fresh conversation can pick up. Claude Code's memory and `CLAUDE.md
       logged stack trace on the 1.2.4 sideload during the Part 4 MSIX upgrade check; near-zero risk); (c) the
       Microsoft support case for 1.1.
    5. **E: 3.2 + 3.4** (design `designs/mid-save-edits-and-no-edit-saves.md`, order of work tasks 1–6).
-      **3.2 DONE 2026-11-09, uncommitted** (tasks 1–3: edit count + `data_version`, save-once-more helper for the exit
-      and Restore from Backup, `SnapshotWorkingCopy` rename, F2 retired; full suite with harness 4537 passed, 0 failed).
-      Spin-offs logged: 3.13 (edit during a restore's copy), 6.14 (double message when the restore's save fails).
-      **3.4 DONE 2026-11-09** (tasks 4–6: `SqliteContentHash`, skip when no marker + same content, F5/F6 retired;
-      new known finding F24 = 3.13's crash variant; full suite with harness 4571 passed, 0 failed). Known findings now:
-      F7, F20, F22, F24, A13. Also waiting: 2.2 licence warning, group 5 experiments (5.8) then 5.3/5.4, 6.12, harness
-     85 s model (retires F22).
+      **3.2 DONE 2026-11-09, `1d13956`, pushed** (tasks 1–3: edit count + `data_version`, save-once-more helper for
+      the exit and Restore from Backup, `SnapshotWorkingCopy` rename, F2 retired; full suite with harness 4537 passed,
+      0 failed). New wording `RestorePrompt.EditDuringSaveMessage` (Greg approved).
+      **3.4 DONE 2026-11-09, `301252b`, pushed** (tasks 4–6: `SqliteContentHash`, skip when no marker + same content,
+      F5/F6 retired; new known finding F24 = 3.13's crash variant; full suite with harness 4571 passed, 0 failed).
+      Spin-offs logged: **3.13** (an edit during Restore from Backup is deleted, or after a crash refused: refuse edits
+      while a restore runs; retires F24) and **6.14** (two messages when the restore's save fails).
+   - **Next: pick with Greg.** Candidates: 3.13 and 6.14 (small, just found), 2.2 licence warning, group 5 experiments
+     (5.8) then 5.3/5.4, 6.12, harness 85 s model (retires F22). Postponed items under F above stay listed.
    - **Version gate:** leave 2.8 and 2.9 out of 1.2.4 (each raises `MinimumVersionToWrite` and would need 1.6
      first). Everything chosen above is MinimumVersionToWrite **No**. 3.5 and 2.1 A/B are too big for now.
 1. **Rest of group 8:**
@@ -136,14 +140,14 @@ Written so a fresh conversation can pick up. Claude Code's memory and `CLAUDE.md
         finished apart from 8.10 (the automated rig, later). Next: pick the next 1.2.4 group with Greg (open findings
         below are the obvious candidates).
      2. Scenario files only alongside the fixes they check (M7, M12, M6 recommended when wanted).
-2. **Open findings (summary items):** 4.13 F20 (own leftover lock after a switch → read-only on return); 6.10 F17
-   (two messages for one save problem); 6.11 F18 (two lock-lost banners); 6.12 false "Inactive" prompt when the
-   writer's clock is behind; 6.13 F23 (kept-changes banner outlives a Discard).
+2. **Open findings (summary items):** 4.13 F20's remaining route (accepted, stays known); 6.12 false "Inactive"
+   prompt when the writer's clock is behind; 3.13 F24 (an edit during Restore from Backup); 6.14 (two messages when the
+   restore's save fails). (6.10 F17, 6.11 F18 and 6.13 F23 were fixed in `454a38c`.)
 3. **Left open by 4.12/4.14** (listed in the 4.12 Done note): teach the harness the ~85 s death of a stalled operation
    (then F22 can retire); test-timing builds scale the 170 s but not the 85 s; maybe record each writer's SessTimeout
    in the lock file, probe SessTimeout=30 and macOS; place the save's dirty-marker write that sits between its final
    check and the rename.
-4. **Known findings now** (`src/TermPoint.Tests/Harness/KnownFindings.cs`): F2, F5, F6, F7, F20, F22, A13.
+4. **Known findings now** (`src/TermPoint.Tests/Harness/KnownFindings.cs`): F7, F20, F22, F24, A13.
 5. **Still open from the 1.2.3 release (check status with Greg):** Microsoft support case for the Store-update failure
    ("won't open until restart"; evidence in `designs/spec_version_1.2.4.md`, "Release and distribution", Process
    Monitor export `C:\temp\temp.CSV`); uninstall the sideload TermPoint and delete the test MSIX folders

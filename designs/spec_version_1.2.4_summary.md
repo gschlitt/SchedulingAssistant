@@ -36,7 +36,7 @@ About 97 items in nine groups. Most were deferred from 1.2.3 or found while test
 |---|---|---|---|---|
 | 1 | [Store release](#1.%20Store%20release) | The 1.2.3 update that wouldn't open; a smaller package; test flights | 6 | 4 |
 | 2 | [Features and user-facing gaps](#2.%20Features%20and%20user-facing%20gaps) | Requests from Greg and clients; the licence-expiry warning | 19 | 8 |
-| 3 | [Protecting unsaved work](#3.%20Protecting%20unsaved%20work) | The remaining ways edits can be lost or stranded; the recovery redesign | 13 | 3 |
+| 3 | [Protecting unsaved work](#3.%20Protecting%20unsaved%20work) | The remaining ways edits can be lost or stranded; the recovery redesign | 13 | 5 |
 | 4 | [Lock, save, open and restore](#4.%20Lock,%20save,%20open%20and%20restore) | Correctness gaps in the persistence paths | 14 | 4 |
 | 5 | [Network shares](#5.%20Network%20shares) | What SMB caching, antivirus and unusual storage do to us | 8 | 0 |
 | 6 | [Messages](#6.%20Messages) | Wrong, doubled, hidden or jargon messages | 14 | 3 |
@@ -50,6 +50,8 @@ About 97 items in nine groups. Most were deferred from 1.2.3 or found while test
 - **Unapplied editor changes dropped at close or switch** (3.1): done. TermPoint always asks Apply / Discard / Cancel.
 - **Experimenting without saving, and a real Save a Copy command** (2.1): not started. Greg's top request, but too big
   for 1.2.4; it needs Recovered Versions (3.5) for two of its three designs.
+- **Edits lost during a save; no-edit sessions rewriting the database** (3.2, 3.4): done (`1d13956`, `301252b`).
+  Spin-offs: 3.13 (an edit during Restore from Backup; harness known finding F24) and 6.14 (two messages).
 - **Why saves fail in the field** (7.1, with 7.3 and 7.4): done. Save timings, blocked renames and recovery answers now
   reach the breadcrumbs and failure reports.
 - **Licence-expiry warning** (2.2): not started. Licensed departments still lose editing with no notice.
@@ -59,10 +61,8 @@ About 97 items in nine groups. Most were deferred from 1.2.3 or found while test
 - **The version gate.** Everything done so far is `MinimumVersionToWrite` No. 2.8 and 2.9 (each would raise it) are
   left out of 1.2.4, so 1.2.4 doesn't raise it and in-app Store updates (1.6) aren't needed first.
 - **Risk reviews first.** Done with reviews: per-session temporary files (4.1), the close/switch sequence (3.1, 3.3),
-  test timings (8.7) and the harness's hang mode (8.2). Still to come, each needing one: the edit counter (3.2), skipping
-  no-edit saves (3.4), longer rename retries (5.4), the post-rename check (5.6) and the save-recovery report (7.2).
-  Greg's rule is that risky save-code changes go early in a release, so 3.2 and 3.4 ("E") go in 1.2.4 only if it is
-  still early enough; otherwise 1.2.5.
+  test timings (8.7), the harness's hang mode (8.2), the edit counter (3.2) and skipping no-edit saves (3.4). Still to
+  come, each needing one: longer rename retries (5.4), the post-rename check (5.6) and the save-recovery report (7.2).
 - **Two network experiments come first** (5.8). They decide how 5.1, 5.3 and 5.4 are built.
 - **Order constraints.** The recovery redesign (3.5) is too big for now; its messages will replace 1.2.3's interim
   wording, and 2.1 waits on it. The harness gaps and test timings are in, so the automated two-machine rig (8.10) is
@@ -418,7 +418,7 @@ Everything in this group is checked against rule 3 (never delete the only copy o
 > the close or switch no longer deletes it; it is offered back at the next open. The crash route remains.
 > *Source: spec, data-loss table (F2 / item 15).*
 >
-> **Done (9 Nov 2026, uncommitted; design `designs/mid-save-edits-and-no-edit-saves.md`; full suite with harness 4537 passed, 0 failed, 2 skipped; MinimumVersionToWrite No):** a save reads an edit count and SQLite's `data_version` before its snapshot and again at the end. If either moved, the marker is kept, rewritten with the new hash. This covers the crash, the lost-lock and the failed-exit routes. The exit and Restore from Backup save once more before going on. If the marker is still kept, the restore isn't started and Bob sees the new message "You made a change while TermPoint was saving before the restore…" (wording approved by Greg). `BackupSqliteDatabase` is renamed `SnapshotWorkingCopy`. F2 is retired to `FixedFindingsProofTests`. Spin-offs: 3.13 and 6.14.
+> **Done (9 Nov 2026, `1d13956`; design `designs/mid-save-edits-and-no-edit-saves.md`; full suite with harness 4537 passed, 0 failed, 2 skipped; MinimumVersionToWrite No):** a save reads an edit count and SQLite's `data_version` before its snapshot and again at the end. If either moved, the marker is kept, rewritten with the new hash. This covers the crash, the lost-lock and the failed-exit routes. The exit and Restore from Backup save once more before going on. If the marker is still kept, the restore isn't started and Bob sees the new message "You made a change while TermPoint was saving before the restore…" (wording approved by Greg). `BackupSqliteDatabase` is renamed `SnapshotWorkingCopy`. F2 is retired to `FixedFindingsProofTests`. Spin-offs: 3.13 and 6.14.
 
 > [!note]- **3.3 A demotion still running during a database switch lands on the new session** `done` `data risk` `save path`
 > Losing the lock starts a demotion that copies a read-only snapshot. If Bob switches database during that copy, the
@@ -441,7 +441,7 @@ Everything in this group is checked against rule 3 (never delete the only copy o
 > kept changes. This was designed, probed and risk-reviewed for 1.2.3, then moved out as a risky save-code change.
 > *Source: 1.2.3 spec, section 29; field-test open issue A9.*
 >
-> **Done (9 Nov 2026, uncommitted; design `designs/mid-save-edits-and-no-edit-saves.md`; full suite with harness 4571 passed, 0 failed, 2 skipped; MinimumVersionToWrite No):** a save skips the upload when it has no marker and its snapshot holds the same data as D was last seen holding (`SqliteContentHash`: SHA-256 with the five data-free header fields masked). It also skips nothing when the starting point is unknown (recovery, an unconfirmed rename). A skipped save changes no state. F5 and F6 are retired to `FixedFindingsProofTests`. The second route was already fixed as F23. The harness found a crash variant of 3.13 that F5 had hidden; it is known finding F24 until 3.13 is built. The upgrade checklist in the local `CLAUDE.md` gains the "open, no edit, save, compare" check.
+> **Done (9 Nov 2026, `301252b`; design `designs/mid-save-edits-and-no-edit-saves.md`; full suite with harness 4571 passed, 0 failed, 2 skipped; MinimumVersionToWrite No):** a save skips the upload when it has no marker and its snapshot holds the same data as D was last seen holding (`SqliteContentHash`: SHA-256 with the five data-free header fields masked). It also skips nothing when the starting point is unknown (recovery, an unconfirmed rename). A skipped save changes no state. F5 and F6 are retired to `FixedFindingsProofTests`. The second route was already fixed as F23. The harness found a crash variant of 3.13 that F5 had hidden; it is known finding F24 until 3.13 is built. The upgrade checklist in the local `CLAUDE.md` gains the "open, no edit, save, compare" check.
 
 > [!note]- **3.5 The recovery redesign: checks decide, Recovered Versions, no questions** `not started` `save path`
 > **Problem:** kept changes (left by a crash, a lost lock or a failed exit save) sit in the one place a normal open
