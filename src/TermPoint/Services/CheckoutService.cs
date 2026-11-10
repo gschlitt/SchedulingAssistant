@@ -780,7 +780,7 @@ public sealed class CheckoutService : IDisposable
     /// only completed when D's current hash still matches the hash recorded in the
     /// dirty marker (proof no other writer touched D since the crash); otherwise
     /// <see cref="CheckoutOutcome.RecoveryConflict"/> is returned and the caller
-    /// should offer to export the unsaved changes. See <see cref="InspectCrashRecovery"/>.
+    /// should offer to export the unsaved changes. See <see cref="InspectCrashRecoveryAsync"/>.
     /// </param>
     /// <param name="ignoreObserverMode">
     /// When true, the voluntary observer setting (<see cref="AppSettings.OpenInReaderMode"/>) is
@@ -3492,21 +3492,39 @@ public sealed class CheckoutService : IDisposable
     /// the crash — completing SQLite's own crash recovery — before verifying the file.
     /// A read-only open would refuse to roll back the journal and misreport a perfectly
     /// recoverable D' as damaged.</para>
+    ///
+    /// <para><b>Three-way verdict (1.2.4 item 4.7, D1).</b> A D' that another program holds open (antivirus
+    /// scanning it, say) is NOT damaged: it comes back <see cref="IntegrityCheckResult.Unreadable"/> after
+    /// <see cref="LocalCopyIntegrity.MaxAttempts"/> quiet attempts, <see cref="LocalCopyIntegrity.RetryDelay"/>
+    /// apart (waited with <see cref="GateRetryDelay"/>, so tests do not sleep; async so the window stays
+    /// responsive). Only positive evidence gives <see cref="IntegrityCheckResult.Damaged"/>, which is the only
+    /// verdict the caller may archive on. This method itself never renames or deletes anything.</para>
     /// </summary>
     /// <param name="sourcePath">The database path D whose crash artifacts to inspect.</param>
     /// <returns>
     /// Null when no crash artifacts exist; otherwise a <see cref="CrashRecoveryInfo"/>
     /// with the working-copy path, the marker's recorded source hash (null for
-    /// legacy/unreadable markers), and whether D' passed the integrity check.
+    /// legacy/unreadable markers), and the integrity verdict for D'.
     /// </returns>
-    public CrashRecoveryInfo? InspectCrashRecovery(string sourcePath)
+    public async Task<CrashRecoveryInfo?> InspectCrashRecoveryAsync(string sourcePath)
     {
         if (!DetectCrashRecovery(sourcePath)) return null;
 
         var workingPath = ComputeWorkingPath(sourcePath);
         var markerHash  = TryReadMarkerHash(workingPath + ".dirty");
-        var intact      = BackupService.CheckIntegrity(workingPath, SqliteOpenMode.ReadWrite);
-        return new CrashRecoveryInfo(workingPath, markerHash, intact);
+
+        var verdict = IntegrityCheckResult.Unreadable;
+        for (var n = 1; n <= LocalCopyIntegrity.MaxAttempts; n++)
+        {
+            verdict = BackupService.CheckIntegrityDetailed(workingPath, SqliteOpenMode.ReadWrite);
+            if (verdict != IntegrityCheckResult.Unreadable) break;
+
+            _logger.LogInfo(
+                $"CheckoutService: crash recovery — the kept changes could not be examined, attempt {n} of {LocalCopyIntegrity.MaxAttempts}.");
+            if (n < LocalCopyIntegrity.MaxAttempts)
+                await GateRetryDelay(LocalCopyIntegrity.RetryDelay);
+        }
+        return new CrashRecoveryInfo(workingPath, markerHash, verdict);
     }
 
     /// <summary>
@@ -5813,7 +5831,7 @@ public enum CheckoutOutcome
 
 /// <summary>
 /// Snapshot of the crash artifacts for a database, produced by
-/// <see cref="CheckoutService.InspectCrashRecovery"/> so the startup flow can decide
+/// <see cref="CheckoutService.InspectCrashRecoveryAsync"/> so the startup flow can decide
 /// which recovery offer to make.
 /// </summary>
 /// <param name="WorkingPath">Full path to the crashed session's working copy D'.</param>
@@ -5821,14 +5839,16 @@ public enum CheckoutOutcome
 /// Hash of D recorded in the dirty marker when the crashed session became dirty, or
 /// null when the marker is legacy/unreadable (recovery must then take the export path).
 /// </param>
-/// <param name="WorkingCopyIntact">
-/// True when D' passed a read-write integrity check (which also replays any hot
-/// journal). False means the file is damaged and only archiving/export salvage applies.
+/// <param name="WorkingCopyVerdict">
+/// The read-write integrity verdict for D' (which also replays any hot journal), after the quiet retries:
+/// <see cref="IntegrityCheckResult.Ok"/> (restorable), <see cref="IntegrityCheckResult.Damaged"/> (positive
+/// evidence: only archiving/export salvage applies), or <see cref="IntegrityCheckResult.Unreadable"/> (another
+/// program holds the file; says nothing about its health, so it must never be archived or deleted).
 /// </param>
 public sealed record CrashRecoveryInfo(
     string WorkingPath,
     string? HashAtCheckout,
-    bool WorkingCopyIntact);
+    IntegrityCheckResult WorkingCopyVerdict);
 
 /// <summary>Result of a <see cref="CheckoutService.SaveAsync"/> call.</summary>
 public enum SaveOutcome

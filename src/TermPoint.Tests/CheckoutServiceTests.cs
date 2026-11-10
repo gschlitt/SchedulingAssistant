@@ -3219,11 +3219,79 @@ public sealed class CheckoutServiceTests : IDisposable
         SimulateCrash(lockSvc1, db);
 
         var (svc2, _) = CreateService();
-        var info = svc2.InspectCrashRecovery(db);
+        var info = await svc2.InspectCrashRecoveryAsync(db);
 
         Assert.NotNull(info);
-        Assert.True(info!.WorkingCopyIntact);
+        Assert.Equal(IntegrityCheckResult.Ok, info!.WorkingCopyVerdict);
         Assert.Equal(svc1.HashAtCheckout, info.HashAtCheckout);
+    }
+
+    /// <summary>
+    /// 1.2.4 item 4.7, D1: a D' that another program holds (here: opened with FileShare.None) is Unreadable, not
+    /// damaged. It is tried 3 times in all with 2 waits of 1 s (recorded, not slept), and nothing is renamed or
+    /// deleted: D', its marker and the folder's contents are exactly as they were, with no .corrupt-* archive.
+    /// </summary>
+    [Fact]
+    public async Task InspectCrashRecovery_HeldWorkingCopy_IsUnreadable_AfterThreeAttempts_AndTouchesNothing()
+    {
+        var (svc1, lockSvc1) = CreateService();
+        var db = DbPath();
+        CreateSqliteDb(db);
+        await svc1.CheckoutAsync(db);
+        InsertTestValue(svc1.WorkingPath, "kept-edit");
+        svc1.MarkDirty();
+        var workingPath = svc1.WorkingPath;
+        SimulateCrash(lockSvc1, db);
+        SqliteConnection.ClearAllPools();
+
+        var filesBefore = Directory.GetFiles(Path.GetDirectoryName(workingPath)!).Order().ToArray();
+        var (svc2, _) = CreateService();
+        var delays = new DelayRecorder();
+        svc2.GateRetryDelay = delays.WaitAsync;
+
+        CrashRecoveryInfo? info;
+        using (new FileStream(workingPath, FileMode.Open, FileAccess.ReadWrite, FileShare.None))
+            info = await svc2.InspectCrashRecoveryAsync(db);
+
+        Assert.NotNull(info);
+        Assert.Equal(IntegrityCheckResult.Unreadable, info!.WorkingCopyVerdict);
+        Assert.Equal(new[] { LocalCopyIntegrity.RetryDelay, LocalCopyIntegrity.RetryDelay }, delays.Waits);
+        Assert.True(File.Exists(workingPath));
+        Assert.True(File.Exists(workingPath + ".dirty"));
+        Assert.Equal(filesBefore, Directory.GetFiles(Path.GetDirectoryName(workingPath)!).Order().ToArray());
+        Assert.Empty(Directory.GetFiles(Path.GetDirectoryName(workingPath)!, "*corrupt*"));
+    }
+
+    /// <summary>
+    /// D' is held on the first attempt and free by the second: the verdict is Ok after exactly one wait, and the
+    /// kept change is still in D'.
+    /// </summary>
+    [Fact]
+    public async Task InspectCrashRecovery_HeldThenReleased_IsOk_AfterOneWait()
+    {
+        var (svc1, lockSvc1) = CreateService();
+        var db = DbPath();
+        CreateSqliteDb(db);
+        await svc1.CheckoutAsync(db);
+        InsertTestValue(svc1.WorkingPath, "kept-edit");
+        svc1.MarkDirty();
+        var workingPath = svc1.WorkingPath;
+        SimulateCrash(lockSvc1, db);
+        SqliteConnection.ClearAllPools();
+
+        var (svc2, _) = CreateService();
+        var delays = new DelayRecorder();
+        var holder = new FileStream(workingPath, FileMode.Open, FileAccess.ReadWrite, FileShare.None);
+        svc2.GateRetryDelay = delay => { holder.Dispose(); return delays.WaitAsync(delay); };
+
+        CrashRecoveryInfo? info;
+        try { info = await svc2.InspectCrashRecoveryAsync(db); }
+        finally { holder.Dispose(); }
+
+        Assert.NotNull(info);
+        Assert.Equal(IntegrityCheckResult.Ok, info!.WorkingCopyVerdict);
+        Assert.Single(delays.Waits);
+        Assert.True(File.Exists(workingPath + ".dirty"));
     }
 
     /// <summary>
@@ -3245,21 +3313,21 @@ public sealed class CheckoutServiceTests : IDisposable
         File.WriteAllText(svc1.WorkingPath, "garbage-not-a-database");
 
         var (svc2, _) = CreateService();
-        var info = svc2.InspectCrashRecovery(db);
+        var info = await svc2.InspectCrashRecoveryAsync(db);
 
         Assert.NotNull(info);
-        Assert.False(info!.WorkingCopyIntact);
+        Assert.Equal(IntegrityCheckResult.Damaged, info!.WorkingCopyVerdict);
     }
 
     /// <summary>InspectCrashRecovery returns null when no crash artifacts exist.</summary>
     [Fact]
-    public void InspectCrashRecovery_NoArtifacts_ReturnsNull()
+    public async Task InspectCrashRecovery_NoArtifacts_ReturnsNull()
     {
         var (svc, _) = CreateService();
         var db = DbPath();
         CreateSqliteDb(db);
 
-        Assert.Null(svc.InspectCrashRecovery(db));
+        Assert.Null(await svc.InspectCrashRecoveryAsync(db));
     }
 
     /// <summary>

@@ -1368,4 +1368,88 @@ public sealed class SessionLifecycleTests : SessionLifecycleTestBase
         Assert.Equal("kept-edit", NewestValue(a));                   // saved right after the reopen
         AssertScriptConsumed();
     }
+
+    // ── 4.7 D1: kept changes another program holds are never archived or deleted ──
+
+    /// <summary>
+    /// 1.2.4 item 4.7, D1: the kept D' is held by another program (FileShare.None). The user is shown the "in use,
+    /// your changes are kept" prompt, chooses Close, and the open is given up BEFORE any checkout: no lock file, no
+    /// services, the window closed, and D' with its marker untouched and no archive made. The next open can ask again.
+    /// </summary>
+    [Fact]
+    public async Task Open_KeptChanges_HeldByAnotherProgram_Close_GivesUpBeforeAnyCheckout()
+    {
+        var db = NewDb();
+        var kept = await LeaveKeptChangesAsync(db, colleagueChangedD: false);
+        SqliteConnection.ClearAllPools();
+        _checkout.GateRetryDelay = _ => Task.CompletedTask;
+        _prompts.ExpectChoice(
+            LocalCopyCheckPrompt.CouldntOpenTitle, false, LocalCopyCheckPrompt.InUseWithKeptChangesMessage);
+
+        using (new FileStream(kept, FileMode.Open, FileAccess.ReadWrite, FileShare.None))
+        {
+            var next = await StartupAsync(db);
+            Assert.Null(next);
+        }
+
+        AssertPrompts("Choice:Couldn't Open the Database");
+        Assert.Equal("Try again|Close", _prompts.Calls.Single().Buttons);
+        Assert.Empty(_host.OpenCalls);
+        Assert.False(File.Exists(LockOf(db)), "no checkout, so no lock file");
+        Assert.False(_lockSvc.IsWriter);
+        Assert.Contains("host:CloseWindow", _trace);
+        Assert.True(File.Exists(kept), "the kept changes must be untouched");
+        Assert.True(File.Exists(MarkerOf(kept)), "the marker must be untouched");
+        Assert.Empty(Directory.GetFiles(_workingDir, "*corrupt*"));
+        Assert.Equal("original", NewestValue(db));
+        AssertScriptConsumed();
+    }
+
+    /// <summary>
+    /// D' is held when the first question is asked; the user presses Try again after the other program let go. The
+    /// inspection runs again, now finds D' readable, and the ordinary "Restore Unsaved Changes?" follows; Restore works.
+    /// </summary>
+    [Fact]
+    public async Task Open_KeptChanges_HeldThenReleased_TryAgain_AsksRestoreQuestion()
+    {
+        var db = NewDb();
+        var kept = await LeaveKeptChangesAsync(db, colleagueChangedD: false);
+        SqliteConnection.ClearAllPools();
+        _checkout.GateRetryDelay = _ => Task.CompletedTask;
+        var holder = new FileStream(kept, FileMode.Open, FileAccess.ReadWrite, FileShare.None);
+        _prompts.ExpectChoice(
+                    LocalCopyCheckPrompt.CouldntOpenTitle, true, LocalCopyCheckPrompt.InUseWithKeptChangesMessage,
+                    before: () => holder.Dispose())            // the other program lets go before Try again
+                .ExpectChoice("Restore Unsaved Changes?", true);
+
+        try { await StartupAsync(db); }
+        finally { holder.Dispose(); }
+
+        AssertPrompts("Choice:Couldn't Open the Database", "Choice:Restore Unsaved Changes?");
+        Assert.Equal(kept, _checkout.WorkingPath);
+        Assert.Equal(UnsavedValue, NewestValue(db));               // restored, then saved
+        Assert.Empty(Directory.GetFiles(_workingDir, "*corrupt*"));
+        AssertScriptConsumed();
+    }
+
+    /// <summary>
+    /// A truly damaged D' (garbage over it) behaves exactly as before: archived, "Unsaved Changes Lost" shown, and the
+    /// database then opens normally from a fresh copy of D.
+    /// </summary>
+    [Fact]
+    public async Task Open_KeptChanges_Damaged_IsArchivedAsBefore()
+    {
+        var db = NewDb();
+        var kept = await LeaveKeptChangesAsync(db, colleagueChangedD: false);
+        SqliteConnection.ClearAllPools();
+        File.WriteAllText(kept, "garbage-not-a-database-garbage-not-a-database");
+        _prompts.ExpectMessage(LocalCopyCheckPrompt.UnsavedChangesLostTitle, LocalCopyCheckPrompt.UnsavedChangesLostMessage);
+
+        await StartupAsync(db);
+
+        AssertPrompts("Message:Unsaved Changes Lost");
+        Assert.Single(Directory.GetFiles(_workingDir, "*corrupt*").Where(f => !f.EndsWith(".dirty")));
+        Assert.Equal("original", NewestValue(_host.OpenCalls.Single().WorkingPath));
+        AssertScriptConsumed();
+    }
 }

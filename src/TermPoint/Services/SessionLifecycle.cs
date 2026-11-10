@@ -4,6 +4,24 @@ using TermPoint.ViewModels;
 namespace TermPoint.Services;
 
 /// <summary>
+/// What the crash-recovery offer at open decided (<c>SessionLifecycle.OfferCrashRecoveryAsync</c>): how the open
+/// goes on. Three results, not two, because "the kept changes are locked by another program and the user chose
+/// Close" must stop the open BEFORE any checkout: a normal (non-recovery) checkout copies D over D' and rewrites
+/// the dirty marker, which would replace the user's only copy of their unsaved work.
+/// </summary>
+internal enum CrashRecoveryChoice
+{
+    /// <summary>No recovery: run a normal checkout (nothing was kept, or it was discarded or archived).</summary>
+    StartFresh,
+
+    /// <summary>The user chose Restore: run the checkout in recovery mode.</summary>
+    Restore,
+
+    /// <summary>Give up the open before any checkout; D' and its marker are untouched.</summary>
+    GiveUp
+}
+
+/// <summary>
 /// The database-session lifecycle, moved out of the main window so it can be driven without any UI (spec item
 /// 9.1, step 9.1b): opening a database at startup, switching to another one, and the recovery at open (crash
 /// recovery and the export of kept changes). Everything that asks or tells the user goes through
@@ -142,7 +160,18 @@ public sealed class SessionLifecycle
         // acquire the write lock and copy D → D' (or D → D'' for read-only mode). An orphaned D.tmp on
         // the share is deleted by the checkout itself, and only once write access is confirmed.
         // The result determines which path is passed to InitializeServices.
-        var recoverUnsaved = await CleanUpAndOfferRecoveryAsync(dbPath, ignoreObserverMode: false);
+        var recovery = await CleanUpAndOfferRecoveryAsync(dbPath, ignoreObserverMode: false);
+        if (recovery == CrashRecoveryChoice.GiveUp)
+        {
+            // The user's kept changes are locked by another program and they chose Close (1.2.4 item 4.7, D1).
+            // Nothing was taken or built — no lock, no services — and D' with its marker are untouched. End the
+            // open exactly like a checkout that was refused after its dialog: forget the working-copy
+            // bookkeeping (which keeps a marked D'), then close, as there is no previous database to fall back to.
+            await _checkout.ResetAfterFailedOpenAsync();
+            _host.CloseWindow();
+            return null;
+        }
+        var recoverUnsaved = recovery == CrashRecoveryChoice.Restore;
 
         var checkoutResult = await RunCheckoutAsync(dbPath, recoverUnsaved);
         if (checkoutResult is null)
@@ -271,8 +300,13 @@ public sealed class SessionLifecycle
     /// </summary>
     /// <param name="dbPath">The database (D) about to be checked out.</param>
     /// <param name="ignoreObserverMode">True only for a database the user has just created, which opens for editing.</param>
-    /// <returns>True when the user chose to restore unsaved changes (the checkout then runs in recovery mode).</returns>
-    private async Task<bool> CleanUpAndOfferRecoveryAsync(string dbPath, bool ignoreObserverMode)
+    /// <returns>
+    /// <see cref="CrashRecoveryChoice.Restore"/> when the user chose to restore unsaved changes (the checkout then
+    /// runs in recovery mode); <see cref="CrashRecoveryChoice.GiveUp"/> when the open must be abandoned before any
+    /// checkout (the kept changes are locked by another program and the user chose Close); otherwise
+    /// <see cref="CrashRecoveryChoice.StartFresh"/>.
+    /// </returns>
+    private async Task<CrashRecoveryChoice> CleanUpAndOfferRecoveryAsync(string dbPath, bool ignoreObserverMode)
     {
         _checkout.CleanupStaleCrashArtifacts(dbPath);
 
@@ -280,7 +314,7 @@ public sealed class SessionLifecycle
         if (!isObserver && _checkout.DetectCrashRecovery(dbPath))
             return await OfferCrashRecoveryAsync(dbPath);
 
-        return false;
+        return CrashRecoveryChoice.StartFresh;
     }
 
     /// <summary>
@@ -1078,7 +1112,16 @@ public sealed class SessionLifecycle
             // Run crash recovery + checkout for the new path. The guard for it was taken at the top, so
             // this housekeeping (stale-artifact sweep, recovery offer) cannot disturb a
             // live copy of TermPoint on the same database. Observers are not offered recovery, as at startup.
-            var recoverUnsaved = await CleanUpAndOfferRecoveryAsync(newDatabasePath, ignoreObserverMode: isNewDatabase);
+            var recovery = await CleanUpAndOfferRecoveryAsync(newDatabasePath, ignoreObserverMode: isNewDatabase);
+            if (recovery == CrashRecoveryChoice.GiveUp)
+            {
+                // The kept changes are locked by another program and the user chose Close (1.2.4 item 4.7, D1).
+                // The previous database is already closed here, so — like a checkout that was refused after its
+                // dialog — this ends in the no-database state and the chooser. No lock was taken and D' with
+                // its marker are untouched (ResetAfterFailedOpenAsync keeps a marked D').
+                return await AbandonFailedSwitchAsync();
+            }
+            var recoverUnsaved = recovery == CrashRecoveryChoice.Restore;
 
             var checkoutPath = await RunCheckoutAsync(
                 newDatabasePath, recoverUnsaved, ignoreObserverMode: isNewDatabase);
@@ -1277,20 +1320,37 @@ public sealed class SessionLifecycle
     /// from their point of view TermPoint simply "kept their unsaved changes."</para>
     /// </summary>
     /// <param name="sourcePath">The database path with crash artifacts.</param>
-    /// <returns>True when the checkout should run in recovery mode (user chose Restore).</returns>
-    private async Task<bool> OfferCrashRecoveryAsync(string sourcePath)
+    /// <returns>
+    /// <see cref="CrashRecoveryChoice.Restore"/> (user chose Restore: the checkout should run in recovery mode),
+    /// <see cref="CrashRecoveryChoice.GiveUp"/> (the kept changes are locked by another program and the user chose
+    /// Close: no checkout may run), or <see cref="CrashRecoveryChoice.StartFresh"/>.
+    /// </returns>
+    private async Task<CrashRecoveryChoice> OfferCrashRecoveryAsync(string sourcePath)
     {
-        var info = _checkout.InspectCrashRecovery(sourcePath);
-        if (info is null) return false;
+        // 1.2.4 item 4.7, D1: a kept file another program holds is NOT damaged. Unreadable (after the quiet
+        // retries inside the inspection) never archives, renames or deletes anything: the user is told the
+        // changes are kept and chooses Try again (inspect again, with its retries) or Close (give up the open).
+        var info = await _checkout.InspectCrashRecoveryAsync(sourcePath);
+        while (info is not null && info.WorkingCopyVerdict == IntegrityCheckResult.Unreadable)
+        {
+            var tryAgain = await _prompts.ShowChoiceAsync(
+                LocalCopyCheckPrompt.CouldntOpenTitle, LocalCopyCheckPrompt.InUseWithKeptChangesMessage,
+                LocalCopyCheckPrompt.TryAgainButton, LocalCopyCheckPrompt.CloseButton);
+            if (!tryAgain)
+                return CrashRecoveryChoice.GiveUp;
 
-        if (!info.WorkingCopyIntact)
+            info = await _checkout.InspectCrashRecoveryAsync(sourcePath);
+        }
+        if (info is null) return CrashRecoveryChoice.StartFresh;
+
+        if (info.WorkingCopyVerdict == IntegrityCheckResult.Damaged)
         {
             // The crash damaged the unsaved data beyond SQLite's own journal recovery.
             // Archive it (support-level salvage stays possible) and tell the user honestly.
             _checkout.ArchiveCorruptWorkingCopy(sourcePath);
             await _prompts.ShowMessageAsync(
                 LocalCopyCheckPrompt.UnsavedChangesLostTitle, LocalCopyCheckPrompt.UnsavedChangesLostMessage);
-            return false;
+            return CrashRecoveryChoice.StartFresh;
         }
 
         // Neutral phrasing: these artifacts can come from a crash, a failed
@@ -1306,10 +1366,10 @@ public sealed class SessionLifecycle
         if (!restore)
         {
             _checkout.DiscardCrash(sourcePath);
-            return false;
+            return CrashRecoveryChoice.StartFresh;
         }
 
-        return true;
+        return CrashRecoveryChoice.Restore;
     }
 
     /// <summary>
@@ -1386,7 +1446,7 @@ public sealed class SessionLifecycle
     /// <param name="sourcePath">The database path whose recovery hit a conflict.</param>
     private async Task HandleRecoveryConflictAsync(string sourcePath)
     {
-        var info = _checkout.InspectCrashRecovery(sourcePath);
+        var info = await _checkout.InspectCrashRecoveryAsync(sourcePath);
 
         while (info is not null)
         {

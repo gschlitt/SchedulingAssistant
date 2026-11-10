@@ -33,6 +33,14 @@ public static class LocalCopyCheckPrompt
         "a few seconds.";
 
     /// <summary>
+    /// Body of the "in use" prompt when the file another program is using holds the user's kept unsaved changes
+    /// (crash recovery, 1.2.4 item 4.7): <see cref="InUseMessage"/> plus a sentence saying the changes are safe.
+    /// Shown under <see cref="CouldntOpenTitle"/> with <see cref="TryAgainButton"/> / <see cref="CloseButton"/>.
+    /// </summary>
+    public const string InUseWithKeptChangesMessage =
+        InUseMessage + " Your unsaved changes from last time are kept.";
+
+    /// <summary>
     /// Body of the prompt shown when TermPoint could not prepare a read-only view of a database at all (the
     /// read-only open path, <c>MainWindow.SetupSnapshotOrAskAsync</c>), with <see cref="TryAgainButton"/> and
     /// <see cref="CloseButton"/>. Shown under <see cref="CouldntOpenTitle"/>.
