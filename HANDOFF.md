@@ -1,4 +1,4 @@
-# Handoff: TermPoint 1.2.4 in progress on branch `Version_1.2.4` (dev machine, updated 2026-11-10)
+# Handoff: TermPoint 1.2.4 in progress on branch `Version_1.2.4` (dev machine, updated 2026-11-10, after 4.3)
 
 Written so a fresh conversation can pick up. Claude Code's memory and `CLAUDE.md` don't travel between machines
 (`CLAUDE.md` is gitignored), so everything a new agent needs is here or in the files this points to.
@@ -46,6 +46,14 @@ Written so a fresh conversation can pick up. Claude Code's memory and `CLAUDE.md
   - **4.9** (`76732a5`, wording `f67b274`): backups keep the newest N + the last of each of the prior 7 days and 4 weeks
     that have backups; rotation only touches files named exactly `{database}_{timestamp}.db`.
   - **4.11** shelved (`f67b274`): the location is checked, and the caution given, when a database is created.
+  - **4.4 + 4.5** (`bd6d4d5`, design `designs/read-only-guard-1.2.4.md`): read-only sessions turn on SQLite's
+    `query_only` (after the open's setup; `ConfigureConnection` turns it off at every open). Write transactions start
+    through `IDatabaseContext.BeginWriteTransaction()` (deferred `BEGIN` for a reader, since `BEGIN IMMEDIATE` is
+    refused under `query_only`); **use it for any new write transaction**. `IsReadOnlyMode` was already not sticky.
+  - **4.3** (`299150c`, design `designs/restore-relaunch-1.2.4.md`): shutdown request in `MainWindow.OnClosed`;
+    `ShutdownBackstop` armed at the end of every close's teardown (15 s, then exit); the relaunch after a restore
+    passes `--reopen-after-restore <path>`. **Left: Greg's by-hand restore check on the sideload** (old PID gone,
+    restored database reopens, note which new log line appeared) and the macOS `open -n` relaunch.
 - **E: 3.2 F2 + 3.4 F5/F6 (`1d13956`, `301252b`, 2026-11-09):** an edit made during a save keeps its marker (edit count
   + SQLite `data_version`); a save with no marker and the same content as D writes nothing. Details under Next steps 0.5.
 - **4.12 F19 + 4.14 F22 (`cf2bce9`, 2026-11-03):**
@@ -101,10 +109,8 @@ Written so a fresh conversation can pick up. Claude Code's memory and `CLAUDE.md
       Spin-offs logged: **3.13** (an edit during Restore from Backup is deleted, or after a crash refused: refuse edits
       while a restore runs; retires F24) and **6.14** (two messages when the restore's save fails).
    6. **Section 4 (Greg's priority, 2026-11-09): 4.2, 4.6, 4.7, 4.8, 4.9 done, 4.11 shelved** (see "Done in 1.2.4").
-   - **Next: pick with Greg.** Left in section 4: **4.3** (restore leaves the old process running; relaunch should
-     reopen the restored database), **4.4 + 4.5** (SQLite `query_only` on read-only connections; audit the sticky
-     `IsReadOnlyMode`; small, pair well), **4.10** (24 network calls without a deadline, `tools/NetworkProbe/GAP-AUDIT.md`),
-     4.13's remaining route (accepted). Other candidates: 3.13 and 6.14 (Restore from Backup, small), 2.2 licence
+   - **Next: pick with Greg.** 4.3, 4.4, 4.5 done 2026-11-10. Left in section 4: **4.10** (24 network calls without a
+     deadline, `tools/NetworkProbe/GAP-AUDIT.md`), 4.13's remaining route (accepted). Other candidates: 3.13 and 6.14 (Restore from Backup, small), 2.2 licence
      warning, 5.8 then 5.3/5.4, 6.12, harness 85 s model (retires F22). Postponed items under F above stay listed.
    - **Small item found 2026-11-10:** `WizardDataFlowTests` writes the developer's real `%AppData%\TermPoint\settings.json`
      (its comment says "accepted for now"); it left `BackupFolderPath` pointing at a deleted `%TEMP%\WizardTests_…`
