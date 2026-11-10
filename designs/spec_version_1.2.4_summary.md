@@ -598,7 +598,7 @@ Everything in this group is checked against rule 3 (never delete the only copy o
 >   pre-check, chooser ×3) use the 16-byte header check (`DatabaseValidator.ValidateSharedAtOpenAsync`). The full check
 >   stays on the local copy, the re-check of D, and backups being restored.
 
-> [!note]- **4.8 A slow link stops the open** (measure, then decide) `not started`
+> [!note]- **4.8 A slow link stops the open** (measure, then decide) `done`
 > With about 220 ms added to each round trip (clumsy), every open stopped at the full integrity check of the shared
 > database, which has a 5-second step limit. Saves at the same lag worked. Ordinary home VPNs add far less delay.
 > **Next:** find the latency at which opening starts to fail, and what the user is told then. Overlaps with 4.7 (a).
@@ -606,6 +606,24 @@ Everything in this group is checked against rule 3 (never delete the only copy o
 >
 > **Update (10 Nov 2026):** 4.7 D2 removed the full check of the shared database from the open, the step every
 > slow-link open stopped at. Next: measure again with clumsy at ~220 ms.
+>
+> **Measured (10 Nov 2026, GregDeskTop → Mekler, Debug build with D2, clumsy Lag only on port 445, writer open;
+> lag checked by an existence probe before each run):**
+>
+> | Added round trip | Result | Lock | Hash + copy done | Open finished |
+> |---|---|---|---|---|
+> | 0 (baseline) | opened | 1.4 s | 1.8 s | 2.8 s |
+> | ~220 ms | opened (failed every time before D2) | 5.9 s | 9.1 s | 10.3 s |
+> | ~330 ms | opened | 7.9 s | 18.6 s | 20.2 s |
+> | ~500 ms | **fails** at the front door, twice: "Cannot reach database…" | — | — | — |
+>
+> At ~500 ms, the first open of D's file handle alone took ~7 s (6973 ms, timed by hand), against the header read's 5 s
+> step limit (`NetworkFileOps`, `ReadDatabaseHeader`). Once that first open completes, further opens take ~0 ms. So the
+> limit sits between ~330 and ~500 ms added round trip, far above ordinary home VPNs. The hash + copy step grows
+> fastest (3.2 s → 10.7 s) and would be the next limit. Closes worked at every lag (save skipped, lock released in ~1 s).
+> **Decision (Greg, 10 Nov 2026): leave as is.** A front-door retry after a timeout was considered (the abandoned open
+> usually finishes in the background, so a retry would find the connection ready) and not taken: ~330 ms is far beyond
+> ordinary links.
 
 > [!note]- **4.9 Backups turn over too fast** `not started · decide first`
 > A backup is made at every open and five are kept, so five opens in a row delete every older backup. A user who
