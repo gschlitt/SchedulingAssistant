@@ -7,7 +7,7 @@ namespace TermPoint.Services;
 /// Sends handled events to the developers (spec item 7): problems TermPoint dealt with but whose frequency in the field
 /// matters (a refused save, a lost lock, a refused restore, a failed backup, an unexpected end of the previous session).
 ///
-/// <para><b>Once per run per kind.</b> The first report of a kind goes through
+/// <para><b>Once per run per kind</b> (or up to a caller-chosen few, <c>maxPerRun</c>). The first report of a kind goes through
 /// <see cref="IAppLogger.ReportHandled"/> (a local log line, and a handled BugSnag event of warning severity, with no
 /// banner); later ones of the same kind are left to the caller's own local log line. A persistent fault (a dead backup
 /// folder every 30 minutes, an outage) would otherwise send one report per attempt. The memory of what was sent lives
@@ -21,25 +21,31 @@ namespace TermPoint.Services;
 /// </summary>
 public static class HandledEventReporter
 {
-    /// <summary>The kinds each logger has been sent. Entries die with their logger.</summary>
-    private static readonly ConditionalWeakTable<IAppLogger, HashSet<HandledEvent>> Sent = new();
+    /// <summary>How many reports of each kind each logger has been sent. Entries die with their logger.</summary>
+    private static readonly ConditionalWeakTable<IAppLogger, Dictionary<HandledEvent, int>> Sent = new();
 
     /// <summary>
-    /// Reports <paramref name="kind"/> to <paramref name="logger"/>, unless that kind was already reported to it.
+    /// Reports <paramref name="kind"/> to <paramref name="logger"/>, unless that kind was already reported to it
+    /// <paramref name="maxPerRun"/> times.
     /// </summary>
     /// <param name="kind">The kind of event.</param>
     /// <param name="logger">The logger that sends the report (normally the caller's own).</param>
     /// <param name="metadata">Optional details for the report's "event" tab; no paths, file names or user names.</param>
-    /// <returns>True when this call sent the report; false when the kind was already reported, or sending failed.</returns>
-    public static bool Report(HandledEvent kind, IAppLogger logger, IReadOnlyDictionary<string, string>? metadata = null)
+    /// <param name="maxPerRun">How many reports of this kind may be sent per logger (default 1: once per run). A kind that can legitimately repeat (a recovery after each of several outages) allows a few.</param>
+    /// <param name="informational">True for a report that is good news (sent with BugSnag severity Info, see <see cref="IAppLogger.ReportHandled"/>).</param>
+    /// <returns>True when this call sent the report; false when the kind was already reported <paramref name="maxPerRun"/> times, or sending failed.</returns>
+    public static bool Report(HandledEvent kind, IAppLogger logger, IReadOnlyDictionary<string, string>? metadata = null,
+        int maxPerRun = 1, bool informational = false)
     {
         try
         {
-            var kinds = Sent.GetValue(logger, static _ => new HashSet<HandledEvent>());
-            lock (kinds)
+            var counts = Sent.GetValue(logger, static _ => new Dictionary<HandledEvent, int>());
+            lock (counts)
             {
-                if (!kinds.Add(kind))
+                counts.TryGetValue(kind, out var sent);
+                if (sent >= maxPerRun)
                     return false;
+                counts[kind] = sent + 1;
             }
 
             logger.ReportHandled(
@@ -47,7 +53,8 @@ public static class HandledEventReporter
                 context:     HandledEventException.MessageFor(kind),
                 metadata:    metadata,
                 metadataTab: "event",
-                groupingKey: $"handled-event:{kind}");
+                groupingKey: $"handled-event:{kind}",
+                informational: informational);
             return true;
         }
         catch (Exception)

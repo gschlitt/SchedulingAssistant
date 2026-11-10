@@ -1667,6 +1667,9 @@ public sealed class CheckoutService : IDisposable
             _lockPutBackDuringSave = false;
             var outcome = await SaveAsyncCore(releaseLockAfter, isAutoSave);
 
+            // Field reporting (1.2.4 item 7.2): feed the failure-streak tracker. Never throws.
+            TrackSaveOutcome(outcome, isAutoSave);
+
             // F18: a save that put back a removed lock file tells the user only if it then succeeded. When it failed,
             // its failure banner is the one message for this save (the lock is ours again either way).
             if (_lockPutBackDuringSave && outcome == SaveOutcome.Success)
@@ -1692,6 +1695,7 @@ public sealed class CheckoutService : IDisposable
             ReportSaveFailure(SaveStep.Unexpected, ex,
                 "unexpected exception in SaveAsync — treating as a failed save", isAutoSave);
             RaiseTransientSaveError(SavePrompt.UnexpectedMessage, isAutoSave);
+            TrackSaveOutcome(SaveOutcome.CopyError, isAutoSave);   // field reporting (1.2.4 item 7.2); never throws
             return SaveOutcome.CopyError;
         }
         finally
@@ -1782,6 +1786,8 @@ public sealed class CheckoutService : IDisposable
     /// <param name="saveStartTimestamp">The <see cref="Stopwatch.GetTimestamp"/> value taken when the save started, to work out how long it ran.</param>
     private void RaiseSaveLocationUnreachable(bool isAutoSave, SaveStall stalledAt, long saveStartTimestamp)
     {
+        SetSaveFailureKind("NotResponding");   // field reporting (1.2.4 item 7.2)
+
         // Field reporting (1.2.4 item 7.1): nothing here may throw into the save. Every value is a number, a
         // True/False or a fixed name, so no path or message text can leak.
         try
@@ -1829,6 +1835,95 @@ public sealed class CheckoutService : IDisposable
         VerifyAtLocation,
         /// <summary>The rename of the temporary file onto the database.</summary>
         Rename,
+    }
+
+    /// <summary>How many "Save recovered after failing" events one run may send (1.2.4 item 7.2).</summary>
+    private const int MaxSaveRecoveredEventsPerRun = 3;
+
+    /// <summary>The failure kind of a failed save that no failure choke point named (1.2.4 item 7.2).</summary>
+    private const string SaveFailureKindOther = "Other";
+
+    /// <summary>
+    /// Why the CURRENT save failed, set by the four failure choke points (<see cref="RaiseSaveLocationUnreachable"/>,
+    /// <see cref="DescribeSaveFileError"/>, the torn-transfer branch and <see cref="ReportSaveFailure"/>) and cleared
+    /// when <see cref="SaveAsyncCore"/> starts. Read once, by <see cref="TrackSaveOutcome"/>. A fixed name, never text.
+    /// </summary>
+    private string? _saveFailureKind;
+
+    /// <summary>
+    /// Remembers runs of failed saves so the first success after one can be reported (1.2.4 item 7.2). Fed only by
+    /// <see cref="SaveAsync"/>, one save at a time; the tracker locks anyway.
+    /// </summary>
+    private readonly FailureStreakTracker _saveStreak = new();
+
+    /// <summary>Records why the current save failed (see <see cref="_saveFailureKind"/>). In-memory only; never throws.</summary>
+    /// <param name="kind">A fixed kind name.</param>
+    private void SetSaveFailureKind(string kind) => Volatile.Write(ref _saveFailureKind, kind);
+
+    /// <summary>
+    /// Field reporting (1.2.4 item 7.2): tells <see cref="_saveStreak"/> how a save ended, and reports a recovery.
+    /// <list type="bullet">
+    /// <item><description><see cref="SaveOutcome.CopyError"/>: one more failure, of the kind the failure choke points
+    /// recorded (<c>Other</c> if none did).</description></item>
+    /// <item><description><see cref="SaveOutcome.Success"/>: closes an open spell. A closed spell leaves the breadcrumb
+    /// <c>Save: Recovered</c> every time and sends <see cref="HandledEvent.SaveRecovered"/> (informational, at most
+    /// <see cref="MaxSaveRecoveredEventsPerRun"/> per run) with only numbers, <c>True</c>/<c>False</c> and kind names.</description></item>
+    /// <item><description><see cref="SaveOutcome.LockLost"/> / <see cref="SaveOutcome.SourceModified"/>: an open spell
+    /// ends without a recovery: one local INFO line and the breadcrumb <c>Save: FailuresEndedWithoutRecovery</c>; no
+    /// event (the refusal already sent its own).</description></item>
+    /// </list>
+    /// Changes no save outcome and awaits nothing; swallows every exception.
+    /// </summary>
+    /// <param name="outcome">How the save ended.</param>
+    /// <param name="isAutoSave">Whether this save was an autosave.</param>
+    private void TrackSaveOutcome(SaveOutcome outcome, bool isAutoSave)
+    {
+        try
+        {
+            var now = Stopwatch.GetTimestamp();
+            switch (outcome)
+            {
+                case SaveOutcome.CopyError:
+                    _saveStreak.RecordFailure(Volatile.Read(ref _saveFailureKind) ?? SaveFailureKindOther, now);
+                    break;
+
+                case SaveOutcome.Success:
+                    if (_saveStreak.RecordSuccess(now) is { } spell)
+                    {
+                        var metadata = new Dictionary<string, string>
+                        {
+                            ["failedAttempts"] = spell.FailedAttempts.ToString(),
+                            ["failedSeconds"]  = spell.FailedSeconds.ToString(),
+                            ["firstKind"]      = spell.FirstKind,
+                            ["lastKind"]       = spell.LastKind,
+                            ["autoSave"]       = isAutoSave.ToString(),
+                            ["spellInRun"]     = spell.SpellInRun.ToString(),
+                        };
+                        _logger.LogBreadcrumb("Save: Recovered", new Dictionary<string, string>(metadata));
+                        HandledEventReporter.Report(HandledEvent.SaveRecovered, _logger, metadata,
+                            maxPerRun: MaxSaveRecoveredEventsPerRun, informational: true);
+                    }
+                    break;
+
+                case SaveOutcome.LockLost:
+                case SaveOutcome.SourceModified:
+                    var open = _saveStreak.OpenAttempts;
+                    if (_saveStreak.Abandon(outcome.ToString()))
+                    {
+                        _logger.LogInfo($"CheckoutService: save failures ended without a recovery: {open} failed save(s), then {outcome}.");
+                        _logger.LogBreadcrumb("Save: FailuresEndedWithoutRecovery", new()
+                        {
+                            ["failedAttempts"] = open.ToString(),
+                            ["reason"]         = outcome.ToString(),
+                        });
+                    }
+                    break;
+            }
+        }
+        catch (Exception)
+        {
+            // Reporting must never turn a save into a failure or a crash.
+        }
     }
 
     /// <summary>How many recent successful save times are kept for the failure report.</summary>
@@ -1909,6 +2004,12 @@ public sealed class CheckoutService : IDisposable
     /// <param name="isAutoSave">Whether the failing save was an autosave (goes into the report's metadata).</param>
     private void ReportSaveFailure(SaveStep step, Exception? original, string logContext, bool isAutoSave)
     {
+        // Field reporting (1.2.4 item 7.2): the current save's failure kind is its step name, set before the
+        // once-per-step throttle below. The crash-protection marker is reported from SUCCESSFUL saves (and from
+        // MarkDirty), so it must not make a save look failed.
+        if (step != SaveStep.CrashProtectionMarker)
+            SetSaveFailureKind(step.ToString());
+
         try
         {
             _logger.LogInfo(original is null
@@ -1999,10 +2100,12 @@ public sealed class CheckoutService : IDisposable
                     // Reporting must never turn a handled save failure into a crash.
                 }
             }
+            SetSaveFailureKind("InUse");   // field reporting (1.2.4 item 7.2): another program held the file
             return SavePrompt.InUseMessage;
         }
 
         ReportSaveFailure(step, ex, logContext, isAutoSave);
+        SetSaveFailureKind("FileError");   // field reporting (1.2.4 item 7.2): replaces the step name ReportSaveFailure set
         return ex is FileNotFoundException or DirectoryNotFoundException
             ? SavePrompt.InUseMessage
             : SavePrompt.WriteFailedMessage;
@@ -2079,6 +2182,7 @@ public sealed class CheckoutService : IDisposable
     private async Task<SaveOutcome> SaveAsyncCore(bool releaseLockAfter, bool isAutoSave)
     {
         LastSaveKeptMarker = false;
+        Volatile.Write(ref _saveFailureKind, null);   // field reporting (1.2.4 item 7.2): this save has not failed yet
         using var snapshot = new SaveSnapshotState();
         return await SaveAsyncCoreBody(releaseLockAfter, isAutoSave, snapshot);
     }
@@ -2283,6 +2387,7 @@ public sealed class CheckoutService : IDisposable
         if (!string.Equals(tmpHash, newSourceHash, StringComparison.OrdinalIgnoreCase))
         {
             _logger.LogInfo("CheckoutService: D.tmp does not match the local snapshot — torn transfer; aborting save.");
+            SetSaveFailureKind("TornTransfer");   // field reporting (1.2.4 item 7.2)
             _logger.LogBreadcrumb("Save: TornTransfer");
             HandledEventReporter.Report(HandledEvent.SaveTornTransfer, _logger,
                 new Dictionary<string, string> { ["autoSave"] = isAutoSave.ToString() });

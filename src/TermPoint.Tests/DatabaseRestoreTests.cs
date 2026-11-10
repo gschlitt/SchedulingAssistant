@@ -245,8 +245,8 @@ public sealed class DatabaseRestoreTests : IDisposable
         /// <inheritdoc/>
         public void ReportHandled(
             Exception ex, string context, IReadOnlyDictionary<string, string>? metadata = null,
-            string metadataTab = "details", string? groupingKey = null)
-            => Handled.Add(new HandledReport(ex, context, metadata, metadataTab, groupingKey));
+            string metadataTab = "details", string? groupingKey = null, bool informational = false)
+            => Handled.Add(new HandledReport(ex, context, metadata, metadataTab, groupingKey, informational));
     }
 
     // ── Damage reporting (spec item 5, step 5e) ───────────────────────────────

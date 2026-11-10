@@ -101,12 +101,18 @@ public interface IAppLogger
     /// Optional stable key that makes the remote sink put every report with the same key into one issue,
     /// whatever the stack trace; null leaves the sink's own grouping.
     /// </param>
+    /// <param name="informational">
+    /// True for a report that is good news or plain information (for example "a save recovered after failing",
+    /// 1.2.4 item 7.2): a remote sink sends it with its lowest severity (BugSnag "info") instead of the default
+    /// warning, so it does not count as a problem. The local log line is unchanged.
+    /// </param>
     void ReportHandled(
         Exception ex,
         string context,
         IReadOnlyDictionary<string, string>? metadata = null,
         string metadataTab = "details",
-        string? groupingKey = null)
+        string? groupingKey = null,
+        bool informational = false)
         => LogWarning(AppLoggerText.DescribeHandled(ex, metadata), context);
 
     /// <summary>

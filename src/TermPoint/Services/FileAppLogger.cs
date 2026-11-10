@@ -105,12 +105,14 @@ public sealed class FileAppLogger : IAppLogger
     /// <param name="metadata">Optional key/value details, sent under <paramref name="metadataTab"/>. No paths, file names or user names.</param>
     /// <param name="metadataTab">Name of the BugSnag tab that holds <paramref name="metadata"/>.</param>
     /// <param name="groupingKey">Optional stable key that groups every report that carries it into one BugSnag issue.</param>
+    /// <param name="informational">True to send the event with BugSnag severity Info instead of the default Warning (the local log level stays REPORT).</param>
     public void ReportHandled(
         Exception ex,
         string context,
         IReadOnlyDictionary<string, string>? metadata = null,
         string metadataTab = "details",
-        string? groupingKey = null)
+        string? groupingKey = null,
+        bool informational = false)
     {
         try
         {
@@ -119,6 +121,8 @@ public sealed class FileAppLogger : IAppLogger
             BugsnagClient?.Notify(ex, report =>
             {
                 report.Event.Context = context;
+                if (informational)
+                    report.Event.Severity = Bugsnag.Severity.Info;
                 if (groupingKey is not null)
                     report.Event.GroupingHash = groupingKey;
                 if (metadata is { Count: > 0 })

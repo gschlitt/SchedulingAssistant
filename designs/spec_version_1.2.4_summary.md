@@ -904,11 +904,13 @@ whether the work is safe, and what to do next.
 >
 > **Done (9 Nov 2026, `7d54a7d`; design `designs/field-reporting-1.2.4.md`, with 7.3 and 7.4; full suite with harness 4521 passed, 1 failed (CrashSweep "planned cut did not fire" at `Lock.AfterDeleted` on Close, a timing flake: 3/3 passes alone), 2 skipped; MinimumVersionToWrite No):** `Save: Success` carries `elapsedMs` and `autoSave`. `SaveLocationNotResponding` (once per run) carries `autoSave`, `stalledAt` (LockCheck / SourceStat / SourceHash / CopyToLocation / VerifyAtLocation / Rename), `deadlineMs` (5000), `elapsedMs`, `recentSaveMs` (last 5 successes, oldest first, or `none`); every such failure also leaves a `Save: LocationNotResponding` breadcrumb (`stalledAt`, `elapsedMs`). Real time (Stopwatch); all reporting inside try/catch; nothing written or decided changes. Tests `SaveFieldReportingTests` (17).
 
-> [!note]- **7.2 Report when a save recovers after a failure** `not started` `save path`
+> [!note]- **7.2 Report when a save recovers after a failure** `done` `save path`
 > BugSnag shows that a save failed, but never that a later one worked: success is only a breadcrumb, and each failure
 > kind is reported once. **Fix:** when the first save succeeds after a reported failure, send one report ("recovered
 > after N attempts, S seconds"), and do the same for refresh. The code only reads state and reports, and must never
 > throw or block.
+>
+> **Done (10 Nov 2026, uncommitted; design `designs/field-reporting-1.2.4.md`, section 7.2; MinimumVersionToWrite No):** `FailureStreakTracker` (reusable) fed from `CheckoutService.SaveAsync` and the reader refresh. The first success after failures sends `SaveRecovered` / `RefreshRecovered` (BugSnag severity Info, at most 3 per run) with `failedAttempts`, `failedSeconds`, `firstKind`, `lastKind` (NotResponding / InUse / FileError / TornTransfer / step name / Other; refresh: outcome name or Threw), `spellInRun`, and for saves `autoSave`; a `Save: Recovered` / `Refresh: Recovered` breadcrumb every time. A spell ended by LockLost/SourceModified leaves only a local line and the `Save: FailuresEndedWithoutRecovery` breadcrumb. The "save already in progress" refusal is not counted. Tests `FailureStreakTrackerTests`, `RecoveryReportingTests`. **Deferred past 1.2.4 (Greg):** a per-run summary (option B); BugSnag can't sum metadata, so it wants a usage-metrics tool and a privacy decision.
 
 > [!note]- **7.3 Report a rename blocked by another program** `done`
 > Today this goes only to the local log. Send one counted event (numbers only, through the scrubber). It can ship

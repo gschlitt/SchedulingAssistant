@@ -109,7 +109,12 @@ Written so a fresh conversation can pick up. Claude Code's memory and `CLAUDE.md
       Spin-offs logged: **3.13** (an edit during Restore from Backup is deleted, or after a crash refused: refuse edits
       while a restore runs; retires F24) and **6.14** (two messages when the restore's save fails).
    6. **Section 4 (Greg's priority, 2026-11-09): 4.2, 4.6, 4.7, 4.8, 4.9 done, 4.11 shelved** (see "Done in 1.2.4").
-   - **Next: pick with Greg.** 4.3, 4.4, 4.5 done 2026-11-10. Left in section 4: **4.10** (24 network calls without a
+   - **7.2 DONE 2026-11-10 (uncommitted at time of writing):** save/refresh recovery reports (`SaveRecovered`,
+     `RefreshRecovered`, BugSnag Info, ≤3 per run; design `designs/field-reporting-1.2.4.md` section 7.2). Full suite
+     with harness 4639 passed, 0 failed, 2 skipped. Greg's goal: "a more solid sense of how TermPoint is doing in the
+     wild". **Option B (one numbers-only summary per run) deferred past 1.2.4:** BugSnag can't sum metadata; it wants
+     a usage-metrics tool and a privacy decision.
+   - **Next: pick with Greg** (Greg wants to work toward closing 1.2.4). 4.3, 4.4, 4.5 done 2026-11-10. Left in section 4: **4.10** (24 network calls without a
      deadline, `tools/NetworkProbe/GAP-AUDIT.md`), 4.13's remaining route (accepted). Other candidates: 3.13 and 6.14 (Restore from Backup, small), 2.2 licence
      warning, 5.8 then 5.3/5.4, 6.12, harness 85 s model (retires F22). Postponed items under F above stay listed.
    - **Small item found 2026-11-10:** `WizardDataFlowTests` writes the developer's real `%AppData%\TermPoint\settings.json`

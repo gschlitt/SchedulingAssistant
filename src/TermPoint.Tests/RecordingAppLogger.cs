@@ -9,12 +9,14 @@ namespace TermPoint.Tests;
 /// <param name="Metadata">The metadata, or null.</param>
 /// <param name="MetadataTab">The tab that holds the metadata.</param>
 /// <param name="GroupingKey">The grouping key, or null.</param>
+/// <param name="Informational">True when the report was sent as informational (BugSnag severity Info).</param>
 internal sealed record HandledReport(
     Exception Exception,
     string Context,
     IReadOnlyDictionary<string, string>? Metadata,
     string MetadataTab,
-    string? GroupingKey);
+    string? GroupingKey,
+    bool Informational = false);
 
 /// <summary>
 /// A test <see cref="IAppLogger"/> that remembers everything it is told: information and warning lines, errors,
@@ -76,12 +78,13 @@ internal sealed class RecordingAppLogger : IAppLogger
         string context,
         IReadOnlyDictionary<string, string>? metadata = null,
         string metadataTab = "details",
-        string? groupingKey = null)
+        string? groupingKey = null,
+        bool informational = false)
     {
         if (ThrowFromReportHandled)
             throw new InvalidOperationException("the logger is failing");
 
-        lock (Handled) Handled.Add(new HandledReport(ex, context, metadata, metadataTab, groupingKey));
+        lock (Handled) Handled.Add(new HandledReport(ex, context, metadata, metadataTab, groupingKey, informational));
     }
 
     /// <inheritdoc/>

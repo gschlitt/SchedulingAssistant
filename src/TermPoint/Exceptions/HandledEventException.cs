@@ -54,6 +54,12 @@ public enum HandledEvent
 
     /// <summary>The process was still alive well after its exit teardown had finished, so the shutdown backstop ended it (1.2.4 item 4.3).</summary>
     ShutdownBackstopFired,
+
+    /// <summary>A save worked after one or more failed saves in a row (informational, up to 3 per run; 1.2.4 item 7.2).</summary>
+    SaveRecovered,
+
+    /// <summary>A reader's Refresh worked after one or more failed Refreshes in a row (informational, up to 3 per run; 1.2.4 item 7.2).</summary>
+    RefreshRecovered,
 }
 
 /// <summary>
@@ -95,6 +101,8 @@ public sealed class HandledEventException : Exception
         HandledEvent.PreviousSessionEndedUnexpectedly   => "The previous session ended without exiting normally",
         HandledEvent.SaveRenameBlocked                  => "Save rename refused: the file was in use or access was denied",
         HandledEvent.ShutdownBackstopFired              => "Exit: the main loop did not end after the teardown; the process was ended",
+        HandledEvent.SaveRecovered                      => "Save recovered after failing",
+        HandledEvent.RefreshRecovered                   => "Refresh recovered after failing",
         _                                               => "Handled event: " + kind,
     };
 }

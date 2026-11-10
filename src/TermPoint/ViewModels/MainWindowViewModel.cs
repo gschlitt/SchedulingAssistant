@@ -476,6 +476,16 @@ public partial class MainWindowViewModel : ViewModelBase
     /// the browser demo has no read-only snapshot to refresh.
     /// </summary>
     private string? _refreshErrorText;
+
+    /// <summary>
+    /// Remembers runs of failed refreshes so the first one that works after them can be reported (1.2.4 item 7.2).
+    /// Replaced by a fresh tracker when the checkout session changes (<see cref="_refreshStreakSessionId"/>), so a
+    /// reader that becomes a writer, or switches database, starts clean; an open spell is dropped silently.
+    /// </summary>
+    private FailureStreakTracker _refreshStreak = new();
+
+    /// <summary>The <see cref="CheckoutService.SessionId"/> that <see cref="_refreshStreak"/> belongs to.</summary>
+    private int _refreshStreakSessionId = int.MinValue;
 #endif
 
     /// <summary>
@@ -967,7 +977,69 @@ public partial class MainWindowViewModel : ViewModelBase
             HandledEventReporter.Report(TermPoint.Exceptions.HandledEvent.RefreshConnectionLost, App.Logger);
         else if (!threw && outcome == RefreshOutcome.SourceUnavailable)
             HandledEventReporter.Report(TermPoint.Exceptions.HandledEvent.RefreshNotResponding, App.Logger);
+
+        // Spec item 7.2: a refresh that works after failed ones is reported as a recovery. Fresh tracker per session.
+        try
+        {
+            var session = App.Checkout.SessionId;
+            if (session != _refreshStreakSessionId)
+            {
+                _refreshStreak          = new FailureStreakTracker();
+                _refreshStreakSessionId = session;
+            }
+        }
+        catch (Exception)
+        {
+            // Reporting must never turn a refresh into a failure; keep the current tracker.
+        }
+        TrackRefreshOutcome(_refreshStreak, App.Logger, line, threw, outcome, System.Diagnostics.Stopwatch.GetTimestamp());
         return line;
+    }
+
+    /// <summary>
+    /// Field reporting (1.2.4 item 7.2): feeds a refresh's result to <paramref name="tracker"/> and reports a
+    /// recovery. A failed refresh (<paramref name="line"/> is not null) is one more failure of kind
+    /// <paramref name="outcome"/> (or <c>Threw</c>). A refresh that worked closes an open spell: breadcrumb
+    /// <c>Refresh: Recovered</c> every time and <see cref="TermPoint.Exceptions.HandledEvent.RefreshRecovered"/>
+    /// (informational, at most 3 per run) with only numbers and kind names. Never throws, awaits nothing, and changes
+    /// nothing about the refresh. Static so a test can drive it without a window.
+    /// </summary>
+    /// <param name="tracker">The reader's failure-streak tracker.</param>
+    /// <param name="logger">The logger that receives the breadcrumb and the report.</param>
+    /// <param name="line">The failure line from <see cref="RefreshPrompt.FailureLine"/>, or null when the refresh worked.</param>
+    /// <param name="threw">True when the refresh threw.</param>
+    /// <param name="outcome">What the refresh returned, or null when it threw.</param>
+    /// <param name="timestamp">A <see cref="System.Diagnostics.Stopwatch.GetTimestamp"/> value for now.</param>
+    internal static void TrackRefreshOutcome(
+        FailureStreakTracker tracker, IAppLogger logger, string? line, bool threw, RefreshOutcome? outcome, long timestamp)
+    {
+        try
+        {
+            if (line is not null)
+            {
+                tracker.RecordFailure(threw ? "Threw" : outcome?.ToString() ?? "Other", timestamp);
+                return;
+            }
+
+            if (tracker.RecordSuccess(timestamp) is not { } spell)
+                return;
+
+            var metadata = new Dictionary<string, string>
+            {
+                ["failedAttempts"] = spell.FailedAttempts.ToString(),
+                ["failedSeconds"]  = spell.FailedSeconds.ToString(),
+                ["firstKind"]      = spell.FirstKind,
+                ["lastKind"]       = spell.LastKind,
+                ["spellInRun"]     = spell.SpellInRun.ToString(),
+            };
+            logger.LogBreadcrumb("Refresh: Recovered", new Dictionary<string, string>(metadata));
+            HandledEventReporter.Report(TermPoint.Exceptions.HandledEvent.RefreshRecovered, logger, metadata,
+                maxPerRun: 3, informational: true);
+        }
+        catch (Exception)
+        {
+            // Reporting must never turn a refresh into a failure or a crash.
+        }
     }
 
     /// <summary>

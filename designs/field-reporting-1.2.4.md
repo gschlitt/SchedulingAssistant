@@ -114,3 +114,103 @@ path or name. Reports go through `ScrubbingDelivery` as all reports do.
 - Metadata of both events contains only the fields listed (no value contains `\` or `/`).
 - Recovery answers: each path through `AskKeepOrDiscardAsync` writes exactly the listed lines in order.
 - Existing save/harness tests unchanged; full suite with `TERMPOINT_HARNESS=1`.
+
+---
+
+# 7.2 Report when a save (or refresh) recovers: design
+
+Status: **direction approved by Greg 2026-11-10 (option A; the per-run summary B is deferred past 1.2.4: BugSnag can't
+sum metadata, and a usage-metrics tool is a separate privacy decision). Implemented 2026-11-10.** Reporting only. MinimumVersionToWrite **No**.
+
+## The story
+
+**Today.** Bob's share stops answering for 40 s. Autosave 1 fails: BugSnag gets "Save failed: the database location did
+not respond". Autosaves 2-4 fail silently (once per run per kind). Autosave 5 works: a `Save: Success` breadcrumb that
+nobody ever sees, because breadcrumbs only travel with a later error. We can't tell "40 s, never noticed" from
+"stranded for an hour, then quit".
+
+**With 7.2.** Autosave 5 also sends "Save recovered after failing" (severity **info**), with `failedAttempts = 4`,
+`failedSeconds = 41`, `firstKind = NotResponding`, `lastKind = NotResponding`, `autoSave = True`, `spellInRun = 1`.
+A failure report with no recovery report after it now means the spell never ended in that run (lock lost, database
+changed elsewhere, or the user quit while it was failing).
+
+**Carol, a reader,** clicks Refresh during the same outage: it fails twice (once reported), then works. She sends
+"Refresh recovered after failing" with the same fields.
+
+## Design
+
+**`FailureStreakTracker`** (new, `Services/`, pure and reusable, used by both save and refresh): thread-safe (`lock`).
+
+- `RecordFailure(string kind, long timestamp)`: first failure of a spell remembers `firstKind` and the timestamp; every
+  failure bumps the count and sets `lastKind`.
+- `RecordSuccess(long timestamp)` → `FailureSpell?`: null when no spell was open; otherwise the closed spell
+  (`FailedAttempts`, `FailedSeconds` = whole seconds from the first failure to this success, `FirstKind`, `LastKind`,
+  `SpellInRun` = 1, 2, 3…) and the tracker is reset.
+- `Abandon(string why)` → bool: closes an open spell without recovery (returns whether one was open).
+- Timestamps are `Stopwatch.GetTimestamp()` values passed in (tests pass their own); real time, like 7.1.
+
+**Save (`CheckoutService`)**
+
+- **Kind** of a failed save: a per-save field `_saveFailureKind`, cleared when `SaveAsyncCore` starts, set at the four
+  existing failure choke points: `RaiseSaveLocationUnreachable` → `NotResponding`; `DescribeSaveFileError` →
+  `InUse` (in use / access denied) or `FileError` (any other file error); the torn-transfer branch → `TornTransfer`; `ReportSaveFailure(step)` → the step name (`Snapshot`,
+  `SnapshotHash`, `Unexpected`…), **except** `CrashProtectionMarker`, which is reported from successful saves and must not
+  set it. A `CopyError` with no kind set counts as `Other`.
+- **Where the tracker is fed:** only in `SaveAsync`, after `SaveAsyncCore` (and in its safety-net catch):
+  - `CopyError` → `RecordFailure(kind)`; the "a save is already in progress" refusal returns before this and is
+    **not** a failure.
+  - `Success` → `RecordSuccess`; when it returns a spell: breadcrumb `Save: Recovered` (every time) and
+    `HandledEvent.SaveRecovered` (**at most 3 per run**), metadata `failedAttempts`, `failedSeconds`, `firstKind`,
+    `lastKind`, `autoSave` (the recovering save), `spellInRun`.
+  - `LockLost` / `SourceModified` → `Abandon`, with one local INFO line ("save failures ended without a recovery: …")
+    and breadcrumb `Save: FailuresEndedWithoutRecovery` (`failedAttempts`, `reason`). No event: the lock-loss / refused
+    save already sends its own.
+  - `NotInWriteMode`: returns before, untouched.
+- `SaveUntilMarkerClearAsync` and the exit save go through `SaveAsync`, so they are covered for free.
+
+**Refresh (`MainWindowViewModel.RefreshReadOnlySnapshotAsync`)**: a reader's tracker field on the VM.
+Failure (`line is not null`) → `RecordFailure(kind)` with kind = the `RefreshOutcome` name, or `Threw`. Success →
+`RecordSuccess`; a spell sends breadcrumb `Refresh: Recovered` and `HandledEvent.RefreshRecovered` (at most 3 per
+run), same metadata minus `autoSave`. A reader that becomes a writer (or switches database) gets a fresh tracker; an
+open spell is abandoned silently.
+
+**Reporting plumbing**
+
+- `HandledEvent.SaveRecovered` = "Save recovered after failing"; `HandledEvent.RefreshRecovered` = "Refresh recovered
+  after failing".
+- `HandledEventReporter.Report` gains `int maxPerRun = 1` (count per logger per kind instead of a set) and
+  `bool informational = false`.
+- `IAppLogger.ReportHandled` gains `bool informational = false`; `FileAppLogger` sends those with BugSnag severity
+  **Info** (local log level stays REPORT). Fakes in tests get the parameter.
+
+## What else runs at the same moment
+
+- **Saves:** single-flight (`_saveInFlight`), so the tracker is fed by one save at a time; it locks anyway.
+- **Heartbeat / wake check:** its outage notice does not go through `SaveAsync`, so it never feeds the tracker (a lock
+  check is not a save). A lock loss found by the heartbeat leaves a spell open; the next `SaveAsync` returns
+  `NotInWriteMode` and never closes it. Accepted: the lock-loss event already tells the story.
+- **Reader poll:** does not call `RefreshReadOnlySnapshotAsync`; untouched.
+- **Exit:** a recovery during the exit save queues a BugSnag event that may be lost as the process ends. Accepted.
+- **Never throws, never blocks:** every new call is inside try/catch; BugSnag queues delivery off the save thread; nothing
+  is awaited; outcomes, banners, writes, lock and marker steps are unchanged.
+
+## Four rules
+
+1-3: no new write, rename or delete anywhere. 4: nothing new is shown to the user.
+
+## Privacy
+
+Values are integers, `True`/`False` and fixed kind names. Through `ScrubbingDelivery` like every report.
+
+## Tests
+
+- `FailureStreakTracker`: success with no spell → null; N failures then success → N, seconds, first/last kind,
+  spell numbers 1, 2, 3; `Abandon` closes; thread safety smoke test.
+- `HandledEventReporter`: `maxPerRun = 3` sends 3 then refuses; default still once; `informational` reaches the logger.
+- Save (beside `SaveFieldReportingTests`): fail ×2 (not responding) then succeed → one `SaveRecovered` with
+  `failedAttempts = 2`, kinds `NotResponding`; mixed kinds report first/last right; the in-progress refusal is not
+  counted; success with no failure sends nothing; 4 spells → 3 events, 4 breadcrumbs; `LockLost` mid-spell → no event,
+  the "ended without recovery" breadcrumb; a successful save whose marker rewrite fails sets no kind; metadata values
+  contain no `\` or `/`.
+- Refresh: fail, fail, succeed → one `RefreshRecovered` with `failedAttempts = 2`.
+- Full suite with `TERMPOINT_HARNESS=1`.
