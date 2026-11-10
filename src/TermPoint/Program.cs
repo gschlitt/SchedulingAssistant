@@ -5,6 +5,21 @@ namespace TermPoint;
 
 class Program
 {
+    /// <summary>True once Avalonia's main loop has ended and <see cref="Main"/> is returning (a normal exit).</summary>
+    private static bool _mainLoopEnded;
+
+    /// <summary>
+    /// The shutdown backstop for this process (spec 1.2.4 item 4.3), or null before <see cref="Main"/> creates it
+    /// (and always in tests, which never run <see cref="Main"/>). Armed by <c>MainWindow</c> at the end of the exit teardown.
+    /// </summary>
+    internal static Services.ShutdownBackstop? Backstop { get; private set; }
+
+    /// <summary>
+    /// The command-line arguments this copy was started with (empty in tests). Read at startup for
+    /// <see cref="Services.RestartArguments"/> (a relaunch after a restore names the database to reopen).
+    /// </summary>
+    internal static string[] StartupArgs { get; private set; } = [];
+
     // Initialization code. Don't use any Avalonia, third-party APIs or any
     // SynchronizationContext-reliant code before AppMain is called: things aren't initialized
     // yet and stuff might break.
@@ -42,7 +57,17 @@ class Program
         var runMarker = new Services.SessionRunMarker(log: message => App.Logger.LogInfo(message));
         ReportSessionsThatEndedUnexpectedly(runMarker);
 
+        // The last resort if the main loop never ends after the exit teardown (spec 1.2.4 item 4.3). Armed by the
+        // teardown itself (SessionLifecycle → ISessionHost.ArmShutdownBackstop); does nothing on a normal exit.
+        Backstop = Services.ShutdownBackstop.CreateDefault(
+            mainReturned:   () => Volatile.Read(ref _mainLoopEnded),
+            pendingRelease: () => App.LockService.PendingRelease,
+            endRunMarker:   runMarker.End,
+            logger:         App.Logger);
+
+        StartupArgs = args;
         BuildAvaloniaApp().StartWithClassicDesktopLifetime(args);
+        Volatile.Write(ref _mainLoopEnded, true);
 
         // A normal exit: this session is not one that ended unexpectedly.
         runMarker.End();

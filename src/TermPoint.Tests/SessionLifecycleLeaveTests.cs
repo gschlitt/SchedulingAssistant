@@ -183,6 +183,8 @@ public sealed class SessionLifecycleLeaveTests : SessionLifecycleTestBase
         Assert.False(File.Exists(LockOf(db)));
         Assert.False(_guard.IsHeld(db));
         Assert.Equal(CheckoutMode.ReadOnly, _checkout.Mode);
+        Assert.Equal(1, _host.BackstopArmCount);       // every close arms the backstop at the end (item 4.3)
+        Assert.Null(_host.LastRelaunchPath);
         Assert.Contains(CheckpointLine, _logger.Infos);
         Assert.Empty(_logger.Errors);
         AssertScriptConsumed();
@@ -224,6 +226,8 @@ public sealed class SessionLifecycleLeaveTests : SessionLifecycleTestBase
         Assert.True(File.Exists(MarkerOf(working)));
         Assert.Equal("edit-at-close", NewestValue(working));
         Assert.True(File.Exists(LockOf(db)), "the lock is parked, not released, after a failed final save");
+        Assert.Equal(1, _host.BackstopArmCount);       // armed only after the message: the kept changes are already in place
+        AssertInOrder(_trace, "prompt:Message:Changes Not Saved", "host:ArmShutdownBackstop");
         Assert.False(_guard.IsHeld(db));
         Assert.Contains(CheckpointLine, _logger.Infos);
         AssertScriptConsumed();
@@ -284,10 +288,13 @@ public sealed class SessionLifecycleLeaveTests : SessionLifecycleTestBase
             "host:CloseSecondaryWindows",
             "host:DisposeServices(built=True, connection=True)",
             "host:RelaunchApplication",
-            "state:atRelaunch:guardHeld=False");
+            "state:atRelaunch:guardHeld=False",
+            "host:ArmShutdownBackstop");
         Assert.DoesNotContain("checkout:SaveCompleted", _trace);
         Assert.Equal("from-backup", NewestValue(db));
         Assert.Equal("edit-before-restore", NewestValue(preRestore));     // saved first, so it is in the pre-restore copy
+        Assert.Equal(db, _host.LastRelaunchPath);                         // the new copy reopens the restored database (item 4.3)
+        Assert.Equal(1, _host.BackstopArmCount);                          // armed once the teardown is complete (item 4.3)
         Assert.False(File.Exists(working));
         Assert.False(File.Exists(MarkerOf(working)));
         Assert.False(File.Exists(LockOf(db)));

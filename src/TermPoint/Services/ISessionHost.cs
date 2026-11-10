@@ -137,7 +137,18 @@ public interface ISessionHost
     /// be started the application still closes and the user reopens it by hand. A seam so that a test never
     /// launches a process (the executable of a test run is the test host).
     /// </summary>
-    void RelaunchApplication();
+    /// <param name="reopenPath">
+    /// The restored database, passed to the new copy (<see cref="RestartArguments.ForReopen"/>) so it opens it directly
+    /// instead of showing the database chooser (spec 1.2.4 item 4.3).
+    /// </param>
+    void RelaunchApplication(string reopenPath);
+
+    /// <summary>
+    /// Arms the shutdown backstop (<see cref="ShutdownBackstop"/>, spec 1.2.4 item 4.3) at the end of the exit teardown,
+    /// so the process ends even if Avalonia's main loop never does. The default does nothing: a test host must never
+    /// end the test process.
+    /// </summary>
+    void ArmShutdownBackstop() { }
 
     /// <summary>
     /// Captures, at this moment, the objects the lost-write-lock handler works on: the window's root view model

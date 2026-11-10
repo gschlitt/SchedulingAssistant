@@ -46,8 +46,8 @@ About 97 items in nine groups. Most were deferred from 1.2.3 or found while test
 | 9 | [Smaller fixes and housekeeping](#9.%20Smaller%20fixes%20and%20housekeeping) | Bugs, consistency, upstream | 8 | 0 |
 
 **The urgent and high-value items, and where they stand (2026-11-10)**
-- **Section 4, Greg's priority from 2026-11-09:** 4.2, 4.4, 4.5, 4.6, 4.7, 4.8 and 4.9 done; 4.11 shelved. 4.7 D1 closed a
-  rule-3 hole (crash recovery could delete kept changes that antivirus was holding). Left: 4.3, 4.10, 4.13's
+- **Section 4, Greg's priority from 2026-11-09:** 4.2, 4.3, 4.4, 4.5, 4.6, 4.7, 4.8 and 4.9 done (4.3 awaits a by-hand check); 4.11 shelved. 4.7 D1 closed a
+  rule-3 hole (crash recovery could delete kept changes that antivirus was holding). Left: 4.10, 4.13's
   accepted remainder.
 - **Store package** (1.2–1.4): done. The shared Windows file and the graphics PDBs are left out (55.5 MB); the flight
   procedure is written. Left: the first flight with the 1.2.4 submission, and the support case for 1.1 (Greg).
@@ -547,7 +547,7 @@ Everything in this group is checked against rule 3 (never delete the only copy o
 > already running is waited for before the save. Bob sees only "Changes Not Saved"; D' and its marker are kept.
 > Test `ExitSave_FindsTheLockTakenOver_StartsNoDemotion_AndKeepsTheChanges`. MinimumVersionToWrite No.
 
-> [!note]- **4.3 Restoring a backup leaves the old process running; the relaunch should reopen the restored database** `not started`
+> [!note]- **4.3 Restoring a backup leaves the old process running; the relaunch should reopen the restored database** `done`
 > After a Save & Backup restore, the old TermPoint process stays alive with no windows until sign-out (about 265 MB).
 > It may hold up a Store update, and it reports an unclean exit later. No data risk: the lock, guard and connection are
 > released first. The database chooser has been ruled out. The suspects are the relaunch (which starts just before
@@ -555,6 +555,19 @@ Everything in this group is checked against rule 3 (never delete the only copy o
 > reopening the restored database. **Fix direction:** once the main window has closed, force a shutdown (guarded
 > against "already shutting down"), and pass the restored path to the relaunched copy.
 > *Source: spec, "Item 5 (M11)"; the field-test doc has the stack and heap evidence.*
+>
+> **Done (10 Nov 2026; design `designs/restore-relaunch-1.2.4.md`; Greg chose the backstop for every close;
+> MinimumVersionToWrite No; no new wording).** Cause not pinned down (relaunch, stale-session teardown, or the
+> code-driven close right after a dialog); the fix works for any of them and its log lines will name it:
+> (A) `MainWindow.OnClosed` posts a shutdown request at background priority (never runs on a normal exit; logs
+> "The main window closed but the main loop is still running…" when it does); (B) `ShutdownBackstop`, armed at
+> "Managed teardown complete" on every close: if `Main` hasn't returned 15 s later it waits up to 5 s for the lock
+> file's background delete, ends the run marker, logs, reports `HandledEvent.ShutdownBackstopFired` and exits 0;
+> (C) the relaunch passes `--reopen-after-restore <path>` (`RestartArguments`); when it names the saved most-recent
+> database the start takes the auto-open branch once. macOS relaunch is now `open -n … --args` (check on the next
+> signed Mac build). Tests: `ShutdownBackstopTests`, `SessionLifecycleLeaveTests` (relaunch path, backstop armed last).
+> **Left: by-hand check on the sideload** (restore 3 times: old PID gone each time, restored database reopens; note
+> which log line, A's or B's, appeared).
 
 > [!note]- **4.4 Read-only connections: a second, database-level guard** `done`
 > 1.2.3 refuses writes in read-only sessions in TermPoint's code. Also turn on SQLite's own read-only switch

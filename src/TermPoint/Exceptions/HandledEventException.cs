@@ -51,6 +51,9 @@ public enum HandledEvent
 
     /// <summary>A save's rename onto the database was refused: the file was in use or access was denied (after the rename's own retries).</summary>
     SaveRenameBlocked,
+
+    /// <summary>The process was still alive well after its exit teardown had finished, so the shutdown backstop ended it (1.2.4 item 4.3).</summary>
+    ShutdownBackstopFired,
 }
 
 /// <summary>
@@ -91,6 +94,7 @@ public sealed class HandledEventException : Exception
         HandledEvent.RefreshConnectionLost              => "Refresh failed and lost the connection to the database",
         HandledEvent.PreviousSessionEndedUnexpectedly   => "The previous session ended without exiting normally",
         HandledEvent.SaveRenameBlocked                  => "Save rename refused: the file was in use or access was denied",
+        HandledEvent.ShutdownBackstopFired              => "Exit: the main loop did not end after the teardown; the process was ended",
         _                                               => "Handled event: " + kind,
     };
 }

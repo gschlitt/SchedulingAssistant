@@ -1684,7 +1684,7 @@ public sealed class SessionLifecycle
         // copy started earlier would be refused as "already open"), the lock is given back and the working
         // copy is gone, so the new copy opens the restored database from a clean state.
         if (_relaunchAfterClose)
-            _host.RelaunchApplication();
+            _host.RelaunchApplication(_restoredSourcePath ?? string.Empty);
 
         // ── Shutdown checkpoint #1 ───────────────────────────────────────────
         // Managed teardown (save → release lock → dispose DI container → cleanup
@@ -1692,6 +1692,10 @@ public sealed class SessionLifecycle
         // if BOTH lines are logged but TermPoint.exe lingers, the leftover is a
         // debugger/native artifact, not our code.
         _logger().LogInfo("[Shutdown] Managed teardown complete; closing main window.");
+
+        // Everything is saved, released and disposed: from here the process may be ended if Avalonia's main loop never
+        // ends (spec 1.2.4 item 4.3; seen after a restore). Every close. Does nothing on a normal exit.
+        _host.ArmShutdownBackstop();
     }
 
     // ── Restore from backup (spec item 5, step 5b) ───────────────────────────

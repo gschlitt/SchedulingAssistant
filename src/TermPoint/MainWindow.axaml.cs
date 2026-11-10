@@ -284,6 +284,43 @@ public partial class MainWindow : Window, ILifecyclePrompts, ISessionHost
             Close(); // Re-trigger OnClosing; the guard is now ReadyToClose, so it falls through.
     }
 
+    /// <summary>
+    /// Once the main window has closed, makes sure the application shuts down (spec 1.2.4 item 4.3, design
+    /// <c>designs/restore-relaunch-1.2.4.md</c>, change A). <c>ShutdownMode.OnMainWindowClose</c> should already have
+    /// done it, but after a Save &amp; Backup restore Avalonia's shutdown was seen never to run (or to be abandoned),
+    /// leaving an invisible TermPoint alive until sign-out. So a request is posted at background priority: on a normal
+    /// exit the main loop has ended by then and it never runs; otherwise it asks for the shutdown and logs that it had
+    /// to (the evidence for the cause). Avalonia refuses a second shutdown with <see cref="InvalidOperationException"/>,
+    /// which is caught. If even this is abandoned, <see cref="ShutdownBackstop"/> ends the process. Never throws.
+    /// </summary>
+    /// <param name="e">The closed event args.</param>
+    protected override void OnClosed(EventArgs e)
+    {
+        base.OnClosed(e);
+        if (Avalonia.Controls.Design.IsDesignMode) return;
+
+        Dispatcher.UIThread.Post(() =>
+        {
+            try
+            {
+                if (Avalonia.Application.Current?.ApplicationLifetime is not
+                    Avalonia.Controls.ApplicationLifetimes.IClassicDesktopStyleApplicationLifetime desktop)
+                    return;
+
+                App.Logger.LogInfo("[Shutdown] The main window closed but the main loop is still running; asking for the shutdown again.");
+                desktop.Shutdown();
+            }
+            catch (InvalidOperationException)
+            {
+                // Already shutting down: nothing to do.
+            }
+            catch (Exception ex)
+            {
+                App.Logger.LogError(ex, "MainWindow: asking for the shutdown after the main window closed failed");
+            }
+        }, DispatcherPriority.Background);
+    }
+
     protected override async void OnOpened(EventArgs e)
     {
         base.OnOpened(e);
@@ -558,7 +595,13 @@ public partial class MainWindow : Window, ILifecyclePrompts, ISessionHost
     {
         string dbPath;
 
-        if (settings.AlwaysOpenMostRecentDatabase)
+        // A relaunch after a restore names the restored database (spec 1.2.4 item 4.3): open it directly this once,
+        // exactly as the "Always open the most recent database" setting would (same check, same fallback).
+        var reopenAfterRestore = RestartArguments.ShouldReopen(Program.StartupArgs, settings.DatabasePath);
+        if (reopenAfterRestore)
+            App.Logger.LogInfo("[Startup] Started after a restore: reopening the restored database.");
+
+        if (settings.AlwaysOpenMostRecentDatabase || reopenAfterRestore)
         {
             // Auto-open mode — validate the saved path and proceed if OK.
             var validation = await DatabaseValidator.ValidateSharedAtOpenAsync(settings.DatabasePath);
@@ -1120,10 +1163,12 @@ public partial class MainWindow : Window, ILifecyclePrompts, ISessionHost
         => Lifecycle.RestoreFromBackupAsync(backupPath);
 
     /// <summary>
-    /// Starts a fresh copy of TermPoint (after a confirmed restore). Never throws: if it cannot be started the
-    /// application still closes, and the user reopens it by hand.
+    /// Starts a fresh copy of TermPoint (after a confirmed restore), asking it to reopen <paramref name="reopenPath"/>
+    /// (<see cref="RestartArguments"/>; spec 1.2.4 item 4.3). Never throws: if it cannot be started the application
+    /// still closes, and the user reopens it by hand.
     /// </summary>
-    private static void RelaunchApplication()
+    /// <param name="reopenPath">The restored database; blank starts the new copy without the argument.</param>
+    private static void RelaunchApplication(string reopenPath)
     {
         try
         {
@@ -1134,7 +1179,8 @@ public partial class MainWindow : Window, ILifecyclePrompts, ISessionHost
                 return;
             }
 
-            PlatformProcess.LaunchExecutable(exePath);
+            var args = string.IsNullOrWhiteSpace(reopenPath) ? [] : RestartArguments.ForReopen(reopenPath);
+            PlatformProcess.LaunchExecutable(exePath, args);
         }
         catch (Exception ex)
         {
@@ -1992,7 +2038,10 @@ public partial class MainWindow : Window, ILifecyclePrompts, ISessionHost
     }
 
     /// <inheritdoc cref="ISessionHost.RelaunchApplication"/>
-    void ISessionHost.RelaunchApplication() => RelaunchApplication();
+    void ISessionHost.RelaunchApplication(string reopenPath) => RelaunchApplication(reopenPath);
+
+    /// <inheritdoc cref="ISessionHost.ArmShutdownBackstop"/>
+    void ISessionHost.ArmShutdownBackstop() => Program.Backstop?.Arm();
 
     /// <inheritdoc cref="ISessionHost.CaptureLockLossSurface"/>
     ILockLossSurface ISessionHost.CaptureLockLossSurface()

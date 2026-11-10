@@ -140,6 +140,19 @@ internal sealed class FakeSessionHost : ISessionHost, IDisposable
     /// </summary>
     public Action? OnRelaunch { get; set; }
 
+    /// <summary>The database path the lifecycle passed to the last <see cref="RelaunchApplication"/>, or null if none.</summary>
+    public string? LastRelaunchPath { get; private set; }
+
+    /// <summary>How many times the lifecycle armed the shutdown backstop (the fake never ends anything).</summary>
+    public int BackstopArmCount { get; private set; }
+
+    /// <inheritdoc/>
+    public void ArmShutdownBackstop()
+    {
+        BackstopArmCount++;
+        _trace("host:ArmShutdownBackstop");
+    }
+
     /// <summary>
     /// The surface <see cref="CaptureLockLossSurface"/> hands out. One instance per host, so a test configures it
     /// (<see cref="FakeLockLossSurface.HasViewModel"/> and the rest) before the lost-lock handler runs.
@@ -254,8 +267,9 @@ internal sealed class FakeSessionHost : ISessionHost, IDisposable
     }
 
     /// <inheritdoc/>
-    public void RelaunchApplication()
+    public void RelaunchApplication(string reopenPath)
     {
+        LastRelaunchPath = reopenPath;
         _trace("host:RelaunchApplication");
         OnRelaunch?.Invoke();
     }
