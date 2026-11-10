@@ -5,8 +5,10 @@ namespace TermPoint.Tests.Harness;
 
 /// <summary>
 /// Proof that fixed findings of the data-persistence review (section 3) stay fixed. F1, F8 and F12 were fixed on 2026-10-21 (1.2.3); F19 in 1.2.4 (item 4.12);
-/// F2 in 1.2.4 (item 3.2); F16, F17 and F23 in 1.2.4 by the close/switch sequence (<c>designs/close-switch-sequence.md</c>):
+/// F2 in 1.2.4 (item 3.2); F5 and F6 in 1.2.4 (item 3.4); F16, F17 and F23 in 1.2.4 by the close/switch sequence (<c>designs/close-switch-sequence.md</c>):
 /// <list type="bullet">
+/// <item><description><b>F5 and F6</b>: a save whose snapshot holds the same data as D (content fingerprint, five data-free header fields masked) and that has no
+/// unsaved-changes marker writes nothing, so a no-edit session no longer rewrites D and a later restore of kept changes works.</description></item>
 /// <item><description><b>F2</b>: an edit made while a save runs keeps the unsaved-changes marker (the save compares an edit count and SQLite's
 /// <c>data_version</c> before its snapshot and at step 6), so a crash or lost lock no longer throws the edit away.</description></item>
 /// <item><description><b>F16</b>: the checkout has a session id and the release waits for a running lost-lock demotion, so a demotion still running when the
@@ -42,13 +44,14 @@ public sealed class FixedFindingsProofTests
     public FixedFindingsProofTests(ITestOutputHelper output) => _output = output;
 
     /// <summary>
-    /// The old F12 known sequence: Bob presses Save; his save has taken its snapshot and is held there (his computer sleeps). Alice takes
+    /// The old F12 known sequence (with Bob's edit added in 1.2.4 item 3.4: without one his save is skipped as unchanged and never reaches
+    /// the final check): Bob edits and presses Save; his save has taken its snapshot and is held there (his computer sleeps). Alice takes
     /// over his stale lock, edits and saves. Bob's computer wakes. It used to copy its snapshot to D.tmp and rename it over the database,
     /// removing Alice's edit (I1) while the lock was hers (I4).
     /// </summary>
     private static readonly string[] OldF12KnownSequence =
     {
-        "Open(bob)", "Pause(Save(bob) at Save.AfterLocalSnapshot; AliceTakesOverAndSaves)"
+        "Open(bob)", "Edit(bob)", "Pause(Save(bob) at Save.AfterLocalSnapshot; AliceTakesOverAndSaves)"
     };
 
     /// <summary>
@@ -518,13 +521,113 @@ public sealed class FixedFindingsProofTests
     }
 
     /// <summary>
+    /// The old F6 known sequence (1.2.4 item 3.4): Bob's stale lock is taken over and he switches away; Alice (who changed nothing) closes;
+    /// Bob switches back to dept.db, where the promise "your changes will be offered back" is judged. It used to end in "Can't Restore"
+    /// (Alice's no-edit close had rewritten D: F5, so the promise broke: F6).
+    /// </summary>
+    private static readonly string[] OldF6KnownSequence =
+    {
+        "Open(bob)", "Edit(bob)", "AdvanceTime(4m)", "Open(alice)", "SwitchAway(bob)", "Close(alice)", "SwitchBack(bob)"
+    };
+
+    /// <summary>The old F5 route: Bob edits and crashes, Alice takes over, changes nothing and closes, Bob starts again.</summary>
+    private static readonly string[] OldF5Route =
+    {
+        "Open(bob)", "Edit(bob)", "Crash(bob)", "AdvanceTime(4m)", "Open(alice)", "Close(alice)", "Open(bob)"
+    };
+
+    /// <summary>
+    /// F6: the old known sequence now ends with Bob's restore WORKING. Alice's no-edit session wrote nothing (the save skipped because
+    /// the snapshot held the same data as D and there was no marker), so D is still what Bob's kept changes were made from. He is offered
+    /// "Restore Unsaved Changes?" and it is not followed by "Can't Restore"; no violation, known or new (the promise is kept).
+    /// </summary>
+    [HarnessFact]
+    public async Task F6_TheOldKnownSequence_NowEndsWithBobsRestoreWorking()
+    {
+        var run = await RunKeysAsync(OldF6KnownSequence);
+        _output.WriteLine(run.Story);
+
+        Assert.Empty(run.Violations);
+        Assert.Empty(run.NewViolations);
+        Assert.Contains("Restore Unsaved Changes?", run.Story);
+        Assert.DoesNotContain("Can't Restore", run.Story);
+    }
+
+    /// <summary>
+    /// F5: the old route (Alice's no-edit session between Bob's crash and his restart) now leaves D alone, so Bob's restore works:
+    /// offered, never refused, no violation.
+    /// </summary>
+    [HarnessFact]
+    public async Task F5_ANoEditSessionBetweenTheCrashAndTheRestart_NoLongerBreaksBobsRestore()
+    {
+        var run = await RunKeysAsync(OldF5Route);
+        _output.WriteLine(run.Story);
+
+        Assert.Empty(run.Violations);
+        Assert.Empty(run.NewViolations);
+        Assert.Contains("Restore Unsaved Changes?", run.Story);
+        Assert.DoesNotContain("Can't Restore", run.Story);
+    }
+
+    /// <summary>
+    /// F24's classifier rule is NARROW (a plain unit test). A refusal ("Can't Restore") or a lost edit is F24 only when an edit was applied
+    /// during the computer's own held Restore from Backup; the same refusal without that stays F5 (a no-edit session rewrote D: a genuine
+    /// regression of finding F5 is still reported as F5, which is not known, so it fails every run), F7 (someone changed data) or F8.
+    /// </summary>
+    [Fact]
+    public void F24_IsClassifiedOnlyForAnEditMadeDuringTheOwnHeldRestore_NotForF5F7OrF8()
+    {
+        static Violation Refusal(bool? duringRestore, bool dataUnchanged, bool allShared = false) => new()
+        {
+            Step = 1, Invariant = "I5", Kind = ViolationKind.RestoreOfferedThenImpossible, Key = "k", Computer = "bob", Reason = "r",
+            DataUnchangedSinceKept = dataUnchanged, AllKeptEditsAlreadyShared = allShared, EditAppliedDuringHeldRestore = duringRestore
+        };
+        static Violation Lost(bool? duringRestore) => new()
+        {
+            Step = 1, Invariant = "I2", Kind = ViolationKind.EditLost, Key = "k", Computer = "bob", Edit = "bob-2", Reason = "r",
+            EditAppliedDuringHeldRestore = duringRestore
+        };
+
+        // (a) The shrunk story the sweep found: the refusal after an edit made during the held restore (D's data had not changed).
+        Assert.Equal("F24", Findings.Classify(Refusal(duringRestore: true, dataUnchanged: true)));
+        Assert.Equal("F24", Findings.Classify(Refusal(duringRestore: true, dataUnchanged: false)));
+        Assert.Equal("F24", Findings.Classify(Lost(duringRestore: true)));   // the no-crash face: the end of the restore deletes the edit
+        Assert.True(KnownFindings.IsKnown("F24"));
+
+        // (b) Without an edit made during the held restore, the old classifications stand: a no-edit session rewriting D is F5.
+        Assert.Equal("F5", Findings.Classify(Refusal(duringRestore: false, dataUnchanged: true)));
+        Assert.Equal("F5", Findings.Classify(Refusal(duringRestore: null,  dataUnchanged: true)));
+        Assert.Equal("F7", Findings.Classify(Refusal(duringRestore: false, dataUnchanged: false)));
+        Assert.Equal("F8", Findings.Classify(Refusal(duringRestore: false, dataUnchanged: false, allShared: true)));
+        Assert.Equal(Findings.NewFinding, Findings.Classify(Lost(duringRestore: false)));
+        Assert.False(KnownFindings.IsKnown("F5"));   // so a genuine F5 regression is a new, failing violation
+    }
+
+    /// <summary>
+    /// F24, the route the pause sweep found (known until summary item 3.13): Bob restores a backup, the restore is held, he makes an edit,
+    /// crashes and starts again: "Restore Unsaved Changes?" is refused ("Can't Restore"), and the edit survives only through Save a Copy. The
+    /// replay classifies it as F24 and nothing else.
+    /// </summary>
+    [HarnessFact]
+    public async Task F24_AnEditDuringTheHeldRestore_IsClassifiedF24_AndNothingElse()
+    {
+        var route = KnownSequences.All.Single(s => s.Finding == "F24").Events.ToArray();
+        var run = await RunKeysAsync(route);
+        _output.WriteLine(run.Story);
+
+        Assert.Contains(run.Violations, v => v.FindingId == "F24");
+        Assert.DoesNotContain(run.Violations, v => v.FindingId is "F5" or "F6" or "F7");
+        Assert.Empty(run.NewViolations);
+    }
+
+    /// <summary>
     /// The fixed findings are off the lists: no id is a known finding, no known sequence names any, and the classifier still has its
     /// rules for them (a regression is reported as a "new" violation of that kind, not hidden). A plain unit test.
     /// </summary>
     [Fact]
     public void TheFixedFindings_AreOffTheKnownLists_SoARegressionFailsAsNew()
     {
-        foreach (var id in new[] { "F1", "F2", "F8", "F12", "F16", "F17", "F18", "F19", "F23" })
+        foreach (var id in new[] { "F1", "F2", "F5", "F6", "F8", "F12", "F16", "F17", "F18", "F19", "F23" })
         {
             Assert.False(KnownFindings.IsKnown(id), $"{id} is fixed and must not be a known finding");
             Assert.DoesNotContain(id, KnownFindings.Ids);

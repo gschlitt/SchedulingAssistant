@@ -80,7 +80,9 @@ Written so a fresh conversation can pick up. Claude Code's memory and `CLAUDE.md
       **3.2 DONE 2026-11-09, uncommitted** (tasks 1–3: edit count + `data_version`, save-once-more helper for the exit
       and Restore from Backup, `SnapshotWorkingCopy` rename, F2 retired; full suite with harness 4537 passed, 0 failed).
       Spin-offs logged: 3.13 (edit during a restore's copy), 6.14 (double message when the restore's save fails).
-      **Next: 3.4 = tasks 4–6** (content fingerprint, the skip, harness F5/F6). Also waiting: 2.2 licence warning, group 5 experiments (5.8) then 5.3/5.4, 6.12, harness
+      **3.4 DONE 2026-11-09** (tasks 4–6: `SqliteContentHash`, skip when no marker + same content, F5/F6 retired;
+      new known finding F24 = 3.13's crash variant; full suite with harness 4571 passed, 0 failed). Known findings now:
+      F7, F20, F22, F24, A13. Also waiting: 2.2 licence warning, group 5 experiments (5.8) then 5.3/5.4, 6.12, harness
      85 s model (retires F22).
    - **Version gate:** leave 2.8 and 2.9 out of 1.2.4 (each raises `MinimumVersionToWrite` and would need 1.6
      first). Everything chosen above is MinimumVersionToWrite **No**. 3.5 and 2.1 A/B are too big for now.

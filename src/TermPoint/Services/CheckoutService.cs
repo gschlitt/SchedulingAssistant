@@ -423,6 +423,20 @@ public sealed class CheckoutService : IDisposable
     public string? HashAtCheckout { get; private set; }
 
     /// <summary>
+    /// The content fingerprint (<see cref="SqliteContentHash"/>) of D as of the last checkout, refresh or real save: the
+    /// SHA-256 of the file with the five header fields that hold no data read as zeros (spec item 3.4, F5). A save whose
+    /// snapshot has the same fingerprint, with no pending hash and no dirty marker, holds nothing D does not already
+    /// have, so it writes nothing.
+    ///
+    /// <para><b>Null means "not known", which means never skip.</b> It is set by the two fresh-copy checkouts right
+    /// after D' is proven byte-identical to D (before the version gate and before <c>DatabaseContext</c> opens it), by
+    /// <see cref="RefreshWriterCopyAsync"/>, and at step 6 of a real save. It is null at the start of every checkout, at
+    /// a crash-recovery checkout (D' holds kept edits and D's fingerprint is not known without another read of the
+    /// share), whenever step 2 adopts a pending hash (a ghost rename), and after <see cref="ResetAfterFailedOpenAsync"/>.</para>
+    /// </summary>
+    internal string? ContentHashAtCheckout { get; private set; }
+
+    /// <summary>
     /// True when D' (write-access mode) contains changes that have not yet been saved
     /// back to D. Set to true immediately after a successful write-access checkout.
     /// Cleared after each successful <see cref="SaveAsync"/>.
@@ -775,6 +789,7 @@ public sealed class CheckoutService : IDisposable
         HasSaveConflict = false;    // a new checkout starts from a fresh copy of D — no conflict yet
         RequiredAppVersion = null;  // version gate has not tripped for this checkout (yet)
         _pendingSaveHash  = null;   // fresh session — no unconfirmed rename outstanding
+        ContentHashAtCheckout = null;   // not known until a fresh copy of D is verified (spec item 3.4): never skip a save before that
         _staleHolderAtDetection = null;   // a takeover may only act on THIS checkout's stale judgement
 
         // DEBUG-ONLY fault injection (TERMPOINT_DEBUG_FAIL_CHECKOUT; null in Release builds and in
@@ -955,6 +970,10 @@ public sealed class CheckoutService : IDisposable
             };
         }
 
+        // D' is byte-identical to D (just proven): remember D's content fingerprint, BEFORE the version gate (which may
+        // write a stamp into D') and before DatabaseContext opens D', so a later save can tell "nothing changed" (item 3.4).
+        ContentHashAtCheckout = TryComputeContentHash(WorkingPath);
+
         CrashPoints.Hit("Checkout.AfterCopyVerified");
 
         // D' is verified. Before granting write access, make sure this app is new enough to
@@ -1071,6 +1090,7 @@ public sealed class CheckoutService : IDisposable
     {
         BeginSession();
         RequiredAppVersion = null;  // version gate has not tripped for this checkout (yet)
+        ContentHashAtCheckout = null;   // not known until a fresh copy of D is verified (spec item 3.4)
 
         // The snapshot the user's yes was given on. Single use: a second takeover needs a new
         // CheckoutAsync (and a new prompt). Without one there is nothing to compare the lock file
@@ -1178,6 +1198,9 @@ public sealed class CheckoutService : IDisposable
             TryDelete(WorkingPath);
             return CheckoutOutcome.Failed;
         }
+
+        // Same as CheckoutAsync: D' is proven identical to D, so remember D's content fingerprint (item 3.4).
+        ContentHashAtCheckout = TryComputeContentHash(WorkingPath);
 
         CrashPoints.Hit("Checkout.AfterCopyVerified");
 
@@ -1306,6 +1329,7 @@ public sealed class CheckoutService : IDisposable
 
         // D is byte-identical to what the crashed session checked out — safe to resume.
         HashAtCheckout = sourceHash;
+        ContentHashAtCheckout = null;   // D' holds kept edits and D's fingerprint is not known: this session's first save is a real one (item 3.4)
         CrashPoints.Hit("Recovery.AfterSourceVerified");
 
         // Version gate on the ADOPTED D' (its stamp is a superset of D's: stamps only go up).
@@ -2095,6 +2119,7 @@ public sealed class CheckoutService : IDisposable
         var tmpPath   = ShareTempFile.NewPath(SourcePath);
         var localTmp  = WorkingPath + ".savetmp";
         string newSourceHash;
+        string? snapshotContentHash = null;   // the snapshot's content fingerprint (spec item 3.4); null = not known
         try
         {
             try
@@ -2140,6 +2165,27 @@ public sealed class CheckoutService : IDisposable
                 ReportSaveFailure(SaveStep.SnapshotHash, ex, "could not hash local save snapshot", isAutoSave);
                 RaiseTransientSaveError(SavePrompt.PrepareFailedMessage, isAutoSave);
                 return SaveOutcome.CopyError;
+            }
+
+            // 3b'. The snapshot's content fingerprint (spec item 3.4): the SHA-256 with the five header fields that hold
+            //      no data read as zeros. Taken here, while the local snapshot still exists, for two uses: the skip
+            //      decision just below, and step 6 (a real save makes it the new "D as last seen"). Null when it cannot
+            //      be read, which only means "not known": never skip, and ContentHashAtCheckout becomes null.
+            snapshotContentHash = TryComputeContentHash(localTmp);
+
+            // 3b''. Skip the upload when nothing changed. ALL of these must hold (any doubt means a real save):
+            //   * D's content as last seen is known (ContentHashAtCheckout), and equals the snapshot's;
+            //   * no ghost rename is outstanding (_pendingSaveHash): D may already differ from what we last saw;
+            //   * no dirty marker: a marker means the session HAS unsaved work, so a content match (an edit, then its
+            //     revert) is still saved as today. A false skip would need the marker AND the content check wrong at once.
+            // A skipped save writes nothing to the share and changes none of this session's state.
+            if (snapshotContentHash is not null
+                && ContentHashAtCheckout is not null
+                && _pendingSaveHash is null
+                && !HasDirtyMarker
+                && string.Equals(snapshotContentHash, ContentHashAtCheckout, StringComparison.OrdinalIgnoreCase))
+            {
+                return FinishUnchangedSave(releaseLockAfter, isAutoSave, snapshot, saveStart);
             }
 
             // 3c. Stream the quiescent snapshot to D.tmp. CopyAsync is chunked with a
@@ -2315,6 +2361,11 @@ public sealed class CheckoutService : IDisposable
         HashAtCheckout   = newSourceHash;
         _pendingSaveHash = null;   // this save is confirmed — no ghost outstanding
 
+        // D now holds exactly this snapshot (also on the "rename timed out but D already matches" path above, which falls
+        // through to here): its content fingerprint is the new "D as last seen" for the skip decision of later saves
+        // (spec item 3.4). Set whether or not an edit arrived during the save (both branches below). Null if it could not be read.
+        ContentHashAtCheckout = snapshotContentHash;
+
         // D' now matches D — UNLESS an edit arrived while this save ran (spec item 3.2, finding F2). The save's
         // snapshot was taken before that edit, so the edit is in D' only; deleting the marker would leave it
         // unmarked, and a lost lock, a failed exit save or a crash would then throw it away. So the marker is
@@ -2391,6 +2442,57 @@ public sealed class CheckoutService : IDisposable
         if (markerKept)
             _dispatch(() => BecameDirty?.Invoke());
 
+        return SaveOutcome.Success;
+    }
+
+    /// <summary>
+    /// The end of a SKIPPED save (spec item 3.4): the snapshot holds nothing D does not already have, so nothing was
+    /// uploaded, verified or renamed. The lock and D were checked (steps 1-2) and the snapshot and its fingerprint were
+    /// taken (steps 3a-3b); this finishes the save as a success without changing any state.
+    ///
+    /// <para><b>Untouched:</b> <see cref="HashAtCheckout"/>, the pending hash, <see cref="ContentHashAtCheckout"/>,
+    /// <see cref="SessionDirty"/>, the dirty marker and <c>DatabaseContext</c>'s first-write flag
+    /// (<see cref="BeforeDirtyMarkerDeleted"/> is NOT fired). No D.tmp exists, so there is nothing to delete on the share.</para>
+    ///
+    /// <para><b>An edit that arrived during the save</b> (the same counters as step 6, <see cref="EditArrivedDuringSave"/>):
+    /// it is not in the snapshot. <see cref="LastSaveKeptMarker"/> is set so <see cref="SaveUntilMarkerClearAsync"/> saves
+    /// again, the lock is NOT released even at exit, and <see cref="BecameDirty"/> follows <see cref="SaveCompleted"/> so the
+    /// indicator stays on. The edit's own <c>MarkDirty</c> wrote the marker; this method writes none.</para>
+    ///
+    /// <para><b>Timing:</b> the duration goes into the breadcrumb but NOT into the recent-save statistics
+    /// (<see cref="RecordSuccessfulSaveMs"/>), which describe how long saves take to reach the share; a skipped save never
+    /// touches it for the upload, and counting its few milliseconds would hide a slow share from the field report (item 7.1).</para>
+    /// </summary>
+    /// <param name="releaseLockAfter">Release the write lock (exit), unless an edit arrived during the save.</param>
+    /// <param name="isAutoSave">Whether the save was started by the autosave timer (for the breadcrumb).</param>
+    /// <param name="snapshot">The counters and source connection of this save's snapshot; disposed here.</param>
+    /// <param name="saveStart">The <see cref="Stopwatch.GetTimestamp"/> value at the start of the save.</param>
+    /// <returns><see cref="SaveOutcome.Success"/>.</returns>
+    private SaveOutcome FinishUnchangedSave(bool releaseLockAfter, bool isAutoSave, SaveSnapshotState snapshot, long saveStart)
+    {
+        var editArrived = EditArrivedDuringSave(snapshot);
+        snapshot.Dispose();   // the source connection has served its purpose (as at step 6)
+
+        if (editArrived)
+        {
+            LastSaveKeptMarker = true;
+            _logger.LogInfo("CheckoutService: save skipped, nothing changed — but an edit arrived during it; it is saved by the next save.");
+            _logger.LogBreadcrumb("Save: edit arrived during save");
+        }
+        else if (releaseLockAfter)
+        {
+            _lockService.Release();
+        }
+
+        _logger.LogInfo("CheckoutService: Save skipped — nothing changed since D was last seen.");
+        _logger.LogBreadcrumb("Save: Unchanged", new()
+        {
+            ["elapsedMs"] = ElapsedWholeMs(saveStart).ToString(),
+            ["autoSave"]  = isAutoSave.ToString(),
+        });
+        _dispatch(() => SaveCompleted?.Invoke());
+        if (editArrived)
+            _dispatch(() => BecameDirty?.Invoke());
         return SaveOutcome.Success;
     }
 
@@ -2619,6 +2721,7 @@ public sealed class CheckoutService : IDisposable
                 _logger.LogBreadcrumb("Save: GhostRenameHealed");
                 HashAtCheckout   = _pendingSaveHash;
                 _pendingSaveHash = null;
+                ContentHashAtCheckout = null;   // D's content as of that ghost save is not known: never skip until a real save sets it (item 3.4)
                 // Fall through — the current save proceeds normally.
             }
             else
@@ -3650,6 +3753,7 @@ public sealed class CheckoutService : IDisposable
             // D' now IS D as of sourceHash: that is the baseline every later save compares D against.
             HashAtCheckout   = sourceHash;
             _pendingSaveHash = null;
+            ContentHashAtCheckout = TryComputeContentHash(WorkingPath);   // the fresh copy is byte-identical to D (verified above), and not yet opened or stamped (item 3.4)
             _logger.LogInfo("CheckoutService: RefreshLocalCopy — D' replaced by a fresh, verified copy of D.");
 
             // The version gate ran at checkout on the D' that has just been thrown away (spec item 3, step 3c):
@@ -3927,6 +4031,7 @@ public sealed class CheckoutService : IDisposable
         ReadOnlyWorkingPath     = null;
         IsReadOnlyMode          = false;
         HashAtCheckout          = null;
+        ContentHashAtCheckout   = null;
         SessionDirty            = false;
         CurrentHolder           = null;
         ReclaimedDeadSession    = false;
@@ -5192,6 +5297,19 @@ public sealed class CheckoutService : IDisposable
         using var stream = new FileStream(
             filePath, FileMode.Open, FileAccess.Read, FileShare.ReadWrite);
         return Convert.ToHexString(SHA256.HashData(stream));
+    }
+
+    /// <summary>
+    /// <see cref="SqliteContentHash.Compute"/> of a local file, reporting a failure as null instead of throwing: a
+    /// fingerprint that cannot be taken only means "not known", which means a save is never skipped (spec item 3.4),
+    /// and must never make a checkout or a save fail.
+    /// </summary>
+    /// <param name="path">A local file (D', or a local snapshot of it).</param>
+    /// <returns>The content fingerprint, or null when the file could not be read.</returns>
+    private static string? TryComputeContentHash(string path)
+    {
+        try { return SqliteContentHash.Compute(path); }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException) { return null; }
     }
 
     /// <summary>

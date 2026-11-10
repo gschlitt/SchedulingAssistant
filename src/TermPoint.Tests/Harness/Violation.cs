@@ -132,6 +132,15 @@ internal sealed class Violation
     /// </summary>
     public bool? EditAppliedDuringHeldSave { get; init; }
 
+    /// <summary>
+    /// For <see cref="ViolationKind.EditLost"/> (the edit itself) and <see cref="ViolationKind.RestoreOfferedThenImpossible"/> (at least
+    /// one of the computer's unsaved edits): true when the edit was applied by its computer WHILE that computer's own Restore from
+    /// Backup was held at one of the restore's crash points (<see cref="PausePoints.RestoreWindow"/>). Such an edit missed the save before
+    /// the restore; kept after a crash it is offered back over the restored database and refused, and without a crash the end of the
+    /// restore deletes it (finding F24, summary item 3.13: the session will refuse edits while a restore runs). Null for every other kind.
+    /// </summary>
+    public bool? EditAppliedDuringHeldRestore { get; init; }
+
     /// <summary>The dialogs the concerned computer was asked during the step (for classification).</summary>
     public IReadOnlyList<PromptCall> ComputerPrompts { get; init; } = Array.Empty<PromptCall>();
 

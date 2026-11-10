@@ -430,7 +430,7 @@ Everything in this group is checked against rule 3 (never delete the only copy o
 >
 > **Done (8 Nov 2026, `454a38c`; design `designs/close-switch-sequence.md`; full suite with harness 4501 passed, 0 failed; MinimumVersionToWrite No):** a session id in CheckoutService; the release waits (60 s) for a running demotion; a demotion or session-bound post stops or is dropped when its session ended. F16 is a proof test.
 
-> [!note]- **3.4 A session with no edits still rewrites the shared database** `not started` `data risk` `save path`
+> [!note]- **3.4 A session with no edits still rewrites the shared database** `done` `data risk` `save path`
 > **Problem:** when the shared database was last written by something other than TermPoint's save (a new database, a
 > restored backup, 1.2.2 opening it directly, another SQLite version), a session's first save rewrites it even with no
 > edits, because five header fields differ. Anyone's changes kept from before then can't be restored. There is a
@@ -440,6 +440,8 @@ Everything in this group is checked against rule 3 (never delete the only copy o
 > ignored, plus a guard for the case with no marker. Run the post-restore save only when the open really took on the
 > kept changes. This was designed, probed and risk-reviewed for 1.2.3, then moved out as a risky save-code change.
 > *Source: 1.2.3 spec, section 29; field-test open issue A9.*
+>
+> **Done (9 Nov 2026, uncommitted; design `designs/mid-save-edits-and-no-edit-saves.md`; full suite with harness 4571 passed, 0 failed, 2 skipped; MinimumVersionToWrite No):** a save skips the upload when it has no marker and its snapshot holds the same data as D was last seen holding (`SqliteContentHash`: SHA-256 with the five data-free header fields masked). It also skips nothing when the starting point is unknown (recovery, an unconfirmed rename). A skipped save changes no state. F5 and F6 are retired to `FixedFindingsProofTests`. The second route was already fixed as F23. The harness found a crash variant of 3.13 that F5 had hidden; it is known finding F24 until 3.13 is built. The upgrade checklist in the local `CLAUDE.md` gains the "open, no edit, save, compare" check.
 
 > [!note]- **3.5 The recovery redesign: checks decide, Recovered Versions, no questions** `not started` `save path`
 > **Problem:** kept changes (left by a crash, a lost lock or a failed exit save) sit in the one place a normal open
@@ -499,7 +501,10 @@ Everything in this group is checked against rule 3 (never delete the only copy o
 > database. The wait dialog blocks only the main window, so during that copy Bob can still apply an edit in a detached
 > panel or a sticky note. When the restore ends, the session's local copy is deleted along with its marker
 > (`EndSessionAfterRestoreAsync` → `DiscardCrash`), and the edit with it. He isn't told. This happens in today's code,
-> not only with 3.2. **Fix direction:** the session refuses writes from the start of the save-first until the restore
+> not only with 3.2. **Crash variant** (the harness pause sweep, 2026-11-09): if TermPoint crashes after the restore but
+> before that clean-up, the edit survives. At the next open Bob is asked "Restore Unsaved Changes?", picks Restore, and is
+> told "Can't Restore" because D is now the backup. The edit survives only through Save a Copy, and he was asked a
+> question only to be refused (rule 4). It's a harness known finding until this item is fixed. **Fix direction:** the session refuses writes from the start of the save-first until the restore
 > ends (rule 3 at the data layer, not the dialog), with plain wording for a refused edit (Greg approves). 3.2's backstop
 > (the restore refuses while a marker exists) narrows this but can't close it.
 > *Source: audit for 3.2 (2026-11-09), `designs/mid-save-edits-and-no-edit-saves.md` step 7.*

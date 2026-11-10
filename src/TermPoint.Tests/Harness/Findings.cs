@@ -43,10 +43,13 @@ internal static class HarnessTitles
 /// lifecycle acted on it at once: the second button was not followed by the "Discard Unsaved Changes?" confirmation, or the X was
 /// not followed by the same question again. A confirmed discard is a decision (the confirmation records it, see
 /// <see cref="World.ConfirmedDiscards"/>) and a Go Back or an X that was followed up loses nothing.</description></item>
-/// <item><description><b>F5</b>: the same refusal as F7, but the shared database's set of edits had not changed since the
+/// <item><description><b>F5</b> (FIXED in 1.2.4, item 3.4: a save whose snapshot has the same data as D and no marker writes nothing; the rule stays as the regression detector): the same refusal as F7, but the shared database's set of edits had not changed since the
 /// computer's work was kept: nobody changed any data, only the file's bytes changed (every editing session rewrites the
 /// database at its first save, even with no edits).</description></item>
-/// <item><description><b>F6</b>: a "will offer to add them" promise was broken (the kept-changes wording of spec item 28: offered back at the next open for editing, unless someone else changes the database first, then a separate copy can be saved). Broken means: no offer and the work not back; Restore chosen and the work did not come back; or "Can't Restore" although nobody changed any data (the shape of F5 and F8). A "Can't Restore" after someone else changed data is the promised alternative and is NOT F6 (it is F7, a separate finding about the question).</description></item>
+/// <item><description><b>F6</b> (FIXED in 1.2.4, item 3.4, with F5; the rule stays as the regression detector): a "will offer to add them" promise was broken (the kept-changes wording of spec item 28: offered back at the next open for editing, unless someone else changes the database first, then a separate copy can be saved). Broken means: no offer and the work not back; Restore chosen and the work did not come back; or "Can't Restore" although nobody changed any data (the shape of F5 and F8). A "Can't Restore" after someone else changed data is the promised alternative and is NOT F6 (it is F7, a separate finding about the question).</description></item>
+/// <item><description><b>F24</b> (known; summary item 3.13): an edit applied while the computer's own Restore from Backup was held
+/// (<see cref="PausePoints.RestoreWindow"/>) is kept after a crash but refused at the next open ("Can't Restore Unsaved Changes"), or deleted by the
+/// end of the restore when there is no crash. Retire when 3.13 (the session refuses edits while a restore runs) is built.</description></item>
 /// <item><description><b>F7</b>: "Restore Unsaved Changes?" was answered Restore and was followed by "Can't Restore Unsaved Changes" because someone changed data.</description></item>
 /// <item><description><b>F8</b> (fixed 2026-10-21, 1.2.3: the save records its fingerprint in the marker before the rename, so
 /// the rule stays as the regression detector): the same refusal, but every edit the computer made that sits in its kept working
@@ -97,7 +100,7 @@ internal static class Findings
 
     /// <summary>Gives a violation its finding id.</summary>
     /// <param name="violation">The violation to classify.</param>
-    /// <returns>"F1", "F2", "F5", "F6", "F7", "F8", "F12", "F16", "F17", "F18", "F19", "F20", "F22", "F23", "A13", or <see cref="NewFinding"/>.</returns>
+    /// <returns>"F1", "F2", "F5", "F6", "F7", "F8", "F12", "F16", "F17", "F18", "F19", "F20", "F22", "F23", "F24", "A13", or <see cref="NewFinding"/>.</returns>
     public static string Classify(Violation violation)
     {
         switch (violation.Kind)
@@ -113,14 +116,27 @@ internal static class Findings
             case ViolationKind.EditLost when violation.EditAppliedDuringHeldSave == true:
                 return "F2";
 
+            // F24 (summary item 3.13), KNOWN until 3.13 is built: an edit made while the computer's OWN Restore from Backup was held
+            // (the wait dialog blocks only the main window; detached panels and sticky notes still take edits). It missed the save before
+            // the restore. Kept after a crash it is offered back over the restored database and refused ("Can't Restore"; the edit survives
+            // only through Save a Copy), and without a crash the end of the restore deletes it. NARROW on purpose: it needs the edit itself
+            // (EditLost) or one of the refused computer's unsaved edits (RestoreOfferedThenImpossible) to have been applied during a held
+            // restore, so a no-edit session or an edit made anywhere else still falls through to F5 / F7 / F8. These cases come BEFORE
+            // the F5/F6/F7 rules. RETIRE when 3.13 is built: take F24 off KnownFindings/KnownSequences and move its route to FixedFindingsProofTests.
+            case ViolationKind.EditLost when violation.EditAppliedDuringHeldRestore == true:
+            case ViolationKind.RestoreOfferedThenImpossible when violation.EditAppliedDuringHeldRestore == true:
+                return "F24";
+
             case ViolationKind.RestoreOfferedThenImpossible:
                 // Checked first, because it is the more specific reading of the same refusal: the changes are not lost
                 // and not stranded, the database already has all of them (the computer's own save landed).
                 if (violation.AllKeptEditsAlreadyShared == true) return "F8";
 
-                // The same refusal, but nobody changed any DATA: the database's bytes changed alone (a no-edit save).
+                // F5, FIXED in 1.2.4 (item 3.4; the rule stays to report a regression): the same refusal, but nobody changed any
+                // DATA: the database's bytes changed alone (a no-edit save used to rewrite D).
                 return violation.DataUnchangedSinceKept == true ? "F5" : "F7";
 
+            // F6, FIXED in 1.2.4 (item 3.4, with F5); kept as the regression detector.
             case ViolationKind.BrokenPromise when violation.Promise == PromiseKind.WillOfferRestore:
                 return "F6";
 

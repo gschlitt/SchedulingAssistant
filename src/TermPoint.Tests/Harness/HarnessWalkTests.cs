@@ -255,8 +255,9 @@ public sealed class HarnessWalkTests
     /// changes the database first" and can then be saved as a separate copy. Alice DID change the database (alice-1 is in it,
     /// and Bob's kept file does not know it), so "Can't Restore" with Save a Copy… is exactly what was promised: the promise
     /// tracker (<c>PromiseTracker.CheckOffer</c>) judges it kept. F7 stays: the question "Restore?" is still asked and then
-    /// refused; it is replaced in 1.2.4. The F5 shape (nobody changed any data) still breaks the promise: see
-    /// <c>I5_ARestorePromisedForOneDatabase_IsJudgedAtTheNextOpenOfThatDatabase</c>.</para>
+    /// refused; it is replaced in 1.2.4. The F5 shape (nobody changed any data) used to break the promise; since 1.2.4 (item 3.4) a
+    /// no-edit session writes nothing and that restore works: see
+    /// <c>I5_ARestorePromisedForOneDatabase_IsJudgedAtTheNextOpenOfThatDatabase_AndNowKept</c>.</para>
     /// </summary>
     [HarnessFact]
     public async Task Walk4_BobsNetworkDrops_AliceTakesOver_BobIsDemoted_ThenOffersHisKeptChanges()

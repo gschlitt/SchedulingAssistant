@@ -583,18 +583,19 @@ public sealed class InvariantProofTests
 
     /// <summary>
     /// The promise about dept.db IS judged at Bob's next edit-access open of dept.db: once Alice has closed, Bob opens
-    /// dept.db, is offered his kept changes and chooses Restore, and today "Can't Restore" follows (Alice's close rewrote
-    /// the file, F5). Alice changed NO data, so the exception the message named ("unless someone else changes the database
-    /// first", spec item 28's wording) did not happen: the promise is false and reported ONCE (F6), at that open (not at the
-    /// earlier open of other.db), although two messages made it. This is the F6 route that survives the new wording; it goes
-    /// away when item 29 (skip a save when nothing changed) removes F5. See
-    /// <see cref="I5_ARestoreRefusedBecauseSomeoneElseChangedData_KeepsThePromise"/> for the case where Alice does change data.
+    /// dept.db, is offered his kept changes and chooses Restore. Until 1.2.4 "Can't Restore" followed (Alice's no-edit close rewrote
+    /// the file, F5) and the promise was broken and reported ONCE (F6), at that open. FIXED in 1.2.4 (item 3.4): Alice's no-edit
+    /// save writes nothing, so the restore WORKS and the promise is KEPT. This test keeps invariant I5's coverage by proving the
+    /// promise is still JUDGED at the open of dept.db (not at the earlier open of other.db) and now comes out kept: no violation, and no
+    /// "Can't Restore". The broken-promise face of I5 is covered by
+    /// <see cref="I5_ARestoreRefusedBecauseSomeoneElseChangedData_KeepsThePromise"/> (Alice really changes data: the refusal is the
+    /// F7 shape the message warned about) and the planted-state tests of the tracker.
     /// </summary>
     [HarnessFact]
-    public async Task I5_ARestorePromisedForOneDatabase_IsJudgedAtTheNextOpenOfThatDatabase()
+    public async Task I5_ARestorePromisedForOneDatabase_IsJudgedAtTheNextOpenOfThatDatabase_AndNowKept()
     {
-        using var world = new World(_output, nameof(I5_ARestorePromisedForOneDatabase_IsJudgedAtTheNextOpenOfThatDatabase));
-        world.ExpectFindings("F5", "F6");
+        using var world = new World(_output, nameof(I5_ARestorePromisedForOneDatabase_IsJudgedAtTheNextOpenOfThatDatabase_AndNowKept));
+        world.ExpectFindings();   // F5 and F6 are fixed: the no-edit close writes nothing, the restore works
         world.CreateDatabase();
         var bob   = world.AddComputer("bob");
         var alice = world.AddComputer("alice");
@@ -604,21 +605,15 @@ public sealed class InvariantProofTests
 
         await alice.CloseAsync();                       // Alice gives dept.db back, so Bob can get write access to it
 
-        var export = Path.Combine(world.RootDir, "exports", "bob-recovered.db");
-        Directory.CreateDirectory(Path.GetDirectoryName(export)!);
-        bob.Prompts.ExpectChoice(HarnessTitles.RestoreUnsavedChanges, ChoiceAnswer.Affirmative)
-                   .ExpectChoice(HarnessTitles.CantRestore, ChoiceAnswer.Affirmative)
-                   .ExpectPick("Save Recovered Copy", export);
+        bob.Prompts.ExpectChoice(HarnessTitles.RestoreUnsavedChanges, ChoiceAnswer.Affirmative);
         Assert.True(await bob.SwitchToAsync(world.DatabasePath));
 
         Assert.Equal(CheckoutMode.WriteAccess, bob.Checkout.Mode);
         Assert.False(world.HasPendingPromise(bob), "dept.db was opened for editing: the promise was judged");
 
-        // Judged exactly once, at the open of dept.db (step 8), not at the open of other.db (step 6).
-        var broken = Assert.Single(world.Violations, v => v.Kind == ViolationKind.BrokenPromise);
-        Assert.Equal("F6", broken.FindingId);
-        Assert.True(broken.Step > 6, "the promise is judged at the open of dept.db, after the open of other.db");
-        Assert.Contains("Can't Restore", broken.Reason);
+        // Judged at the open of dept.db and KEPT: the restore worked, so nothing is reported and Bob's edit is in the database.
+        Assert.Empty(world.Violations);
+        Assert.DoesNotContain(bob.Prompts.Calls, c => c.Title == HarnessTitles.CantRestore);
         world.AssertAllScriptsConsumed();
         world.Finish();
     }
@@ -629,8 +624,8 @@ public sealed class InvariantProofTests
     /// Here Alice really DOES change the database (she takes Bob's stale lock, edits and saves alice-1, then closes), so at Bob's
     /// next open "Can't Restore" with Save a Copy… is exactly what he was told might happen: the promise is KEPT and nothing is
     /// reported as F6 (this is the route that was F6 before the wording changed; compare
-    /// <see cref="I5_ARestorePromisedForOneDatabase_IsJudgedAtTheNextOpenOfThatDatabase"/>, where nobody changes data and the same
-    /// refusal does break it). The refusal itself is still F7 (the question "Restore?" is asked and then refused), a separate
+    /// <see cref="I5_ARestorePromisedForOneDatabase_IsJudgedAtTheNextOpenOfThatDatabase_AndNowKept"/>, where nobody changes data: that
+    /// restore used to be refused and the promise broken, and now simply works). The refusal itself is still F7 (the question "Restore?" is asked and then refused), a separate
     /// finding that 1.2.4 replaces.
     /// </summary>
     [HarnessFact]

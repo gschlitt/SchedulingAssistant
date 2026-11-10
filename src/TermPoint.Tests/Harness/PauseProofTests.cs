@@ -541,7 +541,7 @@ public sealed class PauseProofTests
     [HarnessFact]
     public async Task F2_AnEditDuringTheExitSave_IsKept_AndOfferedBackAtTheNextOpen()
     {
-        var run = await RunKeysAsync("Open(bob)", "Pause(Close(bob) at Save.AfterMarkerDelete; BobEdits)", "Open(bob)");
+        var run = await RunKeysAsync("Open(bob)", "Edit(bob)", "Pause(Close(bob) at Save.AfterMarkerDelete; BobEdits)", "Open(bob)");   // Edit(bob) first: with no edit the exit save is skipped (item 3.4) and never reaches the marker delete
         _output.WriteLine(run.Story);
 
         Assert.Empty(run.Violations);

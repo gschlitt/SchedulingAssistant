@@ -1,7 +1,10 @@
 # 1.2.4 item E: edits made during a save (3.2) and saves with no edits (3.4)
 
-Status: **3.2 done: tasks 1–3 (2026-11-09, uncommitted).** Full suite with harness: 4537 passed, 0 failed, 2 skipped.
-F2 is retired. Next: tasks 4–6 (3.4). The restore backstop answers `RestoreOutcome.Failed`
+Status: **3.2 and 3.4 are both done.**
+- **3.2:** committed as `1d13956` (tasks 1–3).
+- **3.4:** tasks 4–6, 2026-11-09, uncommitted. Full suite with harness: 4571 passed, 0 failed, 2 skipped. F5 and F6 are
+  retired. A route that F5 had hidden (an edit during Restore from Backup, then a crash) is known finding F24, tied to
+  summary 3.13. The restore backstop answers `RestoreOutcome.Failed`
 ("Something went wrong, so the restore was stopped. Your database is unchanged."), because no existing outcome maps to
 the save-failed text. The save-first refusal comes first, so that text is shown only to a caller that skips the
 save-first.

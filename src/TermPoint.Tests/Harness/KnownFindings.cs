@@ -16,6 +16,18 @@ namespace TermPoint.Tests.Harness;
 /// at exit for one more save, and the next save carries the edit. Its old route is a proof test in <see cref="FixedFindingsProofTests"/>, and the
 /// classifier's rule for it stays in <see cref="Findings"/>.</para>
 ///
+/// <para><b>F5 and F6 are fixed (1.2.4, item 3.4)</b> and so are off the list: a save whose snapshot holds the same data as D (the SHA-256 of the
+/// file with the five header fields that hold no data read as zeros, <c>SqliteContentHash</c>) and that has no unsaved-changes marker writes nothing.
+/// A no-edit session therefore no longer rewrites D (F5), and a later restore of someone's kept changes works (F6 had the F5 shape: the promise
+/// "will be offered back" broke only because a no-edit session had rewritten D). Their old routes are proof tests in
+/// <see cref="FixedFindingsProofTests"/>, and the classifier's rules stay in <see cref="Findings"/>. <b>F7 stays</b>: a restore really is
+/// refused when someone changed data.</para>
+///
+/// <para><b>F24 is new and known (summary item 3.13)</b>, found by the pause sweep once F5 stopped masking it: an edit made while the person's own
+/// Restore from Backup is held. It is classified only when the edit was applied during that computer's own held restore
+/// (<see cref="PausePoints.RestoreWindow"/>), so a no-edit session or an edit made elsewhere is still F5 / F7. Retire it, with its known sequence,
+/// when 3.13 is built.</para>
+///
 /// <para><b>F1, F8 and F12 are fixed (2026-10-21, 1.2.3)</b> and so are off the list: the X on either recovery question asks it again
 /// and Discard asks "Discard Unsaved Changes?" first (F1), the save records its fingerprint in the dirty marker before the rename (F8),
 /// and re-checks the lock and D immediately before the rename (F12). Their old routes are kept as proof tests
@@ -43,16 +55,15 @@ internal static class KnownFindings
     /// <summary>Finding id to a one-line description, in id order.</summary>
     private static readonly Dictionary<string, string> Descriptions = new(StringComparer.OrdinalIgnoreCase)
     {
-        ["F5"]  = "A restore is refused although nobody changed any data: every editing session rewrites the shared database at its first save, even with no edits.",
-        ["F6"]  = "A kept-changes message promises that TermPoint will offer the changes back at the next open, unless someone else changes the database first, and the offer fails although nobody changed any data (the F5 shape), or is not made, or does not bring the work back.",
         ["F7"]  = "\"Restore Unsaved Changes?\" is asked, Restore is chosen, and then \"Can't Restore Unsaved Changes\" follows because someone changed data.",
         ["F20"] = "Another program still holds the lock file of a database when the person's session goes read-only on it (for example Save a Copy on the save-conflict banner, or a lost-lock demotion whose delete of the lock file is refused): the lock file is left naming their own session, so the read-only session holds that database's lock until the other program lets go or the lock goes stale. (Invariant I6 clause a. The old route, switching away and back, is fixed in 1.2.4: a leftover lock naming our own session is taken back. This remaining route is accepted.)",
         ["F22"] = "A release whose delete of the lock file is stalled (a blocked or hung delete that lands whenever the network returns) deletes the lock of whoever took over meanwhile: the new writer's lock file disappears although it is alive, so a third computer can open for editing alongside it. (Invariant I9, a computer rewrites only its own lock file; the delete is the release's background task, WriteLockService.DeleteLockFileGatedAsync.) The freeze or pause route (the computer sleeps between the release's check that the lock file is its own and its delete) is CLOSED by the 2 second check (WriteLockService.LockCheckFreshness: the check is repeated right before the delete). What remains is a stalled operation landing late; in reality that is covered by the 170 second takeover confirmation (WriteLockService.StaleConfirmationSeconds), as long as the operation dies within about 85 s (Windows' own limit, experiment E1). The harness does not yet model that 85 s limit, so a hung delete that lands after a takeover still shows here.",
+        ["F24"] = "An edit made while the person's own Restore from Backup is running (the wait dialog blocks only the main window; detached panels and sticky notes still take edits) misses the save before the restore. After a crash it is kept but offered back over the restored database and refused (\"Can't Restore Unsaved Changes\"; the edit survives only through Save a Copy); without a crash the end of the restore deletes it. Summary item 3.13: the session will refuse edits while a restore runs.",
         ["A13"] = "When someone else holds the lock and the copy of the database for reading fails (the network drops), the person sees two messages for one problem: \"Checkout Failed\" (which says the program will open read-only) and then \"Couldn't Open the Database\" (Try again / Close). Spec item 6.5."
     };
 
-    /// <summary>Every known finding id, in order (F5, F6, F7, F20, F22, A13). F1, F2, F8, F12, F16, F17, F18, F19, F21 and F23 are fixed and so are no longer on the list.</summary>
-    public static IReadOnlyList<string> Ids { get; } = new[] { "F5", "F6", "F7", "F20", "F22", "A13" };
+    /// <summary>Every known finding id, in order (F7, F20, F22, F24, A13). F1, F2, F5, F6, F8, F12, F16, F17, F18, F19, F21 and F23 are fixed and so are no longer on the list.</summary>
+    public static IReadOnlyList<string> Ids { get; } = new[] { "F7", "F20", "F22", "F24", "A13" };
 
     /// <summary>True when <paramref name="findingId"/> is a finding expected on today's code.</summary>
     /// <param name="findingId">A finding id as the classifier gives it ("F1" ... or "new").</param>

@@ -395,6 +395,8 @@ public sealed class CheckoutServiceMidSaveEditTests : IDisposable
     public async Task FailedSave_UnexpectedException_DisposesTheSourceConnection()
     {
         using var s = await OpenSessionAsync(withAppConnection: false);
+        s.Svc.NoteEdit();
+        s.Svc.MarkDirty();   // a marker, so the save is a real one (an unchanged save is skipped before the upload, item 3.4)
         s.Svc.BeforeTmpVerifyAsync = _ => throw new InvalidOperationException("unexpected, on purpose");
 
         Assert.Equal(SaveOutcome.CopyError, await s.Svc.SaveAsync());
@@ -407,6 +409,8 @@ public sealed class CheckoutServiceMidSaveEditTests : IDisposable
     public async Task RefusedSave_FinalCheck_DisposesTheSourceConnection()
     {
         using var s = await OpenSessionAsync(withAppConnection: false);
+        s.Svc.NoteEdit();
+        s.Svc.MarkDirty();   // a marker, so the save is a real one (an unchanged save is skipped before the upload, item 3.4)
         s.Svc.BeforeTmpVerifyAsync = _ =>
         {
             using var conn = new SqliteConnection($"Data Source={s.Db};Pooling=False");

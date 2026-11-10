@@ -132,6 +132,7 @@ internal sealed class InvariantChecker
                         Key = $"I2:lost:{edit}", Computer = computer.Name, Edit = edit,
                         Reason = $"{edit} ({computer.DisplayName}'s) is no longer anywhere that survives a crash",
                         EditAppliedDuringHeldSave = world.WasEditAppliedDuringHeldSave(edit),
+                        EditAppliedDuringHeldRestore = world.WasEditAppliedDuringHeldRestore(edit),
                         OtherProgramInvolved = world.OtherProgramHasBeenUsed,
                         ComputerPrompts = world.StepPrompts(computer)
                     });

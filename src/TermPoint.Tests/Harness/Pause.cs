@@ -95,6 +95,20 @@ internal static class PausePoints
     /// <param name="point">A crash point name.</param>
     public static bool IsNeverPaused(string point) => NeverPaused.Contains(point);
 
+    /// <summary>
+    /// The restore window (finding F24, summary item 3.13): every crash point of a Restore from Backup. An edit applied while the computer's own
+    /// restore is held at one of these (a detached panel or sticky note still takes edits; the wait dialog blocks only the main window) is not in
+    /// the save that preceded the restore. Retire with the finding when 3.13 is built (the session then refuses edits while a restore runs).
+    /// </summary>
+    public static readonly IReadOnlyList<string> RestoreWindow = new[]
+    {
+        "Restore.AfterStaged", "Restore.AfterPreRestoreCopy", "Restore.AfterTmpWritten", "Restore.AfterTmpVerified", "Restore.AfterRename"
+    };
+
+    /// <summary>True when an edit applied while the computer's own operation is held at <paramref name="point"/> falls in the restore window (finding F24).</summary>
+    /// <param name="point">A crash point name.</param>
+    public static bool IsInRestoreWindow(string point) => RestoreWindow.Contains(point);
+
     /// <summary>True when an edit applied while the computer's own operation is held at <paramref name="point"/> falls in the edit-loss window (finding F2).</summary>
     /// <param name="point">A crash point name.</param>
     public static bool IsInEditLossWindow(string point) => EditLossWindow.Contains(point);

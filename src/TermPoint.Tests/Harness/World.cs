@@ -172,6 +172,13 @@ internal sealed class World : IDisposable
     /// <summary>The edits a computer applied while its own operation was held in the edit-loss window, from a save's snapshot to the cleanup of the working copy (finding F2; <see cref="PausePoints.EditLossWindow"/>).</summary>
     private readonly HashSet<string> _editsAppliedDuringHeldSave = new();
 
+    /// <summary>
+    /// The edits a computer applied while its OWN Restore from Backup was held at one of the restore's crash points
+    /// (<see cref="PausePoints.RestoreWindow"/>): the wait dialog blocks only the main window, so detached panels and sticky notes still take edits
+    /// (finding F24, summary item 3.13). Narrower than <see cref="_editsAppliedDuringHeldSave"/>: it is the restore's window, not the save's.
+    /// </summary>
+    private readonly HashSet<string> _editsAppliedDuringHeldRestore = new();
+
     /// <summary>The edits another computer committed to the shared database while a save was held before its rename, by the step they were committed in (finding F12).</summary>
     private readonly Dictionary<string, int> _commitsDuringHeldSave = new();
 
@@ -1398,6 +1405,18 @@ internal sealed class World : IDisposable
         var pause = _armedPause;
         if (pause is { IsFrozen: true } && pause.Computer == computer && PausePoints.IsInEditLossWindow(pause.Point))
             lock (_gate) _editsAppliedDuringHeldSave.Add(editId);
+
+        // Finding F24 (summary item 3.13): an edit made while this computer's own Restore from Backup is held. Its save-first is already
+        // over, so the edit is in neither the pre-restore copy nor the restored database; only the kept working file holds it.
+        if (pause is { IsFrozen: true } && pause.Computer == computer && PausePoints.IsInRestoreWindow(pause.Point))
+            lock (_gate) _editsAppliedDuringHeldRestore.Add(editId);
+    }
+
+    /// <summary>True when the edit was applied while its computer's own Restore from Backup was held (see <see cref="NoteEditApplied"/>; finding F24).</summary>
+    /// <param name="editId">The edit's id.</param>
+    public bool WasEditAppliedDuringHeldRestore(string editId)
+    {
+        lock (_gate) return _editsAppliedDuringHeldRestore.Contains(editId);
     }
 
     /// <summary>True when the edit was applied while its computer's own operation was held in the edit-loss window (see <see cref="NoteEditApplied"/>).</summary>
@@ -1518,6 +1537,7 @@ internal sealed class World : IDisposable
                 // Read now, while the kept working file is still on disk (the F5 and F8 rules both need it).
                 var dataUnchanged = DataUnchangedSinceKept(computer);
                 var allShared     = AllKeptEditsAreInShared(computer);
+                var duringRestore = HasUnsavedEditFromHeldRestore(computer);   // finding F24: an edit made while the computer's own restore was held
 
                 // The kept-changes messages promise "offered back unless someone else changes the database first, then a separate
                 // copy" (spec item 28): the promise tracker needs to know whether anybody really changed data, to tell the refusal
@@ -1529,6 +1549,7 @@ internal sealed class World : IDisposable
                     Step = _step, Invariant = "I5", Kind = ViolationKind.RestoreOfferedThenImpossible,
                     DataUnchangedSinceKept = dataUnchanged,
                     AllKeptEditsAlreadyShared = allShared,
+                    EditAppliedDuringHeldRestore = duringRestore,
                     Key = $"I5:F7:{_step}:{computer.Name}", Computer = computer.Name,
                     Reason = $"{computer.DisplayName} was asked \"{HarnessTitles.RestoreUnsavedChanges}\", chose Restore, and was then told " +
                              "\"Can't Restore Unsaved Changes\": the question should not have been asked",
@@ -1568,6 +1589,20 @@ internal sealed class World : IDisposable
 
         if (countsForOneMessagePerProblem)
             lock (_gate) _stepMessages.Add(new SeenMessage(computer.Name, computer.DisplayName, title, text, isQuestion, _phase));
+    }
+
+    /// <summary>
+    /// The F24 rule's question: is at least one of the computer's edits that the shared database does NOT hold (its unsaved work) an
+    /// edit it applied while its own Restore from Backup was held (<see cref="WasEditAppliedDuringHeldRestore"/>)? False when the
+    /// shared database cannot be read, and for a computer that made no edit during a held restore (a no-edit session, or an edit
+    /// made anywhere else), so a genuine F5 or F7 is never mistaken for F24. Read when "Can't Restore Unsaved Changes" is shown.
+    /// </summary>
+    /// <param name="computer">The computer that was refused.</param>
+    private bool HasUnsavedEditFromHeldRestore(Computer computer)
+    {
+        var shared = TryEditsInFile(DatabasePath);
+        if (shared is null) return false;
+        return computer.AppliedEdits.Any(e => !shared.Contains(e) && WasEditAppliedDuringHeldRestore(e));
     }
 
     /// <summary>
@@ -2360,6 +2395,12 @@ internal static class HarnessDatabaseTemplate
         catch (ArgumentException)
         {
             return false;
+        }
+        catch (System.ComponentModel.Win32Exception)
+        {
+            // "Access is denied": a process with this id exists but is not ours to open (a protected system process that now
+            // owns a recycled id). It is alive, so it is not a dead test host's id; its folder is left alone, which is the safe side.
+            return true;
         }
     }
 
