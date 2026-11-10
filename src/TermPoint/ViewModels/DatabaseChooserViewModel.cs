@@ -170,7 +170,7 @@ public partial class DatabaseChooserViewModel : ObservableObject
     /// setting. <see cref="DatabaseValidationResult.Unreadable"/> maps to its own reason — it is
     /// never folded into Corrupt or NotFound.
     /// </summary>
-    /// <param name="validation">A non-Ok result of <c>DatabaseValidator.ValidateAsync</c>.</param>
+    /// <param name="validation">A non-Ok result of <c>DatabaseValidator.ValidateSharedAtOpenAsync</c>.</param>
     /// <returns>
     /// Corrupt, Unreachable and Unreadable map to the reason of the same name; everything else
     /// (Missing) maps to <see cref="RecoveryReason.NotFound"/>.
@@ -187,7 +187,7 @@ public partial class DatabaseChooserViewModel : ObservableObject
     /// The inline message shown when a recent database fails validation (double-click open and
     /// the Continue button share it, so they cannot drift apart).
     /// </summary>
-    /// <param name="validation">A non-Ok result of <c>DatabaseValidator.ValidateAsync</c>.</param>
+    /// <param name="validation">A non-Ok result of <c>DatabaseValidator.ValidateSharedAtOpenAsync</c>.</param>
     /// <returns>The user-facing message for that result.</returns>
     private static string DescribeRecentOpenFailure(DatabaseValidationResult validation) => validation switch
     {
@@ -353,7 +353,7 @@ public partial class DatabaseChooserViewModel : ObservableObject
         if (item is null) return;
 
         RecentError = null;
-        var validation = await DatabaseValidator.ValidateAsync(item.Path);
+        var validation = await DatabaseValidator.ValidateSharedAtOpenAsync(item.Path);
         if (validation != DatabaseValidationResult.Ok)
         {
             RecentError = DescribeRecentOpenFailure(validation);
@@ -458,7 +458,7 @@ public partial class DatabaseChooserViewModel : ObservableObject
         var path = await PickDatabaseFileAsync();
         if (path is null) return;
 
-        var result = await DatabaseValidator.ValidateAsync(path);
+        var result = await DatabaseValidator.ValidateSharedAtOpenAsync(path);
         if (result == DatabaseValidationResult.Ok)
         {
             BrowsedPath = path;
@@ -890,7 +890,7 @@ public partial class DatabaseChooserViewModel : ObservableObject
         if (SelectedRecentDatabase is not null)
         {
             RecentError = null;
-            var validation = await DatabaseValidator.ValidateAsync(SelectedRecentDatabase.Path);
+            var validation = await DatabaseValidator.ValidateSharedAtOpenAsync(SelectedRecentDatabase.Path);
             if (validation != DatabaseValidationResult.Ok)
             {
                 RecentError = DescribeRecentOpenFailure(validation);

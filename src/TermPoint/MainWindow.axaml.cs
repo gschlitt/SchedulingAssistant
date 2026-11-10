@@ -561,7 +561,7 @@ public partial class MainWindow : Window, ILifecyclePrompts, ISessionHost
         if (settings.AlwaysOpenMostRecentDatabase)
         {
             // Auto-open mode — validate the saved path and proceed if OK.
-            var validation = await DatabaseValidator.ValidateAsync(settings.DatabasePath);
+            var validation = await DatabaseValidator.ValidateSharedAtOpenAsync(settings.DatabasePath);
             if (validation == DatabaseValidationResult.Ok)
             {
                 dbPath = settings.DatabasePath!;
@@ -589,7 +589,7 @@ public partial class MainWindow : Window, ILifecyclePrompts, ISessionHost
             // Even in chooser mode, validate the saved path so we can warn the user
             // if their most recent database has gone missing, is corrupt, can't be read
             // right now (held open by another program), or its network location is unreachable.
-            var validation = await DatabaseValidator.ValidateAsync(settings.DatabasePath);
+            var validation = await DatabaseValidator.ValidateSharedAtOpenAsync(settings.DatabasePath);
             var mode = ChooserMode.Normal;
             RecoveryReason? reason = null;
 

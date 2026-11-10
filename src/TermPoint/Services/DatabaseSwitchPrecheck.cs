@@ -73,14 +73,14 @@ public static class DatabaseSwitchPrecheck
         "It was not changed. Choose a different name, or open that database instead.";
 
     /// <summary>
-    /// Validates <paramref name="path"/> with <see cref="DatabaseValidator.ValidateAsync"/> (all network
-    /// I/O deadline-bounded) and applies <see cref="Decide"/>.
+    /// Validates <paramref name="path"/> with <see cref="DatabaseValidator.ValidateSharedAtOpenAsync"/> (the
+    /// header-only front-door check; all network I/O deadline-bounded) and applies <see cref="Decide"/>.
     /// </summary>
     /// <param name="path">Full path of the database to switch to.</param>
     /// <param name="createIfMissing">True only for File → New: a missing file is then created later.</param>
     /// <returns>Proceed, or a refusal with the title and message to show.</returns>
     public static async Task<SwitchPrecheckResult> RunAsync(string path, bool createIfMissing)
-        => Decide(await DatabaseValidator.ValidateAsync(path), path, createIfMissing);
+        => Decide(await DatabaseValidator.ValidateSharedAtOpenAsync(path), path, createIfMissing);
 
     /// <summary>
     /// <see cref="RunAsync"/> plus the bookkeeping that must happen ONLY when the pre-check passes:

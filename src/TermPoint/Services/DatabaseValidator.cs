@@ -108,6 +108,30 @@ public static class DatabaseValidator
     }
 
     /// <summary>
+    /// The front-door check of the SHARED database: what every open, switch and chooser pick runs on the file
+    /// before anything else happens (spec 1.2.4 item 4.7, D2). It is the header-only
+    /// <see cref="ValidateWithoutSqliteAsync"/> under a name that says why.
+    ///
+    /// <para><b>Why not <see cref="ValidateAsync"/>:</b> that runs a full <c>integrity_check</c>, which reads the
+    /// whole file across the network (slow on a slow link) and, while it reads, the active editor's save rename
+    /// (D.tmp to D) cannot happen. This check reads 16 bytes, <see cref="FileShare.ReadWrite"/>, and coexists with an
+    /// editor's save. A damaged-but-signed database passes the door and is caught afterwards: the full check of the
+    /// local copy at every open, then <see cref="LocalCopyIntegrity.RecheckSharedDatabaseAsync"/> (still a full check)
+    /// decides whether the shared database itself is damaged, with the same message as before.</para>
+    ///
+    /// <para>Results map exactly as <see cref="ValidateAsync"/>'s do, so callers' handling is unchanged. No damage
+    /// report is made here (a header check has no integrity evidence); the re-check still reports. A zero-byte file
+    /// is <see cref="DatabaseValidationResult.Corrupt"/>.</para>
+    ///
+    /// <para>Not for a backup about to be restored, nor for deciding whether D itself is damaged: those keep
+    /// <see cref="ValidateAsync"/>.</para>
+    /// </summary>
+    /// <param name="path">Full path to the shared database. May be <c>null</c> or empty.</param>
+    /// <returns>See <see cref="ValidateWithoutSqliteAsync"/>.</returns>
+    public static Task<DatabaseValidationResult> ValidateSharedAtOpenAsync(string? path)
+        => ValidateWithoutSqliteAsync(path);
+
+    /// <summary>
     /// The 16-byte signature every SQLite database file starts with ("SQLite format 3" followed
     /// by a NUL). Anything else is not a SQLite database.
     /// </summary>

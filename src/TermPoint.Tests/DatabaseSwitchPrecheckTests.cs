@@ -191,17 +191,43 @@ public sealed class DatabaseSwitchPrecheckTests : IDisposable
         Assert.Empty(Directory.GetFileSystemEntries(_tempDir));
     }
 
-    /// <summary>A file with a trashed page is refused as damaged.</summary>
+    /// <summary>A file that is not a SQLite database (no signature) is refused as damaged.</summary>
     [Fact]
     public async Task Run_CorruptFile_RefusedAsDamaged()
     {
-        var path = HealthyDb("corrupt.db");
-        DbFileTestHelpers.TrashPage(path, pageNumber: 2);
+        var path = PathOf("corrupt.db");
+        File.WriteAllText(path, "this is not a sqlite database");
 
         var result = await DatabaseSwitchPrecheck.RunAsync(path, createIfMissing: false);
 
         Assert.False(result.CanProceed);
         Assert.Equal(DatabaseChooserViewModel.DamagedDatabaseMessage, result.Message);
+    }
+
+    /// <summary>A zero-byte file is refused as damaged at the door (1.2.4 item 4.7, D2).</summary>
+    [Fact]
+    public async Task Run_ZeroByteFile_RefusedAsDamaged()
+    {
+        var path = PathOf("empty.db");
+        File.WriteAllBytes(path, []);
+
+        var result = await DatabaseSwitchPrecheck.RunAsync(path, createIfMissing: false);
+
+        Assert.False(result.CanProceed);
+        Assert.Equal(DatabaseChooserViewModel.DamagedDatabaseMessage, result.Message);
+    }
+
+    /// <summary>
+    /// The pre-check uses the header-only door (1.2.4 item 4.7, D2): a database with a trashed page still has its
+    /// signature and proceeds; the local-copy check and the re-check catch the damage after the copy.
+    /// </summary>
+    [Fact]
+    public async Task Run_SignedButDamagedFile_ProceedsAtTheDoor()
+    {
+        var path = HealthyDb("signed-damaged.db");
+        DbFileTestHelpers.TrashPage(path, pageNumber: 2);
+
+        Assert.True((await DatabaseSwitchPrecheck.RunAsync(path, createIfMissing: false)).CanProceed);
     }
 
     /// <summary>

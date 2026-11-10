@@ -469,7 +469,28 @@ public sealed class LocalCopyIntegrityTests : IDisposable
 
     // ── The re-check of the shared database ───────────────────────────────────
 
-    /// <summary>With no plan, the re-check is the real front-door check: a healthy file is Ok, a damaged one Corrupt, a missing one Missing.</summary>
+    /// <summary>
+    /// 1.2.4 item 4.7, D2, lifecycle level: a damaged-but-signed shared database passes the header-only front door
+    /// (<see cref="DatabaseValidator.ValidateSharedAtOpenAsync"/>) and is then caught by the full check of the open
+    /// file (<see cref="DatabaseCorruptException"/>) and by the re-check (Corrupt), which is what produces the
+    /// "may be damaged" message, exactly as before.
+    /// </summary>
+    [Fact]
+    public async Task DamagedButSignedShared_PassesTheDoor_ThenTheLocalCheckAndTheRecheckCatchIt()
+    {
+        var path = PathOf("signed-damaged.db");
+        DbFileTestHelpers.CreateHealthyDatabase(path);
+        DbFileTestHelpers.TrashPage(path, 2);
+        var log = new RecordingLogger();
+        var script = new Script(Ok());
+
+        Assert.Equal(DatabaseValidationResult.Ok, await DatabaseValidator.ValidateSharedAtOpenAsync(path));
+        Assert.Throws<DatabaseCorruptException>(() =>
+            LocalCopyIntegrity.VerifyAtOpen(path, p => LocalCopyIntegrity.CheckOnce(p, null, log), log, script.Sleep));
+        Assert.Equal(DatabaseValidationResult.Corrupt, await LocalCopyIntegrity.RecheckSharedDatabaseAsync(path, null, log));
+    }
+
+    /// <summary>With no plan, the re-check is the real full check: a healthy file is Ok, a damaged one Corrupt, a missing one Missing.</summary>
     [Fact]
     public async Task Recheck_WithoutAPlan_IsTheRealFrontDoorCheck()
     {

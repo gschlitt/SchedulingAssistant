@@ -577,7 +577,7 @@ Everything in this group is checked against rule 3 (never delete the only copy o
 > later Refreshes (fault budget used up) reconnected and cleared it. Note: a bare `replace` / `reopen` fails every
 > call until restart (the `DebugFaultBudget` default), so give a count.
 
-> [!note]- **4.7 Opening: a lighter check of the shared database; locked vs damaged local copy** `not started · decide first`
+> [!note]- **4.7 Opening: a lighter check of the shared database; locked vs damaged local copy** `done` `data risk`
 > Two leftovers from 1.2.3's open rework:
 > - **(a)** The open-time check reads the whole shared database, which can block a writer's save while it runs. A
 >   16-byte header check would do here, leaving the full check to the local copy.
@@ -586,12 +586,26 @@ Everything in this group is checked against rule 3 (never delete the only copy o
 >   damaged one.
 >
 > *Source: 1.2.3 spec, item 4.*
+>
+> **Done (10 Nov 2026; design `designs/open-checks-1.2.4.md`, decisions D1–D3 + wording W1 approved by Greg;
+> MinimumVersionToWrite No):**
+> - **(b) D1, `2b08cf8`** (full suite with harness 4583/0): the open path was already three-way (1.2.3 step 5d), but
+>   crash recovery wasn't. Kept changes held by antivirus counted as damaged and were archived, or **deleted** when
+>   the rename failed (rule 3). Now the check is three-way with quiet retries. If the file stays unreadable, nothing is
+>   touched: "Couldn't Open the Database" + "Your unsaved changes from last time are kept." with Try again / Close.
+>   Close gives up before any checkout.
+> - **(a) D2** (full suite with harness 4591/0): the six front-door checks of the shared database (startup ×2, switch
+>   pre-check, chooser ×3) use the 16-byte header check (`DatabaseValidator.ValidateSharedAtOpenAsync`). The full check
+>   stays on the local copy, the re-check of D, and backups being restored.
 
 > [!note]- **4.8 A slow link stops the open** (measure, then decide) `not started`
 > With about 220 ms added to each round trip (clumsy), every open stopped at the full integrity check of the shared
 > database, which has a 5-second step limit. Saves at the same lag worked. Ordinary home VPNs add far less delay.
 > **Next:** find the latency at which opening starts to fail, and what the user is told then. Overlaps with 4.7 (a).
 > *Source: field-test open issue A6.*
+>
+> **Update (10 Nov 2026):** 4.7 D2 removed the full check of the shared database from the open, the step every
+> slow-link open stopped at. Next: measure again with clumsy at ~220 ms.
 
 > [!note]- **4.9 Backups turn over too fast** `not started · decide first`
 > A backup is made at every open and five are kept, so five opens in a row delete every older backup. A user who
