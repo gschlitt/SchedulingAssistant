@@ -572,7 +572,10 @@ Everything in this group is checked against rule 3 (never delete the only copy o
 > or the previous one when the swap failed), 3 attempts 1 s apart, stopping if the session ends. New outcomes
 > `ReplaceFailed` ("Couldn't refresh just now…") and `ConnectionLost` (close-and-reopen line, now only after three
 > failed reopens). No new wording. DEBUG switch `TERMPOINT_DEBUG_FAIL_REFRESH=replace|reopen[:count[:skip]]`.
-> **Left:** the hand test with that switch (`replace`; `reopen:2`; `reopen:3`).
+> **Hand test passed (Greg, 10 Nov 2026, DEBUG build, reader on a local copy):** `replace:1` showed the "just now"
+> line, the next Refresh worked; `reopen:2` worked with no line; `reopen:3` showed the close-and-reopen line, and
+> later Refreshes (fault budget used up) reconnected and cleared it. Note: a bare `replace` / `reopen` fails every
+> call until restart (the `DebugFaultBudget` default), so give a count.
 
 > [!note]- **4.7 Opening: a lighter check of the shared database; locked vs damaged local copy** `not started · decide first`
 > Two leftovers from 1.2.3's open rework:
