@@ -115,7 +115,7 @@
                 <TextBlock
                     FontSize="{StaticResource FontSizeNormal}"
                     Foreground="{StaticResource TextMuted}"
-                    Text="TermPoint also keeps the last backup of each of the 7 days and 4 weeks before this one that it was used."
+                    Text="TermPoint also keeps the last backup of each of the prior 7 days and each of the prior 4 weeks."
                     TextWrapping="Wrap" />
 
                 <!--  Status + manual trigger  -->

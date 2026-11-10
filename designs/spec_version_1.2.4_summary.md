@@ -639,7 +639,7 @@ Everything in this group is checked against rule 3 (never delete the only copy o
 > - the last backup of each of the 4 most recent weeks **before this one** (Monday to Sunday) that have backups.
 >
 > It deletes the rest, at most N + 11 kept, and always keeps a superset of what the old rule kept. New line under the
-> setting: "TermPoint also keeps the last backup of each of the 7 days and 4 weeks before this one that it was used."
+> setting (Greg's wording): "TermPoint also keeps the last backup of each of the prior 7 days and each of the prior 4 weeks."
 > Also fixed: only files named exactly `{database}_{timestamp}.db` count, so `BIOL`'s rotation no longer deletes the
 > backups of a database named `BIOL_TT`. A 1.2.3 computer sharing the backup folder still trims to N. Tests:
 > `BackupRetentionTests`; full suite 4487 passed, 0 failed. **Not done (per Greg):** "skip if unchanged", and backups
@@ -649,12 +649,16 @@ Everything in this group is checked against rule 3 (never delete the only copy o
 > `tools/NetworkProbe/GAP-AUDIT.md` lists them; each could freeze the UI on a dead share. 1.2.3 fixed the backup-cleanup
 > call.
 
-> [!note]- **4.11 Cloud-synced folders: more providers, and a warning at File → Open** `not started`
+> [!note]- **4.11 Cloud-synced folders: more providers, and a warning at File → Open** `shelved`
 > Detection misses Google Drive for desktop, Box and macOS CloudStorage (1.2.3 added SharePoint and Teams libraries on
 > Windows). File → Open and Recent don't check the folder at all, for any provider: the warning shows only in the
 > wizard and in New Database. Adding it needs a message route and wording, and touches the open flow. Warn, don't
 > block.
 > *Source: 1.2.3 spec, item 13.*
+>
+> **Shelved (Greg, 10 Nov 2026):** File → Open and Recent open databases whose location was already looked at when the
+> database was created (wizard or New Database), and that is when the caution is given. Checking again at every open
+> adds little.
 
 > [!note]- **4.12 A held heartbeat puts its own lock back over the new holder's** `done`
 > The heartbeat reads its lock, writes a temp file, then moves it onto the lock file. A computer that sleeps between the
