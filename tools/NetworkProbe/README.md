@@ -115,6 +115,60 @@ The folder's server-side "last written" time is shown as a cross-check only (SMB
 the server clock differs from this computer's). A result holds for this client, server and kind of share only: a
 late landing proves the route exists; none proves only "not here".
 
+## Share-semantics mode (`--share-semantics`, experiments E1 and E2 of 1.2.4 item 5.8)
+
+Questions from `designs/network-experiments-5.8.md`: **E1** does our own `CreateNew` clear our cached "not found",
+and does `CreateNew` always reach the server; **E2** does a reader's open file block the writer's save
+(`File.Move(tmp, dest, overwrite: true)`), and does a deleted-but-still-open lock file block the next `CreateNew`.
+No clumsy, no elevation, no TermPoint code: ordinary file calls in the probe's own `netprobe-semantics-<time>` folder
+on the share. Two computers, two roles in the same exe, joined by a small TCP control channel; the runner times
+everything on its own stopwatch, so no clock needs syncing.
+
+**Partner** (TPVM1). Publish single-file self-contained and copy only `NetworkProbe.exe` (~90 MB):
+`dotnet publish tools/NetworkProbe -c Release -r win-x64 --self-contained -p:PublishSingleFile=true -o E:/netprobe-partner`.
+It needs an inbound TCP allow rule for its port
+(`netsh advfirewall firewall add rule name="NetworkProbe partner" dir=in action=allow protocol=TCP localport=5870 profile=any`;
+remove it afterwards with `netsh advfirewall firewall delete rule name="NetworkProbe partner"`).
+
+    NetworkProbe.exe --share-semantics --role partner --listen 5870 --root \\mekler\Users\gregs\temp\handtest
+
+It only touches files inside `--root` (paths in commands are relative to it; anything else is refused), logs every
+command, serves one connection at a time and closes everything it holds when the runner disconnects. Ctrl+C stops it.
+`--root` must be the same folder as the runner's `--share` (the runner checks this at the start).
+
+**Runner** (GregDeskTop):
+
+    NetworkProbe.exe --share-semantics --role runner --share \\mekler\Users\gregs\temp\handtest --partner <TPVM1-ip>:5870
+
+| Option | Default | Meaning |
+|---|---|---|
+| `--only <a,b,...>` | all | `E1a`, `E1b`, `E2` (or `E1b-create`, `E1b-stale`, `E2-1` ... `E2-5`). |
+| `--runs <n>` | 20 for E1, 5 for E2 | Runs per table. E1 alternates prime variants P1 (File.Exists) / P2 (failed open), so 20 runs = 10 each. |
+| `--settle <s>` | 11 (0 in a dry run) | Seconds between E1 runs so SMB's caches expire. |
+| `--big-mb <n>` | 8 | Size of the E2 database file. |
+| `--report-dir <dir>` | `<repo>\tmp\netprobe` | Where the report goes: `netprobe-<time>-share-semantics.md`. |
+| `--dry-run <local folder>` | | Plumbing check with the partner started inside this process on 127.0.0.1; everything runs on a local folder and is marked SIMULATED. `--list` prints the tables. |
+
+Tables: **E1a** (runner only) prime "not found", `CreateNew`, check again at once with File.Exists and open+read.
+**E1b-create** the partner creates the file, the runner tries `CreateNew` at once (must fail with "already exists";
+if it ever succeeds the report's first line is CRITICAL and the exit code is 1). **E1b-stale** how long File.Exists
+and an open keep saying "not found" after the partner's create (polled every 50 ms up to 15 s). **E2-1** the partner
+holds the file as TermPoint does (share ReadWrite): rename refused? for how long (retry every 100 ms up to 10 s),
+and when it goes through after the partner closes. **E2-2** share ReadWrite|Delete: does the rename go through?
+**E2-3** as 2, with the partner reading during the rename: does its handle then give old, new, a mix or an error
+(hashes). **E2-4** the same for a 2 KB lock file. **E2-5** the partner holds the lock file ReadWrite|Delete, the
+runner deletes it and tries `CreateNew` at once and every 100 ms for 5 s: blocked, and for how long.
+
+The report has the machines, share, control-channel round trip (min/median), both computers'
+`Get-SmbClientConfiguration`, one table per case (per-run rows plus a summary row), and "Reading the result", which
+says which row of the design's result tables applies, or that none fits cleanly or the result is not conclusive. It
+never goes beyond those tables. A result holds for this client, server and kind of share only. A full run takes about
+13 minutes (E1 ~11, E2 ~2).
+Exit codes: 0 done; 1 CRITICAL (CreateNew succeeded over an existing file); 2 stopped early; 3 refused to start.
+
+On local NTFS (the dry run), E2-2's rename is refused even with `ReadWrite|Delete` sharing, while a delete goes
+through: a hint, not a result, that the share may behave the same.
+
 ## What a run does
 
 1. Refuses unless safe (elevated, TermPoint closed, no clumsy, a UNC share on another computer that exists).

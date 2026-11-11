@@ -818,7 +818,13 @@ messages, plus one kind of storage the design can't protect. Nothing here touche
 > mapped drive can't be detected. Windows file servers, enterprise filers and ordinary Samba NAS boxes are fine. Say
 > so in the docs and Help.
 
-> [!note]- **5.8 Two experiments on the three-machine rig** `not started`
+> [!note]- **5.8 Two experiments on the three-machine rig** `done`
+> **Done (2026-11-11, `designs/network-experiments-5.8.md`, NetworkProbe `--share-semantics`):** a failed open is cached
+> like "exists?" (~5 s), but our own create clears it and `CreateNew` always reaches the server, so 5.1 shrinks to the
+> two-reader fix plus tidying. On Mekler, `Delete` sharing does **not** let a rename through, so 5.3 becomes "readers
+> hold D for less time" and 5.4 is still needed; never add `Delete` sharing to lock-file reads (a deleted-but-open lock
+> blocks every `CreateNew`).
+>
 > 1. Does opening the lock file see a new or deleted lock sooner than an existence test does? This decides 5.1.
 > 2. Does a rename over a file that another machine holds open with delete sharing succeed, on the Windows server and
 >    on Samba? This decides whether 5.3 is enough there, or whether 5.4 has to carry it.

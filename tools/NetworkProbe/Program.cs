@@ -39,12 +39,16 @@ internal static class Program
 
         if (options.ListOnly)
         {
-            ReportWriter.PrintCaseMatrix(options);
+            if (options.ShareSemantics) ShareSemanticsReport.PrintCaseMatrix(options);
+            else ReportWriter.PrintCaseMatrix(options);
             return 0;
         }
 
         try
         {
+            // The share-semantics mode is self-contained: no elevation, no clumsy, no TermPoint logger rig.
+            if (options.ShareSemantics)
+                return await ShareSemanticsRun.RunAsync(options).ConfigureAwait(false);
             return await ProbeRun.RunAsync(options).ConfigureAwait(false);
         }
         catch (ProbeRefusalException ex)
