@@ -15,7 +15,14 @@ public enum LicenseState
     Invalid,
 
     /// <summary>No license file found at the expected location.</summary>
-    NotFound
+    NotFound,
+
+    /// <summary>
+    /// The license file could not be read for a reason other than "not found" (network error, sharing
+    /// violation, access denied). Says nothing about whether a license exists, so callers may fall back
+    /// to a remembered copy instead of treating it as unlicensed.
+    /// </summary>
+    Unreadable
 }
 
 /// <summary>
@@ -38,4 +45,23 @@ public class LicenseResult
 
     /// <summary>Reason for failure, suitable for logging (not user display).</summary>
     public string? ErrorReason { get; init; }
+
+    /// <summary>
+    /// The license text as read from the file. Set for <see cref="LicenseState.Licensed"/> and
+    /// <see cref="LicenseState.Expired"/> results produced from a file, so it can be remembered.
+    /// </summary>
+    public string? RawContent { get; init; }
+
+    /// <summary>Returns a copy of this result carrying the given file text in <see cref="RawContent"/>.</summary>
+    /// <param name="rawContent">The license file text.</param>
+    /// <returns>The copy.</returns>
+    public LicenseResult WithRawContent(string rawContent) => new()
+    {
+        State = State,
+        Department = Department,
+        Institution = Institution,
+        Expiry = Expiry,
+        ErrorReason = ErrorReason,
+        RawContent = rawContent
+    };
 }

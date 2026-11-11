@@ -149,6 +149,8 @@ public partial class ScheduleGridViewModel : ViewModelBase
                 => $"Licensed to: {licensee}",
             Licensing.AccessReason.Licensed
                 => "Licensed",
+            Licensing.AccessReason.Trial when status.DaysRemaining == 1
+                => "Trial: 1 day remaining",
             Licensing.AccessReason.Trial when status.DaysRemaining.HasValue
                 => $"Trial: {status.DaysRemaining} days remaining",
             Licensing.AccessReason.Trial

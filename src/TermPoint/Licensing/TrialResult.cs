@@ -14,4 +14,10 @@ public class TrialResult
 
     /// <summary>True when the trial existed and has elapsed.</summary>
     public bool TrialExpired { get; init; }
+
+    /// <summary>
+    /// The moment the trial ends (start + 30 days), in UTC. Set whether or not the trial is still running;
+    /// null only on results built by hand.
+    /// </summary>
+    public DateTime? TrialEndsUtc { get; init; }
 }

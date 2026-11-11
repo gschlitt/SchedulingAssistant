@@ -14,4 +14,12 @@ public interface ILicenseValidator
     /// </param>
     /// <returns>A <see cref="LicenseResult"/> describing the license state.</returns>
     LicenseResult ValidateLicenseFile(string shareDirectoryPath);
+
+    /// <summary>
+    /// Validates licence text that has already been read (a file just read, or a remembered copy):
+    /// signature, payload and expiry.
+    /// </summary>
+    /// <param name="fileContent">The full text of a <c>termpoint.lic</c> file.</param>
+    /// <returns>A <see cref="LicenseResult"/> describing the license state.</returns>
+    LicenseResult ValidateLicenseText(string fileContent);
 }

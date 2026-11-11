@@ -192,6 +192,59 @@ public partial class App : Application
     };
 
     /// <summary>
+    /// The clock licensing runs on: the system clock, or (DEBUG builds only) a fixed date from the
+    /// TERMPOINT_DEBUG_DATE environment variable. Shared by the open-time evaluation and the daily check.
+    /// </summary>
+    internal static IClock LicenseClock { get; } = CreateLicenseClock();
+
+    /// <summary>Builds <see cref="LicenseClock"/>, logging a DEBUG date override if there is one.</summary>
+    /// <returns>The clock.</returns>
+    private static IClock CreateLicenseClock()
+    {
+#if DEBUG
+        var clock = FixedClock.FromEnvironmentOrSystem();
+        if (clock is FixedClock fc)
+            Logger.LogInfo($"[Licensing] DEBUG clock override: {fc.UtcNow:yyyy-MM-dd}");
+        return clock;
+#else
+        return new SystemClock();
+#endif
+    }
+
+    /// <summary>
+    /// Builds a licence manager (validator + trial + remembered-licence cache) over the real AppData folder.
+    /// The one place this is constructed, used by the open-time evaluation and the daily check.
+    /// </summary>
+    /// <returns>A new manager.</returns>
+    internal static AppLicenseManager CreateLicenseManager()
+    {
+        var appData = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), "TermPoint");
+        void Log(string line) => Logger.LogInfo(line);
+        return new AppLicenseManager(
+            new LicenseValidator(LicenseKeys.PublicKeyPem, LicenseClock),
+            new TrialService(appData, LicenseClock, Log),
+            new LicenseCache(appData, Log),
+            Log);
+    }
+
+    /// <summary>
+    /// Evaluates licence + trial for a share folder under the network deadline: reading
+    /// <c>termpoint.lic</c> from a dead share must not freeze the caller for the SMB redirector timeout.
+    /// Does not change <see cref="LicenseStatus"/>.
+    /// </summary>
+    /// <param name="shareDir">The folder holding the shared database and <c>termpoint.lic</c>.</param>
+    /// <returns>The access result, or null when the deadline passed.</returns>
+    /// <exception cref="Exception">Anything the evaluation itself throws.</exception>
+    internal static AppAccessResult? TryEvaluateLicense(string shareDir)
+    {
+        var manager = CreateLicenseManager();
+        var (completed, result) = NetworkFileOps.RunAsync(
+            () => manager.EvaluateAccess(shareDir), "EvaluateLicense")
+            .GetAwaiter().GetResult();
+        return completed ? result : null;
+    }
+
+    /// <summary>
     /// Evaluates the license and trial state for the given database path.
     /// Must be called before <see cref="CheckoutService.CheckoutAsync"/> so
     /// the license gate can block lock acquisition when access is read-only.
@@ -199,36 +252,15 @@ public partial class App : Application
     public static void EvaluateLicense(string dbPath)
     {
         var shareDir = Path.GetDirectoryName(dbPath) ?? string.Empty;
-#if DEBUG
-        var clock = FixedClock.FromEnvironmentOrSystem();
-        if (clock is FixedClock fc)
-            Logger.LogInfo($"[Licensing] DEBUG clock override: {fc.UtcNow:yyyy-MM-dd}");
-#else
-        var clock = new SystemClock();
-#endif
-        var licenseValidator = new LicenseValidator(LicenseKeys.PublicKeyPem, clock);
-        var trialService = new TrialService(
-            Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), "TermPoint"),
-            clock);
-        var licenseManager = new AppLicenseManager(licenseValidator, trialService);
 
-        // EvaluateAccess → ValidateLicenseFile reads termpoint.lic from the share
-        // directory with raw File.Exists + File.ReadAllText. Wrap in a deadline so
-        // a dead share doesn't freeze the UI thread for the SMB redirector timeout.
-        // On timeout, treat as NotFound → falls through to trial evaluation.
-        var (completed, result) = NetworkFileOps.RunAsync(
-            () => licenseManager.EvaluateAccess(shareDir), "EvaluateLicense")
-            .GetAwaiter().GetResult();
-
-        if (completed && result is not null)
+        // On timeout the remembered licence for this folder (if any) is used, else the trial.
+        var result = TryEvaluateLicense(shareDir);
+        if (result is null)
         {
-            LicenseStatus = result;
+            Logger.LogInfo("[Licensing] License check timed out — share unreachable; using remembered license or trial");
+            result = CreateLicenseManager().EvaluateAccessWithoutLicense(shareDir);
         }
-        else
-        {
-            Logger.LogInfo("[Licensing] License check timed out — share unreachable; falling back to trial");
-            LicenseStatus = licenseManager.EvaluateAccessWithoutLicense();
-        }
+        LicenseStatus = result;
 
         Logger.LogInfo($"[Licensing] {LicenseStatus.Reason}, access={LicenseStatus.AccessLevel}" +
             (LicenseStatus.DepartmentName != null ? $", dept={LicenseStatus.DepartmentName}" : "") +

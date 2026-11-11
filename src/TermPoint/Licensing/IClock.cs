@@ -8,6 +8,12 @@ public interface IClock
 {
     /// <summary>Returns the current UTC date and time.</summary>
     DateTime UtcNow { get; }
+
+    /// <summary>
+    /// The current calendar date in the user's local time zone. Licence expiry is compared against this,
+    /// so a licence that "expires July 1" works through the end of July 1 local time.
+    /// </summary>
+    DateOnly Today { get; }
 }
 
 /// <summary>
@@ -16,6 +22,9 @@ public interface IClock
 public class SystemClock : IClock
 {
     public DateTime UtcNow => DateTime.UtcNow;
+
+    /// <inheritdoc />
+    public DateOnly Today => DateOnly.FromDateTime(DateTime.Now);
 }
 
 #if DEBUG
@@ -26,6 +35,9 @@ public class SystemClock : IClock
 public class FixedClock : IClock
 {
     public DateTime UtcNow { get; }
+
+    /// <summary>The date of the fixed instant (time-zone independent, so tests are stable on any machine).</summary>
+    public DateOnly Today => DateOnly.FromDateTime(UtcNow);
 
     public FixedClock(DateTime fixedUtcDate) => UtcNow = fixedUtcDate;
 

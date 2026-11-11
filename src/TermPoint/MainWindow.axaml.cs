@@ -58,6 +58,33 @@ public partial class MainWindow : Window, ILifecyclePrompts, ISessionHost
     /// </summary>
     private bool _isDatabaseOpen;
 
+#if !BROWSER
+    /// <summary>Daily licence check for the open database; replaced on each database open, disposed on close.</summary>
+    private LicenseWatcher? _licenseWatcher;
+
+    /// <summary>
+    /// Starts the daily licence check for the database that was just opened, replacing any watcher from the
+    /// previous database. Each check re-reads the licence from the CURRENT database folder under the network
+    /// deadline and posts a banner; it never changes <see cref="App.LicenseStatus"/>.
+    /// </summary>
+    /// <param name="notifier">Receives the daily notices (Enqueue is thread-safe).</param>
+    private void StartLicenseWatcher(AppNotificationService notifier)
+    {
+        _licenseWatcher?.Dispose();
+        _licenseWatcher = new LicenseWatcher(
+            App.LicenseClock,
+            evaluate: () =>
+            {
+                var folder = Path.GetDirectoryName(App.Checkout.SourcePath);
+                return string.IsNullOrEmpty(folder) ? null : App.TryEvaluateLicense(folder);
+            },
+            sessionStatus: () => App.LicenseStatus,
+            post: notifier.Enqueue,
+            log: line => App.Logger.LogInfo(line));
+        _licenseWatcher.Start();
+    }
+#endif
+
     /// <summary>
     /// The database-session lifecycle (open, switch, recovery at open), which lives in
     /// <see cref="SessionLifecycle"/> and reaches this window only through <see cref="ILifecyclePrompts"/> and
@@ -298,6 +325,9 @@ public partial class MainWindow : Window, ILifecyclePrompts, ISessionHost
     {
         base.OnClosed(e);
         if (Avalonia.Controls.Design.IsDesignMode) return;
+#if !BROWSER
+        _licenseWatcher?.Dispose();
+#endif
 
         Dispatcher.UIThread.Post(() =>
         {
@@ -722,35 +752,14 @@ public partial class MainWindow : Window, ILifecyclePrompts, ISessionHost
                     AutoDismissAfter = TimeSpan.FromSeconds(8)
                 });
 
-            // Licensing notification — shown when the user is in trial, expired, or unlicensed.
+            // Licensing notification (trial countdown, expired, trial ended, licence expiring soon),
+            // then the daily check for a session left open across days.
 #if !BROWSER
-            var ls = App.LicenseStatus;
-            if (ls.Reason == Licensing.AccessReason.Trial && ls.DaysRemaining.HasValue)
-                notifier.Enqueue(new AppNotification
-                {
-                    Message  = $"You have {ls.DaysRemaining} days remaining in your trial.",
-                    Severity = NotificationSeverity.Info,
-                    LinkText = "Purchase a license",
-                    LinkUrl  = "https://termpoint.ca/license"
-                });
-            else if (ls.Reason == Licensing.AccessReason.Expired)
-                notifier.Enqueue(new AppNotification
-                {
-                    Message       = "Your license has expired. Editing is disabled.",
-                    Severity      = NotificationSeverity.Warning,
-                    IsDismissable = false,
-                    LinkText      = "Purchase or renew",
-                    LinkUrl       = "https://termpoint.ca/license"
-                });
-            else if (ls.Reason == Licensing.AccessReason.Unlicensed)
-                notifier.Enqueue(new AppNotification
-                {
-                    Message       = "Your trial has ended. Editing is disabled.",
-                    Severity      = NotificationSeverity.Warning,
-                    IsDismissable = false,
-                    LinkText      = "Purchase a license",
-                    LinkUrl       = "https://termpoint.ca/license"
-                });
+            var openNotice = Licensing.LicenseNotices.ForOpen(App.LicenseStatus, App.LicenseClock.Today);
+            if (openNotice is not null)
+                notifier.Enqueue(openNotice);
+
+            StartLicenseWatcher(notifier);
 #endif
 
             notifier.EnqueueUnseenAnnouncements();

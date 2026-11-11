@@ -37,30 +37,37 @@ public class LicenseValidator : ILicenseValidator
     {
         var filePath = Path.Combine(shareDirectoryPath, LicenseFileName);
 
-        if (!File.Exists(filePath))
-            return new LicenseResult { State = LicenseState.NotFound };
-
         string fileContent;
         try
         {
             fileContent = File.ReadAllText(filePath);
         }
+        catch (Exception ex) when (ex is FileNotFoundException or DirectoryNotFoundException)
+        {
+            return new LicenseResult { State = LicenseState.NotFound };
+        }
         catch (Exception ex)
         {
             return new LicenseResult
             {
-                State = LicenseState.Invalid,
+                State = LicenseState.Unreadable,
                 ErrorReason = $"Could not read license file: {ex.Message}"
             };
         }
 
-        return ValidateContent(fileContent);
+        var result = ValidateLicenseText(fileContent);
+        return result.State is LicenseState.Licensed or LicenseState.Expired
+            ? result.WithRawContent(fileContent)
+            : result;
     }
 
     /// <summary>
-    /// Parses the two-section .lic format, verifies the signature, and checks expiry.
+    /// Parses the two-section .lic format, verifies the signature, and checks expiry against
+    /// <see cref="IClock.Today"/>. Used for files just read and for remembered copies.
     /// </summary>
-    private LicenseResult ValidateContent(string fileContent)
+    /// <param name="fileContent">The full text of a <c>termpoint.lic</c> file.</param>
+    /// <returns>The validation result. Malformed content gives <see cref="LicenseState.Invalid"/>; it does not throw.</returns>
+    public LicenseResult ValidateLicenseText(string fileContent)
     {
         // Strip comment lines (human-readable header) before parsing.
         // Normalize line endings first — files may have \r\n (Windows) or \n (Unix).
@@ -161,7 +168,7 @@ public class LicenseValidator : ILicenseValidator
                     ErrorReason = $"Invalid expiry date format: {payload.Expiry}"
                 };
 
-            var today = DateOnly.FromDateTime(_clock.UtcNow);
+            var today = _clock.Today;
 
             if (expiryDate < today)
                 return new LicenseResult

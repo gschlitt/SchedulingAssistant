@@ -148,7 +148,13 @@ About 97 items in nine groups. Most were deferred from 1.2.3 or found while test
 > Changes made in a copy can't go back into the real database. The conflict flow's export can be reused.
 > *Source: 1.2.3 spec, item 26.*
 
-> [!note]- **2.2 Licence-expiry warning** `not started`
+> [!note]- **2.2 Licence-expiry warning** `done`
+> **Done (2026-11-11, design `designs/licence-checks-1.2.4.md`):** the notice for the last 30 days, plus the audit fixes:
+> a trial start in the future resets to 30 days (a Debug test date had left 131 days on GregDeskTop), a daily check for
+> sessions left open (notice only, no mid-session read-only), a remembered licence when the share is slow or
+> unreadable, expiry by local date, sturdier `trial.json` handling. MinimumVersionToWrite No. Licensing tests 101
+> passed; full suite 4588 passed, 0 failed.
+>
 > Today a licensed department sees only the footer line "Licensed to … (expires …)". The day after expiry, editing
 > turns read-only behind a banner that can't be dismissed. The check also runs only at startup, so a session left open
 > across the expiry date keeps editing until the next launch. **Fix:** within 30 days of expiry (not for permanent
