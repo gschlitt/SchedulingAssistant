@@ -46,7 +46,7 @@ About 97 items in nine groups. Most were deferred from 1.2.3 or found while test
 | 9 | [Smaller fixes and housekeeping](#9.%20Smaller%20fixes%20and%20housekeeping) | Bugs, consistency, upstream | 8 | 0 |
 
 **The urgent and high-value items, and where they stand (2026-11-10)**
-- **Section 4, Greg's priority from 2026-11-09:** 4.2, 4.3, 4.4, 4.5, 4.6, 4.7, 4.8 and 4.9 done (4.3 awaits a by-hand check); 4.11 shelved. 4.7 D1 closed a
+- **Section 4, Greg's priority from 2026-11-09:** 4.2, 4.3, 4.4, 4.5, 4.6, 4.7, 4.8 and 4.9 done (4.3's by-hand check passed 2026-11-10; macOS relaunch left); 4.11 shelved. 4.7 D1 closed a
   rule-3 hole (crash recovery could delete kept changes that antivirus was holding). Left: 4.10, 4.13's
   accepted remainder.
 - **Store package** (1.2–1.4): done. The shared Windows file and the graphics PDBs are left out (55.5 MB); the flight
@@ -566,8 +566,11 @@ Everything in this group is checked against rule 3 (never delete the only copy o
 > (C) the relaunch passes `--reopen-after-restore <path>` (`RestartArguments`); when it names the saved most-recent
 > database the start takes the auto-open branch once. macOS relaunch is now `open -n … --args` (check on the next
 > signed Mac build). Tests: `ShutdownBackstopTests`, `SessionLifecycleLeaveTests` (relaunch path, backstop armed last).
-> **Left: by-hand check on the sideload** (restore 3 times: old PID gone each time, restored database reopens; note
-> which log line, A's or B's, appeared).
+> **By-hand check passed (Greg, 10 Nov 2026, fresh 1.2.4.0 sideload on GregDeskTop, local database):** 3 restores,
+> each time the old process ended (one TermPoint left), the relaunch reopened the restored database (no chooser) and
+> the edit made after the backup was gone. Every time A's line appeared ("…asking for the shutdown again") and the loop
+> ended ~10 ms later; B never fired. So the close after a restore reliably never starts Avalonia's shutdown, and A
+> cures it. **Left:** the macOS `open -n` relaunch on the next signed Mac build.
 
 > [!note]- **4.4 Read-only connections: a second, database-level guard** `done`
 > 1.2.3 refuses writes in read-only sessions in TermPoint's code. Also turn on SQLite's own read-only switch

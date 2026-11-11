@@ -1,0 +1,804 @@
+<title>Access Watch Detail Wireframe</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap">
+<style>
+/* Layout: review toolbar, then TermPoint's main window at real size (1280 x 760), then this round's questions.
+   The page around the mock follows the viewer's theme; the mock is always the app's light look (TermPoint ships
+   light only). Round 2 adds: opening a watch (its detail in the Access tab) and the grid picture. Every number in
+   the mock is computed from the mock semester by a small slate search, so the list, detail and grid agree. */
+:root {
+  --page-bg: #eef1f5; --page-fg: #1c2430; --page-muted: #5b6676; --page-card: #ffffff; --page-line: #d3dae3;
+  --page-accent: #2f6db5;
+  --font: "Inter", "Segoe UI", system-ui, sans-serif;
+
+  /* The mock app (always light) */
+  --app-bg: #f3f4f7;          /* AppBackgroundColor */
+  --app-panel: #ffffff;
+  --app-line: #c8d5e4;        /* FilterGroupBorder */
+  --app-split: #e0e8f0;       /* GridSplitterColor */
+  --app-text: #000000;        /* TextPrimary */
+  --app-faint: #475569;       /* TextFaint */
+  --app-ghost: #9aa5b4;
+  --app-attn: #c03030;        /* ProgramConflictColor */
+  --app-tile: #dfe4ea;
+  --app-tile-line: #b8c2ce;
+  --app-hover: #e8eef6;
+  --app-tab-on: #ffffff;
+  --app-tab-off: #e4e9ef;
+  --app-essential: #1f3a5c;   /* heavy outline: every slate uses it */
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --page-bg: #151a21; --page-fg: #e3e8ef; --page-muted: #9aa6b6; --page-card: #1e252e; --page-line: #2f3945;
+    --page-accent: #7fb0ea; color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --page-bg: #151a21; --page-fg: #e3e8ef; --page-muted: #9aa6b6; --page-card: #1e252e; --page-line: #2f3945;
+  --page-accent: #7fb0ea; color-scheme: dark;
+}
+* { box-sizing: border-box; }
+body {
+  background: var(--page-bg); color: var(--page-fg); font-family: var(--font); font-size: 14px;
+  padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px));
+  padding-block: 20px 40px;
+}
+h1 { font-size: 20px; margin: 0 0 4px; text-wrap: balance; }
+.lede { color: var(--page-muted); margin: 0 0 14px; max-width: 75ch; line-height: 1.45; }
+
+.toolbar { display: flex; flex-wrap: wrap; gap: 10px 18px; align-items: center; background: var(--page-card);
+  border: 1px solid var(--page-line); border-radius: 6px; padding: 10px 12px; margin-bottom: 12px; }
+.toolbar label { display: flex; gap: 6px; align-items: center; font-size: 13px; color: var(--page-muted); }
+.toolbar select { font: inherit; font-size: 13px; padding: 3px 6px; color: var(--page-fg); background: var(--page-bg);
+  border: 1px solid var(--page-line); border-radius: 4px; max-width: 100%; }
+.seg { display: inline-flex; border: 1px solid var(--page-line); border-radius: 4px; overflow: hidden; flex-wrap: wrap; }
+.seg button { font: inherit; font-size: 12px; padding: 4px 9px; border: 0; background: transparent; color: var(--page-fg); cursor: pointer; }
+.seg button + button { border-left: 1px solid var(--page-line); }
+.seg button[aria-pressed="true"] { background: var(--page-accent); color: var(--page-card); }
+button:focus-visible, select:focus-visible, input:focus-visible { outline: 2px solid var(--page-accent); outline-offset: 1px; }
+
+.stage { overflow: auto; border: 1px solid var(--page-line); border-radius: 6px; background: var(--page-card); }
+.stage-inner { width: 1280px; height: 760px; transform-origin: 0 0; position: relative; }
+.stage.fit { overflow: hidden; }
+
+/* ---------- The mock app window ---------- */
+.app { position: absolute; inset: 0; background: var(--app-bg); color: var(--app-text); font-family: var(--font);
+  font-size: 12px; display: grid; grid-template-rows: 34px 1fr; user-select: none; }
+.menubar { display: flex; align-items: center; gap: 18px; padding: 0 12px; background: var(--app-panel);
+  border-bottom: 1px solid var(--app-line); font-size: 13px; color: var(--app-faint); }
+.menubar b { color: var(--app-text); font-weight: 600; margin-right: 8px; }
+.body3 { display: grid; grid-template-columns: 440px 4px 1fr; min-height: 0; }
+.leftcol { display: flex; flex-direction: column; min-height: 0; }
+.vsplit { background: var(--app-split); }
+.hsplit { height: 4px; background: var(--app-split); cursor: row-resize; flex: none; }
+.hsplit:hover { background: var(--app-line); }
+.panel { background: var(--app-panel); display: flex; flex-direction: column; min-height: 0; border: 1px solid var(--app-line); }
+.panel-head { display: flex; align-items: stretch; height: 26px; flex: none; background: var(--app-tab-off);
+  border-bottom: 1px solid var(--app-line); font-size: 13px; }
+.panel-head .title { padding: 4px 8px; font-weight: 600; display: flex; align-items: center; gap: 8px; }
+.panel-head .spacer { flex: 1; }
+.iconbtn { border: 0; background: transparent; padding: 0 7px; cursor: pointer; color: var(--app-faint); font: inherit; display: flex; align-items: center; }
+.iconbtn:hover { background: var(--app-hover); }
+.iconbtn svg { width: 13px; height: 13px; }
+.tab { border: 0; border-right: 1px solid var(--app-line); background: var(--app-tab-off); padding: 0 12px; font: inherit;
+  font-size: 13px; cursor: pointer; color: var(--app-faint); display: flex; align-items: center; gap: 6px; }
+.tab[aria-selected="true"] { background: var(--app-tab-on); color: var(--app-text); font-weight: 600; margin-bottom: -1px; }
+.tab .dot { width: 7px; height: 7px; border-radius: 50%; background: var(--app-attn); }
+.panel-body { flex: 1; min-height: 0; overflow: auto; }
+
+.cards { padding: 6px; display: flex; flex-direction: column; gap: 4px; }
+.card { border: 1px solid var(--app-line); border-radius: 3px; padding: 3px 6px; }
+.card .h { font-weight: 600; font-size: 12px; }
+.card .s { color: var(--app-faint); font-size: 11px; }
+.wl { width: 100%; border-collapse: collapse; font-size: 11px; font-variant-numeric: tabular-nums; }
+.wl th { text-align: left; font-weight: 600; color: var(--app-faint); padding: 3px 8px; border-bottom: 1px solid var(--app-line); }
+.wl td { padding: 2px 8px; border-bottom: 1px solid var(--app-split); }
+
+.filterbar { display: flex; gap: 8px; padding: 6px 8px 4px; flex: none; flex-wrap: wrap; }
+.fgroup { border: 2px solid var(--app-line); border-radius: 4px; padding: 0 6px 2px; position: relative; margin-top: 7px;
+  display: flex; align-items: center; min-height: 26px; }
+.fgroup .legend { position: absolute; top: -9px; left: 6px; background: var(--app-bg); padding: 0 3px; font-size: 11px; color: var(--app-faint); }
+.fbtn { border: 0; background: transparent; font: inherit; font-size: 13px; padding: 3px 4px; cursor: pointer; color: var(--app-text); border-radius: 3px; }
+.fbtn:hover { background: var(--app-hover); }
+.fbtn .attn { color: var(--app-attn); }
+
+/* The grid picture's one-line legend, shown only while a watch is open */
+.picbar { display: flex; align-items: center; gap: 14px; margin: 0 8px; padding: 3px 8px; background: var(--app-panel);
+  border: 1px solid var(--app-line); border-bottom: 0; font-size: 11px; color: var(--app-faint); flex: none; }
+.picbar b { color: var(--app-text); }
+.picbar .sw { display: inline-block; width: 18px; height: 11px; vertical-align: -1px; margin-right: 4px; border-radius: 2px;
+  background: var(--app-tile); border: 1px solid var(--app-tile-line); }
+.picbar .sw.str { background-image: repeating-linear-gradient(135deg, transparent 0 3px, rgba(110, 125, 145, .45) 3px 4px); }
+.picbar .k { font-weight: 700; color: var(--app-essential); }
+.picbar .k.cf { color: var(--app-attn); }
+.picbar .oth { margin-left: auto; display: flex; gap: 4px; align-items: center; color: var(--app-text); }
+.picbar .x { border: 0; background: transparent; cursor: pointer; font: inherit; color: var(--app-faint); }
+
+.gridarea { flex: 1; position: relative; margin: 0 8px 8px; border: 1px solid var(--app-line); background: var(--app-panel); min-height: 0; overflow: hidden; }
+.gridarea.nopic { margin-top: 2px; }
+.gday { position: absolute; top: 0; height: 20px; font-size: 11px; color: var(--app-faint); text-align: center; border-bottom: 1px solid var(--app-line); line-height: 20px; }
+.ghour { position: absolute; left: 0; width: 40px; font-size: 10px; color: var(--app-ghost); text-align: right; padding-right: 4px; }
+.gline { position: absolute; left: 40px; right: 0; border-top: 1px solid var(--app-split); }
+/* A tile holds one or more section lines (co-scheduled sections share a tile). Access marks go on each LINE,
+   never on the tile, because the tile's fill and border already carry subject and semester colours. */
+.gtile { position: absolute; background: var(--app-tile); border: 1px solid var(--sem-border, var(--app-tile-line)); border-radius: 2px;
+  overflow: hidden; color: #222; display: flex; flex-direction: column; }
+.gtile.shared { border: 2px solid #8a4fc0; background: #f3ecfa; }      /* shared-schedule overlay (purple outline) */
+.quiet .gtile:not(.shared) { border-color: var(--app-tile-line); }
+.quiet .gtile.shared { opacity: .3; border-color: var(--app-ghost); background: var(--app-tile); }
+.ent { display: flex; align-items: center; gap: 3px; padding: 0 3px; font-size: 10px; line-height: 14px; white-space: nowrap; overflow: hidden; flex: none; }
+.ent + .ent { border-top: 1px solid var(--app-tile-line); }
+.ent .smk { width: 7px; height: 7px; border-radius: 2px; flex: none; }             /* subject colour marker */
+.quiet .ent .smk { background: var(--app-ghost) !important; opacity: .5; }
+.ent .flg { color: #e08a00; font-size: 9px; }                                        /* section flag */
+.quiet .ent .flg { color: var(--app-ghost); }
+.ent .amk { font-size: 9px; }
+.ent.faded { opacity: .3; }
+.ent.stranded { color: #6b7685; background-image: repeating-linear-gradient(135deg, transparent 0 3px, rgba(110, 125, 145, .45) 3px 4px); }
+.ent.essential { font-weight: 700; }
+.ent.essential .amk { color: var(--app-essential); }
+.ent.cantfit { color: var(--app-attn); font-weight: 600; }
+.ent.cantfit .amk { color: var(--app-attn); }
+.help { width: 14px; height: 14px; border-radius: 50%; border: 1px solid var(--app-faint); background: transparent; color: var(--app-faint);
+  font: inherit; font-size: 9px; font-weight: 700; line-height: 12px; padding: 0; cursor: pointer; vertical-align: 2px; margin-left: 2px; }
+.help:hover { background: var(--app-hover); }
+/* Health-line phrases that have hover help */
+.hseg[data-tip] { text-decoration: underline dotted; text-underline-offset: 2px; cursor: help; }
+
+/* ---------- Access tab ---------- */
+.acc { display: flex; flex-direction: column; min-height: 100%; font-size: 12px; }
+.acc-head { display: flex; align-items: center; gap: 6px; padding: 5px 8px 4px; flex: none; }
+.acc-head .sem { font-weight: 600; flex: 1; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.abtn { font: inherit; font-size: 11px; padding: 2px 7px; border: 1px solid var(--app-line); background: var(--app-panel);
+  border-radius: 3px; cursor: pointer; color: var(--app-text); white-space: nowrap; }
+.abtn:hover:not(:disabled) { background: var(--app-hover); }
+.abtn:disabled { color: var(--app-ghost); cursor: not-allowed; }
+.rows { display: flex; flex-direction: column; padding: 0 4px; }
+.row { display: grid; grid-template-columns: 14px minmax(0, 140px) minmax(0, 1fr); align-items: baseline; gap: 4px;
+  padding: 2px 4px; border-radius: 3px; cursor: pointer; border: 0; background: transparent; font: inherit; text-align: left; color: var(--app-text); width: 100%; }
+.row:hover { background: var(--app-hover); }
+.row .mk { font-size: 10px; text-align: center; }
+.row .nm { font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.row .hl { font-size: 11px; color: var(--app-faint); white-space: normal; }
+.row.nomarks { grid-template-columns: minmax(0, 140px) minmax(0, 1fr); }
+.row.attn .hl { color: var(--app-attn); }
+.row.off .nm, .row.off .hl { color: var(--app-ghost); font-weight: 400; }
+.mk.attn { color: var(--app-attn); }
+.mk.ok { color: var(--app-ghost); }
+.acc-foot { margin-top: auto; padding: 4px 8px 5px; font-size: 10px; color: var(--app-faint); text-align: right; }
+
+/* A watch's detail */
+.det { display: flex; flex-direction: column; gap: 5px; padding: 4px 8px 8px; font-size: 12px; }
+.det-head { display: flex; align-items: center; gap: 6px; }
+.det-head .back { border: 0; background: transparent; font: inherit; font-size: 11px; color: var(--app-faint); cursor: pointer; padding: 1px 2px; }
+.det-head .back:hover { color: var(--app-text); text-decoration: underline; }
+.det-head .nm { font-weight: 700; font-size: 13px; flex: 1; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.det-head label { display: flex; gap: 3px; align-items: center; font-size: 11px; }
+.health { font-weight: 600; font-size: 12px; }
+.health.attn { color: var(--app-attn); }
+.flag { color: var(--app-attn); font-size: 11px; line-height: 1.35; display: flex; gap: 6px; align-items: flex-start; }
+.flag .t { flex: 1; min-width: 0; }
+.flag .abtn { color: var(--app-text); flex: none; }
+.clist { display: grid; grid-template-columns: max-content minmax(0, 1fr) max-content; gap: 1px 10px; align-items: baseline;
+  font-size: 11px; border-top: 1px solid var(--app-split); padding-top: 4px; }
+.clist .cc { font-weight: 600; font-size: 12px; }
+.clist .pp { color: var(--app-text); }
+.clist .pp .g { color: var(--app-ghost); }
+.clist .pp.no { color: var(--app-attn); }
+.lnk { border: 0; background: transparent; font: inherit; font-size: 11px; color: var(--app-faint); text-decoration: underline; cursor: pointer; padding: 0; }
+.lnk:disabled { color: var(--app-ghost); text-decoration: none; cursor: not-allowed; }
+.confirm { display: flex; gap: 8px; align-items: center; font-size: 11px; color: var(--app-faint); }
+.facts { border-top: 1px solid var(--app-split); padding-top: 4px; display: flex; flex-direction: column; gap: 2px; font-size: 11px; color: var(--app-faint); line-height: 1.35; }
+.foldbtn { border: 0; background: transparent; font: inherit; font-size: 11px; color: var(--app-faint); cursor: pointer; padding: 0; text-align: left; }
+.later { font-size: 10px; color: var(--app-ghost); font-style: italic; }
+.stub { margin: 4px 8px; padding: 6px 8px; background: var(--app-hover); border-radius: 3px; font-size: 11px; color: var(--app-faint); }
+
+/* Popped-out windows */
+.win { position: absolute; background: var(--app-panel); border: 1px solid #8a96a6; border-radius: 6px;
+  box-shadow: 0 10px 30px rgba(20, 30, 45, .28); display: flex; flex-direction: column; overflow: hidden; z-index: 5; }
+.win-title { height: 28px; display: flex; align-items: center; padding-left: 10px; background: #e9edf2; font-size: 12px;
+  border-bottom: 1px solid var(--app-line); cursor: move; flex: none; }
+.win-title .t { flex: 1; font-weight: 600; }
+.win-title button { border: 0; background: transparent; height: 100%; padding: 0 12px; cursor: pointer; font: inherit; color: var(--app-faint); }
+.win-title button:hover { background: #e3483f; color: #fff; }
+.win .panel-body { flex: 1; }
+
+/* Tooltip for grid tiles (hover) */
+.tip { position: absolute; z-index: 9; max-width: 300px; background: #1f2733; color: #f2f5f8; font-size: 11px; line-height: 1.35;
+  padding: 5px 8px; border-radius: 4px; pointer-events: none; }
+
+.notes { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 12px; margin-top: 14px; }
+.note { background: var(--page-card); border: 1px solid var(--page-line); border-radius: 6px; padding: 12px 14px; min-width: 0; }
+.note h2 { font-size: 14px; margin: 0 0 6px; }
+.note ol, .note ul { margin: 0; padding-left: 20px; line-height: 1.5; }
+.note li + li { margin-top: 4px; }
+.note .muted { color: var(--page-muted); }
+</style>
+
+<h1>Access panel, round 2c: opening a watch</h1>
+<p class="lede">Click a watch in the Access tab. Its detail opens in the tab and the grid shows its picture. Use
+<strong>Semester changes</strong> to move PSYCH 101 sections and watch the list, detail and grid follow. The numbers
+are computed from the mock semester, so they agree everywhere. Hover the dotted phrases in the health line, and the
+section lines on the grid.</p>
+
+<div class="toolbar" role="group" aria-label="Review controls">
+  <label for="variant">Semester changes
+    <select id="variant">
+      <option value="0">As planned</option>
+      <option value="1">PSYCH 101 A moved to Tue Thu 10:00</option>
+      <option value="2">PSYCH 101 A and B both moved to Tue Thu 10:00</option>
+    </select>
+  </label>
+  <label>Layout <span class="seg" id="layoutSeg"></span></label>
+  <label><input type="checkbox" id="readonly"> Read-only</label>
+  <label><input type="checkbox" id="fit"> Fit to width</label>
+</div>
+
+<div class="stage" id="stage"><div class="stage-inner" id="stageInner"><div class="app" id="app"></div></div></div>
+
+<div class="notes">
+  <div class="note">
+    <h2>Changed in 2b, from your round 2 review</h2>
+    <ul>
+      <li>The watch opens folded. Shared seats moved out of the fold into the line: "up to 60 students (seats
+        shared)", with a hover naming the other watches.</li>
+      <li>Hover help on the dotted phrases: slates, seats, "depends on", "best partial", "can't fit", "courses
+        offered", "not counted", "without times".</li>
+      <li>Course list wording: "any 1 of 3 sections", "only section (A)", "1 lecture + 1 of 3 labs".</li>
+      <li>Marks are on each section's line, not the tile. Co-scheduled pairs to look at: PSYCH 101 C with CHEM 213 A
+        (Tue/Thu 10:00), PSYCH 101 A with HIST 101 A (Tue/Thu 8:30), STAT 104 C with ENGL 105 B (Tue/Thu 14:30).</li>
+      <li>The legend's marks now match the list's: ● every slate uses it, ▲ can't fit.</li>
+    </ul>
+    <h2 style="margin-top:12px">Changed in 2c, from your 2b review</h2>
+    <ul>
+      <li>Hovers cut to three, one short sentence each: seats ("Seats shared with First-year Science (PSYCH 101 and
+        STAT 104)"), "depends on" ("PSYCH 101 A clashes with CHEM 213 A; …") and "can't fit". No definitions.</li>
+      <li>One help icon (?) for the whole Access idea, beside the panel title and the watch's name.</li>
+      <li>Subject colours, flags, semester borders and shared-schedule overlays stay as they are.</li>
+      <li>To try: other courses are hidden while a watch is open; <em>Show other courses</em> in the legend brings
+        them back, faded.</li>
+    </ul>
+  </div>
+  <div class="note">
+    <h2>Not in this round</h2>
+    <ul class="muted">
+      <li>Choosing some courses, pins, stepping through slates (round 3)</li>
+      <li>Teal boxes for costly clashes (round 3, with stepping)</li>
+      <li>Adding and editing a watch (round 4)</li>
+      <li>The editor pointer and notices from a change (later)</li>
+      <li>The fragile icon (parked; ● stands in)</li>
+    </ul>
+  </div>
+</div>
+
+<script>
+(() => {
+  // ================= Mock semester (Fall 2027) =================
+  // Days: 0 Mon … 4 Fri. Times in decimal hours. parts: the course's parts list; confirmed = stored by the user.
+  const COURSES = {
+    "BIOL 201": { parts: ["Lecture", "Laboratory"], confirmed: false },
+    "CHEM 213": { parts: [], confirmed: true },
+    "PSYCH 101": { parts: [], confirmed: false },
+    "STAT 104": { parts: [], confirmed: false },
+    "GEOG 250": { parts: [], confirmed: false },
+    "BIOL 111": { parts: [], confirmed: false },
+    "MATH 111": { parts: [], confirmed: false },
+    "BMEG 230": { parts: ["Lecture", "Laboratory", "Discussion"], confirmed: false },
+    "CHBE 201": { parts: ["Lecture"], confirmed: false },
+    "ELEC 203": { parts: ["Lecture"], confirmed: false }
+  };
+  const TT = [1, 3], MWF = [0, 2, 4], MW = [0, 2];
+  const m = (days, s, e) => ({ days, s, e });
+  /** Builds the semester's sections for one "Semester changes" variant. */
+  function sections(variant) {
+    const psychA = variant >= 1 ? [m(TT, 10, 11.33)] : [m(TT, 8.5, 9.83)];
+    const psychB = variant >= 2 ? [m(TT, 10, 11.33)] : [m(MW, 10, 11.33)];
+    return [
+      { c: "BIOL 201", code: "A", type: "Lecture", meets: [m(MWF, 9, 9.83)], cap: 120 },
+      { c: "BIOL 201", code: "L1", type: "Laboratory", meets: [m([1], 13, 15.83)], cap: 24 },
+      { c: "BIOL 201", code: "L2", type: "Laboratory", meets: [m([3], 13, 15.83)], cap: 24 },
+      { c: "BIOL 201", code: "L3", type: "Laboratory", meets: [m([2], 13, 15.83)], cap: 24 },
+      { c: "CHEM 213", code: "A", type: "Lecture", meets: [m(TT, 10, 11.33)], cap: 80 },
+      { c: "PSYCH 101", code: "A", type: "Lecture", meets: psychA, cap: 40 },
+      { c: "PSYCH 101", code: "B", type: "Lecture", meets: psychB, cap: 40 },
+      { c: "PSYCH 101", code: "C", type: "Lecture", meets: [m(TT, 10, 11.33)], cap: 40 },
+      { c: "STAT 104", code: "A", type: "Lecture", meets: [m(MWF, 11, 11.83)], cap: 60 },
+      { c: "STAT 104", code: "C", type: "Lecture", meets: [m(TT, 14.5, 15.83)], cap: 60 },
+      { c: "STAT 104", code: "D", type: "Online", meets: [], cap: 60 },
+      { c: "BIOL 111", code: "A", type: "Lecture", meets: [m(MWF, 8, 8.83)] },
+      { c: "MATH 111", code: "A", type: "Lecture", meets: [m(MWF, 12, 12.83)] },
+      { c: "MATH 111", code: "B", type: "Lecture", meets: [m(TT, 8.5, 9.83)] },
+      { c: "BMEG 230", code: "101", type: "Lecture", meets: [m(MW, 9.5, 10.83)] },
+      { c: "BMEG 230", code: "L1A", type: "Laboratory", meets: [m([1], 15, 17.83)] },
+      { c: "BMEG 230", code: "L1B", type: "Laboratory", meets: [m([2], 14, 16.83)] },
+      { c: "BMEG 230", code: "L1C", type: "Laboratory", meets: [m([4], 13, 15.83)] },
+      { c: "BMEG 230", code: "T1A", type: "Discussion", meets: [m([1], 15, 15.83)] },
+      { c: "BMEG 230", code: "T1B", type: "Discussion", meets: [m([3], 9, 9.83)] },
+      { c: "BMEG 230", code: "X01", type: null, meets: [m([4], 9, 9.83)] },
+      { c: "CHBE 201", code: "101", type: "Lecture", meets: [m(TT, 11, 12.33)] },
+      { c: "ELEC 203", code: "101", type: "Lecture", meets: [m([0, 2], 14, 14.83)] },
+      { c: "ELEC 203", code: "102", type: "Lecture", meets: [m(TT, 13, 14.33)] },
+      // Not in any watch; co-scheduled with watch sections so tiles hold more than one line
+      { c: "HIST 101", code: "A", type: "Lecture", meets: [m(TT, 8.5, 9.83)] },
+      { c: "ENGL 105", code: "B", type: "Lecture", meets: [m(TT, 14.5, 15.83)] }
+    ].map((s) => ({ ...s, id: s.c + " " + s.code, flag: s.c === "BIOL 201" && s.code === "L2" }));
+  }
+  /** Another department's sections, shown as a shared-schedule overlay (never analysed). */
+  const SHARED = [{ id: "PHYS 101 A (shared)", c: "PHYS 101", code: "A", meets: [m([0, 2], 15, 16.33)] }];
+  /** Subject colours for the grid's subject markers (colour by subject). */
+  const SUBJ = { BIOL: "#3a9a5b", CHEM: "#d9822b", PSYCH: "#c94f7c", STAT: "#3b78c4", MATH: "#2a9d8f", BMEG: "#8d6e63",
+    CHBE: "#6a8d2b", ELEC: "#b59b00", HIST: "#7d6ab0", ENGL: "#a05a2c", PHYS: "#555" };
+  const SEMESTER_BORDER = "#5d87b8";
+  const WATCHES = [
+    { name: "Enviro Y2", courses: ["BIOL 201", "CHEM 213", "GEOG 250", "PSYCH 101", "STAT 104"], seats: true },
+    { name: "First-year Science", courses: ["BIOL 111", "PSYCH 101", "MATH 111", "STAT 104"] },
+    { name: "Biomed Y2", courses: ["BMEG 230", "CHBE 201", "ELEC 203"] },
+    { name: "300-level BIOL", kind: "tags" },
+    { name: "Old Y2", kind: "off" }
+  ];
+  const DAYN = ["Mon", "Tue", "Wed", "Thu", "Fri"];
+
+  // ================= The slate search (what the real engine will do, in miniature) =================
+  /** Two sections clash when some meetings share a day and overlap in time (half-open). */
+  const clash = (a, b) => a.meets.some((x) => b.meets.some((y) =>
+    x.days.some((d) => y.days.includes(d)) && x.s < y.e && y.s < x.e));
+
+  /** Splits a course set into groups (one per part) and collects flags: not offered, missing part, not counted. */
+  function groupsFor(courseCodes, secs) {
+    const groups = [], notOffered = [], missing = [], notCounted = [];
+    for (const c of courseCodes) {
+      const mine = secs.filter((s) => s.c === c);
+      if (!mine.length) { notOffered.push(c); continue; }
+      const parts = COURSES[c].parts;
+      if (parts.length >= 2) {
+        const gs = parts.map((p) => ({ course: c, part: p, secs: mine.filter((s) => s.type === p) }));
+        mine.filter((s) => !parts.includes(s.type)).forEach((s) => notCounted.push(s));
+        const gone = gs.filter((g) => !g.secs.length);
+        if (gone.length) { gone.forEach((g) => missing.push({ course: c, part: g.part })); continue; }
+        groups.push(...gs);
+      } else groups.push({ course: c, part: null, secs: mine });
+    }
+    return { groups, notOffered, missing, notCounted };
+  }
+
+  /** Counts slates (capped) and records which sections appear in at least one. */
+  function search(groups, cap = 10000) {
+    const order = [...groups].sort((a, b) => a.secs.length - b.secs.length);
+    const used = new Set(), perGroup = order.map(() => new Set());
+    let count = 0;
+    const pick = [];
+    (function dfs(i) {
+      if (count >= cap) return;
+      if (i === order.length) { count++; pick.forEach((s, k) => { used.add(s.id); perGroup[k].add(s.id); }); return; }
+      for (const s of order[i].secs) {
+        if (pick.some((p) => clash(p, s))) continue;
+        pick.push(s); dfs(i + 1); pick.pop();
+        if (count >= cap) return;
+      }
+    })(0);
+    return { count, used, capped: count >= cap };
+  }
+
+  /** The best partial slate when there's no full one: the courses left out of every largest subset that fits. */
+  function bestPartial(groups) {
+    const courses = [...new Set(groups.map((g) => g.course))];
+    for (let k = courses.length - 1; k >= 1; k--) {
+      const leftOut = new Set();
+      let found = false;
+      for (const subset of combos(courses, k)) {
+        if (search(groups.filter((g) => subset.includes(g.course)), 1).count) {
+          found = true; courses.filter((c) => !subset.includes(c)).forEach((c) => leftOut.add(c));
+        }
+      }
+      if (found) return { covers: k, of: courses.length, cantFit: [...leftOut] };
+    }
+    return { covers: 0, of: courses.length, cantFit: courses };
+  }
+  function combos(arr, k) {
+    if (k === 0) return [[]];
+    if (arr.length < k) return [];
+    const [h, ...t] = arr;
+    return [...combos(t, k - 1).map((c) => [h, ...c]), ...combos(t, k)];
+  }
+
+  /** Everything the panel reports about one watch in one semester view. */
+  function analyse(w, secs) {
+    const { groups, notOffered, missing, notCounted } = groupsFor(w.courses, secs);
+    const r = search(groups);
+    const a = { w, groups, notOffered, missing, notCounted, count: r.count, capped: r.capped, roles: {} };
+    const offered = w.courses.length - notOffered.length - new Set(missing.map((x) => x.course)).size;
+    a.offeredText = offered < w.courses.length ? `${offered} of ${w.courses.length} courses offered` : "";
+    a.essentialTiming = []; a.onlySections = [];
+    for (const g of groups) for (const s of g.secs) {
+      if (r.count === 0) { a.roles[s.id] = "none"; continue; }
+      if (!r.used.has(s.id)) a.roles[s.id] = "stranded";
+      else if (g.secs.filter((x) => r.used.has(x.id)).length === 1) {
+        if (g.secs.length > 1) { a.roles[s.id] = "essential"; a.essentialTiming.push(s.id); }
+        else { a.roles[s.id] = "only"; a.onlySections.push(s.id); }
+      } else a.roles[s.id] = "usable";
+    }
+    if (r.count === 0) a.best = bestPartial(groups);
+    a.noTimes = groups.flatMap((g) => g.secs).filter((s) => !s.meets.length && (r.count === 0 || r.used.has(s.id))).map((s) => s.id);
+    // Seats: mock figure only (the real engine solves a small packing problem); shown when every section has a capacity
+    a.seats = w.seats && r.count ? [60, 40, 0][state.variant] : null;
+    a.mark = (!r.count || notOffered.length || missing.length || notCounted.length) ? "attn" : a.essentialTiming.length ? "fragile" : "ok";
+    return a;
+  }
+  const nameList = (ids) => ids.length <= 2 ? ids.join(", ") : `${ids.slice(0, 2).join(", ")} +${ids.length - 2} more`;
+  const plural = (n, one, many) => `${n} ${n === 1 ? one : many}`;
+  const joinAnd = (xs) => xs.length <= 1 ? xs.join("") : `${xs.slice(0, -1).join(", ")} and ${xs[xs.length - 1]}`;
+
+  /**
+   * The health line as phrases, each with optional hover help (round 2 review, point 2).
+   * @param a an analysis; a.sharedWith lists other watches whose course sets overlap this one's.
+   * @returns [{ text, tip }] in display order.
+   */
+  function healthSegs(a) {
+    const segs = [], n = a.w.name;
+    const offeredCourses = a.w.courses.filter((c) => !a.notOffered.includes(c) && !a.missing.some((x) => x.course === c));
+    // Round 2b review: hovers only where the line can't say it and the detail below doesn't; one short sentence,
+    // no definitions (the Access help icon explains the ideas once).
+    if (a.count) {
+      segs.push({ text: a.capped ? "More than 10,000 slates" : `${a.count.toLocaleString()} ${a.count === 1 ? "slate" : "slates"}` });
+      if (a.seats) {
+        const shared = a.sharedWith.length;
+        segs.push({ text: `up to ${a.seats} students${shared ? " (seats shared)" : ""}`,
+          tip: shared ? `Seats shared with ${a.sharedWith.map((s) => `${s.name} (${joinAnd(s.courses)})`).join("; ")}.` : "" });
+      }
+      if (a.essentialTiming.length) {
+        // "PSYCH 101 A and C clash with CHEM 213 A": each other section of the part, and what it clashes with
+        const why = a.essentialTiming.map((id) => {
+          const s = a.groups.flatMap((g) => g.secs).find((x) => x.id === id);
+          const g = a.groups.find((gg) => gg.secs.includes(s));
+          return g.secs.filter((x) => x !== s).map((x) => `${x.id} ${clashText(x, a)}`).join("; ");
+        });
+        segs.push({ text: `depends on ${nameList(a.essentialTiming)}`, tip: why.join("; ") + "." });
+      }
+    } else {
+      segs.push({ text: "No full slate" });
+      segs.push({ text: `best partial covers ${a.best.covers} of ${a.best.of}` });
+      const cf = a.best.cantFit;
+      segs.push({ text: `${cf.join(" or ")} can't fit`,
+        tip: cf.length === 1 ? `No ${cf[0]} section fits with the other courses.` : `Students can take all but ${cf.join(", or all but ")}.` });
+    }
+    if (a.offeredText) segs.push({ text: a.offeredText });
+    if (a.notCounted.length) segs.push({ text: `${plural(a.notCounted.length, "section", "sections")} not counted` });
+    if (a.noTimes.length) segs.push({ text: `${plural(a.noTimes.length, "section", "sections")} without times` });
+    return segs;
+  }
+
+  /** "clashes with CHEM 213 A", or a plain fallback when no single section is to blame. */
+  function clashText(s, a) {
+    const always = Object.entries(a.roles).filter(([, r]) => r === "essential" || r === "only").map(([id]) => id);
+    const hit = a.groups.flatMap((g) => g.secs).find((t) => (t.c !== s.c || t.type !== s.type) && always.includes(t.id) && clash(s, t));
+    return hit ? `clashes with ${hit.id}` : "doesn't fit with the other courses";
+  }
+
+  /** Why a section can't be part of any slate: the first section it clashes with that every slate uses. */
+  function strandedReason(s, a) {
+    const always = Object.entries(a.roles).filter(([, r]) => r === "essential" || r === "only").map(([id]) => id);
+    const secs = a.groups.flatMap((g) => g.secs);
+    const hit = secs.find((t) => t.c !== s.c && always.includes(t.id) && clash(s, t)) ||
+      secs.find((t) => t.c === s.c && t.type !== s.type && always.includes(t.id) && clash(s, t));
+    if (hit) return `it clashes with ${hit.id}, which every slate uses.`;
+    return "no combination of the other courses fits around it.";
+  }
+
+  // ================= Review state =================
+  const state = {
+    variant: 0, open: null, fold: true, quiet: false, showOthers: false, layout: "docked", tab: "access", readOnly: false, slotH: 250,
+    stub: null, foldOpen: false, confirmed: new Set(),
+    wins: { access: { x: 520, y: 200, w: 520, h: 420 }, workload: { x: 900, y: 120, w: 360, h: 300 } }
+  };
+  const LAYOUTS = [["docked", "Docked"], ["accessOut", "Access popped out"]];
+  const QUIETS = [[true, "Grey them out"], [false, "Keep them"]];
+  const $ = (s) => document.querySelector(s);
+  const esc = (s) => String(s).replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
+  const popIcon = '<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M9 2h5v5M14 2 7.5 8.5M12 9.5V14H2V4h4.5"/></svg>';
+  /** The one help icon for the whole Access idea (slates, parts, seats), like the grid's other HelpMarkers. */
+  const HELP = `<button class="help" data-act="help" title="How access watches work (opens Help)" aria-label="Help: access watches">?</button>`;
+  const isGuessed = (c) => !COURSES[c].confirmed && !state.confirmed.has(c);
+
+  function analyses() {
+    const secs = sections(state.variant);
+    const list = WATCHES.map((w) => w.kind ? { w, kind: w.kind } : analyse(w, secs));
+    // Shared seats: other analysed watches that cover some of the same courses (rule 26)
+    for (const a of list) if (!a.kind) {
+      a.sharedWith = list.filter((b) => !b.kind && b !== a)
+        .map((b) => ({ name: b.w.name, courses: a.w.courses.filter((c) => b.w.courses.includes(c) && !a.notOffered.includes(c)) }))
+        .filter((x) => x.courses.length);
+      a.segs = healthSegs(a);
+      a.line = a.segs.map((s) => s.text).join(" · ");
+    }
+    return { secs, list };
+  }
+
+  // ================= Rendering =================
+  function listView(all) {
+    const order = { attn: 0, fragile: 1, ok: 1 };
+    const sorted = [...all].sort((x, y) => {
+      const kx = x.kind ? 3 : order[x.mark], ky = y.kind ? 3 : order[y.mark];
+      return kx - ky || (x.kind === "off") - (y.kind === "off") || x.w.name.localeCompare(y.w.name);
+    });
+    const ro = state.readOnly ? ' disabled title="Read-only: you can look at watches but not change them."' : "";
+    let h = `<div class="acc"><div class="acc-head"><span class="sem">Access · Fall 2027 ${HELP}</span>
+      <button class="abtn" data-act="add"${ro}>+ Add a watch</button><button class="abtn" data-act="checkall">Check all courses</button></div>`;
+    if (state.stub) h += `<div class="stub">${esc(state.stub)}</div>`;
+    h += `<div class="rows" role="list">` + sorted.map((a) => {
+      const line = a.kind === "tags" ? "Tags and levels: overlaps boxed on the grid" : a.kind === "off" ? "Off" : a.line;
+      const mark = a.kind ? "" : a.mark;
+      const cls = ["row", mark === "attn" ? "attn" : "", a.kind === "off" ? "off" : ""].join(" ");
+      const mk = `<span class="mk ${mark}" aria-hidden="true">${mark === "attn" ? "▲" : mark === "fragile" ? "●" : mark === "ok" ? "○" : ""}</span>`;
+      return `<button role="listitem" class="${cls}" data-open="${esc(a.w.name)}">${mk}<span class="nm">${esc(a.w.name)}</span><span class="hl">${esc(line)}</span></button>`;
+    }).join("") + `</div>`;
+    if (all.some((a) => !a.kind && !a.w.seats)) h += `<div class="acc-foot">Set section capacities to see how many students fit.</div>`;
+    return h + `</div>`;
+  }
+
+  function detailView(a) {
+    const ro = state.readOnly ? ' disabled title="Read-only: you can look at watches but not change them."' : "";
+    let h = `<div class="det"><div class="det-head"><button class="back" data-back="1">‹ All watches</button>
+      <span class="nm">${esc(a.w.name)} ${HELP}</span>
+      <button class="abtn" data-act="edit"${ro}>Edit</button>
+      <label><input type="checkbox" ${a.kind === "off" ? "" : "checked"}${state.readOnly ? " disabled" : ""} data-act="toggle"> On</label>
+      <button class="abtn" data-act="delete"${ro}>Delete</button></div>`;
+    if (a.kind === "tags") return h + `<div class="facts">300-level BIOL picks sections by tags and levels. TermPoint boxes
+      overlaps for it on the grid, but counts slates only for watches that list courses.</div></div>`;
+    if (a.kind === "off") return h + `<div class="facts">This watch is off, so TermPoint isn't checking it. Turn it on to see
+      its access.</div></div>`;
+
+    h += `<div class="health ${a.mark === "attn" && !a.count ? "attn" : ""}">` + a.segs.map((s) =>
+      `<span class="hseg"${s.tip ? ` data-tip="${esc(s.tip)}"` : ""}>${esc(s.text)}</span>`).join(" · ") + `</div>`;
+    // Flags (rule 38 and friends): each says what's wrong and what to do
+    a.notOffered.forEach((c) => { h += `<div class="flag"><span class="t">▲ ${c} isn't offered in Fall 2027. Remove it from
+      the watch, or leave it if a section is still to be added.</span><button class="abtn" data-act="remove"${ro}>Remove from watch</button></div>`; });
+    a.missing.forEach((x) => { h += `<div class="flag"><span class="t">▲ ${x.course} has no ${x.part.toLowerCase()} sections in
+      Fall 2027. Add one, or edit ${x.course}'s parts if it no longer has one.</span><button class="abtn" data-act="parts"${ro}>Edit parts</button></div>`; });
+    a.notCounted.forEach((s) => { h += `<div class="flag"><span class="t">▲ ${s.id} has no section type, so it isn't counted.</span>
+      <button class="abtn" data-act="parts"${ro}>Edit parts</button></div>`; });
+
+    // Courses and their parts
+    const secsNow = sections(state.variant);
+    h += `<div class="clist">` + a.w.courses.map((c) => {
+      const off = a.notOffered.includes(c);
+      const ptxt = off ? "not offered" : choiceText(c, secsNow);
+      const g = !off && isGuessed(c) && COURSES[c].parts.length >= 2 ? ' <span class="g">(guessed)</span>' : "";
+      return `<span class="cc">${c}</span><span class="pp ${off ? "no" : ""}">${ptxt}${g}</span>
+        <span>${off ? "" : `<button class="lnk" data-act="parts"${ro}>Edit parts</button>`}</span>`;
+    }).join("") + `</div>`;
+    const guessed = a.w.courses.filter((c) => !a.notOffered.includes(c) && isGuessed(c) && COURSES[c].parts.length >= 2);
+    if (guessed.length) h += `<div class="confirm"><button class="abtn" data-confirm="${esc(guessed.join("|"))}"${ro}
+      title="Saves these parts to the courses. Other watches with these courses use them too.">These are right</button>
+      <span>saves the guessed parts of ${guessed.join(", ")} as shown</span></div>`;
+
+    // Quieter facts
+    const facts = [];
+    if (!a.seats && a.count) facts.push("Seats: set section capacities to see how many students fit.");
+    if (a.onlySections.length) facts.push(`Only sections, so every slate uses them: ${a.onlySections.join(", ")}.`);
+    if (a.noTimes.length) facts.push(`Assumes ${a.noTimes.join(", ")} (no times) fits anywhere.`);
+    if (a.count === 0) facts.push(`Nothing is hatched on the grid: with no full slate, the sections of the courses that can't fit are marked ▲ in red.`);
+    if (facts.length) {
+      if (state.fold && !state.foldOpen) h += `<button class="foldbtn" data-fold="1">▸ More about this watch (${facts.length})</button>`;
+      else h += `<div class="facts">${state.fold ? `<button class="foldbtn" data-fold="1">▾ Less</button>` : ""}${facts.map((f) => `<span>${esc(f)}</span>`).join("")}</div>`;
+    }
+    h += `<div class="later">Choosing some courses, pins and stepping through slates go here (round 3).</div>`;
+    return h + `</div>`;
+  }
+
+  /**
+   * What a student takes from a course, in words that show how much choice there is (round 2 review, point 3):
+   * "any 1 of 3 sections", "only section (A)", "1 lecture + 1 of 3 labs + 1 of 2 discussions".
+   */
+  function choiceText(c, secs) {
+    const mine = secs.filter((s) => s.c === c), parts = COURSES[c].parts;
+    const short = (p) => ({ Laboratory: "lab", Lecture: "lecture", Discussion: "discussion" }[p] || p.toLowerCase());
+    if (parts.length >= 2) return parts.map((p) => {
+      const n = mine.filter((s) => s.type === p).length;
+      return n === 1 ? `1 ${short(p)}` : n === 0 ? `no ${short(p)}s` : `1 of ${n} ${short(p)}s`;
+    }).join(" + ");
+    return mine.length === 1 ? `only section (${mine[0].code})` : `any 1 of ${mine.length} sections`;
+  }
+
+  function sectionList(secs) {
+    return `<div class="cards">` + secs.slice(0, 14).map((s) => `<div class="card"><div class="h">${s.id}</div><div class="s">${s.type || "No type"} · ${
+      s.meets.length ? s.meets.map((x) => x.days.map((d) => DAYN[d]).join(" ") + " " + hm(x.s) + "–" + hm(x.e)).join(", ") : "No times"}</div></div>`).join("") + `</div>`;
+  }
+  const hm = (t) => `${Math.floor(t)}:${String(Math.round((t % 1) * 60)).padStart(2, "0")}`;
+
+  /** The grid with every timed section; while a watch is open, its picture is laid over it. */
+  function grid(secs, a) {
+    const top = 20, hourH = 46, x0 = 40, colW = 150, start = 8;
+    let h = "";
+    DAYN.forEach((d, i) => { h += `<div class="gday" style="left:${x0 + i * colW}px;width:${colW}px">${d}</div>`; });
+    for (let hr = start; hr <= 18; hr++) {
+      const y = top + (hr - start) * hourH;
+      h += `<div class="gline" style="top:${y}px"></div><div class="ghour" style="top:${y - 6}px">${hr}:00</div>`;
+    }
+    // Tiles: sections meeting on the same day with identical start and end share one tile (co-scheduled)
+    const tiles = new Map();
+    const addItem = (s, d, st, en, shared) => {
+      const key = `${d}|${st}|${en}|${shared ? "x" : ""}`;
+      if (!tiles.has(key)) tiles.set(key, { d, st, en, shared, secs: [] });
+      tiles.get(key).secs.push(s);
+    };
+    // While a watch is open, sections of other courses (and other departments' shared sections) are hidden unless
+    // "Show other courses" is ticked; hidden ones free their space, so the watch's tiles widen.
+    const shown = (s) => !a || state.showOthers || a.w.courses.includes(s.c);
+    secs.filter(shown).forEach((s) => s.meets.forEach((mt) => mt.days.forEach((d) => addItem(s, d, mt.s, mt.e, false))));
+    SHARED.filter(shown).forEach((s) => s.meets.forEach((mt) => mt.days.forEach((d) => addItem(s, d, mt.s, mt.e, true))));
+    DAYN.forEach((_, d) => {
+      const list = [...tiles.values()].filter((t) => t.d === d).sort((p, q) => p.st - q.st || p.en - q.en);
+      // Lanes: overlapping tiles sit side by side, as on the real grid
+      const lanes = [];
+      list.forEach((t) => { let l = lanes.findIndex((e) => e <= t.st); if (l < 0) { l = lanes.length; lanes.push(0); } lanes[l] = t.en; t.lane = l; });
+      const n = Math.max(1, lanes.length), w = (colW - 4) / n;
+      list.forEach((t) => {
+        const lines = t.secs.map((s) => entry(s, t.shared, a)).join("");
+        h += `<div class="gtile ${t.shared ? "shared" : ""}" style="--sem-border:${SEMESTER_BORDER};left:${x0 + d * colW + 2 + t.lane * w}px;width:${w - 2}px;top:${top + (t.st - start) * hourH}px;height:${(t.en - t.st) * hourH - 2}px">${lines}</div>`;
+      });
+    });
+    return h;
+  }
+
+  /**
+   * One section's line in a tile: subject marker, label, flag, and (while a watch is open) its access mark.
+   * Access marks are per line (round 2 review, point 5), so two sections sharing a tile can differ.
+   */
+  function entry(s, shared, a) {
+    let cls = "ent", tip = "", amk = "";
+    if (shared) tip = `${s.c} ${s.code}: another department's section (shared schedule). Not part of any watch.`;
+    if (a && !a.kind) {
+      const inWatch = a.w.courses.includes(s.c);
+      const role = a.roles[s.id];
+      if (!inWatch) cls += " faded";
+      else if (a.count === 0) {
+        if (a.best.cantFit.includes(s.c)) { cls += " cantfit"; amk = "▲"; tip = `${s.c} can't fit with the rest of ${a.w.name}: no ${s.c} section fits around the other courses.`; }
+      }
+      else if (role === "stranded") { cls += " stranded"; tip = `${s.id} can't be part of any slate for ${a.w.name}: ${strandedReason(s, a)}`; }
+      else if (role === "essential") { cls += " essential"; amk = "●"; tip = `Every slate for ${a.w.name} uses ${s.id}: ${s.c}'s other sections can't fit. If it moves to a clashing time, students lose every full slate.`; }
+      else if (role === "only") tip = `${s.id} is the only ${s.c} ${COURSES[s.c].parts.length >= 2 ? s.type.toLowerCase() : "section"}, so every slate uses it.`;
+      else if (role === "usable") tip = `${s.id} can be part of a slate for ${a.w.name}.`;
+      else { cls += " faded"; tip = `${s.id} isn't counted (no section type).`; }
+    }
+    const subj = s.c.split(" ")[0];
+    const flag = s.flag ? `<span class="flg" title="Flagged">⚑</span>` : "";
+    return `<div class="${cls}"${tip ? ` data-tip="${esc(tip)}"` : ""}><span class="smk" style="background:${SUBJ[subj] || "#999"}"></span>${s.c.replace(" ", "")} ${s.code}${flag}${amk ? `<span class="amk">${amk}</span>` : ""}</div>`;
+  }
+
+  function render() {
+    const { secs, list } = analyses();
+    const open = state.open && list.find((a) => a.w.name === state.open);
+    const enabled = list.filter((a) => a.kind !== "off").length;
+    const attn = list.filter((a) => a.mark === "attn").length;
+    const accessBody = open ? detailView(open) : listView(list);
+    const pic = open && !open.kind;
+    const legend = !pic ? "" : `<div class="picbar"><b>${esc(open.w.name)}</b>${open.count
+      ? `<span><span class="k">●</span> every slate uses it</span><span><span class="sw"></span>can be used</span><span><span class="sw str"></span>can't be used</span>`
+      : `<span><span class="k cf">▲</span> can't fit with the rest</span>`}<label class="oth"><input type="checkbox" id="showOthers" ${state.showOthers ? "checked" : ""}> Show other courses</label><button class="x" data-back="1" aria-label="Close the watch">✕ Close</button></div>`;
+    const accDocked = state.layout === "docked";
+    const pop = `<button class="iconbtn" data-pop="1" title="Open ${state.tab === "access" ? "Access" : "Workload"} in its own window">${popIcon}</button>`;
+    const slot = accDocked ? `<div class="hsplit" id="hsplit" title="Drag to resize"></div>
+      <div class="panel" style="height:${state.slotH}px;flex:none"><div class="panel-head" role="tablist">
+        <button class="tab" role="tab" data-tab="workload" aria-selected="${state.tab === "workload"}">Workload</button>
+        <button class="tab" role="tab" data-tab="access" aria-selected="${state.tab === "access"}">Access${attn && state.tab !== "access" ? '<span class="dot"></span>' : ""}</button>
+        <span class="spacer"></span>${pop}</div>
+        <div class="panel-body">${state.tab === "access" ? accessBody : workload()}</div></div>`
+      : `<div class="hsplit"></div><div class="panel" style="height:${state.slotH}px;flex:none"><div class="panel-head"><span class="title">Workload View</span></div><div class="panel-body">${workload()}</div></div>`;
+    $("#app").innerHTML = `
+      <div class="menubar"><b>TermPoint</b><span>Files</span><span>Sections</span><span>Courses</span><span>Instructors</span><span>Rooms</span><span>Export</span><span>More</span></div>
+      <div class="body3"><div class="leftcol">
+          <div class="panel" style="flex:1"><div class="panel-head"><span class="title">Section View</span></div><div class="panel-body">${sectionList(secs)}</div></div>
+          ${slot}</div>
+        <div class="vsplit"></div>
+        <div class="panel"><div class="panel-head"><span class="title">Schedule View <span style="font-weight:400;color:var(--app-faint)">Fall 2027</span></span></div>
+          <div class="filterbar">
+            <div class="fgroup"><span class="legend">Filters</span><button class="fbtn" tabindex="-1">None ▾</button></div>
+            <div class="fgroup"><span class="legend">Overlays</span><button class="fbtn" tabindex="-1">None ▾</button></div>
+            <div class="fgroup"><span class="legend">Access</span><button class="fbtn" id="summaryBtn">${enabled} watches${attn ? ` · <span class="attn">${attn} ${attn === 1 ? "needs" : "need"} a look</span>` : ""}</button></div>
+          </div>
+          ${legend}
+          <div class="gridarea ${pic ? "" : "nopic"} ${pic && state.quiet ? "quiet" : ""}" id="gridarea">${grid(secs, pic ? open : null)}</div>
+        </div></div>
+      ${accDocked ? "" : `<div class="win" style="left:${state.wins.access.x}px;top:${state.wins.access.y}px;width:${state.wins.access.w}px;height:${state.wins.access.h}px">
+        <div class="win-title" data-drag="access"><span class="t">Access — TermPoint</span><button data-close="1" title="Close: goes back into the main window">✕</button></div>
+        <div class="panel-body">${accessBody}</div></div>`}`;
+    $("#layoutSeg").innerHTML = LAYOUTS.map(([k, l]) => `<button data-layout="${k}" aria-pressed="${state.layout === k}">${l}</button>`).join("");
+  }
+  function workload() {
+    return `<table class="wl"><thead><tr><th>Instructor</th><th>Sections</th><th>Credits</th></tr></thead><tbody>` +
+      [["J. R. Smith", 3, "9.0"], ["M. K. Patel", 4, "12.0"], ["A. L. Wong", 2, "6.0"], ["D. T. Nguyen", 3, "9.0"], ["R. H. Chen", 4, "12.0"]]
+        .map((r) => `<tr><td>${r[0]}</td><td>${r[1]}</td><td>${r[2]}</td></tr>`).join("") + `</tbody></table>`;
+  }
+
+  // ================= Interactions =================
+  $("#variant").addEventListener("change", (e) => { state.variant = +e.target.value; render(); });
+  $("#readonly").addEventListener("change", (e) => { state.readOnly = e.target.checked; render(); });
+  document.addEventListener("change", (e) => { if (e.target.id === "showOthers") { state.showOthers = e.target.checked; render(); } });
+  $("#fit").addEventListener("change", (e) => setFit(e.target.checked));
+  document.addEventListener("keydown", (e) => { if (e.key === "Escape" && state.open) { state.open = null; render(); } });
+  document.addEventListener("click", (e) => {
+    const t = e.target.closest("button, input[data-act]");
+    if (!t) return;
+    const d = t.dataset;
+    if (d.open) { state.open = d.open; state.stub = null; state.foldOpen = false; state.tab = "access"; }
+    else if (d.back) state.open = null;
+    else if (d.layout) state.layout = d.layout;
+    else if (d.quiet) state.quiet = d.quiet === "true";
+    else if (d.fold) state.foldOpen = !state.foldOpen;
+    else if (d.tab) state.tab = d.tab;
+    else if (d.pop) { if (state.tab === "access") state.layout = "accessOut"; }
+    else if (d.close) state.layout = "docked";
+    else if (d.confirm) d.confirm.split("|").forEach((c) => state.confirmed.add(c));
+    else if (d.act === "toggle") { e.preventDefault(); return; }
+    else if (d.act) {
+      state.stub = { help: "Opens the Access help article: slates, parts and seats explained once, for the whole feature.",
+        add: "Round 4: adding a watch opens here.", checkall: "A later round: Check all courses.",
+        edit: "Round 4: editing the watch.", delete: "Deleting asks first, then removes the watch.",
+        remove: "Removes the course from this watch (an ordinary edit).",
+        parts: "A later round: opens this course's parts in Courses, then comes back here." }[d.act];
+      if (state.open && d.act !== "add" && d.act !== "checkall") { alertInDetail(state.stub); return; }
+    }
+    else if (t.id === "summaryBtn") { state.tab = "access"; }
+    else return;
+    render();
+  });
+  /** Shows a one-line "what this would do" note at the top of an open detail. */
+  function alertInDetail(msg) {
+    render();
+    const det = document.querySelector(".det");
+    if (det) det.insertAdjacentHTML("afterbegin", `<div class="stub" style="margin:0">${esc(msg)}</div>`);
+  }
+
+  // Tile hover tips
+  const stage = $("#stage"), stageInner = $("#stageInner");
+  let tipEl = null;
+  stageInner.addEventListener("pointerover", (e) => {
+    const tile = e.target.closest("[data-tip]");
+    if (tipEl) { tipEl.remove(); tipEl = null; }
+    if (!tile) return;
+    tipEl = document.createElement("div");
+    tipEl.className = "tip"; tipEl.textContent = tile.dataset.tip;
+    const r = tile.getBoundingClientRect(), base = stageInner.getBoundingClientRect(), k = scale();
+    tipEl.style.left = Math.min(1280 - 310, (r.left - base.left) / k + 8) + "px";
+    tipEl.style.top = ((r.bottom - base.top) / k + 4) + "px";
+    stageInner.appendChild(tipEl);
+  });
+
+  // Dragging the splitter and the popped-out window
+  let drag = null;
+  const scale = () => (stageInner.style.transform ? parseFloat(stageInner.style.transform.slice(6)) : 1);
+  document.addEventListener("pointerdown", (e) => {
+    if (e.target.id === "hsplit") drag = { kind: "split", y: e.clientY, h0: state.slotH };
+    const bar = e.target.closest("[data-drag]");
+    if (bar && !e.target.closest("button")) drag = { kind: "win", x: e.clientX, y: e.clientY, gx: state.wins.access.x, gy: state.wins.access.y };
+    if (drag) e.preventDefault();
+  });
+  document.addEventListener("pointermove", (e) => {
+    if (!drag) return;
+    const k = scale();
+    if (drag.kind === "split") {
+      state.slotH = Math.max(120, Math.min(560, drag.h0 - (e.clientY - drag.y) / k));
+      const p = document.querySelector("#hsplit + .panel"); if (p) p.style.height = state.slotH + "px";
+    } else {
+      const g = state.wins.access;
+      g.x = Math.max(0, Math.min(1200, drag.gx + (e.clientX - drag.x) / k));
+      g.y = Math.max(0, Math.min(730, drag.gy + (e.clientY - drag.y) / k));
+      const w = document.querySelector(".win"); if (w) { w.style.left = g.x + "px"; w.style.top = g.y + "px"; }
+    }
+  });
+  document.addEventListener("pointerup", () => { drag = null; });
+
+  function setFit(on) {
+    $("#fit").checked = on;
+    stage.classList.toggle("fit", on);
+    if (on) { const k = Math.min(1, stage.clientWidth / 1280); stageInner.style.transform = `scale(${k})`; stage.style.height = 760 * k + 2 + "px"; }
+    else { stageInner.style.transform = ""; stage.style.height = ""; }
+  }
+  window.addEventListener("resize", () => { if ($("#fit").checked) setFit(true); });
+
+  state.open = "Enviro Y2";
+  render();
+  setFit(window.innerWidth < 1320);
+})();
+</script>

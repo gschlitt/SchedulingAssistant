@@ -1,10 +1,12 @@
 # Access Analyzer and Easy Access Watches — Progressive Design Spec
 
 ## Status
-Current phase: **2 — Domain Model, LOCKED by Greg 2026-11-10** (D9–D16 decided; Q17, Q19–Q24, Q26, Q27 answered;
-Q18's extra part names and Q28 left open, not blocking). Phase 1 locked 2026-11-06.
+Current phase: **3 — UX Sketch, in wireframe rounds** (round 1 settled 2026-11-10; D17 agreed; the rest of the
+draft is ideas to try). Phase 2 locked 2026-11-10
+(Q18's extra part names and Q28 left open, not blocking); Phase 1 locked 2026-11-06.
 Last session: 2026-11-10
-Next step: Phase 3 (UX Sketch)
+Next step: wireframe round 3 (stepping, pins, subsets); round 2 settled 2026-11-10. D25 (2026-11-10): an access watch is a
+filter preset you choose to watch; round 4 moves to the filter bar
 Release: not scheduled. Probably not 1.2.4; the spec continues ahead of coding and the release is decided later
 
 ---
@@ -540,3 +542,432 @@ list, guessed from codes and confirmed like parts, would close it. It would be a
 - **Copy Semester** must not strip section types from multi-part courses (rule 36).
 - Two answers would add stored data if chosen: a per-watch campus switch (Q17) and stored notices (Q21); both
   recommendations avoid it.
+
+---
+
+## Phase 3: UX Sketch (DRAFT 2026-11-10, not locked)
+
+Screens, words and interactions. No code, tables or classes (Phases 4–5). Sketches are ASCII; sizes are
+indicative. Decisions D17 onward are **proposed** until Greg locks the phase.
+
+**How Phase 3 is being settled (Greg, 2026-11-10):** one screen per round, with a clickable HTML wireframe on mock
+data (`designs/wireframes/`), rather than signing off the sections below as a batch. Each round settles only what it
+shows; the sections below are ideas to try until a round confirms them.
+
+### Wireframe rounds
+| Round | Covers | Status |
+|---|---|---|
+| 1 | The Access tab's watch list, the filter-bar summary, popping tabs out (`access-panel-r1.html`) | **Settled 2026-11-10** |
+| 2 | Opening a watch: what its line and detail say, and the grid picture (`access-panel-r2.html`; numbers computed from a mock semester by a miniature slate search) | Reviewed 2026-11-10; revision 2b built (folded detail, health-line hovers, "any 1 of 3 sections" wording, per-line marks, grey-out-or-keep toggle for other grid marks); 2b reviewed; 2c built (fewer hovers, help icon, other courses hidden while a watch is open). **Settled 2026-11-10** |
+| 3 | Stepping through slates, pins, ticking a subset | — |
+| 4 | Saving a filter preset and watching it, at the filter bar (D25); picking several courses easily | — |
+| later | Courses (parts), Copy Semester, Check all courses | — |
+
+**Round 1, settled by Greg (2026-11-10).** Judged at the level of the list, not the wording of each health line or
+the opened watch (round 2).
+1. At the default 250 px height, the list shows at a glance which watches need attention.
+2. One line per watch, **wrapping to the tab's width** rather than being cut off. (Two-line rows dropped.)
+3. Marks help. ▲ (needs a look) and ○ (fine) stay. The ● for "depends on one section" isn't intuitive; it stays as a
+   placeholder. **Parked idea:** a "fragile" icon like the broken-glass packaging symbol, drawn as an AXAML path.
+4. The notices box at the top of the list is the right weight.
+5. The filter-bar summary ("6 watches · 1 notice") points to the tab well enough.
+6. The pop-out icon on the tab strip pops out the tab in front; closing its window puts it back.
+
+**Round 2, Greg's review (2026-11-10).** A good start. Points:
+1. The detail is busy with everything shown: **open it folded**. But some facts now behind the fold must be
+   brought forward (point 2).
+2. The health line is useful; some of its statements need **hover help**. Above all, "up to 40 students" should
+   say on hover what else those sections serve that the app knows of (other watches: "PSYCH 101 A's seats are also
+   counted by First-year Science"), rather than leaving that to the fold. "Depends on PSYCH 101 B" also needs a
+   hover: what it means and how the watch depends on it.
+3. **Wording bug found:** the course list said "STAT 104 · One section" although STAT 104 has three sections. "One
+   section" meant "students take any one section", but it reads as a count. Reword (e.g. "any 1 of 3 sections";
+   for parts "1 of 1 lecture + 1 of 3 labs").
+4. Parts and These are right: fine.
+5. The legend is useful. **Marks must be per section, not per tile:** co-scheduled sections share a tile (PSYCH 101
+   A with STAT 104 C), so fading, hatching and outlining apply to each section's line in a tile.
+6. Outlining courses that can't fit (no full slate) is a good idea, subject to the same per-section rule.
+7. **The grid picture must fit with the grid's other decorations** (subject colour fill and markers, semester
+   borders, shared-schedule overlays in purple outline, flags, teal boxes). Its colours and formats can't fight them.
+8. The tile hover giving the reason ("clashes with CHEM 213 A, which every slate uses") is liked.
+
+**Round 2b, Greg's review (2026-11-10).**
+1. **Hovers: much less.** Too much detail is flashy, busy and irritating. One help icon covers the whole Access idea;
+   users aren't told what a slate is every time. Hovers stay only where needed, one short sentence:
+   "up to 60 students" → "Seats shared with First-year Science (PSYCH 101 and STAT 104)"; "depends on PSYCH 101 B" →
+   what's wrong with the other sections ("PSYCH 101 A clashes with CHEM 213 A; …"). No hover for "4 of 5 courses
+   offered" or "without times": the detail below already says it.
+2. **Keep subject colours and the grid's other marks** while a watch is open (no greying out).
+3. **Question raised:** why show sections of courses not in the watch at all? 2c tries hiding them while a watch is
+   open, with "Show other courses" in the legend to bring them back, faded.
+
+**Keep the interfaces open for other departments' data (Greg, 2026-11-10).** Proper sharing with other departments
+is coming: their courses will be filterable like the department's own, and the analyzer must handle that data. Not
+built now, but nothing in Phases 4–5 may close the door. Concretely, for Data Design and Architecture:
+- **The semester view takes sections from more than one source** (this database, plus shared schedules), each
+  section saying where it came from. The engine, the clash test and coverage never assume a section is local.
+- **A course set may name courses this database doesn't hold** (another department's), identified by calendar code
+  rather than only by a local course ID, so a watch can include them once their sections arrive.
+- **Parts and capacities may come from elsewhere** or be missing for outside courses; the "not set" and "no
+  capacity" paths already cover that and must stay the default, not an error.
+- **Outside sections are read-only:** browsing, pins and slates work with them; the editor pointer, notices and
+  Check all courses speak about them but never offer to edit them.
+- **Display:** the grid picture and "Show other courses" treat shared sections like any others; today's purple
+  outline stays their mark.
+
+**An access watch is a filter preset you choose to watch (D25, Greg, 2026-11-10).** Course-list watches and
+tag watches were two things to learn, and both overlap with tags. The fix is one thing users already make all the time.
+- **Filter Set:** the combination of choices active on the Schedule View's filter bar at once. Inside one choice it
+  means "or" (Level 300 or 400); between choices "and" (Upper level *and* Vancouver).
+- **Filter preset:** a Filter Set the user names and saves, kept near the filter bar, applied with one click. Useful
+  on its own.
+- **Watching:** the same place lets the user tick **Watch** on a preset. A watched preset *is* an access watch. Users
+  create one thing, not two.
+
+*Why it fits (code read 2026-11-10).* The bar has nine choices: Instructor, Room, Subject, Campus, Section type, Tag,
+Meeting type, Level, Course. The Course choice lists every course, not only those offered this term. Tags already
+offers "all / any of the checked tags"; Level is "any of these". Both kinds of watch that exist today translate
+directly: a course-list watch is Course = those courses; a tag watch is Tags (all) + Level (any). UBC's two watches
+("Prior Biomed Sequence", "Mech") convert with no meaning lost.
+
+*What follows:*
+- **Course set** (D2 term kept) = the courses of the sections the watched preset *shows* this semester: the result
+  of the Filter Set, not what is ticked in it (Greg, 2026-11-10). Tag "BIOMED3" and Subject BIOMED + Level 3 show
+  the same sections, so they make the same watch.
+- **No "not offered" (Greg, 2026-11-10).** A course with no sections this term isn't in the result, so the watch
+  can't know it's missing, and there is no exception for courses named in the Course choice. The only signal is
+  the drop-out notice below, when a course leaves the result. This drops Phase 1's "copied watches flag courses not
+  offered" and the "4 of 5 courses offered" wording (the round 2 wireframe still shows GEOG 250 as not offered).
+- **Parts checks run on the result too.** If BIOMED 310's labs don't carry BIOMED3, the watch has none; the
+  message says "BIOMED 310's labs aren't in this watch", never "no labs offered", since they exist but don't match.
+- **Slates use only the sections the preset shows,** so section-level picking comes free (Campus = Chilliwack keeps
+  slates at Chilliwack).
+- **What watching checks is said once, in one sentence, when the user ticks Watch:** "TermPoint will check that
+  students can take all 5 of these courses in one term." A pool preset ("Upper level + Vancouver", 23 courses) reads
+  absurdly there, so the user doesn't watch it. No "take all / choose from" setting (Q35 closed).
+- **Drop-outs:** a course that leaves a tag-based preset (its last tagged section untagged) gets the before-and-after
+  notice ("BIOL 310 left 300-level BIOL: no tagged sections"), so access never looks better silently.
+- **No semester in a preset,** so a watch applies to whatever semester is open. Copying watches in Copy Semester and
+  the "Bring them over" offer go away (most of Q6 and D21).
+- **Opening a watch applies its preset to the grid** (what 2c's "hide other courses" reached for); "Show other
+  courses" clears it. Closing the watch puts back the filter the user had. Detail for round 3.
+- **Other departments' data:** when the bar learns to filter their courses (by calendar code), watches get them
+  with no separate design.
+- **Easy setup** becomes: pick courses in the Course choice (pasting codes should work), save, Watch (round 4).
+
+*For later rounds:*
+- **Shared or personal presets?** Watches must be shared, since everyone should see the same warnings. Simplest:
+  all presets live in the database, shared by the department.
+- **What a preset saves:** recommend the nine choices plus Tags all/any (today not saved; a preset would save it);
+  not overlays or the Meetings toggle.
+- **A tag or course a preset names is deleted:** the preset drops it and says so once.
+- **Choices that mean little for a watch** (Instructor, Room, Meeting type): allowed; they just narrow the sections.
+
+*Production (Phase 4):* a new stored thing (presets; readable columns to be agreed with Greg) and a lossless
+translation of `ProgramWatches`. Older versions read and write `ProgramWatches`, so this is a `MinimumVersionToWrite`
+**Yes**, and Phase 4 must decide between a one-time translation (older versions then open read-only) and writing
+both. Rules 1–2 untouched: presets ride in the same database file and save path.
+
+*Locked items D25 reopens* (to be reworded at the start of Phase 4, not silently contradicted):
+- Phase 1 **Q1** (only course-list watches analysed) → every enabled watch is analysed.
+- Phase 1 **Q6** and Phase 3 **D21** (copying watches between semesters, flagging courses not offered) → gone.
+- Phase 2 entity **Course set** ("the courses a course-list watch names") and **rule 2** ("only enabled course-list
+  watches are analysed") → as defined above.
+- Phase 3 **D18** (one box for course codes, tags under More options) → setup moves to the filter bar.
+
+### What exists today (read from the code, 2026-11-10)
+- **Main window:** left column 440 px wide: Section View on top, **Workload View** (250 px, detachable) below;
+  Schedule View on the right. Management screens (Courses, Copy Semester…) are flyouts from the top menu.
+- **Watches** live in a popup off the **Access** group on the grid's filter bar. Its button reads "3 watches,
+  2 conflicts". The popup lists watches (name, "Courses: 3", conflict pairs in teal), each with an on/off box, edit
+  and delete, then "+ New Watch": a form with a "Tag/Level-based / Course-based" choice, "Tags (AND)" and
+  "Levels (OR)" lists, a ticked list of every course, and an auto-generated name.
+- **Room Browser** (in the section editor): a button, then a stepper "‹ 3 of 12 ›" with a tier label and Accept;
+  each solution is drawn as green semi-transparent **ghost tiles** in a light overlay that steps instantly.
+- **Section editor** already has one-line warning boxes (capacity, conflict): small text, attention colour.
+- **Copy Semester:** "Copy section designations and: ☐ Include any section type assignments ☐ tags ☐ staff…".
+- **Courses flyout:** columns Calendar Code, Title, Tags, Capacity, Active; Add / Edit / Delete; an edit form.
+
+### Stories (today vs. with Phase 3)
+
+**Alice sees access without looking for it.** *Today* her watches sit behind "3 watches, 2 conflicts" on the filter
+bar; she has never opened it. *With the feature* the bottom-left panel has two tabs, **Workload** and **Access**.
+Access shows one line per watch, in view while she works:
+```
+ Access — Fall 2027                    [+ Add a watch] [Check all courses]
+ ● Enviro Y2       12 slates · up to 40 students · depends on PSYCH 101 A
+ ▲ First-year Sci  No full slate · best partial covers 3 of 4 · CHEM 101 can't fit
+ ○ Bio Y1          32 slates
+```
+The filter bar's Access group stays as a short summary that brings the tab forward: "3 watches · 1 needs a look".
+
+**Alice moves PSYCH 101 A.** In the editor she sets Tue 10:00. One line appears under the meeting rows: "Affects
+access for Enviro Y2. See the Access panel." She clicks it; the Access tab comes forward with Enviro Y2 open and,
+above its saved health line, "With your unsaved change: no full slate. PSYCH 101 A would overlap CHEM 213 A, the only
+CHEM 213 section." She picks another day. Nothing else in the editor changed.
+
+**Bob checks Biomed Y2's guesses.** He clicks Biomed Y2. The panel shows its detail and the grid takes on the watch's
+picture. The detail says "BMEG 230: Lecture + Lab + Tutorial (guessed)", and so on. He clicks **These are right**;
+the "(guessed)" marks go.
+
+**Dana pages slates for a part-time student.** She opens Enviro Y2, unticks CHEM 213 and PSYCH 101, right-clicks
+BIOL 201 B on the grid and picks **Pin in slates**, then clicks **Step through slates**: "Slate 1 of 4", drawn in the
+Room Browser's ghost style; she pages with ‹ ›. Closing the watch clears it all. Nothing was saved, and it worked on
+a read-only copy.
+
+**Carla copies Fall into next Fall.** Copy Semester now has "☑ Include access watches". After the copy one message
+names the watches with courses that aren't offered; the panel keeps flagging them until she deals with them.
+
+**Bob checks all courses.** He clicks **Check all courses**: "BMEG 230: lab L1A clashes with the only lecture, so no
+student can take it." He clicks the line and the grid shows BMEG 230's picture.
+
+### 1. The Access panel (D17)
+
+**Where:** a second tab, **Access**, beside **Workload** in the bottom-left panel, detachable like Workload. That
+slot is always on screen, so the health lines are seen without a click, which the popup never achieved. The panel can
+be dragged taller, or detached for a large detail view. The filter-bar popup goes away (Q29).
+
+**Filter-bar summary** (replaces "3 watches, 2 conflicts"): "No watches" · "3 watches" · "3 watches · 1 needs a
+look" (attention colour) · "3 watches · 2 notices". Clicking brings the Access tab forward.
+
+**The list (top level of the tab):**
+```
+ Access — Fall 2027                    [+ Add a watch] [Check all courses]
+ ┌ Notices ───────────────────────────────────────────────────────────────┐
+ │ Enviro Y2: students can no longer take all 5 courses. PSYCH 101 A now    │
+ │ overlaps CHEM 213 A, the only CHEM 213 section. Move one of them, or     │
+ │ open Enviro Y2 to see what's left.                        [Open] [✕]     │
+ └────────────────────────────────────────────────────────────────────────┘
+ ▲ Enviro Y2       No full slate · best partial covers 4 of 5 · CHEM 213 can't fit
+ ● First-year Sci  12 slates · up to 40 students · depends on PSYCH 101 A
+ ○ Bio Y1          32 slates · 4 of 5 courses offered
+   300-level BIOL  Tags and levels: overlaps boxed on the grid
+   Old Y2          Off                                              (greyed)
+                        Set section capacities to see how many students fit.
+```
+- **One line per watch**, ▲ first, then by name: mark, name, health line (trimmed; full line on hover). On/off,
+  edit and delete move into the detail.
+- **Marks (Q30):** ▲ attention colour: no full slate, a course not offered, a part missing, or sections not counted.
+  ● a section is essential by timing. ○ nothing to report. Colours from AppColors.
+- **Health line** (Phase 1/2 rules; segments dropped when they don't apply):
+  - "12 slates · up to 40 students · depends on PSYCH 101 A" (essential by timing only, Q19; two named, then
+    "+2 more"). At the cap: "More than 10,000 slates".
+  - "No full slate · best partial covers 3 of 4 · CHEM 101 can't fit" (tie: "CHEM 101 or MATH 111 can't fit").
+  - "· 4 of 5 courses offered" when a course isn't offered or has a missing part. "· 2 sections without times" (Q3).
+  - Seats only when every usable section has a capacity (Q20); otherwise one quiet footer hint for the whole panel.
+  - Tag/level watch: "Tags and levels: overlaps boxed on the grid"; hover "Slates are counted only for watches that
+    list courses." (Q1). Disabled: "Off", greyed.
+- **Notices** (rule 31, Q21): a box at the top, newest first, each ending with a next step, with **Open** (that
+  watch's detail) and ✕ (dismiss for this session). Restored notices are plain, not attention-coloured: "Bio Y1:
+  students can take all 5 courses again." A notice that stops being true goes by itself. No popup or toast (Q31).
+- **Empty state:** "No access watches for Fall 2027. An access watch lists courses students take together in one
+  term; TermPoint then shows whether they still fit. [+ Add a watch]". If the same-named semester of the previous
+  academic year had watches, also: "Fall 2026 had 3 access watches. [Bring them over]" (D21).
+- **Read-only:** list, detail, picture, stepping and Check all courses work. Add, Edit, Delete, on/off, These are
+  right, Edit parts and Bring them over are disabled with the usual read-only hover (Q15).
+
+### 2. Adding and editing a watch (D18)
+
+Opens inside the tab in place of the list ("‹ Back" returns). No mode choice.
+```
+ ‹ Back          Add an access watch
+ Courses
+ ┌─────────────────────────────────────────────────────────────┐
+ │ [BIOL 201 ✕] [CHEM 213 ✕] [GEOG 250 ✕] [PSYCH 101 ✕] gene_  │
+ └─────────────────────────────────────────────────────────────┘
+   BIOL 202  Genetics                     ← autocomplete while typing
+ Type or paste course codes, e.g. "BIOL 201, CHEM 213".
+ Not found: GEOG 999.                     (only when needed)
+ GEOG 250 isn't offered in Fall 2027.     (only when needed; it stays in the list)
+
+ Name  [BIOL 201, CHEM 213 + 2 more   ]   (filled in until you type one)
+ With these courses: 12 slates · up to 40 students        (live preview)
+ ▸ More options
+ [Save]  [Cancel]
+```
+- **One box** for typing and pasting. Pasting splits on commas, semicolons, new lines and tabs, accepts "BIOL201" or
+  "biol 201", matches calendar codes, and makes each match a chip; leftovers are listed once under "Not found:".
+  Duplicates are dropped silently.
+- **Autocomplete** matches code and title; Enter adds the top match. Inactive courses aren't suggested; a pasted one
+  is added with "(inactive)" on its chip.
+- **Name** follows the courses until the user types one. Editing keeps the existing name.
+- **Live preview:** the health line for the courses in the box, on the saved semester.
+- **More options ▸:** "Choose sections by tags and levels instead", today's lists relabelled "Sections with **all**
+  of these tags" and "at **any** of these levels"; choosing it replaces the course box and says the watch won't get a
+  slate count (Q1). Existing tag/level watches open with it expanded.
+- **Save** needs at least one course (or tag/level). "Tag mode", "AND", "OR" and "program" appear nowhere.
+
+### 3. A watch's detail (D19)
+
+Clicking a line opens the watch inside the tab and turns on its **grid picture** (section 4). "‹ All watches" or
+Escape closes both: what's on the grid always matches what's open in the panel.
+```
+ ‹ All watches    Enviro Y2                         [Edit] [☑ On] [Delete]
+ No full slate · best partial covers 4 of 5 · CHEM 213 can't fit
+ With your unsaved change: …                    (only while the editor has one)
+
+ ⚠ GEOG 250 isn't offered in Fall 2027. Remove it from the watch, or leave it
+   if a section is still to be added.                     [Remove from watch]
+ ⚠ BMEG 230 has no lab sections in Fall 2027. Add one, or edit BMEG 230's
+   parts if it no longer has a lab.                       [Edit parts]
+ ⚠ BMEG 210 ab1 has no section type, so it isn't counted. [Edit parts]
+
+ Courses
+ ☑ BIOL 201   Lecture + Lab (guessed)          [Edit parts]
+ ☑ CHEM 213   One section                       only section: CHEM 213 A
+ ☑ PSYCH 101  One section
+ ☐ STAT 104   One section                       (unticked: faded on the grid)
+ ☐ GEOG 250   not offered
+ [These are right]  saves the 1 guessed course as shown
+
+ Pinned: [BIOL 201 B ✕]       right-click a section on the grid to pin it
+ Slates with these choices: 4      [Step through slates]
+
+ Seats: up to 40 students. PSYCH 101 A's seats are also counted by First-year Science.
+ Assumes 2 sections without times fit anywhere: STAT 104 D, STAT 104 E.
+ Slates keep in-person sections at one campus.   (only when sections span campuses)
+```
+- **Order:** health line; what-if line; flags (rule 38, not offered, missing part, not counted); courses; browsing
+  (ticks, pins, stepping); the quieter facts (seats, shared seats, no times, campus).
+- **Parts per course** (rule 37): "Lecture + Lab (guessed)" with "(guessed)" in the faint colour; "One section" for
+  a confirmed empty list or a course with nothing guessed. **Edit parts** opens that course's parts editor (section 6)
+  and returns here.
+- **These are right** shows only while some course in the watch is guessed; it stores each guessed course's parts as
+  shown, through the ordinary save. Hover: "Saves these parts to the courses. Other watches with these courses use
+  them too."
+- **Ticks** choose the subset (D3, rule 17); all ticked on opening. The health line never changes with ticks or pins
+  (D12); the "Slates with these choices" line does.
+- **Pins** are chips; ✕ removes. Two clashing pins: "BIOL 201 B and CHEM 213 A clash, so no slate has both." A pin
+  in an unticked course shows "(course not ticked)" and does nothing.
+- Only-sections are named here, never in the health line (Q19).
+
+### 4. The grid picture and stepping (D20)
+
+**Picture** (on while a detail is open), for the ticked courses and pins:
+- Sections outside the ticked courses fade, as the grid already fades non-matching sections.
+- **Usable:** drawn normally.
+- **Essential by timing:** a heavier outline in the access colour; hover "Every slate for Enviro Y2 uses PSYCH
+  101 A. If it moves badly, students may be cut off." Only-sections get no mark.
+- **Stranded:** dimmed; hover "Can't be part of any slate for Enviro Y2: it clashes with CHEM 213 A, the only
+  CHEM 213 section." (First reason, then "and N other reasons".)
+- A one-line legend on the grid while the picture is on: "Enviro Y2: ▣ every slate uses it · ▢ can be used ·
+  ░ can't be used · [✕]". The ✕ closes the detail too.
+
+**Pinning:** while a detail is open, right-clicking a section tile (or one entry of a co-scheduled tile) adds **Pin
+in slates** / **Unpin** to the existing menu. Otherwise the item isn't there.
+
+**Stepping:** **Step through slates** swaps the picture for one slate at a time:
+```
+ ‹  Slate 1 of 4  ›                                  [Back to overview]
+ BIOL 201 B, BIOL 201 L2, GEOG 250 A, STAT 104 C
+```
+- The stepper sits in the panel under the courses, laid out like the Room Browser's.
+- The slate's sections get the **Room Browser's ghost look** over their tiles; other ticked-course sections fade.
+  Steps are instant (ghost overlay, no grid reload).
+- Order is stable: course order in the watch, then section code (Q34). Over the cap: "Slate 1 of more than 10,000".
+- No slate: "No slate with these choices · CHEM 101 can't fit with the rest"; the stepper hides.
+- A save keeps ticks and pins and goes back to slate 1.
+
+**Teal boxes (rule 33, Q16, Q22).** Drawn only for costly clashes, for every enabled course-list watch, whether or
+not a detail is open. Tag/level watches keep today's boxes. No box for harmless overlaps (D24). Hover:
+- "PSYCH 101 A clashes with CHEM 213 A. Because of this clash Enviro Y2 has no full slate."
+- "PSYCH 101 B clashes with CHEM 213 A, so PSYCH 101 B can't be part of any slate for Enviro Y2."
+- "CHEM 213 A clashes with PSYCH 101 A and GEOG 250 A; fixing only one of these isn't enough." (Q22)
+- One line per watch when several are involved.
+- **What's new:** "Access watches now box only overlaps that cost students something: a section nobody in the watch
+  can use, or no way to take every course. Other overlaps are no longer boxed."
+
+### 5. The editor pointer (D6, D22)
+- One line in the editor's existing warning style, **under the meeting rows**, only when the unsaved change would
+  make a notice (rule 31's kinds) for an analysed watch. A smaller drop in slates or seats says nothing.
+- "Affects access for Enviro Y2. See the Access panel." · "Affects access for Enviro Y2 and Bio Y1." · "Affects
+  access for Enviro Y2 and 2 other watches." · good news: "Restores access for Enviro Y2."
+- Clicking it brings the Access tab forward with that watch open and its what-if line showing.
+- Save or Cancel removes it. It never blocks saving.
+
+### 6. Courses flyout: parts (D23)
+- New column **Parts** after Title: "Lecture, Lab"; guessed "Lecture, Lab (guessed)" in the faint colour; confirmed
+  empty "One section". Nothing confirmed and nothing guessed shows blank (UFV's usual case), so the column is quiet
+  where parts don't apply. Header hover: "The kinds of section a student takes one of each of, such as a lecture and
+  a lab. Guessed from section types until you confirm them."
+- **Edit Course** gains one group below Level:
+```
+ Parts (students take one section of each)
+ ☑ Lecture  ☑ Laboratory  ☐ Discussion  ☐ Seminar  …     (every section type)
+ Guessed from this course's sections. Applying confirms them.
+ No boxes ticked: students take one section, of any type.
+ Section types that only say how a section is taught (F2F, Online) aren't parts.
+```
+- Ticks start from the confirmed list or the guess. Apply stores the list, even if unchanged; Cancel stores nothing
+  (D13). No way back to "guessed" in the first version (Q33).
+
+### 7. Copy Semester (D21; Q32)
+- New box under "Copy section designations and:": **☑ Include access watches**, ticked by default. Copied in the
+  same transaction as the sections; a watch whose name already exists in the target isn't copied again.
+- **Rule 36:** when "Include any section type assignments" is unticked and some copied courses have two or more
+  parts, a line shows under it before Copy: "Section types are still copied for 12 courses with more than one part
+  (such as Lecture and Lab), so access watches can count their sections."
+- **After the copy**, only if a copied watch has courses with no sections in the target, one message:
+  > Copied 3 access watches. Some of their courses have no sections in Fall 2027:
+  > Enviro Y2: GEOG 250 · Bio Y1: BIO 111LAB.
+  > Nothing is lost. In the Access panel, remove these courses from the watches, or leave them if sections are still
+  > to be added. [OK]
+- **Bring them over** (empty panel only) copies the previous year's same-named semester's watches, with the same
+  message. Because it's never pushed, there's no offer to decline and nothing to remember (settles Q23's leftover).
+
+### 8. Delivery type (only where the analyzer touches it)
+- The analyzer never shows or uses it (rule 11). The parts editor lists section types only, with the "how a section
+  is taught" hint. The "isn't counted" flag names section type only. The rest is delivery type's own small spec.
+
+### 9. Check all courses (D16, rules 39–41)
+Opens inside the tab like a detail:
+```
+ ‹ All watches    Check all courses — Winter Term 1 2026-27     [Check again]
+ 2 courses can't be taken as scheduled:
+ ▲ BMEG 230: lab L1A clashes with the only lecture, so no student can take it.
+ ▲ MECH 463: no lab fits with either lecture.
+ Missing parts (guessed from earlier terms):
+   BMEG 310 has no tutorial sections this term.            [Edit parts]
+ Checked 228 courses on their own. Lectures and labs set up as separate
+ courses are checked together only by an access watch.
+```
+- Clicking a course line shows that course's picture on the grid, as a one-course detail would.
+- Results are a snapshot: after a save they show "Out of date · [Check again]" rather than rerunning.
+- Nothing found: "No problems in 228 courses." No multi-part courses: "No course this term has more than one part,
+  so there's nothing to check. Lectures and labs set up as separate courses are checked together by an access watch."
+
+### Production and data safety (Phase 3)
+- The UX stores nothing beyond Phases 1–2 (copied watches, course parts, delivery type). Ticks, pins, stepping,
+  notices and Check-all results are memory only; which tab is in front is a local app setting, not database data.
+- Every write (watch add/edit/delete/on-off, These are right, Edit parts, Bring them over, Copy) is an ordinary edit
+  through the existing save: the four shared-database rules are untouched. Rule 4 is the one in play: the Copy
+  message and every flag say what happened, that nothing is lost, and what to do next.
+- Watch edits rebuild the watch and course edits rebuild the course: both must call `WithExtensionDataFrom`.
+- Per-tile marks (essential, stranded, pins) must not use class-conditioned styles (CLAUDE.md gotcha; Phase 5).
+
+### Decisions proposed (Phase 3, awaiting Greg)
+
+| # | Decision | Rationale |
+|---|---|---|
+| D17 | **AGREED by Greg 2026-11-10: the Access panel is a tab beside Workload in the bottom-left panel. Each tab detaches on its own,** so Workload and Access can be open at once (Access in its own window, Workload left in the slot, or both out). The filter-bar Access group becomes a summary that brings it forward (Q29). The rest of Phase 3 is to be worked out one screen at a time with a clickable HTML wireframe on mock data, not signed off as a batch | Always on screen, so health is seen without a click; the popup is where users never look (Phase 1). Detaching reuses today's per-panel mechanism (`DetachSlot`); tabs are new |
+| D18 | **One box for typing and pasting course codes,** chips, autocomplete on code and title, name filled in, live health preview, tags/levels under More options | Phase 1 Q7; a department without tags never sees them |
+| D19 | **Opening a watch's detail turns on its grid picture; closing one closes both** | What's on the grid always matches what's open; no stray colouring left behind |
+| D20 | **Picture first, then "Step through slates" with the Room Browser's stepper and ghost look;** pins via the grid's right-click menu, only while a detail is open | Phase 1 Q11/D7; reuses a look users know; nothing new on section cards |
+| D21 | **Copy Semester copies watches (ticked by default); "Bring them over" lives only in the empty panel** | Q6; an offer that is never pushed needs no "declined" memory and no stored data |
+| D22 | **The editor pointer appears only for changes that would make a notice;** clicking it opens the watch with its what-if line | D6; speak when it matters |
+| D23 | **Parts appear as a Courses column and an Edit Course group of section-type boxes;** Apply confirms | Rule 37; quiet where parts don't apply |
+| D24 | **No box for harmless overlaps** | A faint box on many tiles is clutter; the hover on real boxes says what they cost |
+| D25 | **AGREED by Greg 2026-11-10: an access watch is a filter preset you choose to watch.** Users name and save Filter Sets (combinations of filter-bar choices) as presets near the filter bar; ticking Watch on one makes it an access watch. Replaces separate course-list and tag watches; supersedes Q35 and Q36 | One thing to learn, which users already make. Both existing watch kinds are already Filter Sets. Settles the pool problem (watching is the user's statement), section-level picking, semester carry-over and outside departments' courses in one move. Details under "An access watch is a filter preset you choose to watch" |
+
+### Open questions (Phase 3)
+
+| Q | Question | Recommendation |
+|---|---|---|
+| Q29 | **Where the panel lives.** Tab beside Workload (bottom-left, 440 × 250 by default) vs. its own panel right of the grid vs. a bigger popup | Tab beside Workload (D17). Phase 5 risk: `DetachablePanel` may not do tabs today; fallback is a third panel stacked in the left column with a splitter. Is that slot big enough in your daily use? |
+| Q30 | **Marks.** ▲ / ● / ○; ● (essential by timing) may be too loud for "fine, but fragile" | ▲ attention, ● access colour, ○ faint. Or drop ● and let "depends on" in the line say it |
+| Q31 | **Should a new notice do more than change the summary and the tab?** (e.g. an app notification, mainly for other users' saves arriving on reload) | No: the pointer already warned before one's own save, and interrupting for others' saves is what D4 avoids. Revisit if testers miss notices |
+| Q32 | **Rule 36 in Copy Semester.** Copy section types anyway for multi-part courses (line shown before Copy), warn and let the user choose, or tick-and-lock the box | Copy anyway with the line: unticking section types means "don't carry these labels", not "break access" |
+| Q33 | **Un-confirming parts.** Can a confirmed course go back to guessed? | Not in the first version; editing the boxes covers real cases |
+| Q35 | **Reopens Q1 (Greg, 2026-11-10): analyse tag/level watches too?** Tags pick sections and the courses follow, but a pool ("300-level BIOL") would read "No full slate" forever, and untagging a course's last section drops it silently | **Superseded by D25 (2026-11-10).** Every watched preset is analysed; watching is the user's statement that students take all its courses, said in one sentence when Watch is ticked; drop-outs get a before-and-after notice |
+| Q36 | **One concept, not two? (Greg, 2026-11-10).** Is the split between course-list and tag watches helping? First proposal: an access watch is a tag you choose to watch (course tags as course lists) | **Superseded by D25 (2026-11-10):** a watch is a filter preset you choose to watch. Keeps the tag idea's gains (one idea, no semester copying, section-level picking) without its costs (outside courses can't carry this database's tags; on/off living on a tag) |
+| Q34 | **Stepping order.** Stable (course, then section code) or by usefulness (fewest days, earliest finish)? | Stable first; preference ordering belongs with Q14 |

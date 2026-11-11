@@ -52,8 +52,9 @@ Written so a fresh conversation can pick up. Claude Code's memory and `CLAUDE.md
     refused under `query_only`); **use it for any new write transaction**. `IsReadOnlyMode` was already not sticky.
   - **4.3** (`299150c`, design `designs/restore-relaunch-1.2.4.md`): shutdown request in `MainWindow.OnClosed`;
     `ShutdownBackstop` armed at the end of every close's teardown (15 s, then exit); the relaunch after a restore
-    passes `--reopen-after-restore <path>`. **Left: Greg's by-hand restore check on the sideload** (old PID gone,
-    restored database reopens, note which new log line appeared) and the macOS `open -n` relaunch.
+    passes `--reopen-after-restore <path>`. **By-hand check passed 2026-11-10** (fresh 1.2.4.0 sideload, 3/3: old
+    process gone, restored database reopened, A's "asking for the shutdown again" line every time, backstop never
+    fired). **Left:** the macOS `open -n` relaunch.
 - **E: 3.2 F2 + 3.4 F5/F6 (`1d13956`, `301252b`, 2026-11-09):** an edit made during a save keeps its marker (edit count
   + SQLite `data_version`); a save with no marker and the same content as D writes nothing. Details under Next steps 0.5.
 - **4.12 F19 + 4.14 F22 (`cf2bce9`, 2026-11-03):**
@@ -221,7 +222,13 @@ Written so a fresh conversation can pick up. Claude Code's memory and `CLAUDE.md
   can't reach `//mekler/...`. Never open D with SQLite in place: copy it to the scratchpad and query the copy.
 - **Helper scripts on GregDeskTop** (`tmp/` is gitignored): `tmp\lockwatch.ps1` (samples the lock file every 20 s),
   `tmp\zzzt_check.py`, `tmp\handtest_lock.py takeover|stale|clear <db>`.
-- **Logs:** GregDeskTop `%APPDATA%\TermPoint\Logs\`; GregSurface copies to `\\mekler\Users\gregs\temp\surface-logs\`.
+- **Logs:** GregDeskTop `%APPDATA%\TermPoint\Logs\` (the real folder; the sideload and Store builds write there too, so
+  it's the right place to send customers). **Trap:** Claude's shell runs inside the Claude desktop app's MSIX package, so
+  it sees `%APPDATA%` merged with Claude's private copy (`%LOCALAPPDATA%\Packages\Claude_pzs8sxrjxfjjc\LocalCache\Roaming\TermPoint\`),
+  and anything it launches (test runs, TermPoint) writes there. To read a real log from Claude's shell, copy it via
+  Windows PowerShell `Invoke-CommandInDesktopPackage -PackageFamilyName AcademicSolutions.TermPoint_d3gb38k4yrz2r -AppId
+  (Get-AppxPackage AcademicSolutions.TermPoint | Get-AppxPackageManifest).Package.Applications.Application.Id -Command
+  cmd.exe -Args '/c copy /y %APPDATA%\TermPoint\Logs\app-<date>.log C:\temp\x.txt'` (pwsh 7 can't load Appx), or ask Greg; GregSurface copies to `\\mekler\Users\gregs\temp\surface-logs\`.
 - **"Sleeps":** freeze TermPoint instead (Resource Monitor → CPU → Suspend / Resume Process); trust the lock samples,
   not the moment.
 - **Clumsy** (filter `tcp.DstPort == 445 or tcp.SrcPort == 445`): degraded = Lag 110 ms + Drop ~2 %. Open TermPoint

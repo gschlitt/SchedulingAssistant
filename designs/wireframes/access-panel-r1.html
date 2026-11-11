@@ -1,0 +1,610 @@
+<title>Access Panel Wireframe</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap">
+<style>
+/* Layout: a review toolbar, then the TermPoint main window drawn at real pixel size (1280 x 760), then the questions
+   for this round. The page around the mock follows the viewer's theme; the mock itself is always the app's light
+   look, because TermPoint ships light only. Mock colours are greys plus the app's own attention red. */
+:root {
+  --page-bg: #eef1f5;
+  --page-fg: #1c2430;
+  --page-muted: #5b6676;
+  --page-card: #ffffff;
+  --page-line: #d3dae3;
+  --page-accent: #2f6db5;
+  --font: "Inter", "Segoe UI", system-ui, sans-serif;
+
+  /* The mock app (always light) */
+  --app-bg: #f3f4f7;          /* AppBackgroundColor */
+  --app-panel: #ffffff;
+  --app-line: #c8d5e4;        /* FilterGroupBorder */
+  --app-split: #e0e8f0;       /* GridSplitterColor */
+  --app-text: #000000;        /* TextPrimary */
+  --app-faint: #475569;       /* TextFaint */
+  --app-ghost: #9aa5b4;
+  --app-attn: #c03030;        /* ProgramConflictColor */
+  --app-tile: #dfe4ea;
+  --app-tile-line: #b8c2ce;
+  --app-hover: #e8eef6;
+  --app-tab-on: #ffffff;
+  --app-tab-off: #e4e9ef;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --page-bg: #151a21; --page-fg: #e3e8ef; --page-muted: #9aa6b6; --page-card: #1e252e; --page-line: #2f3945;
+    --page-accent: #7fb0ea; color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --page-bg: #151a21; --page-fg: #e3e8ef; --page-muted: #9aa6b6; --page-card: #1e252e; --page-line: #2f3945;
+  --page-accent: #7fb0ea; color-scheme: dark;
+}
+* { box-sizing: border-box; }
+body {
+  background: var(--page-bg); color: var(--page-fg); font-family: var(--font); font-size: 14px;
+  padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px));
+  padding-block: 20px 40px;
+}
+h1 { font-size: 20px; margin: 0 0 4px; text-wrap: balance; }
+.lede { color: var(--page-muted); margin: 0 0 14px; max-width: 70ch; line-height: 1.45; }
+
+/* Review toolbar */
+.toolbar { display: flex; flex-wrap: wrap; gap: 10px 18px; align-items: center; background: var(--page-card);
+  border: 1px solid var(--page-line); border-radius: 6px; padding: 10px 12px; margin-bottom: 12px; }
+.toolbar label { display: flex; gap: 6px; align-items: center; font-size: 13px; color: var(--page-muted); }
+.toolbar select { font: inherit; font-size: 13px; padding: 3px 6px; color: var(--page-fg); background: var(--page-bg);
+  border: 1px solid var(--page-line); border-radius: 4px; }
+.seg { display: inline-flex; border: 1px solid var(--page-line); border-radius: 4px; overflow: hidden; }
+.seg button { font: inherit; font-size: 12px; padding: 4px 9px; border: 0; background: transparent; color: var(--page-fg);
+  cursor: pointer; }
+.seg button + button { border-left: 1px solid var(--page-line); }
+.seg button[aria-pressed="true"] { background: var(--page-accent); color: var(--page-card); }
+button:focus-visible, select:focus-visible, input:focus-visible { outline: 2px solid var(--page-accent); outline-offset: 1px; }
+
+/* The stage holds the mock at real size; it scrolls sideways on narrow screens, or is scaled with "Fit" */
+.stage { overflow: auto; border: 1px solid var(--page-line); border-radius: 6px; background: var(--page-card); }
+.stage-inner { width: 1280px; height: 760px; transform-origin: 0 0; position: relative; }
+.stage.fit { overflow: hidden; }
+
+/* ---------- The mock app window ---------- */
+.app { position: absolute; inset: 0; background: var(--app-bg); color: var(--app-text); font-family: var(--font);
+  font-size: 12px; display: grid; grid-template-rows: 34px 1fr; user-select: none; }
+.menubar { display: flex; align-items: center; gap: 18px; padding: 0 12px; background: var(--app-panel);
+  border-bottom: 1px solid var(--app-line); font-size: 13px; color: var(--app-faint); }
+.menubar b { color: var(--app-text); font-weight: 600; margin-right: 8px; }
+.body3 { display: grid; grid-template-columns: 440px 4px 1fr; min-height: 0; }
+.leftcol { display: flex; flex-direction: column; min-height: 0; }
+.vsplit { background: var(--app-split); }
+.hsplit { height: 4px; background: var(--app-split); cursor: row-resize; flex: none; }
+.hsplit:hover { background: var(--app-line); }
+
+.panel { background: var(--app-panel); display: flex; flex-direction: column; min-height: 0; border: 1px solid var(--app-line); }
+.panel-head { display: flex; align-items: stretch; height: 26px; flex: none; background: var(--app-tab-off);
+  border-bottom: 1px solid var(--app-line); font-size: 13px; }
+.panel-head .title { padding: 4px 8px; font-weight: 600; display: flex; align-items: center; gap: 8px; }
+.panel-head .spacer { flex: 1; }
+.iconbtn { border: 0; background: transparent; padding: 0 7px; cursor: pointer; color: var(--app-faint); font: inherit;
+  display: flex; align-items: center; }
+.iconbtn:hover { background: var(--app-hover); }
+.iconbtn svg { width: 13px; height: 13px; }
+.tab { border: 0; border-right: 1px solid var(--app-line); background: var(--app-tab-off); padding: 0 12px; font: inherit;
+  font-size: 13px; cursor: pointer; color: var(--app-faint); display: flex; align-items: center; gap: 6px; }
+.tab[aria-selected="true"] { background: var(--app-tab-on); color: var(--app-text); font-weight: 600;
+  margin-bottom: -1px; }
+.tab .dot { width: 7px; height: 7px; border-radius: 50%; background: var(--app-attn); }
+.panel-body { flex: 1; min-height: 0; overflow: auto; }
+
+/* Section View placeholder */
+.cards { padding: 6px; display: flex; flex-direction: column; gap: 4px; }
+.card { border: 1px solid var(--app-line); border-radius: 3px; padding: 3px 6px; }
+.card .h { font-weight: 600; font-size: 12px; }
+.card .s { color: var(--app-faint); font-size: 11px; }
+
+/* Workload placeholder */
+.wl { width: 100%; border-collapse: collapse; font-size: 11px; font-variant-numeric: tabular-nums; }
+.wl th { text-align: left; font-weight: 600; color: var(--app-faint); padding: 3px 8px; border-bottom: 1px solid var(--app-line); }
+.wl td { padding: 2px 8px; border-bottom: 1px solid var(--app-split); }
+
+/* Schedule View */
+.grid-panel .panel-head { background: var(--app-tab-off); }
+.filterbar { display: flex; gap: 8px; padding: 6px 8px 4px; flex: none; flex-wrap: wrap; }
+.fgroup { border: 2px solid var(--app-line); border-radius: 4px; padding: 0 6px 2px; position: relative; margin-top: 7px;
+  display: flex; align-items: center; min-height: 26px; }
+.fgroup .legend { position: absolute; top: -9px; left: 6px; background: var(--app-bg); padding: 0 3px; font-size: 11px;
+  color: var(--app-faint); }
+.fbtn { border: 0; background: transparent; font: inherit; font-size: 13px; padding: 3px 4px; cursor: pointer;
+  color: var(--app-text); border-radius: 3px; }
+.fbtn:hover { background: var(--app-hover); }
+.fbtn .attn { color: var(--app-attn); }
+.gridarea { flex: 1; position: relative; margin: 2px 8px 8px; border: 1px solid var(--app-line); background: var(--app-panel);
+  min-height: 0; overflow: hidden; }
+.gday { position: absolute; top: 0; height: 20px; font-size: 11px; color: var(--app-faint); text-align: center;
+  border-bottom: 1px solid var(--app-line); line-height: 20px; }
+.ghour { position: absolute; left: 0; width: 40px; font-size: 10px; color: var(--app-ghost); text-align: right;
+  padding-right: 4px; }
+.gline { position: absolute; left: 40px; right: 0; border-top: 1px solid var(--app-split); }
+.gtile { position: absolute; background: var(--app-tile); border: 1px solid var(--app-tile-line); border-radius: 2px;
+  font-size: 10px; padding: 1px 3px; overflow: hidden; white-space: nowrap; color: #333; }
+
+/* ---------- Access tab content: what this round is about ---------- */
+.acc { display: flex; flex-direction: column; min-height: 100%; font-size: 12px; }
+.acc-head { display: flex; align-items: center; gap: 6px; padding: 5px 8px 4px; flex: none; }
+.acc-head .sem { font-weight: 600; flex: 1; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.abtn { font: inherit; font-size: 11px; padding: 2px 7px; border: 1px solid var(--app-line); background: var(--app-panel);
+  border-radius: 3px; cursor: pointer; color: var(--app-text); white-space: nowrap; }
+.abtn:hover:not(:disabled) { background: var(--app-hover); }
+.abtn:disabled { color: var(--app-ghost); cursor: not-allowed; }
+.notices { margin: 0 8px 4px; border: 1px solid var(--app-attn); border-radius: 3px; padding: 3px 6px; display: flex;
+  flex-direction: column; gap: 4px; }
+.notice { display: flex; gap: 6px; align-items: flex-start; font-size: 11px; line-height: 1.35; }
+.notice .txt { flex: 1; min-width: 0; }
+.notice.bad .txt { color: var(--app-attn); }
+.notice .acts { display: flex; gap: 2px; flex: none; }
+.linkbtn { border: 0; background: transparent; color: var(--app-text); text-decoration: underline; font: inherit;
+  font-size: 11px; cursor: pointer; padding: 0 3px; }
+.xbtn { border: 0; background: transparent; cursor: pointer; color: var(--app-faint); font: inherit; font-size: 12px; padding: 0 3px; }
+.rows { display: flex; flex-direction: column; padding: 0 4px; }
+.row { display: grid; grid-template-columns: 14px minmax(0, 140px) minmax(0, 1fr); align-items: baseline; gap: 4px;
+  padding: 2px 4px; border-radius: 3px; cursor: pointer; border: 0; background: transparent; font: inherit;
+  text-align: left; color: var(--app-text); width: 100%; }
+.row:hover { background: var(--app-hover); }
+.row .mk { font-size: 10px; text-align: center; }
+.row .nm { font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+/* Round 1 result: one line per watch, wrapping to the tab's width instead of being cut off */
+.row .hl { font-size: 11px; color: var(--app-faint); white-space: normal; }
+.row.nomarks { grid-template-columns: minmax(0, 140px) minmax(0, 1fr); }
+.row.attn .hl { color: var(--app-attn); }
+.row.off .nm, .row.off .hl { color: var(--app-ghost); font-weight: 400; }
+.mk.attn { color: var(--app-attn); }
+.mk.fragile { color: var(--app-text); }
+.mk.ok { color: var(--app-ghost); }
+.acc-foot { margin-top: auto; padding: 4px 8px 5px; font-size: 10px; color: var(--app-faint); text-align: right; }
+.empty { padding: 10px 12px; font-size: 12px; line-height: 1.45; color: var(--app-faint); display: flex; flex-direction: column;
+  gap: 8px; align-items: flex-start; max-width: 380px; }
+.stub { margin: 4px 8px; padding: 6px 8px; background: var(--app-hover); border-radius: 3px; font-size: 11px; color: var(--app-faint); }
+
+/* Popped-out windows */
+.win { position: absolute; background: var(--app-panel); border: 1px solid #8a96a6; border-radius: 6px;
+  box-shadow: 0 10px 30px rgba(20, 30, 45, .28); display: flex; flex-direction: column; overflow: hidden; z-index: 5; }
+.win.flash { animation: flash .6s ease 2; }
+@keyframes flash { 50% { box-shadow: 0 0 0 4px var(--app-attn); } }
+@media (prefers-reduced-motion: reduce) { .win.flash { animation: none; outline: 3px solid var(--app-attn); } }
+.win-title { height: 28px; display: flex; align-items: center; padding-left: 10px; background: #e9edf2; font-size: 12px;
+  border-bottom: 1px solid var(--app-line); cursor: move; flex: none; }
+.win-title .t { flex: 1; font-weight: 600; }
+.win-title button { border: 0; background: transparent; height: 100%; padding: 0 12px; cursor: pointer; font: inherit; color: var(--app-faint); }
+.win-title button:hover { background: #e3483f; color: #fff; }
+.win .panel-body { flex: 1; }
+.win-hint { font-size: 10px; color: var(--app-faint); padding: 2px 8px 4px; border-top: 1px solid var(--app-split); }
+
+/* Questions */
+.notes { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 12px; margin-top: 14px; }
+.note { background: var(--page-card); border: 1px solid var(--page-line); border-radius: 6px; padding: 12px 14px; min-width: 0; }
+.note h2 { font-size: 14px; margin: 0 0 6px; }
+.note ol, .note ul { margin: 0; padding-left: 20px; line-height: 1.5; color: var(--page-fg); }
+.note li + li { margin-top: 4px; }
+.note .muted { color: var(--page-muted); }
+</style>
+
+<h1>Access panel, round 1: the watch list</h1>
+<p class="lede">A low-fidelity mock of TermPoint's main window at real size. Mock data only. Round 1 judges the Access tab's
+watch list, the filter-bar summary, and popping the tab out. Clicking a watch only says what round 2 will do.</p>
+
+<div class="toolbar" role="group" aria-label="Review controls">
+  <label for="scenario">Mock data
+    <select id="scenario"></select>
+  </label>
+  <label>Layout
+    <span class="seg" id="layoutSeg"></span>
+  </label>
+  <label><input type="checkbox" id="marks" checked> Marks</label>
+  <label><input type="checkbox" id="readonly"> Read-only</label>
+  <label><input type="checkbox" id="fit"> Fit to width</label>
+</div>
+
+<div class="stage" id="stage"><div class="stage-inner" id="stageInner"><div class="app" id="app"></div></div></div>
+
+<div class="notes">
+  <div class="note">
+    <h2>Round 1 settled (Greg, 2026-11-10)</h2>
+    <ol>
+      <li>At 250 px you can tell at a glance which watches need you.</li>
+      <li>One line per watch, wrapping to the tab's width (no cut-off text).</li>
+      <li>Marks help. ▲ and ○ stay; ● stands in for a "fragile" icon (like the broken-glass packaging symbol), to be
+        found later.</li>
+      <li>The notices box at the top is the right weight.</li>
+      <li>The filter-bar summary points to the tab well enough.</li>
+      <li>Popping out the tab in front from the tab strip feels right.</li>
+    </ol>
+  </div>
+  <div class="note">
+    <h2>Not in this round</h2>
+    <ul class="muted">
+      <li>A watch's detail and the grid picture (round 2)</li>
+      <li>Stepping through slates and pins (round 3)</li>
+      <li>Adding and editing a watch (round 4)</li>
+      <li>Courses, Copy Semester, Check all courses (later rounds)</li>
+      <li>Real fonts and controls: Avalonia's will differ a little</li>
+    </ul>
+  </div>
+</div>
+
+<script>
+(() => {
+  // ---------- Mock data. Every scenario uses the spec's own examples. ----------
+  const SCENARIOS = {
+    typical: {
+      label: "Typical: no capacities set",
+      semester: "Winter Term 1 2026-27",
+      hint: true,
+      notices: [
+        { id: "n1", bad: true, watch: "Eng Y1 Core",
+          text: "Eng Y1 Core: students can no longer take all 5 courses. MATH 101 101 now overlaps PHYS 157 101, the only PHYS 157 lecture. Move one of them, or open Eng Y1 Core to see what's left." }
+      ],
+      watches: [
+        { name: "Eng Y1 Core", mark: "attn", line: "No full slate · best partial covers 4 of 5 · MATH 101 can't fit" },
+        { name: "Enviro Y2", mark: "attn", line: "12 slates · 4 of 5 courses offered" },
+        { name: "Biomed Y2", mark: "fragile", line: "6 slates · depends on BMEG 230 L1B" },
+        { name: "Chem Minor", mark: "ok", line: "More than 10,000 slates · 3 sections without times" },
+        { name: "Prior Biomed Sequence", mark: "ok", line: "48 slates" },
+        { name: "300-level BIOL", kind: "tags", line: "Tags and levels: overlaps boxed on the grid" },
+        { name: "Old Y2", kind: "off", line: "Off" }
+      ]
+    },
+    seats: {
+      label: "Healthy: capacities set",
+      semester: "Fall 2027",
+      hint: false,
+      notices: [],
+      watches: [
+        { name: "Enviro Y2", mark: "fragile", line: "12 slates · up to 40 students · depends on PSYCH 101 A" },
+        { name: "First-year Science", mark: "ok", line: "86 slates · up to 120 students" },
+        { name: "Bio Y1", mark: "ok", line: "32 slates · up to 64 students" },
+        { name: "Pre-Med Y2", mark: "fragile", line: "4 slates · up to 18 students · depends on CHEM 213 B, BIOL 220 L3" }
+      ]
+    },
+    broken: {
+      label: "After a bad afternoon: several notices",
+      semester: "Fall 2027",
+      hint: true,
+      notices: [
+        { id: "n1", bad: true, watch: "Enviro Y2",
+          text: "Enviro Y2: students can no longer take all 5 courses. PSYCH 101 A now overlaps CHEM 213 A, the only CHEM 213 section. Move one of them, or open Enviro Y2 to see what's left." },
+        { id: "n2", bad: true, watch: "Biomed Y2",
+          text: "Biomed Y2: BMEG 230 has no lab sections in Fall 2027. Add one, or edit BMEG 230's parts if it no longer has a lab." },
+        { id: "n3", bad: false, watch: "Bio Y1",
+          text: "Bio Y1: students can take all 4 courses again." }
+      ],
+      watches: [
+        { name: "Enviro Y2", mark: "attn", line: "No full slate · best partial covers 4 of 5 · CHEM 213 can't fit" },
+        { name: "Biomed Y2", mark: "attn", line: "9 slates · 2 of 3 courses complete" },
+        { name: "First-year Science", mark: "attn", line: "No full slate · best partial covers 3 of 4 · CHEM 101 or MATH 111 can't fit" },
+        { name: "Bio Y1", mark: "ok", line: "32 slates" },
+        { name: "Pre-Med Y2", mark: "fragile", line: "4 slates · depends on CHEM 213 B" }
+      ]
+    },
+    many: {
+      label: "A busy department: 14 watches",
+      semester: "Winter Term 1 2026-27",
+      hint: true,
+      notices: [],
+      watches: [
+        { name: "Biomed Y2", mark: "attn", line: "No full slate · best partial covers 2 of 3 · ELEC 203 can't fit" },
+        { name: "Mech Y3 Thermo stream", mark: "fragile", line: "3 slates · depends on MECH 375 L2A, MECH 360 T1C" },
+        { name: "Biomed Y1", mark: "ok", line: "210 slates" },
+        { name: "Biomed Y3", mark: "ok", line: "18 slates" },
+        { name: "Chem Minor", mark: "ok", line: "More than 10,000 slates" },
+        { name: "Civil Y2", mark: "ok", line: "64 slates · 2 sections without times" },
+        { name: "Civil Y3", mark: "ok", line: "40 slates" },
+        { name: "Elec Y2", mark: "fragile", line: "8 slates · depends on ELEC 221 101" },
+        { name: "Elec Y3", mark: "ok", line: "26 slates" },
+        { name: "Eng Y1 Core", mark: "ok", line: "1,152 slates" },
+        { name: "Mech Y2", mark: "ok", line: "96 slates" },
+        { name: "Mech Y3 Design stream", mark: "ok", line: "12 slates" },
+        { name: "Prior Biomed Sequence", mark: "ok", line: "48 slates" },
+        { name: "300-level BIOL", kind: "tags", line: "Tags and levels: overlaps boxed on the grid" }
+      ]
+    },
+    emptyPrev: {
+      label: "No watches yet; last year had some",
+      semester: "Fall 2027", previous: "Fall 2026", previousCount: 3, hint: false, notices: [], watches: []
+    },
+    empty: {
+      label: "No watches at all",
+      semester: "Fall 2027", hint: false, notices: [], watches: []
+    }
+  };
+
+  const SECTIONS = [
+    ["BIOL 201 A", "Lecture · MWF 9:00–9:50 · B101 · JRS"], ["BIOL 201 L1", "Laboratory · Tue 13:00–15:50 · B220"],
+    ["BIOL 201 L2", "Laboratory · Thu 13:00–15:50 · B220"], ["CHEM 213 A", "Lecture · Tue Thu 10:00–11:20 · C140 · MKP"],
+    ["GEOG 250 A", "Lecture · Mon Wed 13:00–14:20 · G12 · ALW"], ["PSYCH 101 A", "Lecture · Tue Thu 8:30–9:50 · P200 · DTN"],
+    ["PSYCH 101 B", "Lecture · Mon Wed 10:00–11:20 · P200 · DTN"], ["STAT 104 A", "Lecture · MWF 11:00–11:50 · M310 · RHC"],
+    ["STAT 104 C", "Lecture · Tue Thu 14:30–15:50 · M310 · RHC"], ["BMEG 230 101", "Lecture · Mon Wed 9:30–10:50 · E202 · KLM"],
+    ["BMEG 230 L1A", "Laboratory · Tue 15:00–17:50 · E010"], ["BMEG 230 T1A", "Discussion · Tue 15:00–15:50 · E115"]
+  ];
+  const WORKLOAD = [
+    ["J. R. Smith", 3, "9.0"], ["M. K. Patel", 4, "12.0"], ["A. L. Wong", 2, "6.0"], ["D. T. Nguyen", 3, "9.0"],
+    ["R. H. Chen", 4, "12.0"], ["K. L. Morris", 2, "7.5"], ["S. Okafor", 1, "3.0"], ["P. Lindqvist", 3, "9.0"]
+  ];
+  // Grid tiles: [day 0-4, start hour, length in hours, label]
+  const TILES = [
+    [0, 9, 0.83, "BIOL201 A JRS"], [2, 9, 0.83, "BIOL201 A JRS"], [4, 9, 0.83, "BIOL201 A JRS"],
+    [1, 10, 1.33, "CHEM213 A MKP"], [3, 10, 1.33, "CHEM213 A MKP"], [1, 8.5, 1.33, "PSYCH101 A DTN"],
+    [3, 8.5, 1.33, "PSYCH101 A DTN"], [0, 10, 1.33, "PSYCH101 B DTN"], [2, 10, 1.33, "PSYCH101 B DTN"],
+    [0, 13, 1.33, "GEOG250 A ALW"], [2, 13, 1.33, "GEOG250 A ALW"], [1, 13, 2.83, "BIOL201 L1"],
+    [3, 13, 2.83, "BIOL201 L2"], [0, 11, 0.83, "STAT104 A RHC"], [2, 11, 0.83, "STAT104 A RHC"],
+    [4, 11, 0.83, "STAT104 A RHC"], [1, 14.5, 1.33, "STAT104 C RHC"], [3, 14.5, 1.33, "STAT104 C RHC"],
+    [0, 9.5, 1.33, "BMEG230 101 KLM"], [2, 9.5, 1.33, "BMEG230 101 KLM"], [1, 15, 2.83, "BMEG230 L1A"],
+    [4, 13, 1.83, "ELEC203 101"], [4, 14.5, 1.33, "MECH463 102"]
+  ];
+
+  // ---------- State: what the reviewer has chosen ----------
+  const state = {
+    scenario: "typical",
+    layout: "docked",        // docked | accessOut | workloadOut | bothOut
+    tab: "access",           // which tab is in front while both are docked
+    rows: "one",             // one | two
+    marks: true,
+    readOnly: false,
+    dismissed: new Set(),
+    slotH: 250,
+    stub: null,              // a message shown when a not-yet-designed control is used
+    wins: { access: { x: 520, y: 210, w: 520, h: 380 }, workload: { x: 900, y: 120, w: 360, h: 300 } },
+    flash: false
+  };
+  const LAYOUTS = [["docked", "Docked"], ["accessOut", "Access popped out"], ["workloadOut", "Workload popped out"], ["bothOut", "Both popped out"]];
+  const ROWS = [["one", "One line"], ["two", "Two lines"]];
+
+  const $ = (s) => document.querySelector(s);
+  const esc = (s) => String(s).replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
+  const popIcon = '<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M9 2h5v5M14 2 7.5 8.5M12 9.5V14H2V4h4.5"/></svg>';
+
+  /** The scenario's notices that the reviewer has not dismissed. */
+  const liveNotices = (sc) => sc.notices.filter((n) => !state.dismissed.has(n.id));
+
+  /** The filter bar's Access summary: watch count, then notices if any, else how many need a look. */
+  function summary(sc) {
+    const enabled = sc.watches.filter((w) => w.kind !== "off").length;
+    if (enabled === 0) return { text: "No watches", attn: "" };
+    const base = `${enabled} ${enabled === 1 ? "watch" : "watches"}`;
+    const n = liveNotices(sc).filter((x) => x.bad).length;
+    if (n) return { text: base + " · ", attn: `${n} ${n === 1 ? "notice" : "notices"}` };
+    const a = sc.watches.filter((w) => w.mark === "attn").length;
+    if (a) return { text: base + " · ", attn: `${a} ${a === 1 ? "needs" : "need"} a look` };
+    return { text: base, attn: "" };
+  }
+
+  // ---------- Pieces of the mock ----------
+  function accessContent(sc) {
+    const ro = state.readOnly ? ' disabled title="Read-only: you can look at watches but not change them."' : "";
+    let h = `<div class="acc"><div class="acc-head"><span class="sem">Access · ${esc(sc.semester)}</span>
+      <button class="abtn" data-act="add"${ro}>+ Add a watch</button>
+      <button class="abtn" data-act="checkall">Check all courses</button></div>`;
+    if (state.stub) h += `<div class="stub">${esc(state.stub)}</div>`;
+    const ns = liveNotices(sc);
+    if (ns.length) {
+      h += `<div class="notices" role="region" aria-label="Notices">` + ns.map((n) =>
+        `<div class="notice ${n.bad ? "bad" : ""}"><span class="txt">${esc(n.text)}</span><span class="acts">
+          <button class="linkbtn" data-open="${esc(n.watch)}">Open</button>
+          <button class="xbtn" data-dismiss="${n.id}" aria-label="Dismiss notice">✕</button></span></div>`).join("") + `</div>`;
+    }
+    if (!sc.watches.length) {
+      h += `<div class="empty"><span>No access watches for ${esc(sc.semester)}. An access watch lists courses students take
+        together in one term; TermPoint then shows whether they still fit.</span>
+        <button class="abtn" data-act="add"${ro}>+ Add a watch</button>`;
+      if (sc.previous) h += `<span>${esc(sc.previous)} had ${sc.previousCount} access watches.</span>
+        <button class="abtn" data-act="bring"${ro}>Bring them over</button>`;
+      h += `</div>`;
+    } else {
+      const order = { attn: 0, fragile: 1, ok: 1 };
+      const sorted = [...sc.watches].sort((a, b) => {
+        const ka = a.kind ? 3 : order[a.mark] ?? 2, kb = b.kind ? 3 : order[b.mark] ?? 2;
+        return ka - kb || (a.kind === "off") - (b.kind === "off") || a.name.localeCompare(b.name);
+      });
+      h += `<div class="rows" role="list">` + sorted.map((w) => {
+        const cls = ["row", state.marks ? "" : "nomarks",
+          w.mark === "attn" ? "attn" : "", w.kind === "off" ? "off" : ""].join(" ");
+        const mk = !state.marks ? "" : `<span class="mk ${w.mark || ""}" aria-hidden="true">${
+          w.mark === "attn" ? "▲" : w.mark === "fragile" ? "●" : w.mark === "ok" ? "○" : ""}</span>`;
+        return `<button role="listitem" class="${cls}" data-open="${esc(w.name)}" title="${esc(w.name + ": " + w.line)}">
+          ${mk}<span class="nm">${esc(w.name)}</span><span class="hl">${esc(w.line)}</span></button>`;
+      }).join("") + `</div>`;
+    }
+    if (sc.hint && sc.watches.length) h += `<div class="acc-foot">Set section capacities to see how many students fit.</div>`;
+    return h + `</div>`;
+  }
+
+  function workloadContent() {
+    return `<table class="wl"><thead><tr><th>Instructor</th><th>Sections</th><th>Credits</th></tr></thead><tbody>` +
+      WORKLOAD.map((r) => `<tr><td>${r[0]}</td><td>${r[1]}</td><td>${r[2]}</td></tr>`).join("") + `</tbody></table>`;
+  }
+
+  function sectionList() {
+    return `<div class="cards">` + SECTIONS.map((s) => `<div class="card"><div class="h">${s[0]}</div><div class="s">${s[1]}</div></div>`).join("") + `</div>`;
+  }
+
+  /** The bottom-left slot: tabs when both are docked, a plain header when one is, nothing when both are out. */
+  function bottomSlot(sc) {
+    const accDocked = state.layout === "docked" || state.layout === "workloadOut";
+    const wlDocked = state.layout === "docked" || state.layout === "accessOut";
+    if (!accDocked && !wlDocked) return "";
+    const pop = (which, label) => `<button class="iconbtn" data-pop="${which}" title="Open ${label} in its own window" aria-label="Open ${label} in its own window">${popIcon}</button>`;
+    let head, body;
+    if (accDocked && wlDocked) {
+      const attn = sc.watches.some((w) => w.mark === "attn") || liveNotices(sc).some((n) => n.bad);
+      head = `<div class="panel-head" role="tablist">
+        <button class="tab" role="tab" data-tab="workload" aria-selected="${state.tab === "workload"}">Workload</button>
+        <button class="tab" role="tab" data-tab="access" aria-selected="${state.tab === "access"}">Access${attn && state.tab !== "access" ? '<span class="dot" title="A watch needs a look"></span>' : ""}</button>
+        <span class="spacer"></span>${pop(state.tab, state.tab === "access" ? "Access" : "Workload")}</div>`;
+      body = state.tab === "access" ? accessContent(sc) : workloadContent();
+    } else if (accDocked) {
+      head = `<div class="panel-head"><span class="title">Access</span><span class="spacer"></span>${pop("access", "Access")}</div>`;
+      body = accessContent(sc);
+    } else {
+      head = `<div class="panel-head"><span class="title">Workload View</span><span class="spacer"></span>${pop("workload", "Workload")}</div>`;
+      body = workloadContent();
+    }
+    return `<div class="hsplit" id="hsplit" title="Drag to resize"></div>
+      <div class="panel" style="height:${state.slotH}px;flex:none">${head}<div class="panel-body">${body}</div></div>`;
+  }
+
+  function grid() {
+    const days = ["Mon", "Tue", "Wed", "Thu", "Fri"], top = 20, hourH = 46, x0 = 40, colW = 150, start = 8;
+    let h = "";
+    days.forEach((d, i) => { h += `<div class="gday" style="left:${x0 + i * colW}px;width:${colW}px">${d}</div>`; });
+    for (let hr = start; hr <= 18; hr++) {
+      const y = top + (hr - start) * hourH;
+      h += `<div class="gline" style="top:${y}px"></div><div class="ghour" style="top:${y - 6}px">${hr}:00</div>`;
+    }
+    // Overlapping tiles in a day share the column side by side, as on the real grid
+    const byDay = days.map(() => []);
+    TILES.forEach((t) => byDay[t[0]].push(t));
+    byDay.forEach((list, d) => {
+      list.sort((a, b) => a[1] - b[1]);
+      const lanes = [];
+      list.forEach((t) => {
+        let lane = lanes.findIndex((end) => end <= t[1]);
+        if (lane < 0) { lane = lanes.length; lanes.push(0); }
+        lanes[lane] = t[1] + t[2]; t.lane = lane;
+      });
+      const n = Math.max(1, lanes.length), w = (colW - 4) / n;
+      list.forEach((t) => {
+        h += `<div class="gtile" style="left:${x0 + d * colW + 2 + t.lane * w}px;width:${w - 2}px;top:${top + (t[1] - start) * hourH}px;height:${t[2] * hourH - 2}px">${t[3]}</div>`;
+      });
+    });
+    return h;
+  }
+
+  function popWindow(which, sc) {
+    const g = state.wins[which];
+    const title = which === "access" ? "Access" : "Workload View";
+    const body = which === "access" ? accessContent(sc) : workloadContent();
+    return `<div class="win ${which === "access" && state.flash ? "flash" : ""}" data-win="${which}" style="left:${g.x}px;top:${g.y}px;width:${g.w}px;height:${g.h}px">
+      <div class="win-title" data-drag="${which}"><span class="t">${title} — TermPoint</span>
+        <button data-close="${which}" aria-label="Close and put back in the main window" title="Close: goes back into the main window">✕</button></div>
+      <div class="panel-body">${body}</div>
+      <div class="win-hint">Closing this window puts ${title} back in the main window.</div></div>`;
+  }
+
+  function render() {
+    const sc = SCENARIOS[state.scenario];
+    const s = summary(sc);
+    $("#app").innerHTML = `
+      <div class="menubar"><b>TermPoint</b><span>Files</span><span>Sections</span><span>Courses</span><span>Instructors</span><span>Rooms</span><span>Export</span><span>More</span></div>
+      <div class="body3">
+        <div class="leftcol">
+          <div class="panel" style="flex:1"><div class="panel-head"><span class="title">Section View</span><span class="spacer"></span><button class="iconbtn" tabindex="-1" aria-hidden="true">${popIcon}</button></div>
+            <div class="panel-body">${sectionList()}</div></div>
+          ${bottomSlot(sc)}
+        </div>
+        <div class="vsplit"></div>
+        <div class="panel grid-panel"><div class="panel-head"><span class="title">Schedule View <span style="font-weight:400;color:var(--app-faint)">${esc(sc.semester)}</span></span><span class="spacer"></span><button class="iconbtn" tabindex="-1" aria-hidden="true">${popIcon}</button></div>
+          <div class="filterbar">
+            <div class="fgroup"><span class="legend">Filters</span><button class="fbtn" tabindex="-1">None ▾</button></div>
+            <div class="fgroup"><span class="legend">Overlays</span><button class="fbtn" tabindex="-1">None ▾</button></div>
+            <div class="fgroup"><span class="legend">Access</span><button class="fbtn" id="summaryBtn" title="Show the Access panel">${esc(s.text)}<span class="attn">${esc(s.attn)}</span></button></div>
+          </div>
+          <div class="gridarea">${grid()}</div>
+        </div>
+      </div>
+      ${state.layout === "accessOut" || state.layout === "bothOut" ? popWindow("access", sc) : ""}
+      ${state.layout === "workloadOut" || state.layout === "bothOut" ? popWindow("workload", sc) : ""}`;
+    renderToolbar();
+    state.flash = false;
+  }
+
+  function renderToolbar() {
+    $("#layoutSeg").innerHTML = LAYOUTS.map(([k, l]) => `<button data-layout="${k}" aria-pressed="${state.layout === k}">${l}</button>`).join("");
+  }
+
+  // ---------- Interactions ----------
+  $("#scenario").innerHTML = Object.entries(SCENARIOS).map(([k, v]) => `<option value="${k}">${v.label}</option>`).join("");
+  $("#scenario").addEventListener("change", (e) => { state.scenario = e.target.value; state.dismissed.clear(); state.stub = null; render(); });
+  $("#marks").addEventListener("change", (e) => { state.marks = e.target.checked; render(); });
+  $("#readonly").addEventListener("change", (e) => { state.readOnly = e.target.checked; render(); });
+  $("#fit").addEventListener("change", (e) => { setFit(e.target.checked); });
+
+  document.addEventListener("click", (e) => {
+    const t = e.target.closest("button");
+    if (!t) return;
+    const d = t.dataset;
+    if (d.layout) { state.layout = d.layout; render(); }
+    else if (d.rows) { state.rows = d.rows; render(); }
+    else if (d.tab) { state.tab = d.tab; render(); }
+    else if (d.pop) {
+      const other = state.layout === "docked" ? null : state.layout;
+      if (d.pop === "access") state.layout = other === "workloadOut" ? "bothOut" : "accessOut";
+      else state.layout = other === "accessOut" ? "bothOut" : "workloadOut";
+      state.tab = d.pop === "access" ? "workload" : "access";
+      render();
+    }
+    else if (d.close) {
+      if (d.close === "access") state.layout = state.layout === "bothOut" ? "workloadOut" : "docked";
+      else state.layout = state.layout === "bothOut" ? "accessOut" : "docked";
+      if (d.close === "access") state.tab = "access";
+      render();
+    }
+    else if (d.dismiss) { state.dismissed.add(d.dismiss); render(); }
+    else if (d.open) { state.stub = `Round 2: this opens ${d.open}'s detail here and colours the grid for it.`; render(); }
+    else if (d.act) {
+      state.stub = { add: "Round 4: adding a watch (paste or pick courses) opens here.",
+        checkall: "A later round: Check all courses opens its results here.",
+        bring: "Copies Fall 2026's watches into this semester (a later round shows the message afterwards)." }[d.act];
+      render();
+    }
+    else if (t.id === "summaryBtn") {
+      // Bring the Access panel forward wherever it is
+      if (state.layout === "accessOut" || state.layout === "bothOut") state.flash = true;
+      else state.tab = "access";
+      render();
+    }
+  });
+
+  // Dragging: the splitter above the bottom panel, and popped-out window title bars
+  let drag = null;
+  const scale = () => (stageInner.style.transform ? parseFloat(stageInner.style.transform.slice(6)) : 1);
+  document.addEventListener("pointerdown", (e) => {
+    if (e.target.id === "hsplit") drag = { kind: "split", y: e.clientY, h0: state.slotH };
+    const bar = e.target.closest("[data-drag]");
+    if (bar && !e.target.closest("button")) {
+      const g = state.wins[bar.dataset.drag];
+      drag = { kind: "win", which: bar.dataset.drag, x: e.clientX, y: e.clientY, gx: g.x, gy: g.y };
+    }
+    if (drag) e.preventDefault();
+  });
+  document.addEventListener("pointermove", (e) => {
+    if (!drag) return;
+    const k = scale();
+    if (drag.kind === "split") {
+      state.slotH = Math.max(120, Math.min(560, drag.h0 - (e.clientY - drag.y) / k));
+      const p = document.querySelector("#hsplit + .panel");
+      if (p) p.style.height = state.slotH + "px";
+    } else {
+      const g = state.wins[drag.which];
+      g.x = Math.max(0, Math.min(1280 - 80, drag.gx + (e.clientX - drag.x) / k));
+      g.y = Math.max(0, Math.min(760 - 30, drag.gy + (e.clientY - drag.y) / k));
+      const w = document.querySelector(`[data-win="${drag.which}"]`);
+      if (w) { w.style.left = g.x + "px"; w.style.top = g.y + "px"; }
+    }
+  });
+  document.addEventListener("pointerup", () => { drag = null; });
+
+  // Fit to width: scale the 1280 px mock down to the stage's width (keeps proportions, changes apparent sizes)
+  const stage = $("#stage"), stageInner = $("#stageInner");
+  function setFit(on) {
+    $("#fit").checked = on;
+    stage.classList.toggle("fit", on);
+    if (on) {
+      const k = Math.min(1, stage.clientWidth / 1280);
+      stageInner.style.transform = `scale(${k})`;
+      stage.style.height = 760 * k + 2 + "px";
+    } else { stageInner.style.transform = ""; stage.style.height = ""; }
+  }
+  window.addEventListener("resize", () => { if ($("#fit").checked) setFit(true); });
+
+  render();
+  setFit(window.innerWidth < 1320);
+})();
+</script>

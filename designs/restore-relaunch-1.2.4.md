@@ -1,6 +1,6 @@
 # 1.2.4 item 4.3: after a Save & Backup restore, the old TermPoint must end, and the new one reopens the database
 
-Status: **built 2026-11-10** (Greg chose B for every close). By-hand check on the sideload still to do. MinimumVersionToWrite: **No** (nothing stored changes).
+Status: **built 2026-11-10** (Greg chose B for every close). By-hand check on the sideload **passed 2026-11-10** (3/3; A's line every time, B never fired; macOS `open -n` still to check). MinimumVersionToWrite: **No** (nothing stored changes).
 
 ## The story
 
