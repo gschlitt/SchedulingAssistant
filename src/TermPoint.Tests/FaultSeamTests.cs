@@ -480,6 +480,39 @@ public sealed class FaultSeamTests : IDisposable
     }
 
     /// <summary>
+    /// The hashing copy goes through the same seam, under the same "CopyFile" label, and behaves as the plain copy does:
+    /// TimeOut does nothing, TimeOutAfterRunning copies everything but reports "not completed" with no hash, Throw
+    /// throws before any work, and with no fault it returns the real hash.
+    /// </summary>
+    [Fact]
+    public async Task CopyAndHashAsync_HonoursEachFaultKind_AndUsesTheCopyFileLabel()
+    {
+        var src = Path.Combine(_shareDir, "src.bin");
+        var dst = Path.Combine(_shareDir, "dst.bin");
+        File.WriteAllBytes(src, new byte[200_000]);
+
+        var labels = new List<string>();
+        NetworkFaults.Decide = r => { labels.Add(r.Label); return NetworkFaultDecision.TimeOut; };
+        Assert.Equal((false, null), await NetworkFileOps.CopyAndHashAsync(src, dst));
+        Assert.False(File.Exists(dst));
+        Assert.Equal(new[] { "CopyFile" }, labels);
+
+        NetworkFaults.Decide = _ => NetworkFaultDecision.TimeOutAfterRunning;
+        Assert.Equal((false, null), await NetworkFileOps.CopyAndHashAsync(src, dst));
+        Assert.Equal(200_000, new FileInfo(dst).Length);
+
+        File.Delete(dst);
+        NetworkFaults.Decide = _ => NetworkFaultDecision.Throwing(new IOException("boom"));
+        await Assert.ThrowsAsync<IOException>(() => NetworkFileOps.CopyAndHashAsync(src, dst));
+        Assert.False(File.Exists(dst));
+
+        NetworkFaults.Decide = _ => NetworkFaultDecision.None;
+        var (completed, hash) = await NetworkFileOps.CopyAndHashAsync(src, dst);
+        Assert.True(completed);
+        Assert.Equal((await NetworkFileOps.ComputeHashAsync(dst)).Hash, hash);
+    }
+
+    /// <summary>
     /// The generic RunAsync (used directly by callers such as "lock acquire") is consulted by its label and gives
     /// exactly what a real timeout gives: (false, default) for a result-returning operation, false for an action.
     /// A run-then-timeout runs the operation once; a plain timeout never runs it.

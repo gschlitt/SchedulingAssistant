@@ -318,7 +318,39 @@ public static class NetworkFileOps
     /// </summary>
     /// <returns><c>true</c> when the copy completed; <c>false</c> when the open or any single chunk stalled.</returns>
     public static Task<bool> CopyAsync(string source, string dest)
-        => NetworkFaults.Decide is null ? CopyCoreAsync(source, dest) : CopyFaultableAsync(source, dest);
+        => CopyDispatchAsync(source, dest, null);
+
+    /// <summary>
+    /// <see cref="CopyAsync"/> that also computes the SHA-256 of the bytes it copies, as they pass through the copy
+    /// loop — so a reader gets the copy and its hash from ONE read of the source instead of a hash read plus a copy
+    /// read. The loop, the per-chunk stall deadline, the abandoned-task handling and the fault seam (label
+    /// "CopyFile") are exactly <see cref="CopyAsync"/>'s. The hash string is formatted exactly as
+    /// <see cref="ComputeHashAsync"/> formats it, so the two are interchangeable for the same bytes.
+    /// </summary>
+    /// <param name="source">File to copy (opened with <see cref="FileShare.ReadWrite"/>).</param>
+    /// <param name="dest">Destination file; a stalled copy leaves a partial file behind, as <see cref="CopyAsync"/> does.</param>
+    /// <returns>
+    /// <c>(true, hash)</c> when the whole file was copied and hashed; <c>(false, null)</c> when the open or any single
+    /// chunk stalled (or a fault was injected).
+    /// </returns>
+    /// <exception cref="IOException">Open, read, write or flush failures propagate, as for <see cref="CopyAsync"/>.</exception>
+    public static async Task<(bool Completed, string? Hash)> CopyAndHashAsync(string source, string dest)
+    {
+        using var hasher = IncrementalHash.CreateHash(HashAlgorithmName.SHA256);
+        var completed = await CopyDispatchAsync(source, dest, hasher).ConfigureAwait(false);
+        return completed ? (true, Convert.ToHexString(hasher.GetHashAndReset())) : (false, null);
+    }
+
+    /// <summary>
+    /// Shared entry for <see cref="CopyAsync"/> and <see cref="CopyAndHashAsync"/>: routes through the fault seam when
+    /// an injector is installed, else straight to the real copy.
+    /// </summary>
+    /// <param name="source">File to copy.</param>
+    /// <param name="dest">Destination file.</param>
+    /// <param name="hasher">Receives every copied byte when non-null; null for a plain copy.</param>
+    /// <returns>As <see cref="CopyAsync"/>.</returns>
+    private static Task<bool> CopyDispatchAsync(string source, string dest, IncrementalHash? hasher)
+        => NetworkFaults.Decide is null ? CopyCoreAsync(source, dest, hasher) : CopyFaultableAsync(source, dest, hasher);
 
     /// <summary>
     /// Test seam (<see cref="NetworkFaults"/>): consults the injector for one <see cref="CopyAsync"/> call and applies
@@ -328,23 +360,24 @@ public static class NetworkFileOps
     /// </summary>
     /// <param name="source">File to copy.</param>
     /// <param name="dest">Destination file.</param>
+    /// <param name="hasher">Optional hash accumulator, passed through to the real copy; null for a plain copy.</param>
     /// <returns>As <see cref="CopyAsync"/>.</returns>
-    private static async Task<bool> CopyFaultableAsync(string source, string dest)
+    private static async Task<bool> CopyFaultableAsync(string source, string dest, IncrementalHash? hasher)
     {
         var fault = NetworkFaults.Consult("CopyFile", source, dest);
         if (fault.Kind == NetworkFaultKind.None)
-            return await CopyCoreAsync(source, dest).ConfigureAwait(false);
+            return await CopyCoreAsync(source, dest, hasher).ConfigureAwait(false);
 
         // A hang runs the real copy with one step blocked behind the injector's gate: the normal deadline race decides.
         if (fault.Kind == NetworkFaultKind.Hang)
             return await CopyCoreAsync(
-                source, dest,
+                source, dest, hasher,
                 hangAtOpen:  fault.HangPoint == NetworkHangPoint.Start      ? fault.EnterHang : null,
                 hangAtWrite: fault.HangPoint == NetworkHangPoint.ChunkWrite ? fault.EnterHang : null).ConfigureAwait(false);
 
         await ApplyFaultAsync(
             fault,
-            () => CopyCoreAsync(source, dest),
+            () => CopyCoreAsync(source, dest, null),   // reported as a failure, so no hash is needed
             () => LogStall(fault.Kind == NetworkFaultKind.TimeOut ? "CopyFile (open)" : "CopyFile (close)"),
             "CopyFile").ConfigureAwait(false);
         return false;
@@ -355,11 +388,13 @@ public static class NetworkFileOps
     /// </summary>
     /// <param name="source">File to copy.</param>
     /// <param name="dest">Destination file.</param>
+    /// <param name="hasher">When non-null, every chunk read from the source is appended to it before the chunk is written; the caller reads the hash after a <c>true</c> result.</param>
     /// <param name="hangAtOpen">Test seam (<see cref="NetworkFaultKind.Hang"/>): entered inside the open's deadline-guarded task, before either file is opened; null in the app.</param>
     /// <param name="hangAtWrite">Test seam: entered inside the chunk write's deadline-guarded task, immediately before the real write call, which is exactly where field bug A1 blocked (see the comment at the write); null in the app.</param>
     /// <returns>As <see cref="CopyAsync"/>.</returns>
     private static async Task<bool> CopyCoreAsync(
-        string source, string dest, Func<IDisposable>? hangAtOpen = null, Func<IDisposable>? hangAtWrite = null)
+        string source, string dest, IncrementalHash? hasher,
+        Func<IDisposable>? hangAtOpen = null, Func<IDisposable>? hangAtWrite = null)
     {
         FileStream? src = null, dst = null;
         try
@@ -423,6 +458,9 @@ public static class NetworkFileOps
                     await CloseNonFatalAsync(srcToClose!, "CopyFile (source close)").ConfigureAwait(false);
                     return true;
                 }
+
+                // Hash the chunk as it passes (reader path), before the write starts, so the buffer is stable.
+                hasher?.AppendData(buffer, 0, read);
 
                 // The write is STARTED on a thread-pool thread, not inline, exactly like the close above. Windows
                 // sometimes performs an "asynchronous" write to a share synchronously: the call returns only once

@@ -2654,6 +2654,11 @@ public sealed class CheckoutService : IDisposable
     /// (another user's rename onto it, or any program changing it) changes the last-write time, so a difference
     /// is the cue to look closer; a stamp that has not changed is accepted as "D has not changed" (a hash
     /// would only confirm it, at the cost of reading the whole database over the network).
+    ///
+    /// <para><b>Freshness:</b> SMB may serve a size and time that are up to about 10 seconds old (E2, <c>designs/network-experiments-5.8.md</c>),
+    /// so an unchanged stamp is not proof on its own. It is covered because the lock check made just before the stamp
+    /// (step 2, in the same <c>CheckLockAndSourceAsync</c> call) refuses first if the lock is no longer ours: another
+    /// writer cannot have replaced D without having taken the lock, so a stale stamp cannot hide a real change.</para>
     /// </summary>
     /// <param name="Length">The file's size in bytes.</param>
     /// <param name="LastWriteUtc">The file's last-write time, UTC.</param>
@@ -2809,7 +2814,9 @@ public sealed class CheckoutService : IDisposable
         }
 
         // 2b. The cheap path of the final check: size and last-write time are exactly what the first
-        //     check saw, so nobody has written D since. Skip the hash (it reads the whole database over
+        //     check saw, so nobody has written D since.
+        //     (SMB may serve a size and time up to ~10 s old; that is covered because the lock check above
+        //     already refused if the lock is not ours, and nobody can replace D without it.) Skip the hash (it reads the whole database over
         //     the network). The first check never takes this path: it has nothing to compare with.
         if (isFinalCheck && stampAtFirstCheck is { } firstStamp && firstStamp == stampNow)
             return (null, stampNow, lockConfirmed);
@@ -3238,8 +3245,8 @@ public sealed class CheckoutService : IDisposable
 
     /// <summary>
     /// For read-only instances, re-copies D → D'' to fetch the latest data.
-    /// Re-verifies the copy hash on success. Includes a 500ms delay before reading D
-    /// to account for SMB client-side caching.
+    /// Reads D once (a copy that is hashed as it is made) and then runs the integrity check on the fresh copy
+    /// before anything is replaced; there is no pre-read delay.
     ///
     /// <para>Because D'' may be held open by <c>DatabaseContext</c>, the caller must close
     /// the connection before the overwrite and reopen it after. Use the two callbacks for this:
@@ -3248,7 +3255,7 @@ public sealed class CheckoutService : IDisposable
     /// </summary>
     /// <returns>
     /// <see cref="RefreshOutcome.Updated"/> — D'' was successfully re-copied from D and the connection reopened on it.<br/>
-    /// <see cref="RefreshOutcome.SourceUnavailable"/> — D could not be reached or the copy hash never matched; D'' is
+    /// <see cref="RefreshOutcome.SourceUnavailable"/> — D could not be reached or the fresh copy failed its integrity check; D'' is
     /// unchanged and the connection was never closed.<br/>
     /// <see cref="RefreshOutcome.ReplaceFailed"/> — the swap failed (the rename, or <paramref name="beforeOverwrite"/>
     /// threw); the connection is open again on the previous D''.<br/>
@@ -3282,135 +3289,143 @@ public sealed class CheckoutService : IDisposable
         // The session this refresh belongs to: a retry of the reopen stops if a close or switch moves it on.
         var sessionAtStart = SessionId;
 
-        // Add SMB cache delay before reading D to ensure we get fresh data.
-        const int baseDelayMs = 500;
-        const int jitterMs    = 500;
-        await Task.Delay(baseDelayMs + Random.Shared.Next(0, jitterMs));
-
         var tmpPath = ReadOnlyWorkingPath + ".tmp";
 
-        // Attempt up to 3 times in case D is modified mid-copy (hash mismatch).
-        for (int attempt = 0; attempt < 3; attempt++)
+        // One read of D: copy it to D''.tmp and hash the bytes as they pass. TermPoint only ever replaces D by renaming
+        // a finished copy over it, so one open handle reads one whole version; no second read is needed to detect a
+        // change mid-copy (designs/reader-single-read-1.2.4.md). A damaged copy is caught by the integrity check below.
+        string? sourceHash;
+        try
         {
-            string? sourceHash;
-            try
-            {
-                bool hashCompleted;
-                (hashCompleted, sourceHash) = await NetworkFileOps.ComputeHashAsync(SourcePath);
+            bool copyCompleted;
+            (copyCompleted, sourceHash) = await NetworkFileOps.CopyAndHashAsync(SourcePath, tmpPath);
 
-                if (!hashCompleted)
-                {
-                    _logger.LogInfo("CheckoutService: refresh hash timed out — network unreachable");
-                    return RefreshOutcome.SourceUnavailable;
-                }
-            }
-            catch (Exception ex)
+            if (!copyCompleted)
             {
-                _logger.LogInfo($"CheckoutService: could not read D for refresh: {ex.Message}");
+                _logger.LogInfo("CheckoutService: refresh copy timed out — network unreachable");
+                await NetworkFileOps.DeleteAsync(tmpPath);
                 return RefreshOutcome.SourceUnavailable;
             }
-
-            try
-            {
-                var copyCompleted = await NetworkFileOps.CopyAsync(SourcePath, tmpPath);
-
-                if (!copyCompleted)
-                {
-                    _logger.LogInfo("CheckoutService: refresh copy timed out — network unreachable");
-                    await NetworkFileOps.DeleteAsync(tmpPath);
-                    return RefreshOutcome.SourceUnavailable;
-                }
-            }
-            catch (Exception ex)
-            {
-                // LogInfo, not LogError: LogError would also put a red log-text banner on screen (spec item 28); the
-                // view model shows one plain line instead. The exception's type and message stay in the log line.
-                _logger.LogInfo(
-                    $"CheckoutService: failed to copy D to D''.tmp during refresh ({ex.GetType().Name}: {ex.Message})");
-                TryDelete(tmpPath);
-                return RefreshOutcome.SourceUnavailable;
-            }
-
-            var copyHash = ComputeHash(tmpPath);
-            if (copyHash == sourceHash)
-            {
-                // Close the DatabaseContext connection before overwriting D''. From the moment the callback has been
-                // CALLED (even if it threw: the connection may be half-closed) every exit below ends with a reopen.
-                var beforeCalled = false;
-                var beforeThrew  = false;
-                if (beforeOverwrite is not null)
-                {
-                    beforeCalled = true;
-                    try { await beforeOverwrite(); }
-                    catch (Exception ex)
-                    {
-                        beforeThrew = true;
-                        _logger.LogInfo(
-                            $"CheckoutService: beforeOverwrite callback threw during refresh ({ex.GetType().Name}: {ex.Message})");
-                    }
-                }
-                CrashPoints.Hit("Refresh.AfterConnectionClosed");
-
-                // The swap. Skipped when the close threw: the connection may still be open on D'', so it is not touched.
-                var swapped = false;
-                if (!beforeThrew)
-                {
-                    try
-                    {
-                        if (RefreshFaultPlan?.TryConsume(InjectedRefreshFault.Replace) == true)
-                        {
-                            _logger.LogInfo(
-                                $"[DEBUG fault injection] {Services.RefreshFaultPlan.EnvironmentVariableName}: failing the rename; {RefreshFaultPlan.Description}.");
-                            throw new IOException("Injected refresh fault: the rename failed.");
-                        }
-
-                        // Connection is closed at this point (beforeOverwrite); drop any
-                        // WAL sidecars so the fresh copy is not paired with a stale -wal.
-                        TryDeleteWalSidecars(ReadOnlyWorkingPath);
-                        File.Move(tmpPath, ReadOnlyWorkingPath, overwrite: true);
-                        swapped = true;
-                    }
-                    catch (Exception ex)
-                    {
-                        // A failed File.Move leaves the previous D'' in place, so the reopen below goes to the old data.
-                        _logger.LogInfo(
-                            $"CheckoutService: failed to rename D''.tmp during refresh ({ex.GetType().Name}: {ex.Message})");
-                    }
-                }
-
-                if (!swapped)
-                    TryDelete(tmpPath);
-                else
-                {
-                    CrashPoints.Hit("Refresh.AfterSwap");
-                    HashAtCheckout = sourceHash;      // only after a successful swap: D'' now matches this hash
-                }
-
-                // Reopen the connection (to the fresh copy if swapped, to the previous one if not): same path either way.
-                // Without a close callback nothing was closed, so there is nothing to reopen unless the swap happened.
-                var reopened = true;
-                if (beforeCalled || swapped)
-                    reopened = await ReopenAfterRefreshAsync(afterOverwrite, sessionAtStart);
-
-                if (!reopened)
-                    return RefreshOutcome.ConnectionLost;
-                if (!swapped)
-                    return RefreshOutcome.ReplaceFailed;
-
-                _logger.LogInfo("CheckoutService: read-only refresh — D'' updated successfully.");
-                return RefreshOutcome.Updated;
-            }
-
-            // Hash mismatch — D was likely being written during copy. Retry.
-            _logger.LogInfo($"CheckoutService: refresh hash mismatch on attempt {attempt + 1}/3 — retrying.");
+        }
+        catch (Exception ex)
+        {
+            // LogInfo, not LogError: LogError would also put a red log-text banner on screen (spec item 28); the
+            // view model shows one plain line instead. The exception's type and message stay in the log line.
+            _logger.LogInfo(
+                $"CheckoutService: failed to copy D to D''.tmp during refresh ({ex.GetType().Name}: {ex.Message})");
             TryDelete(tmpPath);
-
-            if (attempt < 2)
-                await Task.Delay(100 * (attempt + 1));
+            return RefreshOutcome.SourceUnavailable;
         }
 
-        _logger.LogInfo("CheckoutService: refresh failed — hash mismatch after 3 retries.");
-        return RefreshOutcome.SourceUnavailable;
+        // The fresh copy must pass the same integrity check as an opened one BEFORE anything is touched: a damaged
+        // copy is thrown away, the old D'' stays, and the connection is never closed (beforeOverwrite is not called).
+        if (!await FreshCopyPassesIntegrityAsync(tmpPath, "refresh"))
+        {
+            TryDelete(tmpPath);
+            return RefreshOutcome.SourceUnavailable;
+        }
+
+        // Close the DatabaseContext connection before overwriting D''. From the moment the callback has been
+        // CALLED (even if it threw: the connection may be half-closed) every exit below ends with a reopen.
+        var beforeCalled = false;
+        var beforeThrew  = false;
+        if (beforeOverwrite is not null)
+        {
+            beforeCalled = true;
+            try { await beforeOverwrite(); }
+            catch (Exception ex)
+            {
+                beforeThrew = true;
+                _logger.LogInfo(
+                    $"CheckoutService: beforeOverwrite callback threw during refresh ({ex.GetType().Name}: {ex.Message})");
+            }
+        }
+        CrashPoints.Hit("Refresh.AfterConnectionClosed");
+
+        // The swap. Skipped when the close threw: the connection may still be open on D'', so it is not touched.
+        var swapped = false;
+        if (!beforeThrew)
+        {
+            try
+            {
+                if (RefreshFaultPlan?.TryConsume(InjectedRefreshFault.Replace) == true)
+                {
+                    _logger.LogInfo(
+                        $"[DEBUG fault injection] {Services.RefreshFaultPlan.EnvironmentVariableName}: failing the rename; {RefreshFaultPlan.Description}.");
+                    throw new IOException("Injected refresh fault: the rename failed.");
+                }
+
+                // Connection is closed at this point (beforeOverwrite); drop any
+                // WAL sidecars so the fresh copy is not paired with a stale -wal.
+                TryDeleteWalSidecars(ReadOnlyWorkingPath);
+                File.Move(tmpPath, ReadOnlyWorkingPath, overwrite: true);
+                swapped = true;
+            }
+            catch (Exception ex)
+            {
+                // A failed File.Move leaves the previous D'' in place, so the reopen below goes to the old data.
+                _logger.LogInfo(
+                    $"CheckoutService: failed to rename D''.tmp during refresh ({ex.GetType().Name}: {ex.Message})");
+            }
+        }
+
+        if (!swapped)
+            TryDelete(tmpPath);
+        else
+        {
+            CrashPoints.Hit("Refresh.AfterSwap");
+            HashAtCheckout = sourceHash;      // only after a successful swap: D'' now matches this hash (the copy's own hash)
+        }
+
+        // Reopen the connection (to the fresh copy if swapped, to the previous one if not): same path either way.
+        // Without a close callback nothing was closed, so there is nothing to reopen unless the swap happened.
+        var reopened = true;
+        if (beforeCalled || swapped)
+            reopened = await ReopenAfterRefreshAsync(afterOverwrite, sessionAtStart);
+
+        if (!reopened)
+            return RefreshOutcome.ConnectionLost;
+        if (!swapped)
+            return RefreshOutcome.ReplaceFailed;
+
+        _logger.LogInfo("CheckoutService: read-only refresh — D'' updated successfully.");
+        return RefreshOutcome.Updated;
+    }
+
+    /// <summary>
+    /// Runs <see cref="LocalCopyIntegrity.CheckOnce"/> on a fresh local copy (D''.tmp) that a reader has just made from
+    /// D, before it is put in place. The reader's one read of D is no longer compared against a second read, so this
+    /// is what guards against a damaged copy, whatever caused the damage. A check that did not finish, or that found
+    /// the copy locked or damaged, all mean "do not use this copy": the caller deletes it and treats D as unavailable
+    /// this time (the existing one-line refresh failure, or the Try again / Close prompt at setup). The DEBUG-only
+    /// open-time fault plan is deliberately not passed: it is meant for the open-time check and must not be spent here.
+    /// </summary>
+    /// <para>A copy found <b>locked</b> (antivirus scanning the freshly written file is the usual cause) is checked
+    /// again, up to <see cref="LocalCopyIntegrity.MaxAttempts"/> in all, <see cref="LocalCopyIntegrity.RetryDelay"/>
+    /// apart: the same allowance the open-time check gives (<see cref="LocalCopyIntegrity.VerifyAtOpen"/>). Damage or
+    /// a timeout is final at once.</para>
+    /// </summary>
+    /// <param name="tmpPath">Full path of the finished local copy.</param>
+    /// <param name="what">Short name of the caller for the log line, e.g. "refresh".</param>
+    /// <returns>True when the copy passed; false (after logging why) when it must not be used. Never throws.</returns>
+    private async Task<bool> FreshCopyPassesIntegrityAsync(string tmpPath, string what)
+    {
+        var check = LocalCopyIntegrity.CheckOnce(tmpPath, null, _logger);
+        for (int attempt = 1;
+             attempt < LocalCopyIntegrity.MaxAttempts && check.Completed && check.Result == IntegrityCheckResult.Unreadable;
+             attempt++)
+        {
+            await Task.Delay(LocalCopyIntegrity.RetryDelay);
+            check = LocalCopyIntegrity.CheckOnce(tmpPath, null, _logger);
+        }
+
+        if (check.Completed && check.Result == IntegrityCheckResult.Ok)
+            return true;
+
+        _logger.LogInfo(
+            $"CheckoutService: the fresh copy of D failed its integrity check during {what} " +
+            $"({(check.Completed ? check.Result.ToString() : "timed out")}: {check.Summary}) — the copy is discarded.");
+        return false;
     }
 
     /// <summary>
@@ -5318,7 +5333,7 @@ public sealed class CheckoutService : IDisposable
     /// <returns>
     /// The path to D'' on success (same as <see cref="ReadOnlyWorkingPath"/>).
     /// <c>null</c> if D'' cannot be created (e.g. D is inaccessible, held open exclusively by
-    /// another program, or the copy hash never matches) — I/O and permission failures reading D
+    /// another program, or the fresh copy fails its integrity check) — I/O and permission failures reading D
     /// are reported this way, never thrown. The caller must NOT fall back to opening <see cref="SourcePath"/> directly —
     /// opening D with SQLite changes its header (so the active editor's next save fails) and
     /// holds it open. Tell the user and offer to try again, or give up; see
@@ -5350,9 +5365,14 @@ public sealed class CheckoutService : IDisposable
         Directory.CreateDirectory(_workingDir);
         var roTmpPath = roPath + ".tmp";
 
+        // One read of D: copy it to D''.tmp and hash the bytes as they pass (no separate hash of D, no second copy).
+        // D is only ever replaced by a rename of a finished copy, so one open handle reads one whole version
+        // (designs/reader-single-read-1.2.4.md); the integrity check below guards against a damaged copy.
+        string? roSourceHash;
         try
         {
-            var copyCompleted = await NetworkFileOps.CopyAsync(source, roTmpPath);
+            bool copyCompleted;
+            (copyCompleted, roSourceHash) = await NetworkFileOps.CopyAndHashAsync(source, roTmpPath);
 
             if (!copyCompleted)
             {
@@ -5364,7 +5384,8 @@ public sealed class CheckoutService : IDisposable
         {
             // A database another program holds exclusively (or that we may not read) is an
             // ordinary, retryable condition — log it quietly (LogError raises a Bugsnag report and
-            // a banner). Anything else keeps the loud error.
+            // a banner). Anything else keeps the loud error. Either way the method returns null (the caller
+            // then shows the Try again / Close prompt) — an I/O or permission failure reading D never escapes.
             if (DatabaseValidator.IsLockedOrAccessDenied(ex))
                 _logger.LogInfo($"CheckoutService: cannot read D to make D'' ({ex.GetType().Name}: {ex.Message})");
             else
@@ -5373,56 +5394,12 @@ public sealed class CheckoutService : IDisposable
             return null;
         }
 
-        // An I/O or permission failure reading D must make this method return null (the caller then
-        // shows the Try again / Close prompt) — never escape as an exception.
-        var (hashCompleted, roSourceHash, hashUnreadable) = await HashSourceAsync(source, "read-only setup hash");
-
-        if (hashUnreadable)
+        // A damaged (or unexaminable) fresh copy is treated as an unreadable source: no D'' is made, the caller
+        // shows the same Try again / Close prompt.
+        if (!await FreshCopyPassesIntegrityAsync(roTmpPath, "read-only setup"))
         {
             TryDelete(roTmpPath);
             return null;
-        }
-
-        if (!hashCompleted)
-        {
-            _logger.LogInfo("CheckoutService: read-only setup hash timed out — network unreachable");
-            return null;
-        }
-
-        // roTmpPath is local — no timeout needed.
-        var roCopyHash = ComputeHash(roTmpPath);
-        if (roCopyHash != roSourceHash)
-        {
-            _logger.LogInfo("CheckoutService: D'' copy hash mismatch — retrying once.");
-
-            bool retryCompleted;
-            try
-            {
-                retryCompleted = await NetworkFileOps.CopyAsync(source, roTmpPath);
-            }
-            catch (Exception ex)
-            {
-                _logger.LogInfo($"CheckoutService: read-only setup retry copy failed ({ex.GetType().Name}: {ex.Message})");
-                TryDelete(roTmpPath);
-                return null;
-            }
-
-            if (!retryCompleted)
-            {
-                _logger.LogInfo("CheckoutService: read-only setup retry timed out — network unreachable");
-                return null;
-            }
-
-            roCopyHash = ComputeHash(roTmpPath);
-
-            if (roCopyHash != roSourceHash)
-            {
-                _logger.LogInfo("CheckoutService: D'' hash mismatch on retry — aborting.");
-                HandledEventReporter.Report(HandledEvent.CheckoutCopyMismatch, _logger,
-                    new Dictionary<string, string> { ["stage"] = "read-only copy" });
-                TryDelete(roTmpPath);
-                return null;
-            }
         }
 
         // The session this copy was made for has ended (a switch or close moved on while it ran): throw the copy away and

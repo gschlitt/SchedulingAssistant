@@ -58,7 +58,7 @@ public sealed class CheckoutServiceTakeOverWaitTests : IDisposable
     private string CreateDb()
     {
         var db = Path.Combine(_tempDir, "test.db");
-        File.WriteAllText(db, "dummy-database-content");
+        using (var c = new Microsoft.Data.Sqlite.SqliteConnection($"Data Source={db};Pooling=False")) c.Open();   // a real (empty) database: a reader integrity-checks its copy
         return db;
     }
 

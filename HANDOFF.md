@@ -132,9 +132,12 @@ Written so a fresh conversation can pick up. Claude Code's memory and `CLAUDE.md
      5.3/5.4; 6.12 false "Inactive"; harness 85 s model (retires F22). Later, per Greg 2026-11-10: 3.13 and 6.14
      (Restore from Backup, long shots). macOS checks (4.3 `open -n` relaunch, collapse days) wait for the first macOS
      release. Postponed items under F above stay listed.
-   - **Small item found 2026-11-10:** `WizardDataFlowTests` writes the developer's real `%AppData%\TermPoint\settings.json`
-     (its comment says "accepted for now"); it left `BackupFolderPath` pointing at a deleted `%TEMP%\WizardTests_…`
-     folder on GregDeskTop, so every open there says "couldn't make a backup". Fix: isolate `AppSettings` in that test.
+   - **Small item found 2026-11-10, resolved 2026-11-11 (no code change):** tests have used a private settings folder
+     since `91f3f09` (2026-10-18); `WizardDataFlowTests`' comment was stale (fixed). The bad `BackupFolderPath`
+     (`%TEMP%\WizardTests_…`) is only in Claude's MSIX private copy of AppData (left by pre-10-18 runs), so only
+     TermPoint runs launched from Claude's shell said "couldn't make a backup"; Greg's real settings are fine
+     (`\\mekler\temp\temp`). **Flake to watch:** `FocusServiceTests.Prune_LastFocusedSubjectDeleted_BecomesNone`
+     failed once in the 5.3 harness run (passes alone 3/3; tests don't run in parallel); keep the .trx next time.
    - **Version gate:** leave 2.8 and 2.9 out of 1.2.4 (each raises `MinimumVersionToWrite` and would need 1.6
      first). Everything chosen above is MinimumVersionToWrite **No**. 3.5 and 2.1 A/B are too big for now.
 1. **Rest of group 8:**

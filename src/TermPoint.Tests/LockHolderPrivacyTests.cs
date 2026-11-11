@@ -94,7 +94,7 @@ public sealed class LockHolderPrivacyTests : IDisposable
     public async Task ACheckoutBlockedByAColleague_RecordsOther_NotTheirName()
     {
         var db = Path.Combine(_dir, "dept.db");
-        File.WriteAllText(db, "dummy-database-content");
+        using (var c = new Microsoft.Data.Sqlite.SqliteConnection($"Data Source={db};Pooling=False")) c.Open();   // a real (empty) database: a reader integrity-checks its copy
         var now = DateTime.UtcNow;
         File.WriteAllText(Path.ChangeExtension(db, ".lock"), JsonSerializer.Serialize(new LockFileData
         {

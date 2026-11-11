@@ -460,7 +460,7 @@ public sealed class CheckoutServiceTests : IDisposable
     {
         var (svc, _) = CreateService();
         var db = DbPath();
-        CreateFile(db);
+        CreateSqliteDb(db);   // a reader now integrity-checks its fresh copy, so D must be a real database
         WriteExternalFreshLock(db);
 
         var outcome = await svc.CheckoutAsync(db);
@@ -843,7 +843,7 @@ public sealed class CheckoutServiceTests : IDisposable
     {
         var (svc, lockSvc) = CreateService();
         var db = DbPath();
-        CreateFile(db);
+        CreateSqliteDb(db);   // a reader now integrity-checks its fresh copy, so D must be a real database
         WriteExternalStaleLock(db);
         Assert.Equal(CheckoutOutcome.StaleHolder, await svc.CheckoutAsync(db)); // precondition
         ModifyLock(db, d => d.Heartbeat = DateTime.UtcNow);
@@ -872,7 +872,7 @@ public sealed class CheckoutServiceTests : IDisposable
     {
         var (svc, lockSvc) = CreateService();
         var db = DbPath();
-        CreateFile(db);
+        CreateSqliteDb(db);   // a reader now integrity-checks its fresh copy, so D must be a real database
         WriteExternalStaleLock(db);
         Assert.Equal(CheckoutOutcome.StaleHolder, await svc.CheckoutAsync(db)); // precondition
         Assert.NotNull(await svc.SetupReadOnlySnapshotAsync());                   // the user chose "Open read-only"
@@ -2207,7 +2207,7 @@ public sealed class CheckoutServiceTests : IDisposable
     public async Task ReadOnlyCheckout_CreatesDSnapshot()
     {
         var db = DbPath("shared");
-        CreateFile(db);
+        CreateSqliteDb(db);   // a reader now integrity-checks its fresh copy, so D must be a real database
         var (writer, lockSvc) = CreateService();
 
         // Writer acquires the lock.
@@ -2242,8 +2242,8 @@ public sealed class CheckoutServiceTests : IDisposable
     {
         var shared = DbPath("shared");
         var other  = DbPath("other");
-        CreateFile(shared);
-        CreateFile(other);
+        CreateSqliteDb(shared);   // a reader now integrity-checks its fresh copy, so D must be a real database
+        CreateSqliteDb(other);   // a reader now integrity-checks its fresh copy, so D must be a real database
         var (writer, _) = CreateService();
         Assert.Equal(CheckoutOutcome.WriteAccess, await writer.CheckoutAsync(shared));
 
@@ -2330,6 +2330,109 @@ public sealed class CheckoutServiceTests : IDisposable
 
         // Restore source for cleanup.
         File.Move(dbBackup, db, overwrite: true);
+    }
+
+    /// <summary>
+    /// Makes the SQLite database at <paramref name="path"/> damaged but still recognisable: it is filled with enough rows to
+    /// span several pages, then every page after the first (header and schema) is overwritten with garbage.
+    /// </summary>
+    /// <param name="path">The database file to create and damage (any existing file is replaced).</param>
+    private static void CreateDamagedSqliteDb(string path)
+    {
+        File.Delete(path);
+        CreateSqliteDb(path);
+        for (var i = 0; i < 300; i++)
+            InsertTestValue(path, new string('x', 200) + i);
+        using (var fs = new FileStream(path, FileMode.Open, FileAccess.Write, FileShare.ReadWrite))
+        {
+            fs.Position = 4096;
+            var garbage = new byte[fs.Length - 4096];
+            Array.Fill(garbage, (byte)0xAB);
+            fs.Write(garbage);
+        }
+    }
+
+    /// <summary>
+    /// Single-read refresh (reader-single-read-1.2.4): when D copies fine but the fresh copy is damaged, the refresh is
+    /// <see cref="RefreshOutcome.SourceUnavailable"/>: <c>beforeOverwrite</c> and <c>afterOverwrite</c> are never called
+    /// (the connection is untouched), the old D'' still holds its old data and hash, D''.tmp is gone, and the log says
+    /// the fresh copy failed its integrity check.
+    /// </summary>
+    [Theory]
+    [InlineData(false)]   // not a SQLite database at all
+    [InlineData(true)]    // a database with its data pages overwritten
+    public async Task ReadOnlyRefresh_DamagedFreshCopy_KeepsOldSnapshot_AndNeverTouchesTheConnection(bool damagedPages)
+    {
+        var log = new RecordingAppLogger();
+        var (reader, db) = await OpenReaderForRefreshAsync(log);
+        var hashBefore = reader.HashAtCheckout;
+
+        if (damagedPages) CreateDamagedSqliteDb(db);
+        else File.WriteAllText(db, "this is not a database " + new string('z', 5000));
+
+        var beforeCalls = 0;
+        var afterCalls  = 0;
+        var outcome = await reader.RefreshReadOnlySnapshotAsync(
+            beforeOverwrite: () => { beforeCalls++; return Task.CompletedTask; },
+            afterOverwrite:  () => { afterCalls++;  return Task.CompletedTask; });
+
+        Assert.Equal(RefreshOutcome.SourceUnavailable, outcome);
+        Assert.Equal(0, beforeCalls);
+        Assert.Equal(0, afterCalls);
+        Assert.Equal(hashBefore, reader.HashAtCheckout);
+        Assert.Equal("original", ReadTestValue(reader.ReadOnlyWorkingPath!));
+        Assert.False(File.Exists(reader.ReadOnlyWorkingPath + ".tmp"), "The damaged copy must be deleted.");
+        Assert.Empty(log.Errors);
+        Assert.Contains(log.Infos, i => i.Contains("fresh copy") && i.Contains("integrity check"));
+    }
+
+    /// <summary>
+    /// A normal refresh is still <see cref="RefreshOutcome.Updated"/> with the new data, and the new
+    /// <c>HashAtCheckout</c> is the SHA-256 of the new D (the hash taken while copying).
+    /// </summary>
+    [Fact]
+    public async Task ReadOnlyRefresh_ValidFreshCopy_Updates_AndHashIsTheHashOfD()
+    {
+        var log = new RecordingAppLogger();
+        var (reader, db) = await OpenReaderForRefreshAsync(log);
+
+        File.Delete(db);
+        CreateSqliteDb(db);
+        InsertTestValue(db, "modified");
+
+        Assert.Equal(RefreshOutcome.Updated, await reader.RefreshReadOnlySnapshotAsync());
+
+        Assert.Equal("modified", ReadTestValue(reader.ReadOnlyWorkingPath!));
+        Assert.Equal(NetworkFileOps.ComputeHash(db), reader.HashAtCheckout);
+        Assert.False(File.Exists(reader.ReadOnlyWorkingPath + ".tmp"));
+    }
+
+    /// <summary>
+    /// Reader setup with a damaged D fails the way an unreadable D does: it returns null (so the Try again / Close prompt
+    /// appears), leaves no D''.tmp, and makes no D''. Once D is healthy again the next attempt succeeds, and
+    /// <c>HashAtCheckout</c> is the hash of D.
+    /// </summary>
+    [Fact]
+    public async Task SetupReadOnlySnapshotAsync_DamagedSource_ReturnsNull_ThenSucceedsOnceHealthy()
+    {
+        var (svc, _) = CreateService();
+        var db = DbPath();
+        CreateSqliteDb(db);
+        WriteExternalFreshLock(db);
+        Assert.Equal(CheckoutOutcome.ReadOnly, await svc.CheckoutAsync(db));   // sets SourcePath, makes D''
+        File.Delete(svc.ReadOnlyWorkingPath!);
+
+        CreateDamagedSqliteDb(db);
+        Assert.Null(await svc.SetupReadOnlySnapshotAsync());
+        Assert.False(File.Exists(svc.ReadOnlyWorkingPath + ".tmp"), "No half-made snapshot may be left.");
+        Assert.False(File.Exists(svc.ReadOnlyWorkingPath), "A damaged copy must never become D''.");
+
+        File.Delete(db);
+        CreateSqliteDb(db);
+        InsertTestValue(db, "healthy");
+        Assert.NotNull(await svc.SetupReadOnlySnapshotAsync());
+        Assert.Equal("healthy", ReadTestValue(svc.ReadOnlyWorkingPath!));
+        Assert.Equal(NetworkFileOps.ComputeHash(db), svc.HashAtCheckout);
     }
 
     /// <summary>

@@ -786,12 +786,22 @@ messages, plus one kind of storage the design can't protect. Nothing here touche
 > No data risk. **Fix direction:** read the file directly, treat file-not-found as "missing", and keep the existing
 > folder probe. That also removes a race between the existence test and the read. Run experiment 5.8 (1) first.
 
-> [!note]- **5.2 Two code comments promise more than SMB gives** `not started`
+> [!note]- **5.2 Two code comments promise more than SMB gives** `done`
+> **Done (2026-11-11, `designs/reader-single-read-1.2.4.md`, with 5.2/5.3/5.5):** readers read D once (copy and
+> hash together) at open and on Refresh; the local copy passes the integrity check before it is used (a locked
+> result is retried like the open-time check); the Refresh delay is gone and the comments corrected. Reader side
+> only; MinimumVersionToWrite No. Harness suite 4716 passed, 1 unrelated flake.
+>
 > The check just before the rename treats an unchanged size and time as "database unchanged", but that information can
 > be 10 s old. This is covered, because the lock check just before it refuses first. The 500 ms "SMB cache delay"
 > before a reader's refresh does nothing. Correct the comments, and remove or re-comment the delay. No behaviour change.
 
-> [!note]- **5.3 Our own readers block the writer's rename** `not started`
+> [!note]- **5.3 Our own readers block the writer's rename** `done`
+> **Done (2026-11-11, `designs/reader-single-read-1.2.4.md`, with 5.2/5.3/5.5):** readers read D once (copy and
+> hash together) at open and on Refresh; the local copy passes the integrity check before it is used (a locked
+> result is retried like the open-time check); the Refresh delay is gone and the comments corrected. Reader side
+> only; MinimumVersionToWrite No. Harness suite 4716 passed, 1 unrelated flake.
+>
 > Readers hash and copy the shared database and read the lock file without delete sharing. While any reader opens or
 > refreshes, the writer's rename is refused. **Story:** Alice refreshes over VPN (a 4-second copy), Bob's autosave
 > lands during it and fails with "in use", and the next autosave works. It gets worse with more readers. **Fix
@@ -807,7 +817,12 @@ messages, plus one kind of storage the design can't protect. Nothing here touche
 >
 > See also 7.1 on whether the 5-second deadline is too short.
 
-> [!note]- **5.5 A reader's Refresh can swap in a damaged copy** `not started`
+> [!note]- **5.5 A reader's Refresh can swap in a damaged copy** `done`
+> **Done (2026-11-11, `designs/reader-single-read-1.2.4.md`, with 5.2/5.3/5.5):** readers read D once (copy and
+> hash together) at open and on Refresh; the local copy passes the integrity check before it is used (a locked
+> result is retried like the open-time check); the Refresh delay is gone and the comments corrected. Reader side
+> only; MinimumVersionToWrite No. Harness suite 4716 passed, 1 unrelated flake.
+>
 > Refresh compares hashes and swaps the copy in without an integrity check. A damaged shared database that has stopped
 > changing passes, and the reader then gets SQLite errors at query time instead of a clear message. **Fix direction:**
 > run the existing local-copy integrity check before the swap (milliseconds). On failure, keep the old copy and show
