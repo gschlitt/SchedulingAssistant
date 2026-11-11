@@ -47,8 +47,8 @@ About 97 items in nine groups. Most were deferred from 1.2.3 or found while test
 
 **The urgent and high-value items, and where they stand (2026-11-10)**
 - **Section 4, Greg's priority from 2026-11-09:** 4.2, 4.3, 4.4, 4.5, 4.6, 4.7, 4.8 and 4.9 done (4.3's by-hand check passed 2026-11-10; macOS relaunch left); 4.11 shelved. 4.7 D1 closed a
-  rule-3 hole (crash recovery could delete kept changes that antivirus was holding). 4.10 done 2026-11-10. Left: 4.13's
-  accepted remainder.
+  rule-3 hole (crash recovery could delete kept changes that antivirus was holding). 4.10 done 2026-11-10; 4.13's remainder
+  accepted for 1.2.4 (2026-11-11). Section 4 is closed.
 - **Store package** (1.2–1.4): done. The shared Windows file and the graphics PDBs are left out (55.5 MB); the flight
   procedure is written. Left: the first flight with the 1.2.4 submission, and the support case for 1.1 (Greg).
 - **Unapplied editor changes dropped at close or switch** (3.1): done. TermPoint always asks Apply / Discard / Cancel.
@@ -741,6 +741,8 @@ Everything in this group is checked against rule 3 (never delete the only copy o
 > *Source: harness, another program holding a file (8.3), known finding F20.*
 >
 > **Partly done (8 Nov 2026, `454a38c`; design `designs/close-switch-sequence.md`; full suite with harness 4501 passed, 0 failed; MinimumVersionToWrite No):** a leftover lock naming this very TermPoint is taken back (checked delete + CreateNew, own pending release waited for first; no "closed unexpectedly" notice). Accepted remainder, F20 stays known: another program still holds the lock file when the session goes read-only.
+>
+> **Remainder confirmed accepted for 1.2.4 (Greg, 2026-11-11):** worst case a colleague is kept out about 3 min until the lock goes stale; no data at risk. 1.2.5 candidate: retry the release's checked delete every ~30 s while the lock file still names this session.
 
 > [!note]- **4.14 A held release deletes the new holder's lock** `done`
 > A release checks the lock file is its own, then deletes it. A computer that sleeps between the two deletes the lock

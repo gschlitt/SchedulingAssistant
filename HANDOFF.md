@@ -1,4 +1,4 @@
-# Handoff: TermPoint 1.2.4 in progress on branch `Version_1.2.4` (dev machine, updated 2026-11-10, after 4.3)
+# Handoff: TermPoint 1.2.4 in progress on branch `Version_1.2.4` (dev machine, updated 2026-11-11, section 4 closed)
 
 Written so a fresh conversation can pick up. Claude Code's memory and `CLAUDE.md` don't travel between machines
 (`CLAUDE.md` is gitignored), so everything a new agent needs is here or in the files this points to.
@@ -7,7 +7,7 @@ Written so a fresh conversation can pick up. Claude Code's memory and `CLAUDE.md
 
 ## Where things are
 
-- **Branches:** all 1.2.4 work is on **`Version_1.2.4`**, pushed (up to and including this handoff's commit, 2026-11-10).
+- **Branches:** all 1.2.4 work is on **`Version_1.2.4`**, pushed (up to and including this handoff's commit, 2026-11-11).
   **`master`** = released 1.2.3 code (`cf4d4cb`) plus doc commits, kept hotfixable; it is 7 doc-only commits ahead of
   origin and **not pushed** (pushing `master` redeploys the WASM demo; pushing a `v*` tag starts the macOS workflow).
   Greg controls branches, commits and pushes: never create a branch, ask before each commit and each push.
@@ -110,14 +110,21 @@ Written so a fresh conversation can pick up. Claude Code's memory and `CLAUDE.md
       Spin-offs logged: **3.13** (an edit during Restore from Backup is deleted, or after a crash refused: refuse edits
       while a restore runs; retires F24) and **6.14** (two messages when the restore's save fails).
    6. **Section 4 (Greg's priority, 2026-11-09): 4.2, 4.6, 4.7, 4.8, 4.9 done, 4.11 shelved** (see "Done in 1.2.4").
-   - **7.2 DONE 2026-11-10 (uncommitted at time of writing):** save/refresh recovery reports (`SaveRecovered`,
+   - **7.2 DONE 2026-11-10 (`4702547`, pushed):** save/refresh recovery reports (`SaveRecovered`,
      `RefreshRecovered`, BugSnag Info, ≤3 per run; design `designs/field-reporting-1.2.4.md` section 7.2). Full suite
      with harness 4639 passed, 0 failed, 2 skipped. Greg's goal: "a more solid sense of how TermPoint is doing in the
      wild". **Option B (one numbers-only summary per run) deferred past 1.2.4:** BugSnag can't sum metadata; it wants
      a usage-metrics tool and a privacy decision.
-   - **Next: pick with Greg** (Greg wants to work toward closing 1.2.4). 4.3, 4.4, 4.5 done 2026-11-10. Left in section 4: **4.10** (network calls without a
-     deadline): **built 2026-11-10** (`79e6007`) to `designs/network-deadlines-1.2.4.md` (all four groups), by-hand check passed 2026-11-11; left: NetworkProbe cases on the clumsy rig (optional), 4.13's remaining route (accepted). Other candidates: 3.13 and 6.14 (Restore from Backup; Greg 2026-11-10: long shots, later); macOS checks wait for the first macOS release, 2.2 licence
-     warning, 5.8 then 5.3/5.4, 6.12, harness 85 s model (retires F22). Postponed items under F above stay listed.
+   - **Section 4 CLOSED 2026-11-11.** 4.3, 4.4, 4.5 done 2026-11-10 (4.3's by-hand check passed). **4.10 done**
+     (`79e6007`, design `designs/network-deadlines-1.2.4.md`, all four groups; by-hand check passed 2026-11-11,
+     `12677e8`: with a dead share Windows' own Save dialog hangs before TermPoint writes, still answers Cancel). Left
+     optional: run the three new NetworkProbe cases (`write-bytes`, `export-write`, `rotate`) on the clumsy rig.
+     **4.13's remainder accepted again 2026-11-11** (F20 stays known; 1.2.5 candidate: retry the release's checked
+     delete every ~30 s while the lock file still names this session).
+   - **Next: pick with Greg** (Greg wants to work toward closing 1.2.4). Candidates: 2.2 licence warning; 5.8 then
+     5.3/5.4; 6.12 false "Inactive"; harness 85 s model (retires F22). Later, per Greg 2026-11-10: 3.13 and 6.14
+     (Restore from Backup, long shots). macOS checks (4.3 `open -n` relaunch, collapse days) wait for the first macOS
+     release. Postponed items under F above stay listed.
    - **Small item found 2026-11-10:** `WizardDataFlowTests` writes the developer's real `%AppData%\TermPoint\settings.json`
      (its comment says "accepted for now"); it left `BackupFolderPath` pointing at a deleted `%TEMP%\WizardTests_…`
      folder on GregDeskTop, so every open there says "couldn't make a backup". Fix: isolate `AppSettings` in that test.
