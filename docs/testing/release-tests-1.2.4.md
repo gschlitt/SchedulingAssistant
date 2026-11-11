@@ -60,7 +60,7 @@ sweep only), S4.
 | **M6**, sleep mid-save | real sleep and SMB caching | GregSurface, normal timings: save, then **Hibernate** at once; take the lock from GregDeskTop; wake after 4 min | no "lock confirmed" in the log after the wake; one lock-lost message; the work is kept (passed 2026-11-08) |
 | **M7**, an editor open across a lost lock | the open editor on screen | 1.2.3 doc, M7 | nothing written after the loss; the editor's changes are kept |
 | **M8**, a real older version alongside | real older builds | 1.2.3 doc, M8, with the **1.2.3 Store build** on one computer and 1.2.4 on the other (both directions) | as in the 1.2.3 doc; no read-only gate (MinimumVersionToWrite still No) |
-| **M11**, restore from backup | the restart after a restore | 1.2.3 doc, M11 (a)–(d) | restored data shows; note whether the old process is left running (summary 4.3, still open) |
+| **M11**, restore from backup | the restart after a restore | 1.2.3 doc, M11 (a)–(d) | restored data shows; the old process is gone and the restored database reopens (summary 4.3, fixed in 1.2.4) |
 | **S3**, reader Refresh with the share down | network faults during Refresh aren't in the harness | 1.2.3 doc, S3 | one plain message; the read-only view still works |
 | **S4**, repeated X during the exit save | window behaviour | 1.2.3 doc, S4, plus a detached panel open | one save, one message, nothing lost |
 

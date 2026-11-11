@@ -1,9 +1,9 @@
-# Handoff: TermPoint 1.2.4 in progress on branch `Version_1.2.4` (dev machine, updated 2026-11-11, section 4 closed)
+# Handoff: ship TermPoint 1.2.4 (branch `Version_1.2.4`; work list closed 2026-11-11)
 
 Written so a fresh conversation can pick up. Claude Code's memory and `CLAUDE.md` don't travel between machines
 (`CLAUDE.md` is gitignored), so everything a new agent needs is here or in the files this points to.
 
-**To start the new agent, say:** "Read `HANDOFF.md`, then let's continue 1.2.4."
+**To start the new agent, say:** "Read `HANDOFF.md`, then let's ship 1.2.4."
 
 ## Where things are
 
@@ -19,11 +19,42 @@ Written so a fresh conversation can pick up. Claude Code's memory and `CLAUDE.md
 - **Version:** the csproj says **1.2.4** since 2026-11-07 (so the sideload, MSIX 1.2.4.0, installs over 1.2.3.4).
   TPVM1 and GregDeskTop run that sideload. Test timings: **×3 on TPVM1, off on GregDeskTop** (`Set-TestTimings`;
   keep it off on GregDeskTop between sessions, since Visual Studio runs honour it too).
-- **The plan:** `designs/spec_version_1.2.4_summary.md` (progressive-reveal summary of `designs/spec_version_1.2.4.md`;
-  every finished item has a "Done" note). Greg chose to do group 8 (testing) first.
+- **The plan:** `designs/spec_version_1.2.4_summary.md` (every finished item has a "Done" note). **Closed
+  2026-11-11:** everything still open is tagged `moved to 1.2.5` there and listed in `designs/backlog-1.2.5.md`.
+  Don't start backlog items in this release.
 - **Colour by subject (summary 2.3):** implemented through task 4 plus Revision 1 (markers, not chips), `c33861f`.
   Left: Greg's by-eye pass on real data; palette kept as is (summary 2.3's Done note). Spec `designs/subject-colours.md`.
 - **Other open specs:** `designs/slot-browser.md` (Phase 1, awaiting Greg's lock), `designs/access-analyzer.md` (Phase 1 locked 2026-11-06; Phase 2 next, see `designs/access-analyzer-handoff.md`).
+
+## Ship 1.2.4 (the next session's job)
+
+Greg closed the work list on 2026-11-11. What's left is releasing it. The checklist is
+`docs/testing/release-tests-1.2.4.md` (Parts 1-5); tick items and add to its Log as they pass. In order:
+
+1. **Release gates (Part 1).**
+   - The `MinimumVersionToWrite` question over the final list: every 1.2.4 item was answered **No** (nothing new is
+     saved in the database), so 1.2.4 doesn't raise it. Get Greg's final yes; nothing to change in
+     `Services/MinimumVersionToWrite.cs`.
+   - csproj version is 1.2.4 (since 2026-11-07); full suite with the harness green **with the `.trx` kept** (last run
+     2026-11-11: 4716 passed, 1 flake, see the backlog); both compile checks; ScrollAnchorProbe only if Avalonia changed.
+2. **Field tests on the rig (Part 2)** on the release-candidate sideload: M1 A, M4, M5 (+ wait wording), M6, M7, M8
+   (1.2.3 Store build alongside), M11 (4.3 is now fixed: the old process must be gone and the restored database
+   reopened), S3 (reader Refresh with the share down: the refresh now reads once and checks the copy, 5.3/5.5), S4.
+3. **One on-screen wording pass (Part 3).** New in 1.2.4 and worth a look too: the licence notices (2.2; Debug +
+   `TERMPOINT_DEBUG_DATE`, test licence `tmp/lic-2027-07-01/termpoint.lic`, local only; Greg's pass done 2026-11-11).
+4. **Platforms and features (Part 4):** MSIX upgrade over 1.2.3.4 and a fresh install on TPVM1; S7-S10; Greg's eye
+   passes for colour by subject (2.3) and collapse days (2.13). macOS (S11, 4.3's `open -n` relaunch, collapse days)
+   waits for the first macOS release; say so in the Log rather than blocking on it.
+5. **Store (Part 5):** `build-msix.ps1 -Store` (55.5 MB, "Leaving out:" lines); the stack-trace check on the
+   sideload (1.2); the package flight (1.3: known user group, flight on GregDeskTop with Phone Link running, then the
+   public submission, not mandatory); N4. Draft the Store "What's new" text with Greg (consider a "if TermPoint
+   doesn't open after the update, restart the computer" line, summary 1.1).
+6. **Release mechanics (Greg's call each time):** merge `Version_1.2.4` into `master` (`master` is 7 doc-only
+   commits ahead of origin; pushing `master` redeploys the WASM demo), the `v*` tag (starts the macOS workflow),
+   then the Store submission. Never branch, commit or push without Greg asking.
+7. After release: mark the summary and HANDOFF released, start 1.2.5 from `designs/backlog-1.2.5.md` with Greg.
+
+Still Greg's, outside the checklist: the Microsoft support case for 1.1.
 
 ## Done in 1.2.4 so far
 
@@ -74,7 +105,7 @@ Written so a fresh conversation can pick up. Claude Code's memory and `CLAUDE.md
   bracket marks) is committed (`04631f4`). Open small points: stepping through Room Browser slots
   flashes at every step; a redraw within a second of a flash cuts it short. **macOS check on the next signed build.**
 
-## Next steps
+## 1.2.4 work log (closed 2026-11-11; kept for reference, not a to-do list)
 
 0. **Chosen 2026-11-08 (Greg), in this order** (summary item numbers; group 8 is done apart from 8.10):
    1. **C: 4.1** each session gets its own temporary upload name (rule 2: a woken writer can delete the new

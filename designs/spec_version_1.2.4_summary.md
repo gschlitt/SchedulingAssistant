@@ -1,5 +1,9 @@
 # TermPoint 1.2.4: what's on the list
 
+> **Work list closed 2026-11-11 (Greg).** Every item still open is tagged `moved to 1.2.5` and listed in
+> `designs/backlog-1.2.5.md`. What remains for 1.2.4 is shipping it: `HANDOFF.md`, "Ship 1.2.4", and
+> `docs/testing/release-tests-1.2.4.md`. The "Done" counts in the table below are from before the close.
+
 A summary of `designs/spec_version_1.2.4.md` as of 2026-11-01 (statuses updated 2026-11-10). That file stays the record (history, evidence, file and
 line references). This one only says what is to be done. It also picks up the 1.2.4 items that live only in the
 field-test doc (`docs/testing/network-field-tests-1.2.3.md`, "Open issues"), in `HANDOFF.md` and in other design docs.
@@ -119,7 +123,7 @@ About 97 items in nine groups. Most were deferred from 1.2.3 or found while test
 > passed, 110 skipped. The runs that failed (July to 2026-10-07) failed in `WizardRoutingTests`, which were fixed before
 > 1.2.3. The workflow runs only on `master` and on PRs into it, so 1.2.4 is first checked when it merges.
 
-> [!note]- **1.6 In-app updates for the Store build** `not started · decide first`
+> [!note]- **1.6 In-app updates for the Store build** `moved to 1.2.5`
 > Use the Store API to check for updates while TermPoint runs, show "An update is available — Update now", and honour
 > Partner Center's mandatory flag (TermPoint ignores it today). This needs a Windows-specific target framework for the
 > MSIX build, with changes to packaging. The payoff is a much shorter window in which old and new versions share a
@@ -130,7 +134,7 @@ About 97 items in nine groups. Most were deferred from 1.2.3 or found while test
 
 ## 2. Features and user-facing gaps
 
-> [!note]- **2.1 Experimenting without saving, plus a Save a Copy… command** (Greg's priority) `not started · decide first`
+> [!note]- **2.1 Experimenting without saving, plus a Save a Copy… command** (Greg's priority) `moved to 1.2.5`
 > **Problem:** a user can't try something out ("what if this section moved to Tuesday?") because autosave and the exit
 > save always save. There is also no general Save As: "Save a Copy…" exists only inside the save-conflict and
 > can't-restore flows.
@@ -183,7 +187,7 @@ About 97 items in nine groups. Most were deferred from 1.2.3 or found while test
 > flags (OKLab 0.027 and 0.037), but marker and flag differ in shape and place; the suggester's minimum distance stays
 > 0.04 (closest palette pair 0.092).
 
-> [!note]- **2.4 Hide sections that meet for only part of the semester** `not started`
+> [!note]- **2.4 Hide sections that meet for only part of the semester** `moved to 1.2.5`
 > Sections that meet for, say, the first three weeks clutter the grid. Wanted: a way to filter them out, or to suppress
 > chosen sections from the grid. Not designed yet.
 
@@ -228,25 +232,25 @@ About 97 items in nine groups. Most were deferred from 1.2.3 or found while test
 > printouts would lose the subject); re-packing the side-by-side columns (what's left of the width comes from genuinely
 > different time spans).
 
-> [!note]- **2.6 Instructor names don't wrap properly in the Workload view** `not started`
+> [!note]- **2.6 Instructor names don't wrap properly in the Workload view** `moved to 1.2.5`
 > Not investigated.
 
-> [!note]- **2.7 Workload view: show out-of-scope instructors who teach loaded sections** `not started`
+> [!note]- **2.7 Workload view: show out-of-scope instructors who teach loaded sections** `moved to 1.2.5`
 > With only some subjects loaded, an instructor outside that scope who teaches a loaded section should still appear in
 > the Workload view. Not investigated.
 
-> [!note]- **2.8 "Subjects taught" on instructors** (follow-up to Load by subject) `deferred` `version gate`
+> [!note]- **2.8 "Subjects taught" on instructors** (follow-up to Load by subject) `moved to 1.2.5` `version gate`
 > Add an explicit "Subjects taught" field on the instructor for Load by subject's focus. The derived rule stays as the
 > fallback for instructors with nothing set. It was held back from 1.2.3 because a 1.2.2 client would wipe the field.
 > *Source: `designs/load-by-subject.md`, "Later release (1.2.4)".*
 
-> [!note]- **2.9 Access watches: the same all/any tag choice the grid filter got** `deferred` `version gate`
+> [!note]- **2.9 Access watches: the same all/any tag choice the grid filter got** `moved to 1.2.5` `version gate`
 > 1.2.3 gave the grid's Tags filter a "match all / match any" choice; program watches should get the same. Watches are
 > saved in the database, and older versions would read an "any" watch as "all", so the version-gate answer is probably
 > Yes. The two rules live today in `ProgramConflictService` and `FilterSnapshot`.
 > *Source: 1.2.3 spec, item 31.*
 
-> [!note]- **2.10 A meeting's room type should show the chosen room's type** `not started · decide first`
+> [!note]- **2.10 A meeting's room type should show the chosen room's type** `moved to 1.2.5`
 > Today a meeting's room type is the type it *needs*. It starts at "(none)", picking a room never fills it in, and a
 > type given to a room later never reaches its meetings. Users find this odd. **Fix direction:** when a meeting has a
 > room, show that room's type, read directly from the room. The stored value matters only for meetings with no room,
@@ -254,13 +258,13 @@ About 97 items in nine groups. Most were deferred from 1.2.3 or found while test
 > (after picking a lab, only labs are listed). Either accept that, or show the room's type as a separate read-only
 > label. If the editor starts *storing* the type, ask the version-gate question (probably No).
 
-> [!note]- **2.11 Copy Semester doesn't carry meeting room types** `not started · decide first`
+> [!note]- **2.11 Copy Semester doesn't carry meeting room types** `moved to 1.2.5`
 > Meetings are copied without their room type, even when meeting times and room assignments are included, so a
 > "Remote" meeting arrives as an ordinary one. Nothing is lost, because the source semester is untouched. **Decide:**
 > should room type follow the "meeting times" option or the "room assignments" option? Once 2.10 is in, this matters
 > less for meetings that have a room.
 
-> [!note]- **2.12 Sections should show credits** `not started · decide first`
+> [!note]- **2.12 Sections should show credits** `moved to 1.2.5`
 > Sections should show the credits available. Should really attach credit to a course, then propagate to sections, with an over-ride in section editor.
 
 > [!note]- **2.13 Collapse days in the Schedule view** (Greg's idea, 2026-11-04) `done · check left`
@@ -453,7 +457,7 @@ Everything in this group is checked against rule 3 (never delete the only copy o
 >
 > **Done (9 Nov 2026, `301252b`; design `designs/mid-save-edits-and-no-edit-saves.md`; full suite with harness 4571 passed, 0 failed, 2 skipped; MinimumVersionToWrite No):** a save skips the upload when it has no marker and its snapshot holds the same data as D was last seen holding (`SqliteContentHash`: SHA-256 with the five data-free header fields masked). It also skips nothing when the starting point is unknown (recovery, an unconfirmed rename). A skipped save changes no state. F5 and F6 are retired to `FixedFindingsProofTests`. The second route was already fixed as F23. The harness found a crash variant of 3.13 that F5 had hidden; it is known finding F24 until 3.13 is built. The upgrade checklist in the local `CLAUDE.md` gains the "open, no edit, save, compare" check.
 
-> [!note]- **3.5 The recovery redesign: checks decide, Recovered Versions, no questions** `not started` `save path`
+> [!note]- **3.5 The recovery redesign: checks decide, Recovered Versions, no questions** `moved to 1.2.5` `save path`
 > **Problem:** kept changes (left by a crash, a lost lock or a failed exit save) sit in the one place a normal open
 > needs. So the user has to be asked about them first, some answers (or the X) delete them, and "Restore?" is asked
 > before anything checks whether a restore is still possible. 1.2.3 ships interim honest wording.
@@ -470,30 +474,30 @@ Everything in this group is checked against rule 3 (never delete the only copy o
 > Each step removes the code it replaces.
 > *Source: `designs/data-persistence-review-2026-10.md`, section 8.*
 
-> [!note]- **3.6 Kept work lives in roaming AppData** `not started`
+> [!note]- **3.6 Kept work lives in roaming AppData** `moved to 1.2.5`
 > Roaming AppData can roam back an older copy, or sit on a server under folder redirection. Move kept work to local
 > AppData, with a migration that still finds files kept by 1.2.2 and 1.2.3. Recovered Versions is meant to live there
 > too.
 
-> [!note]- **3.7 Read-only mode never mentions changes waiting on this computer** `not started`
+> [!note]- **3.7 Read-only mode never mentions changes waiting on this computer** `moved to 1.2.5`
 > A user who opens read-only isn't told that unsaved changes from earlier are waiting on this computer. Add a message;
 > the redesign's draft wording covers it.
 
-> [!note]- **3.8 Changes kept on another computer are invisible** `not started`
+> [!note]- **3.8 Changes kept on another computer are invisible** `moved to 1.2.5`
 > Changes kept on Bob's laptop can't be seen when he opens the database from his desktop. Hard to fix; probably a
 > message only.
 
-> [!note]- **3.9 macOS: deleting the local copy mid-session strands the edits in memory** (future) `not started` `data risk`
+> [!note]- **3.9 macOS: deleting the local copy mid-session strands the edits in memory** (future) `moved to 1.2.5` `data risk`
 > On macOS an open file can be deleted. If the local copy is deleted during a session, saves fail safely, but the edits
 > exist only in the deleted file that the connection still holds, so they are lost at close. Autosave meanwhile keeps
 > promising a retry. Possible design: snapshot through the live connection into a recovery file, and tell the user.
 
-> [!note]- **3.10 A demotion could leave our own lock file behind** (latent) `not started`
+> [!note]- **3.10 A demotion could leave our own lock file behind** (latent) `moved to 1.2.5`
 > Unreachable today, because a demotion only ever follows a lost lock. If a future change demotes while still holding
 > the lock, the background delete of the lock file and reader mode's read of it can collide, leaving our own lock file
 > on the share. If that happens: open the read with delete sharing, or wait for the release to finish first.
 
-> [!note]- **3.11 A fresh assessment once the redesign is in** `not started`
+> [!note]- **3.11 A fresh assessment once the redesign is in** `moved to 1.2.5`
 > Redo the persistence review's situation-by-situation walkthrough against the new behaviour, then its inventory of
 > the other ways data can be lost (backups, imports, Copy and Empty Semester).
 
@@ -506,7 +510,7 @@ Everything in this group is checked against rule 3 (never delete the only copy o
 > **Done (2 Nov 2026):** with a regression test; it also closes the close-time route of 3.2.
 > *Source: harness, another program holding a file (8.3), known finding F21.*
 
-> [!note]- **3.13 An edit made during Restore from Backup is deleted** `not started` `data risk`
+> [!note]- **3.13 An edit made during Restore from Backup is deleted** `moved to 1.2.5` `data risk`
 > Bob clicks Restore… in Save and Backup. TermPoint saves his work, then copies the chosen backup onto the shared
 > database. The wait dialog blocks only the main window, so during that copy Bob can still apply an edit in a detached
 > panel or a sticky note. When the restore ends, the session's local copy is deleted along with its marker
@@ -701,7 +705,7 @@ Everything in this group is checked against rule 3 (never delete the only copy o
 > three new NetworkProbe cases (`write-bytes`, `export-write`, `rotate`) await the clumsy rig.
 > By-hand check 2026-11-11 (VS Debug, local database, backups and exports on Mekler, clumsy Drop 100% on port 445) passed: backups, rotation with a CSV open in Excel, all five exports, the empty backup list and the backup result on a dead share, recovery after. The export time-out itself was not reached by hand: with the share dead, Windows' own Save dialog hangs first (it still answers Cancel). Covered by NetworkDeadlinesTests.
 
-> [!note]- **4.11 Cloud-synced folders: more providers, and a warning at File → Open** `shelved`
+> [!note]- **4.11 Cloud-synced folders: more providers, and a warning at File → Open** `moved to 1.2.5`
 > Detection misses Google Drive for desktop, Box and macOS CloudStorage (1.2.3 added SharePoint and Teams libraries on
 > Windows). File → Open and Recent don't check the folder at all, for any provider: the warning shows only in the
 > wizard and in New Database. Adding it needs a message route and wording, and touches the open flow. Warn, don't
@@ -740,7 +744,7 @@ Everything in this group is checked against rule 3 (never delete the only copy o
 > file; probe SessTimeout=30 and macOS. (4) Separate item to place: the save's dirty-marker write sits between its
 > final check and the rename.
 
-> [!note]- **4.13 A lock left behind by a switch makes you read-only when you come back** `partly done`
+> [!note]- **4.13 A lock left behind by a switch makes you read-only when you come back** `partly done` `remainder moved to 1.2.5`
 > If another program holds the lock file (so it can't be deleted), or the database (so the switch's final save fails)
 > when the user switches database, the old lock stays, naming their own live session. Switching back, they are told
 > "Someone else is editing this database right now" and their kept changes can't be restored yet. No data loss.
@@ -808,7 +812,7 @@ messages, plus one kind of storage the design can't protect. Nothing here touche
 > direction:** add delete sharing to our read opens. That certainly works on Samba, but a Windows server may still
 > refuse; experiment 5.8 (2) decides.
 
-> [!note]- **5.4 The rename retry is too short** `not started` `save path`
+> [!note]- **5.4 The rename retry is too short** `moved to 1.2.5` `save path`
 > Three attempts 150 ms apart (about 0.3 s) is short for a server-side virus scan of a freshly written multi-MB file,
 > or for a sync client. **Fix direction:**
 > - Growing delays (about 4.6 s in all), with their own budget, separate from the 5-second "share hung" deadline.
@@ -828,13 +832,13 @@ messages, plus one kind of storage the design can't protect. Nothing here touche
 > run the existing local-copy integrity check before the swap (milliseconds). On failure, keep the old copy and show
 > the existing refresh-failure line.
 
-> [!note]- **5.6 The writer reports a server-damaged file as "changed by someone else"** `not started` `save path`
+> [!note]- **5.6 The writer reports a server-damaged file as "changed by someone else"** `moved to 1.2.5` `save path`
 > Nothing re-reads the shared database after the rename. If the server damaged it, the next save's hash differs and the
 > user is told someone else changed the database. The work stays safe, but the message is wrong. **Fix direction (pick
 > one):** a cheap header check right after the rename, or a header or integrity check on a hash mismatch before
 > choosing the wording. Related to 4.7 (a).
 
-> [!note]- **5.7 Say which storage is supported** `not started`
+> [!note]- **5.7 Say which storage is supported** `moved to 1.2.5`
 > Renames that aren't atomic come mainly from synced folders and multi-site cloud gateways. On those, the lock itself
 > fails (each machine's lock create succeeds in its own local copy), and no checksum can fix that. A gateway behind a
 > mapped drive can't be detected. Windows file servers, enterprise filers and ordinary Samba NAS boxes are fine. Say
@@ -858,43 +862,43 @@ messages, plus one kind of storage the design can't protect. Nothing here touche
 Everything in this group is checked against rule 4: one message per problem, in plain words, saying what happened,
 whether the work is safe, and what to do next.
 
-> [!note]- **6.1 Error lines are invisible while an editor is open** `not started`
+> [!note]- **6.1 Error lines are invisible while an editor is open** `moved to 1.2.5`
 > In the management views the inline error line sits in the list panel, which is hidden while an editor is open (the
 > Instructors view, for example). So any save failure inside an editor shows nothing. Move the line out of the hidden
 > panel, in about 10 views. As a stopgap, 1.2.3 sends the write-access message to the banner.
 
-> [!note]- **6.2 Review the order of the banner stack** `not started`
+> [!note]- **6.2 Review the order of the banner stack** `moved to 1.2.5`
 > General notifications sit below the trial and save banners. Review the stack as a whole.
 
-> [!note]- **6.3 About 14 places show raw exception text** `not started`
+> [!note]- **6.3 About 14 places show raw exception text** `moved to 1.2.5`
 > These include Commitments, Release, Scheduling notes and the imports. The text can be raw SQLite output. Replace it
 > with plain wording.
 
-> [!note]- **6.4 Scheduling notes typed after a lost lock vanish silently** `not started`
+> [!note]- **6.4 Scheduling notes typed after a lost lock vanish silently** `moved to 1.2.5`
 > After a lost lock, the notes panel returns early without saving, so the note is dropped without a word. It needs a
 > message.
 
-> [!note]- **6.5 A failed read-only copy at open shows two messages, the first one wrong** `not started`
+> [!note]- **6.5 A failed read-only copy at open shows two messages, the first one wrong** `moved to 1.2.5`
 > When someone else holds the lock and the read-only copy fails (rare: a network drop or antivirus during a 50 ms
 > copy), the user first sees "Checkout Failed — Could not open the database for editing…". Only then comes the right
 > prompt, "Couldn't Open the Database… Try again / Close". **Fix:** a separate outcome for this case that goes straight
 > to the right prompt. No data risk.
 > *Source: spec, follow-ups table (A13).*
 
-> [!note]- **6.6 The refused-write message waits behind other notices, and repeats** `not started`
+> [!note]- **6.6 The refused-write message waits behind other notices, and repeats** `moved to 1.2.5`
 > In the field tests, the refused-write message waited behind a licence notice that was already showing, and each
 > refused Apply queued another copy of it.
 > *Source: field-test open issue A4.*
 
-> [!note]- **6.7 "Closed unexpectedly" shown after a clean exit** `not started`
+> [!note]- **6.7 "Closed unexpectedly" shown after a clean exit** `moved to 1.2.5`
 > The notice "Recovered the lock from a previous session that closed unexpectedly" also appears after a clean exit
 > whose final save failed (the lock is left in place on purpose then). Say "unexpectedly" only when a stale running
 > file was found too.
 
-> [!note]- **6.8 The "session file missing" message doesn't say whether the work is kept** `not started`
+> [!note]- **6.8 The "session file missing" message doesn't say whether the work is kept** `moved to 1.2.5`
 > Reword it so it does.
 
-> [!note]- **6.9 Save a Copy suggests a name that may already exist** `not started`
+> [!note]- **6.9 Save a Copy suggests a name that may already exist** `moved to 1.2.5`
 > The can't-restore flow always suggests "&lt;name&gt; (recovered).db", even when that file exists. Suggest the next free
 > name instead. The redesign (3.5) may remove this flow anyway.
 > *Source: field-test open issue A10.*
@@ -916,7 +920,7 @@ whether the work is safe, and what to do next.
 >
 > **Done (8 Nov 2026, `454a38c`; design `designs/close-switch-sequence.md`; full suite with harness 4501 passed, 0 failed; MinimumVersionToWrite No):** not switch-related after all: a save that put back a deleted lock file and then failed showed two banners. The "lock put back" notice now shows only when that save succeeds.
 
-> [!note]- **6.12 A writer whose clock is behind looks inactive** `not started`
+> [!note]- **6.12 A writer whose clock is behind looks inactive** `moved to 1.2.5`
 > Bob edits with his clock an hour behind. Alice opens and is told his lock "hasn't been active for 55 minutes". Taking
 > over still waits for his heartbeat to stand still, so nothing is lost, but the message is wrong. The wall-clock hint
 > in the stale check fires on any skew over about 3 minutes.
@@ -929,7 +933,7 @@ whether the work is safe, and what to do next.
 >
 > **Done (8 Nov 2026, `454a38c`; design `designs/close-switch-sequence.md`; full suite with harness 4501 passed, 0 failed; MinimumVersionToWrite No):** the post-open "save restored changes at once" ran after a Can't Restore + Discard (3.4's second route). It now runs only when the open really restored kept changes.
 
-> [!note]- **6.14 Restore from Backup: two messages when the save before it fails** `not started`
+> [!note]- **6.14 Restore from Backup: two messages when the save before it fails** `moved to 1.2.5`
 > Bob clicks Restore… while the share is unreachable. The save before the restore fails, so Bob sees that save's banner
 > (for example "TermPoint can't reach…") and then the dialog "Restore Not Started: Your latest changes couldn't be saved,
 > so the restore wasn't started…". That's one problem shown twice. The code says the banner has already been shown
@@ -973,7 +977,7 @@ whether the work is safe, and what to do next.
 >
 > **Done (9 Nov 2026, `7d54a7d`; design `designs/field-reporting-1.2.4.md`):** `SessionLifecycle.AskKeepOrDiscardAsync` writes one `Recovery: "<title>" answered <button>…` INFO line per answer (Restore, Discard → confirm, the X, Discard confirmed, Go Back), for "Restore Unsaved Changes?" and "Can't Restore Unsaved Changes". Local log only. Tests in `SessionLifecycleTests`.
 
-> [!note]- **7.5 Gaps in the exception-reporting tests** (test-only) `not started`
+> [!note]- **7.5 Gaps in the exception-reporting tests** (test-only) `moved to 1.2.5`
 > 1. **Most important:** nothing tests that the production BugSnag client goes through the privacy scrubber. Remove
 >    that line from `App` and no test fails. Move the client setup into a testable factory.
 > 2. The scrubber is tested only on example strings. Add realistic Windows and macOS messages: long paths, file URIs,
@@ -1089,7 +1093,7 @@ kindly than reality. So: close the harness gaps first, then make the remaining h
 > paused for 600 s; GregDeskTop took over the stale lock and saved; TPVM1 noticed the wake and the lost lock, and
 > kept its unsaved section in its kept changes. All four log checks matched, no errors, integrity ok.
 
-> [!note]- **8.10 Later: an automated two-machine rig** `later`
+> [!note]- **8.10 Later: an automated two-machine rig** `moved to 1.2.5`
 > Extend `tools/NetworkProbe` so each machine runs the real checkout and lock services as an agent, coordinated by a
 > step file on the share. The main contention, takeover and exit scenarios then become scripts that check outcomes
 > directly. Do this after 8.1–8.9.
@@ -1143,7 +1147,7 @@ kindly than reality. So: close the harness gaps first, then make the remaining h
 
 ## 9. Smaller fixes and housekeeping
 
-> [!note]- **9.1 Campus look-ups by name and sort order silently fail** `not started · decide first`
+> [!note]- **9.1 Campus look-ups by name and sort order silently fail** `moved to 1.2.5`
 > The campus queries ask for `$.Name` and `$.SortOrder`, but campus JSON is camelCase, so the queries get nothing back.
 > As a result:
 > - campuses are listed in no particular order;
@@ -1153,26 +1157,26 @@ kindly than reality. So: close the harness gaps first, then make the remaining h
 > Fix the key case, then check the real databases for duplicate campuses before any clean-up. Campus order will change
 > visibly (to the intended order).
 
-> [!note]- **9.2 One rule for "do two meetings share a week?"** `not started`
+> [!note]- **9.2 One rule for "do two meetings share a week?"** `moved to 1.2.5`
 > The conflict checks and the Room Browser expand "odd" and "even" to weeks 1–18 only, so an "odd" meeting against a
 > list that includes week 21 shows no clash. The section import has its own, correct copy of the rule. Put the parity
 > rule in the shared method, have the import use it, and delete the copy. Add a test for week 21. Harmless in a normal
 > semester.
 
-> [!note]- **9.3 The shared-schedule import should use the shared day and frequency helpers** `not started`
+> [!note]- **9.3 The shared-schedule import should use the shared day and frequency helpers** `moved to 1.2.5`
 > It keeps its own day map and frequency check. Switch it to the helpers the section import uses. The input it accepts
 > changes slightly (compact days such as `MWF`), so check that existing shared-schedule files still parse.
 
-> [!note]- **9.4 Section import refuses semicolon- or tab-separated files** `not started`
+> [!note]- **9.4 Section import refuses semicolon- or tab-separated files** `moved to 1.2.5`
 > Such files are refused with a missing-header message.
 > *Source: `designs/section-import-by-user.md`.*
 
-> [!note]- **9.5 A section picked while the section list is hidden isn't scrolled into view** `not started`
+> [!note]- **9.5 A section picked while the section list is hidden isn't scrolled into view** `moved to 1.2.5`
 > For example: pick a section on the grid while the Events list is showing, then switch back, and the card isn't
 > revealed. Reveal it when the list is shown again (through the scroll-anchor behaviour, never by scrolling the list
 > directly).
 
-> [!note]- **9.6 Room Browser: test that every option is valid and none is missed** `not started`
+> [!note]- **9.6 Room Browser: test that every option is valid and none is missed** `moved to 1.2.5`
 > Add tests against the real-data database:
 > 1. Every slot is valid across many scenarios.
 > 2. Exact completeness for the "same room, same time" tier.
@@ -1180,11 +1184,11 @@ kindly than reality. So: close the harness gaps first, then make the remaining h
 >
 > Check from the raw data, not the solver's own index, or the tests repeat its mistakes.
 
-> [!note]- **9.7 Review Avalonia 12.1.4's release notes** `not started`
+> [!note]- **9.7 Review Avalonia 12.1.4's release notes** `moved to 1.2.5`
 > Published 2026-10-09. One fix touches the section card's property-line icons. Re-run the scroll-anchor probe after
 > any upgrade.
 
-> [!note]- **9.8 File an Avalonia bug for the list "jump"** `not started`
+> [!note]- **9.8 File an Avalonia bug for the list "jump"** `moved to 1.2.5`
 > Virtualizing the section list cut an 800-section heap from 475 MB to 160 MB, but it is blocked by a jump when an
 > on-screen item grows. Build a tiny stand-alone repro, and Greg files the issue. About an hour, with no risk to the
 > app.
