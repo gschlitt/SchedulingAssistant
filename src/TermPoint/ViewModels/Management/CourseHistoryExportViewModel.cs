@@ -204,15 +204,20 @@ public partial class CourseHistoryExportViewModel : ViewModelBase
 
             if (file is null) return;
 
-            var path = file.Path.LocalPath;
+            // Encode with the UTF-8 BOM (Excel needs it), then write under the network deadline: the folder may be
+            // a share that has stopped answering (1.2.4 item 4.10, A8).
+            var result = await ExportFileWriter.WriteAsync(file, ExportFileWriter.EncodeUtf8(csv.ToString(), withBom: true));
+            if (!result.Succeeded)
+            {
+                StatusMessage = result.Message;
+                return;
+            }
 
-            // Write CSV with UTF-8 BOM for Excel compatibility
-            File.WriteAllText(path, csv.ToString(), new UTF8Encoding(true));
-
-            settings.LastCourseHistoryExportPath = path;
+            // Remember the folder only when the file was actually written.
+            settings.LastCourseHistoryExportPath = file.Path.LocalPath;
             settings.Save();
 
-            StatusMessage = $"Saved: {Path.GetFileName(path)}";
+            StatusMessage = $"Saved: {result.FileName}";
         }
         catch (Exception ex)
         {

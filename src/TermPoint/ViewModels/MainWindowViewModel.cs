@@ -1378,10 +1378,19 @@ public partial class MainWindowViewModel : ViewModelBase
 
             if (file is null) return;
 
-            var path = file.Path.LocalPath;
-            window.ScheduleGridViewInstance?.ExportToPng(path);
+            // Same as Export > Print Schedule: render on the UI thread, write under the network deadline (1.2.4 item 4.10).
+            var png = window.ScheduleGridViewInstance?.ExportToPngBytes();
+            if (png is null) return;
 
-            settings.LastExportPath = path;
+            var result = await ExportFileWriter.WriteAsync(file, png);
+            if (!result.Succeeded)
+            {
+                // This menu item has no status line, so the one plain message goes to the notification banner.
+                App.Logger.NotifyUser(result.Message!);
+                return;
+            }
+
+            settings.LastExportPath = file.Path.LocalPath;
             settings.Save();
         }
         catch (Exception ex)

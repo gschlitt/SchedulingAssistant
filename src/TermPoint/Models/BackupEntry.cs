@@ -19,8 +19,13 @@ public class BackupEntry
     /// <summary>Timestamp extracted from the backup filename (or file creation time as fallback).</summary>
     public DateTime Timestamp { get; init; }
 
-    /// <summary>True when the companion CSV file is present on disk.</summary>
-    public bool HasCsv => CsvPath is not null && File.Exists(CsvPath);
+    /// <summary>
+    /// True when a companion CSV was found next to this backup. A plain value fixed when the folder was listed
+    /// (<see cref="Services.BackupService.GetBackupsAsync"/> matches CSVs to backups in memory from that one listing),
+    /// so drawing the list never touches the backup folder again (1.2.4 item 4.10: this used to be a
+    /// <c>File.Exists</c> on every read, on the UI thread, against a possibly slow or dead share).
+    /// </summary>
+    public bool HasCsv { get; init; }
 
     /// <summary>Human-readable timestamp for display in the UI, e.g. "2026-03-20  14:30:00".</summary>
     public string TimestampDisplay => Timestamp.ToString("yyyy-MM-dd  HH:mm:ss");

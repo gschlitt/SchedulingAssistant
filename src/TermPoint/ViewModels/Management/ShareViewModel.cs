@@ -63,10 +63,11 @@ public partial class ShareViewModel : ViewModelBase
     /// from the full set (they are institution-wide, not year-scoped).
     ///
     /// On success, sets <see cref="StatusMessage"/> to the path written.
-    /// On failure, sets <see cref="StatusMessage"/> to the error description.
+    /// On failure, sets <see cref="StatusMessage"/> to plain wording that says what happened, that nothing else was
+    /// affected and what to do (a share that stops answering is bounded by the network deadline, 1.2.4 item 4.10).
     /// </summary>
     [RelayCommand]
-    private void CreateTpConfigFile()
+    private async Task CreateTpConfigFile()
     {
         var dbPath = AppSettings.Current.DatabasePath;
         if (string.IsNullOrWhiteSpace(dbPath))
@@ -95,17 +96,18 @@ public partial class ShareViewModel : ViewModelBase
 
             // Filename uses institution abbreviation from DB (falls back to "config").
             var abbrev = _academicUnitService.GetInstitutionAbbrev();
-            var path   = TpConfigService.Write(dbFolder, config, abbrev);
+            var (path, result) = await TpConfigService.WriteAsync(dbFolder, config, abbrev);
 
-            if (path is not null)
+            if (result.Succeeded)
                 SetStatus($"File written to:\n{path}", success: true);
             else
-                SetStatus("The file could not be written. Check the application log for details.", success: false);
+                SetStatus(result.Message!, success: false);
         }
         catch (Exception ex)
         {
+            // The message shows no exception text: the exception goes to the log only.
             App.Logger.LogError(ex, "ShareViewModel.CreateTpConfigFile failed");
-            SetStatus($"An error occurred: {ex.Message}", success: false);
+            SetStatus("TermPoint couldn't create the configuration file. Nothing else was affected. Try again.", success: false);
         }
     }
 

@@ -596,6 +596,20 @@ public static class NetworkFileOps
         => RunAsync(() => File.WriteAllText(path, content), "File.WriteAllText", path, null);
 
     /// <summary>
+    /// Timeout-aware <see cref="File.WriteAllBytes(string, byte[])"/> (1.2.4 item 4.10). The byte twin of
+    /// <see cref="WriteAllTextAsync"/> for callers that must control the encoding themselves: the caller encodes
+    /// first, so a CSV keeps its UTF-8 byte-order mark for Excel while JSON stays BOM-less.
+    /// (<see cref="WriteAllTextAsync"/> always writes UTF-8 without a BOM, so it is not a drop-in for the CSVs.)
+    /// </summary>
+    /// <param name="path">Full path of the file to create or overwrite (may be a UNC path).</param>
+    /// <param name="bytes">The complete file contents.</param>
+    /// <returns><c>true</c> when the write completed within the deadline; <c>false</c> on timeout.</returns>
+    /// <exception cref="IOException">The write failed within the deadline (disk full, file in use, folder gone).</exception>
+    /// <exception cref="UnauthorizedAccessException">The write was refused within the deadline.</exception>
+    public static Task<bool> WriteAllBytesAsync(string path, byte[] bytes)
+        => RunAsync(() => File.WriteAllBytes(path, bytes), "File.WriteAllBytes", path, null);
+
+    /// <summary>
     /// Timeout-aware <see cref="BackupService.CheckIntegrity(string)"/>.
     /// </summary>
     /// <returns>

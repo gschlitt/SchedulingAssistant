@@ -18,30 +18,38 @@ public static class TpConfigService
     };
 
     /// <summary>
-    /// Writes a .tpconfig file to <paramref name="dbFolder"/>.
-    /// The filename is derived from the academic unit abbreviation: "{abbrev}-TT.tpconfig".
-    /// Falls back to "config.tpconfig" if the abbreviation is blank.
-    /// Non-fatal: logs to App.Logger on failure and returns false.
+    /// Writes a .tpconfig file to <paramref name="dbFolder"/> under the network deadline (1.2.4 item 4.10, A5): the
+    /// folder is the database's own, usually on a share, and a share that stops answering used to freeze the window
+    /// here. The filename is derived from the academic unit abbreviation: "{abbrev}-TT.tpconfig", or
+    /// "config.tpconfig" if the abbreviation is blank. The file is JSON written as UTF-8 WITHOUT a byte-order mark,
+    /// the same bytes <c>File.WriteAllText</c> wrote before. Non-fatal: never throws; the outcome says what happened.
     /// </summary>
     /// <param name="dbFolder">Folder that contains the database file.</param>
     /// <param name="data">Configuration data to serialize.</param>
     /// <param name="acUnitAbbrev">Academic unit abbreviation used for the filename.</param>
-    /// <returns>The path written to, or null on failure.</returns>
-    public static string? Write(string dbFolder, TpConfigData data, string acUnitAbbrev)
+    /// <returns>
+    /// The path the file was (or would have been) written to, and the write's result
+    /// (<see cref="ExportWriteResult.Message"/> holds the wording to show when it did not succeed).
+    /// </returns>
+    public static async Task<(string Path, ExportWriteResult Result)> WriteAsync(
+        string dbFolder, TpConfigData data, string acUnitAbbrev)
     {
+        var stem = string.IsNullOrWhiteSpace(acUnitAbbrev) ? "config" : acUnitAbbrev.Trim();
+        var path = System.IO.Path.Combine(dbFolder, $"{stem}-TT.tpconfig");
+
+        byte[] bytes;
         try
         {
-            var stem = string.IsNullOrWhiteSpace(acUnitAbbrev) ? "config" : acUnitAbbrev.Trim();
-            var path = Path.Combine(dbFolder, $"{stem}-TT.tpconfig");
-            var json = JsonSerializer.Serialize(data, _jsonOptions);
-            File.WriteAllText(path, json);
-            return path;
+            bytes = ExportFileWriter.EncodeUtf8(JsonSerializer.Serialize(data, _jsonOptions), withBom: false);
         }
         catch (Exception ex)
         {
-            App.Logger.LogError(ex, "TpConfigService.Write failed");
-            return null;
+            App.Logger.LogError(ex, "TpConfigService.WriteAsync failed to serialize");
+            return (path, new ExportWriteResult(
+                ExportWriteOutcome.Failed, System.IO.Path.GetFileName(path), ExportFileWriter.GenericReason));
         }
+
+        return (path, await ExportFileWriter.WriteAsync(path, bytes));
     }
 
     /// <summary>

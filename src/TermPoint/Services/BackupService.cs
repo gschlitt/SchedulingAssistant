@@ -85,7 +85,7 @@ public readonly record struct IntegrityCheckOutcome(IntegrityCheckResult Result,
 /// <see cref="StopSession"/> (or <see cref="Dispose"/>) to stop the timer on shutdown
 /// or database switch.</para>
 ///
-/// <para><b>Rotation:</b> After every backup, <see cref="RotateBackups"/> keeps the newest
+/// <para><b>Rotation:</b> After every backup, <see cref="RotateBackupsAsync"/> keeps the newest
 /// <see cref="AppSettings.MaxBackupCount"/> backups plus the last backup of each of the 7 days and 4 weeks before
 /// this one that have backups (<see cref="SelectBackupsToDelete"/>, 1.2.4 item 4.9), and deletes the rest.</para>
 ///
@@ -213,7 +213,7 @@ public class BackupService : IDisposable
     ///   <item>VACUUM INTO — creates a compacted snapshot of the live database.</item>
     ///   <item>Integrity check — verifies the backup file is structurally sound.</item>
     ///   <item>CSV export — writes a human-readable section dump alongside the .db file.</item>
-    ///   <item>Rotation — deletes the backup pairs the retention rule does not keep (<see cref="RotateBackups"/>).</item>
+    ///   <item>Rotation — deletes the backup pairs the retention rule does not keep (<see cref="RotateBackupsAsync"/>).</item>
     /// </list>
     /// Failures are logged and surfaced via <see cref="LastBackupResult"/>; they do not throw.
     /// </summary>
@@ -323,22 +323,26 @@ public class BackupService : IDisposable
             TryDelete(localTmp);
         }
 
-        // Step 3 — CSV export (non-fatal; DB backup already succeeded)
+        // Step 3 — CSV export (non-fatal; DB backup already succeeded). The write runs under the network deadline
+        // (1.2.4 item 4.10): a backup folder that stops answering right after the database copy finished no longer
+        // freezes the caller (the UI thread, at lock acquisition). A time-out means "CSV not exported", exactly like
+        // a failed write: the backup is still a success and CsvPath is null.
         bool csvOk = false;
         try
         {
-            await WriteSectionsCsvAsync(csvDest);
-            csvOk = true;
+            csvOk = await WriteSectionsCsvAsync(csvDest);
+            if (!csvOk)
+                _logger.LogInfo("Backup: the sections CSV was not written; the backup folder did not respond.");
         }
         catch (Exception ex)
         {
             _logger.LogError(ex, "Section CSV export failed during backup");
         }
 
-        // Step 4 — rotate old backups
+        // Step 4 — rotate old backups (one guarded listing, guarded deletes; stops at the first one that does not answer)
         try
         {
-            RotateBackups(folder, prefix, settings.MaxBackupCount);
+            await RotateBackupsAsync(folder, prefix, settings.MaxBackupCount, logger: _logger);
         }
         catch (Exception ex)
         {
@@ -497,10 +501,16 @@ public class BackupService : IDisposable
     public List<BackupEntry> GetBackups() => GetBackupsAsync().GetAwaiter().GetResult();
 
     /// <summary>
-    /// Async version that deadline-bounds the <see cref="Directory.Exists"/> and
-    /// <see cref="Directory.GetFiles"/> calls so a dead backup share does not
+    /// Async version that deadline-bounds every call that touches the backup folder, so a dead backup share does not
     /// freeze the UI thread for the full SMB redirector timeout.
+    ///
+    /// <para><b>One listing, not one per backup (1.2.4 item 4.10, A4).</b> The folder is listed ONCE
+    /// (<c>{prefix}_*</c>, both the <c>.db</c> files and the <c>_sections.csv</c> files) under a single deadline, and
+    /// each backup's companion CSV is matched to it in memory (<see cref="MatchCompanionCsvs"/>). Before, the list cost
+    /// one extra directory listing per backup, on the UI thread, and every row then did a <c>File.Exists</c> on each
+    /// read while it was drawn.</para>
     /// </summary>
+    /// <returns>The backups, newest first; empty when no folder is configured, it is unavailable, or the listing timed out.</returns>
     public async Task<List<BackupEntry>> GetBackupsAsync()
     {
         var folder = AppSettings.Current.BackupFolderPath;
@@ -514,22 +524,45 @@ public class BackupService : IDisposable
         if (!completed || !exists)
             return new List<BackupEntry>();
 
-        var (filesCompleted, files) = await NetworkFileOps.RunAsync(
-            () => Directory.GetFiles(folder, $"{prefix}_*.db"), "GetBackups.GetFiles");
-        if (!filesCompleted || files is null)
+        // The listing AND the creation-time fallback (for a name that does not parse) both touch the share, so both
+        // run inside this one guarded call.
+        var (listed, entries) = await NetworkFileOps.RunAsync(
+            () => BuildBackupEntries(Directory.GetFiles(folder, $"{prefix}_*")),
+            "GetBackups.GetFiles", folder, null);
+        if (!listed || entries is null)
             return new List<BackupEntry>();
 
-        return files
+        return entries.OrderByDescending(e => e.Timestamp).ToList();
+    }
+
+    /// <summary>
+    /// Turns one folder listing into backup entries: every <c>.db</c> file becomes an entry, and its companion CSV is
+    /// found among the SAME listing (<see cref="MatchCompanionCsvs"/>), so no further file-system call is needed to
+    /// say whether it has one. The timestamp comes from the file name; only a name that does not parse falls back to
+    /// <paramref name="creationTime"/> (a real <see cref="File.GetCreationTime(string)"/> call, so callers run this
+    /// inside a deadline-guarded call).
+    /// </summary>
+    /// <param name="files">Every file the folder listing returned for <c>{prefix}_*</c> (databases, CSVs and anything else).</param>
+    /// <param name="creationTime">Reads a file's creation time; null means <see cref="File.GetCreationTime(string)"/>. Tests pass a fake.</param>
+    /// <returns>One entry per <c>.db</c> file, in listing order (not sorted).</returns>
+    internal static List<BackupEntry> BuildBackupEntries(IReadOnlyCollection<string> files, Func<string, DateTime>? creationTime = null)
+    {
+        creationTime ??= File.GetCreationTime;
+        var dbFiles = files.Where(f => f.EndsWith(".db", StringComparison.OrdinalIgnoreCase)).ToList();
+        var csvs    = MatchCompanionCsvs(dbFiles, files);
+
+        return dbFiles
             .Select(f =>
             {
+                csvs.TryGetValue(f, out var csv);
                 return new BackupEntry
                 {
                     DbPath    = f,
-                    CsvPath   = FindCompanionCsv(folder, f),
-                    Timestamp = ParseTimestampFromFilename(f) ?? File.GetCreationTime(f)
+                    CsvPath   = csv,
+                    HasCsv    = csv is not null,
+                    Timestamp = ParseTimestampFromFilename(f) ?? creationTime(f)
                 };
             })
-            .OrderByDescending(e => e.Timestamp)
             .ToList();
     }
 
@@ -771,9 +804,15 @@ public class BackupService : IDisposable
     /// columns blank to avoid repetition. Sections with no scheduled meetings still emit
     /// one row (with empty meeting columns) so no section is silently omitted.
     /// All foreign-key IDs are resolved to display names.
+    ///
+    /// <para>The finished text is encoded as UTF-8 WITH a byte-order mark (the same bytes
+    /// <c>File.WriteAllTextAsync(…, Encoding.UTF8)</c> produced, so Excel opens it correctly) and written under the
+    /// network deadline (1.2.4 item 4.10, A2).</para>
     /// </summary>
     /// <param name="destPath">Full path of the CSV file to create (overwrite if exists).</param>
-    private async Task WriteSectionsCsvAsync(string destPath)
+    /// <returns><c>true</c> when the file was written; <c>false</c> when the backup folder did not answer in time (nothing is known to have been written).</returns>
+    /// <exception cref="IOException">The write failed within the deadline (the caller treats it as "CSV not exported").</exception>
+    private async Task<bool> WriteSectionsCsvAsync(string destPath)
     {
         // This method runs on a thread-pool thread (backup timer / save caller), but the
         // injected repositories all execute on the shared DatabaseContext connection,
@@ -948,7 +987,9 @@ public class BackupService : IDisposable
             }
         }
 
-        await File.WriteAllTextAsync(destPath, sb.ToString(), Encoding.UTF8);
+        // Encode here (UTF-8 with BOM, as Encoding.UTF8 always wrote it) and write under the network deadline.
+        return await NetworkFileOps.WriteAllBytesAsync(
+            destPath, ExportFileWriter.EncodeUtf8(sb.ToString(), withBom: true));
     }
 
     /// <summary>
@@ -1036,27 +1077,119 @@ public class BackupService : IDisposable
     /// Enforces the backup retention rule (<see cref="SelectBackupsToDelete"/>, 1.2.4 item 4.9): deletes every backup
     /// pair (db + csv) of this database that the rule does not keep. Files in the folder that are not backups of
     /// <paramref name="prefix"/> are never touched.
+    ///
+    /// <para><b>Every call to the folder is under the network deadline (1.2.4 item 4.10, A3).</b> The folder is listed
+    /// ONCE (<c>{prefix}_*</c>: the <c>.db</c> files and the <c>_sections.csv</c> files together); the retention
+    /// selection and the matching of each backup to its CSV
+    /// (<see cref="MatchCompanionCsvs"/>) happen in memory; each file is then removed with
+    /// <see cref="NetworkFileOps.DeleteAsync"/>. A listing that times out skips rotation for this backup. Rotation
+    /// <b>stops at the first delete that times out</b>: the folder is not
+    /// answering, so paying the deadline once per remaining file would only stall the caller, and the next backup's
+    /// rotation removes what is left. A delete that is refused (file in use, access denied) is skipped, not a reason to
+    /// stop (<see cref="DeleteWithinDeadlineAsync"/>). Stopping early deletes LESS, never more.</para>
     /// </summary>
     /// <param name="folder">Backup folder path.</param>
     /// <param name="prefix">Database name prefix, e.g. "ComputerScience".</param>
     /// <param name="maxCount">How many of the newest backups to keep regardless of date (the "Recent backups to keep" setting).</param>
     /// <param name="now">The current local time; null means <see cref="DateTime.Now"/>. Tests pass a fixed time.</param>
-    internal static void RotateBackups(string folder, string prefix, int maxCount, DateTime? now = null)
+    /// <param name="logger">Where the "stopped early" lines go; null means <see cref="App.Logger"/>.</param>
+    /// <returns>A task that completes when rotation has finished or stopped. Never waits longer than one deadline per call to the folder.</returns>
+    /// <exception cref="IOException">The folder listing failed (not a time-out); the caller logs it and carries on.</exception>
+    internal static async Task RotateBackupsAsync(
+        string folder, string prefix, int maxCount, DateTime? now = null, IAppLogger? logger = null)
     {
+        logger ??= App.Logger;
+
+        var (listed, files) = await NetworkFileOps.RunAsync(
+            () => Directory.GetFiles(folder, $"{prefix}_*"), "Rotate.GetFiles", folder, null);
+        if (!listed || files is null)
+        {
+            logger.LogInfo("Backup: old backups were not rotated; the backup folder did not respond.");
+            return;
+        }
+
         var toDelete = SelectBackupsToDelete(
-            Directory.GetFiles(folder, $"{prefix}_*.db"), prefix, maxCount, now ?? DateTime.Now);
+            files.Where(f => f.EndsWith(".db", StringComparison.OrdinalIgnoreCase)),
+            prefix, maxCount, now ?? DateTime.Now);
+        var companions = MatchCompanionCsvs(toDelete, files);
 
         foreach (var oldest in toDelete)
         {
-            TryDelete(oldest);
+            // The companion CSV (its name carries an academic-year slug between the timestamp and "_sections.csv"),
+            // matched in memory from the listing above:
+            // DB: MATH-TT_2026-04-05_21-15-25.db → CSV: MATH-TT_2026-04-05_21-15-25_2025-2026_sections.csv
+            companions.TryGetValue(oldest, out var companionCsv);
 
-            // Delete companion CSV — the CSV name includes an academic year slug between
-            // the timestamp and "_sections.csv", so derive it via glob rather than string
-            // substitution. e.g. DB: MATH-TT_2026-04-05_21-15-25.db →
-            // CSV: MATH-TT_2026-04-05_21-15-25_2025-2026_sections.csv
-            var companionCsv = FindCompanionCsv(folder, oldest);
-            if (companionCsv != null) TryDelete(companionCsv);
+            foreach (var file in companionCsv is null ? new[] { oldest } : new[] { oldest, companionCsv })
+            {
+                if (await DeleteWithinDeadlineAsync(file, logger))
+                    continue;
+
+                logger.LogInfo("Backup: rotation stopped early; the backup folder did not answer a delete. The next backup will finish the job.");
+                return;
+            }
         }
+    }
+
+    /// <summary>
+    /// Deletes one file for <see cref="RotateBackupsAsync"/> under the network deadline, telling a time-out apart from
+    /// a refused delete. Only a time-out means "the folder is not answering" and should stop rotation. A refused delete
+    /// (the CSV is open in Excel, antivirus is scanning the file, access denied, already gone) is logged and skipped, as
+    /// the old <c>TryDelete</c> did: stopping there would make every later rotation stop at the same file, so old
+    /// backups would pile up for as long as that file stays locked.
+    /// </summary>
+    /// <param name="path">The backup file to delete.</param>
+    /// <param name="logger">Where a refused delete is logged.</param>
+    /// <returns><c>false</c> only when the delete timed out; <c>true</c> when it completed or was refused.</returns>
+    private static async Task<bool> DeleteWithinDeadlineAsync(string path, IAppLogger logger)
+    {
+        try
+        {
+            // Same label as NetworkFileOps.DeleteAsync, so fault injection and the probe see rotation deletes the same way.
+            return await NetworkFileOps.RunAsync(() => File.Delete(path), "File.Delete", path, null);
+        }
+        catch (Exception ex)
+        {
+            logger.LogInfo($"Backup: rotation skipped a file it could not delete ({ex.GetType().Name}: {ex.Message}).");
+            return true;
+        }
+    }
+
+    /// <summary>The ending every sections-CSV file name has: <c>{prefix}_{timestamp}_{academicYearSlug}_sections.csv</c>.</summary>
+    private const string SectionsCsvSuffix = "_sections.csv";
+
+    /// <summary>
+    /// Matches each backup database to its companion sections CSV using only the file names of ONE folder listing (no
+    /// file-system calls). The database is named <c>{prefix}_{timestamp}.db</c> and its CSV
+    /// <c>{prefix}_{timestamp}_{aySlug}_sections.csv</c>; because the slug varies, a CSV belongs to a database when its
+    /// name starts with <c>{prefix}_{timestamp}_</c> and ends with <c>_sections.csv</c> (exactly the files the glob
+    /// <c>{prefix}_{timestamp}_*_sections.csv</c> matched when each backup was listed on its own). Names compare
+    /// case-insensitively, as the glob did on Windows. Pure, so it is unit-tested without files.
+    /// </summary>
+    /// <param name="dbPaths">The backup databases to find CSVs for.</param>
+    /// <param name="allFiles">Every file in the listing (the CSVs are picked out of it; other files are ignored).</param>
+    /// <returns>For each database that has a companion CSV, its path (the first match); databases without one are absent.</returns>
+    internal static Dictionary<string, string> MatchCompanionCsvs(IEnumerable<string> dbPaths, IReadOnlyCollection<string> allFiles)
+    {
+        var csvs = allFiles
+            .Where(f => Path.GetFileName(f).EndsWith(SectionsCsvSuffix, StringComparison.OrdinalIgnoreCase))
+            .ToList();
+
+        var matches = new Dictionary<string, string>(StringComparer.Ordinal);
+        foreach (var db in dbPaths)
+        {
+            var stem = Path.GetFileNameWithoutExtension(db) + "_";   // e.g. "MATH-TT_2026-04-05_21-15-25_"
+            // After the stem, the rest of the name must still hold "_sections.csv" in full: that is the glob's two
+            // underscores around the (possibly empty) slug.
+            var csv = csvs.FirstOrDefault(c =>
+            {
+                var name = Path.GetFileName(c);
+                return name.StartsWith(stem, StringComparison.OrdinalIgnoreCase)
+                       && name.Length - stem.Length >= SectionsCsvSuffix.Length;
+            });
+            if (csv is not null) matches[db] = csv;
+        }
+        return matches;
     }
 
     /// <summary>Starts or restarts the periodic backup timer using the current interval setting.</summary>
@@ -1162,25 +1295,6 @@ public class BackupService : IDisposable
         // The timestamp is the last 19 characters; the character before it must be the separating underscore,
         // and something must come before that (an empty database name is not a backup name).
         return name.Length > 20 && name[^20] == '_' ? name[..^20] : null;
-    }
-
-    /// <summary>
-    /// Locates the companion CSV file for a given database backup file.
-    /// The DB is named <c>{prefix}_{timestamp}.db</c>; the CSV is named
-    /// <c>{prefix}_{timestamp}_{aySlug}_sections.csv</c>. Because the slug varies,
-    /// the companion is found by scanning for files matching
-    /// <c>{prefix}_{timestamp}_*_sections.csv</c>.
-    /// Returns null when no companion exists.
-    /// </summary>
-    /// <param name="folder">Backup folder to search.</param>
-    /// <param name="dbPath">Full path to the .db backup file.</param>
-    /// <returns>Full path to the companion CSV, or null if none found.</returns>
-    private static string? FindCompanionCsv(string folder, string dbPath)
-    {
-        var stem = Path.GetFileNameWithoutExtension(dbPath);  // e.g. "MATH-TT_2026-04-05_21-15-25"
-        return Directory
-            .GetFiles(folder, $"{stem}_*_sections.csv")
-            .FirstOrDefault();
     }
 
     /// <summary>Converts minutes-from-midnight to a display string, e.g. 510 → "8:30 AM".</summary>

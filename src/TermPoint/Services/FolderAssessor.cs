@@ -250,52 +250,66 @@ public class FolderAssessor
     /// <summary>
     /// Assesses a single candidate path and returns a <see cref="FolderSuggestion"/>
     /// if it passes all checks, or null if it should be skipped.
+    ///
+    /// <para>A local candidate is assessed inline (local disks answer at once). A network candidate runs its WHOLE
+    /// assessment (the <see cref="Assess"/> call, both <c>Directory.Exists</c> calls, the ancestor walk and the
+    /// writability probe) inside one <see cref="RunWithTimeout{T}"/> bounded by <see cref="DriveProbeTimeoutMs"/>:
+    /// each of those is a raw filesystem call that can block for the full SMB timeout on a mapped drive that has
+    /// stopped answering (1.2.4 item 4.10, group 4). A time-out means "no suggestion for that drive", the same as a
+    /// drive that failed its readiness check.</para>
     /// </summary>
-    private async Task<FolderSuggestion?> AssessCandidateAsync(
+    /// <param name="candidatePath">The folder to assess.</param>
+    /// <param name="description">Short label shown with the suggestion.</param>
+    /// <param name="isNetwork">True when the candidate is on a mapped network drive (the whole assessment gets a deadline).</param>
+    /// <returns>The suggestion, or null when the candidate is unsuitable or the network drive did not answer in time.</returns>
+    internal async Task<FolderSuggestion?> AssessCandidateAsync(
         string candidatePath, string description, bool isNetwork)
     {
         try
         {
-            var assessment = Assess(candidatePath);
+            if (!isNetwork)
+                return AssessCandidate(candidatePath, description);
 
-            if (assessment.Warnings.Any(w => w.Kind != WarningKind.NotWritable))
-                return null;
-
-            bool writable;
-            if (Directory.Exists(candidatePath))
-            {
-                writable = assessment.IsWritable;
-            }
-            else
-            {
-                var testDir = FindExistingAncestor(candidatePath);
-                if (testDir == null) return null;
-
-                if (isNetwork)
-                {
-                    var (completed, result) = await RunWithTimeout(
-                        () => {
-                            var p = _writabilityProbe ?? WriteAccessProbe.CanCreateFileIn;
-                            return p(testDir);
-                        }, DriveProbeTimeoutMs);
-                    writable = completed && result;
-                }
-                else
-                {
-                    var probe = _writabilityProbe ?? WriteAccessProbe.CanCreateFileIn;
-                    writable = probe(testDir);
-                }
-            }
-
-            if (!writable) return null;
-
-            return new FolderSuggestion(
-                candidatePath, description, Directory.Exists(candidatePath));
+            var (completed, suggestion) = await RunWithTimeout(
+                () => AssessCandidate(candidatePath, description), DriveProbeTimeoutMs);
+            return completed ? suggestion : null;
         }
         catch
         {
             return null;
         }
+    }
+
+    /// <summary>
+    /// The synchronous body of <see cref="AssessCandidateAsync"/>: every filesystem call a candidate assessment makes.
+    /// Runs inline for a local candidate and on a thread-pool thread under a deadline for a network one.
+    /// </summary>
+    /// <param name="candidatePath">The folder to assess.</param>
+    /// <param name="description">Short label shown with the suggestion.</param>
+    /// <returns>The suggestion, or null when the candidate is unsuitable.</returns>
+    private FolderSuggestion? AssessCandidate(string candidatePath, string description)
+    {
+        var assessment = Assess(candidatePath);
+
+        if (assessment.Warnings.Any(w => w.Kind != WarningKind.NotWritable))
+            return null;
+
+        bool writable;
+        var exists = Directory.Exists(candidatePath);
+        if (exists)
+        {
+            writable = assessment.IsWritable;
+        }
+        else
+        {
+            var testDir = FindExistingAncestor(candidatePath);
+            if (testDir == null) return null;
+
+            var probe = _writabilityProbe ?? WriteAccessProbe.CanCreateFileIn;
+            writable = probe(testDir);
+        }
+
+        return writable ? new FolderSuggestion(candidatePath, description, exists) : null;
     }
 
     /// <summary>

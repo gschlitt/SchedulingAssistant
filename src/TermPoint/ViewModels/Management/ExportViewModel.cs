@@ -68,14 +68,27 @@ public partial class ExportViewModel : ViewModelBase
 
             if (file is null) return;
 
-            var path = file.Path.LocalPath;
+            // Render on the UI thread (it must), then write the bytes under the network deadline: the folder may be a
+            // share that stopped answering (1.2.4 item 4.10, A8).
+            var png = window.ScheduleGridViewInstance?.ExportToPngBytes();
+            if (png is null)
+            {
+                StatusMessage = "There is no schedule to export yet.";
+                return;
+            }
 
-            window.ScheduleGridViewInstance?.ExportToPng(path);
+            var result = await ExportFileWriter.WriteAsync(file, png);
+            if (!result.Succeeded)
+            {
+                StatusMessage = result.Message;
+                return;
+            }
 
-            settings.LastExportPath = path;
+            // Remember the folder only when the file was actually written.
+            settings.LastExportPath = file.Path.LocalPath;
             settings.Save();
 
-            StatusMessage = $"Saved: {Path.GetFileName(path)}";
+            StatusMessage = $"Saved: {result.FileName}";
         }
         catch (Exception ex)
         {

@@ -5,7 +5,7 @@ namespace TermPoint.Tests;
 
 /// <summary>
 /// Tests for the backup retention rule of 1.2.4 item 4.9 (<see cref="BackupService.SelectBackupsToDelete"/> and
-/// <see cref="BackupService.RotateBackups"/>): keep the newest N, plus the last backup of each of the 7 days before
+/// <see cref="BackupService.RotateBackupsAsync"/>): keep the newest N, plus the last backup of each of the 7 days before
 /// today and of each of the 4 weeks before this one that have backups; delete the rest; never touch a file that is
 /// not a backup of this database.
 /// </summary>
@@ -155,7 +155,7 @@ public sealed class BackupRetentionTests : IDisposable
 
     /// <summary>The file-level rotation deletes each dropped backup with its companion CSV, and leaves everything else.</summary>
     [Fact]
-    public void RotateBackups_DeletesDroppedPairs_AndLeavesTheRest()
+    public async Task RotateBackups_DeletesDroppedPairs_AndLeavesTheRest()
     {
         string Make(string name) { var p = Path.Combine(_tempDir, name); File.WriteAllText(p, "x"); return p; }
 
@@ -166,7 +166,7 @@ public sealed class BackupRetentionTests : IDisposable
         var newest  = Make("BIOL_2026-11-11_09-00-00.db");
         var other   = Make("BIOL_TT_2026-01-01_09-00-00.db");
 
-        BackupService.RotateBackups(_tempDir, "BIOL", maxCount: 1, now: Now);
+        await BackupService.RotateBackupsAsync(_tempDir, "BIOL", maxCount: 1, now: Now);
 
         Assert.False(File.Exists(oldDb));
         Assert.False(File.Exists(oldCsv));

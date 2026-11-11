@@ -1656,12 +1656,28 @@ public partial class ScheduleGridView : UserControl
     /// semester name(s) and, when days are folded, which days are open (the strips export as drawn). A running strip
     /// flash is cancelled by the re-render, and none starts while exporting. Re-renders the canvas with export colors, captures the bitmap,
     /// then restores the on-screen palette.
+    ///
+    /// <para>The render must happen on the UI thread; only the file write may be moved off it. Callers that write to a
+    /// user-picked file use <see cref="ExportToPngBytes"/> and hand the bytes to
+    /// <see cref="Services.ExportFileWriter"/> (1.2.4 item 4.10), so a share that stopped answering cannot freeze the
+    /// window. This path-taking form remains for local, known-good paths (the layout probes).</para>
     /// </summary>
     /// <param name="outputPath">Absolute path for the output PNG file.</param>
     public void ExportToPng(string outputPath)
     {
+        var png = ExportToPngBytes();
+        if (png is not null) System.IO.File.WriteAllBytes(outputPath, png);
+    }
+
+    /// <summary>
+    /// Renders the schedule grid as <see cref="ExportToPng"/> does (print palette, title banner, folded-day strips) and
+    /// returns the PNG file's bytes instead of writing a file. Must be called on the UI thread.
+    /// </summary>
+    /// <returns>The PNG bytes, or null when the grid has not been laid out yet (nothing to export).</returns>
+    public byte[]? ExportToPngBytes()
+    {
         _canvas ??= this.FindControl<Canvas>("GridCanvas");
-        if (_canvas is null || double.IsNaN(_canvas.Width) || _canvas.Width <= 0) return;
+        if (_canvas is null || double.IsNaN(_canvas.Width) || _canvas.Width <= 0) return null;
 
         _printPalette ??= (ResourceDictionary)AvaloniaXamlLoader.Load(
             new Uri("avares://TermPoint/PrintColors.axaml"));
@@ -1718,7 +1734,9 @@ public partial class ScheduleGridView : UserControl
             bitmap.Render(_canvas);
             // Explicit PNG options: Avalonia 12.1 obsoleted Save(string, int?), which now just
             // forwards to this overload with PngBitmapEncoderOptions.Default — same output.
-            bitmap.Save(outputPath, PngBitmapEncoderOptions.Default);
+            using var memory = new System.IO.MemoryStream();
+            bitmap.Save(memory, PngBitmapEncoderOptions.Default);
+            return memory.ToArray();
         }
         finally
         {

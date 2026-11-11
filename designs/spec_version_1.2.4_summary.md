@@ -47,7 +47,7 @@ About 97 items in nine groups. Most were deferred from 1.2.3 or found while test
 
 **The urgent and high-value items, and where they stand (2026-11-10)**
 - **Section 4, Greg's priority from 2026-11-09:** 4.2, 4.3, 4.4, 4.5, 4.6, 4.7, 4.8 and 4.9 done (4.3's by-hand check passed 2026-11-10; macOS relaunch left); 4.11 shelved. 4.7 D1 closed a
-  rule-3 hole (crash recovery could delete kept changes that antivirus was holding). Left: 4.10, 4.13's
+  rule-3 hole (crash recovery could delete kept changes that antivirus was holding). 4.10 done 2026-11-10. Left: 4.13's
   accepted remainder.
 - **Store package** (1.2–1.4): done. The shared Windows file and the graphics PDBs are left out (55.5 MB); the flight
   procedure is written. Left: the first flight with the 1.2.4 submission, and the support case for 1.1 (Greg).
@@ -682,9 +682,17 @@ Everything in this group is checked against rule 3 (never delete the only copy o
 > `BackupRetentionTests`; full suite 4487 passed, 0 failed. **Not done (per Greg):** "skip if unchanged", and backups
 > that fail their check still counting.
 
-> [!note]- **4.10 24 network file calls outside the save path have no deadline** `not started`
+> [!note]- **4.10 24 network file calls outside the save path have no deadline** `done`
 > `tools/NetworkProbe/GAP-AUDIT.md` lists them; each could freeze the UI on a dead share. 1.2.3 fixed the backup-cleanup
 > call.
+> **Design 2026-11-10:** `designs/network-deadlines-1.2.4.md`, awaiting Greg's lock. Re-checked on 1.2.4: 18 lines in
+> scope (backups' CSV, rotation and list; .tpconfig; four exports; network folder suggestions), 6 in the Dev Tools
+> migration utility left alone. Greg chose all four groups. Nothing on the save, lock, restore or recovery paths.
+> **Done 2026-11-10 (not yet committed):** built to the locked design. New `NetworkFileOps.WriteAllBytesAsync` and
+> `ExportFileWriter` (one wording for every picked-file write); backup CSV, rotation (one listing, stops at the first
+> time-out, skips a refused delete) and list (one listing, `HasCsv` fixed at listing time); .tpconfig; the four exports
+> plus Files → Print PNG; network folder suggestions. `NetworkDeadlinesTests` (21). Not run on a real dead share; the
+> three new NetworkProbe cases (`write-bytes`, `export-write`, `rotate`) await the clumsy rig.
 
 > [!note]- **4.11 Cloud-synced folders: more providers, and a warning at File → Open** `shelved`
 > Detection misses Google Drive for desktop, Box and macOS CloudStorage (1.2.3 added SharePoint and Teams libraries on

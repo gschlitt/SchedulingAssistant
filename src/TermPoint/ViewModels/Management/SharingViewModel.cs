@@ -212,13 +212,25 @@ public partial class SharingViewModel : ViewModelBase
 
         if (file is null) return;
 
-        await using var stream = await file.OpenWriteAsync();
-        var error = _exporter.Export(stream, sourceLabel, sections, id => courses.GetValueOrDefault(id, id));
+        // The exporter writes to memory (its Export(Stream, ...) signature is unchanged); the finished bytes then
+        // go to the picked file under the network deadline, so a share that stopped answering cannot freeze the
+        // window (1.2.4 item 4.10, A6). The exporter's own UTF-8 BOM is part of the bytes.
+        byte[] bytes;
+        using (var buffer = new System.IO.MemoryStream())
+        {
+            var error = _exporter.Export(buffer, sourceLabel, sections, id => courses.GetValueOrDefault(id, id));
+            if (error is not null)
+            {
+                StatusMessage = error;
+                return;
+            }
+            bytes = buffer.ToArray();
+        }
 
-        if (error is not null)
-            StatusMessage = error;
-        else
-            StatusMessage = $"Exported {sections.Count} sections{(isFiltered ? " (filtered)" : "")} to {file.Name}.";
+        var result = await Services.ExportFileWriter.WriteAsync(file, bytes);
+        StatusMessage = result.Succeeded
+            ? $"Exported {sections.Count} sections{(isFiltered ? " (filtered)" : "")} to {result.FileName}."
+            : result.Message;
 #endif
     }
 

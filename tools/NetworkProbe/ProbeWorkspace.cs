@@ -128,6 +128,18 @@ internal sealed class ProbeWorkspace
             RigIo.Run(() => File.Copy(SmallDbLocalPath, files.SmallDb, overwrite: true), RigIo.Short, "copying the small database");
         }
 
+        if (def.Needs.HasFlag(Fixtures.BackupSet))
+        {
+            // See Fixtures.BackupSet: two backups rotation deletes (with CSVs), two it keeps.
+            foreach (var name in new[]
+            {
+                "BIOL_2020-01-01_09-00-00.db", "BIOL_2020-01-01_09-00-00_2019-2020_sections.csv",
+                "BIOL_2020-01-01_12-00-00.db", "BIOL_2020-01-01_12-00-00_2019-2020_sections.csv",
+                "BIOL_2020-01-01_18-00-00.db", "BIOL_2020-01-02_09-00-00.db",
+            })
+                RigIo.Run(() => File.WriteAllText(Path.Combine(dir, name), SmallText), RigIo.Short, "writing a test backup file");
+        }
+
         return files;
     }
 
