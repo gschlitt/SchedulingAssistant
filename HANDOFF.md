@@ -122,8 +122,8 @@ Written so a fresh conversation can pick up. Claude Code's memory and `CLAUDE.md
      **4.13's remainder accepted again 2026-11-11** (F20 stays known; 1.2.5 candidate: retry the release's checked
      delete every ~30 s while the lock file still names this session).
    - **2.2 DONE 2026-11-11** (design `designs/licence-checks-1.2.4.md`): licence-expiry notice plus audit fixes (future
-     trial start reset, daily check, remembered licence for a slow share, local-date expiry). Left: Greg's by-eye look
-     at the notices (Debug + `TERMPOINT_DEBUG_DATE`).
+     trial start reset, daily check, remembered licence for a slow share, local-date expiry). Greg's by-eye look at the
+     notices passed 2026-11-11 (test licence `tmp/lic-2027-07-01/termpoint.lic`, local only).
    - **Next: pick with Greg** (Greg wants to work toward closing 1.2.4). Candidates: 5.8 then
      5.3/5.4; 6.12 false "Inactive"; harness 85 s model (retires F22). Later, per Greg 2026-11-10: 3.13 and 6.14
      (Restore from Backup, long shots). macOS checks (4.3 `open -n` relaunch, collapse days) wait for the first macOS
