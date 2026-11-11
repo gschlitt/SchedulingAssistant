@@ -121,6 +121,10 @@ Written so a fresh conversation can pick up. Claude Code's memory and `CLAUDE.md
      optional: run the three new NetworkProbe cases (`write-bytes`, `export-write`, `rotate`) on the clumsy rig.
      **4.13's remainder accepted again 2026-11-11** (F20 stays known; 1.2.5 candidate: retry the release's checked
      delete every ~30 s while the lock file still names this session).
+   - **5.8 DONE 2026-11-11** (`85d9e99`, `designs/network-experiments-5.8.md`, NetworkProbe `--share-semantics`):
+     results there. **5.1 DONE** right after (judge a failed lock create by its error code). Next in section 5:
+     5.3 (readers hold D for less time: one-pass copy+hash) and 5.4 (longer retries), each needing a design and risk
+     review; never add `Delete` sharing to lock-file reads.
    - **2.2 DONE 2026-11-11** (design `designs/licence-checks-1.2.4.md`): licence-expiry notice plus audit fixes (future
      trial start reset, daily check, remembered licence for a slow share, local-date expiry). Greg's by-eye look at the
      notices passed 2026-11-11 (test licence `tmp/lic-2027-07-01/termpoint.lic`, local only).

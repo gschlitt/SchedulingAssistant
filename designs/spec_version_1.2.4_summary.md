@@ -768,7 +768,14 @@ From the 2026-10-30 review of SMB client caching, antivirus and sync agents hold
 atomic. **Verdict:** nothing found can lose data or let two people write at once. The gaps are failed saves and wrong
 messages, plus one kind of storage the design can't protect. Nothing here touches the version gate.
 
-> [!note]- **5.1 Lock checks start with an existence test that Windows may answer from its cache** `not started`
+> [!note]- **5.1 Lock checks start with an existence test that Windows may answer from its cache** `done`
+> **Done (2026-11-11):** 5.8 showed the writer story can't happen (our own create clears the cached "not found"). The
+> real route was two readers racing for a released lock: the loser's follow-up "exists?" got its cached "not found"
+> and showed the can't-write message. A failed lock create is now judged from its own error code ("already exists" =
+> someone holds it; `WriteLockService.IsAlreadyExistsError`). The exists/read race in the writer's check is left as
+> is (Greg, 2026-11-11): it only delays detection by one check, with nothing written meanwhile. No message changes;
+> MinimumVersionToWrite No.
+>
 > Windows can answer "does the lock file exist?" from its client cache: a not-found answer can be about 5 s old, file
 > information about 10 s. The effects:
 > - A stale "missing" makes the writer delete and re-create its own lock, then tell Bob "the lock file was removed and

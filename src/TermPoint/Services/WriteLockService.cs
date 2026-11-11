@@ -1208,10 +1208,16 @@ public sealed class WriteLockService : IDisposable
             //
             // FileMode.CreateNew throws an IOException for BOTH a pre-existing file (ERROR_FILE_EXISTS)
             // and a blocked write (e.g. Controlled Folder Access surfaces ERROR_FILE_NOT_FOUND /
-            // ERROR_ACCESS_DENIED), so the exception type alone is ambiguous. Disambiguate by asking
-            // whether the file is actually present: a READ (File.Exists) is not restricted by
-            // Controlled Folder Access, which only blocks modification.
-            if (File.Exists(_lockFilePath!))
+            // ERROR_ACCESS_DENIED), so the exception TYPE alone is ambiguous; its error CODE is not.
+            //
+            // 1. "Already exists" (spec item 5.1): the server decided that, so it is trusted as is. Asking
+            //    File.Exists here instead could be answered from this computer's cached "not found" (up to
+            //    ~5 s old, also for a failed open): two readers both see the lock vanish, the other one
+            //    creates it first, and we would show the can't-write message instead of opening read-only.
+            //    Measured on the rig (designs/network-experiments-5.8.md, E1b): SMB returns 0x80070050.
+            // 2. Any other code: ask whether the file is actually present. A READ (File.Exists) is not
+            //    restricted by Controlled Folder Access, which only blocks modification.
+            if (IsAlreadyExistsError(ex) || File.Exists(_lockFilePath!))
             {
                 // (a) genuine existing lock — read the holder and report contention.
                 ReadCurrentHolder();
@@ -1236,6 +1242,18 @@ public sealed class WriteLockService : IDisposable
         CrashPoints.Hit("Lock.AfterCreated");
         return true;
     }
+
+    /// <summary>
+    /// True when a failed <see cref="FileMode.CreateNew"/> failed because the file already exists
+    /// (Win32 ERROR_FILE_EXISTS 80 or ERROR_ALREADY_EXISTS 183, in the low word of the HResult). The answer
+    /// comes from the server, so unlike <see cref="File.Exists(string)"/> it can't be a cached "not found".
+    /// </summary>
+    /// <param name="ex">The exception the create threw.</param>
+    /// <returns>True for "already exists"; false for every other failure (blocked write, sharing violation, ...).</returns>
+    internal static bool IsAlreadyExistsError(Exception ex)
+        => ex is IOException
+           && ex is not (FileNotFoundException or DirectoryNotFoundException)
+           && (ex.HResult & 0xFFFF) is 80 or 183;
 
     /// <summary>
     /// Checks whether the existing lock looks abandoned and, if so, sets <see cref="IsStaleLock"/> to
