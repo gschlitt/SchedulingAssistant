@@ -116,7 +116,7 @@ Written so a fresh conversation can pick up. Claude Code's memory and `CLAUDE.md
      wild". **Option B (one numbers-only summary per run) deferred past 1.2.4:** BugSnag can't sum metadata; it wants
      a usage-metrics tool and a privacy decision.
    - **Next: pick with Greg** (Greg wants to work toward closing 1.2.4). 4.3, 4.4, 4.5 done 2026-11-10. Left in section 4: **4.10** (network calls without a
-     deadline): **built 2026-11-10** to `designs/network-deadlines-1.2.4.md` (all four groups); left: NetworkProbe cases on the clumsy rig (optional), 4.13's remaining route (accepted). Other candidates: 3.13 and 6.14 (Restore from Backup; Greg 2026-11-10: long shots, later); macOS checks wait for the first macOS release, 2.2 licence
+     deadline): **built 2026-11-10** (`79e6007`) to `designs/network-deadlines-1.2.4.md` (all four groups), by-hand check passed 2026-11-11; left: NetworkProbe cases on the clumsy rig (optional), 4.13's remaining route (accepted). Other candidates: 3.13 and 6.14 (Restore from Backup; Greg 2026-11-10: long shots, later); macOS checks wait for the first macOS release, 2.2 licence
      warning, 5.8 then 5.3/5.4, 6.12, harness 85 s model (retires F22). Postponed items under F above stay listed.
    - **Small item found 2026-11-10:** `WizardDataFlowTests` writes the developer's real `%AppData%\TermPoint\settings.json`
      (its comment says "accepted for now"); it left `BackupFolderPath` pointing at a deleted `%TEMP%\WizardTests_…`

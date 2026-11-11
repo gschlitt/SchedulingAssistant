@@ -688,11 +688,12 @@ Everything in this group is checked against rule 3 (never delete the only copy o
 > **Design 2026-11-10:** `designs/network-deadlines-1.2.4.md`, awaiting Greg's lock. Re-checked on 1.2.4: 18 lines in
 > scope (backups' CSV, rotation and list; .tpconfig; four exports; network folder suggestions), 6 in the Dev Tools
 > migration utility left alone. Greg chose all four groups. Nothing on the save, lock, restore or recovery paths.
-> **Done 2026-11-10 (not yet committed):** built to the locked design. New `NetworkFileOps.WriteAllBytesAsync` and
+> **Done 2026-11-10 (`79e6007`):** built to the locked design. New `NetworkFileOps.WriteAllBytesAsync` and
 > `ExportFileWriter` (one wording for every picked-file write); backup CSV, rotation (one listing, stops at the first
 > time-out, skips a refused delete) and list (one listing, `HasCsv` fixed at listing time); .tpconfig; the four exports
-> plus Files → Print PNG; network folder suggestions. `NetworkDeadlinesTests` (21). Not run on a real dead share; the
+> plus Files → Print PNG; network folder suggestions. `NetworkDeadlinesTests` (21). The
 > three new NetworkProbe cases (`write-bytes`, `export-write`, `rotate`) await the clumsy rig.
+> By-hand check 2026-11-11 (VS Debug, local database, backups and exports on Mekler, clumsy Drop 100% on port 445) passed: backups, rotation with a CSV open in Excel, all five exports, the empty backup list and the backup result on a dead share, recovery after. The export time-out itself was not reached by hand: with the share dead, Windows' own Save dialog hangs first (it still answers Cancel). Covered by NetworkDeadlinesTests.
 
 > [!note]- **4.11 Cloud-synced folders: more providers, and a warning at File → Open** `shelved`
 > Detection misses Google Drive for desktop, Box and macOS CloudStorage (1.2.3 added SharePoint and Teams libraries on

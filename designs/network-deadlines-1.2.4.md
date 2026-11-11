@@ -1,6 +1,8 @@
 # 1.2.4 item 4.10: network file calls outside the save path get a deadline
 
 Status: **locked and built 2026-11-10**. Additions while building: Files → Print PNG uses the same writer (no status line, so its message goes to the notification banner); a refused rotation delete (file open in Excel) is skipped, only a time-out stops rotation. Scope chosen by Greg: all four groups. MinimumVersionToWrite:
+
+By-hand check 2026-11-11 (VS Debug, local database, backups and exports on Mekler, clumsy Drop 100% on port 445) passed: backups, rotation with a CSV open in Excel, all five exports, the empty backup list and the backup result on a dead share, recovery after. The export time-out itself was not reached by hand: with the share dead, Windows' own Save dialog hangs first (it still answers Cancel). Covered by NetworkDeadlinesTests.
 **No** (nothing stored in the database changes).
 
 Source: `tools/NetworkProbe/GAP-AUDIT.md` (written 2026-10-22 on 1.2.3), re-checked against `Version_1.2.4` HEAD
