@@ -1,0 +1,1095 @@
+<title>Access Slates Wireframe</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap">
+<style>
+/* Layout: review toolbar, then TermPoint's main window at real size (1280 x 760), then this round's questions.
+   The page around the mock follows the viewer's theme; the mock is always the app's light look (TermPoint ships
+   light only). Round 3 adds, inside an open watch: ticking some courses, pins (right-click a section on the grid),
+   stepping through slates, and the "any 3 of these" line. Every number is computed from the mock semester by a
+   small slate search, so the list, detail and grid agree. Nothing ticked, pinned or stepped is ever saved. */
+:root {
+  --page-bg: #eef1f5; --page-fg: #1c2430; --page-muted: #5b6676; --page-card: #ffffff; --page-line: #d3dae3;
+  --page-accent: #2f6db5;
+  --font: "Inter", "Segoe UI", system-ui, sans-serif;
+
+  /* The mock app (always light) */
+  --app-bg: #f3f4f7;          /* AppBackgroundColor */
+  --app-panel: #ffffff;
+  --app-line: #c8d5e4;        /* FilterGroupBorder */
+  --app-split: #e0e8f0;       /* GridSplitterColor */
+  --app-text: #000000;        /* TextPrimary */
+  --app-faint: #475569;       /* TextFaint */
+  --app-ghost: #9aa5b4;
+  --app-attn: #c03030;        /* ProgramConflictColor */
+  --app-tile: #dfe4ea;
+  --app-tile-line: #b8c2ce;
+  --app-hover: #e8eef6;
+  --app-tab-on: #ffffff;
+  --app-tab-off: #e4e9ef;
+  --app-essential: #1f3a5c;
+  --app-caution: #9a7400;
+  --app-select: #2f6db5;      /* section selection (same everywhere) */
+  --app-select-bg: #dce8f7;     /* yellow cautions: hard to reach, heavy load */   /* heavy outline: every slate uses it */
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --page-bg: #151a21; --page-fg: #e3e8ef; --page-muted: #9aa6b6; --page-card: #1e252e; --page-line: #2f3945;
+    --page-accent: #7fb0ea; color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --page-bg: #151a21; --page-fg: #e3e8ef; --page-muted: #9aa6b6; --page-card: #1e252e; --page-line: #2f3945;
+  --page-accent: #7fb0ea; color-scheme: dark;
+}
+* { box-sizing: border-box; }
+body {
+  background: var(--page-bg); color: var(--page-fg); font-family: var(--font); font-size: 14px;
+  padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px));
+  padding-block: 20px 40px;
+}
+h1 { font-size: 20px; margin: 0 0 4px; text-wrap: balance; }
+.lede { color: var(--page-muted); margin: 0 0 14px; max-width: 75ch; line-height: 1.45; }
+
+.toolbar { display: flex; flex-wrap: wrap; gap: 10px 18px; align-items: center; background: var(--page-card);
+  border: 1px solid var(--page-line); border-radius: 6px; padding: 10px 12px; margin-bottom: 12px; }
+.toolbar label { display: flex; gap: 6px; align-items: center; font-size: 13px; color: var(--page-muted); }
+.toolbar select { font: inherit; font-size: 13px; padding: 3px 6px; color: var(--page-fg); background: var(--page-bg);
+  border: 1px solid var(--page-line); border-radius: 4px; max-width: 100%; }
+.seg { display: inline-flex; border: 1px solid var(--page-line); border-radius: 4px; overflow: hidden; flex-wrap: wrap; }
+.seg button { font: inherit; font-size: 12px; padding: 4px 9px; border: 0; background: transparent; color: var(--page-fg); cursor: pointer; }
+.seg button + button { border-left: 1px solid var(--page-line); }
+.seg button[aria-pressed="true"] { background: var(--page-accent); color: var(--page-card); }
+button:focus-visible, select:focus-visible, input:focus-visible { outline: 2px solid var(--page-accent); outline-offset: 1px; }
+
+.stage { overflow: auto; border: 1px solid var(--page-line); border-radius: 6px; background: var(--page-card); }
+.stage-inner { width: 1280px; height: 760px; transform-origin: 0 0; position: relative; }
+.stage.fit { overflow: hidden; }
+
+/* ---------- The mock app window ---------- */
+.app { position: absolute; inset: 0; background: var(--app-bg); color: var(--app-text); font-family: var(--font);
+  font-size: 12px; display: grid; grid-template-rows: 34px 1fr; user-select: none; }
+.menubar { display: flex; align-items: center; gap: 18px; padding: 0 12px; background: var(--app-panel);
+  border-bottom: 1px solid var(--app-line); font-size: 13px; color: var(--app-faint); }
+.menubar b { color: var(--app-text); font-weight: 600; margin-right: 8px; }
+.body3 { display: grid; grid-template-columns: 440px 4px 1fr; min-height: 0; }
+.leftcol { display: flex; flex-direction: column; min-height: 0; }
+.vsplit { background: var(--app-split); }
+.hsplit { height: 4px; background: var(--app-split); cursor: row-resize; flex: none; }
+.hsplit:hover { background: var(--app-line); }
+.panel { background: var(--app-panel); display: flex; flex-direction: column; min-height: 0; border: 1px solid var(--app-line); }
+.panel-head { display: flex; align-items: stretch; height: 26px; flex: none; background: var(--app-tab-off);
+  border-bottom: 1px solid var(--app-line); font-size: 13px; }
+.panel-head .title { padding: 4px 8px; font-weight: 600; display: flex; align-items: center; gap: 8px; }
+.panel-head .spacer { flex: 1; }
+.iconbtn { border: 0; background: transparent; padding: 0 7px; cursor: pointer; color: var(--app-faint); font: inherit; display: flex; align-items: center; }
+.iconbtn:hover { background: var(--app-hover); }
+.iconbtn svg { width: 13px; height: 13px; }
+.tab { border: 0; border-right: 1px solid var(--app-line); background: var(--app-tab-off); padding: 0 12px; font: inherit;
+  font-size: 13px; cursor: pointer; color: var(--app-faint); display: flex; align-items: center; gap: 6px; }
+.tab[aria-selected="true"] { background: var(--app-tab-on); color: var(--app-text); font-weight: 600; margin-bottom: -1px; }
+.tab .dot { width: 7px; height: 7px; border-radius: 50%; background: var(--app-attn); }
+.panel-body { flex: 1; min-height: 0; overflow: auto; }
+
+.cards { padding: 6px; display: flex; flex-direction: column; gap: 4px; }
+.card { border: 1px solid var(--app-line); border-radius: 3px; padding: 3px 6px; }
+.card .h { font-weight: 600; font-size: 12px; }
+.card .s { color: var(--app-faint); font-size: 11px; }
+.wl { width: 100%; border-collapse: collapse; font-size: 11px; font-variant-numeric: tabular-nums; }
+.wl th { text-align: left; font-weight: 600; color: var(--app-faint); padding: 3px 8px; border-bottom: 1px solid var(--app-line); }
+.wl td { padding: 2px 8px; border-bottom: 1px solid var(--app-split); }
+
+.filterbar { display: flex; gap: 8px; padding: 6px 8px 4px; flex: none; flex-wrap: wrap; }
+.fgroup { border: 2px solid var(--app-line); border-radius: 4px; padding: 0 6px 2px; position: relative; margin-top: 7px;
+  display: flex; align-items: center; min-height: 26px; }
+.fgroup .legend { position: absolute; top: -9px; left: 6px; background: var(--app-bg); padding: 0 3px; font-size: 11px; color: var(--app-faint); }
+.fbtn { border: 0; background: transparent; font: inherit; font-size: 13px; padding: 3px 4px; cursor: pointer; color: var(--app-text); border-radius: 3px; }
+.fbtn:hover { background: var(--app-hover); }
+.fbtn .attn { color: var(--app-attn); }
+
+/* The grid picture's one-line legend, shown only while a watch is open */
+.picbar { display: flex; align-items: center; gap: 14px; margin: 0 8px; padding: 3px 8px; background: var(--app-panel);
+  border: 1px solid var(--app-line); border-bottom: 0; font-size: 11px; color: var(--app-faint); flex: none; }
+.picbar b { color: var(--app-text); }
+.picbar .sw { display: inline-block; width: 18px; height: 11px; vertical-align: -1px; margin-right: 4px; border-radius: 2px;
+  background: var(--app-tile); border: 1px solid var(--app-tile-line); }
+.picbar .sw.str { background-image: repeating-linear-gradient(135deg, transparent 0 3px, rgba(110, 125, 145, .45) 3px 4px); }
+.picbar .k { font-weight: 700; color: var(--app-essential); }
+.picbar .k.cf { color: var(--app-attn); }
+.picbar .oth { margin-left: auto; display: flex; gap: 4px; align-items: center; color: var(--app-text); }
+.picbar .x { border: 0; background: transparent; cursor: pointer; font: inherit; color: var(--app-faint); }
+
+.gridarea { flex: 1; position: relative; margin: 0 8px 8px; border: 1px solid var(--app-line); background: var(--app-panel); min-height: 0; overflow: hidden; }
+.gridarea.nopic { margin-top: 2px; }
+.gday { position: absolute; top: 0; height: 20px; font-size: 11px; color: var(--app-faint); text-align: center; border-bottom: 1px solid var(--app-line); line-height: 20px; }
+.ghour { position: absolute; left: 0; width: 40px; font-size: 10px; color: var(--app-ghost); text-align: right; padding-right: 4px; }
+.gline { position: absolute; left: 40px; right: 0; border-top: 1px solid var(--app-split); }
+/* A tile holds one or more section lines (co-scheduled sections share a tile). Access marks go on each LINE,
+   never on the tile, because the tile's fill and border already carry subject and semester colours. */
+.gtile { position: absolute; background: var(--app-tile); border: 1px solid var(--sem-border, var(--app-tile-line)); border-radius: 2px;
+  overflow: hidden; color: #222; display: flex; flex-direction: column; }
+.gtile.shared { border: 2px solid #8a4fc0; background: #f3ecfa; }      /* shared-schedule overlay (purple outline) */
+.quiet .gtile:not(.shared) { border-color: var(--app-tile-line); }
+.quiet .gtile.shared { opacity: .3; border-color: var(--app-ghost); background: var(--app-tile); }
+.ent { display: flex; align-items: center; gap: 3px; padding: 0 3px; font-size: 10px; line-height: 14px; white-space: nowrap; overflow: hidden; flex: none; }
+.ent + .ent { border-top: 1px solid var(--app-tile-line); }
+.ent .smk { width: 7px; height: 7px; border-radius: 2px; flex: none; }             /* subject colour marker */
+.quiet .ent .smk { background: var(--app-ghost) !important; opacity: .5; }
+.ent .flg { color: #e08a00; font-size: 9px; }                                        /* section flag */
+.quiet .ent .flg { color: var(--app-ghost); }
+.ent .amk { font-size: 9px; }
+.ent.faded { opacity: .3; }
+.ent.stranded { color: #6b7685; background-image: repeating-linear-gradient(135deg, transparent 0 3px, rgba(110, 125, 145, .45) 3px 4px); }
+.ent.essential { font-weight: 700; }
+.ent.essential .amk { color: var(--app-essential); }
+.ent.cantfit { color: var(--app-attn); font-weight: 600; }
+.ent.cantfit .amk { color: var(--app-attn); }
+.ent.caution .amk, .picbar .k.cu, .flag.caution { color: var(--app-caution); }
+.help { width: 14px; height: 14px; border-radius: 50%; border: 1px solid var(--app-faint); background: transparent; color: var(--app-faint);
+  font: inherit; font-size: 9px; font-weight: 700; line-height: 12px; padding: 0; cursor: pointer; vertical-align: 2px; margin-left: 2px; }
+.help:hover { background: var(--app-hover); }
+/* Health-line phrases that have hover help */
+.hseg[data-tip] { text-decoration: underline dotted; text-underline-offset: 2px; cursor: help; }
+
+/* ---------- Access tab ---------- */
+.acc { display: flex; flex-direction: column; min-height: 100%; font-size: 12px; }
+.acc-head { display: flex; align-items: center; gap: 6px; padding: 5px 8px 4px; flex: none; }
+.acc-head .sem { font-weight: 600; flex: 1; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.abtn { font: inherit; font-size: 11px; padding: 2px 7px; border: 1px solid var(--app-line); background: var(--app-panel);
+  border-radius: 3px; cursor: pointer; color: var(--app-text); white-space: nowrap; }
+.abtn:hover:not(:disabled) { background: var(--app-hover); }
+.abtn:disabled { color: var(--app-ghost); cursor: not-allowed; }
+.rows { display: flex; flex-direction: column; padding: 0 4px; }
+.row { display: grid; grid-template-columns: 14px minmax(0, 140px) minmax(0, 1fr); align-items: baseline; gap: 4px;
+  padding: 2px 4px; border-radius: 3px; cursor: pointer; border: 0; background: transparent; font: inherit; text-align: left; color: var(--app-text); width: 100%; }
+.row:hover { background: var(--app-hover); }
+.row .mk { font-size: 10px; text-align: center; }
+.row .nm { font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.row .hl { font-size: 11px; color: var(--app-faint); white-space: normal; }
+.row.nomarks { grid-template-columns: minmax(0, 140px) minmax(0, 1fr); }
+.row.attn .hl { color: var(--app-attn); }
+.row.off .nm, .row.off .hl { color: var(--app-ghost); font-weight: 400; }
+.mk.attn { color: var(--app-attn); }
+.mk.ok { color: var(--app-ghost); }
+.acc-foot { margin-top: auto; padding: 4px 8px 5px; font-size: 10px; color: var(--app-faint); text-align: right; }
+
+/* A watch's detail */
+.det { display: flex; flex-direction: column; gap: 5px; padding: 4px 8px 8px; font-size: 12px; }
+.det-head { display: flex; align-items: center; gap: 6px; }
+.det-head .back { border: 0; background: transparent; font: inherit; font-size: 11px; color: var(--app-faint); cursor: pointer; padding: 1px 2px; }
+.det-head .back:hover { color: var(--app-text); text-decoration: underline; }
+.det-head .nm { font-weight: 700; font-size: 13px; flex: 1; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.det-head label { display: flex; gap: 3px; align-items: center; font-size: 11px; }
+.health { font-weight: 600; font-size: 12px; }
+.health.attn { color: var(--app-attn); }
+.flag { color: var(--app-attn); font-size: 11px; line-height: 1.35; display: flex; gap: 6px; align-items: flex-start; }
+.flag .t { flex: 1; min-width: 0; }
+.flag .abtn { color: var(--app-text); flex: none; }
+.clist { display: grid; grid-template-columns: max-content minmax(0, 1fr) max-content; gap: 1px 10px; align-items: baseline;
+  font-size: 11px; border-top: 1px solid var(--app-split); padding-top: 4px; }
+.clist .cc { font-weight: 600; font-size: 12px; }
+.clist .pp { color: var(--app-text); }
+.clist .pp .g { color: var(--app-ghost); }
+.clist .pp.no { color: var(--app-attn); }
+.lnk { border: 0; background: transparent; font: inherit; font-size: 11px; color: var(--app-faint); text-decoration: underline; cursor: pointer; padding: 0; }
+.lnk:disabled { color: var(--app-ghost); text-decoration: none; cursor: not-allowed; }
+.confirm { display: flex; gap: 8px; align-items: center; font-size: 11px; color: var(--app-faint); }
+.facts { border-top: 1px solid var(--app-split); padding-top: 4px; display: flex; flex-direction: column; gap: 2px; font-size: 11px; color: var(--app-faint); line-height: 1.35; }
+.foldbtn { border: 0; background: transparent; font: inherit; font-size: 11px; color: var(--app-faint); cursor: pointer; padding: 0; text-align: left; }
+.later { font-size: 10px; color: var(--app-ghost); font-style: italic; }
+.stub { margin: 4px 8px; padding: 6px 8px; background: var(--app-hover); border-radius: 3px; font-size: 11px; color: var(--app-faint); }
+
+/* Round 3: ticks, pins, stepping, any-k */
+.clist { grid-template-columns: max-content max-content minmax(0, 1fr) max-content; }
+.clist input { margin: 0; }
+.clist .off { color: var(--app-ghost); }
+.pins { display: flex; flex-wrap: wrap; gap: 4px 8px; align-items: center; font-size: 11px; color: var(--app-faint); }
+.chip { display: inline-flex; align-items: center; gap: 3px; border: 1px solid var(--app-line); border-radius: 3px; padding: 0 2px 0 5px; color: var(--app-text); }
+.chip button { border: 0; background: transparent; cursor: pointer; font: inherit; font-size: 10px; color: var(--app-faint); padding: 0 3px; }
+.pinsvg { width: 9px; height: 9px; flex: none; color: #4a5a70; }
+.stepper { display: flex; flex-direction: column; gap: 3px; border-top: 1px solid var(--app-split); padding-top: 5px; }
+.stepper .row1 { display: flex; align-items: center; gap: 6px; }
+.stepper .pos { font-weight: 600; min-width: 92px; text-align: center; font-variant-numeric: tabular-nums; }
+.stepbar { display: flex; align-items: center; gap: 6px; min-width: 0; flex: 1; }
+.stepbar .pos { font-weight: 600; color: var(--app-text); white-space: nowrap; font-variant-numeric: tabular-nums; }
+.stepbar .slate { color: var(--app-text); min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.picbar .abtn { padding: 0 7px; font-size: 11px; }
+.stepper .hint { font-size: 10px; color: var(--app-ghost); }
+.ent.ghost { background: rgba(58, 154, 91, .22); outline: 1.5px dashed #2e8b57; outline-offset: -1.5px; font-weight: 600; }
+.picbar .sw.gh { background: rgba(58, 154, 91, .22); border: 1.5px dashed #2e8b57; }
+.sref { border: 0; background: none; padding: 0; margin: 0; font: inherit; color: inherit; cursor: pointer; }
+.sref:hover { text-decoration: underline; text-underline-offset: 2px; }
+.ent.sel { box-shadow: inset 0 0 0 2px var(--app-select); }
+.card.sel { background: var(--app-select-bg); border-color: var(--app-select); }
+.ctx { position: absolute; z-index: 10; min-width: 190px; background: #fff; border: 1px solid #9aa6b6; border-radius: 4px;
+  box-shadow: 0 6px 18px rgba(20, 30, 45, .25); padding: 3px 0; font-size: 12px; color: var(--app-text); }
+.ctx button { display: flex; width: 100%; gap: 6px; align-items: center; border: 0; background: transparent; font: inherit; text-align: left; padding: 4px 12px; cursor: pointer; color: inherit; }
+.ctx button:hover:not(:disabled) { background: var(--app-hover); }
+.ctx button:disabled { color: var(--app-ghost); cursor: default; }
+.ctx hr { border: 0; border-top: 1px solid var(--app-split); margin: 3px 0; }
+
+/* Popped-out windows */
+.win { position: absolute; background: var(--app-panel); border: 1px solid #8a96a6; border-radius: 6px;
+  box-shadow: 0 10px 30px rgba(20, 30, 45, .28); display: flex; flex-direction: column; overflow: hidden; z-index: 5; }
+.win-title { height: 28px; display: flex; align-items: center; padding-left: 10px; background: #e9edf2; font-size: 12px;
+  border-bottom: 1px solid var(--app-line); cursor: move; flex: none; }
+.win-title .t { flex: 1; font-weight: 600; }
+.win-title button { border: 0; background: transparent; height: 100%; padding: 0 12px; cursor: pointer; font: inherit; color: var(--app-faint); }
+.win-title button:hover { background: #e3483f; color: #fff; }
+.win .panel-body { flex: 1; }
+
+/* Tooltip for grid tiles (hover) */
+.tip { position: absolute; z-index: 9; max-width: 300px; background: #1f2733; color: #f2f5f8; font-size: 11px; line-height: 1.35;
+  padding: 5px 8px; border-radius: 4px; pointer-events: none; }
+
+.notes { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 12px; margin-top: 14px; }
+.note { background: var(--page-card); border: 1px solid var(--page-line); border-radius: 6px; padding: 12px 14px; min-width: 0; }
+.note h2 { font-size: 14px; margin: 0 0 6px; }
+.note ol, .note ul { margin: 0; padding-left: 20px; line-height: 1.5; }
+.note li + li { margin-top: 4px; }
+.note .muted { color: var(--page-muted); }
+</style>
+
+<h1>Access panel, round 3: some courses, pins and stepping</h1>
+<p class="lede">Enviro Y2 is open. Untick a course to see access for students who take fewer; right-click a section
+line on the grid to pin it; press <strong>Step through slates</strong> in the grid's legend bar to see one slate at a
+time (arrow keys step).
+<strong>Semester changes</strong> moves PSYCH 101 sections as before. Nothing you tick, pin or step is saved: closing
+the watch resets it, and it all works read-only.</p>
+
+<div class="toolbar" role="group" aria-label="Review controls">
+  <label for="variant">Semester changes
+    <select id="variant">
+      <option value="0">As planned</option>
+      <option value="1">PSYCH 101 A moved to Tue Thu 10:00</option>
+      <option value="2">PSYCH 101 A and B both moved to Tue Thu 10:00</option>
+      <option value="3">CHEM 201 LEC2, LEC3 and LEC4 moved to Tue Thu 14:30 (open Chem Y2)</option>
+    </select>
+  </label>
+  <label>Layout <span class="seg" id="layoutSeg"></span></label>
+  <label><input type="checkbox" id="readonly"> Read-only</label>
+  <label><input type="checkbox" id="fit"> Fit to width</label>
+</div>
+
+<div class="stage" id="stage"><div class="stage-inner" id="stageInner"><div class="app" id="app"></div></div></div>
+
+<div class="notes">
+  <div class="note">
+    <h2>Changed in 3b, from your round 3 review</h2>
+    <ul>
+      <li>The "any 3 of these" line is gone: ticking courses covers the specific cases users care about.</li>
+      <li>Right-click to pin stays.</li>
+      <li><strong>The legend bar is cleaned up:</strong> no key to the marks (●, ◆, ▲, hatching). It holds only the
+        watch's name, Step through slates, Show other courses and Close. Each mark on the grid explains itself on hover.</li>
+      <li><strong>Section names in messages are clickable</strong> (▲ and ◆ lines, pin chips, the stepper's slate).
+        They look like plain text until hovered (underline, hand cursor). A click selects the section as anywhere
+        else: highlighted on the grid, and Section View scrolls to its card. Clicking a line on the grid selects too.</li>
+      <li><strong>Yellow cautions (◆)</strong> from each section's share of slates, compared with its fair share in its
+        group (1 ÷ sections in the group). <em>Hard to reach:</em> under a third of its fair share. <em>Heavy load:</em>
+        over twice it, in a group of 3 or more. Sections with no times (online) never get one. Open <strong>Chem Y2</strong>: "CHEM 201 LAB-A fits only with LEC1: it
+        clashes with LEC2, LEC3 and LEC4." Then pick the last <em>Semester changes</em> option for heavy loads. Like
+        stranded sections, cautions don't change the watch's mark.</li>
+      <li><strong>Stranded sections are flagged</strong>, not just hatched on the grid: "1 section stranded" in the
+        line, and a ▲ line in the detail giving the reason (As planned: PSYCH 101 C clashes with CHEM 213 A). The
+        watch's mark in the list doesn't change for them alone: a stranded section may be meant for other students.</li>
+      <li>The stepper moved to the grid's legend bar: <em>Step through slates</em>, then ‹ Slate 2 of 11 › with the
+        slate's sections, and <em>Clear</em> to go back to the overview.</li>
+    </ul>
+    <h2 style="margin-top:12px">Round 3 as before</h2>
+    <ul>
+      <li><strong>Tick boxes</strong> beside each course. Unticking re-runs everything (line, slates, seats, grid) on
+        the ticked courses; the line starts "3 of 5 courses". At least one stays ticked.</li>
+      <li><strong>Pins:</strong> right-click a section line on the grid, then <em>Pin in slates</em>. Only slates
+        with that section count. Pins show as chips under the courses (✕ removes one). Pinning a section of an
+        unticked course ticks it.</li>
+      <li><strong>Stepping</strong> is in a stable order (course order, then section code). The slate's sections get
+        the Room Browser's green ghost look, line by line; the watch's other sections fade. Changing ticks, pins or
+        the semester goes back to slate 1.</li>
+    </ul>
+  </div>
+  <div class="note">
+    <h2>To look at</h2>
+    <ol>
+      <li>The stepper in the legend bar: does it read well beside the watch's name and Close?</li>
+      <li>Try: As planned, pin PSYCH 101 B, then step. Or: PSYCH 101 A and B moved, untick CHEM 213.</li>
+    </ol>
+    <h2 style="margin-top:12px">Not in this round</h2>
+    <ul class="muted">
+      <li>Teal boxes for costly clashes (a later round)</li>
+      <li>Saving a preset or ticking Watch on a preset or tag (round 4)</li>
+      <li>The editor pointer and notices from a change (later)</li>
+      <li>The fragile icon (parked; ● stands in)</li>
+    </ul>
+  </div>
+</div>
+
+<script>
+(() => {
+  // ================= Mock semester (Fall 2027) =================
+  // Days: 0 Mon … 4 Fri. Times in decimal hours. parts: the course's parts list; confirmed = stored by the user.
+  const COURSES = {
+    "BIOL 201": { parts: ["Lecture", "Laboratory"], confirmed: false },
+    "CHEM 213": { parts: [], confirmed: true },
+    "CHEM 201": { parts: ["Lecture", "Laboratory"], confirmed: true },
+    "PSYCH 101": { parts: [], confirmed: false },
+    "STAT 104": { parts: [], confirmed: false },
+    "GEOG 250": { parts: [], confirmed: false },
+    "BIOL 111": { parts: [], confirmed: false },
+    "MATH 111": { parts: [], confirmed: false },
+    "BMEG 230": { parts: ["Lecture", "Laboratory", "Discussion"], confirmed: false },
+    "CHBE 201": { parts: ["Lecture"], confirmed: false },
+    "ELEC 203": { parts: ["Lecture"], confirmed: false }
+  };
+  const TT = [1, 3], MWF = [0, 2, 4], MW = [0, 2];
+  const m = (days, s, e) => ({ days, s, e });
+  /** Builds the semester's sections for one "Semester changes" variant. */
+  function sections(variant) {
+    const psychA = variant === 1 || variant === 2 ? [m(TT, 10, 11.33)] : [m(TT, 8.5, 9.83)];
+    const psychB = variant === 2 ? [m(TT, 10, 11.33)] : [m(MW, 10, 11.33)];
+    const chemLec = (meets) => (variant === 3 ? [m(TT, 14.5, 15.83)] : meets);
+    return [
+      { c: "BIOL 201", code: "A", type: "Lecture", meets: [m(MWF, 9, 9.83)], cap: 120 },
+      { c: "BIOL 201", code: "L1", type: "Laboratory", meets: [m([1], 13, 15.83)], cap: 24 },
+      { c: "BIOL 201", code: "L2", type: "Laboratory", meets: [m([3], 13, 15.83)], cap: 24 },
+      { c: "BIOL 201", code: "L3", type: "Laboratory", meets: [m([2], 13, 15.83)], cap: 24 },
+      { c: "CHEM 213", code: "A", type: "Lecture", meets: [m(TT, 10, 11.33)], cap: 80 },
+      { c: "GEOG 250", code: "A", type: "Lecture", meets: [m(MW, 13, 14.33)], cap: 35 },
+      { c: "GEOG 250", code: "B", type: "Lecture", meets: [m(TT, 13, 14.33)], cap: 35 },
+      { c: "PSYCH 101", code: "A", type: "Lecture", meets: psychA, cap: 40 },
+      { c: "PSYCH 101", code: "B", type: "Lecture", meets: psychB, cap: 40 },
+      { c: "PSYCH 101", code: "C", type: "Lecture", meets: [m(TT, 10, 11.33)], cap: 40 },
+      { c: "STAT 104", code: "A", type: "Lecture", meets: [m(MWF, 11, 11.83)], cap: 60 },
+      { c: "STAT 104", code: "C", type: "Lecture", meets: [m(TT, 14.5, 15.83)], cap: 60 },
+      { c: "STAT 104", code: "D", type: "Online", meets: [], cap: 60 },
+      { c: "BIOL 111", code: "A", type: "Lecture", meets: [m(MWF, 8, 8.83)] },
+      { c: "MATH 111", code: "A", type: "Lecture", meets: [m(MWF, 12, 12.83)] },
+      { c: "MATH 111", code: "B", type: "Lecture", meets: [m(TT, 8.5, 9.83)] },
+      { c: "BMEG 230", code: "101", type: "Lecture", meets: [m(MW, 9.5, 10.83)] },
+      { c: "BMEG 230", code: "L1A", type: "Laboratory", meets: [m([1], 15, 17.83)] },
+      { c: "BMEG 230", code: "L1B", type: "Laboratory", meets: [m([2], 14, 16.83)] },
+      { c: "BMEG 230", code: "L1C", type: "Laboratory", meets: [m([4], 13, 15.83)] },
+      { c: "BMEG 230", code: "T1A", type: "Discussion", meets: [m([1], 15, 15.83)] },
+      { c: "BMEG 230", code: "T1B", type: "Discussion", meets: [m([3], 9, 9.83)] },
+      { c: "BMEG 230", code: "X01", type: null, meets: [m([4], 9, 9.83)] },
+      { c: "CHBE 201", code: "101", type: "Lecture", meets: [m(TT, 11, 12.33)] },
+      { c: "ELEC 203", code: "101", type: "Lecture", meets: [m([0, 2], 14, 14.83)] },
+      { c: "ELEC 203", code: "102", type: "Lecture", meets: [m(TT, 13, 14.33)] },
+      // CHEM 201: 4 lectures, 8 labs. LAB-A clashes with every lecture but LEC1 (hard to reach).
+      { c: "CHEM 201", code: "LEC1", type: "Lecture", meets: [m(MWF, 8, 8.83)], cap: 60 },
+      { c: "CHEM 201", code: "LEC2", type: "Lecture", meets: chemLec([m(MWF, 10, 10.83)]), cap: 60 },
+      { c: "CHEM 201", code: "LEC3", type: "Lecture", meets: chemLec([m(MWF, 13, 13.83)]), cap: 60 },
+      { c: "CHEM 201", code: "LEC4", type: "Lecture", meets: chemLec([m(MWF, 12, 12.83)]), cap: 60 },
+      { c: "CHEM 201", code: "LAB-A", type: "Laboratory", meets: [m([0], 10, 13.83)], cap: 24 },
+      { c: "CHEM 201", code: "LAB-B", type: "Laboratory", meets: [m([1], 8.5, 11.33)], cap: 24 },
+      { c: "CHEM 201", code: "LAB-C", type: "Laboratory", meets: [m([1], 13, 15.83)], cap: 24 },
+      { c: "CHEM 201", code: "LAB-D", type: "Laboratory", meets: [m([2], 14, 16.83)], cap: 24 },
+      { c: "CHEM 201", code: "LAB-E", type: "Laboratory", meets: [m([3], 8.5, 11.33)], cap: 24 },
+      { c: "CHEM 201", code: "LAB-F", type: "Laboratory", meets: [m([3], 13, 15.83)], cap: 24 },
+      { c: "CHEM 201", code: "LAB-G", type: "Laboratory", meets: [m([4], 14, 16.83)], cap: 24 },
+      { c: "CHEM 201", code: "LAB-H", type: "Laboratory", meets: [m([1], 15, 17.83)], cap: 24 },
+      // Not in any watch; co-scheduled with watch sections so tiles hold more than one line
+      { c: "HIST 101", code: "A", type: "Lecture", meets: [m(TT, 8.5, 9.83)] },
+      { c: "ENGL 105", code: "B", type: "Lecture", meets: [m(TT, 14.5, 15.83)] }
+    ].map((s) => ({ ...s, id: s.c + " " + s.code, flag: s.c === "BIOL 201" && s.code === "L2" }));
+  }
+  /** Another department's sections, shown as a shared-schedule overlay (not in any watch here). */
+  const SHARED = [{ id: "PHYS 101 A (shared)", c: "PHYS 101", code: "A", meets: [m([0, 2], 15, 16.33)] }];
+  /** Subject colours for the grid's subject markers (colour by subject). */
+  const SUBJ = { BIOL: "#3a9a5b", CHEM: "#d9822b", PSYCH: "#c94f7c", STAT: "#3b78c4", MATH: "#2a9d8f", BMEG: "#8d6e63",
+    CHBE: "#6a8d2b", ELEC: "#b59b00", HIST: "#7d6ab0", ENGL: "#a05a2c", PHYS: "#555", GEOG: "#4f8f9e" };
+  const SEMESTER_BORDER = "#5d87b8";
+  // D25/D26: a watch is a watched filter preset (or a watched tag). Its courses are those of the sections the preset
+  // shows; the mock lists them directly, in the order the watch shows them.
+  const WATCHES = [
+    { name: "Enviro Y2", courses: ["BIOL 201", "CHEM 213", "GEOG 250", "PSYCH 101", "STAT 104"] },
+    { name: "First-year Science", courses: ["BIOL 111", "PSYCH 101", "MATH 111", "STAT 104"] },
+    { name: "Chem Y2", courses: ["CHEM 201", "MATH 111", "STAT 104"] },
+    { name: "Biomed Y2", courses: ["BMEG 230", "CHBE 201", "ELEC 203"] },
+    { name: "Old Y2", kind: "off" }
+  ];
+  const DAYN = ["Mon", "Tue", "Wed", "Thu", "Fri"];
+
+  // ================= The slate search (what the real engine will do, in miniature) =================
+  /** Two sections clash when some meetings share a day and overlap in time (half-open). */
+  const clash = (a, b) => a.meets.some((x) => b.meets.some((y) =>
+    x.days.some((d) => y.days.includes(d)) && x.s < y.e && y.s < x.e));
+
+  /**
+   * Splits courses into groups (one per part), applying pins: a group holding a pinned section keeps only that
+   * section. Also collects missing parts and sections not counted (no section type).
+   * @param courseCodes the ticked courses, in watch order.
+   * @param secs the semester's sections.
+   * @param pins Set of pinned section ids.
+   */
+  function groupsFor(courseCodes, secs, pins) {
+    const groups = [], missing = [], notCounted = [];
+    for (const c of courseCodes) {
+      const mine = secs.filter((s) => s.c === c);
+      if (!mine.length) continue;               // D25: a course with no sections isn't in the watch at all
+      const parts = COURSES[c].parts;
+      let gs;
+      if (parts.length >= 2) {
+        gs = parts.map((p) => ({ course: c, part: p, all: mine.filter((s) => s.type === p) }));
+        mine.filter((s) => !parts.includes(s.type)).forEach((s) => notCounted.push(s));
+        const gone = gs.filter((g) => !g.all.length);
+        if (gone.length) { gone.forEach((g) => missing.push({ course: c, part: g.part })); continue; }
+      } else gs = [{ course: c, part: null, all: mine }];
+      gs.forEach((g) => { const p = g.all.filter((s) => pins.has(s.id)); g.secs = p.length ? p : g.all; g.pinned = p.length > 0; });
+      groups.push(...gs);
+    }
+    return { groups, missing, notCounted };
+  }
+
+  /** Counts slates (capped) and records which sections appear in at least one. */
+  function search(groups, cap = 10000) {
+    const order = [...groups].sort((a, b) => a.secs.length - b.secs.length);
+    const used = new Set(), per = new Map();   // per: slates each section is in (its clique count)
+    let count = 0;
+    const pick = [];
+    (function dfs(i) {
+      if (count >= cap) return;
+      if (i === order.length) { count++; pick.forEach((s) => { used.add(s.id); per.set(s.id, (per.get(s.id) || 0) + 1); }); return; }
+      for (const s of order[i].secs) {
+        if (pick.some((p) => clash(p, s))) continue;
+        pick.push(s); dfs(i + 1); pick.pop();
+        if (count >= cap) return;
+      }
+    })(0);
+    return { count, used, per, capped: count >= cap };
+  }
+
+  /**
+   * A clickable section name: looks like the text around it (underline and hand cursor on hover only); a click
+   * selects the section everywhere, as clicking it on the grid or in Section View does (SectionStore.SetSelection).
+   */
+  const sref = (id, label = id) => `<button class="sref" data-sel="${esc(id)}" title="Show ${esc(id)}">${esc(label)}</button>`;
+  /** Makes every full section id in an already-escaped message clickable (longest ids first). */
+  function linkify(html, ids) {
+    const sorted = [...new Set(ids)].sort((x, y) => y.length - x.length);
+    let out = html;
+    const marks = [];
+    sorted.forEach((id) => {
+      out = out.split(esc(id)).join(`\u0001${marks.length}\u0002`);
+      marks.push(id);
+    });
+    return out.replace(/\u0001(\d+)\u0002/g, (_, i) => sref(marks[+i]));
+  }
+
+  /**
+   * Yellow cautions from each section's share of slates (round 3 review, point 5). Within one part's group, every
+   * slate uses exactly one section, so the shares add to 1 and the fair share is 1 / (sections in the group).
+   * Hard to reach: in some slates, but under a third of its fair share. Heavy load: over twice its fair share in a
+   * group of 3 or more, short of every slate (that case is "depends on"). Pinned groups and single sections never
+   * get one.
+   * @returns [{ id, kind: "hard" | "heavy", text }]
+   */
+  function cautionsFor(a, r) {
+    const out = [];
+    if (!r.count || r.capped) return out;
+    // Each message is built twice from the same pieces: plain (grid hover) and with clickable section names (detail)
+    const plainF = (t, s) => (s && t.c === s.c ? t.code : t.id);
+    const both = (build) => ({ text: build(plainF), html: build((t, s) => sref(t.id, plainF(t, s))) });
+    for (const g of a.groups) {
+      if (g.pinned || g.secs.length < 2) continue;
+      const fair = 1 / g.secs.length;
+      for (const s of g.secs) {
+        if (!s.meets.length) continue;    // a section with no times fits anything; a caution would be noise
+        const share = (r.per.get(s.id) || 0) / r.count;
+        if (share > 0 && share < fair / 3) {
+          // The reason: the group where it fits with the fewest sections
+          let best = null;
+          for (const h of a.groups) if (h !== g) {
+            const fits = h.secs.filter((t) => !clash(s, t));
+            if (fits.length < h.secs.length && (!best || fits.length / h.secs.length < best.fits.length / best.h.secs.length)) best = { h, fits };
+          }
+          out.push({ id: s.id, kind: "hard", ...both((f) => !best ? `${f(s)} is hard to reach: few combinations of the other courses fit around it.`
+            : best.fits.length === 1 ? `${f(s)} fits only with ${f(best.fits[0], s)}: it clashes with ${joinAnd(best.h.secs.filter((t) => t !== best.fits[0]).map((t) => f(t, s)))}.`
+            : `${f(s)} fits with only ${best.fits.length} of ${best.h.secs.length} ${best.h.course} sections: it clashes with ${joinAnd(best.h.secs.filter((t) => !best.fits.includes(t)).map((t) => f(t, s)))}.`) });
+        } else if (g.secs.length >= 3 && share > 2 * fair && share < 1) {
+          const leaners = a.groups.filter((h) => h !== g).flatMap((h) => h.secs)
+            .filter((u) => { const f = g.secs.filter((t) => !clash(u, t)); return f.length === 1 && f[0] === s; });
+          out.push({ id: s.id, kind: "heavy", ...both((f) => leaners.length
+            ? `${f(s)} carries a heavy load: ${joinAnd(leaners.map((u) => f(u, s)))} ${leaners.length === 1 ? "fits" : "fit"} only with it.`
+            : `${f(s)} carries a heavy load: it is in far more slates than the other ${g.course} ${({ Laboratory: "labs", Lecture: "lectures", Discussion: "discussions" })[g.part] || "sections"}, which clash more.`) });
+        }
+      }
+    }
+    return out;
+  }
+
+  /**
+   * Lists slates in a stable order for stepping: groups in watch order (course, then part), sections by code.
+   * @returns arrays of sections, at most cap of them.
+   */
+  function listSlates(groups, cap = 10000) {
+    const out = [], pick = [];
+    (function dfs(i) {
+      if (out.length >= cap) return;
+      if (i === groups.length) { out.push([...pick]); return; }
+      for (const s of groups[i].secs) {
+        if (pick.some((p) => clash(p, s))) continue;
+        pick.push(s); dfs(i + 1); pick.pop();
+      }
+    })(0);
+    return out;
+  }
+
+  /** The best partial slate when there's no full one: the courses left out of every largest subset that fits. */
+  function bestPartial(groups) {
+    const courses = [...new Set(groups.map((g) => g.course))];
+    for (let k = courses.length - 1; k >= 1; k--) {
+      const leftOut = new Set();
+      let found = false;
+      for (const subset of combos(courses, k)) {
+        if (search(groups.filter((g) => subset.includes(g.course)), 1).count) {
+          found = true; courses.filter((c) => !subset.includes(c)).forEach((c) => leftOut.add(c));
+        }
+      }
+      if (found) return { covers: k, of: courses.length, cantFit: [...leftOut] };
+    }
+    return { covers: 0, of: courses.length, cantFit: courses };
+  }
+  function combos(arr, k) {
+    if (k === 0) return [[]];
+    if (arr.length < k) return [];
+    const [h, ...t] = arr;
+    return [...combos(t, k - 1).map((c) => [h, ...c]), ...combos(t, k)];
+  }
+
+
+  /**
+   * Everything the panel reports about one watch, for the ticked courses and pins.
+   * @param w the watch. @param secs the semester's sections.
+   * @param ticked Set of ticked courses (null = all). @param pins Set of pinned section ids.
+   */
+  function analyse(w, secs, ticked = null, pins = new Set()) {
+    const offered = w.courses.filter((c) => secs.some((s) => s.c === c));
+    const courses = offered.filter((c) => !ticked || ticked.has(c));
+    const { groups, missing, notCounted } = groupsFor(courses, secs, pins);
+    const r = search(groups);
+    const a = { w, offered, courses, groups, missing, notCounted, count: r.count, capped: r.capped, roles: {}, pins };
+    a.subset = courses.length < offered.length ? `${courses.length} of ${offered.length} courses` : "";
+    a.essentialTiming = []; a.onlySections = [];
+    for (const g of groups) for (const s of g.secs) {
+      if (r.count === 0) { a.roles[s.id] = "none"; continue; }
+      if (!r.used.has(s.id)) a.roles[s.id] = "stranded";
+      else if (g.secs.filter((x) => r.used.has(x.id)).length === 1) {
+        if (g.secs.length > 1) { a.roles[s.id] = "essential"; a.essentialTiming.push(s.id); }
+        else { a.roles[s.id] = "only"; if (!g.pinned) a.onlySections.push(s.id); }
+      } else a.roles[s.id] = "usable";
+    }
+    a.cautions = cautionsFor(a, r);
+    a.stranded = Object.entries(a.roles).filter(([, x]) => x === "stranded").map(([id]) => id);
+    if (r.count === 0) {
+      // Did pins cause it? Then name the pin that can't fit instead of a best partial.
+      if (pins.size && search(groupsFor(courses, secs, new Set()).groups, 1).count) {
+        a.pinBlock = [...pins].map((p) => {
+          const rest = new Set([...pins].filter((x) => x !== p));
+          const aw = analyse(w, secs, ticked, rest);
+          return aw.count && aw.roles[p] === "stranded" ? { pin: p, why: strandedReason(secs.find((s) => s.id === p), aw) } : null;
+        }).filter(Boolean);
+        if (!a.pinBlock.length) a.pinBlock = [{ pin: null, why: "these pins don't fit together." }];
+      } else a.best = bestPartial(groups);
+    }
+    a.noTimes = groups.flatMap((g) => g.secs).filter((s) => !s.meets.length && (r.count === 0 || r.used.has(s.id))).map((s) => s.id);
+    // Seats (mock): the smallest total capacity of usable sections in any one part. An upper bound, hence "up to";
+    // the real engine solves a small packing problem. Shown only when every section has a capacity.
+    const allCaps = groups.every((g) => g.secs.every((s) => s.cap));
+    a.seats = r.count && allCaps ? Math.min(...groups.map((g) => g.secs.filter((s) => r.used.has(s.id)).reduce((t, s) => t + s.cap, 0))) : null;
+    a.noCaps = !allCaps;
+    a.mark = (!r.count || missing.length || notCounted.length) ? "attn" : a.essentialTiming.length ? "fragile" : "ok";
+    return a;
+  }
+  const nameList = (ids) => ids.length <= 2 ? ids.join(", ") : `${ids.slice(0, 2).join(", ")} +${ids.length - 2} more`;
+  const plural = (n, one, many) => `${n} ${n === 1 ? one : many}`;
+  const joinAnd = (xs) => xs.length <= 1 ? xs.join("") : `${xs.slice(0, -1).join(", ")} and ${xs[xs.length - 1]}`;
+
+  /**
+   * The health line as phrases, each with optional hover help (only seats, "depends on" and "can't fit" have one).
+   * @returns [{ text, tip }] in display order.
+   */
+  function healthSegs(a) {
+    const segs = [];
+    if (a.subset) segs.push({ text: a.subset });
+    if (a.count) {
+      segs.push({ text: a.capped ? "More than 10,000 slates" : `${a.count.toLocaleString()} ${a.count === 1 ? "slate" : "slates"}` });
+      if (a.seats) {
+        const shared = a.sharedWith.length;
+        segs.push({ text: `up to ${a.seats} students${shared ? " (seats shared)" : ""}`,
+          tip: shared ? `Seats shared with ${a.sharedWith.map((s) => `${s.name} (${joinAnd(s.courses)})`).join("; ")}.` : "" });
+      }
+      if (a.essentialTiming.length) {
+        const why = a.essentialTiming.map((id) => {
+          const s = a.groups.flatMap((g) => g.secs).find((x) => x.id === id);
+          const g = a.groups.find((gg) => gg.secs.includes(s));
+          return g.secs.filter((x) => x !== s).map((x) => `${x.id} ${clashText(x, a)}`).join("; ");
+        });
+        segs.push({ text: `depends on ${nameList(a.essentialTiming)}`, tip: why.join("; ") + "." });
+      }
+      // Stranded: sections no student taking these courses can use (flagged in the detail with the reason)
+      if (a.stranded.length) segs.push({ text: `${plural(a.stranded.length, "section", "sections")} stranded` });
+      const hard = a.cautions.filter((c) => c.kind === "hard").length, heavy = a.cautions.length - hard;
+      if (hard) segs.push({ text: `${plural(hard, "section", "sections")} hard to reach` });
+      if (heavy) segs.push({ text: `${plural(heavy, "section carries", "sections carry")} a heavy load` });
+    } else if (a.pinBlock) {
+      segs.push({ text: "No slate with these pins" });
+      a.pinBlock.forEach((b) => segs.push({ text: b.pin ? `${b.pin} (pinned): ${b.why.replace(/^it /, "").replace(/, which every slate uses\.$/, "").replace(/\.$/, "")}` : b.why }));
+    } else {
+      segs.push({ text: "No full slate" });
+      segs.push({ text: `best partial covers ${a.best.covers} of ${a.best.of}` });
+      const cf = a.best.cantFit;
+      segs.push({ text: `${cf.join(" or ")} can't fit`,
+        tip: cf.length === 1 ? `No ${cf[0]} section fits with the other courses.` : `Students can take all but ${cf.join(", or all but ")}.` });
+    }
+    if (a.notCounted.length) segs.push({ text: `${plural(a.notCounted.length, "section", "sections")} not counted` });
+    if (a.noTimes.length) segs.push({ text: `${plural(a.noTimes.length, "section", "sections")} without times` });
+    return segs;
+  }
+
+  /** "clashes with CHEM 213 A", or a plain fallback when no single section is to blame. */
+  function clashText(s, a) {
+    const always = Object.entries(a.roles).filter(([, r]) => r === "essential" || r === "only").map(([id]) => id);
+    const hit = a.groups.flatMap((g) => g.secs).find((t) => (t.c !== s.c || t.type !== s.type) && always.includes(t.id) && clash(s, t));
+    return hit ? `clashes with ${hit.id}` : "doesn't fit with the other courses";
+  }
+
+  /** Why a section can't be part of any slate: the first section it clashes with that every slate uses. */
+  function strandedReason(s, a) {
+    const always = Object.entries(a.roles).filter(([, r]) => r === "essential" || r === "only").map(([id]) => id);
+    const secs = a.groups.flatMap((g) => g.secs);
+    const hit = secs.find((t) => t.c !== s.c && always.includes(t.id) && clash(s, t)) ||
+      secs.find((t) => t.c === s.c && t.type !== s.type && always.includes(t.id) && clash(s, t));
+    if (hit) return `it clashes with ${hit.id}, which every slate uses.`;
+    return "no combination of the other courses fits around it.";
+  }
+
+  // ================= Review state =================
+  // ticked / pins / stepping / slateIx / k belong to the open watch only and reset whenever it closes (never saved).
+  const state = {
+    variant: 0, open: null, showOthers: false, layout: "docked", tab: "access", readOnly: false, slotH: 250,
+    stub: null, foldOpen: false, confirmed: new Set(),
+    ticked: null, pins: new Set(), stepping: false, slateIx: 0, ctx: null, sel: null,
+    wins: { access: { x: 520, y: 160, w: 540, h: 470 } }
+  };
+  const LAYOUTS = [["docked", "Docked"], ["accessOut", "Access popped out"]];
+  const $ = (s) => document.querySelector(s);
+  const esc = (s) => String(s).replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
+  const popIcon = '<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M9 2h5v5M14 2 7.5 8.5M12 9.5V14H2V4h4.5"/></svg>';
+  /** Pin glyph; in the app it would be an AXAML path, never a Unicode character. */
+  const PIN = '<svg class="pinsvg" viewBox="0 0 16 16" fill="currentColor" aria-hidden="true"><path d="M10 1l5 5-2 1-3 3 .5 3.5-1.5 1.5-3-3-4 4-1-1 4-4-3-3L3.5 6.5 7 7l3-3z"/></svg>';
+  /** The one help icon for the whole Access idea (slates, parts, seats). */
+  const HELP = `<button class="help" data-act="help" title="How access watches work (opens Help)" aria-label="Help: access watches">?</button>`;
+  const isGuessed = (c) => !COURSES[c].confirmed && !state.confirmed.has(c);
+  /** Forgets everything that belongs to an open watch (ticks, pins, stepping). */
+  function resetWatchState() { state.ticked = null; state.pins = new Set(); state.stepping = false; state.slateIx = 0; state.ctx = null; state.foldOpen = false; }
+
+  function analyses() {
+    const secs = sections(state.variant);
+    const list = WATCHES.map((w) => w.kind ? { w, kind: w.kind }
+      : w.name === state.open ? analyse(w, secs, state.ticked, state.pins) : analyse(w, secs));
+    for (const a of list) if (!a.kind) {
+      // Shared seats: other watches whose courses overlap this one's
+      a.sharedWith = list.filter((b) => !b.kind && b !== a)
+        .map((b) => ({ name: b.w.name, courses: a.courses.filter((c) => b.w.courses.includes(c)) }))
+        .filter((x) => x.courses.length);
+      a.segs = healthSegs(a);
+      a.line = a.segs.map((s) => s.text).join(" · ");
+    }
+    return { secs, list };
+  }
+
+  // ================= Rendering =================
+  function listView(all) {
+    const order = { attn: 0, fragile: 1, ok: 1 };
+    const sorted = [...all].sort((x, y) => {
+      const kx = x.kind ? 3 : order[x.mark], ky = y.kind ? 3 : order[y.mark];
+      return kx - ky || x.w.name.localeCompare(y.w.name);
+    });
+    const ro = state.readOnly ? ' disabled title="Read-only: you can look at watches but not change them."' : "";
+    let h = `<div class="acc"><div class="acc-head"><span class="sem">Access · Fall 2027 ${HELP}</span>
+      <button class="abtn" data-act="add"${ro}>+ Add a watch</button><button class="abtn" data-act="checkall">Check all courses</button></div>`;
+    if (state.stub) h += `<div class="stub">${esc(state.stub)}</div>`;
+    h += `<div class="rows" role="list">` + sorted.map((a) => {
+      const line = a.kind === "off" ? "Off" : a.line;
+      const mark = a.kind ? "" : a.mark;
+      const cls = ["row", mark === "attn" ? "attn" : "", a.kind === "off" ? "off" : ""].join(" ");
+      const mk = `<span class="mk ${mark}" aria-hidden="true">${mark === "attn" ? "▲" : mark === "fragile" ? "●" : mark === "ok" ? "○" : ""}</span>`;
+      return `<button role="listitem" class="${cls}" data-open="${esc(a.w.name)}">${mk}<span class="nm">${esc(a.w.name)}</span><span class="hl">${esc(line)}</span></button>`;
+    }).join("") + `</div>`;
+    if (all.some((a) => !a.kind && a.noCaps)) h += `<div class="acc-foot">Set section capacities to see how many students fit.</div>`;
+    return h + `</div>`;
+  }
+
+  function detailView(a, secsNow) {
+    const ro = state.readOnly ? ' disabled title="Read-only: you can look at watches but not change them."' : "";
+    let h = `<div class="det"><div class="det-head"><button class="back" data-back="1">‹ All watches</button>
+      <span class="nm">${esc(a.w.name)} ${HELP}</span>
+      <button class="abtn" data-act="edit"${ro}>Edit</button>
+      <label><input type="checkbox" ${a.kind === "off" ? "" : "checked"}${state.readOnly ? " disabled" : ""} data-act="toggle"> On</label>
+      <button class="abtn" data-act="delete"${ro}>Delete</button></div>`;
+    if (a.kind === "off") return h + `<div class="facts">This watch is off, so TermPoint isn't checking it. Turn it on to see
+      its access.</div></div>`;
+
+    h += `<div class="health ${!a.count ? "attn" : ""}">` + a.segs.map((s) =>
+      `<span class="hseg"${s.tip ? ` data-tip="${esc(s.tip)}"` : ""}>${esc(s.text)}</span>`).join(" · ") + `</div>`;
+    const secsAll = a.groups.flatMap((g) => g.secs);
+    const allIds = secsAll.map((x) => x.id);
+    a.stranded.forEach((id) => { h += `<div class="flag"><span class="t">▲ ${linkify(esc(`${id} is stranded: ${strandedReason(secsAll.find((x) => x.id === id), a)}`), allIds)} No student taking ${a.subset ? "these courses" : "all of " + esc(a.w.name)} can use it.</span></div>`; });
+    a.cautions.forEach((c) => { h += `<div class="flag caution"><span class="t">◆ ${c.html}</span></div>`; });
+    a.missing.forEach((x) => { h += `<div class="flag"><span class="t">▲ ${x.course}'s ${x.part.toLowerCase()} sections aren't in
+      this watch. Add one, or edit ${x.course}'s parts if it no longer has one.</span><button class="abtn" data-act="parts"${ro}>Edit parts</button></div>`; });
+    a.notCounted.forEach((s) => { h += `<div class="flag"><span class="t">▲ ${s.id} has no section type, so it isn't counted.</span>
+      <button class="abtn" data-act="parts"${ro}>Edit parts</button></div>`; });
+
+    // Courses: a tick box each (never saved), what a student takes, and parts. Ticks work read-only too.
+    const lastOne = a.courses.length === 1;
+    h += `<div class="clist">` + a.offered.map((c) => {
+      const on = a.courses.includes(c);
+      const g = on && isGuessed(c) && COURSES[c].parts.length >= 2 ? ' <span class="g">(guessed)</span>' : "";
+      return `<input type="checkbox" data-tick="${esc(c)}" ${on ? "checked" : ""} ${on && lastOne ? 'disabled title="At least one course stays ticked."' : ""} aria-label="Include ${c}">
+        <span class="cc ${on ? "" : "off"}">${c}</span><span class="pp ${on ? "" : "off"}">${choiceText(c, secsNow)}${g}</span>
+        <span><button class="lnk" data-act="parts"${ro}>Edit parts</button></span>`;
+    }).join("") + `</div>`;
+    if (a.subset) h += `<div class="pins"><button class="lnk" data-tickall="1">Tick all</button></div>`;
+    const guessed = a.courses.filter((c) => isGuessed(c) && COURSES[c].parts.length >= 2);
+    if (guessed.length) h += `<div class="confirm"><button class="abtn" data-confirm="${esc(guessed.join("|"))}"${ro}
+      title="Saves these parts to the courses. Other watches with these courses use them too.">These are right</button>
+      <span>saves the guessed parts of ${guessed.join(", ")} as shown</span></div>`;
+
+    // Pins
+    if (state.pins.size) h += `<div class="pins">Pinned: ${[...state.pins].map((p) =>
+      `<span class="chip">${PIN}${sref(p)}<button data-unpin="${esc(p)}" aria-label="Unpin ${esc(p)}">✕</button></span>`).join("")}
+      <button class="lnk" data-clearpins="1">Clear pins</button></div>`;
+
+    if (a.count) h += `<span class="stepper"><span class="hint">Right-click a section on the grid to pin it. Step through slates in the grid's legend bar.</span></span>`;
+
+    // Quieter facts
+    const facts = [];
+    if (a.noCaps && a.count) facts.push("Seats: set section capacities to see how many students fit.");
+    if (a.onlySections.length) facts.push(`Only sections, so every slate uses them: ${a.onlySections.join(", ")}.`);
+    if (a.noTimes.length) facts.push(`Assumes ${a.noTimes.join(", ")} (no times) fits anywhere.`);
+    if (facts.length) {
+      if (!state.foldOpen) h += `<button class="foldbtn" data-fold="1">▸ More about this watch (${facts.length})</button>`;
+      else h += `<div class="facts"><button class="foldbtn" data-fold="1">▾ Less</button>${facts.map((f) => `<span>${esc(f)}</span>`).join("")}</div>`;
+    }
+    return h + `</div>`;
+  }
+
+  /** What a student takes from a course: "any 1 of 3 sections", "only section (A)", "1 lecture + 1 of 3 labs". */
+  function choiceText(c, secs) {
+    const mine = secs.filter((s) => s.c === c), parts = COURSES[c].parts;
+    const short = (p) => ({ Laboratory: "lab", Lecture: "lecture", Discussion: "discussion" }[p] || p.toLowerCase());
+    if (parts.length >= 2) return parts.map((p) => {
+      const n = mine.filter((s) => s.type === p).length;
+      return n === 1 ? `1 ${short(p)}` : n === 0 ? `no ${short(p)}s` : `1 of ${n} ${short(p)}s`;
+    }).join(" + ");
+    return mine.length === 1 ? `only section (${mine[0].code})` : `any 1 of ${mine.length} sections`;
+  }
+
+  function sectionList(secs) {
+    return `<div class="cards">` + secs.map((s) => `<div class="card${state.sel === s.id ? " sel" : ""}" data-card="${esc(s.id)}"><div class="h">${s.id}</div><div class="s">${s.type || "No type"} · ${
+      s.meets.length ? s.meets.map((x) => x.days.map((d) => DAYN[d]).join(" ") + " " + hm(x.s) + "–" + hm(x.e)).join(", ") : "No times"}</div></div>`).join("") + `</div>`;
+  }
+  const hm = (t) => `${Math.floor(t)}:${String(Math.round((t % 1) * 60)).padStart(2, "0")}`;
+
+  /** The grid with every timed section; while a watch is open, its picture (or the current slate) is laid over it. */
+  function grid(secs, a, slate) {
+    const top = 20, hourH = 46, x0 = 40, colW = 150, start = 8;
+    let h = "";
+    DAYN.forEach((d, i) => { h += `<div class="gday" style="left:${x0 + i * colW}px;width:${colW}px">${d}</div>`; });
+    for (let hr = start; hr <= 18; hr++) {
+      const y = top + (hr - start) * hourH;
+      h += `<div class="gline" style="top:${y}px"></div><div class="ghour" style="top:${y - 6}px">${hr}:00</div>`;
+    }
+    const tiles = new Map();
+    const addItem = (s, d, st, en, shared) => {
+      const key = `${d}|${st}|${en}|${shared ? "x" : ""}`;
+      if (!tiles.has(key)) tiles.set(key, { d, st, en, shared, secs: [] });
+      tiles.get(key).secs.push(s);
+    };
+    // While a watch is open, other courses are hidden unless "Show other courses" is ticked. Unticked courses of
+    // the watch stay, faded.
+    const shown = (s) => !a || state.showOthers || a.w.courses.includes(s.c);
+    secs.filter(shown).forEach((s) => s.meets.forEach((mt) => mt.days.forEach((d) => addItem(s, d, mt.s, mt.e, false))));
+    SHARED.filter(shown).forEach((s) => s.meets.forEach((mt) => mt.days.forEach((d) => addItem(s, d, mt.s, mt.e, true))));
+    DAYN.forEach((_, d) => {
+      const list = [...tiles.values()].filter((t) => t.d === d).sort((p, q) => p.st - q.st || p.en - q.en);
+      const lanes = [];
+      list.forEach((t) => { let l = lanes.findIndex((e) => e <= t.st); if (l < 0) { l = lanes.length; lanes.push(0); } lanes[l] = t.en; t.lane = l; });
+      const n = Math.max(1, lanes.length), w = (colW - 4) / n;
+      list.forEach((t) => {
+        const lines = t.secs.map((s) => entry(s, t.shared, a, slate)).join("");
+        h += `<div class="gtile ${t.shared ? "shared" : ""}" style="--sem-border:${SEMESTER_BORDER};left:${x0 + d * colW + 2 + t.lane * w}px;width:${w - 2}px;top:${top + (t.st - start) * hourH}px;height:${(t.en - t.st) * hourH - 2}px">${lines}</div>`;
+      });
+    });
+    return h;
+  }
+
+  /**
+   * One section's line in a tile: subject marker, label, flag, pin, and (while a watch is open) its access mark.
+   * Marks are per line, so two sections sharing a tile can differ.
+   */
+  function entry(s, shared, a, slate) {
+    let cls = "ent", tip = "", amk = "";
+    const pinned = state.pins.has(s.id) && a && !a.kind;
+    if (shared) tip = `${s.c} ${s.code}: another department's section (shared schedule). Not in this watch.`;
+    if (a && !a.kind && !shared) {
+      const inWatch = a.w.courses.includes(s.c), ticked = a.courses.includes(s.c);
+      const g = a.groups.find((gg) => gg.all.includes(s));
+      const role = a.roles[s.id];
+      if (!inWatch) cls += " faded";
+      else if (!ticked) { cls += " faded"; tip = `${s.c} is unticked, so it isn't part of these slates.`; }
+      else if (g && !g.secs.includes(s)) { cls += " faded"; tip = `Not used: ${g.secs[0].id} is pinned.`; }
+      else if (slate) {
+        if (slate.includes(s)) { cls += " ghost"; tip = `${s.id} is in this slate.`; }
+        else cls += " faded";
+      }
+      else if (a.count === 0) {
+        const blockPin = a.pinBlock && a.pinBlock.find((b) => b.pin === s.id);
+        if (blockPin) { cls += " cantfit"; amk = "▲"; tip = `Pinned ${s.id} can't be part of any slate: ${blockPin.why}`; }
+        else if (a.best && a.best.cantFit.includes(s.c)) { cls += " cantfit"; amk = "▲"; tip = `${s.c} can't fit with the rest of ${a.w.name}: no ${s.c} section fits around the other courses.`; }
+      }
+      else if (role === "stranded") { cls += " stranded"; tip = `${s.id} can't be part of any slate for ${a.w.name}: ${strandedReason(s, a)}`; }
+      else if (a.cautions.some((c) => c.id === s.id)) { cls += " caution"; amk = "◆"; tip = a.cautions.find((c) => c.id === s.id).text; }
+      else if (role === "essential") { cls += " essential"; amk = "●"; tip = `Every slate for ${a.w.name} uses ${s.id}: ${s.c}'s other sections can't fit. If it moves to a clashing time, students lose every full slate.`; }
+      else if (role === "only") tip = pinned ? `${s.id} is pinned: only slates with it count.` : `${s.id} is the only ${s.c} ${COURSES[s.c].parts.length >= 2 ? s.type.toLowerCase() : "section"}, so every slate uses it.`;
+      else if (role === "usable") tip = `${s.id} can be part of a slate for ${a.w.name}.`;
+      else if (!g) { cls += " faded"; tip = `${s.id} isn't counted (no section type).`; }
+    }
+    const subj = s.c.split(" ")[0];
+    const flag = s.flag ? `<span class="flg" title="Flagged">⚑</span>` : "";
+    if (state.sel === s.id) cls += " sel";
+    return `<div class="${cls}" data-sec="${esc(s.id)}"${tip ? ` data-tip="${esc(tip)}"` : ""}><span class="smk" style="background:${SUBJ[subj] || "#999"}"></span>${s.c.replace(" ", "")} ${s.code}${flag}${pinned ? PIN : ""}${amk ? `<span class="amk">${amk}</span>` : ""}</div>`;
+  }
+
+  /** The grid's right-click menu: the existing items (stubs here) plus Pin / Unpin while a watch is open. */
+  function ctxMenu(a) {
+    const c = state.ctx;
+    if (!c) return "";
+    const inWatch = a && !a.kind && a.w.courses.includes(c.sec.split(" ").slice(0, 2).join(" "));
+    const pinned = state.pins.has(c.sec);
+    return `<div class="ctx" style="left:${c.x}px;top:${c.y}px" role="menu">
+      <button disabled>Edit ${esc(c.sec)}</button><button disabled>Flag ▸</button><button disabled>Copy</button>
+      ${inWatch && !state.ctxShared ? `<hr><button data-pin="${esc(c.sec)}">${PIN}${pinned ? "Unpin" : `Pin in slates for ${esc(a.w.name)}`}</button>` : ""}</div>`;
+  }
+
+  function render() {
+    const { secs, list } = analyses();
+    const open = state.open && list.find((a) => a.w.name === state.open);
+    const enabled = list.filter((a) => a.kind !== "off").length;
+    const attn = list.filter((a) => a.mark === "attn").length;
+    const accessBody = open ? detailView(open, secs) : listView(list);
+    const pic = open && !open.kind;
+    // The stepper lives in the grid's legend bar (round 3 review): Step through slates, then ‹ Slate i of N › + Clear.
+    let slate = null, stepper = "";
+    if (pic && state.stepping && open.count) {
+      const slates = listSlates(open.groups), i = state.slateIx = Math.min(state.slateIx, slates.length - 1);
+      slate = slates[i];
+      const total = open.capped ? "more than 10,000" : slates.length.toLocaleString();
+      const parts = open.courses.map((c) => { const mine = slate.filter((s) => s.c === c); return mine.length ? `${esc(c)} ${mine.map((s) => sref(s.id, s.code)).join(" + ")}` : ""; }).filter(Boolean);
+      stepper = `<span class="stepbar"><button class="abtn" data-step="-1" ${i === 0 ? "disabled" : ""} aria-label="Previous slate">‹</button>
+        <span class="pos"><span class="sw gh"></span>Slate ${(i + 1).toLocaleString()} of ${total}</span>
+        <button class="abtn" data-step="1" ${i >= slates.length - 1 ? "disabled" : ""} aria-label="Next slate">›</button>
+        <span class="slate">${parts.join(" · ")}</span>
+        <button class="abtn" data-step="stop">Clear</button></span>`;
+    } else state.stepping = false;
+    const legend = !pic ? "" : `<div class="picbar"><b>${esc(open.w.name)}${open.subset ? ` · ${open.subset}` : ""}</b>${slate
+      ? stepper
+      : open.count
+        // Round 3 review: no key to the marks here (hard to scan); each mark explains itself on hover
+        ? `<button class="abtn" data-step="start">Step through slates</button>`
+        : ""}<label class="oth"><input type="checkbox" id="showOthers" ${state.showOthers ? "checked" : ""}> Show other courses</label><button class="x" data-back="1" aria-label="Close the watch">✕ Close</button></div>`;
+    const accDocked = state.layout === "docked";
+    const pop = `<button class="iconbtn" data-pop="1" title="Open ${state.tab === "access" ? "Access" : "Workload"} in its own window">${popIcon}</button>`;
+    const slot = accDocked ? `<div class="hsplit" id="hsplit" title="Drag to resize"></div>
+      <div class="panel" style="height:${state.slotH}px;flex:none"><div class="panel-head" role="tablist">
+        <button class="tab" role="tab" data-tab="workload" aria-selected="${state.tab === "workload"}">Workload</button>
+        <button class="tab" role="tab" data-tab="access" aria-selected="${state.tab === "access"}">Access${attn && state.tab !== "access" ? '<span class="dot"></span>' : ""}</button>
+        <span class="spacer"></span>${pop}</div>
+        <div class="panel-body">${state.tab === "access" ? accessBody : workload()}</div></div>`
+      : `<div class="hsplit"></div><div class="panel" style="height:${state.slotH}px;flex:none"><div class="panel-head"><span class="title">Workload View</span></div><div class="panel-body">${workload()}</div></div>`;
+    $("#app").innerHTML = `
+      <div class="menubar"><b>TermPoint</b><span>Files</span><span>Sections</span><span>Courses</span><span>Instructors</span><span>Rooms</span><span>Export</span><span>More</span></div>
+      <div class="body3"><div class="leftcol">
+          <div class="panel" style="flex:1"><div class="panel-head"><span class="title">Section View</span></div><div class="panel-body">${sectionList(secs)}</div></div>
+          ${slot}</div>
+        <div class="vsplit"></div>
+        <div class="panel"><div class="panel-head"><span class="title">Schedule View <span style="font-weight:400;color:var(--app-faint)">Fall 2027</span></span></div>
+          <div class="filterbar">
+            <div class="fgroup"><span class="legend">Filters</span><button class="fbtn" tabindex="-1">None ▾</button></div>
+            <div class="fgroup"><span class="legend">Overlays</span><button class="fbtn" tabindex="-1">None ▾</button></div>
+            <div class="fgroup"><span class="legend">Access</span><button class="fbtn" id="summaryBtn">${enabled} watches${attn ? ` · <span class="attn">${attn} ${attn === 1 ? "needs" : "need"} a look</span>` : ""}</button></div>
+          </div>
+          ${legend}
+          <div class="gridarea ${pic ? "" : "nopic"}" id="gridarea">${grid(secs, pic ? open : null, slate)}</div>
+        </div></div>
+      ${accDocked ? "" : `<div class="win" style="left:${state.wins.access.x}px;top:${state.wins.access.y}px;width:${state.wins.access.w}px;height:${state.wins.access.h}px">
+        <div class="win-title" data-drag="access"><span class="t">Access — TermPoint</span><button data-close="1" title="Close: goes back into the main window">✕</button></div>
+        <div class="panel-body">${accessBody}</div></div>`}
+      ${ctxMenu(pic ? open : null)}`;
+    $("#layoutSeg").innerHTML = LAYOUTS.map(([k, l]) => `<button data-layout="${k}" aria-pressed="${state.layout === k}">${l}</button>`).join("");
+  }
+  function workload() {
+    return `<table class="wl"><thead><tr><th>Instructor</th><th>Sections</th><th>Credits</th></tr></thead><tbody>` +
+      [["J. R. Smith", 3, "9.0"], ["M. K. Patel", 4, "12.0"], ["A. L. Wong", 2, "6.0"], ["D. T. Nguyen", 3, "9.0"], ["R. H. Chen", 4, "12.0"]]
+        .map((r) => `<tr><td>${r[0]}</td><td>${r[1]}</td><td>${r[2]}</td></tr>`).join("") + `</tbody></table>`;
+  }
+
+  // ================= Interactions =================
+  /** Ticks, pins and the semester change the slates, so stepping goes back to slate 1. */
+  const slatesChanged = () => { state.slateIx = 0; };
+  const offeredOf = (name) => { const secs = sections(state.variant); return WATCHES.find((w) => w.name === name).courses.filter((c) => secs.some((s) => s.c === c)); };
+  $("#variant").addEventListener("change", (e) => { state.variant = +e.target.value; state.pins = new Set(); slatesChanged(); render(); });
+  $("#readonly").addEventListener("change", (e) => { state.readOnly = e.target.checked; render(); });
+  $("#fit").addEventListener("change", (e) => setFit(e.target.checked));
+  document.addEventListener("change", (e) => {
+    const d = e.target.dataset;
+    if (e.target.id === "showOthers") state.showOthers = e.target.checked;
+    else if (d.tick) {
+      const all = offeredOf(state.open);
+      const t = new Set(state.ticked || all);
+      if (e.target.checked) t.add(d.tick); else { t.delete(d.tick); [...state.pins].filter((p) => p.startsWith(d.tick + " ")).forEach((p) => state.pins.delete(p)); }
+      state.ticked = t.size === all.length ? null : t; slatesChanged();
+    }
+    else return;
+    render();
+  });
+  document.addEventListener("keydown", (e) => {
+    if (e.key === "Escape") {
+      if (state.ctx) state.ctx = null; else if (state.stepping) state.stepping = false; else if (state.open) { state.open = null; resetWatchState(); }
+      render();
+    } else if (state.stepping && (e.key === "ArrowRight" || e.key === "ArrowLeft")) {
+      state.slateIx = Math.max(0, state.slateIx + (e.key === "ArrowRight" ? 1 : -1)); render(); e.preventDefault();
+    }
+  });
+  document.addEventListener("click", (e) => {
+    if (state.ctx && !e.target.closest(".ctx")) { state.ctx = null; render(); if (!e.target.closest("button, input")) return; }
+    const line = e.target.closest("#gridarea .ent");
+    if (line && !e.target.closest("button")) { state.sel = line.dataset.sec; render(); revealSelection(); return; }
+    const t = e.target.closest("button, input[data-act]");
+    if (!t) return;
+    if (t.dataset.sel) { state.sel = t.dataset.sel; render(); revealSelection(); return; }
+    const d = t.dataset;
+    if (d.open) { state.open = d.open; state.stub = null; resetWatchState(); state.tab = "access"; }
+    else if (d.back) { state.open = null; resetWatchState(); }
+    else if (d.layout) state.layout = d.layout;
+    else if (d.fold) state.foldOpen = !state.foldOpen;
+    else if (d.tab) state.tab = d.tab;
+    else if (d.pop) { if (state.tab === "access") state.layout = "accessOut"; }
+    else if (d.close) state.layout = "docked";
+    else if (d.confirm) d.confirm.split("|").forEach((c) => state.confirmed.add(c));
+    else if (d.tickall) { state.ticked = null; slatesChanged(); }
+    else if (d.unpin) { state.pins.delete(d.unpin); slatesChanged(); }
+    else if (d.clearpins) { state.pins = new Set(); slatesChanged(); }
+    else if (d.pin) {
+      const course = d.pin.split(" ").slice(0, 2).join(" ");
+      if (state.pins.has(d.pin)) state.pins.delete(d.pin);
+      else {
+        // One pin per part: pinning replaces another pin of the same course and part; pinning ticks the course.
+        const secs = sections(state.variant), me = secs.find((s) => s.id === d.pin);
+        [...state.pins].forEach((p) => { const o = secs.find((s) => s.id === p); if (o && o.c === me.c && o.type === me.type) state.pins.delete(p); });
+        state.pins.add(d.pin);
+        if (state.ticked) state.ticked.add(course);
+      }
+      state.ctx = null; slatesChanged();
+    }
+    else if (d.step) {
+      if (d.step === "start") { state.stepping = true; state.slateIx = 0; }
+      else if (d.step === "stop") state.stepping = false;
+      else state.slateIx = Math.max(0, state.slateIx + +d.step);
+    }
+    else if (d.act === "toggle") { e.preventDefault(); return; }
+    else if (d.act) {
+      state.stub = { help: "Opens the Access help article: slates, parts, seats, pins and stepping explained once.",
+        add: "Round 4: saving a filter preset and ticking Watch.", checkall: "A later round: Check all courses.",
+        edit: "Round 4: editing the watch's preset.", delete: "Deleting asks first, then stops watching (the preset stays).",
+        parts: "A later round: opens this course's parts in Courses, then comes back here." }[d.act];
+      if (state.open && d.act !== "add" && d.act !== "checkall") { alertInDetail(state.stub); return; }
+    }
+    else if (t.id === "summaryBtn") { state.tab = "access"; }
+    else return;
+    render();
+  });
+  /** Scrolls Section View to the selected card, as the app does (ListScrollAnchorBehavior.ScrollItemIntoView). */
+  function revealSelection() {
+    const card = document.querySelector(".card.sel");
+    if (!card) return;
+    const box = card.closest(".panel-body");
+    box.scrollTop = card.offsetTop - box.offsetTop - 30;
+  }
+  /** Shows a one-line "what this would do" note at the top of an open detail. */
+  function alertInDetail(msg) {
+    render();
+    const det = document.querySelector(".det");
+    if (det) det.insertAdjacentHTML("afterbegin", `<div class="stub" style="margin:0">${esc(msg)}</div>`);
+  }
+
+  // Right-click a section line on the grid while a watch is open: the grid's menu gains Pin / Unpin
+  const stage = $("#stage"), stageInner = $("#stageInner");
+  stageInner.addEventListener("contextmenu", (e) => {
+    const line = e.target.closest(".ent");
+    if (!line || !state.open || !e.target.closest("#gridarea")) return;
+    e.preventDefault();
+    const base = stageInner.getBoundingClientRect(), k = scale();
+    state.ctxShared = !!line.closest(".gtile.shared");
+    state.ctx = { sec: line.dataset.sec, x: Math.min(1280 - 200, (e.clientX - base.left) / k), y: Math.min(760 - 120, (e.clientY - base.top) / k) };
+    render();
+  });
+
+  // Hover tips
+  let tipEl = null;
+  stageInner.addEventListener("pointerover", (e) => {
+    const tile = e.target.closest("[data-tip]");
+    if (tipEl) { tipEl.remove(); tipEl = null; }
+    if (!tile || state.ctx) return;
+    tipEl = document.createElement("div");
+    tipEl.className = "tip"; tipEl.textContent = tile.dataset.tip;
+    const r = tile.getBoundingClientRect(), base = stageInner.getBoundingClientRect(), k = scale();
+    tipEl.style.left = Math.min(1280 - 310, (r.left - base.left) / k + 8) + "px";
+    tipEl.style.top = ((r.bottom - base.top) / k + 4) + "px";
+    stageInner.appendChild(tipEl);
+  });
+
+  // Dragging the splitter and the popped-out window
+  let drag = null;
+  const scale = () => (stageInner.style.transform ? parseFloat(stageInner.style.transform.slice(6)) : 1);
+  document.addEventListener("pointerdown", (e) => {
+    if (e.button !== 0) return;
+    if (e.target.id === "hsplit") drag = { kind: "split", y: e.clientY, h0: state.slotH };
+    const bar = e.target.closest("[data-drag]");
+    if (bar && !e.target.closest("button")) drag = { kind: "win", x: e.clientX, y: e.clientY, gx: state.wins.access.x, gy: state.wins.access.y };
+    if (drag) e.preventDefault();
+  });
+  document.addEventListener("pointermove", (e) => {
+    if (!drag) return;
+    const k = scale();
+    if (drag.kind === "split") {
+      state.slotH = Math.max(120, Math.min(560, drag.h0 - (e.clientY - drag.y) / k));
+      const p = document.querySelector("#hsplit + .panel"); if (p) p.style.height = state.slotH + "px";
+    } else {
+      const g = state.wins.access;
+      g.x = Math.max(0, Math.min(1200, drag.gx + (e.clientX - drag.x) / k));
+      g.y = Math.max(0, Math.min(730, drag.gy + (e.clientY - drag.y) / k));
+      const w = document.querySelector(".win"); if (w) { w.style.left = g.x + "px"; w.style.top = g.y + "px"; }
+    }
+  });
+  document.addEventListener("pointerup", () => { drag = null; });
+
+  function setFit(on) {
+    $("#fit").checked = on;
+    stage.classList.toggle("fit", on);
+    if (on) { const k = Math.min(1, stage.clientWidth / 1280); stageInner.style.transform = `scale(${k})`; stage.style.height = 760 * k + 2 + "px"; }
+    else { stageInner.style.transform = ""; stage.style.height = ""; }
+  }
+  window.addEventListener("resize", () => { if ($("#fit").checked) setFit(true); });
+
+  /** Review aid: lets the page's numbers be checked from the browser console. */
+  window.__access = { sections, analyse, WATCHES, state };
+
+  // Round 3 opens on Enviro Y2 with a taller Access slot, so the course list, pins and stepper fit
+  state.open = "Enviro Y2";
+  state.slotH = 330;
+  render();
+  setFit(window.innerWidth < 1320);
+})();
+</script>

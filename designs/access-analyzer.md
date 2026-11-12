@@ -5,7 +5,7 @@ Current phase: **3 — UX Sketch, in wireframe rounds** (round 1 settled 2026-11
 draft is ideas to try). Phase 2 locked 2026-11-10
 (Q18's extra part names and Q28 left open, not blocking); Phase 1 locked 2026-11-06.
 Last session: 2026-11-10
-Next step: wireframe round 3 (stepping, pins, subsets); round 2 settled 2026-11-10. D25 (2026-11-10): an access watch is a
+Next step: Greg's review of wireframe round 3 (stepping, pins, subsets); round 2 settled 2026-11-10. D26: tags watchable directly. D25 (2026-11-10): an access watch is a
 filter preset you choose to watch; round 4 moves to the filter bar
 Release: not scheduled. Probably not 1.2.4; the spec continues ahead of coding and the release is decided later
 
@@ -559,8 +559,8 @@ shows; the sections below are ideas to try until a round confirms them.
 |---|---|---|
 | 1 | The Access tab's watch list, the filter-bar summary, popping tabs out (`access-panel-r1.html`) | **Settled 2026-11-10** |
 | 2 | Opening a watch: what its line and detail say, and the grid picture (`access-panel-r2.html`; numbers computed from a mock semester by a miniature slate search) | Reviewed 2026-11-10; revision 2b built (folded detail, health-line hovers, "any 1 of 3 sections" wording, per-line marks, grey-out-or-keep toggle for other grid marks); 2b reviewed; 2c built (fewer hovers, help icon, other courses hidden while a watch is open). **Settled 2026-11-10** |
-| 3 | Stepping through slates, pins, ticking a subset | — |
-| 4 | Saving a filter preset and watching it, at the filter bar (D25); picking several courses easily | — |
+| 3 | Stepping through slates, pins, ticking a subset (`access-panel-r3.html`) | Reviewed 2026-11-11; 3b built (no "any 3" line, stepper in the legend bar, stranded sections flagged, yellow cautions for hard-to-reach and heavy-load sections, clickable section names, legend bar without a key), awaiting Greg |
+| 4 | Saving a filter preset and watching it, at the filter bar (D25); ticking Watch on a tag (D26); picking several courses easily | — |
 | later | Courses (parts), Copy Semester, Check all courses | — |
 
 **Round 1, settled by Greg (2026-11-10).** Judged at the level of the list, not the wording of each health line or
@@ -600,6 +600,47 @@ the opened watch (round 2).
 2. **Keep subject colours and the grid's other marks** while a watch is open (no greying out).
 3. **Question raised:** why show sections of courses not in the watch at all? 2c tries hiding them while a watch is
    open, with "Show other courses" in the legend to bring them back, faded.
+
+**Round 3, Greg's review (2026-11-11).**
+1. **Drop the "any 3 of these 5" line.** Users care about specific cases, which they reach by ticking courses.
+2. **Right-click to pin is good.**
+3. **The stepper goes in the grid's legend bar,** not the panel: *Step through slates*, then ‹ Slate i of N › with
+   the slate's sections, and a **Clear** button back to the overview.
+4. **Flag stranded sections** (sections no one taking the watch's courses can use), not only hatch them on the
+   grid. 3b: "1 section stranded" in the health line, and a ▲ line in the detail with the reason ("PSYCH 101 C is
+   stranded: it clashes with CHEM 213 A, which every slate uses."). **Agreed:** the watch's list mark doesn't change
+   for stranded sections alone, since one may be meant for other students.
+5. **Yellow cautions from slate shares (Greg, 2026-11-11).** Nothing stranded doesn't mean balanced: CHEM 201 with 4
+   lectures and 8 labs can have LAB-A in some slates but only with LEC1. The measure, in the graph picture (one group
+   of vertices per course part, an edge between sections that don't clash, a slate = a clique with one vertex per
+   group): **c(v)** = the slates section v is in. Within a group every slate uses exactly one section, so the shares
+   c(v) ÷ N add to 1 and the **fair share** is 1 ÷ (sections in the group). Compared with it:
+   - 0 → **stranded** (▲, point 4); all of it → **depends on** (●, existing).
+   - under ⅓ of fair share → **hard to reach** (yellow ◆): "CHEM 201 LAB-A fits only with LEC1: it clashes with
+     LEC2, LEC3 and LEC4." The reason is the other group where it fits with the fewest sections.
+   - over 2× fair share, in a group of 3 or more → **carries a heavy load** (yellow ◆): "LEC1 carries a heavy load:
+     LAB-A and LAB-B fit only with it", or, when no section leans on it alone, "…it is in far more slates than the
+     other CHEM 201 labs, which clash more."
+   - Never for a single section (its share is always fair), a pinned group, or a section with no times (online
+     sections fit anything; flagging them was noise in the mock).
+   - Health line: "1 section hard to reach", "2 sections carry a heavy load"; one ◆ line each in the detail; ◆ on the
+     section's grid line with the same text on hover. Like stranded sections, cautions don't change the list mark.
+   - Shown in 3b (watch Chem Y2; last Semester changes option for heavy loads).
+   - For Phases 4–5: shares need exact slate counts, but the search stops at 10,000. Exact per-section counts stay
+     cheap because courses that don't interact multiply. Thresholds (⅓, 2×) to be tuned on UBC and UFV copies. The
+     measure counts ways to build a slate, not students; a seat-based version could fold into the seats calculation
+     if slate share proves not enough. The heavy-load fallback wording is vague and needs a better reason.
+6. **Section names in Access messages are clickable (Greg, 2026-11-11).** In ▲ and ◆ lines, pin chips and the
+   stepper's slate, a section name selects that section exactly as clicking it anywhere else does
+   (`SectionStore.SetSelection`): highlighted on the grid and in Workload, and Section View scrolls to its card
+   (`ListScrollAnchorBehavior.ScrollItemIntoView`, item 23). Selecting doesn't open the editor. Light touch: names look
+   like the text around them; underline and hand cursor on hover only (dotted underline stays "hover for help").
+   For Phases 4–5: the engine returns messages as pieces (text + section id), not finished strings, and one reusable
+   view piece shows text with clickable names (Avalonia runs take no clicks: link-styled buttons inline). Read-only
+   safe; nothing saved. Shown in 3b.
+7. **No key to the marks in the grid's legend bar (Greg, 2026-11-11):** "every slate uses it", "hard to reach" and
+   the rest made the reader hunt. The bar holds only the watch's name (and "3 of 5 courses"), Step through slates /
+   the stepper, Show other courses and Close. Each mark explains itself on hover; the help article has the key.
 
 **Keep the interfaces open for other departments' data (Greg, 2026-11-10).** Proper sharing with other departments
 is coming: their courses will be filterable like the department's own, and the analyzer must handle that data. Not
@@ -667,6 +708,23 @@ directly: a course-list watch is Course = those courses; a tag watch is Tags (al
 translation of `ProgramWatches`. Older versions read and write `ProgramWatches`, so this is a `MinimumVersionToWrite`
 **Yes**, and Phase 4 must decide between a one-time translation (older versions then open read-only) and writing
 both. Rules 1–2 untouched: presets ride in the same database file and save path.
+
+**Tags can be watched directly (D26, Greg, 2026-11-11).** Many departments declare a whole focus as one custom tag
+("3rd yr CIVL") rather than Subject + Level. A single tag is already a one-choice Filter Set, so:
+- **The Watch tick appears on a tag too:** in the Tags list where tags are managed, and in the Tags popup on the
+  filter bar.
+- **Ticking it quietly creates the one-choice preset behind it** (Tags = that tag); unticking removes it. Underneath
+  there is still one kind of watch, so the analyzer, the Access panel and production are unchanged.
+- **The watch's name is the tag's, read live:** renaming the tag renames the watch; deleting the tag ends the watch
+  with one notice.
+- **Tag-made presets do not appear in the presets list** (Greg: it might confuse). Their watch shows in the Access
+  panel and on the tag only.
+
+**Subsets (round 3 brief, Greg, 2026-11-11).** Many students don't take every course. In an open watch each course
+has a tick box; unticking re-runs the whole analysis (line, slates, weight-bearing sections, seats, grid picture) on
+the ticked courses, and the line says so ("3 of 5 courses"). Ticks are never saved: they reset when the watch closes,
+so nothing new is stored and no one sees another user's ticks as the watch's state. To try in round 3, at risk of
+over-complicating: one line answering "can a 3-course student find *some* 3?". Dropped after round 3.
 
 *Locked items D25 reopens* (to be reworded at the start of Phase 4, not silently contradicted):
 - Phase 1 **Q1** (only course-list watches analysed) → every enabled watch is analysed.
@@ -958,6 +1016,7 @@ Opens inside the tab like a detail:
 | D23 | **Parts appear as a Courses column and an Edit Course group of section-type boxes;** Apply confirms | Rule 37; quiet where parts don't apply |
 | D24 | **No box for harmless overlaps** | A faint box on many tiles is clutter; the hover on real boxes says what they cost |
 | D25 | **AGREED by Greg 2026-11-10: an access watch is a filter preset you choose to watch.** Users name and save Filter Sets (combinations of filter-bar choices) as presets near the filter bar; ticking Watch on one makes it an access watch. Replaces separate course-list and tag watches; supersedes Q35 and Q36 | One thing to learn, which users already make. Both existing watch kinds are already Filter Sets. Settles the pool problem (watching is the user's statement), section-level picking, semester carry-over and outside departments' courses in one move. Details under "An access watch is a filter preset you choose to watch" |
+| D26 | **AGREED by Greg 2026-11-11: a custom tag can be watched directly,** by the same Watch tick, which quietly creates a one-choice preset behind it; named live from the tag; not listed among presets | Departments that declare their focus as one tag never have to meet presets; still one kind of watch underneath |
 
 ### Open questions (Phase 3)
 
