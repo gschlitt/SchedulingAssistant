@@ -1,3 +1,5 @@
+using Avalonia.Styling;
+
 namespace TermPoint.Services;
 
 /// <summary>
@@ -49,11 +51,21 @@ public static class AppAnnouncements
             SinceVersion: new Version(1,0,2),
             Message     : "Welcome to TermPoint!"),
 
-        // 1.2.3: spec items 24 (Import Sections), 20 (subject focus) and 31 (Tags all/any). Wording approved by Greg, 2026-10-28.
+       
         new VersionedAnnouncement(
             SinceVersion: new Version(1,2,3),
             Message     : "New in TermPoint 1.2.3: import sections from a spreadsheet (Files → Import Sections), " +
                           "focus on just the subjects you are scheduling (top banner → Subjects), " +
-                          "and more flexibility with custom tag selection.")
+                          "and more flexibility with custom tag selection."),
+
+        new VersionedAnnouncement(
+            SinceVersion: new Version(1,2,4),
+            Message     : "New in TermPoint 1.2.4:\n" +
+            "  •  Color sections by subject: set the colors under the Courses flyout and see them in Section View and Schedule View\n" +
+            "  •  Reduce horizontal sprawl by folding away days you don't need in the Schedule View (click or right-click a day's header to see how it works)\n" +
+            "  •  Improved file reliability on a shared network drive",
+            LinkText     : "Folding Days",
+            LinkUrl      :"https://youtu.be/_u7DI5SxxRE"
+            )
     ];
 }
