@@ -59,8 +59,9 @@
   <ItemGroup Condition="$(TargetFramework.Contains('browser'))">
     <Compile Remove="Program.cs" />
     <Compile Remove="Data\DatabaseContext.cs" />
-    <Compile Remove="Migration\**\*.cs" />
-    <Compile Remove="ViewModels\MigrationViewModel.cs" />
+    <Compile Remove="ViewModels\SupportViewModel.cs" />
+    <Compile Remove="Services\SupportLogs.cs" />
+    <Compile Remove="Services\SupportPlatform.cs" />
     <Compile Remove="Services\FileAppLogger.cs" />
     <Compile Remove="Services\ScrubbingDelivery.cs" />
     <Compile Remove="Services\HandledEventReporter.cs" />
@@ -96,14 +97,14 @@
     <Compile Remove="ViewModels\Wizard\**\*.cs" />
     <Compile Remove="Exceptions\**\*.cs" />
     <Compile Remove="ViewModels\DatabaseChooserViewModel.cs" />
-    <Compile Remove="Views\MigrationView.axaml.cs" />
+    <Compile Remove="Views\SupportView.axaml.cs" />
     <Compile Remove="Views\Management\SaveAndBackupView.axaml.cs" />
   </ItemGroup>
 
   <!-- Remove desktop-only AXAML files from the browser build (AvaloniaXaml item type) -->
   <ItemGroup Condition="$(TargetFramework.Contains('browser'))">
     <AvaloniaXaml Remove="MainWindow.axaml" />
-    <AvaloniaXaml Remove="Views\MigrationView.axaml" />
+    <AvaloniaXaml Remove="Views\SupportView.axaml" />
     <AvaloniaXaml Remove="Views\SplashScreen.axaml" />
     <AvaloniaXaml Remove="Views\DatabaseChooserWindow.axaml" />
     <AvaloniaXaml Remove="Views\Management\SaveAndBackupView.axaml" />

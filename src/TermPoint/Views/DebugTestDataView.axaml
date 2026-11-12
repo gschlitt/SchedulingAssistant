@@ -30,25 +30,8 @@
             </StackPanel>
         </Border>
 
-        <StackPanel Spacing="8">
-            <TextBlock Text="Number of sections to generate:" FontSize="13" FontWeight="SemiBold" />
-            <TextBox Text="{Binding SectionCount}"
-                     PlaceholderText="Enter count (1-1000)"
-                     FontSize="12" />
-        </StackPanel>
-
         <StackPanel Orientation="Horizontal" Spacing="8" HorizontalAlignment="Center">
-            <Button Content="Generate"
-                    Command="{Binding GenerateCommand}"
-                    IsEnabled="{Binding !IsGenerating}"
-                    MinWidth="120"
-                    Padding="16,8" />
-            <Button Content="Export Start Times"
-                    Command="{Binding ExportStartTimesCommand}"
-                    IsEnabled="{Binding !IsGenerating}"
-                    MinWidth="120"
-                    Padding="16,8" />
-            <Button Content="Cancel"
+            <Button Content="Close"
                     Command="{Binding CancelCommand}"
                     MinWidth="120"
                     Padding="16,8" />
@@ -58,12 +41,6 @@
                    TextWrapping="Wrap"
                    FontSize="12"
                    Foreground="{StaticResource TextFaint}" />
-
-        <TextBlock IsVisible="{Binding IsGenerating}"
-                   Text="Processing..."
-                   TextAlignment="Center"
-                   FontSize="12"
-                   Foreground="{StaticResource TextMuted}" />
     </StackPanel>
 
 </UserControl>

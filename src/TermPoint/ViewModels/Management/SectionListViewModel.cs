@@ -1672,48 +1672,6 @@ public partial class SectionListViewModel : ViewModelBase, IUnappliedChangesHost
         LastErrorMessage = "An error occurred loading the section list. See logs for details.";
     }
 
-    /// <summary>
-    /// DEV ONLY — Generate and insert random sections for testing.
-    /// Remove before shipping.
-    /// </summary>
-    [RelayCommand]
-    public void GenerateRandomSections(int count)
-    {
-        try
-        {
-            var semesterId = _semesterContext.SelectedSemesterDisplay?.Semester.Id;
-            if (semesterId is null)
-            {
-                App.Logger.LogWarning("No semester selected for test data generation", "GenerateRandomSections");
-                return;
-            }
-
-            App.Logger.LogInfo($"Starting generation of {count} sections for semester {semesterId}", "GenerateRandomSections");
-
-            var generator = new DebugTestDataGenerator(
-                _sectionRepo, _courseRepo, _instructorRepo, _roomRepo,
-                _legalStartTimeRepo, _semesterRepo, _blockPatternRepo, _propertyRepo, _campusRepo);
-
-            var sections = generator.GenerateSections(count, semesterId);
-            App.Logger.LogInfo($"Generator created {sections.Count} sections", "GenerateRandomSections");
-
-            foreach (var section in sections)
-            {
-                App.Logger.LogInfo($"Inserting section {section.Id} ({section.SectionCode}) for course {section.CourseId}", "GenerateRandomSections");
-                _sectionRepo.Insert(section);
-            }
-
-            App.Logger.LogInfo("All sections inserted, reloading store...", "GenerateRandomSections");
-            var semIds = _semesterContext.SelectedSemesters.Select(s => s.Semester.Id);
-            _sectionStore.Reload(_sectionRepo, semIds); // notifies Grid + Workload + this VM via SectionsChanged
-
-            App.Logger.LogInfo($"Generated {sections.Count} test sections successfully", "GenerateRandomSections");
-        }
-        catch (Exception ex)
-        {
-            App.Logger.LogError(ex, "GenerateRandomSections");
-        }
-    }
 #endif
 
     // ── Helpers ────────────────────────────────────────────────────────────────

@@ -542,15 +542,12 @@ public partial class App : Application
         services.AddTransient<SaveAndBackupViewModel>();
         services.AddTransient<NewDatabaseViewModel>();
 
-#if DEBUG
-        // The generator class only exists in Debug builds (#if DEBUG in
-        // DebugTestDataGenerator.cs). DebugTestDataViewModel itself stays registered in
-        // all builds — its debug-only members are compiled out, leaving an empty shell —
-        // so the Dev Tools menu (Ctrl+Shift+D) remains functional in Release.
-        services.AddTransient<DebugTestDataGenerator>();
-#endif
+        // Dev Tools (Ctrl+Shift+D). DebugTestDataViewModel is registered in all builds, but its members are
+        // Debug-only and its menu item is hidden in Release. The Support panel (logs zip + Support ID) is in all
+        // desktop builds; the demo has neither log files nor BugSnag, so ConfigureDemoServices registers none of it.
         services.AddTransient<DebugTestDataViewModel>();
-        services.AddTransient<MigrationViewModel>();
+        services.AddTransient<ISupportPlatform, AvaloniaSupportPlatform>();
+        services.AddTransient<SupportViewModel>();
 
         // Import Sections (spec item 24, desktop only: the demo has no file system and no Import Sections menu
         // item, so ConfigureDemoServices registers none of these). The file reader, snapshot builder, writer and

@@ -402,8 +402,11 @@
 							Padding="14,5.5"
 							Classes="nav"
 							Header="Dev Tools">
-							<MenuItem Command="{Binding OpenDebugCommand}" Header="Debug View..." />
-							<MenuItem Command="{Binding OpenMigrationCommand}" Header="Migration: CSV -> JSON..." />
+							<MenuItem Command="{Binding OpenSupportCommand}" Header="Support..." />
+							<MenuItem
+								Command="{Binding OpenDebugCommand}"
+								Header="Debug View..."
+								IsVisible="{Binding IsDebugBuild}" />
 						</MenuItem>
 					</Menu>
 

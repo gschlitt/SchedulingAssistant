@@ -37,7 +37,7 @@ public sealed class FileAppLogger : IAppLogger
     internal static string? LogDirectoryOverride { get; set; }
 
     /// <summary>The folder log files go to: the test override when set, otherwise the real one.</summary>
-    private static string LogDirectory => LogDirectoryOverride ?? DefaultLogDirectory;
+    internal static string LogDirectory => LogDirectoryOverride ?? DefaultLogDirectory;
 
     private static readonly string AppVersion =
         Assembly.GetExecutingAssembly().GetName().Version?.ToString() ?? "unknown";

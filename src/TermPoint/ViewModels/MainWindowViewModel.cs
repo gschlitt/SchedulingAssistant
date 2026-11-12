@@ -1274,12 +1274,28 @@ public partial class MainWindowViewModel : ViewModelBase
 
     [ObservableProperty] private bool _isDevToolsVisible;
 
-#if !BROWSER
-    [RelayCommand]
-    private void OpenDebug() => OpenFlyout<DebugTestDataViewModel>("Debug: Generate Test Data");
+    /// <summary>
+    /// True in Debug builds. Shows the Dev Tools "Debug View..." item, whose panel only has content in Debug builds.
+    /// </summary>
+    public bool IsDebugBuild =>
+#if DEBUG
+        true;
+#else
+        false;
+#endif
 
+#if !BROWSER
+    /// <summary>Opens the Debug panel (the ThrowOnError switch). Debug builds only show the menu item.</summary>
     [RelayCommand]
-    private void OpenMigration() => OpenFlyout<MigrationViewModel>("Migration: CSV → JSON (one-time utility)");
+    private void OpenDebug() => OpenFlyout<DebugTestDataViewModel>("Debug");
+
+    /// <summary>
+    /// Opens the Support panel: save logs as a zip to attach to an email, and show the Support ID that matches
+    /// BugSnag reports to this computer. Reached only through Dev Tools (Ctrl+Shift+D), which the developer tells a
+    /// user about when they ask for help.
+    /// </summary>
+    [RelayCommand]
+    private void OpenSupport() => OpenFlyout<SupportViewModel>("Support");
 #endif
 
 #if !BROWSER

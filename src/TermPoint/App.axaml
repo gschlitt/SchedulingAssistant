@@ -45,6 +45,10 @@
 			<!--  Font size of the Import Sections flyout's reading text: the sentences of the numbered steps and the instructions document  -->
 			<x:Double x:Key="ImportReadingFontSize">12</x:Double>
 
+			<!--  Font size of the Support panel's text (Dev Tools → Support), and the longest line, in pixels, of its explanations  -->
+			<x:Double x:Key="SupportFontSize">12</x:Double>
+			<x:Double x:Key="SupportReadingMaxWidth">560</x:Double>
+
 			<!--  Longest line, in pixels, of the Import Sections flyout's first screen text and instructions document. The flyout is as wide as the window, so longer lines would be hard to read  -->
 			<x:Double x:Key="ImportReadingMaxWidth">680</x:Double>
 

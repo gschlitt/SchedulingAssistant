@@ -61,6 +61,36 @@ public static partial class PlatformProcess
 #endif
     }
 
+#if !BROWSER
+    /// <summary>
+    /// Opens the platform's file manager at the folder holding <paramref name="filePath"/>, with the file selected
+    /// where the platform supports it (Explorer's <c>/select</c>, Finder's <c>open -R</c>; elsewhere just the folder).
+    /// </summary>
+    /// <param name="filePath">Full path of a file that exists.</param>
+    /// <exception cref="System.ComponentModel.Win32Exception">The file manager could not be started.</exception>
+    public static void ShowInFolder(string filePath)
+    {
+        if (RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
+        {
+            // Explorer parses its own command line and wants the quotes around the path only: /select,"C:\a b\c.zip".
+            Process.Start(new ProcessStartInfo("explorer.exe", $"/select,\"{filePath}\"") { UseShellExecute = false });
+        }
+        else if (RuntimeInformation.IsOSPlatform(OSPlatform.OSX))
+        {
+            var psi = new ProcessStartInfo("open");
+            psi.ArgumentList.Add("-R");
+            psi.ArgumentList.Add(filePath);
+            Process.Start(psi);
+        }
+        else
+        {
+            var psi = new ProcessStartInfo("xdg-open");
+            psi.ArgumentList.Add(Path.GetDirectoryName(filePath) ?? filePath);
+            Process.Start(psi);
+        }
+    }
+#endif
+
     /// <summary>
     /// Launches an executable by path, as a NEW process. On macOS, uses <c>open -n</c> for .app bundles: without
     /// <c>-n</c>, <c>open</c> only brings an already-running copy forward, and the copy that relaunches is still
