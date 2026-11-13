@@ -1664,16 +1664,10 @@ public sealed class CheckoutService : IDisposable
         try
         {
             _dispatch(() => SaveStarted?.Invoke());
-            _lockPutBackDuringSave = false;
             var outcome = await SaveAsyncCore(releaseLockAfter, isAutoSave);
 
             // Field reporting (1.2.4 item 7.2): feed the failure-streak tracker. Never throws.
             TrackSaveOutcome(outcome, isAutoSave);
-
-            // F18: a save that put back a removed lock file tells the user only if it then succeeded. When it failed,
-            // its failure banner is the one message for this save (the lock is ours again either way).
-            if (_lockPutBackDuringSave && outcome == SaveOutcome.Success)
-                RaiseLockPutBackNotice();
             return outcome;
         }
         catch (Exception ex)
@@ -2705,9 +2699,10 @@ public sealed class CheckoutService : IDisposable
     ///
     /// <para><b>Step 1 — the lock is still ours.</b> <see cref="VerifyLockIsOursAsync"/>, which re-reads once after
     /// a NotOurs answer unless the lock file names another session (that is a takeover, final: no re-read). A
-    /// share that cannot be reached is a transient <see cref="SaveOutcome.CopyError"/>; a lock file that was merely
-    /// REMOVED (antivirus, cloud-sync — no new holder) is re-created atomically by
-    /// <see cref="TryRecoverRemovedLockAsync"/> and the save goes on; any other loss is
+    /// share that cannot be reached is a transient <see cref="SaveOutcome.CopyError"/>; a lock file that is merely
+    /// MISSING (no new holder: another program deleted it, or another TermPoint took over and has since closed) is
+    /// re-created atomically by <see cref="TryRecoverRemovedLockAsync"/> and the save goes on to step 2, which refuses
+    /// it if D changed meanwhile; any other loss is
     /// <see cref="SaveOutcome.LockLost"/> after <see cref="HandleLockLossAsync"/>.</para>
     ///
     /// <para><b>Step 2 — D is still the version we last saw.</b> Skipped when <see cref="HashAtCheckout"/> is null.
@@ -2764,12 +2759,10 @@ public sealed class CheckoutService : IDisposable
 
         if (lockResult == LockVerificationResult.NotOurs)
         {
-            // If the lock file was merely REMOVED (antivirus, cloud-sync — no new
-            // holder), try to re-create it atomically before giving up the session.
-            if (await TryRecoverRemovedLockAsync(announce: false))
+            // If the lock file is merely MISSING (no new holder), try to re-create it atomically before giving up the
+            // session. Step 2 below still refuses the save if D changed while the lock was gone.
+            if (await TryRecoverRemovedLockAsync())
             {
-                // The notice waits for the save's outcome (F18, see SaveAsync).
-                _lockPutBackDuringSave = true;
                 _logger.LogBreadcrumb("Save: lock re-acquired after external removal — continuing");
                 // Fall through — the save proceeds normally under the restored lock.
             }
@@ -4519,30 +4512,31 @@ public sealed class CheckoutService : IDisposable
     }
 
     /// <summary>
-    /// Attempts to recover from an <b>externally removed</b> lock file by atomically
-    /// re-creating it, instead of demoting the session and stranding the user's
-    /// unsaved edits.
+    /// Attempts to recover from a <b>missing</b> lock file by atomically re-creating it, instead of demoting the session
+    /// and stranding the user's unsaved edits.
     ///
-    /// <para><b>Why this is safe:</b> this runs only when lock verification found the
-    /// file <i>missing</i> with the share reachable and no new holder
-    /// (<see cref="LockLossNewHolder"/> is null) — the signature of antivirus,
-    /// cloud-sync, or backup software deleting the file, not of another user taking
-    /// over. Re-creation goes through <see cref="WriteLockService.TryAcquire"/>, whose
-    /// <c>FileMode.CreateNew</c> is atomic at the SMB level: if another instance claims
-    /// the lock in the race window, our create loses cleanly and the normal demotion
-    /// path runs. A genuine takeover (foreign <c>SessionGuid</c> in the file) never
-    /// reaches this method — trampling a rightful holder remains impossible.</para>
+    /// <para><b>When it runs:</b> lock verification found the file <i>missing</i> with the share reachable and no new
+    /// holder (<see cref="LockLossNewHolder"/> is null). Two real causes look exactly like that: another program
+    /// (antivirus, cloud sync, backup, someone tidying the folder) deleted the file, or <b>another TermPoint took the
+    /// lock over while this computer slept and has since closed</b>, which deletes the file (found by the 1.2.4 field
+    /// test M5 (4), 2026-11-12). This method cannot tell them apart and does not need to.</para>
     ///
-    /// <para>On success the session simply continues as writer (TryAcquire restarted
-    /// the heartbeat and wake timers; our event subscriptions were never removed) and
-    /// an auto-dismissing banner tells the user what happened.</para>
+    /// <para><b>Why this is safe:</b> re-creation goes through <see cref="WriteLockService.TryAcquire"/>, whose
+    /// <c>FileMode.CreateNew</c> is atomic at the SMB level: if another instance claims the lock in the race window,
+    /// our create loses cleanly and the normal demotion path runs. A genuine live takeover (foreign
+    /// <c>SessionGuid</c> in the file) never reaches this method, so a rightful holder is never trampled. And every
+    /// save still checks that D is exactly as this session last saw it (<see cref="CheckLockAndSourceAsync"/> step 2):
+    /// if the other TermPoint saved before closing, this session's next save is refused (SourceModified) and its work
+    /// is kept. <c>Harness/TakeoverThenReleaseProofTests</c> pins both routes.</para>
+    ///
+    /// <para><b>No message (1.2.4, Greg 2026-11-12).</b> On success the session simply continues as writer
+    /// (TryAcquire restarted the heartbeat and wake timers; our event subscriptions were never removed). The user is
+    /// not told: there is nothing for them to do, and the old notice ("Another program removed the file…") named a
+    /// cause that was wrong when another TermPoint had closed. If the database changed meanwhile, the conflict banner
+    /// of the next save is the one message. The log line and breadcrumb remain.</para>
     /// </summary>
-    /// <param name="announce">
-    /// True (the wake and heartbeat checks) to show the "lock put back" notice at once. False from a save, which shows it
-    /// only if the save then succeeds, so a save that fails shows its failure banner alone (F18, one message per save).
-    /// </param>
     /// <returns>True when the lock was re-acquired and the session continues as writer.</returns>
-    private async Task<bool> TryRecoverRemovedLockAsync(bool announce = true)
+    private async Task<bool> TryRecoverRemovedLockAsync()
     {
         // A takeover has a new holder — never contest it.
         if (LockLossNewHolder is not null) return false;
@@ -4553,27 +4547,10 @@ public sealed class CheckoutService : IDisposable
         if (!completed || !_lockService.IsWriter)
             return false;
 
-        _logger.LogInfo("CheckoutService: lock file was removed externally; re-acquired atomically — session continues.");
+        _logger.LogInfo("CheckoutService: lock file was missing (no new holder); re-acquired atomically — session continues.");
         _logger.LogBreadcrumb("Lock re-acquired after external removal");
-        if (announce)
-            RaiseLockPutBackNotice();
         return true;
     }
-
-    /// <summary>
-    /// Shows the informational, auto-dismissing "lock put back" notice (<see cref="LockLossPrompt.LockFilePutBack"/>)
-    /// for the current session (dropped if the session has ended, see <see cref="PostForSession"/>).
-    /// </summary>
-    private void RaiseLockPutBackNotice()
-        => PostForSession("SaveFailed (lock put back)", () => SaveFailed?.Invoke(
-            LockLossPrompt.LockFilePutBack,
-            true)); // auto-dismiss — informational, nothing is wrong anymore
-
-    /// <summary>
-    /// True when the save in flight put back a removed lock file (set by <see cref="CheckLockAndSourceAsync"/>, reset at the
-    /// start of each <see cref="SaveAsync"/>). Saves never overlap (<see cref="_saveInFlight"/>), so a plain field is enough.
-    /// </summary>
-    private bool _lockPutBackDuringSave;
 
     /// <summary>
     /// Stops autosave and unhooks the wake handler, then raises

@@ -109,11 +109,8 @@ internal static class MessagePromises
         // and "Choose a New Name" (the recovered copy is never saved over an existing file), a rule about file names.
         new(RecoveryConflictPrompt.AlreadyExistsTitle, "", PromiseKind.Info),
 
-        // The banner after an externally removed lock file was put back (LockLossPrompt.LockFilePutBack, "... TermPoint has put it
-        // back, and you can carry on as normal"): it states a fact about the file TermPoint uses to mark the database as in use, and
-        // promises nothing about unsaved work. (It has no promise word, so it needs no entry to avoid "unclassified"; the entry
-        // documents that it was looked at.)
-        new(null, "termpoint has put it back", PromiseKind.Info),
+        // (Removed 2026-11-12: the "TermPoint has put it back" notice. A missing lock file that is put back now shows no message;
+        // the notice named a wrong cause when another TermPoint had taken over and closed. Harness/TakeoverThenReleaseProofTests.)
     };
 
     /// <summary>The result of looking a message up in the catalogue.</summary>

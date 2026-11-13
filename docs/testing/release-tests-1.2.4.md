@@ -39,13 +39,14 @@ sweep only), S4.
 
 ## Part 1 — Release gates
 
-- [ ] **`MinimumVersionToWrite` question:** "Could the new version save anything the old version wouldn't have?"
-      Ask it for the final list of 1.2.4 items. So far **No** (colour by subject, collapse days and the editor
-      conflict notice write nothing to the database).
-- [ ] Version in `src/TermPoint/TermPoint.csproj` is the release number.
-- [ ] Full suite with the harness green (about 35 min), `.trx` kept.
-- [ ] Both compile checks (`-f net10.0` and `-f net10.0-browser`).
-- [ ] If Avalonia was upgraded: `dotnet run --project tools/ScrollAnchorProbe`.
+- [x] **`MinimumVersionToWrite` question:** "Could the new version save anything the old version wouldn't have?"
+      Ask it for the final list of 1.2.4 items. **No** (Greg, 2026-11-12, over the closed list: nothing new is
+      saved in the database).
+- [x] Version in `src/TermPoint/TermPoint.csproj` is the release number.
+- [x] Full suite with the harness green (about 35 min), `.trx` kept. (2026-11-12 on `92b162d`: 4733 passed,
+      0 failed, 2 skipped, 31 min; `E:\sa-rel124.trx`.)
+- [x] Both compile checks (`-f net10.0` and `-f net10.0-browser`), 2026-11-12.
+- [x] If Avalonia was upgraded: `dotnet run --project tools/ScrollAnchorProbe`. (Not upgraded in 1.2.4.)
 - [ ] Package checks done or deliberately deferred: summary items 1.2 (debugging DLL), 1.4 (debug files), 1.5
       (GitHub Tests workflow).
 
@@ -122,3 +123,38 @@ front:
 
 - 2026-11-08: list written. Already passed this week: M5 at ×3 (2026-11-07), M6 by Hibernate on GregSurface
   (2026-11-08), the ×3 / normal-timings guards both ways (2026-11-07 and 2026-11-08).
+- 2026-11-12: Part 1 gates passed (MinimumVersionToWrite No, Greg; full harness suite 4733/0/2; both compile
+  checks). Release-candidate sideload MSIX 1.2.4.0 built from `92b162d`:
+  `\\mekler\Users\gregs\temp\msix-1.2.4.0-rc1\` (hash `4619425AAE04…`); going on GregDeskTop and TPVM1 (TPVM1 via
+  1.2.3.4 for the MSIX upgrade check).
+- 2026-11-12: RC installed on GregDeskTop (timings off) and TPVM1 (×3). **MSIX upgrade (Part 4) passed, first
+  half:** on TPVM1, 1.2.3.4 with a kept unsaved edit (hard stop), then the RC installed over it: title "(Test
+  timings ×3)", settings and recent databases kept, "Restore Unsaved Changes?" offered and the edit came back.
+  `Ready` retaken on the RC. Left: the fresh install on TPVM1.
+- 2026-11-12: **M4 passed** on the RC (GregDeskTop normal timings, TPVM1 ×3). B1: GregDeskTop writer, clumsy Lag 110 +
+  Drop 2 %, about 6 min; TPVM1 never offered write access. 1 of 3 saves landed; 2 gave up on the 5 s no-progress
+  deadline (upload, then the uploaded copy's check), one plain message each; the same 5 s deadlines are in 1.2.3, so
+  this is the link, not a change. Their edits landed at the next save. The two abandoned upload files
+  (`BIOL-TT.db.<8 hex>.tmp`) were swept when TPVM1 took write access in B2. B2: GregDeskTop closed; TPVM1 offered the
+  takeover, saved `ZZZT-B2`; GregDeskTop reopened read-only. B3: TPVM1 killed (Task Manager) with `ZZZT-B3V` unsaved;
+  GregDeskTop took over and saved `ZZZT-B3D`; TPVM1's restart offered Restore, then "Unsaved Changes Kept",
+  read-only. D (integrity ok, 343 sections) has B1a-c, B2, B3D; TPVM1's kept copy has B3V with its dirty marker.
+  Rig notes: the Default Switch trap (a checkpoint older than the host's restart has no network; README updated);
+  Mekler briefly refused the share with "account locked out" (cause unknown; cleared by itself).
+- 2026-11-12: **M5 (1)-(3) passed** on the RC (TPVM1 paused as the sleeper, ×3; GregDeskTop the other user). (3)'s
+  "taken over" banner came 5-10 s after the wake (1.2.3: 8 minutes, A8). **M5 (4) found a gap** (twice): GregDeskTop
+  took over, made no edit and closed, which deletes the lock file; TPVM1 woke to no lock file, treated it as removed by
+  another program, put it back and stayed writer; its save went through (safe: the database was as it last saw it).
+  The banner blames antivirus or cloud sync (wrong here, rule 4), and the test's expectation ("Restore Unsaved
+  Changes?") was 1.2.3's. Five harness proof tests now pin the route, including the dangerous variant (the other person
+  saves, then closes: the sleeper's save is refused), all passing: `Harness/TakeoverThenReleaseProofTests.cs`. Review and
+  recommendations: `designs/harness-review-2026-11.md`. Left: M5 (4b) by hand, M5 (5).
+- 2026-11-12: **Code change after the RC (Greg): the "lock put back" notice is dropped.** A missing lock file is put
+  back silently (log line and breadcrumb kept); `LockLossPrompt.LockFilePutBack` removed. Display only: when and what
+  TermPoint writes is unchanged; MinimumVersionToWrite still No. Both compile checks pass; the affected tests (397,
+  with the harness) pass; full suite with the harness: 4737 passed, 0 failed, 2 skipped (`E:\sa-rel124b.trx`, 30 min).
+  Two more proof tests added after that run (Alice still open: Bob's save refused, or his wake makes him read-only),
+  both passing; 7 takeover routes now pinned. **Consequences:** a new RC
+  sideload is needed (the rig's RC still shows the notice); M5 (4)'s expectation is now "no message; Bob stays writer;
+  his save lands" when the other person changed nothing, and M5 (4b) "Bob's first save is refused with the conflict
+  banner, the only message" when they saved. M4 and M5 (1)-(3) don't touch this path and stand.

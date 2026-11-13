@@ -57,6 +57,11 @@ The computers:
 4. **Clean-state checkpoint:** `Set-VMDvdDrive -VMName TPVM1 -Path $null`, then
    `Checkpoint-TestComputer -Machine TPVM1 -Name Ready` (add `-Replace` to retake it). Checkpoints hold memory, so restoring one brings back a
    signed-in, running computer.
+   **Trap: the Default Switch gets a new address range at every restart of this computer.** A checkpoint (or a
+   saved VM) from before that restart comes back with its old address and no network at all (it can't reach its
+   gateway, so the share fails with a TCP timeout). Fix: `Disconnect-VMNetworkAdapter -VMName TPVM1`, then
+   `Connect-VMNetworkAdapter -VMName TPVM1 -SwitchName 'Default Switch'`, then `ipconfig /release` and
+   `ipconfig /renew` in the VM; check with `Test-NetConnection <server address> -Port 445`. Then retake `Ready`.
 5. **Third computer** (only when a scenario needs it): shut TPVM1 down, then
    `.\New-TestComputer.ps1 -Name TPVM2 -CopyFrom TPVM1`. Two VMs at 4 GB each leave this computer 8 of its 16 GB.
 

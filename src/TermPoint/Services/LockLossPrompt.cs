@@ -1,17 +1,15 @@
 namespace TermPoint.Services;
 
 /// <summary>
-/// Every user-facing text about the file TermPoint uses to mark a database as in use (the lock file) being lost or put
-/// back while a session is open (spec item 28; data-persistence review findings F6 and F13):
-/// <list type="bullet">
-/// <item><description><b>The lock-lost banner</b> (<see cref="Banner"/>): shown, sticky, when a mid-session check finds
-/// the session no longer owns the lock and the session is made read-only. Says who or what took the lock, whether there
-/// were unsaved changes and where they are, what happens to them next (<see cref="KeptChangesPrompt.OfferToAdd"/>), and
-/// how to edit again.</description></item>
-/// <item><description><b>The lock-put-back notice</b> (<see cref="LockFilePutBack"/>): the informational,
-/// auto-dismissing banner shown when another program removed the file and TermPoint re-created it, so nothing was
-/// lost.</description></item>
-/// </list>
+/// Every user-facing text about the file TermPoint uses to mark a database as in use (the lock file) being lost while a
+/// session is open (spec item 28; data-persistence review findings F6 and F13): <b>the lock-lost banner</b>
+/// (<see cref="Banner"/>), shown, sticky, when a mid-session check finds the session no longer owns the lock and the
+/// session is made read-only. Says who or what took the lock, whether there were unsaved changes and where they are, what
+/// happens to them next (<see cref="KeptChangesPrompt.OfferToAdd"/>), and how to edit again.
+///
+/// <para>A missing lock file that TermPoint puts back shows <b>no</b> message (1.2.4, 2026-11-12): the user has nothing
+/// to do, and the old notice ("Another program removed the file…") named a wrong cause when another TermPoint had taken
+/// over and closed. See <c>CheckoutService.TryRecoverRemovedLockAsync</c>.</para>
 /// Kept out of <c>SessionLifecycle</c> and <c>CheckoutService</c> so the wording can be pinned by unit tests. Modelled on
 /// <see cref="SavePrompt"/> and <see cref="KeptChangesPrompt"/>.
 ///
@@ -113,14 +111,4 @@ public static class LockLossPrompt
                + (hadUnappliedEditorChanges ? UnappliedEditorChangesLost : "")
                + (takenOver ? EditAgainAfterTakeover : EditAgainOtherwise);
     }
-
-    // ── The lock file put back ────────────────────────────────────────────────
-
-    /// <summary>
-    /// The informational banner shown (auto-dismissing) after another program removed the lock file and TermPoint
-    /// re-created it atomically. The session carries on, so nothing needs doing.
-    /// </summary>
-    public const string LockFilePutBack =
-        "Another program removed the file TermPoint uses to mark this database as in use " +
-        "(antivirus or cloud-sync software can do this). TermPoint has put it back, and you can carry on as normal.";
 }

@@ -3738,6 +3738,8 @@ public sealed class CheckoutServiceTests : IDisposable
         await svc.CheckoutAsync(db);
         InsertTestValue(svc.WorkingPath, "edit-during-av-delete");
         svc.MarkDirty();
+        var messages = new List<string>();
+        svc.SaveFailed += (msg, _) => messages.Add(msg);
 
         // Simulate antivirus deleting the lock file mid-session.
         var lockPath = Path.ChangeExtension(db, ".lock");
@@ -3746,6 +3748,7 @@ public sealed class CheckoutServiceTests : IDisposable
         var outcome = await svc.SaveAsync();
 
         Assert.Equal(SaveOutcome.Success, outcome);
+        Assert.Empty(messages);   // put back silently (1.2.4, 2026-11-12)
         Assert.True(lockSvc.IsWriter, "Session must continue as writer after re-acquisition.");
         Assert.True(File.Exists(lockPath), "Lock file must be re-created.");
         Assert.Equal(CheckoutMode.WriteAccess, svc.Mode);
@@ -3753,12 +3756,13 @@ public sealed class CheckoutServiceTests : IDisposable
     }
 
     /// <summary>
-    /// The heartbeat path heals a deleted lock file too: instead of demoting, the
-    /// lock is re-acquired, the informational banner fires, and the session
-    /// continues as writer with the file back in place.
+    /// The heartbeat path heals a missing lock file too: instead of demoting, the lock is re-acquired and the session
+    /// continues as writer with the file back in place, and the user is shown NO message (1.2.4, 2026-11-12: there is
+    /// nothing for them to do, and the cause can't be known: another program may have deleted the file, or another
+    /// TermPoint may have taken over and closed).
     /// </summary>
     [Fact]
-    public async Task HeartbeatFailed_WhenLockFileDeleted_ReacquiresInsteadOfDemoting()
+    public async Task HeartbeatFailed_WhenLockFileDeleted_ReacquiresInsteadOfDemoting_AndShowsNoMessage()
     {
         var (svc, lockSvc) = CreateService();
         var db = DbPath();
@@ -3767,31 +3771,28 @@ public sealed class CheckoutServiceTests : IDisposable
 
         var lockLostFired = false;
         svc.WriteLockLost += (_) => lockLostFired = true;
-
-        // The re-acquisition banner is the completion signal for the async handler.
-        var recoveredTcs = new TaskCompletionSource<(string Message, bool AutoDismiss)>(TaskCreationOptions.RunContinuationsAsynchronously);
-        svc.SaveFailed += (msg, autoDismiss) => recoveredTcs.TrySetResult((msg, autoDismiss));
+        var messages = new List<string>();
+        svc.SaveFailed += (msg, _) => { lock (messages) messages.Add(msg); };
 
         var lockPath = Path.ChangeExtension(db, ".lock");
-        File.Delete(lockPath); // antivirus/cloud-sync deletion
+        File.Delete(lockPath); // another program deleted it, or another TermPoint took over and closed
 
         // Missing file makes renewals fail → threshold → HeartbeatFailed.
         // (Awaited — unawaited bursts skip as contended ticks.)
         for (int i = 0; i < WriteLockService.HeartbeatFailureThreshold; i++)
             await lockSvc.ForceRenewHeartbeat();
 
-        var completed = await Task.WhenAny(recoveredTcs.Task, Task.Delay(10_000));
-        Assert.True(completed == recoveredTcs.Task, "Re-acquisition banner must fire.");
-        var (recoveredMessage, recoveredAutoDismiss) = recoveredTcs.Task.Result;
-        Assert.Equal(
-            "Another program removed the file TermPoint uses to mark this database as in use " +
-            "(antivirus or cloud-sync software can do this). TermPoint has put it back, and you can carry on as normal.",
-            recoveredMessage);
-        Assert.True(recoveredAutoDismiss, "the put-back notice is informational and clears itself");
+        // The re-acquisition runs in the background: wait for the file to come back (no banner to wait on any more).
+        var deadline = DateTime.UtcNow.AddSeconds(10);
+        while (!File.Exists(lockPath) && DateTime.UtcNow < deadline)
+            await Task.Delay(20);
+        await Task.Delay(200);   // let any message the handler might still post arrive before asserting there is none
+
+        Assert.True(File.Exists(lockPath), "Lock file must be re-created.");
         Assert.False(lockLostFired, "WriteLockLost must NOT fire for a healed removal.");
         Assert.True(lockSvc.IsWriter);
-        Assert.True(File.Exists(lockPath), "Lock file must be re-created.");
         Assert.Equal(CheckoutMode.WriteAccess, svc.Mode);
+        lock (messages) Assert.Empty(messages);
     }
 
     /// <summary>

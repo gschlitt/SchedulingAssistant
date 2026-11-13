@@ -16,8 +16,8 @@ namespace TermPoint.Tests.Harness;
 /// <item><description><b>F17</b>: while the checkout is ending, the final save's banners and lock loss are not delivered, so a close or switch save problem shows
 /// only the "Changes Not Saved" dialog.</description></item>
 /// <item><description><b>F23</b>: the post-open save runs only when the open really restored kept changes, so a Discard is not followed by a "changes are kept" banner.</description></item>
-/// <item><description><b>F18</b> (also 1.2.4): a save that puts back a removed lock file shows the "lock put back" notice only if it then succeeds, so a failing
-/// save shows its failure banner alone.</description></item>
+/// <item><description><b>F18</b> (also 1.2.4): a save that puts back a removed lock file and then fails shows its failure banner alone. (First by showing the
+/// "lock put back" notice only after a successful save; since 2026-11-12 the put-back shows no message at all.)</description></item>
 /// <item><description><b>F1</b>: the window's X on "Restore Unsaved Changes?" / "Can't Restore Unsaved Changes" asks the question again
 /// instead of deleting the kept changes, and Discard asks "Discard Unsaved Changes?" ([Discard] / [Go Back]) before it deletes anything.</description></item>
 /// <item><description><b>F12</b>: the save re-checks the lock and the shared database immediately before the rename, so a save whose
@@ -275,8 +275,8 @@ public sealed class FixedFindingsProofTests
 
     /// <summary>
     /// F18: the old route. Alice's save put back the deleted lock file (the auto-dismissing "lock put back" notice) and then failed because
-    /// another program had the database open ("couldn't save because the database file is in use"): two banners for one save (I8). Now a
-    /// save shows the "lock put back" notice only if it succeeds, so this save shows its failure banner alone and nothing is reported.
+    /// another program had the database open ("couldn't save because the database file is in use"): two banners for one save (I8). Now the
+    /// put-back shows no message at all (2026-11-12), so this save shows its failure banner alone and nothing is reported.
     /// </summary>
     [HarnessFact]
     public async Task F18_TheOldRoute_ASaveThatPutsTheLockBackAndThenFails_ShowsOneBanner()

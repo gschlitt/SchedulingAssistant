@@ -87,14 +87,6 @@ public sealed class LockLossPromptTests
             "To edit again, close TermPoint and open it again.",
             LockLossPrompt.Banner(takenOver: false, "alice", "ALICE-PC", hadUnsavedChanges: false));
 
-    /// <summary>The "lock file put back" notice is exactly the approved wording.</summary>
-    [Fact]
-    public void LockFilePutBack_IsTheApprovedWording()
-        => Assert.Equal(
-            "Another program removed the file TermPoint uses to mark this database as in use " +
-            "(antivirus or cloud-sync software can do this). TermPoint has put it back, and you can carry on as normal.",
-            LockLossPrompt.LockFilePutBack);
-
     /// <summary>
     /// The rules for every text: no "lock file", "write access", "safe", "working copy", "local copy", "D'", no path, no
     /// doubled space, no leftover of the old promise; the banner always ends by saying how to edit again.
@@ -102,7 +94,7 @@ public sealed class LockLossPromptTests
     [Fact]
     public void NoText_BreaksTheRulesOfRule4()
     {
-        var texts = new List<string> { LockLossPrompt.LockFilePutBack };
+        var texts = new List<string>();
         foreach (var takenOver in new[] { true, false })
         foreach (var changes in new[] { true, false })
         foreach (var user in new[] { "alice", null })

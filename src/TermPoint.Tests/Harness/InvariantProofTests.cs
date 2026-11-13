@@ -432,11 +432,6 @@ public sealed class InvariantProofTests
             "Network connection interrupted — your changes are safe locally but cannot be saved until the connection is restored.")
             .IsUnclassifiedPromise);
 
-        // The lock put back: a fact about the file TermPoint uses to mark the database as in use.
-        var putBack = MessagePromises.Classify("", LockLossPrompt.LockFilePutBack);
-        Assert.False(putBack.IsUnclassifiedPromise);
-        Assert.Equal(new[] { PromiseKind.Info }, putBack.Kinds);
-
         var missingFile = MessagePromises.Classify("", SavePrompt.SessionFileMissingMessage);
         Assert.False(missingFile.IsUnclassifiedPromise);
         Assert.Equal(new[] { PromiseKind.Info }, missingFile.Kinds);

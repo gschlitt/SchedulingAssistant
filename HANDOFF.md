@@ -3,7 +3,79 @@
 Written so a fresh conversation can pick up. Claude Code's memory and `CLAUDE.md` don't travel between machines
 (`CLAUDE.md` is gitignored), so everything a new agent needs is here or in the files this points to.
 
-**To start the new agent, say:** "Read `HANDOFF.md`, then let's ship 1.2.4."
+**To start the new agent, say:** "Read `HANDOFF.md`, then let's carry on testing 1.2.4."
+
+## State on 2026-11-12, end of day: 1.2.4 release testing IN PROGRESS, not done
+
+The checklist is `docs/testing/release-tests-1.2.4.md`; its **Log** has every result in detail. Summary:
+
+**Done today**
+- **Part 1 gates:** MinimumVersionToWrite **No** (Greg); csproj 1.2.4; both compile checks; full suite with harness
+  green. Re-run after today's code change: **4737 passed, 0 failed** (`E:\sa-rel124b.trx`).
+- **RC1 sideload** (MSIX 1.2.4.0 from `92b162d`) at `\\mekler\Users\gregs\temp\msix-1.2.4.0-rc1\`, installed on
+  GregDeskTop (normal timings) and TPVM1 (×3). **It is now stale** (see the code change below).
+- **Field tests:** MSIX upgrade 1.2.3.4 → RC on TPVM1 (first half of Part 4's check) **pass**; **M4 pass**; **M5 (1),
+  (2), (3) pass** ((3)'s "taken over" banner in 5-10 s; 1.2.3 took 8 min).
+- **M5 (4) found a gap** (data safe, message wrong): Alice takes over, changes nothing, closes (deleting the lock file);
+  Bob wakes to no lock file, TermPoint "puts it back" and he stays writer, with a banner blaming antivirus/cloud sync.
+  **Code change (Greg's decision): the "lock put back" notice is dropped** (`CheckoutService.TryRecoverRemovedLockAsync`;
+  `LockLossPrompt.LockFilePutBack` removed). Display only; when/what TermPoint writes is unchanged.
+- **Harness:** 7 named takeover routes now pinned (`src/TermPoint.Tests/Harness/TakeoverThenReleaseProofTests.cs`):
+  Alice closed or still open, with or without saving; Bob's save, autosave or wake. All pass: Alice's saved work always
+  survives, Bob's is kept, and no put-back message appears.
+- **Harness review:** `designs/harness-review-2026-11.md` (why the miss happened; recommendations R1-R9; R1 and R2 done).
+
+**Still to do for 1.2.4, in order**
+1. **Build RC2** (same MSIX version 1.2.4.0, so each rig computer must **uninstall first**). Caution: an uninstall +
+   reinstall of the same package on GregDeskTop triggered the "won't open until restart" bug this morning; if a
+   reinstalled TermPoint doesn't start, restart that computer. (Harness review / PLAN: a `-Revision` option for sideload
+   builds, e.g. 1.2.4.1, would avoid same-version reinstalls; not built yet.) Re-run TPVM1's setup: restore `Ready`,
+   uninstall, install RC2, `Set-TestTimings -Scale 3`, retake `Ready`.
+2. **Part 2 field tests on RC2:**
+   - **M5 (4) again.** Expect: no message; Bob stays writer; his save lands (the other person changed nothing).
+   - **M5 (4b), new.** Alice takes over, **saves**, closes; Bob wakes. Expect: Bob's first save (or autosave) is
+     refused with the conflict banner (Save a Copy… / Discard Changes), the only message; D keeps Alice's edit.
+   - **M5 (5)** (the reader waits for the sleeper to wake and exit; Take over as writer within ~1 min).
+   - **M5 wait wording** (normal timings: "(up to 3 minutes)" from 90 s, wait ends by 170 s).
+   - **M1 Part A** (NetworkProbe + one clumsy cut), **M7**, **M8** (1.2.3 Store build on a separate computer, both
+     directions), **M11**, **S3**, **S4**. M6 passed 2026-11-08 (Hibernate on GregSurface).
+   - Rewrite M5 (4)'s expectation in the checklist table (harness review R9).
+3. **Part 3:** the one on-screen wording pass.
+4. **Part 4:** fresh install on TPVM1 (second half of the MSIX check); S7-S10; Greg's eye passes for colour by subject
+   (2.3) and collapse days (2.13); macOS waits for the first macOS release (note it in the Log).
+5. **Part 5 (Store):** `build-msix.ps1 -Store`; the stack-trace check; **the package flight**, instrumented on
+   **TPW10** (below): snapshot before, Store update, snapshot after, click; then the public submission (not mandatory);
+   N4.
+6. **The "won't open until restart" defence** (no code): a help page "TermPoint doesn't open after an update →
+   restart your computer"; the line in the Store's "What's new" text; an email to licensed departments at release.
+   (The in-app banner can't help: TermPoint isn't running.) Wording for Greg.
+7. **Release mechanics** (Greg's call each time): merge `Version_1.2.4` into `master`, push (redeploys the WASM demo),
+   `v*` tag (macOS workflow), Store submission. Then mark the summary and HANDOFF released.
+
+**For 1.2.5 (from today; add to `designs/backlog-1.2.5.md`):** harness review R2b (tell the conflict as soon as a lock
+is put back), R3 (pause actions "takes over and closes"), R4 (must-cover story list with expected outcomes), R5
+(situation counters), R6 (message-cause invariant I10), R7 (cause-guess audit; `FileRemovedOrChanged`'s "another
+program" wording), R8 (design rule for "X means Y" decisions); the sideload `-Revision` option.
+
+**Rig state, end of 2026-11-12**
+- **TPVM1:** mid-M5 (TermPoint running as writer). Restore `Ready` before anything else. Its PowerShell Direct sign-in
+  is `TPVM1\greg`, saved by `Connect-TestComputer -SaveCredential`.
+- **TPW10 (new, 2026-11-12):** clean Windows 10 Pro VM on D: (never had a sideload), Windows updated (19045.6456),
+  checkpoints `Clean` and `Clean-Updated`; **Store TermPoint 1.2.3 installed**, waiting for the package flight. Keep it
+  running or **Saved** (not shut down, no restore) so the long session survives. Its Store account must be in the flight
+  group. Copy-out recipe: `New-PSSession -VMName TPW10`, then `Copy-Item -FromSession`.
+- **Default Switch trap** (FieldTest README): after GregDeskTop restarts, a VM restored from an older checkpoint has no
+  network. Reconnect its adapter, `ipconfig /renew`, and retake the checkpoint.
+- **GregDeskTop:** RC1 sideload, pointed at the share test database (auto-open on), test timings off. Check that the
+  "TermPoint Probe" test package is gone (`Get-AppxPackage AcademicSolutions.TermPointProbe` in Windows PowerShell).
+- **Mekler** refused the share once with "account locked out" (cause unknown; cleared by itself). If it recurs, Mekler's
+  Security log event 4740 names the computer.
+
+**The MSIX launch bug investigation** (local only, `tmp/activation-repro/`, evidence in `E:\activation-repro\`):
+`PRECIS.md` (shareable summary), `PLAN.md` (results and plan), `Repro-ActivationBug.ps1` (read-only snapshots incl. a
+copy of Windows' package database), `compare_cache_db.py`. Findings: the stuck state is an orphan family record in
+Windows' registry cache that only a restart clears; every sighting is Windows 10; a clean Windows 10 VM passed a
+sideload 1.2.3.4 → 1.2.4 in-place update. **Rule (Greg): no experiments on GregDeskTop's registry**; VMs only.
 
 ## Where things are
 
