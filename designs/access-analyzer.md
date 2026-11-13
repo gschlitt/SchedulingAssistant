@@ -559,7 +559,7 @@ shows; the sections below are ideas to try until a round confirms them.
 |---|---|---|
 | 1 | The Access tab's watch list, the filter-bar summary, popping tabs out (`access-panel-r1.html`) | **Settled 2026-11-10** |
 | 2 | Opening a watch: what its line and detail say, and the grid picture (`access-panel-r2.html`; numbers computed from a mock semester by a miniature slate search) | Reviewed 2026-11-10; revision 2b built (folded detail, health-line hovers, "any 1 of 3 sections" wording, per-line marks, grey-out-or-keep toggle for other grid marks); 2b reviewed; 2c built (fewer hovers, help icon, other courses hidden while a watch is open). **Settled 2026-11-10** |
-| 3 | Stepping through slates, pins, ticking a subset (`access-panel-r3.html`) | Reviewed 2026-11-11; 3b built (no "any 3" line, stepper in the legend bar, stranded sections flagged, yellow cautions for hard-to-reach and heavy-load sections, clickable section names, legend bar without a key), awaiting Greg |
+| 3 | Stepping through slates, pins, ticking a subset (`access-panel-r3.html`) | Reviewed 2026-11-11; 3b built (no "any 3" line, stepper in the legend bar, stranded sections flagged, yellow cautions for hard-to-reach and heavy-load sections, clickable section names, legend bar without a key, pins made obvious with Unpin all), awaiting Greg |
 | 4 | Saving a filter preset and watching it, at the filter bar (D25); ticking Watch on a tag (D26); picking several courses easily | — |
 | later | Courses (parts), Copy Semester, Check all courses | — |
 
@@ -641,6 +641,12 @@ the opened watch (round 2).
 7. **No key to the marks in the grid's legend bar (Greg, 2026-11-11):** "every slate uses it", "hard to reach" and
    the rest made the reader hunt. The bar holds only the watch's name (and "3 of 5 courses"), Step through slates /
    the stepper, Show other courses and Close. Each mark explains itself on hover; the help article has the key.
+8. **Pins must be hard to miss (Greg, 2026-11-12),** or users wonder where their slates went. 3b: the health line
+   starts "1 section pinned"; a tinted banner at the top of the open watch says "Only slates with PSYCH 101 B are
+   shown" with **Unpin all**; the legend bar carries the same pinned chips (✕ unpins one) and **Unpin all**, in the
+   overview and while stepping; pinned sections are bold with a pin on the grid and in the stepper's slate. Pins get
+   their own colour (indigo in the mock: purple is shared overlays, blue is selection); to settle with the theme.
+   The legend bar wraps to a second row when it's full.
 
 **Keep the interfaces open for other departments' data (Greg, 2026-11-10).** Proper sharing with other departments
 is coming: their courses will be filterable like the department's own, and the analyzer must handle that data. Not

@@ -27,10 +27,12 @@
   --app-hover: #e8eef6;
   --app-tab-on: #ffffff;
   --app-tab-off: #e4e9ef;
-  --app-essential: #1f3a5c;
-  --app-caution: #9a7400;
+  --app-essential: #1f3a5c;   /* heavy outline: every slate uses it */
+  --app-caution: #9a7400;     /* yellow cautions: hard to reach, heavy load */
   --app-select: #2f6db5;      /* section selection (same everywhere) */
-  --app-select-bg: #dce8f7;     /* yellow cautions: hard to reach, heavy load */   /* heavy outline: every slate uses it */
+  --app-select-bg: #dce8f7;
+  --app-pin: #3f37a3;         /* pins: indigo (purple is shared overlays, blue is selection); colour to settle */
+  --app-pin-bg: #ebeaf8;
 }
 @media (prefers-color-scheme: dark) {
   :root:not([data-theme="light"]) {
@@ -108,7 +110,7 @@ button:focus-visible, select:focus-visible, input:focus-visible { outline: 2px s
 .fbtn .attn { color: var(--app-attn); }
 
 /* The grid picture's one-line legend, shown only while a watch is open */
-.picbar { display: flex; align-items: center; gap: 14px; margin: 0 8px; padding: 3px 8px; background: var(--app-panel);
+.picbar { display: flex; flex-wrap: wrap; row-gap: 3px; align-items: center; gap: 14px; margin: 0 8px; padding: 3px 8px; background: var(--app-panel);
   border: 1px solid var(--app-line); border-bottom: 0; font-size: 11px; color: var(--app-faint); flex: none; }
 .picbar b { color: var(--app-text); }
 .picbar .sw { display: inline-block; width: 18px; height: 11px; vertical-align: -1px; margin-right: 4px; border-radius: 2px;
@@ -210,7 +212,7 @@ button:focus-visible, select:focus-visible, input:focus-visible { outline: 2px s
 .stepper { display: flex; flex-direction: column; gap: 3px; border-top: 1px solid var(--app-split); padding-top: 5px; }
 .stepper .row1 { display: flex; align-items: center; gap: 6px; }
 .stepper .pos { font-weight: 600; min-width: 92px; text-align: center; font-variant-numeric: tabular-nums; }
-.stepbar { display: flex; align-items: center; gap: 6px; min-width: 0; flex: 1; }
+.stepbar { display: flex; align-items: center; gap: 6px; min-width: 0; flex: 1 1 380px; }
 .stepbar .pos { font-weight: 600; color: var(--app-text); white-space: nowrap; font-variant-numeric: tabular-nums; }
 .stepbar .slate { color: var(--app-text); min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .picbar .abtn { padding: 0 7px; font-size: 11px; }
@@ -221,6 +223,16 @@ button:focus-visible, select:focus-visible, input:focus-visible { outline: 2px s
 .sref:hover { text-decoration: underline; text-underline-offset: 2px; }
 .ent.sel { box-shadow: inset 0 0 0 2px var(--app-select); }
 .card.sel { background: var(--app-select-bg); border-color: var(--app-select); }
+.pinbanner { display: flex; align-items: center; gap: 6px; background: var(--app-pin-bg); border: 1px solid var(--app-pin);
+  border-radius: 3px; padding: 3px 6px; font-size: 11px; color: var(--app-text); }
+.pinbanner .t { flex: 1; min-width: 0; line-height: 1.5; }
+.pinbanner .pinsvg, .pinpill .pinsvg { width: 11px; height: 11px; color: var(--app-pin); }
+.pinpill { display: inline-flex; align-items: center; gap: 5px; background: var(--app-pin-bg); border: 1px solid var(--app-pin);
+  border-radius: 3px; padding: 1px 4px 1px 6px; color: var(--app-text); font-weight: 600; white-space: nowrap; }
+.pinpill .chip, .pinbanner .chip { background: #fff; font-weight: 400; }
+.ent.pinned { font-weight: 700; }
+.ent.pinned .pinsvg { color: var(--app-pin); width: 10px; height: 10px; }
+.stepbar .pinsvg { color: var(--app-pin); margin-right: 1px; }
 .ctx { position: absolute; z-index: 10; min-width: 190px; background: #fff; border: 1px solid #9aa6b6; border-radius: 4px;
   box-shadow: 0 6px 18px rgba(20, 30, 45, .25); padding: 3px 0; font-size: 12px; color: var(--app-text); }
 .ctx button { display: flex; width: 100%; gap: 6px; align-items: center; border: 0; background: transparent; font: inherit; text-align: left; padding: 4px 12px; cursor: pointer; color: inherit; }
@@ -279,6 +291,10 @@ the watch resets it, and it all works read-only.</p>
     <ul>
       <li>The "any 3 of these" line is gone: ticking courses covers the specific cases users care about.</li>
       <li>Right-click to pin stays.</li>
+      <li><strong>Pins are hard to miss:</strong> the health line says "1 section pinned"; a tinted banner at the top
+        of the watch says "Only slates with PSYCH 101 B are shown" with <em>Unpin all</em>; the legend bar carries the
+        same pinned chips and <em>Unpin all</em>, in the overview and while stepping; pinned sections are bold with a
+        pin on the grid and in the stepper's slate.</li>
       <li><strong>The legend bar is cleaned up:</strong> no key to the marks (●, ◆, ▲, hatching). It holds only the
         watch's name, Step through slates, Show other courses and Close. Each mark on the grid explains itself on hover.</li>
       <li><strong>Section names in messages are clickable</strong> (▲ and ◆ lines, pin chips, the stepper's slate).
@@ -611,6 +627,7 @@ the watch resets it, and it all works read-only.</p>
   function healthSegs(a) {
     const segs = [];
     if (a.subset) segs.push({ text: a.subset });
+    if (a.pins.size) segs.push({ text: `${plural(a.pins.size, "section", "sections")} pinned` });
     if (a.count) {
       segs.push({ text: a.capped ? "More than 10,000 slates" : `${a.count.toLocaleString()} ${a.count === 1 ? "slate" : "slates"}` });
       if (a.seats) {
@@ -680,6 +697,9 @@ the watch resets it, and it all works read-only.</p>
   /** The one help icon for the whole Access idea (slates, parts, seats). */
   const HELP = `<button class="help" data-act="help" title="How access watches work (opens Help)" aria-label="Help: access watches">?</button>`;
   const isGuessed = (c) => !COURSES[c].confirmed && !state.confirmed.has(c);
+  /** The pinned sections as chips: clickable name (selects it) + ✕ (unpins it). Used in the detail and the legend bar. */
+  const pinChips = () => [...state.pins].map((p) =>
+    `<span class="chip">${sref(p)}<button data-unpin="${esc(p)}" aria-label="Unpin ${esc(p)}" title="Unpin">✕</button></span>`).join(" ");
   /** Forgets everything that belongs to an open watch (ticks, pins, stepping). */
   function resetWatchState() { state.ticked = null; state.pins = new Set(); state.stepping = false; state.slateIx = 0; state.ctx = null; state.foldOpen = false; }
 
@@ -732,6 +752,9 @@ the watch resets it, and it all works read-only.</p>
 
     h += `<div class="health ${!a.count ? "attn" : ""}">` + a.segs.map((s) =>
       `<span class="hseg"${s.tip ? ` data-tip="${esc(s.tip)}"` : ""}>${esc(s.text)}</span>`).join(" · ") + `</div>`;
+    // Pins (round 3 review): a tinted banner at the top, so nobody wonders where their slates went
+    if (state.pins.size) h += `<div class="pinbanner">${PIN}<span class="t">Only slates with ${pinChips()} are shown.</span>
+      <button class="abtn" data-clearpins="1">Unpin all</button></div>`;
     const secsAll = a.groups.flatMap((g) => g.secs);
     const allIds = secsAll.map((x) => x.id);
     a.stranded.forEach((id) => { h += `<div class="flag"><span class="t">▲ ${linkify(esc(`${id} is stranded: ${strandedReason(secsAll.find((x) => x.id === id), a)}`), allIds)} No student taking ${a.subset ? "these courses" : "all of " + esc(a.w.name)} can use it.</span></div>`; });
@@ -756,10 +779,6 @@ the watch resets it, and it all works read-only.</p>
       title="Saves these parts to the courses. Other watches with these courses use them too.">These are right</button>
       <span>saves the guessed parts of ${guessed.join(", ")} as shown</span></div>`;
 
-    // Pins
-    if (state.pins.size) h += `<div class="pins">Pinned: ${[...state.pins].map((p) =>
-      `<span class="chip">${PIN}${sref(p)}<button data-unpin="${esc(p)}" aria-label="Unpin ${esc(p)}">✕</button></span>`).join("")}
-      <button class="lnk" data-clearpins="1">Clear pins</button></div>`;
 
     if (a.count) h += `<span class="stepper"><span class="hint">Right-click a section on the grid to pin it. Step through slates in the grid's legend bar.</span></span>`;
 
@@ -859,6 +878,7 @@ the watch resets it, and it all works read-only.</p>
     const subj = s.c.split(" ")[0];
     const flag = s.flag ? `<span class="flg" title="Flagged">⚑</span>` : "";
     if (state.sel === s.id) cls += " sel";
+    if (pinned) cls += " pinned";
     return `<div class="${cls}" data-sec="${esc(s.id)}"${tip ? ` data-tip="${esc(tip)}"` : ""}><span class="smk" style="background:${SUBJ[subj] || "#999"}"></span>${s.c.replace(" ", "")} ${s.code}${flag}${pinned ? PIN : ""}${amk ? `<span class="amk">${amk}</span>` : ""}</div>`;
   }
 
@@ -886,14 +906,15 @@ the watch resets it, and it all works read-only.</p>
       const slates = listSlates(open.groups), i = state.slateIx = Math.min(state.slateIx, slates.length - 1);
       slate = slates[i];
       const total = open.capped ? "more than 10,000" : slates.length.toLocaleString();
-      const parts = open.courses.map((c) => { const mine = slate.filter((s) => s.c === c); return mine.length ? `${esc(c)} ${mine.map((s) => sref(s.id, s.code)).join(" + ")}` : ""; }).filter(Boolean);
+      const parts = open.courses.map((c) => { const mine = slate.filter((s) => s.c === c); return mine.length ? `${esc(c)} ${mine.map((s) => (state.pins.has(s.id) ? PIN : "") + sref(s.id, s.code)).join(" + ")}` : ""; }).filter(Boolean);
       stepper = `<span class="stepbar"><button class="abtn" data-step="-1" ${i === 0 ? "disabled" : ""} aria-label="Previous slate">‹</button>
         <span class="pos"><span class="sw gh"></span>Slate ${(i + 1).toLocaleString()} of ${total}</span>
         <button class="abtn" data-step="1" ${i >= slates.length - 1 ? "disabled" : ""} aria-label="Next slate">›</button>
         <span class="slate">${parts.join(" · ")}</span>
         <button class="abtn" data-step="stop">Clear</button></span>`;
     } else state.stepping = false;
-    const legend = !pic ? "" : `<div class="picbar"><b>${esc(open.w.name)}${open.subset ? ` · ${open.subset}` : ""}</b>${slate
+    const pinPill = pic && state.pins.size ? `<span class="pinpill">${PIN}Pinned: ${pinChips()}<button class="abtn" data-clearpins="1">Unpin all</button></span>` : "";
+    const legend = !pic ? "" : `<div class="picbar"><b>${esc(open.w.name)}${open.subset ? ` · ${open.subset}` : ""}</b>${pinPill}${slate
       ? stepper
       : open.count
         // Round 3 review: no key to the marks here (hard to scan); each mark explains itself on hover
