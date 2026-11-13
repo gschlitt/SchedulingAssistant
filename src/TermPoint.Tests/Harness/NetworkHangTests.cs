@@ -328,4 +328,60 @@ public sealed class NetworkHangTests : IDisposable
         Assert.Contains(run.Violations, v => v.FindingId == "A13");
         Assert.Empty(run.NewViolations);
     }
+
+    /// <summary>
+    /// <b>A put-back of a missing lock that times out, then lands late</b> (lock-scenario review 2026-11-12, finding N2). Bob is the
+    /// writer with an unsaved edit; the lock file is deleted; his computer sleeps. On waking, the wake check finds the lock file gone
+    /// with the share reachable, and at exactly that moment (<c>WakeCheck.AfterVerify</c>) his network starts to hang. The put-back
+    /// (<c>CheckoutService.TryRecoverRemovedLockAsync</c>, a <c>TryAcquire</c> under a 5 s deadline) times out, so Bob is treated as
+    /// having lost the lock. When the network returns, the abandoned <c>TryAcquire</c> runs after all: it creates the lock file,
+    /// makes Bob's lock service the writer and starts its heartbeat, although his checkout is no longer writing.
+    ///
+    /// <para><b>PINNED AS IT IS TODAY (wrong).</b> Bob ends read-only on the database, yet the lock file names his session and his
+    /// lock service says it is the writer (invariant I6, clause a): nobody else can edit until his TermPoint closes, and he is never
+    /// offered "Take over" (a poll does nothing while the lock service believes it is the writer). No data
+    /// is at risk: bob-1 stays in his kept working file with its marker. The classifier files the breach under F16, whose rule
+    /// ("a read-only session holds its lock") is the nearest; the route is a different one. When it is fixed (an acquire attempt that
+    /// was given up must not keep what it creates), remove <c>ExpectFindings</c> and turn the last assertions round: no violation, no
+    /// lock file naming Bob, Bob's lock service not the writer.</para>
+    /// </summary>
+    [HarnessFact]
+    public async Task Hang_APutBackThatTimesOut_LandsLate_PinnedAsToday()
+    {
+        using var world = new World(_output, nameof(Hang_APutBackThatTimesOut_LandsLate_PinnedAsToday));
+        world.ExpectFindings("F16");   // see the remarks: the nearest rule, not F16's own route
+        world.CreateDatabase();
+        var bob = world.AddComputer("bob");
+        await bob.OpenAsync();
+        bob.Edit();
+        world.DeleteLockFile();
+        world.AdvanceTime(TimeSpan.FromMinutes(4));                     // Bob's computer slept
+        world.AtCrashPoint("WakeCheck.AfterVerify", () => world.NetworkHang(bob),
+            "(the wake check has just found the lock file gone) Bob's network starts to hang");
+
+        await bob.WakeCheckAsync();
+
+        // The put-back timed out: Bob was made read-only, and there is no lock file yet.
+        Assert.Equal(CheckoutMode.ReadOnly, bob.Checkout.Mode);
+        Assert.False(bob.Locks.IsWriter);
+        Assert.Null(world.LockFileSession(world.DatabasePath));
+        Assert.Empty(world.Violations);
+
+        world.NetworkUp(bob);                                           // the held calls land now, the put-back among them
+
+        // Today: the abandoned put-back created the lock after all. Bob is read-only but holds a live lock, and nothing polls.
+        Assert.Equal(CheckoutMode.ReadOnly, bob.Checkout.Mode);
+        Assert.True(bob.Locks.IsWriter, "today: the late put-back made the lock service the writer");
+        Assert.Equal(bob.Locks.SessionGuid, world.LockFileSession(world.DatabasePath));
+        // (Whether reader polling is on depends on the order in which the held calls land; it makes no difference, because a poll does
+        // nothing while the lock service believes it is the writer, so Bob is never offered "Take over" either way.)
+        var breach = Assert.Single(world.Violations);
+        Assert.Equal("I6", breach.Invariant);
+        Assert.Equal(ViolationKind.ReadOnlySessionHoldsLock, breach.Kind);
+
+        // No data is at risk: the edit is kept with its marker.
+        Assert.True(bob.HasDirtyMarker);
+        Assert.Equal(new[] { "bob-1" }, bob.WorkingFileEdits());
+        world.Finish();
+    }
 }

@@ -59,12 +59,21 @@ public sealed class TakeoverThenReleaseProofTests
         return run;
     }
 
+    /// <summary>
+    /// Alice really took the lock over: her open got write access. (A replay drops a step that cannot run WITHOUT a word in the story,
+    /// so the check must look for the step's own line. Until 2026-11-12 these tests looked for a "— skipped" line, which nothing
+    /// writes, and so could not fail: had Alice opened read-only, the route under test would never have happened.)
+    /// </summary>
+    /// <param name="run">The run.</param>
+    private static void AssertAliceTookOver(RunResult run)
+        => Assert.Matches(@"Alice opened \S+ for editing — it has write access", run.Story);
+
     /// <summary>The route really happened: Alice took the lock over and her close released it.</summary>
     /// <param name="run">The run.</param>
     private static void AssertAliceTookOverAndReleased(RunResult run)
     {
-        Assert.DoesNotContain("Alice starts TermPoint and opens the database — skipped", run.Story);
-        Assert.DoesNotContain("Alice closes TermPoint — skipped", run.Story);
+        AssertAliceTookOver(run);
+        Assert.Contains("Alice closed TermPoint", run.Story);
     }
 
     /// <summary>
@@ -113,15 +122,21 @@ public sealed class TakeoverThenReleaseProofTests
         Assert.DoesNotMatch("bob-1: .*the shared database", run.Story);
     }
 
-    /// <summary>The dangerous case with Bob's autosave, not his Save button, as the first save after the wake: refused the same way.</summary>
+    /// <summary>
+    /// The dangerous case with Bob's autosave, not his Save button, as the first save after the wake: refused the same way. The autosave
+    /// tick's story line carries no outcome, so the refusal is proved by what it leaves: the conflict banner. Bob's "Save a Copy…" on it
+    /// can only run when the banner shows (otherwise the replay drops the step without a word), and his edit then lands in the saved copy.
+    /// </summary>
     [HarnessFact]
     public async Task AliceTakesOverSavesAndCloses_BobsAutosave_IsRefused_AndAlicesEditSurvives()
     {
-        var run = await RunAsync("Edit(alice)", "Save(alice)", "Close(alice)", "AutosaveTick(bob)");
+        var run = await RunAsync("Edit(alice)", "Save(alice)", "Close(alice)", "AutosaveTick(bob)", "ResolveSaveCopy(bob)");
 
         AssertAliceTookOverAndReleased(run);
         AssertNothingLost(run);
         Assert.Contains("Alice saved the database — Success", run.Story);
+        Assert.Contains("Bob's autosave timer fired", run.Story);
+        Assert.Contains("Bob chose \"Save a Copy…\" on the conflict banner", run.Story);   // the autosave was refused with the conflict banner
         Assert.Matches("alice-1: .*the shared database", run.Story);
         Assert.DoesNotMatch("bob-1: .*the shared database", run.Story);
     }
@@ -151,7 +166,7 @@ public sealed class TakeoverThenReleaseProofTests
     {
         var run = await RunAsync("Edit(alice)", "Save(alice)", "Save(bob)");
 
-        Assert.DoesNotContain("Alice starts TermPoint and opens the database — skipped", run.Story);
+        AssertAliceTookOver(run);
         AssertNothingLost(run);
         Assert.Contains("Alice saved the database — Success", run.Story);
         Assert.Contains("Bob saved the database — LockLost", run.Story);
@@ -169,7 +184,7 @@ public sealed class TakeoverThenReleaseProofTests
     {
         var run = await RunAsync("Edit(alice)", "Save(alice)", "Sleep(bob,4m)", "Save(bob)");
 
-        Assert.DoesNotContain("Alice starts TermPoint and opens the database — skipped", run.Story);
+        AssertAliceTookOver(run);
         AssertNothingLost(run);
         Assert.Contains("Alice saved the database — Success", run.Story);
         Assert.Contains("has taken over editing this database", run.Story);   // Bob's lock-lost banner names Alice
