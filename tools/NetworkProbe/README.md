@@ -64,9 +64,10 @@ tools\NetworkProbe\bin\Release\net10.0\win-x64\NetworkProbe.exe --share \\mekler
 NetworkProbe.exe --share \\mekler\Users\gregs\temp\handtest --only exists,copy-cm --repeat 1 --hold 20
 ```
 
-A full run is about 25 to 40 minutes: 13 cut-before-call cycles (11 cases plus the optional boolean integrity
-variant plus the first control) at roughly 70 s each (11 s cache settle, the cut, the hold, SMB reconnecting), the
-known-bad control, and 6 mid-operation cycles. Lower `--hold` to 20 to shorten it.
+A full run is about 35 to 50 minutes: 17 cut-before-call cycles (the 11 original cases, the optional boolean
+integrity variant, the three 1.2.4 item 4.10 cases, the reader copy `copy-hash-cb`, and the first control) at roughly
+70 s each (11 s cache settle, the cut, the hold, SMB reconnecting), the known-bad control, and 9 mid-operation cycles
+(`copy-cm`, `hash-cm` and the reader copy `copy-hash-cm`, 3 each). Lower `--hold` to 20 to shorten it.
 
 ### Options
 
@@ -184,7 +185,7 @@ through: a hint, not a result, that the share may behave the same.
 4. Runs each case as its own cycle: wait until the share answers, create the files, cut, **confirm the cut** (a fresh
    TCP connect to port 445 fails on every server address), call, measure for `--hold` seconds, stop clumsy, wait for
    the share to answer again (recording how long), record, clean up.
-5. For the mid-operation cases (`copy-cm`, `hash-cm`) it starts clumsy with **lag only**, starts the operation, waits
+5. For the mid-operation cases (`copy-cm`, `hash-cm`, `copy-hash-cm`) it starts clumsy with **lag only**, starts the operation, waits
    until it is demonstrably in progress (at least 1.5 s, not finished, and for the copy the destination already
    larger than 0), swaps lag for the drop (one restart, about 1 s with no impairment), and confirms the cut. A call
    that finished before the cut is **NOT TESTED**, never a pass; it is retried once with the large file doubled, and

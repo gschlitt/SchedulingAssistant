@@ -81,6 +81,24 @@ it and need 1.6 (in-app Store updates) first.
 | 9.7 | Review Avalonia 12.1.4's release notes | |
 | 9.8 | File an Avalonia bug for the list "jump" | |
 
+## From the 2026-11-12 reviews (harness review, lock-scenario review, RC2 field tests)
+
+Sources: `designs/harness-review-2026-11.md` (R-numbers) and the lock-scenario review (local only,
+`tmp/network_scenarios/lock-scenarios-review.md`; N-numbers). None loses data; all are lock or save path unless marked, so
+each needs a design and risk review against the four rules.
+
+| # | Item | Notes |
+|---|---|---|
+| N1 | A whole-share outage hands a live writer's lock to a polling reader | The poll skips unreachable cycles without restarting its timing, so on return the outage counts as "unchanged" and the offer comes at once with no wait. Fix: a poll that cannot reach the share clears the heartbeat watch. Pinned: `WriteLockServicePollTests.PollLockFile_WholeShareOutage_SameHeartbeatOnReturn_IsOfferedAtOnce_PinnedAsToday` |
+| N2 | A lock acquire that timed out can land late and hold a live lock nobody uses | `TryAcquire`/`ForceAcquire` under a 5 s deadline keep running; a late success makes the lock service the writer and starts its heartbeat. Worst case: a demoted (read-only) Bob holds the lock. Fix idea: a per-attempt token; a given-up attempt releases what it created. Pinned: `NetworkHangTests.Hang_APutBackThatTimesOut_LandsLate_PinnedAsToday` |
+| N3 | A sleep between the save's final check and the rename | Re-run the final check right before the rename if more than 2 s passed on either clock (the heartbeat's F19 rule). Test `I4_…AcceptedWindow` pins the window but not a long freeze |
+| S38 | A "Take over as writer" offer outlives its reason (seen in M5 (5) on RC2) | Polling stops once it offers, so the offer stays after the writer wakes; clicking it re-checks (safe) and silently returns to the read-only banner with no message (rule 4). Fix idea: keep polling after an offer and withdraw it when the heartbeat moves; when a click finds the writer active, say so (wording for Greg) |
+| R2b | Tell the dangerous case early | When a missing lock is put back, check D at once; if it changed, show the conflict banner then, not at the next save |
+| M1A | The outage notice says "Press Save once the connection is back." but nothing tells the user when that is (seen in M1 Part A on RC2, 2026-11-13) | The notice clears silently when the heartbeat's lock check reaches the share (up to ~60 s after it returns); a Save before then just repeats the notice (safe, rule 4 only). Options: (1) wording, e.g. "This message will close when the connection is back. Then press Save."; (2) on `LocationReachableAgain` with unsaved changes, swap in "The connection is back. Press Save to save your changes."; (3) save by itself on return (save path: risk review). Wording for Greg |
+| R2 rest | `FileRemovedOrChanged` names "another program" as the cause | Messages only; neutral wording for Greg |
+| R3–R8 | Harness: "takes over and closes" pause actions, must-cover story list with expected outcomes, situation counters, message-cause invariant I10, cause-guess audit, design rule | Test and review work |
+| — | Sideload builds: a `-Revision` option (e.g. 1.2.4.1) | Avoids same-version uninstall/reinstall on the rig |
+
 ## Also open elsewhere
 
 - `designs/slot-browser.md` (Phase 1 awaiting Greg's lock) and `designs/access-analyzer.md` (Phase 3 wireframes).

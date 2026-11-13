@@ -110,7 +110,8 @@ internal sealed class ProbeWorkspace
             BigLocalFile: BigLocalPath,
             SmallDb: Path.Combine(dir, "small.db"),
             CopyDest: Path.Combine(dir, "copy.bin"),
-            MissingFile: Path.Combine(dir, "no-such-file"));
+            MissingFile: Path.Combine(dir, "no-such-file"),
+            LocalCopyDest: Path.Combine(LocalRoot, $"{caseId}-copy.bin"));
 
         if (def.Needs.HasFlag(Fixtures.SmallFile))
             RigIo.Run(() => File.WriteAllText(files.SmallFile, SmallText), RigIo.Short, "writing the small test file");
@@ -166,7 +167,12 @@ internal sealed class ProbeWorkspace
     /// </summary>
     /// <param name="files">The case's paths.</param>
     /// <returns>True when the folder is gone.</returns>
-    public bool DeleteCase(CaseFiles files) => DeleteFolderOnce(files.Dir);
+    public bool DeleteCase(CaseFiles files)
+    {
+        // The reader-copy cases leave a local copy too; drop it now so a long run doesn't pile up large files.
+        RigIo.TryRun(() => { if (File.Exists(files.LocalCopyDest)) File.Delete(files.LocalCopyDest); }, RigIo.Short);
+        return DeleteFolderOnce(files.Dir);
+    }
 
     /// <summary>
     /// Deletes one folder on the share, once, without ever hanging. Best effort.

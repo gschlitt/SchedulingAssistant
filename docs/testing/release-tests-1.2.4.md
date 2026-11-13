@@ -56,7 +56,8 @@ sweep only), S4.
 |---|---|---|---|
 | **M1 Part A**, real network cut mid-save | real SMB behaviour | `tools/NetworkProbe` from GregDeskTop (its README); one cut in TermPoint with clumsy | probe all green; TermPoint keeps the work and shows one message |
 | **M4**, two-user contention | real SMB locking | 1.2.3 doc, M4 (B1–B3), GregDeskTop + TPVM1 | as in the 1.2.3 doc |
-| **M5**, stale-lock takeover | real timers across two computers | 1.2.3 doc, M5 (1)–(5), at ×3 | passed 2026-11-07 at ×3; re-run on the release candidate |
+| **M5**, stale-lock takeover | real timers across two computers | 1.2.3 doc, M5 (1)–(5), at ×3 | passed 2026-11-07 at ×3; re-run on the release candidate. **(4) changed for 1.2.4:** the other person takes over, changes nothing and closes; the sleeper wakes: no message, it stays the writer, its save lands |
+| **M5 (4b)**, new in 1.2.4 | the dangerous variant of (4) | as (4), but the other person adds a section and saves before closing | no message at the wake; the sleeper's first save (or autosave) is refused with the conflict banner, the only message; D has the other person's section only; the sleeper's section is in its kept copy |
 | **M5 wait wording** (4.12) | new in 1.2.4 | during a takeover wait at normal timings, watch the dialog | it says "(up to 3 minutes)" from 90 s on, and the wait ends by 170 s |
 | **M6**, sleep mid-save | real sleep and SMB caching | GregSurface, normal timings: save, then **Hibernate** at once; take the lock from GregDeskTop; wake after 4 min | no "lock confirmed" in the log after the wake; one lock-lost message; the work is kept (passed 2026-11-08) |
 | **M7**, an editor open across a lost lock | the open editor on screen | 1.2.3 doc, M7 | nothing written after the loss; the editor's changes are kept |
@@ -158,3 +159,79 @@ front:
   sideload is needed (the rig's RC still shows the notice); M5 (4)'s expectation is now "no message; Bob stays writer;
   his save lands" when the other person changed nothing, and M5 (4b) "Bob's first save is refused with the conflict
   banner, the only message" when they saved. M4 and M5 (1)-(3) don't touch this path and stand.
+- 2026-11-12 (evening): **RC2 built** from `afd863f` (= RC1 + `6e134ea`, the dropped notice; `afd863f` itself is
+  test-only): `\\mekler\Users\gregs\temp\msix-1.2.4.0-rc2\` (with `BUILD.txt`), installed on TPVM1 (×3, `Ready` retaken)
+  and GregDeskTop (normal timings). Lock-scenario review the same day (`tmp/network_scenarios/lock-scenarios-review.md`,
+  local only): no data-loss gap; two availability findings pinned as tests for 1.2.5.
+- 2026-11-12 (evening): **M5 (4) passed on RC2** (TPVM1 sleeper with unsaved ZZZT-4V, paused 300 s; GregDeskTop took
+  over, no edit, closed): no message on waking, TPVM1 stayed writer, its save landed (ZZZT-4V in D). GregDeskTop took
+  over with no wait, as designed: it had opened read-only at 19:47:01 just as the freeze began, its poll offered the lock
+  at 19:48:02, and at the click (19:48:43) it had watched the heartbeat stand still for 101 s, more than the ×3
+  confirmation (~57 s). **M5 (4b) passed on RC2**: GregDeskTop took over, saved ZZZT-4bA, closed; TPVM1 woke with no
+  message; its save was refused with the conflict banner, the only message; D has ZZZT-4bA, not ZZZT-4bV.
+  Left in Part 2: M5 (5), M5 wait wording, M1 Part A, M7, M8, M11, S3, S4.
+- 2026-11-12 (evening): **M5 (5) passed on RC2** (TPVM1 sleeper at ×3 with unsaved ZZZT-5V, paused 240 s; GregDeskTop
+  reader): after TPVM1 exited cleanly, GregDeskTop's "Take over as writer" appeared within ~60 s and worked; ZZZT-5V in D.
+  **Seen on the way (safe; rule 4, moved to 1.2.5 as S38):** at ×3 the frozen lock is stale after 60 s, so GregDeskTop,
+  read-only from 20:08:09, was offered the lock at 20:09:09 while TPVM1 was still frozen (correct). After TPVM1 resumed
+  the offer stayed on screen (polling stops once it offers); clicking it at 20:12:38 re-checked, found TPVM1 live and
+  went back to the read-only banner with no message. (1.2.3's run at normal timings never reached an offer before the
+  sleeper woke, so this wasn't seen then.) Left in Part 2: M5 wait wording, M1 Part A, M7, M8, M11, S3, S4.
+- 2026-11-12 (evening): **M5 wait wording passed on RC2** (normal timings on both computers; GregDeskTop opened into
+  "Database Lock Is Inactive" and took over at once): the wait dialog showed "Checking the lock (up to 3 minutes)" and
+  closed when the wait ended, as expected. Left in Part 2: M1 Part A, M7, M8, M11, S3, S4.
+- 2026-11-13: **M1 Part A, probe half, passed** (`tools/NetworkProbe` rebuilt on afd863f's `NetworkFileOps`, plus two
+  new cases for the readers' copy-and-hash of 1.2.4 items 5.3/5.5, `copy-hash-cb` and `copy-hash-cm`): 25 of 25
+  passed, both controls OK, no call-return over 0.31 s. Cut-before cases gave up at 5.0 s (integrity 5.3 s);
+  `copy-cm` caught in `CopyFile (write)` at 1.8 s, `hash-cm` in `ComputeHash (read)`, `copy-hash-cm` in
+  `CopyFile (read)` at 2.1–2.4 s. Report `tmp\netprobe\netprobe-20261113-075536.md`. Left in M1 Part A: the one
+  clumsy cut in TermPoint.
+- 2026-11-13: **M1 Part A, TermPoint cut, passed on RC2** (GregDeskTop writer, autosave off, clumsy Lag 110 then Drop
+  100 at about 09:12 during the save of `ZZZT-M1C`): Greg saw the outage notice as expected; log: `File.Stat timed out`
+  09:12:54 (the save's stat of D gave up), heartbeat renewal timed out 09:13:47, the next save landed 09:14:03, then
+  "Save recovered after failing". **Moved to 1.2.5 (Greg; backlog item M1A):** the notice ends "Press Save once the connection is
+  back." but nothing tells the user when that is (the notice clears silently when the heartbeat reaches the share, up
+  to ~60 s after the network returns). Left in Part 2: M7, M8, M11, S3, S4.
+- 2026-11-13: **M7 passed on RC2** (GregDeskTop, local copy `tmp\m7-124\M7-test.db`, autosave off, Alice via
+  `tmp\handtest_lock.py`): the heartbeat found Alice's lock (09:19:26, `NotOurs`, demoted in place with the takeover
+  banner, Alice's lock left alone); the course editor stayed open; its Apply was refused once (09:19:40) with the
+  plain sentence; clean exit; the change is not in the copy. The refusal shows in the app's error banner, which is
+  red: the 1.2.3 doc's "no red banner" meant no raw log text, which there wasn't. Left in Part 2: M8, M11, S3, S4.
+- 2026-11-13: **M8 passed** (GregDeskTop RC2, TPVM1 Store 1.2.3.4 beside its RC2; on TPVM1 the packaged builds keep
+  their data in their own package folders, so the two never shared settings or kept changes). D reset, then
+  `zzFutureField` = `keep-me` planted on Avril Alfred (`tmp\m8-124\BIOL-TT-m8-planted.db`). Dir 1: RC2 edited Avril
+  ("Alfred!") and saved `ZZZT-M8A` (09:44:03); 1.2.3 read-only, took over, saved `ZZZT-M8B`; RC2 reopened cleanly.
+  Dir 2: 1.2.3 writer; RC2 read-only naming TPVM1 (09:47:54), "lock file gone" 09:48:54, took over 09:49:01, saved
+  `ZZZT-M8D` (09:49:32). Dir 3: RC2 writer (09:49:45) with `ZZZT-M8E` unsaved, 1.2.3 joined read-only, RC2's save
+  landed with no conflict (09:50:55): a 1.2.3 reader leaves D alone. A copy of D (Claude): integrity ok, all five
+  sections, the planted field still `keep-me` through both versions' edits, no `MinimumVersionToWrite` row (every
+  RC2 open logged "stamp none"). Left in Part 2: M11, S3, S4.
+- 2026-11-13: **M11 (a), (c), (d) passed on RC2** (GregDeskTop writer from 09:54:45, TPVM1 restored to `Ready`).
+  (a) clumsy Drop at ~09:56 during a Save & Backup restore: the expected notice; the cut caught the save before the
+  restore (09:56:31 lock check timed out, "restore not started"), not the restore's own copy (about 600 KB, too quick
+  to aim at by hand; this morning's NetworkProbe covers its copy and hash calls); the next save recovered 09:57:30.
+  (c) TPVM1 read-only, Save & Backup offered no restore. (d) TPVM1's chooser refused the restore naming GregDeskTop.
+  Through (a)–(d) D was not written after GregDeskTop's 09:55 save and the lock stayed GregDeskTop's session
+  (heartbeat current at 10:08). Left in M11: (b).
+- 2026-11-13: **M11 (b) passed on RC2; M11 done** (summary 4.3 confirmed in the field). GregDeskTop saved
+  `ZZZT-M11B` (10:08:56), restored from Save & Backup (10:09:27 `DatabaseRestore: Restored`), released the lock;
+  10:09:35 "The main window closed but the main loop is still running; asking for the shutdown again" (4.3's fix (A)
+  fired: the old cause still happens, the fix now ends the process), Main returned; the relaunch logged "Started
+  after a restore: reopening the restored database" and took write access (10:09:37). Greg: the expected message,
+  the restored database opened directly, one TermPoint process (started 10:09:35, with its window). Copies (Claude):
+  D holds an older backup (343 sections, `ZZZT-309 D`…`ZZZT-412 S`, none from today), integrity ok;
+  `BIOL-TT (before restore 2026-11-13 10-09).db` holds today's work (`ZZZT-M8A`–`E`, `ZZZT-M11A`, `ZZZT-M11B`),
+  integrity ok. Left in Part 2: S3, S4.
+- 2026-11-13: **S3 passed on RC2** (TPVM1 writer at ×3, GregDeskTop reader). (a) clumsy Drop 100 on GregDeskTop,
+  Refresh: "Couldn't refresh: the database location isn't responding…" (log `refresh copy timed out`,
+  `SourceUnavailable`); network back, the next Refresh worked and cleared the line ("Refresh recovered after
+  failing"). (b) the reader's copy `…_BIOL-TT_ro.db` held open ('Read', 'ReadWrite'; a first try never ran, the
+  `Open` line was left unfinished at a `>>` prompt): 10:23:21 the swap's rename was refused (`ReplaceFailed`),
+  Greg saw "Couldn't refresh just now… Try again in a moment.", the view stayed usable (4.6: no more "lost its
+  connection" line); file released, 10:23:46 Refresh worked and showed the new section. No red log-text banner.
+  Left in Part 2: S4.
+- 2026-11-13: **S4 passed on RC2; Part 2 done** (GregDeskTop writer, a detached panel open, clumsy Lag 110):
+  `ZZZT-S4A` unsaved, X then more X clicks during the exit save (Greg: the cover screen, input blocked, panel hidden,
+  window closed when the save ended). Log: one "close request ignored — saving and closing is in progress"
+  (10:27:14), one save (10:27:33), clean shutdown, lock released 10:27:34. A copy of D (Claude): `ZZZT-S4A` present,
+  integrity ok. Not tried: the 2-minute backstop (Debug-build switch).
