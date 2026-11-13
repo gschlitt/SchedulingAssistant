@@ -26,7 +26,7 @@ public static class SaveConflictPrompt
     public const string BannerMessage =
         "TermPoint can't save your changes: the database was changed elsewhere since you opened it. " +
         "Save your version as a separate file, or discard your changes, " +
-        "and TermPoint will reopen the current database.";
+        "and TermPoint will reopen the database.";
 
     /// <summary>Label of the banner's first button: save the user's version as a separate file.</summary>
     public const string SaveCopyButton = "Save a Copy…";

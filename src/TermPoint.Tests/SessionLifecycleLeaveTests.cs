@@ -41,7 +41,7 @@ public sealed class SessionLifecycleLeaveTests : SessionLifecycleTestBase
     private const string ChangesNotSavedAtClose =
         "Your latest changes couldn't be saved to the database. They're kept on this computer. " +
         "TermPoint will offer to add them to the database the next time you open it for editing. " +
-        "If someone else changes the database first, they can't be added, but you'll be able to save them as a separate copy.";
+        "If someone else changes the database first, the changes can't be added, but you'll be able to save them as a separate copy.";
 
     /// <summary>The context the teardown logs an unexpected exception under.</summary>
     private const string ShutdownErrorContext = "Error during shutdown — some changes may not have been saved";
@@ -1120,10 +1120,10 @@ public sealed class SessionLifecycleLeaveTests : SessionLifecycleTestBase
         Assert.NotEqual(working, snapshot);
         var banner = Assert.Single(_host.LockLossSurface.SaveErrors);
         Assert.Equal(
-            "other_user on OTHER-PC has taken over editing this database, so it's read-only for you now. " +
+            "other_user on OTHER-PC has taken over editing this database, so it has been made read-only for you now. " +
             "Your changes since your last save are kept on this computer. " +
             "TermPoint will offer to add them to the database the next time you open it for editing. " +
-            "If someone else changes the database first, they can't be added, but you'll be able to save them as a separate copy. " +
+            "If someone else changes the database first, the changes can't be added, but you'll be able to save them as a separate copy. " +
             "To edit again once they've finished, close TermPoint and open it again.",
             banner);
         AssertInOrder(_trace,
@@ -1268,7 +1268,7 @@ public sealed class SessionLifecycleLeaveTests : SessionLifecycleTestBase
         var snapshot = _checkout.WorkingPath;
         Assert.Equal(
             "Another program removed or changed the file TermPoint uses to mark this database as in use " +
-            "(antivirus or cloud-sync software can do this), so it's read-only for you now. " +
+            "(antivirus or cloud-sync software can do this), so it has been made read-only for you now. " +
             "There were no unsaved changes at the time. " +
             "To edit again, close TermPoint and open it again.",
             Assert.Single(_host.LockLossSurface.SaveErrors));

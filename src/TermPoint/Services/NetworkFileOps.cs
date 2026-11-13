@@ -111,7 +111,7 @@ public static class NetworkFileOps
     /// Standard user-facing message for network timeout failures.
     /// </summary>
     public const string UnreachableMessage =
-        "Cannot reach the database — check your network connection and try again.";
+        "Cannot reach the database or server — check your network connection and try again.";
 
     // ── Named helpers ─────────────────────────────────────────────────────────
 

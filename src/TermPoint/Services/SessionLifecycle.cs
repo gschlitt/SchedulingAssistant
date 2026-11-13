@@ -447,8 +447,7 @@ public sealed class SessionLifecycle
                         }
                         if (forceOutcome == CheckoutOutcome.NetworkUnreachable)
                         {
-                            await _prompts.ShowMessageAsync("Network Unreachable",
-                                "Cannot reach the database — check your network connection and try again.");
+                            await _prompts.ShowMessageAsync("Network Unreachable", NetworkFileOps.UnreachableMessage);
                             return null;
                         }
                         if (forceOutcome == CheckoutOutcome.SourceUnreadable)
@@ -492,8 +491,7 @@ public sealed class SessionLifecycle
                 }
 
             case CheckoutOutcome.NetworkUnreachable:
-                await _prompts.ShowMessageAsync("Network Unreachable",
-                    "Cannot reach the database — check your network connection and try again.");
+                await _prompts.ShowMessageAsync("Network Unreachable", NetworkFileOps.UnreachableMessage);
                 return null;
 
             case CheckoutOutcome.SourceMissing:

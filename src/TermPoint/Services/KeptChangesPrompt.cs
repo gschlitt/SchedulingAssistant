@@ -45,7 +45,7 @@ public static class KeptChangesPrompt
     /// </summary>
     public const string OfferToAdd =
         "TermPoint will offer to add them to the database the next time you open it for editing. " +
-        "If someone else changes the database first, they can't be added, but you'll be able to save them as a separate copy.";
+        "If someone else changes the database first, the changes can't be added, but you'll be able to save them as a separate copy.";
 
     /// <summary>
     /// Same promise as <see cref="OfferToAdd"/>, naming the database. For the message shown while leaving one database
@@ -55,7 +55,7 @@ public static class KeptChangesPrompt
     /// <returns>The sentence pair, with the name in straight double quotes.</returns>
     public static string OfferToAddTo(string databaseName)
         => $"TermPoint will offer to add them to \"{databaseName}\" the next time you open it for editing. " +
-           "If someone else changes it first, they can't be added, but you'll be able to save them as a separate copy.";
+           "If someone else changes it first, the changes can't be added, but you'll be able to save them as a separate copy.";
 
     // ── "Unsaved Changes Kept" ────────────────────────────────────────────────
 

@@ -43,7 +43,7 @@ public static class SavePrompt
     /// <summary>A torn transfer: the file written beside the database did not hash the same as the snapshot.</summary>
     public const string VerifyFailedMessage =
         "TermPoint couldn't save because the file it wrote to the database location didn't pass its check. " +
-        "The database wasn't changed, and your changes are kept.";
+        "The database wasn't changed, and your changes are kept on this computer.";
 
     /// <summary>The final safety net in <see cref="CheckoutService.SaveAsync"/>: an exception nobody anticipated.</summary>
     public const string UnexpectedMessage =

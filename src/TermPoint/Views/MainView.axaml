@@ -441,7 +441,7 @@
 					DockPanel.Dock="Right"
 					FontSize="{StaticResource FontSizeNormal}"
 					IsVisible="{Binding ShowWriteLockAvailablePrompt}"
-					ToolTip.Tip="The write lock is no longer held. Click to acquire write access." />
+					ToolTip.Tip="The database is now available to edit. Click to acquire write access." />
 				<!--  Shown when this database needs a newer TermPoint and the app came from the Microsoft Store (spec item 3)  -->
 				<Button
 					Margin="8,0,0,0"

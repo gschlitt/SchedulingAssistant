@@ -654,7 +654,7 @@ public sealed class SessionLifecycleTests : SessionLifecycleTestBase
                     "Someone else is editing this database right now, so your unsaved changes from last time can't be added yet. " +
                     "They're kept on this computer. " +
                     "TermPoint will offer to add them to the database the next time you open it for editing. " +
-                    "If someone else changes the database first, they can't be added, but you'll be able to save them as a separate copy.");
+                    "If someone else changes the database first, the changes can't be added, but you'll be able to save them as a separate copy.");
 
         var next = await StartupAsync(db);
 
@@ -756,7 +756,7 @@ public sealed class SessionLifecycleTests : SessionLifecycleTestBase
         var db = NewDb();
         _checkout.FaultPlan = CheckoutFaultPlan.Parse("unreachable");
         _prompts.ExpectMessage(
-            "Network Unreachable", "Cannot reach the database — check your network connection and try again.");
+            "Network Unreachable", "Cannot reach the database or server — check your network connection and try again.");
 
         var next = await StartupAsync(db);
 
@@ -1092,7 +1092,7 @@ public sealed class SessionLifecycleTests : SessionLifecycleTestBase
             "Changes Not Saved",
             "Your latest changes to \"a\" couldn't be saved. They're kept on this computer. " +
             "TermPoint will offer to add them to \"a\" the next time you open it for editing. " +
-            "If someone else changes it first, they can't be added, but you'll be able to save them as a separate copy.");
+            "If someone else changes it first, the changes can't be added, but you'll be able to save them as a separate copy.");
 
         var opened = await _lifecycle.SwitchDatabaseAsync(b);
         _checkout.BeforeTmpVerifyAsync = null;
@@ -1212,7 +1212,7 @@ public sealed class SessionLifecycleTests : SessionLifecycleTestBase
         var c = NewDb("c.db");
         await OpenCleanAsync(a);
         _checkout.FaultPlan = CheckoutFaultPlan.Parse("unreachable:1");
-        _prompts.ExpectMessage("Network Unreachable", "Cannot reach the database — check your network connection and try again.")
+        _prompts.ExpectMessage("Network Unreachable", "Cannot reach the database or server — check your network connection and try again.")
                 .ExpectChooser(c, $"Recovery|SwitchFailed|{b}");
 
         var opened = await _lifecycle.SwitchDatabaseAsync(b);

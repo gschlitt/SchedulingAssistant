@@ -8,7 +8,7 @@ namespace TermPoint.Tests.Harness;
 /// checked when they become decidable:
 /// <list type="bullet">
 /// <item><description><b>WillOfferRestore</b> ("TermPoint will offer to add them to the database the next time you open it for
-/// editing. If someone else changes the database first, they can't be added, but you'll be able to save them as a separate
+/// editing. If someone else changes the database first, the changes can't be added, but you'll be able to save them as a separate
 /// copy", the wording of spec item 28): decidable at that computer's next edit-access open <i>of the same database</i>
 /// (production keeps unsaved changes per database, so opening a different one correctly offers nothing). The promise has two
 /// outcomes and both are checked. If Restore is chosen and the database did not change in the meantime the work must really

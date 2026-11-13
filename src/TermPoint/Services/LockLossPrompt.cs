@@ -30,11 +30,11 @@ public static class LockLossPrompt
     /// <param name="who">The new holder as <c>"Username on Machine"</c>, or just <c>"Username"</c> when the machine is unknown.</param>
     /// <returns>The sentence.</returns>
     public static string TakenOverBy(string who)
-        => $"{who} has taken over editing this database, so it's read-only for you now.";
+        => $"{who} has taken over editing this database, so it has been made read-only for you now.";
 
     /// <summary>First sentence of the banner when the lock was taken over and the new holder cannot be named.</summary>
     public const string TakenOverByUnknown =
-        "Someone else has taken over editing this database, so it's read-only for you now.";
+        "Someone else has taken over editing this database, so it has been made read-only for you now.";
 
     /// <summary>
     /// First sentence of the banner for every reason other than a takeover: the lock file was deleted <b>or is
@@ -43,7 +43,7 @@ public static class LockLossPrompt
     /// </summary>
     public const string FileRemovedOrChanged =
         "Another program removed or changed the file TermPoint uses to mark this database as in use " +
-        "(antivirus or cloud-sync software can do this), so it's read-only for you now.";
+        "(antivirus or cloud-sync software can do this), so it has been made read-only for you now.";
 
     // ── The lock-lost banner, middle (the user's changes) ─────────────────────
 

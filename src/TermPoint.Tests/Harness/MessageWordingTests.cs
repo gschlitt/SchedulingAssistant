@@ -110,7 +110,7 @@ public sealed class MessageWordingTests
     [Fact]
     public void BannerWithChangesNotSaved_IsF17_AndTwoBanners_AreF18()
     {
-        var takeover = Seen("bob", "", "Alice has taken over editing this database, so it's read-only for you now. More.");
+        var takeover = Seen("bob", "", "Alice has taken over editing this database, so it has been made read-only for you now. More.");
         var removed  = Seen("bob", "", "Another program removed the file TermPoint uses to mark this database as in use. More.");
         var notSaved = Seen("bob", KeptChangesPrompt.ChangesNotSavedTitle, "Your latest changes couldn't be saved to the database. More.");
 

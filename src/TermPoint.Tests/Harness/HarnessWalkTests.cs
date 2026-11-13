@@ -304,10 +304,10 @@ public sealed class HarnessWalkTests
 
         var banner = Assert.Single(bob.Host.LockLossSurface.SaveErrors);
         Assert.Equal(
-            "alice on ALICE-PC has taken over editing this database, so it's read-only for you now. " +
+            "alice on ALICE-PC has taken over editing this database, so it has been made read-only for you now. " +
             "Your changes since your last save are kept on this computer. " +
             "TermPoint will offer to add them to the database the next time you open it for editing. " +
-            "If someone else changes the database first, they can't be added, but you'll be able to save them as a separate copy. " +
+            "If someone else changes the database first, the changes can't be added, but you'll be able to save them as a separate copy. " +
             "To edit again once they've finished, close TermPoint and open it again.",
             banner);
         Assert.Equal(CheckoutMode.ReadOnly, bob.Checkout.Mode);

@@ -14,13 +14,13 @@ public sealed class LockLossPromptTests
     private const string KeptTail =
         " Your changes since your last save are kept on this computer. " +
         "TermPoint will offer to add them to the database the next time you open it for editing. " +
-        "If someone else changes the database first, they can't be added, but you'll be able to save them as a separate copy.";
+        "If someone else changes the database first, the changes can't be added, but you'll be able to save them as a separate copy.";
 
     /// <summary>Taken over, holder known, unsaved changes: the full approved banner.</summary>
     [Fact]
     public void Banner_TakenOver_HolderKnown_WithUnsavedChanges()
         => Assert.Equal(
-            "alice on ALICE-PC has taken over editing this database, so it's read-only for you now." + KeptTail +
+            "alice on ALICE-PC has taken over editing this database, so it has been made read-only for you now." + KeptTail +
             " To edit again once they've finished, close TermPoint and open it again.",
             LockLossPrompt.Banner(takenOver: true, "alice", "ALICE-PC", hadUnsavedChanges: true));
 
@@ -32,7 +32,7 @@ public sealed class LockLossPromptTests
     public void Banner_WithUnappliedEditorChanges_AddsTheSentenceAfterTheChangesPart()
     {
         Assert.Equal(
-            "Someone else has taken over editing this database, so it's read-only for you now. " +
+            "Someone else has taken over editing this database, so it has been made read-only for you now. " +
             "There were no unsaved changes at the time. " +
             "Changes you hadn't applied in the open editor couldn't be saved. " +
             "To edit again once they've finished, close TermPoint and open it again.",
@@ -49,7 +49,7 @@ public sealed class LockLossPromptTests
     [InlineData("   ")]
     public void Banner_TakenOver_HolderUnknown_WithoutUnsavedChanges(string? username)
         => Assert.Equal(
-            "Someone else has taken over editing this database, so it's read-only for you now. " +
+            "Someone else has taken over editing this database, so it has been made read-only for you now. " +
             "There were no unsaved changes at the time. " +
             "To edit again once they've finished, close TermPoint and open it again.",
             LockLossPrompt.Banner(takenOver: true, username, "ALICE-PC", hadUnsavedChanges: false));
@@ -58,14 +58,14 @@ public sealed class LockLossPromptTests
     [Fact]
     public void Banner_TakenOver_HolderUnknown_WithUnsavedChanges()
         => Assert.Equal(
-            "Someone else has taken over editing this database, so it's read-only for you now." + KeptTail +
+            "Someone else has taken over editing this database, so it has been made read-only for you now." + KeptTail +
             " To edit again once they've finished, close TermPoint and open it again.",
             LockLossPrompt.Banner(takenOver: true, null, null, hadUnsavedChanges: true));
 
     /// <summary>A holder with a name but no machine name is named without " on …" (no "alice on  has…").</summary>
     [Fact]
     public void Banner_TakenOver_HolderWithoutMachine_NamesJustTheUser()
-        => Assert.StartsWith("alice has taken over editing this database, so it's read-only for you now.",
+        => Assert.StartsWith("alice has taken over editing this database, so it has been made read-only for you now.",
             LockLossPrompt.Banner(takenOver: true, "alice", "  ", hadUnsavedChanges: false));
 
     /// <summary>The lock file was deleted or is unreadable (F13): "removed or changed", with unsaved changes.</summary>
@@ -73,7 +73,7 @@ public sealed class LockLossPromptTests
     public void Banner_FileRemovedOrChanged_WithUnsavedChanges()
         => Assert.Equal(
             "Another program removed or changed the file TermPoint uses to mark this database as in use " +
-            "(antivirus or cloud-sync software can do this), so it's read-only for you now." + KeptTail +
+            "(antivirus or cloud-sync software can do this), so it has been made read-only for you now." + KeptTail +
             " To edit again, close TermPoint and open it again.",
             LockLossPrompt.Banner(takenOver: false, null, null, hadUnsavedChanges: true));
 
@@ -82,7 +82,7 @@ public sealed class LockLossPromptTests
     public void Banner_FileRemovedOrChanged_WithoutUnsavedChanges_IgnoresAnyHolder()
         => Assert.Equal(
             "Another program removed or changed the file TermPoint uses to mark this database as in use " +
-            "(antivirus or cloud-sync software can do this), so it's read-only for you now. " +
+            "(antivirus or cloud-sync software can do this), so it has been made read-only for you now. " +
             "There were no unsaved changes at the time. " +
             "To edit again, close TermPoint and open it again.",
             LockLossPrompt.Banner(takenOver: false, "alice", "ALICE-PC", hadUnsavedChanges: false));
