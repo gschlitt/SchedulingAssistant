@@ -5,7 +5,8 @@ Current phase: **3 — UX Sketch, in wireframe rounds** (round 1 settled 2026-11
 draft is ideas to try). Phase 2 locked 2026-11-10
 (Q18's extra part names and Q28 left open, not blocking); Phase 1 locked 2026-11-06.
 Last session: 2026-11-10
-Next step: Greg's review of wireframe round 3 (stepping, pins, subsets); round 2 settled 2026-11-10. D26: tags watchable directly. D25 (2026-11-10): an access watch is a
+Next step: Greg's review of wireframe round 4 (presets and Watch at the filter bar, watching a tag, Add a
+watch by picking or pasting courses). Rounds 1–3 settled.
 filter preset you choose to watch; round 4 moves to the filter bar
 Release: not scheduled. Probably not 1.2.4; the spec continues ahead of coding and the release is decided later
 
@@ -559,8 +560,8 @@ shows; the sections below are ideas to try until a round confirms them.
 |---|---|---|
 | 1 | The Access tab's watch list, the filter-bar summary, popping tabs out (`access-panel-r1.html`) | **Settled 2026-11-10** |
 | 2 | Opening a watch: what its line and detail say, and the grid picture (`access-panel-r2.html`; numbers computed from a mock semester by a miniature slate search) | Reviewed 2026-11-10; revision 2b built (folded detail, health-line hovers, "any 1 of 3 sections" wording, per-line marks, grey-out-or-keep toggle for other grid marks); 2b reviewed; 2c built (fewer hovers, help icon, other courses hidden while a watch is open). **Settled 2026-11-10** |
-| 3 | Stepping through slates, pins, ticking a subset (`access-panel-r3.html`) | Reviewed 2026-11-11; 3b built (no "any 3" line, stepper in the legend bar, stranded sections flagged, yellow cautions for hard-to-reach and heavy-load sections, clickable section names, legend bar without a key, pins made obvious with Unpin all), awaiting Greg |
-| 4 | Saving a filter preset and watching it, at the filter bar (D25); ticking Watch on a tag (D26); picking several courses easily | — |
+| 3 | Stepping through slates, pins, ticking a subset, stranded and yellow cautions, clickable names (`access-panel-r3.html`) | **Settled 2026-11-13** (after 3b revisions, points 1–8 below) |
+| 4 | Saving a filter preset and watching it, at the filter bar (D25); ticking Watch on a tag (D26); picking several courses easily (`access-panel-r4.html`) | Built 2026-11-13, awaiting Greg |
 | later | Courses (parts), Copy Semester, Check all courses | — |
 
 **Round 1, settled by Greg (2026-11-10).** Judged at the level of the list, not the wording of each health line or
@@ -647,6 +648,32 @@ the opened watch (round 2).
    overview and while stepping; pinned sections are bold with a pin on the grid and in the stepper's slate. Pins get
    their own colour (indigo in the mock: purple is shared overlays, blue is selection); to settle with the theme.
    The legend bar wraps to a second row when it's full.
+
+**Round 4 as built (2026-11-13, awaiting Greg).**
+**Round 4, Greg's review so far (2026-11-13).**
+1. **+ Add a watch has no flow of its own;** it opens Presets (below).
+2. **"Presets" is the right word; it stays in the Filters group,** at least for now.
+
+- **Presets** is the first button in the Filters group (bookmark icon). Its label names the preset the bar's filters
+  match, or "Enviro Y2 (changed)" after a change; the popup then offers **Update Enviro Y2**. Clicking a preset's name
+  applies it. **Save current filters as a preset** (name + Save) is at the bottom; with no filters it says to choose
+  some first.
+- Each preset row: name, course count (this semester's result), **Watch** tick, ⋯ (rename, delete: stubs). Ticking
+  Watch shows once: "Watching Enviro Y2. TermPoint will check that students can take all 5 of these courses in one
+  term. Open it". Unticking: "Stopped watching. The preset stays."
+- **Tags popup:** an eye beside each tag watches it (D26), with the same one sentence. Tag-made watches never appear
+  among presets.
+- **Course popup:** a box at the top narrows the list as you type; pasting several codes ("biol201, CHEM-213; STAT
+  104") ticks every one found and names any not found.
+- **+ Add a watch** (Access tab) has **no flow of its own** (Greg, round 4 review: a watch is exactly a watched
+  Filter Set, made and edited that way; a second way would confuse). It opens Presets with one line at the top: "A
+  watch is a preset you tick Watch on. Set the filters on the bar (in Course you can paste course codes), save them
+  here as a preset, then tick Watch."
+- **An open watch** shows its source ("Watching the preset Enviro Y2: Course: …" or "Watching the tag …"), **Edit
+  filters** (presets only: leaves its filters on the bar and points to Update in Presets) and a **Watch** tick
+  (untick = stop watching; the preset or tag stays). Edit / On / Delete are gone.
+- **Opening a watch puts its Filter Set on the bar; closing it puts the user's own filters back.** Changing a filter
+  while a watch is open closes the watch, and the bar reads "Enviro Y2 (changed)".
 
 **Keep the interfaces open for other departments' data (Greg, 2026-11-10).** Proper sharing with other departments
 is coming: their courses will be filterable like the department's own, and the analyzer must handle that data. Not
