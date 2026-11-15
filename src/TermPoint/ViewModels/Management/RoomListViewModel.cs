@@ -206,7 +206,7 @@ public partial class RoomListViewModel : ViewModelBase, IDismissableEditor, IUna
             CampusId   = s.CampusId,
             RoomTypeId = s.RoomTypeId,
             SortOrder  = s.SortOrder,
-        }.WithExtensionDataFrom(s); // Save writes the whole copy back: keep unknown JSON fields (spec item 3).
+        }.WithExtensionDataFrom(s); // Save writes the whole copy back: keep unknown JSON fields.
         EditVm = new RoomEditViewModel(copy, isNew: false,
             campusOptions: BuildCampusOptions(),
             roomTypeOptions: BuildRoomTypeOptions(),

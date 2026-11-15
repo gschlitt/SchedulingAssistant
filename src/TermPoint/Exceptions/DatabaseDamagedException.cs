@@ -3,7 +3,7 @@ using TermPoint.Services;
 namespace TermPoint.Exceptions;
 
 /// <summary>
-/// The named exception of a DAMAGE REPORT (spec item 5, step 5e): it is never thrown to anyone — the damaged
+/// The named exception of a DAMAGE REPORT: it is never thrown to anyone — the damaged
 /// database was already refused and the user already told — it exists so BugSnag receives an error that has a name
 /// and groups sensibly. <see cref="DatabaseDamageReporter"/> creates it and hands it to
 /// <see cref="IAppLogger.ReportHandled"/>.

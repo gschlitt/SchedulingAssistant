@@ -5,7 +5,7 @@ using TermPoint.Models;
 namespace TermPoint.Services;
 
 /// <summary>
-/// The lock timers of <see cref="WriteLockService"/> as ONE set, divided by ONE whole-number scale factor (spec item 8.7, 1.2.4).
+/// The lock timers of <see cref="WriteLockService"/> as ONE set, divided by ONE whole-number scale factor.
 /// The factor exists so a test build can make the lock's waiting (a heartbeat a minute, a lock stale after three minutes, a
 /// takeover confirmed after 170 seconds) take a third of the time, and so field tests of stale locks and takeovers need minutes
 /// rather than the better part of an hour. The RATIOS between the timers are what keep the lock safe, so they are scaled together

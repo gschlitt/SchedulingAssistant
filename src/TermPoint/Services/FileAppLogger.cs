@@ -53,7 +53,7 @@ public sealed class FileAppLogger : IAppLogger
         // designed: leave a local line and show the one plain message as the banner (NotifyUser), never the
         // developer label in `context`. The banner, not the call site's inline error text: the management views
         // hide their inline error line while an editor is open, and a refused Apply keeps the editor open, so
-        // an inline message would be invisible (found in the F4 hand test, 2026-10-21). WriteFailureText.For
+        // an inline message would be invisible. WriteFailureText.For
         // therefore gives the call site no inline text for this exception. No BugSnag report, and no
         // ThrowOnError re-throw (that would break the debugger on something that is not a bug).
         if (WriteFailureText.IsWriteAccessLost(ex))

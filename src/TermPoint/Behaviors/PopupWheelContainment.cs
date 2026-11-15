@@ -42,8 +42,6 @@ namespace TermPoint.Behaviors;
 ///
 /// This is unrelated to <see cref="SuppressPopupScrollBehavior"/>, which handles
 /// <c>RequestBringIntoView</c>, not wheel events.
-///
-/// See spec_version_1.2.3.md, item 19.
 /// </summary>
 public static class PopupWheelContainment
 {

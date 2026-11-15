@@ -111,7 +111,7 @@
                     </StackPanel>
                 </Grid>
 
-                <!--  Retention beyond the recent backups (1.2.4 item 4.9, BackupService.SelectBackupsToDelete)  -->
+                <!--  Retention beyond the recent backups (BackupService.SelectBackupsToDelete)  -->
                 <TextBlock
                     FontSize="{StaticResource FontSizeNormal}"
                     Foreground="{StaticResource TextMuted}"
@@ -151,7 +151,7 @@
                     FontWeight="SemiBold"
                     Text="Restore from Backup" />
 
-                <!--  Texts live in Services/RestorePrompt.cs (spec item 5b)  -->
+                <!--  Texts live in Services/RestorePrompt.cs  -->
                 <TextBlock
                     FontSize="{StaticResource FontSizeNormal}"
                     Foreground="{StaticResource TextDimLabel}"

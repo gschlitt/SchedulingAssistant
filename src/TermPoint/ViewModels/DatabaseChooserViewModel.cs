@@ -42,15 +42,14 @@ public enum RecoveryReason
     Unreadable,
 
     /// <summary>
-    /// A database switch failed after the previously open database had already been closed (spec
-    /// item 4d), so no database is open. Not a statement about the saved path — which stays in the
+    /// A database switch failed after the previously open database had already been closed, so no database is open. Not a statement about the saved path — which stays in the
     /// recent list, since a retry will often succeed — only that the user must now choose one.
     /// </summary>
     SwitchFailed,
 
     /// <summary>
     /// Another live TermPoint process of this user already has the chosen database open on this
-    /// computer (spec item 4b, <see cref="DatabaseInstanceGuard"/>), so this one was refused before it
+    /// computer (<see cref="DatabaseInstanceGuard"/>), so this one was refused before it
     /// touched anything. Not damage, and not a problem with the path — which stays in the recent list.
     /// The user picks a different database or exits; picking the same one again is refused again.
     /// </summary>
@@ -84,7 +83,7 @@ public enum ChooserOption
 }
 
 /// <summary>
-/// What the chooser knows about the restore destination, from its deadline-bounded probe (spec item 5c). Decides
+/// What the chooser knows about the restore destination, from its deadline-bounded probe. Decides
 /// the Step 2 status text and whether Continue is enabled.
 /// </summary>
 public enum RestoreDestinationState
@@ -477,7 +476,7 @@ public partial class DatabaseChooserViewModel : ObservableObject
         }
     }
 
-    // ── Restore from backup (spec item 5, step 5c) ───────────────────────
+    // ── Restore from backup ──────────────────────────────────────────────
 
     /// <summary>
     /// The raw database path the chooser was opened about (the constructor's argument, null when none), as opposed
@@ -618,7 +617,7 @@ public partial class DatabaseChooserViewModel : ObservableObject
         var path = await PickBackupFileAsync();
         if (path is null) return;
 
-        // A damaged BACKUP is reported as such (spec item 5, step 5e), not as a damaged shared database.
+        // A damaged BACKUP is reported as such, not as a damaged shared database.
         var backupValidation = await DatabaseValidator.ValidateAsync(path, DamagedFileKind.BackupBeingRestored);
         if (backupValidation == DatabaseValidationResult.Unreachable)
         {

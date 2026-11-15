@@ -18,11 +18,10 @@ public static class TpConfigService
     };
 
     /// <summary>
-    /// Writes a .tpconfig file to <paramref name="dbFolder"/> under the network deadline (1.2.4 item 4.10, A5): the
-    /// folder is the database's own, usually on a share, and a share that stops answering used to freeze the window
-    /// here. The filename is derived from the academic unit abbreviation: "{abbrev}-TT.tpconfig", or
+    /// Writes a .tpconfig file to <paramref name="dbFolder"/> under the network deadline: the
+    /// folder is the database's own, usually on a share, and a share that stops answering must not freeze the window. The filename is derived from the academic unit abbreviation: "{abbrev}-TT.tpconfig", or
     /// "config.tpconfig" if the abbreviation is blank. The file is JSON written as UTF-8 WITHOUT a byte-order mark,
-    /// the same bytes <c>File.WriteAllText</c> wrote before. Non-fatal: never throws; the outcome says what happened.
+    /// the same bytes <c>File.WriteAllText</c> writes. Non-fatal: never throws; the outcome says what happened.
     /// </summary>
     /// <param name="dbFolder">Folder that contains the database file.</param>
     /// <param name="data">Configuration data to serialize.</param>

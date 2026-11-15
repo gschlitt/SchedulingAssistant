@@ -94,7 +94,7 @@ public static partial class PlatformProcess
     /// <summary>
     /// Launches an executable by path, as a NEW process. On macOS, uses <c>open -n</c> for .app bundles: without
     /// <c>-n</c>, <c>open</c> only brings an already-running copy forward, and the copy that relaunches is still
-    /// running when it does so (spec 1.2.4 item 4.3).
+    /// running when it does so.
     /// </summary>
     /// <param name="exePath">Full path to the executable.</param>
     /// <param name="args">Arguments for the new process, one per element (quoted by .NET as needed); none by default.</param>

@@ -47,7 +47,7 @@ public enum ImportOutcomeKind
 
     /// <summary>
     /// Something in the database changed since the file was checked, so the new result differs from what the
-    /// user saw. Nothing was written; the new report is to be shown instead (spec decision D4).
+    /// user saw. Nothing was written; the new report is to be shown instead.
     /// </summary>
     Changed,
 }

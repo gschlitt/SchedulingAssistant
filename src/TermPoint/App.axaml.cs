@@ -48,7 +48,7 @@ public partial class App : Application
 
     /// <summary>
     /// Builds the BugSnag client. Every error report and session batch it sends goes through
-    /// <see cref="ScrubbingDelivery"/> (spec item 6, step 6b), which removes paths, email addresses and known user and
+    /// <see cref="ScrubbingDelivery"/>, which removes paths, email addresses and known user and
     /// computer names, takes out the computer's name, stamps the anonymous install ID, and drops anything it can't check.
     /// </summary>
     /// <returns>The configured client.</returns>
@@ -97,8 +97,8 @@ public partial class App : Application
     public static WriteLockService LockService { get; } = new WriteLockService();
 
     /// <summary>
-    /// DEBUG-ONLY fault injection for the open-time integrity check of the local copy (spec item 5, step 5d) and
-    /// for the version gate's stamp read (spec item 3, step 3c), from the <c>TERMPOINT_DEBUG_FAIL_INTEGRITY</c>
+    /// DEBUG-ONLY fault injection for the open-time integrity check of the local copy and
+    /// for the version gate's stamp read, from the <c>TERMPOINT_DEBUG_FAIL_INTEGRITY</c>
     /// environment variable (see <see cref="IntegrityFaultPlan"/>). Consulted by <see cref="InitializeServices"/>
     /// (the <c>locked</c> and <c>damaged</c> faults), by the main window's re-check of the shared database (the
     /// <c>shared</c> fault) and by <see cref="Checkout"/> (the <c>stamp</c> fault). Null in a Release build and in
@@ -129,7 +129,7 @@ public partial class App : Application
     public static CheckoutService Checkout { get; } = CreateCheckoutService();
 
     /// <summary>
-    /// The per-database, per-user single-instance guard (spec item 4b). <c>MainWindow</c> takes it for a
+    /// The per-database, per-user single-instance guard. <c>MainWindow</c> takes it for a
     /// database BEFORE any cleanup, crash detection or checkout — at startup and on every database switch
     /// — and releases it when the database is closed and on exit. Declared after <see cref="Logger"/> so
     /// the logger exists when it is created (static initializers run in textual order).
@@ -307,7 +307,7 @@ public partial class App : Application
 
         // ── Popup wheel containment ─────────────────────────────────────────
         // Stops a mouse-wheel tick inside any popup (dropdowns, pickers, flyouts)
-        // from escaping and scrolling the area behind it (spec item 19). Kept
+        // from escaping and scrolling the area behind it. Kept
         // outside the #if so the WASM demo gets it too.
         TermPoint.Behaviors.PopupWheelContainment.Register();
 
@@ -419,9 +419,9 @@ public partial class App : Application
         foreach (var err in TourCatalog.Validate())
             Logger.LogInfo($"[TourCatalog] {err}");
 
-        // Integrity gate on the LOCAL copy. dbPath is always the local copy — D' (writer) or D'' (reader): since
-        // spec item 4a nothing opens the shared D, and every caller (startup, switch, the wizard) passes the
-        // copy that the checkout made. The gate is three-way (spec item 5, step 5d): Ok opens; a copy that
+        // Integrity gate on the LOCAL copy. dbPath is always the local copy — D' (writer) or D'' (reader): nothing
+        // opens the shared D, and every caller (startup, switch, the wizard) passes the
+        // copy that the checkout made. The gate is three-way: Ok opens; a copy that
         // another program holds open (antivirus checking a file that was just copied) is retried quietly,
         // 3 attempts a second apart, and then reported as DatabaseInUseException; only positive evidence of
         // damage is DatabaseCorruptException. Both are handled by MainWindow, which decides what to do next.
@@ -444,10 +444,10 @@ public partial class App : Application
 
         var dbCtx = Services.GetRequiredService<IDatabaseContext>();
         // Subscribe ResetDirty to BeforeDirtyMarkerDeleted (synchronous, fires inside
-        // SaveAsyncCore step 7 right before the marker file is deleted). The previous
-        // wiring used SaveCompleted, which is dispatched to the UI thread AFTER the
+        // SaveAsyncCore step 7 right before the marker file is deleted). Do not use
+        // SaveCompleted instead: it is dispatched to the UI thread AFTER the
         // marker is already gone — opening a window during which a write could fail
-        // to re-arm the marker, leading to silent data loss on crash. (F2.)
+        // to re-arm the marker, leading to silent data loss on crash.
         App.Checkout.BeforeDirtyMarkerDeleted += dbCtx.ResetDirty;
 
         // Fall back to persisted AppSettings values when no in-memory IDs were passed.
@@ -502,10 +502,10 @@ public partial class App : Application
         // readOnly: any session that does not hold the write lock (reader / observer mode, the version-gate
         // or fallback snapshot D''). Checkout has already run by the time this is resolved, so Mode is final.
         // Mode, not IsReadOnlyMode: IsReadOnlyMode means "on a D'' snapshot", and a demoted writer is read-only before
-        // its snapshot exists. (It is no longer sticky: every checkout clears it, 1.2.4 items 3.3 / 4.5.)
+        // its snapshot exists. (It is not sticky: every checkout clears it.)
         services.AddSingleton<IDatabaseContext>(_ => new DatabaseContext(
             dbPath, App.Checkout.MarkDirty, readOnly: App.Checkout.Mode != CheckoutMode.WriteAccess,
-            onEveryWrite: App.Checkout.NoteEdit));   // counts every edit so a save can tell one arrived while it ran (spec item 3.2)
+            onEveryWrite: App.Checkout.NoteEdit));   // counts every edit so a save can tell one arrived while it ran
         services.AddSingleton<IAcademicYearRepository, AcademicYearRepository>();
         services.AddSingleton<ISemesterRepository, SemesterRepository>();
         services.AddSingleton<IInstructorRepository, InstructorRepository>();
@@ -525,10 +525,10 @@ public partial class App : Application
         services.AddSingleton<ISectionCodePatternRepository, SectionCodePatternRepository>();
         services.AddSingleton<IProgramWatchRepository, ProgramWatchRepository>();
 
-        // Owns the empty / delete semester and academic year rules (spec item 8).
+        // Owns the empty / delete semester and academic year rules.
         services.AddSingleton<SemesterContentsService>();
 
-        // Subject focus (spec item 20), remembered per SHARED database. The key is read when the service is first
+        // Subject focus, remembered per SHARED database. The key is read when the service is first
         // resolved: every path that builds this container (startup, database switch, the wizard, reader mode) has
         // already run CheckoutAsync, which sets Checkout.SourcePath to D, so it names the right database.
         RegisterFocusService(services, DesktopFocusDatabaseKey);
@@ -549,7 +549,7 @@ public partial class App : Application
         services.AddTransient<ISupportPlatform, AvaloniaSupportPlatform>();
         services.AddTransient<SupportViewModel>();
 
-        // Import Sections (spec item 24, desktop only: the demo has no file system and no Import Sections menu
+        // Import Sections (desktop only: the demo has no file system and no Import Sections menu
         // item, so ConfigureDemoServices registers none of these). The file reader, snapshot builder, writer and
         // service are stateless over the singleton repositories; the host and platform are the flyout's narrow
         // seams onto the main window (see IImportSectionsHost, IImportSectionsPlatform).
@@ -620,6 +620,9 @@ public partial class App : Application
     /// <summary>
     /// Registers demo repositories and services into a service collection.
     /// Platform-neutral — all Demo* classes compile on all targets.
+    /// When adding a registration here, compare against the desktop <c>ConfigureServices</c>
+    /// (and vice versa): services are easy to miss in one of the two (this happened with
+    /// <see cref="AppNotificationService"/>), and the miss only shows at runtime.
     /// </summary>
     private static void ConfigureDemoServices(IServiceCollection services)
     {
@@ -655,10 +658,10 @@ public partial class App : Application
         services.AddSingleton<ISectionCodePatternRepository,  DemoSectionCodePatternRepository>();
         services.AddSingleton<IProgramWatchRepository,       DemoProgramWatchRepository>();
 
-        // Owns the empty / delete semester and academic year rules (spec item 8).
+        // Owns the empty / delete semester and academic year rules.
         services.AddSingleton<SemesterContentsService>();
 
-        // Subject focus (spec item 20). A null key means the demo: it always starts at All and is never read from
+        // Subject focus. A null key means the demo: it always starts at All and is never read from
         // or written to settings (the browser's settings do not survive a visit anyway).
         RegisterFocusService(services, () => null);
 
@@ -755,7 +758,7 @@ public partial class App : Application
             sp.GetRequiredService<ICourseRepository>(),
             // Watches are saved only while the write lock is ours; a reader keeps them in memory (see the class).
             () => sp.GetRequiredService<WriteLockService>().IsWriter));
-        // Shared by every indicator and the Focus picker (spec item 20); exposed as MainWindowViewModel.FocusVm.
+        // Shared by every indicator and the Focus picker; exposed as MainWindowViewModel.FocusVm.
         services.AddSingleton<FocusViewModel>();
         services.AddSingleton<MainWindowViewModel>();
         services.AddSingleton<SectionListViewModel>();

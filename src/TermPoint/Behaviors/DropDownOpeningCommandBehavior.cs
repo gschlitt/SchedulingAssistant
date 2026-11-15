@@ -24,7 +24,7 @@ namespace TermPoint.Behaviors;
 /// writes "" back to the view model and the field blanks itself. In the meeting editor this
 /// happened to the Start box when a Length was picked (and vice-versa), because each commit
 /// rebuilt the sibling's list. The same family of rebuild-mid-pick problems also produced an
-/// <see cref="ArgumentOutOfRangeException"/> inside the control (spec item 22).
+/// <see cref="ArgumentOutOfRangeException"/> inside the control.
 ///
 /// <b>Why DropDownOpening is the safe moment:</b> before the control raises
 /// <c>DropDownOpening</c> it has already run its populate step, which sets

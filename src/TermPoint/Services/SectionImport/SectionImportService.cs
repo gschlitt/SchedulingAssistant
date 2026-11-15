@@ -132,7 +132,7 @@ public sealed class SectionImportService
     /// <summary>
     /// Imports the checked file. Rebuilds the snapshot from the database as it is now and re-plans the
     /// <b>same sheet</b> (the file is not read again), then compares the result with what the user was shown
-    /// (decision D4, see <see cref="ImportReportSignature"/>). Must be called on the UI thread.
+    /// (see <see cref="ImportReportSignature"/>). Must be called on the UI thread.
     /// <list type="bullet">
     /// <item>The new report has problems, or reads differently: nothing is written; returns "changed" with the new report.</item>
     /// <item>It has no new sections: nothing is written; returns "written" with zero counts.</item>

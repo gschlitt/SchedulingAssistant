@@ -10,8 +10,7 @@ namespace TermPoint.Services;
 ///
 /// <para><b>Why the banner and not the inline error line.</b> The management views hide their inline error line
 /// while an editor is open (it sits in the list panel, which is collapsed during editing), and a refused Apply
-/// keeps the editor open, so an inline message would never be seen. This was found in the F4 hand test
-/// (2026-10-21). <see cref="FileAppLogger.LogError"/>, which every catch block calls first, shows the banner for
+/// keeps the editor open, so an inline message would never be seen. <see cref="FileAppLogger.LogError"/>, which every catch block calls first, shows the banner for
 /// this exception; <see cref="For"/> then gives the call site no inline text, so the user sees the message
 /// exactly once.</para>
 /// </summary>

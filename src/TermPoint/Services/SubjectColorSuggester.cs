@@ -1,7 +1,7 @@
 namespace TermPoint.Services;
 
 /// <summary>
-/// The "Suggest colours" rule (spec subject-colours, Phase 4): a pure, deterministic function that gives each
+/// The "Suggest colours" rule: a pure, deterministic function that gives each
 /// colourless subject a palette colour, keeping new colours visibly apart from the ones already in use. Same input,
 /// same output, on any computer. No Avalonia dependency.
 /// </summary>

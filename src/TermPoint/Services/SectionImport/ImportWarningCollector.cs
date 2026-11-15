@@ -3,7 +3,7 @@ using TermPoint.Models;
 namespace TermPoint.Services.SectionImport;
 
 /// <summary>
-/// Builds the grouped warnings of an import (design Phase 4, "Warnings are grouped"): one
+/// Builds the grouped warnings of an import: one
 /// <see cref="ImportWarning"/> per problem, never one per row. Warnings are about the sections that
 /// will be <b>added</b> only (a skipped section's cells are never looked at). The legal-start-time and
 /// near-miss warnings live in <see cref="StartTimeWarnings"/> and <see cref="NearMissWarnings"/>; this
@@ -180,7 +180,7 @@ internal sealed class ImportWarningCollector
 
     /// <summary>
     /// Warns, once per section, when two of its meetings overlap on the same day in a week they both
-    /// meet (design D11), naming the days and the rows of the meetings involved.
+    /// meet, naming the days and the rows of the meetings involved.
     /// </summary>
     private void CollectOverlapWarnings()
     {

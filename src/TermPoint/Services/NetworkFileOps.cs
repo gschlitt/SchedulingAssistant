@@ -47,7 +47,7 @@ public enum FileProbeResult
 /// in this class touches UI state, and its continuations must never run on the UI
 /// thread: a continuation that performs blocking network I/O (most notably a stream
 /// Dispose, which flushes the SMB write-behind cache) would otherwise freeze the app
-/// for the full SMB timeout when the share goes dark (field-observed 2026-07-04:
+/// for the full SMB timeout when the share goes dark (field-observed:
 /// "Not responding" for ~40s during a mid-save outage).</para>
 /// </summary>
 public static class NetworkFileOps
@@ -95,12 +95,12 @@ public static class NetworkFileOps
     /// minimum throughput a link must sustain to avoid being classified as stalled:
     /// 64 KB / 5 s ≈ <b>13 KB/s floor</b> — below any usable connection.
     ///
-    /// <para><b>Why not larger?</b> This was originally 1 MB (~200 KB/s floor), which
-    /// silently reintroduced the finding-#7 misclassification for any file smaller than
+    /// <para><b>Why not larger?</b> A 1 MB chunk (~200 KB/s floor) would
+    /// silently reintroduce the slow-link-as-unreachable misclassification for any file smaller than
     /// one chunk: the whole file became a single read racing a 5-second deadline, and a
     /// degraded-but-working link (e.g. lossy WiFi at ~100 KB/s — below the floor) failed
     /// every hash/copy even though bytes were flowing continuously. Field-observed with a
-    /// 404 KB database over a 74 ms / 3 %-loss link (2026-07-04): every save produced
+    /// 404 KB database over a 74 ms / 3 %-loss link: every save produced
     /// "ComputeHash (read) made no progress" despite steady progress at the wire. A
     /// smaller chunk makes progress visible to the detector at the granularity the
     /// deadline actually assumes.</para>
@@ -269,7 +269,7 @@ public static class NetworkFileOps
                 // live FileStream that the finally below never saw (it ran while the local
                 // was still null). Dispose it as soon as the open settles — a leaked handle
                 // is NOT harmless here: it blocks every later open of the same file until
-                // GC finalization. Field-observed 2026-07-04 (B1): a leaked handle on D.tmp
+                // GC finalization. Field-observed: a leaked handle on D.tmp
                 // made every subsequent save fail "being used by another process" even
                 // after the network recovered, until the app was restarted.
                 _ = openTask.ContinueWith(
@@ -312,7 +312,7 @@ public static class NetworkFileOps
     /// the copy succeeds even while another process holds the file open. The transfer
     /// is chunked with the <see cref="TimeoutMs"/> deadline applied per chunk — total
     /// duration is unbounded as long as bytes keep moving, so a large database over a
-    /// slow link is never misclassified as unreachable (the finding-#7 fix), while a
+    /// slow link is never misclassified as unreachable, while a
     /// dead share still fails within one deadline. A stalled copy leaves a partial
     /// destination file behind; callers delete it as they do today.
     /// </summary>
@@ -390,7 +390,7 @@ public static class NetworkFileOps
     /// <param name="dest">Destination file.</param>
     /// <param name="hasher">When non-null, every chunk read from the source is appended to it before the chunk is written; the caller reads the hash after a <c>true</c> result.</param>
     /// <param name="hangAtOpen">Test seam (<see cref="NetworkFaultKind.Hang"/>): entered inside the open's deadline-guarded task, before either file is opened; null in the app.</param>
-    /// <param name="hangAtWrite">Test seam: entered inside the chunk write's deadline-guarded task, immediately before the real write call, which is exactly where field bug A1 blocked (see the comment at the write); null in the app.</param>
+    /// <param name="hangAtWrite">Test seam: entered inside the chunk write's deadline-guarded task, immediately before the real write call, which is exactly where a real hang blocked (see the comment at the write); null in the app.</param>
     /// <returns>As <see cref="CopyAsync"/>.</returns>
     private static async Task<bool> CopyCoreAsync(
         string source, string dest, IncrementalHash? hasher,
@@ -466,14 +466,14 @@ public static class NetworkFileOps
                 // sometimes performs an "asynchronous" write to a share synchronously: the call returns only once
                 // the bytes are written. On a black-holed share that blocks right here, before the race below has
                 // started, so no deadline fires and the copy waits out the whole outage with nothing logged
-                // (field test 2026-10-22, M1 "A1"; reproduced by tools/NetworkProbe, case copy-cm, 1 run in 3).
+                // (reproduced by tools/NetworkProbe, case copy-cm, 1 run in 3).
                 // Under Task.Run a write that blocks holds only a pool thread, and the race still fires after
                 // TimeoutMs. The buffer is safe to reuse: the success path awaits this write before the next read,
                 // and the stall path returns without reading again.
                 var target = dst!;
                 var chunk = buffer.AsMemory(0, read);
                 // (The hang hook sits INSIDE the task, on the pool thread, at the spot where the real write call is made. A hook
-                // that blocked here on the calling thread, before Task.Run, would reproduce the A1 shape: no deadline fires.)
+                // that blocked here on the calling thread, before Task.Run, would reproduce the original hang: no deadline fires.)
                 var writeTask = Task.Run(async () =>
                 {
                     using var hang = hangAtWrite?.Invoke();   // null in the app
@@ -504,8 +504,8 @@ public static class NetworkFileOps
     /// <para>The read is STARTED on a thread-pool thread, not inline, for the same reason as the copy's write
     /// (<see cref="CopyCoreAsync"/>): Windows can perform an "asynchronous" read synchronously (a cached read that
     /// misses the cache, for example), and on a black-holed share that would block before the race below starts, so
-    /// no deadline would fire. The copy's write was seen doing exactly that (field test 2026-10-22, M1 "A1",
-    /// reproduced by tools/NetworkProbe); the read follows the same pattern and gets the same protection.</para>
+    /// no deadline would fire. The copy's write was seen doing exactly that (reproduced
+    /// by tools/NetworkProbe); the read follows the same pattern and gets the same protection.</para>
     /// </summary>
     /// <param name="stream">The open stream to read from.</param>
     /// <param name="buffer">Receives the bytes; not touched by the caller again after a stall.</param>
@@ -557,7 +557,7 @@ public static class NetworkFileOps
     /// itself blocks until the SMB redirector gives up — 30–60 s. Disposing inline in a
     /// <c>finally</c> stalled the awaiting continuation for that entire window; combined
     /// with continuations running on the UI SynchronizationContext this froze the whole
-    /// app ("Not responding", field-observed 2026-07-04, stage-4 clumsy test). Abort
+    /// app ("Not responding", field-observed). Abort
     /// paths never need the handle released synchronously — the startup sweep and
     /// <see cref="MoveWithRetry"/> tolerate a briefly-lingering handle.</para>
     /// </summary>
@@ -596,7 +596,7 @@ public static class NetworkFileOps
     /// Timeout-aware <see cref="File.Delete(string)"/>. Never throws — cleanup operations should not block or fail the
     /// caller if the network is down or the file is held.
     ///
-    /// <para><b>The local log tells the two failures apart</b> (spec item 7): a timeout is logged by
+    /// <para><b>The local log tells the two failures apart</b>: a timeout is logged by
     /// <see cref="RunAsync{T}(Func{T}, string, string?, string?)"/> ("timed out after …"), and a delete that failed with
     /// an exception (a sharing violation, access denied, a vanished folder) is logged here with the exception's type
     /// and message. Before, the exception was swallowed and callers logged every false as a timeout.</para>
@@ -634,7 +634,7 @@ public static class NetworkFileOps
         => RunAsync(() => File.WriteAllText(path, content), "File.WriteAllText", path, null);
 
     /// <summary>
-    /// Timeout-aware <see cref="File.WriteAllBytes(string, byte[])"/> (1.2.4 item 4.10). The byte twin of
+    /// Timeout-aware <see cref="File.WriteAllBytes(string, byte[])"/>. The byte twin of
     /// <see cref="WriteAllTextAsync"/> for callers that must control the encoding themselves: the caller encodes
     /// first, so a CSV keeps its UTF-8 byte-order mark for Excel while JSON stays BOM-less.
     /// (<see cref="WriteAllTextAsync"/> always writes UTF-8 without a BOM, so it is not a drop-in for the CSVs.)
@@ -660,8 +660,8 @@ public static class NetworkFileOps
     /// <summary>
     /// Timeout-aware <see cref="BackupService.CheckIntegrityWithSummary"/>: like <see cref="CheckIntegrityAsync"/>,
     /// but distinguishes a damaged file from one that could not be read right now (locked by another program,
-    /// access denied), and also returns SQLite's short summary of why the file did not pass (spec item 5, step 5d)
-    /// and the kind of evidence behind a damaged verdict (step 5e). A timeout is reported as not completed —
+    /// access denied), and also returns SQLite's short summary of why the file did not pass
+    /// and the kind of evidence behind a damaged verdict. A timeout is reported as not completed —
     /// callers map that to "unreachable", never to damaged.
     /// </summary>
     /// <param name="path">Full path of the SQLite file to check.</param>

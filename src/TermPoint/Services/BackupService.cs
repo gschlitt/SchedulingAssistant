@@ -14,7 +14,7 @@ namespace TermPoint.Services;
 /// check returned false for ANY exception, so a healthy file that another program held open
 /// (a sharing violation) was reported as damaged — and a user told their database is damaged
 /// may restore a backup over a good, current file. This keeps "damaged" for positive evidence
-/// only (spec item 4e).
+/// only.
 /// </summary>
 public enum IntegrityCheckResult
 {
@@ -36,7 +36,7 @@ public enum IntegrityCheckResult
 }
 
 /// <summary>
-/// WHAT kind of evidence lay behind a <see cref="IntegrityCheckResult.Damaged"/> verdict (spec item 5, step 5e).
+/// WHAT kind of evidence lay behind a <see cref="IntegrityCheckResult.Damaged"/> verdict.
 /// <see cref="IntegrityCheckResult.Damaged"/> deliberately lumps together "SQLite found problems INSIDE a database"
 /// and "this does not look like a SQLite database at all"; the damage report must tell them apart, because only the
 /// first is worth a developer's attention — the second is far more often a wrong file the user picked than damage.
@@ -87,7 +87,7 @@ public readonly record struct IntegrityCheckOutcome(IntegrityCheckResult Result,
 ///
 /// <para><b>Rotation:</b> After every backup, <see cref="RotateBackupsAsync"/> keeps the newest
 /// <see cref="AppSettings.MaxBackupCount"/> backups plus the last backup of each of the 7 days and 4 weeks before
-/// this one that have backups (<see cref="SelectBackupsToDelete"/>, 1.2.4 item 4.9), and deletes the rest.</para>
+/// this one that have backups (<see cref="SelectBackupsToDelete"/>), and deletes the rest.</para>
 ///
 /// <para><b>Integrity check:</b> <see cref="CheckIntegrity"/> and
 /// <see cref="CheckIntegrityDetailed"/> are static methods that
@@ -237,9 +237,7 @@ public class BackupService : IDisposable
         if (!dirCheckCompleted || !dirExists)
         {
             var r = BackupResult.FolderUnavailable(folder);
-            // Spec item 7: a local line with the path, a named report without it, and one plain banner per run
-            // (this used to be LogError(null, …), which sent BugSnag a report with no exception and put the path in
-            // the banner).
+            // A local line with the path, a named report without it, and one plain banner per run.
             _logger.LogInfo($"Backup folder unavailable ({(dirCheckCompleted ? "missing" : "not responding")}): {folder}");
             HandledEventReporter.Report(HandledEvent.BackupFolderUnavailable, _logger,
                 new Dictionary<string, string> { ["reason"] = dirCheckCompleted ? "missing" : "not responding" });
@@ -264,7 +262,7 @@ public class BackupService : IDisposable
         // sharing the live repository connection from a background thread risks
         // SQLITE_MISUSE if a UI write transaction is in flight at the same moment.
         // SQLite serialises across separate connections to the same file, so a
-        // fresh handle is the safe path. (F1, data-integrity-agenda 2026-05-04.)
+        // fresh handle is the safe path.
         //
         // The vacuum holds a read lock on the live database for its whole duration,
         // so the destination MUST be local: vacuuming straight to a network backup
@@ -272,7 +270,7 @@ public class BackupService : IDisposable
         // UI-thread write sat frozen in SQLite's busy handler. Vacuum locally
         // (fast, bounded by local disk), verify, then stream the finished file with
         // the stall-aware NetworkFileOps.CopyAsync — the same pattern the save
-        // pipeline uses (finding #7). Task.Run keeps the vacuum and the integrity
+        // pipeline uses. Task.Run keeps the vacuum and the integrity
         // read off the caller's thread: StartSessionAsync awaits this method from
         // the UI thread at write-lock acquisition.
         var localTmp = _db.DatabasePath + ".backuptmp";
@@ -291,12 +289,12 @@ public class BackupService : IDisposable
             var copyCompleted = await NetworkFileOps.CopyAsync(localTmp, dbDest);
             if (!copyCompleted)
             {
-                // Spec item 7: as for an unavailable folder above (local line with the path, named report, one banner).
+                // As for an unavailable folder above (local line with the path, named report, one banner).
                 _logger.LogInfo($"Backup copy to {dbDest} stalled — backup folder unreachable.");
                 HandledEventReporter.Report(HandledEvent.BackupCopyStalled, _logger);
                 ShowBackupFailureNoticeOnce(BackupFolderNotRespondingNotice);
 
-                // Remove the partial file under the same network deadline as the copy (spec item 30). The backup
+                // Remove the partial file under the same network deadline as the copy. The backup
                 // folder has just stopped responding, so a plain File.Exists / File.Delete here could hold this
                 // thread for the full SMB timeout — and this method runs on the UI thread when the backup starts
                 // at lock acquisition or from the Save and Backup panel. Best effort: if the folder is still dead
@@ -323,8 +321,8 @@ public class BackupService : IDisposable
             TryDelete(localTmp);
         }
 
-        // Step 3 — CSV export (non-fatal; DB backup already succeeded). The write runs under the network deadline
-        // (1.2.4 item 4.10): a backup folder that stops answering right after the database copy finished no longer
+        // Step 3 — CSV export (non-fatal; DB backup already succeeded). The write runs under the network deadline:
+        // a backup folder that stops answering right after the database copy finished no longer
         // freezes the caller (the UI thread, at lock acquisition). A time-out means "CSV not exported", exactly like
         // a failed write: the backup is still a success and CsvPath is null.
         bool csvOk = false;
@@ -365,7 +363,7 @@ public class BackupService : IDisposable
 
     /// <summary>
     /// What the user is told, once per run, when a backup can't be made because the backup folder doesn't respond
-    /// (spec item 7; wording approved by Greg 2026-10-26). No path: the Save and Backup panel shows the folder.
+    /// Approved wording. No path: the Save and Backup panel shows the folder.
     /// </summary>
     public const string BackupFolderNotRespondingNotice =
         "TermPoint couldn't make a backup because the backup folder isn't responding. Your schedule itself isn't " +
@@ -373,7 +371,7 @@ public class BackupService : IDisposable
 
     /// <summary>
     /// The same notice when the backup folder answered but no longer exists (deleted, renamed, or a drive that is no
-    /// longer mapped): "isn't responding" would be untrue there (spec item 7; wording approved by Greg 2026-10-27).
+    /// longer mapped): "isn't responding" would be untrue there (approved wording).
     /// </summary>
     public const string BackupFolderMissingNotice =
         "TermPoint couldn't make a backup because the backup folder can't be found. Your schedule itself isn't " +
@@ -402,7 +400,7 @@ public class BackupService : IDisposable
         "The latest backup failed its integrity check, so it may not be usable for a restore.";
 
     /// <summary>
-    /// Handles a backup snapshot that did not pass its integrity check (spec item 5, step 5e), replacing the old
+    /// Handles a backup snapshot that did not pass its integrity check, replacing the old
     /// <c>LogError(null, "…failed: {path}")</c>, which sent BugSnag a report with no exception and a local path.
     /// <list type="bullet">
     /// <item><description>Local log: one line with the verdict and SQLite's summary, and no path.</description></item>
@@ -504,7 +502,7 @@ public class BackupService : IDisposable
     /// Async version that deadline-bounds every call that touches the backup folder, so a dead backup share does not
     /// freeze the UI thread for the full SMB redirector timeout.
     ///
-    /// <para><b>One listing, not one per backup (1.2.4 item 4.10, A4).</b> The folder is listed ONCE
+    /// <para><b>One listing, not one per backup.</b> The folder is listed ONCE
     /// (<c>{prefix}_*</c>, both the <c>.db</c> files and the <c>_sections.csv</c> files) under a single deadline, and
     /// each backup's companion CSV is matched to it in memory (<see cref="MatchCompanionCsvs"/>). Before, the list cost
     /// one extra directory listing per backup, on the UI thread, and every row then did a <c>File.Exists</c> on each
@@ -623,8 +621,7 @@ public class BackupService : IDisposable
     internal const int IntegritySummaryMaxLines = 5;
 
     /// <summary>
-    /// <see cref="CheckIntegrityDetailed"/> plus a short SQLite summary of why the file did not pass (spec item 5,
-    /// step 5d; the damage report of step 5e uses it). Never throws; the verdict is exactly the one
+    /// <see cref="CheckIntegrityDetailed"/> plus a short SQLite summary of why the file did not pass. Never throws; the verdict is exactly the one
     /// <see cref="CheckIntegrityDetailed"/> gives.
     ///
     /// <para><b>The summary</b> is null when the verdict is <see cref="IntegrityCheckResult.Ok"/>. When
@@ -635,7 +632,7 @@ public class BackupService : IDisposable
     /// own message names the file path, which must never travel). Either way it carries no path and no data.</para>
     ///
     /// <para><b>The evidence</b> (<see cref="DamageEvidence"/>) says what lay behind a Damaged verdict, so the damage
-    /// report (step 5e) need not parse the summary text: <c>integrity_check</c> problems →
+    /// report need not parse the summary text: <c>integrity_check</c> problems →
     /// <see cref="DamageEvidence.IntegrityProblems"/>; SQLITE_CORRUPT → <see cref="DamageEvidence.Corrupt"/>;
     /// SQLITE_NOTADB / SQLITE_FORMAT → <see cref="DamageEvidence.NotADatabase"/>. Every other verdict carries
     /// <see cref="DamageEvidence.None"/>.</para>
@@ -746,7 +743,7 @@ public class BackupService : IDisposable
 
     /// <summary>
     /// Says what kind of evidence of damage an exception thrown while opening or checking a database file is, for the
-    /// damage report (spec item 5, step 5e). Agrees with <see cref="ClassifyIntegrityException"/>: exactly the
+    /// damage report. Agrees with <see cref="ClassifyIntegrityException"/>: exactly the
     /// exceptions that classify as Damaged carry evidence, and nothing else does.
     /// <list type="bullet">
     /// <item><description>SQLITE_CORRUPT (11) → <see cref="DamageEvidence.Corrupt"/>: SQLite recognised the file as one of
@@ -807,7 +804,7 @@ public class BackupService : IDisposable
     ///
     /// <para>The finished text is encoded as UTF-8 WITH a byte-order mark (the same bytes
     /// <c>File.WriteAllTextAsync(…, Encoding.UTF8)</c> produced, so Excel opens it correctly) and written under the
-    /// network deadline (1.2.4 item 4.10, A2).</para>
+    /// network deadline.</para>
     /// </summary>
     /// <param name="destPath">Full path of the CSV file to create (overwrite if exists).</param>
     /// <returns><c>true</c> when the file was written; <c>false</c> when the backup folder did not answer in time (nothing is known to have been written).</returns>
@@ -817,7 +814,7 @@ public class BackupService : IDisposable
         // This method runs on a thread-pool thread (backup timer / save caller), but the
         // injected repositories all execute on the shared DatabaseContext connection,
         // which the UI thread may be using at the same moment — and SqliteConnection is
-        // not thread-safe (same reasoning as the fresh VACUUM INTO connection above, F1).
+        // not thread-safe (same reasoning as the fresh VACUUM INTO connection above).
         // Read through a fresh, isolated connection whenever a real database file backs
         // the context; fall back to the injected repositories in demo/in-memory contexts,
         // which have no file (and no cross-thread contention).
@@ -993,20 +990,20 @@ public class BackupService : IDisposable
     }
 
     /// <summary>
-    /// How many earlier days (before today) keep their last backup, on top of the most recent ones
-    /// (1.2.4 item 4.9). Counted over days that HAVE a backup, so a database nobody opened for a while keeps its
+    /// How many earlier days (before today) keep their last backup, on top of the most recent ones.
+    /// Counted over days that HAVE a backup, so a database nobody opened for a while keeps its
     /// history instead of ageing out while idle.
     /// </summary>
     internal const int KeepDailyCount = 7;
 
     /// <summary>
-    /// How many earlier weeks (before the current one, weeks starting on Monday) keep their last backup
-    /// (1.2.4 item 4.9). Counted over weeks that HAVE a backup.
+    /// How many earlier weeks (before the current one, weeks starting on Monday) keep their last backup.
+    /// Counted over weeks that HAVE a backup.
     /// </summary>
     internal const int KeepWeeklyCount = 4;
 
     /// <summary>
-    /// Decides which backups of one database to delete (1.2.4 item 4.9). Pure: looks only at the file names and
+    /// Decides which backups of one database to delete. Pure: looks only at the file names and
     /// <paramref name="now"/>, so it is unit-tested without any files. A backup is KEPT when any of these holds:
     /// <list type="number">
     /// <item><description>it is one of the newest <paramref name="recentCount"/> (the "Recent backups to keep"
@@ -1074,11 +1071,11 @@ public class BackupService : IDisposable
         => date.Date.AddDays(-(((int)date.DayOfWeek + 6) % 7));
 
     /// <summary>
-    /// Enforces the backup retention rule (<see cref="SelectBackupsToDelete"/>, 1.2.4 item 4.9): deletes every backup
+    /// Enforces the backup retention rule (<see cref="SelectBackupsToDelete"/>): deletes every backup
     /// pair (db + csv) of this database that the rule does not keep. Files in the folder that are not backups of
     /// <paramref name="prefix"/> are never touched.
     ///
-    /// <para><b>Every call to the folder is under the network deadline (1.2.4 item 4.10, A3).</b> The folder is listed
+    /// <para><b>Every call to the folder is under the network deadline.</b> The folder is listed
     /// ONCE (<c>{prefix}_*</c>: the <c>.db</c> files and the <c>_sections.csv</c> files together); the retention
     /// selection and the matching of each backup to its CSV
     /// (<see cref="MatchCompanionCsvs"/>) happen in memory; each file is then removed with

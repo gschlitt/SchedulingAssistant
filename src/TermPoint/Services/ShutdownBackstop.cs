@@ -3,12 +3,11 @@ using TermPoint.Exceptions;
 namespace TermPoint.Services;
 
 /// <summary>
-/// Ends the process if it is still alive a while after the exit teardown has finished (spec 1.2.4 item 4.3, design
-/// <c>designs/restore-relaunch-1.2.4.md</c>, change B).
+/// Ends the process if it is still alive a while after the exit teardown has finished.
 ///
 /// <para><b>Why.</b> After a Save &amp; Backup restore, Avalonia's main loop sometimes never ended although the main
-/// window had closed and the teardown had finished: an invisible TermPoint stayed alive until sign-out (field tests
-/// 2026-10-22 and 2026-10-27). <c>MainWindow.OnClosed</c> asks Avalonia for the shutdown again (change A); this is
+/// window had closed and the teardown had finished: an invisible TermPoint stayed alive until sign-out.
+/// <c>MainWindow.OnClosed</c> asks Avalonia for the shutdown again; this is
 /// the last resort when even that is abandoned.</para>
 ///
 /// <para><b>When it fires.</b> <see cref="Arm"/> is called at "Managed teardown complete" on every close, when the

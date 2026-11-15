@@ -3,8 +3,7 @@ using TermPoint.Models;
 namespace TermPoint.Services;
 
 /// <summary>
-/// The one place that decides whether an instructor is "in focus" for a <see cref="SubjectFocus"/> (spec item 20,
-/// "Who counts as an in-focus instructor"). A pure function of the focus, the instructor and their
+/// The one place that decides whether an instructor is "in focus" for a <see cref="SubjectFocus"/>. A pure function of the focus, the instructor and their
 /// <see cref="TeachingHistory"/>: it holds no state and reads nothing else, so it can be unit-tested on its own
 /// and changed later in this one method if users find it too narrow or too generous, without touching any view.
 /// Consumers never call it directly; they go through <see cref="FocusService.IsInFocus"/> so they all agree.

@@ -57,7 +57,7 @@ public partial class MailerInstructorItem : ObservableObject
     public string EmailDisplay => HasEmail ? Instructor.Email : "(no email)";
 
     /// <summary>
-    /// True when the instructor is outside the chosen subjects (spec item 20): the row's text shows in the lighter
+    /// True when the instructor is outside the chosen subjects: the row's text shows in the lighter
     /// out-of-focus colour, under the "Other instructors" heading, and starts unticked. Set at construction.
     /// </summary>
     public bool IsOutOfFocus { get; init; }

@@ -99,7 +99,7 @@ public partial class GridFilterView : UserControl
     /// <param name="items">The filter items for this dimension.</param>
     /// <param name="countPrefix">
     /// Words put before the count, e.g. "any of " so the Tags label reads "Tags (any of 2)" while the Tags filter
-    /// matches any checked tag (spec item 31): a forgotten "any" can't make the grid look wrong. Null for none.
+    /// matches any checked tag: a forgotten "any" can't make the grid look wrong. Null for none.
     /// </param>
     private static void SetHeader(
         ToggleButton toggle,

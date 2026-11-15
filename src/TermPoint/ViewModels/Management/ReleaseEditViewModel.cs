@@ -68,7 +68,7 @@ public partial class ReleaseEditViewModel : UnappliedChangesEditor
             WorkloadValue = workload,
             InstructorId = _originalRelease.InstructorId,
             SemesterId = _originalRelease.SemesterId
-        }.WithExtensionDataFrom(_originalRelease); // this replaces the stored record: keep its unknown JSON fields (spec item 3)
+        }.WithExtensionDataFrom(_originalRelease); // this replaces the stored record: keep its unknown JSON fields
 
         await _onSave(release);
         MarkApplied();

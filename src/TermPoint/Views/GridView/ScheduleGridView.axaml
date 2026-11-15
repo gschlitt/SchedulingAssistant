@@ -343,7 +343,7 @@
 										ItemsSource="{Binding ContextMenu.Instructors}"
 										SelectionMode="Multiple">
 										<!--
-											Under chosen subjects (spec item 20) instructors outside them show lighter, under an
+											Under chosen subjects, instructors outside them show lighter, under an
 											"Other instructors" heading, as in the section editor's chooser. The class sits on the
 											name's TextBlock so the CheckBox's own states cannot repaint it; this menu exists once,
 											so the class style is cheap.

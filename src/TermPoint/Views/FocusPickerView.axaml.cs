@@ -3,7 +3,7 @@ using Avalonia.Controls;
 namespace TermPoint.Views;
 
 /// <summary>
-/// The subject checklist shown in the Focus popup (spec item 20). All behaviour lives in
+/// The subject checklist shown in the Focus popup. All behaviour lives in
 /// <see cref="ViewModels.FocusViewModel"/>, which is this control's DataContext.
 /// </summary>
 public partial class FocusPickerView : UserControl

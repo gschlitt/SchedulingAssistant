@@ -55,7 +55,7 @@ public class LockFileData
     public DateTime? ProcessStartTimeUtc { get; set; }
 
     /// <summary>
-    /// The factor the holder's lock timers run at (spec item 8.7, 1.2.4): 2 or 3 in a test build that runs its heartbeat,
+    /// The factor the holder's lock timers run at: 2 or 3 in a test build that runs its heartbeat,
     /// stale threshold and wake check faster (<see cref="LockTimings"/>), and ABSENT from the file (null) for a normal
     /// build, so a normal build writes exactly the lock file 1.2.3 wrote. A computer judging whether this lock is stale
     /// uses THIS factor, not its own (<see cref="LockTimings.ForHolder"/>); null, or any value outside 1 to

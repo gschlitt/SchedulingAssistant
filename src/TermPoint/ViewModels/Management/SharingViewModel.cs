@@ -214,7 +214,7 @@ public partial class SharingViewModel : ViewModelBase
 
         // The exporter writes to memory (its Export(Stream, ...) signature is unchanged); the finished bytes then
         // go to the picked file under the network deadline, so a share that stopped answering cannot freeze the
-        // window (1.2.4 item 4.10, A6). The exporter's own UTF-8 BOM is part of the bytes.
+        // window. The exporter's own UTF-8 BOM is part of the bytes.
         byte[] bytes;
         using (var buffer = new System.IO.MemoryStream())
         {

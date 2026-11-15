@@ -112,11 +112,11 @@
 					ItemsSource="{Binding SortModeOptions}"
 					SelectedIndex="{Binding SelectedSortModeIndex}" />
 				<!--
-					Subject focus (spec item 20): opens the picker. A view preference, so not write-gated; it is
+					Subject focus: opens the picker. A view preference, so not write-gated; it is
 					disabled (tooltip "Finish editing first") while a section editor is open. FocusVm lives on
 					MainWindowViewModel, not on this StackPanel's SectionListVm DataContext.
 				-->
-				<!--  Prototype 2026-10-23: subjects shown in the top bar instead; restore if the header statement is wanted back.
+				<!--  Prototype: subjects shown in the top bar instead; restore if the header statement is wanted back.
 				<controls:FocusButton DataContext="{Binding DataContext.FocusVm, RelativeSource={RelativeSource AncestorType=UserControl}}" />
 				-->
 			</StackPanel>
@@ -167,7 +167,7 @@
 			Text="Select a semester to load sections" />
 
 		<!--
-			Focus empty state (spec item 20, rule 4): shown instead of an empty list when the focus is None, or
+			Focus empty state (rule 4): shown instead of an empty list when the focus is None, or
 			matches no section in the loaded semesters. Section View only. Both buttons run FocusVm commands, so
 			they are disabled (tooltip "Finish editing first") while a section editor is open.
 		-->
@@ -247,7 +247,7 @@
 			The Section list is placed directly in the row, with no ScrollViewer around it: its
 			ListBox gets the row's real height and scrolls itself. That is what lets it virtualize
 			(a virtualizing list must not be measured with unlimited height) and lets scroll
-			anchoring work; see SectionListView.axaml and spec_version_1.2.3.md, item 23.
+			anchoring work; see SectionListView.axaml.
 
 			The Events list keeps its own outer ScrollViewer (vertical Auto, horizontal Disabled),
 			with b:SuppressPopupScrollBehavior on the StackPanel inside it.

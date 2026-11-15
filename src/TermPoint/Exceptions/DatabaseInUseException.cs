@@ -3,7 +3,7 @@ namespace TermPoint.Exceptions;
 /// <summary>
 /// Thrown by <see cref="App.InitializeServices"/> when the local copy of the database (D' for a writer,
 /// D'' for a reader) could not be examined because another program on this computer is using it
-/// (spec item 5, step 5d) — most often antivirus or backup software scanning a file that was just copied.
+/// — most often antivirus or backup software scanning a file that was just copied.
 /// The check was retried quietly (<see cref="Services.LocalCopyIntegrity.MaxAttempts"/> attempts, one second apart)
 /// before this was thrown, so it means "still busy", not "damaged": the file's health is unknown and must
 /// never be described to the user as damage. <see cref="MainWindow"/> catches it and offers Try again / Close.

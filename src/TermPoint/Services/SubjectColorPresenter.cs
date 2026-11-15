@@ -5,11 +5,11 @@ namespace TermPoint.Services;
 
 /// <summary>
 /// Answers the two questions the Section list and the Schedule view both ask about subject colours (colour by
-/// subject, <c>designs/subject-colours.md</c> Phase 5): <b>are colours on?</b> (<see cref="IsOn"/>) and <b>what is
-/// this section's colour?</b> (<see cref="ColorFor"/>). Both views ask this one object, so they always agree (Phase 2,
-/// rule 3). A singleton in the per-database service provider. Everything runs on the UI thread; not thread-safe.
+/// subject): <b>are colours on?</b> (<see cref="IsOn"/>) and <b>what is
+/// this section's colour?</b> (<see cref="ColorFor"/>). Both views ask this one object, so they always agree
+/// (rule 3). A singleton in the per-database service provider. Everything runs on the UI thread; not thread-safe.
 ///
-/// <para><b>Colours on?</b> (Phase 2) Off when none of this database's subjects has a colour, whatever the display
+/// <para><b>Colours on?</b> Off when none of this database's subjects has a colour, whatever the display
 /// mode (rule 1: nothing set, nothing shown). Otherwise <see cref="SubjectColorDisplay.Always"/> is on,
 /// <see cref="SubjectColorDisplay.Never"/> is off, and <see cref="SubjectColorDisplay.OnlyWhenSeveral"/> is on when
 /// the in-focus sections of <see cref="SectionStore.Sections"/> (the open semester(s), tested with
@@ -117,8 +117,7 @@ public sealed class SubjectColorPresenter : IDisposable
     }
 
     /// <summary>
-    /// The marker colour for a subject, by its calendar abbreviation (the Schedule View header's subject chips,
-    /// spec 1.2.4 item 2.14). Same on/off rule as <see cref="ColorFor"/>, so the header agrees with the tiles.
+    /// The marker colour for a subject, by its calendar abbreviation (the Schedule View header's subject chips). Same on/off rule as <see cref="ColorFor"/>, so the header agrees with the tiles.
     /// </summary>
     /// <param name="abbreviation">The subject's calendar abbreviation; null or blank means no colour.</param>
     /// <returns><c>#RRGGBB</c>, or an empty string when colours are off or the abbreviation has no colour.</returns>

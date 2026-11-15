@@ -2,8 +2,7 @@ namespace TermPoint.Services;
 
 /// <summary>
 /// The failure an <see cref="IntegrityFaultPlan"/> injects. Each value names the real-world failure it stands in
-/// for, so a developer can hand-test the unhappy paths of the open-time check of the local copy (spec item 5,
-/// step 5d), none of which can be produced on demand against a healthy machine.
+/// for, so a developer can hand-test the unhappy paths of the open-time check of the local copy, none of which can be produced on demand against a healthy machine.
 /// </summary>
 public enum InjectedIntegrityFault
 {
@@ -37,7 +36,7 @@ public enum InjectedIntegrityFault
 
     /// <summary>
     /// <c>stamp</c> — the version gate's read of the database's <c>MinimumVersionToWrite</c> stamp reports the file as
-    /// unreadable (<see cref="StampReadKind.Unreadable"/>), as if antivirus held it (spec item 3, step 3c). Every quiet
+    /// unreadable (<see cref="StampReadKind.Unreadable"/>), as if antivirus held it. Every quiet
     /// retry of the gate is a separate call, so <c>stamp:3</c> makes one whole checkout fail (all three attempts: the
     /// "Couldn't Open the Database" prompt appears) and Try again succeed; <c>stamp:2</c> is absorbed by the retries
     /// and the open goes through.
@@ -48,9 +47,9 @@ public enum InjectedIntegrityFault
 /// <summary>
 /// A DEBUG-ONLY plan for making the open-time integrity check fail on purpose, driven by the
 /// <c>TERMPOINT_DEBUG_FAIL_INTEGRITY</c> environment variable. It exists so the handling of a locked or damaged
-/// local copy (spec item 5, step 5d) can be exercised by hand: a copy that antivirus holds, a copy that is
+/// local copy can be exercised by hand: a copy that antivirus holds, a copy that is
 /// damaged while the shared database is fine, a copy that keeps failing, and a shared database that is damaged.
-/// It also covers the version gate's stamp read (spec item 3, step 3c): a copy that cannot be examined for its
+/// It also covers the version gate's stamp read: a copy that cannot be examined for its
 /// <c>MinimumVersionToWrite</c> stamp.
 ///
 /// <para><b>Syntax:</b> <c>value[:count[:skip]]</c>, case-insensitive, exactly as for

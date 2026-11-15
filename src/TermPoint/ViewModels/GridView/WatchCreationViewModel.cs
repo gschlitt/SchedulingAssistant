@@ -196,7 +196,7 @@ public partial class WatchCreationViewModel : ObservableObject
     /// <summary>
     /// Validates the form and hands the resulting watch to the save callback, then hides the form. When creating,
     /// the watch is new (fresh Id, enabled). When editing, it is a rebuilt copy of the edited watch: same Id and
-    /// on/off state, its unknown JSON fields carried over (spec item 3), and only the current mode's selections
+    /// on/off state, its unknown JSON fields carried over, and only the current mode's selections
     /// kept (switching mode clears the other mode's lists, as for a new watch).
     /// </summary>
     [RelayCommand]

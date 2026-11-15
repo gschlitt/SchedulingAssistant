@@ -35,7 +35,7 @@
             </ComboBox>
         </StackPanel>
 
-        <!-- Everything the semester holds, e.g. "This semester contains 12 sections, 3 meetings." (spec item 8) -->
+        <!-- Everything the semester holds, e.g. "This semester contains 12 sections, 3 meetings." -->
         <TextBlock Grid.Row="3" Text="{Binding ContentsSummary}"
                    TextWrapping="Wrap" FontSize="12" Margin="0,0,0,8"
                    IsVisible="{Binding ContentsSummary, Converter={x:Static StringConverters.IsNotNullOrEmpty}}" />

@@ -1,7 +1,7 @@
 namespace TermPoint.Services;
 
 /// <summary>
-/// Every user-facing text of a FAILED SAVE (spec item 12): the one yellow save-error banner that
+/// Every user-facing text of a FAILED SAVE: the one yellow save-error banner that
 /// <see cref="CheckoutService.SaveFailed"/> raises when <see cref="CheckoutService.SaveAsync"/> cannot finish.
 /// Kept out of <see cref="CheckoutService"/> so the wording can be pinned by unit tests. Modelled on
 /// <see cref="RestorePrompt"/> and <see cref="LocalCopyCheckPrompt"/>.
@@ -11,7 +11,7 @@ namespace TermPoint.Services;
 /// tried again). No text carries a raw exception message, a path or log text, and none mentions a "working copy" or a
 /// "local copy". Tests enforce this.</para>
 ///
-/// <para><b>One notice for an outage</b> (spec item 28, finding F15). Every failure that means "the database location is
+/// <para><b>One notice for an outage.</b> Every failure that means "the database location is
 /// not responding" (a save of any kind that times out, and the heartbeat's lock check) shows the SAME notice,
 /// <see cref="OutageNotice"/>: it is sticky (never auto-dismisses) and clears only when the location responds again (a
 /// save succeeds, or the heartbeat reaches the lock file). It replaces the old per-save "isn't responding" text, its
@@ -68,7 +68,7 @@ public static class SavePrompt
         "Saving still works normally, but unsaved changes may not be recoverable " +
         "after a crash — save your work frequently.";
 
-    // ── The outage notice (the database location is not responding; spec item 28, finding F15) ──
+    // ── The outage notice (the database location is not responding) ──
 
     /// <summary>
     /// First part of the outage notice when the session HAS unsaved changes: the location can't be reached and the

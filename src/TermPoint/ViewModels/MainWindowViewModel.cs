@@ -30,7 +30,7 @@ public partial class MainWindowViewModel : ViewModelBase
     public SectionListViewModel SectionListVm { get; }
 
     /// <summary>
-    /// The subject-focus view model (spec item 20) shared by the indicator control and the Focus picker wherever
+    /// The subject-focus view model shared by the indicator control and the Focus picker wherever
     /// they appear. Held for app lifetime.
     /// </summary>
     public FocusViewModel FocusVm { get; }
@@ -60,7 +60,7 @@ public partial class MainWindowViewModel : ViewModelBase
     public bool IsAnyPanelEditing => SectionListVm.IsEditing || MeetingListVm.IsEditing;
 
     /// <summary>
-    /// Finds the one open editor that holds changes the user has not applied (spec item 3.1), looking in the
+    /// Finds the one open editor that holds changes the user has not applied, looking in the
     /// section list, the meeting list and the open flyout page. Detached panels share these same view models,
     /// so they are covered. Asked before a close or a database switch.
     /// </summary>
@@ -382,7 +382,7 @@ public partial class MainWindowViewModel : ViewModelBase
         _saveErrorDismissTimer.Start();
     }
 
-    // ── Save conflict (spec item 10, step 10a) ────────────────────────────────
+    // ── Save conflict ─────────────────────────────────────────────────────────
 
     /// <summary>
     /// True once a save was refused because the shared database was changed elsewhere since this session opened it
@@ -478,7 +478,7 @@ public partial class MainWindowViewModel : ViewModelBase
     private string? _refreshErrorText;
 
     /// <summary>
-    /// Remembers runs of failed refreshes so the first one that works after them can be reported (1.2.4 item 7.2).
+    /// Remembers runs of failed refreshes so the first one that works after them can be reported.
     /// Replaced by a fresh tracker when the checkout session changes (<see cref="_refreshStreakSessionId"/>), so a
     /// reader that becomes a writer, or switches database, starts clean; an open spell is dropped silently.
     /// </summary>
@@ -573,8 +573,7 @@ public partial class MainWindowViewModel : ViewModelBase
     }
 
     /// <summary>
-    /// The read-only banner text for "a live TermPoint on THIS computer holds the write lock" (spec item
-    /// 4b). Names the person editing and tells the reader what to do if that window has stopped
+    /// The read-only banner text for "a live TermPoint on THIS computer holds the write lock". Names the person editing and tells the reader what to do if that window has stopped
     /// responding. Only another operating-system user of the same computer can reach this state now — the
     /// same user's second copy is refused by the single-instance guard before it gets this far.
     /// </summary>
@@ -915,8 +914,8 @@ public partial class MainWindowViewModel : ViewModelBase
     /// <summary>
     /// True when the session should refresh by re-copying D to D'': it is a read-only (snapshot) session. Decided by
     /// the checkout <see cref="CheckoutService.Mode"/> alone. <see cref="CheckoutService.IsReadOnlyMode"/> is not
-    /// needed here: <c>RefreshReadOnlySnapshotAsync</c> checks it itself. (It was once sticky after a switch from reader
-    /// to writer; since 1.2.4 items 3.3 / 4.5 every checkout clears it.)
+    /// needed here: <c>RefreshReadOnlySnapshotAsync</c> checks it itself. (Every checkout clears it, including a switch from reader
+    /// to writer.)
     /// </summary>
     /// <param name="mode">The current <see cref="CheckoutService.Mode"/>.</param>
     /// <returns>True for <see cref="CheckoutMode.ReadOnly"/>.</returns>
@@ -925,7 +924,7 @@ public partial class MainWindowViewModel : ViewModelBase
 
 #if !BROWSER
     /// <summary>
-    /// Re-copies D to D'' for a read-only session and works out what happened (spec item 28, from item 11). Gathers
+    /// Re-copies D to D'' for a read-only session and works out what happened. Gathers
     /// the facts and hands them to <see cref="RefreshPrompt.FailureLine"/>, which picks the one line to show.
     ///
     /// <para><b>How "the connection was lost" is known.</b> The service calls <c>BeforeOverwrite</c> (here: close the
@@ -971,14 +970,14 @@ public partial class MainWindowViewModel : ViewModelBase
             $"MainWindowViewModel: refresh {(line is null ? "worked" : "failed")} " +
             $"(outcome: {outcome?.ToString() ?? "none"}).");
 
-        // Spec item 7: the two refresh failures the developers count, once per run each (the "anything else" line is
+        // The two refresh failures the developers count, once per run each (the "anything else" line is
         // not reported). Fully qualified: this file is also built for the browser, which has no TermPoint.Exceptions.
         if (!threw && outcome == RefreshOutcome.ConnectionLost)
             HandledEventReporter.Report(TermPoint.Exceptions.HandledEvent.RefreshConnectionLost, App.Logger);
         else if (!threw && outcome == RefreshOutcome.SourceUnavailable)
             HandledEventReporter.Report(TermPoint.Exceptions.HandledEvent.RefreshNotResponding, App.Logger);
 
-        // Spec item 7.2: a refresh that works after failed ones is reported as a recovery. Fresh tracker per session.
+        // A refresh that works after failed ones is reported as a recovery. Fresh tracker per session.
         try
         {
             var session = App.Checkout.SessionId;
@@ -997,7 +996,7 @@ public partial class MainWindowViewModel : ViewModelBase
     }
 
     /// <summary>
-    /// Field reporting (1.2.4 item 7.2): feeds a refresh's result to <paramref name="tracker"/> and reports a
+    /// Field reporting: feeds a refresh's result to <paramref name="tracker"/> and reports a
     /// recovery. A failed refresh (<paramref name="line"/> is not null) is one more failure of kind
     /// <paramref name="outcome"/> (or <c>Threw</c>). A refresh that worked closes an open spell: breadcrumb
     /// <c>Refresh: Recovered</c> every time and <see cref="TermPoint.Exceptions.HandledEvent.RefreshRecovered"/>
@@ -1113,7 +1112,7 @@ public partial class MainWindowViewModel : ViewModelBase
 
         IsMoreOpen = ReferenceEquals(newValue, MoreMenuVm);
 
-        // Spec item 2.17: these flyouts add, rename and delete the things the grid's filter lists and tiles
+        // These flyouts add, rename and delete the things the grid's filter lists and tiles
         // are built from, but save straight to the repositories without telling the grid. Reloading on close
         // brings the filter lists and tile names up to date (ticks survive; the rebuild matches by ID).
         if (EditsGridLookups(oldValue))
@@ -1394,7 +1393,7 @@ public partial class MainWindowViewModel : ViewModelBase
 
             if (file is null) return;
 
-            // Same as Export > Print Schedule: render on the UI thread, write under the network deadline (1.2.4 item 4.10).
+            // Same as Export > Print Schedule: render on the UI thread, write under the network deadline.
             var png = window.ScheduleGridViewInstance?.ExportToPngBytes();
             if (png is null) return;
 

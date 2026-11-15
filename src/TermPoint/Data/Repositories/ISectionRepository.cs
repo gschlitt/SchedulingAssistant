@@ -12,7 +12,7 @@ public interface ISectionRepository
     /// Returns all sections across all semesters.
     /// <para>
     /// Excludes orphans: sections whose semester no longer exists (left by older app versions when
-    /// an academic year was deleted; see spec item 8). They cannot be shown in any semester, so
+    /// an academic year was deleted). They cannot be shown in any semester, so
     /// whole-database sweeps must not see them. The orphans are left untouched in the database.
     /// </para>
     /// </summary>
@@ -29,7 +29,7 @@ public interface ISectionRepository
     /// Returns all sections assigned to the given course, across all semesters.
     /// <para>
     /// Excludes orphans: sections whose semester no longer exists (left by older app versions when
-    /// an academic year was deleted; see spec item 8), which would otherwise appear as ghost rows in
+    /// an academic year was deleted), which would otherwise appear as ghost rows in
     /// Course History. The orphans are left untouched in the database.
     /// </para>
     /// </summary>
@@ -57,7 +57,7 @@ public interface ISectionRepository
     /// <summary>
     /// Deletes the section with the given <paramref name="id"/>.
     /// An optional <paramref name="tx"/> may be supplied to include this delete in a larger
-    /// transaction, consistent with <see cref="Insert"/> and <see cref="Update"/>. (F5.)
+    /// transaction, consistent with <see cref="Insert"/> and <see cref="Update"/>.
     /// </summary>
     void Delete(string id, DbTransaction? tx = null);
 
@@ -67,8 +67,8 @@ public interface ISectionRepository
     /// <summary>Deletes all sections belonging to the given semester.</summary>
     /// <param name="semesterId">The semester whose sections are deleted.</param>
     /// <param name="tx">
-    /// Optional transaction to enlist this delete in a larger atomic operation (Empty Semester,
-    /// spec item 8). Pass <c>null</c> (the default) for a standalone delete.
+    /// Optional transaction to enlist this delete in a larger atomic operation (Empty Semester).
+    /// Pass <c>null</c> (the default) for a standalone delete.
     /// </param>
     void DeleteBySemesterId(string semesterId, DbTransaction? tx = null);
 }

@@ -3,7 +3,7 @@ using System.Diagnostics;
 namespace TermPoint.Services;
 
 /// <summary>
-/// One closed run of failures that ended in a success (spec 1.2.4 item 7.2): what <see cref="FailureStreakTracker.RecordSuccess"/>
+/// One closed run of failures that ended in a success: what <see cref="FailureStreakTracker.RecordSuccess"/>
 /// hands back so the caller can report "recovered after failing". Every value is a number or a fixed kind name, so it
 /// is safe to send to the developers.
 /// </summary>
@@ -16,7 +16,7 @@ public sealed record FailureSpell(int FailedAttempts, long FailedSeconds, string
 
 /// <summary>
 /// Remembers a run of failures of one repeated action (a save, a reader's Refresh) so that the first success after it
-/// can be reported as a recovery (spec 1.2.4 item 7.2). Pure and reusable: it knows nothing about saving or reporting.
+/// can be reported as a recovery. Pure and reusable: it knows nothing about saving or reporting.
 ///
 /// <para><b>Thread-safe</b> (one <c>lock</c>). <b>Timestamps</b> are <see cref="Stopwatch.GetTimestamp"/> values
 /// passed in by the caller (real time on purpose: it measures the share, not a test clock; tests pass their own).

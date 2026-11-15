@@ -40,7 +40,7 @@ public interface IDatabaseContext : IDisposable
     /// <c>Connection.BeginTransaction()</c> for every write transaction.
     /// <para>The SQLite context overrides it so that a read-only session starts a plain (deferred) <c>BEGIN</c>: the
     /// default <c>BEGIN IMMEDIATE</c> asks for the write lock, which SQLite's <c>query_only</c> switch refuses with a
-    /// raw error before the first repository write could give the plain "no write access" refusal (1.2.4 item 4.4).</para>
+    /// raw error before the first repository write could give the plain "no write access" refusal.</para>
     /// </summary>
     /// <returns>The open transaction, or <c>null</c> when <see cref="SupportsTransactions"/> is false.</returns>
     DbTransaction? BeginWriteTransaction() => SupportsTransactions ? Connection.BeginTransaction() : null;

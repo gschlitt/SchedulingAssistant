@@ -1,7 +1,7 @@
 namespace TermPoint.Services.SectionImport;
 
 /// <summary>
-/// Applies the meeting-time rules of the design (Phase 4, "Meeting-time rules") to one file row and
+/// Applies the meeting-time rules of the design to one file row and
 /// turns a valid row into one <see cref="MeetingDraft"/> per day. Every fault found on the row is
 /// reported, not just the first. A row whose meeting cells are all blank is a section with no meeting
 /// time (online or to be announced): fine, and it makes no meeting.

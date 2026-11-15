@@ -117,7 +117,7 @@
 	<!--
 		── Panel header statements  ──────────────────────────
 		FilterColor: the filter bar's active filter headings (FilterActiveHeader above). The Schedule View header's
-		"Filtered by:" statement uses the standard text colour (TextPrimary) since 1.2.4 item 2.14; overlays and shared
+		"Filtered by:" statement uses the standard text colour (TextPrimary); overlays and shared
 		schedules keep their own colours there.
 	-->
 	<Color x:Key="FilterColor">#4A6FA5</Color>
@@ -290,15 +290,15 @@
 	<SolidColorBrush x:Key="WorkflowPillSuccessText" Color="#1E5A3A" />
 
 	<!--
-		── Subject focus (spec item 20)  ──────────────────────────────────
+		── Subject focus  ──────────────────────────────────
 		The Schedule View header's "Subjects:" statement and its "Show all" link use the standard text colour
-		(TextPrimary) since 1.2.4 item 2.14: a colour of their own only raised the question of what it meant.
+		(TextPrimary): a colour of their own only raised the question of what it meant.
 	-->
 	<!--  Out-of-focus instructors in the section editor's instructor list: lighter than normal text, still legible  -->
 	<SolidColorBrush x:Key="TextOutOfFocus" Color="#8A94A3" />
 
 	<!--
-		Subject colour suggestion palette (designs/subject-colours.md, Revision 1). Read IN ORDER (01, 02, ...) at startup
+		Subject colour suggestion palette. Read IN ORDER (01, 02, ...) at startup
 		by App.ReadSubjectPalette and handed to SubjectColorStore; "Suggest colours" takes them in this order, each as
 		different as possible from the ones before it. The colour fills only the small subject marker before the section
 		code (text never sits on it), so these are strong mid-tone colours and blues are allowed. Red is left out: the
@@ -318,12 +318,12 @@
 	<Color x:Key="SubjectPalette11">#E3B51C</Color> <!-- gold -->
 
 	<!--  Thin translucent dark outline round every subject marker, so pale user-picked colours stay visible on the
-	      tile fill and the card background (Revision 1)  -->
+	      tile fill and the card background  -->
 	<SolidColorBrush x:Key="SubjectMarkerOutline" Color="#59000000" />
 
-	<!--  ── Folded day strips and day headers (collapse days, designs/collapse-days.md)  ──────────────────  -->
+	<!--  ── Folded day strips and day headers (collapse days)  ──────────────────  -->
 	<!--
-		Revision 1: the strip is a sheet folded almost shut down its middle. Flat fills only (no gradients): a light
+		The strip is a sheet folded almost shut down its middle. Flat fills only (no gradients): a light
 		left face, a shadowed right face and a crease line between them. Each hidden section time is a band in the tile
 		blue on both faces (lighter on the left, shadowed on the right); every band looks the same, however many
 		sections share it.
@@ -344,7 +344,7 @@
 	<SolidColorBrush x:Key="FoldedDayMarkSelection" Color="#3c647f" />
 	<SolidColorBrush x:Key="FoldedDayMarkProposal" Color="#4CAF50" />
 	<SolidColorBrush x:Key="FoldedDayMarkConflict" Color="{StaticResource ProgramConflictColor}" />
-	<!--  A meeting's lane on a folded strip (Revision 3): stronger than the pale MeetingTile fill, which was barely visible there  -->
+	<!--  A meeting's lane on a folded strip: stronger than the pale MeetingTile fill, which was barely visible there  -->
 	<SolidColorBrush x:Key="FoldedDayMeetingBar" Color="#7B5EB8" />
 	<!--  The colour a strip's faces pulse toward when something new is marked on it (translucent amber, so the strip stays readable)  -->
 	<SolidColorBrush x:Key="FoldedDayFlashBrush" Color="#CCFFB300" />

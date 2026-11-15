@@ -3,8 +3,7 @@ using TermPoint.Models;
 namespace TermPoint.Services.SectionImport;
 
 /// <summary>
-/// The near-miss warnings for new setup values (design Phase 4, "Near-miss warnings for new setup
-/// values"): a value the import will create that looks like a typo of an existing value of the same
+/// The near-miss warnings for new setup values: a value the import will create that looks like a typo of an existing value of the same
 /// kind, or of another new one. There is no warning just because something is new; the preview
 /// already lists every new record. Subjects are compared by abbreviation; section types, meeting
 /// types, tags and campuses by name; rooms only by <b>building</b> (neighbouring room numbers differ

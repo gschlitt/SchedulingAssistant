@@ -2,8 +2,7 @@ namespace TermPoint.Services;
 
 /// <summary>
 /// The command-line argument a relaunch after a Save &amp; Backup restore passes to the new copy, so it reopens the
-/// restored database instead of showing the database chooser (spec 1.2.4 item 4.3, design
-/// <c>designs/restore-relaunch-1.2.4.md</c>, change C). Nothing is stored: the argument covers one start only.
+/// restored database instead of showing the database chooser. Nothing is stored: the argument covers one start only.
 /// </summary>
 public static class RestartArguments
 {

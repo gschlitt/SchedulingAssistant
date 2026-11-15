@@ -92,7 +92,7 @@ public class InstructorRepository(IDatabaseContext db) : IInstructorRepository
     /// instructorAssignments array).
     /// <para>
     /// Ignores orphans: sections whose semester no longer exists, left behind by older app versions
-    /// when an academic year was deleted (see spec item 8). They are invisible to the user, so
+    /// when an academic year was deleted. They are invisible to the user, so
     /// counting them made "instructor has assigned workload" appear with nothing to remove. The
     /// orphans themselves are left untouched in the database.
     /// </para>

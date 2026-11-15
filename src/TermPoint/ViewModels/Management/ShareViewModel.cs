@@ -64,7 +64,7 @@ public partial class ShareViewModel : ViewModelBase
     ///
     /// On success, sets <see cref="StatusMessage"/> to the path written.
     /// On failure, sets <see cref="StatusMessage"/> to plain wording that says what happened, that nothing else was
-    /// affected and what to do (a share that stops answering is bounded by the network deadline, 1.2.4 item 4.10).
+    /// affected and what to do (a share that stops answering is bounded by the network deadline).
     /// </summary>
     [RelayCommand]
     private async Task CreateTpConfigFile()

@@ -3,7 +3,7 @@ using TermPoint.ViewModels;
 namespace TermPoint.Services;
 
 /// <summary>
-/// The one reusable decision behind "you have unapplied changes" (spec item 3.1), asked before a close or a
+/// The one reusable decision behind "you have unapplied changes", asked before a close or a
 /// database switch. Holds all the behaviour so it is testable without any window: who is asked, what each answer
 /// does, and when the answer lets the close or switch carry on.
 /// </summary>

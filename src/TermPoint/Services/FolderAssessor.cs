@@ -255,7 +255,7 @@ public class FolderAssessor
     /// assessment (the <see cref="Assess"/> call, both <c>Directory.Exists</c> calls, the ancestor walk and the
     /// writability probe) inside one <see cref="RunWithTimeout{T}"/> bounded by <see cref="DriveProbeTimeoutMs"/>:
     /// each of those is a raw filesystem call that can block for the full SMB timeout on a mapped drive that has
-    /// stopped answering (1.2.4 item 4.10, group 4). A time-out means "no suggestion for that drive", the same as a
+    /// stopped answering. A time-out means "no suggestion for that drive", the same as a
     /// drive that failed its readiness check.</para>
     /// </summary>
     /// <param name="candidatePath">The folder to assess.</param>
@@ -383,7 +383,7 @@ public class FolderAssessor
             }
         }
 
-        // SharePoint and Teams libraries synced through OneDrive (spec item 13). OneDrive puts them in a folder named
+        // SharePoint and Teams libraries synced through OneDrive. OneDrive puts them in a folder named
         // after the organisation (C:\Users\<you>\<Organisation>\<Site> - Documents), outside the OneDrive folder the
         // environment variables name, so only OneDrive's own registry entries reveal them. Windows only, best effort.
         if (OperatingSystem.IsWindows())
@@ -432,14 +432,13 @@ public class FolderAssessor
     }
 
     /// <summary>
-    /// The provider name the cloud-folder warning uses for a SharePoint or Teams library that OneDrive syncs (spec item
-    /// 13; wording approved by Greg 2026-10-26). It fills the approved sentence: "This folder is kept in sync by OneDrive
+    /// The provider name the cloud-folder warning uses for a SharePoint or Teams library that OneDrive syncs. It fills the approved sentence: "This folder is kept in sync by OneDrive
     /// (a SharePoint or Teams library)."
     /// </summary>
     internal const string SharePointLibraryProvider = "OneDrive (a SharePoint or Teams library)";
 
     /// <summary>
-    /// Turns the folders OneDrive's registry entries name into cloud sync roots (spec item 13). Pure: no file system or
+    /// Turns the folders OneDrive's registry entries name into cloud sync roots. Pure: no file system or
     /// registry access, so the labelling rules can be tested with made-up input.
     /// <list type="bullet">
     ///   <item>A folder that is the user's own OneDrive becomes a plain "OneDrive" root.</item>
@@ -507,7 +506,7 @@ public class FolderAssessor
     }
 
     /// <summary>
-    /// Reads, from the current user's registry, the local folders the OneDrive client syncs (spec item 13). The layout is
+    /// Reads, from the current user's registry, the local folders the OneDrive client syncs. The layout is
     /// OneDrive's own and undocumented, so two places are read and each is best effort (a missing key or any error just
     /// adds nothing):
     /// <list type="bullet">
@@ -698,7 +697,7 @@ public record FolderWarning(WarningKind Kind, string Message, string? Detail = n
             "Ransomware protection → Allow an app through Controlled folder access.");
 
     /// <summary>
-    /// The folder is inside a cloud-synced directory. The user-facing text (spec item 28, from item 13) says what
+    /// The folder is inside a cloud-synced directory. The user-facing text says what
     /// really happens, in plain words: a sync service does not respect the way TermPoint marks a database as in use,
     /// so two people could edit at once and one person's changes could be lost. It names no database engine and does
     /// not say "corrupt": the database is not damaged, a person's changes are.
@@ -745,7 +744,7 @@ public enum WarningKind
 public record CloudSyncRoot(string Provider, string RootPath);
 
 /// <summary>
-/// One local folder the OneDrive client syncs, as its registry entries describe it (spec item 13; see
+/// One local folder the OneDrive client syncs, as its registry entries describe it (see
 /// <see cref="FolderAssessor.OneDriveRegistryRoots"/>).
 /// </summary>
 /// <param name="Path">The local folder, exactly as the registry gives it.</param>

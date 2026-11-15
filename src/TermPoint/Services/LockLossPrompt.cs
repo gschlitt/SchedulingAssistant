@@ -2,13 +2,13 @@ namespace TermPoint.Services;
 
 /// <summary>
 /// Every user-facing text about the file TermPoint uses to mark a database as in use (the lock file) being lost while a
-/// session is open (spec item 28; data-persistence review findings F6 and F13): <b>the lock-lost banner</b>
+/// session is open: <b>the lock-lost banner</b>
 /// (<see cref="Banner"/>), shown, sticky, when a mid-session check finds the session no longer owns the lock and the
 /// session is made read-only. Says who or what took the lock, whether there were unsaved changes and where they are, what
 /// happens to them next (<see cref="KeptChangesPrompt.OfferToAdd"/>), and how to edit again.
 ///
-/// <para>A missing lock file that TermPoint puts back shows <b>no</b> message (1.2.4, 2026-11-12): the user has nothing
-/// to do, and the old notice ("Another program removed the file…") named a wrong cause when another TermPoint had taken
+/// <para>A missing lock file that TermPoint puts back shows <b>no</b> message: the user has nothing
+/// to do, and a notice such as "Another program removed the file…" would name a wrong cause when another TermPoint had taken
 /// over and closed. See <c>CheckoutService.TryRecoverRemovedLockAsync</c>.</para>
 /// Kept out of <c>SessionLifecycle</c> and <c>CheckoutService</c> so the wording can be pinned by unit tests. Modelled on
 /// <see cref="SavePrompt"/> and <see cref="KeptChangesPrompt"/>.
@@ -38,7 +38,7 @@ public static class LockLossPrompt
 
     /// <summary>
     /// First sentence of the banner for every reason other than a takeover: the lock file was deleted <b>or is
-    /// unreadable</b> (finding F13: a damaged file is not "removed"). Antivirus and cloud-sync software are the usual
+    /// unreadable</b> (a damaged file is not "removed"). Antivirus and cloud-sync software are the usual
     /// cause, so the sentence says so.
     /// </summary>
     public const string FileRemovedOrChanged =
@@ -59,7 +59,7 @@ public static class LockLossPrompt
     public const string WithoutUnsavedChanges = " There were no unsaved changes at the time.";
 
     /// <summary>
-    /// The extra sentence when an editor was open with changes the user had not applied (spec item 3.1): with the
+    /// The extra sentence when an editor was open with changes the user had not applied: with the
     /// lock gone nothing can be applied, and the reload closes the editor. Starts with a space.
     /// </summary>
     public const string UnappliedEditorChangesLost =

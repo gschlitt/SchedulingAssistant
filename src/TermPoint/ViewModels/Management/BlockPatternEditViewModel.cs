@@ -20,7 +20,7 @@ public partial class BlockPatternEditViewModel : UnappliedChangesEditor
     /// The stored pattern being edited, or null when this slot is empty and a new pattern is being
     /// created. <see cref="Save"/> builds a brand-new <see cref="BlockPattern"/> rather than mutating
     /// this one, so it uses it to carry across the original's unknown JSON fields
-    /// (<see cref="PersistedRecord.ExtensionData"/>, spec item 3); otherwise saving from an older
+    /// (<see cref="PersistedRecord.ExtensionData"/>); otherwise saving from an older
     /// app version would delete fields a newer version stored on the pattern.
     /// </summary>
     private readonly BlockPattern? _existing;

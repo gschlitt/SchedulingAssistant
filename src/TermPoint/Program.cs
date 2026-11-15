@@ -9,7 +9,7 @@ class Program
     private static bool _mainLoopEnded;
 
     /// <summary>
-    /// The shutdown backstop for this process (spec 1.2.4 item 4.3), or null before <see cref="Main"/> creates it
+    /// The shutdown backstop for this process, or null before <see cref="Main"/> creates it
     /// (and always in tests, which never run <see cref="Main"/>). Armed by <c>MainWindow</c> at the end of the exit teardown.
     /// </summary>
     internal static Services.ShutdownBackstop? Backstop { get; private set; }
@@ -51,13 +51,13 @@ class Program
             e.SetObserved(); // prevent process termination for fire-and-forget tasks
         };
 
-        // ── Did the previous session end unexpectedly? (spec item 7, step 7c) ──
+        // ── Did the previous session end unexpectedly? ──
         // A "running" file left by a process that is gone means a crash, a force-quit or a power cut. Reported once,
         // then this process writes its own file, deleted below when Main returns normally.
         var runMarker = new Services.SessionRunMarker(log: message => App.Logger.LogInfo(message));
         ReportSessionsThatEndedUnexpectedly(runMarker);
 
-        // The last resort if the main loop never ends after the exit teardown (spec 1.2.4 item 4.3). Armed by the
+        // The last resort if the main loop never ends after the exit teardown. Armed by the
         // teardown itself (SessionLifecycle → ISessionHost.ArmShutdownBackstop); does nothing on a normal exit.
         Backstop = Services.ShutdownBackstop.CreateDefault(
             mainReturned:   () => Volatile.Read(ref _mainLoopEnded),

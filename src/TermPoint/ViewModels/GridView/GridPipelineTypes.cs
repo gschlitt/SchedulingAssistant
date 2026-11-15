@@ -198,13 +198,13 @@ internal record FilterSnapshot(
     string? SelectedOverlayId,
 
     /// <summary>
-    /// How the selected <see cref="TagIds"/> combine (spec item 31): false (the default) = the section must carry all of
+    /// How the selected <see cref="TagIds"/> combine: false (the default) = the section must carry all of
     /// them; true = carrying any one of them is enough. Mirrors <see cref="GridFilterViewModel.TagsMatchAny"/>.
     /// </summary>
     bool TagsMatchAny = false)
 {
     /// <summary>
-    /// Whether a section with the given tags passes the Tags filter (spec item 31): always when no tag is selected;
+    /// Whether a section with the given tags passes the Tags filter: always when no tag is selected;
     /// otherwise it must carry every selected tag, or, with <see cref="TagsMatchAny"/>, at least one of them.
     /// </summary>
     /// <param name="sectionTagIds">The section's own tag IDs.</param>

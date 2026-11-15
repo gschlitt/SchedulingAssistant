@@ -23,6 +23,9 @@
     <script type="module">
         import { dotnet } from './_framework/dotnet.js';
 
+        // .NET 10: dotnet.run() exits the runtime once Main returns, which kills the Avalonia app.
+        // create() + runMain() keeps the runtime alive. Do not "simplify" to dotnet.run().
+
         const runtime = await dotnet
             .withConfig({ applicationArguments: [] })
             .create();

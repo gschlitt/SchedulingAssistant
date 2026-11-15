@@ -39,7 +39,7 @@ public static class ImportMessages
     /// <summary>The heading above a list of problems.</summary>
     public const string ProblemsHeading = "This file can't be imported yet. Nothing has been changed.";
 
-    /// <summary>The line above the new result when the database changed between Check and Import (decision D4).</summary>
+    /// <summary>The line above the new result when the database changed between Check and Import.</summary>
     public const string ChangedNotice =
         "Something in TermPoint changed since this file was checked. Here is the up-to-date result.";
 
@@ -72,7 +72,7 @@ public static class ImportMessages
     /// <summary>Said after an import added rooms: new rooms have no capacity or type yet.</summary>
     public const string NewRoomsNeedDetails = "New rooms need their capacity and room type: see Rooms.";
 
-    /// <summary>Said after an import into an empty semester (decision D5): how to take it back.</summary>
+    /// <summary>Said after an import into an empty semester: how to take it back.</summary>
     public const string UndoHint =
         "To take it back, switch to another semester, then use Empty semester in Academic Years.";
 

@@ -3,7 +3,7 @@ using System.Text.RegularExpressions;
 namespace TermPoint.Services;
 
 /// <summary>
-/// Names for the temporary files placed beside a database on the share (1.2.4 item 4.1).
+/// Names for the temporary files placed beside a database on the share.
 ///
 /// <para>Every upload that will be renamed onto a database (a save, a restore, a new database, Save a Copy) goes to a
 /// name of its own, <c>&lt;database&gt;.&lt;8 hex&gt;.tmp</c>, fresh for every attempt. Two writers (or two attempts of
@@ -37,7 +37,7 @@ internal static class ShareTempFile
 
     /// <summary>
     /// Whether a file is a leftover temporary file of the database at <paramref name="targetPath"/>: its name is
-    /// exactly <c>&lt;database file name&gt;.tmp</c> (the name 1.2.3 used) or <c>&lt;database file name&gt;.&lt;8 hex&gt;.tmp</c>.
+    /// exactly <c>&lt;database file name&gt;.tmp</c> (the name older versions used) or <c>&lt;database file name&gt;.&lt;8 hex&gt;.tmp</c>.
     /// Case-insensitive; only the file names are compared, never the folders; anything else (a
     /// <c>BIOL-TT.db.backup.tmp</c>, seven or nine hex digits, extra text after <c>.tmp</c>) is not a leftover.
     /// </summary>

@@ -82,7 +82,7 @@ public partial class SubjectListViewModel : ViewModelBase, IUnappliedChangesHost
     {
         LastErrorMessage = null;
         if (SelectedSubject is null) return;
-        // Save writes the whole copy back, so unknown JSON fields (spec item 3) are carried over too.
+        // Save writes the whole copy back, so unknown JSON fields are carried over too.
         var clone = new Subject
         {
             Id = SelectedSubject.Id,

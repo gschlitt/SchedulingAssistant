@@ -9,7 +9,7 @@ public class SectionRepository(IDatabaseContext db) : ISectionRepository
     /// Returns all sections across all semesters, in no particular order.
     /// <para>
     /// Excludes orphans: sections whose semester no longer exists. Older app versions left these
-    /// behind when an academic year was deleted (see spec item 8). Callers that sweep every section
+    /// behind when an academic year was deleted. Callers that sweep every section
     /// (workload history, room and scheduling-environment delete) must not see, or rewrite, rows
     /// that no semester can display, so the filter lives here rather than in each caller. The
     /// orphans themselves are left untouched in the database.
@@ -44,7 +44,7 @@ public class SectionRepository(IDatabaseContext db) : ISectionRepository
     /// Returns all sections for the given course across all semesters, ordered by section code.
     /// <para>
     /// Excludes orphans: sections whose semester no longer exists, left behind by older app
-    /// versions when an academic year was deleted (see spec item 8). Without this, Course History
+    /// versions when an academic year was deleted. Without this, Course History
     /// would show ghost sections and "apply tags to all sections" would rewrite rows that no
     /// semester can display. The orphans themselves are left untouched in the database.
     /// </para>

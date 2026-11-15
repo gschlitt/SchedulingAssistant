@@ -6,7 +6,7 @@ namespace TermPoint.Services;
 
 /// <summary>
 /// Replaces the shared database D with a backup, safely — the one restore routine shared by every restore site
-/// (spec item 5). It never opens D or the backup on the share with SQLite, never leaves a half-written D, and
+///. It never opens D or the backup on the share with SQLite, never leaves a half-written D, and
 /// keeps what it replaced.
 ///
 /// <para><b>Why:</b> the old restores did a raw synchronous <c>File.Copy</c> straight onto D, on the UI thread,
@@ -37,7 +37,7 @@ namespace TermPoint.Services;
 /// happened. After <see cref="RestoreOutcome.Restored"/> or <see cref="RestoreOutcome.RenameUnconfirmed"/> the
 /// share is left exactly as the restore left it.</para>
 ///
-/// <para><b>Creating instead of replacing</b> (<see cref="CreateFromBackupAsync"/>, spec item 5c): when the
+/// <para><b>Creating instead of replacing</b> (<see cref="CreateFromBackupAsync"/>): when the
 /// destination does not exist there is no D to protect, so the routine stages, checks, normalises and hashes the
 /// backup exactly as above (stages 2 and 3 — the same code, not a copy) and then places the staged file the way a
 /// brand-new database is placed (<see cref="NewFilePlacement"/>: folder, early and late probe, <c>D.tmp</c>, hash
@@ -439,7 +439,7 @@ public static class DatabaseRestore
                 ? new IntegrityCheckOutcome(IntegrityCheckResult.Damaged, "DEBUG fault injection: damaged", DamageEvidence.IntegrityProblems)
                 : await Task.Run(CheckStagedBackup).ConfigureAwait(false);
 
-            // Spec item 5, step 5e: positive evidence of damage inside the backup goes to the developers (once per run).
+            // Positive evidence of damage inside the backup goes to the developers (once per run).
             // A backup that is not a SQLite database at all (the usual wrong-file pick), one that could not be read, and a
             // fault injected by the DEBUG plan are never reported. Never throws, and no path is sent.
             DatabaseDamageReporter.ReportIfDamaged(

@@ -4,7 +4,7 @@ using System.Text.Json;
 namespace TermPoint.Services;
 
 /// <summary>
-/// Notices that the previous TermPoint session on this computer ended without exiting normally (spec item 7, step 7c):
+/// Notices that the previous TermPoint session on this computer ended without exiting normally:
 /// a crash, a force-quit of a hung window, a power cut. Each running TermPoint process keeps a small "running" file
 /// (its process id, start time and app version) in <see cref="DefaultFolder"/>: written at startup by
 /// <see cref="Start"/>, deleted at a normal exit by <see cref="End"/>. A file whose process is no longer running is the

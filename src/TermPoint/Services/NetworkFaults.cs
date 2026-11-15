@@ -49,8 +49,8 @@ internal enum NetworkHangPoint
     Start,
 
     /// <summary>
-    /// A copy's chunk write, immediately before the real write call: the spot field bug A1 blocked at (1.2.3: the write
-    /// call itself blocked synchronously before its deadline race had begun). Ignored by every operation but a copy.
+    /// A copy's chunk write, immediately before the real write call: the spot where the write
+    /// call itself can block synchronously before its deadline race has begun. Ignored by every operation but a copy.
     /// </summary>
     ChunkWrite
 }

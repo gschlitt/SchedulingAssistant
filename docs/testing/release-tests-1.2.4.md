@@ -235,3 +235,35 @@ front:
   window closed when the save ended). Log: one "close request ignored — saving and closing is in progress"
   (10:27:14), one save (10:27:33), clean shutdown, lock released 10:27:34. A copy of D (Claude): `ZZZT-S4A` present,
   integrity ok. Not tried: the 2-minute backstop (Debug-build switch).
+- 2026-11-13: **Part 3 wording pass** done from the code instead of on screen: `docs/testing/wording-pass-1.2.4.md`
+  (every Part 3 message, Greg's verdicts). Greg's revisions in `8eba5c7` (lock-lost "has been made read-only",
+  "the changes can't be added", "kept on this computer" on the save check, "reopen the database", "database or
+  server", the Take over tooltip); full suite with the harness 4742 passed, 0 failed, 2 skipped
+  (`E:\sa-rel124-rc3.trx`); both compile checks. Left from Part 3: on screen, lock lost with a detached panel open,
+  and the second-copy message (S1).
+- 2026-11-13: **RC3 built** from `8eba5c7` (MSIX 1.2.4.0 sideload, RC2 + the wording revisions):
+  `\\mekler\Users\gregs\temp\msix-1.2.4.0-rc3\` with `BUILD.txt`, hash `BE162654…` checked after the copy.
+- 2026-11-13: **RC3 installed and checked** (Greg: all pass). GregDeskTop: RC2 uninstalled, RC3 installed (settings
+  and recents kept in the shared AppData folder). TPVM1: `Ready` restored, RC2 uninstalled (its package-private data
+  went with it), RC3 installed: **MSIX upgrade (Part 4) second half passed**, the fresh install started the wizard
+  and opened the share's test database; `Ready` retaken on RC3 (×3). **Part 3 done on RC3:** lock lost with a
+  detached panel open (the new "has been made read-only" banner, the panel not left editable) and the second-copy
+  message (S1) in front.
+- 2026-11-13: **S7, S8, S9, S10 passed** (Greg, on the release candidate). Left in Part 4: Greg's eye passes (2.3,
+  2.5, 2.13, 2.14); S11 macOS waits for the first macOS release.
+- 2026-11-13: **Part 5 package contents passed.** Store build from `8eba5c7` (same code as RC3): "Leaving out:"
+  `libHarfBuzzSharp.pdb`, `libSkiaSharp.pdb`, `Microsoft.DiaSymReader.Native.amd64.dll`; 53.0 MB, 290 entries, none of
+  the three inside, unsigned as it should be. MakePri's PRI298 warnings (hidden-attribute Svg.* and Velopack DLLs
+  "ignored") concern the resource index only: all seven DLLs are in the package. Copied to
+  `\\mekler\Users\gregs\temp\msix-1.2.4.0-store\` with `BUILD.txt` (hash `DC075A25E5A8…` checked). The sideload
+  (RC3) still logs stack traces with method names.
+- 2026-11-13: **Part 5 package flight passed on TPW10** (clean Windows 10 VM, Store 1.2.3.0 installed and opened
+  first). The flight "1.2.4" (Store package above) certified and published; TPW10's Store took the update; the first
+  click opened TermPoint at once, no restart. TPW10's log (in the package's own folder,
+  `…\Packages\Academic-Solutions.TermPoint_9nmm6ygzk390e\LocalCache\Roaming\TermPoint\Logs\`): `[v1.2.4.0]`,
+  `[Startup] Install channel: Store`, normal timings, opened read-only (TPVM1 held the lock). Snapshots (Claude,
+  `C:\temp\flight-tpw10`; the two folders' labels came out swapped, so read by content): with 1.2.3.0 installed and
+  with 1.2.4.0 installed, the package-family cache holds ONE record for the family (`…\9nmm6ygzk390e\5b`), identical
+  in both, and `WindowsApps\Deleted` is empty in both (1.2.3's stuck update had two records and an undeletable old
+  folder). Also: TPVM1 took the flight too (by mistake); its "(Test timings ×3)" window was the RC3 sideload beside
+  it, which shares the "TermPoint" name in Start. Left in Part 5: the public submission (not mandatory), N4.

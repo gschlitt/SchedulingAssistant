@@ -13,7 +13,7 @@ public partial class WorkloadItemViewModel : ObservableObject
     public bool IsRelease => Kind == WorkloadItemKind.Release;
 
     /// <summary>
-    /// True for a section outside the chosen subjects (spec item 20): still listed and still counted in the
+    /// True for a section outside the chosen subjects: still listed and still counted in the
     /// totals, but shown in the lighter out-of-focus colour. Always false for releases and under All. Set once,
     /// when the item is built.
     /// </summary>

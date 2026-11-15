@@ -7,8 +7,8 @@ namespace TermPoint.Services.SectionImport;
 /// What validation computes for one new section, stored on its <see cref="SectionDraft"/> for the
 /// writer: the final capacity, the tag ids, the level and the day-by-day meetings.
 /// </summary>
-/// <param name="Capacity">The section's capacity (design D1), or null when none applies.</param>
-/// <param name="TagIds">The ids of the file's tags followed by the course's own tags (design D2), without repeats.</param>
+/// <param name="Capacity">The section's capacity, or null when none applies.</param>
+/// <param name="TagIds">The ids of the file's tags followed by the course's own tags, without repeats.</param>
 /// <param name="Level">The course's level, or empty.</param>
 /// <param name="Meetings">One meeting per day per valid meeting row.</param>
 internal sealed record SectionValues(
@@ -18,8 +18,7 @@ internal sealed record SectionValues(
     IReadOnlyList<MeetingDraft> Meetings);
 
 /// <summary>
-/// Validates one new section and computes its final values (the "validate" half of the planner,
-/// step 24.4): its rows agree (invariant 4), its Capacity is a whole number, and its meetings follow
+/// Validates one new section and computes its final values (the "validate" half of the planner): its rows agree (invariant 4), its Capacity is a whole number, and its meetings follow
 /// the meeting-time rules (<see cref="MeetingRules"/>). Every problem is collected, not just the first.
 /// Pure: reads only its arguments and the snapshot.
 /// </summary>
@@ -114,7 +113,7 @@ internal sealed class SectionValidator
     private static HashSet<string> EntrySet(string cell) =>
         new(cell.Split(';').Select(NameMatch.Normalize).Where(e => e.Length > 0), NameMatch.Comparer);
 
-    // ── Capacity (D1) ─────────────────────────────────────────────────────────
+    // ── Capacity ─────────────────────────────────────────────────────────
 
     /// <summary>
     /// The section's capacity. The file's number, taken from the first row where Capacity is filled,
@@ -138,7 +137,7 @@ internal sealed class SectionValidator
         return course.Capacity ?? _snapshot.DefaultSectionCapacity;
     }
 
-    // ── Tags (D2) ─────────────────────────────────────────────────────────────
+    // ── Tags ─────────────────────────────────────────────────────────────
 
     /// <summary>
     /// The file's tags (their ids) followed by the course's own tags that are not already included,

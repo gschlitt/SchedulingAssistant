@@ -22,8 +22,7 @@ public class BackupEntry
     /// <summary>
     /// True when a companion CSV was found next to this backup. A plain value fixed when the folder was listed
     /// (<see cref="Services.BackupService.GetBackupsAsync"/> matches CSVs to backups in memory from that one listing),
-    /// so drawing the list never touches the backup folder again (1.2.4 item 4.10: this used to be a
-    /// <c>File.Exists</c> on every read, on the UI thread, against a possibly slow or dead share).
+    /// so drawing the list never touches the backup folder again (a <c>File.Exists</c> on every read would run on the UI thread against a possibly slow or dead share).
     /// </summary>
     public bool HasCsv { get; init; }
 

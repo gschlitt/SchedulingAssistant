@@ -4,10 +4,10 @@ namespace TermPoint.Services;
 
 /// <summary>
 /// A "content fingerprint" of a SQLite database file: the SHA-256 of the file with the five header fields that hold no
-/// data read as zeros (spec item 3.4, 1.2.3 section 29). Two files with the same fingerprint have identical pages, so
+/// data read as zeros. Two files with the same fingerprint have identical pages, so
 /// they hold the same schema and the same data, whichever SQLite version, journal mode or backup routine last wrote them.
 ///
-/// <para><b>Why it exists (finding F5).</b> A save used to rewrite the shared database even when nothing had changed,
+/// <para><b>Why it exists.</b> Without it, a save would rewrite the shared database even when nothing had changed,
 /// because a database last written by another route (a new database, a restore from backup made with <c>VACUUM INTO</c>,
 /// a direct open in WAL mode, another SQLite version) differs from TermPoint's own snapshot of it in a few header bytes
 /// only. The save compares fingerprints and, when D' (snapshotted) and D (as last seen) agree, writes nothing.</para>

@@ -4,7 +4,7 @@ using TermPoint.Exceptions;
 namespace TermPoint.Services;
 
 /// <summary>
-/// Sends handled events to the developers (spec item 7): problems TermPoint dealt with but whose frequency in the field
+/// Sends handled events to the developers: problems TermPoint dealt with but whose frequency in the field
 /// matters (a refused save, a lost lock, a refused restore, a failed backup, an unexpected end of the previous session).
 ///
 /// <para><b>Once per run per kind</b> (or up to a caller-chosen few, <c>maxPerRun</c>). The first report of a kind goes through
@@ -15,7 +15,7 @@ namespace TermPoint.Services;
 /// keeps tests that pass their own logger apart.</para>
 ///
 /// <para><b>Privacy.</b> The exception is a <see cref="HandledEventException"/> with fixed text per kind; callers pass
-/// metadata with no paths or names (and every report also passes the BugSnag scrubber, spec item 6).</para>
+/// metadata with no paths or names (and every report also passes the BugSnag scrubber).</para>
 ///
 /// <para><b>Never throws.</b> Reporting must never turn a handled problem into a crash.</para>
 /// </summary>

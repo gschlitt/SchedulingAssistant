@@ -1,8 +1,8 @@
 namespace TermPoint.ViewModels.GridView;
 
 /// <summary>
-/// The pure rules behind a folded day's strip and the day headers' tooltips (collapse days,
-/// <c>designs/collapse-days.md</c>, Phase 3): which letter the strip shows, how wide it is, and what the tooltips say.
+/// The pure rules behind a folded day's strip and the day headers' tooltips (collapse days):
+/// which letter the strip shows, how wide it is, and what the tooltips say.
 /// No Avalonia types, so every rule is unit-tested; <c>ScheduleGridView</c> only measures and draws.
 /// </summary>
 public static class FoldedDayStrip
@@ -37,7 +37,7 @@ public static class FoldedDayStrip
         Math.Max(letterWidth, countWidth) + padding * 2;
 
     /// <summary>
-    /// THE lane table (Revision 3, R3-1): which lane of a folded strip each kind of "other thing" is drawn in, left to
+    /// THE lane table: which lane of a folded strip each kind of "other thing" is drawn in, left to
     /// right. Kinds sharing a lane number are merged together in that lane (overlay sections and commitments are one
     /// lane, same colour). A new <see cref="FoldedOtherKind"/> gets a lane by adding a row here.
     /// </summary>

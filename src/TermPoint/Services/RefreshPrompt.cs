@@ -1,7 +1,7 @@
 namespace TermPoint.Services;
 
 /// <summary>
-/// Every user-facing text of the Refresh button that a read-only session shows (spec item 28, from item 11): the
+/// Every user-facing text of the Refresh button that a read-only session shows: the
 /// button's tooltip, and the one line of the yellow save-error row that says a refresh failed. Also the one pure
 /// function that picks that line from the facts of a failed refresh (<see cref="FailureLine"/>), so the choice can be
 /// unit-tested without a window. <c>MainWindowViewModel.RefreshData</c> only gathers the facts and calls it.

@@ -56,7 +56,7 @@ public abstract record GridBlock(int Day, int StartMinutes, int EndMinutes, bool
 ///                       <see cref="TermPoint.Services.SubjectColorPresenter.ColorFor"/>; empty string when colours are
 ///                       off or the subject has none (the line is then drawn exactly as without the feature).
 /// InstructorNames     = every instructor's full name, comma-separated, for the line's hover tooltip. Set only when
-///                       Initials was shortened to "+N" (spec 1.2.4 item 2.5); empty otherwise, meaning no tooltip.
+///                       Initials was shortened to "+N"; empty otherwise, meaning no tooltip.
 /// </summary>
 public record SectionMeetingBlock(
     int Day, int StartMinutes, int EndMinutes, bool IsOverlay,
@@ -189,7 +189,7 @@ public record TileEntry(
     /// <summary>
     /// Full instructor names for this line's own hover tooltip, carried from
     /// <see cref="SectionMeetingBlock.InstructorNames"/>. Non-empty only when the line's initials were shortened
-    /// to "+N" (spec 1.2.4 item 2.5); empty = no tooltip on the line.
+    /// to "+N"; empty = no tooltip on the line.
     /// </summary>
     string InstructorNames = "");
 
@@ -214,8 +214,7 @@ public record GridTile(
     string SemesterColor = "");
 
 /// <summary>
-/// What a folded day's strip needs to say about the day it hides (collapse days, <c>designs/collapse-days.md</c>
-/// P2-1). Built by <see cref="ScheduleGridViewModel"/> from the day's blocks across ALL shown semesters (Q6), and
+/// What a folded day's strip needs to say about the day it hides (collapse days). Built by <see cref="ScheduleGridViewModel"/> from the day's blocks across ALL shown semesters, and
 /// carried only by the FIRST sub-column of a folded day.
 /// </summary>
 /// <param name="SectionCount">
@@ -228,7 +227,7 @@ public record GridTile(
 /// </param>
 /// <param name="SectionMeetings">
 /// Every non-overlay section meeting on the day (one entry per meeting, all semesters). The strip draws the union of
-/// their time spans as remnant bands (Revision 1, R1-2).
+/// their time spans as remnant bands.
 /// </param>
 /// <param name="OtherSpans">
 /// The time span of every other thing the grid draws on the day, with its kind (R1-3): faculty/committee meetings,

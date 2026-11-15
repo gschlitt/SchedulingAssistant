@@ -51,16 +51,15 @@ internal static class CrashPoints
     /// it was (every point before <c>Save.AfterRename</c>, with a possible D.tmp and local .savetmp left behind)
     /// or already replaced (<c>Save.AfterRename</c>, <c>Save.AfterMarkerDelete</c>) with the dirty marker still
     /// present at <c>Save.AfterRename</c>. <c>Save.AfterFinalCheck</c> is the last moment before the rename: the
-    /// lock and D were re-checked just before it (finding F12), so it is where a harness looks at who holds the
-    /// lock when the save's rename lands. The dirty marker already carries the save's fingerprint there
-    /// (finding F8).</item>
+    /// lock and D were re-checked just before it, so it is where a harness looks at who holds the
+    /// lock when the save's rename lands. The dirty marker already carries the save's fingerprint there.</item>
     /// <item><b>Dirty.*</b> (<c>CheckoutService.MarkDirty</c>): the dirty marker has just been written.</item>
     /// <item><b>Checkout.*, Recovery.*</b> (<c>CheckoutAsync</c>, <c>ForceCheckoutAsync</c>,
     /// <c>FinishRecoveryCheckoutAsync</c>): the lock file is ours on the share and the process dies, leaving a
     /// lock only the stale-lock rules can clear, with D' absent, freshly copied, or adopted. The exception is
     /// <c>Checkout.AfterLiveHolderSeen</c>: someone else holds a live lock, so this computer holds nothing; the point is
-    /// just before D is copied to the read-only snapshot D'', so a harness can drop the network there (field bug A13:
-    /// the failed copy raised two messages for one problem).</item>
+    /// just before D is copied to the read-only snapshot D'', so a harness can drop the network there (a failed copy
+    /// there must raise one message, not two).</item>
     /// <item><b>Release.*, Demote.*</b>: the end of a write session; a crash leaves the lock file released or not,
     /// D' present or deleted, and the dirty marker as it was.</item>
     /// <item><b>Discard.*</b> (<c>DiscardCrash</c>): the user's discarded recovery data is partly deleted; the
@@ -76,12 +75,11 @@ internal static class CrashPoints
     /// <item><b>Lock.*, Heartbeat.*, Release.AfterOwnershipCheck</b> (<c>WriteLockService</c>): the lock file has just been created, its
     /// heartbeat renewal temp file written (the rename onto the lock file not yet done), the release's check that the lock file is
     /// its own passed (the delete not yet done: <c>DeleteLockFileGatedAsync</c>, a background task), or the lock file deleted. The
-    /// two middle points are where a frozen or sleeping computer is held between a check and the action that relied on it (findings
-    /// F19 and F22); the action repeats a check older than two seconds.</item>
+    /// two middle points are where a frozen or sleeping computer is held between a check and the action that relied on it; the action repeats a check older than two seconds.</item>
     /// <item><b>WakeCheck.*, HeartbeatVerify.*</b> (<c>CheckoutService.OnWake</c>, <c>OnHeartbeatFailed</c>): the
     /// background ownership check has just read the lock file and not yet acted on what it found. Nothing on disk
     /// differs from before the check; the points exist so a harness can hold one check here while the other runs (they
-    /// run at the same moment on a real wake, field bug A12).</item>
+    /// run at the same moment on a real wake).</item>
     /// </list>
     /// </summary>
     internal static IReadOnlyList<string> All { get; } =

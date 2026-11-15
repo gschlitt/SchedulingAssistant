@@ -27,6 +27,8 @@
 
   <!-- â”€â”€ Cross-platform packages â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ -->
   <ItemGroup>
+    <!-- After every Avalonia upgrade, run the scroll-anchoring regression check: dotnet run the
+         tools/ScrollAnchorProbe project (exact command in CLAUDE.md and the release checklist). -->
     <PackageReference Include="Avalonia" Version="12.1.3" />
     <PackageReference Include="Avalonia.Controls.DataGrid" Version="12.1.2" />
     <PackageReference Include="Avalonia.Themes.Fluent" Version="12.1.3" />
@@ -43,6 +45,11 @@
     <PackageReference Include="Svg.Controls.Skia.Avalonia" Version="12.0.0" />
     <PackageReference Include="GroupBox.Avalonia" Version="12.0.0" />
     <PackageReference Include="Bugsnag" Version="4.1.0" />
+    <!-- After every Microsoft.Data.Sqlite / SQLitePCLRaw upgrade, run the "open, no edit, save, compare"
+         check (spec item 3.4). A new SQLite could change which header bytes a snapshot rewrites; that can
+         only bring back no-edit rewrites (F5), never lose data.
+         dotnet test src/TermPoint.Tests/TermPoint.Tests.csproj filtered to
+         CheckoutServiceUnchangedSaveTests and SqliteContentHashTests (FullyQualifiedName~ each, joined with |) -->
     <PackageReference Include="Microsoft.Data.Sqlite" Version="10.0.12" />
     <PackageReference Include="ExcelDataReader" Version="3.9.0" />
     <PackageReference Include="Velopack" Version="0.0.1298" />

@@ -6,7 +6,7 @@ namespace TermPoint.Data;
 /// ProgramWatches) whose <c>semester_id</c> no longer exists in <c>Semesters</c>.
 /// <para>
 /// Orphans were left behind by older app versions (academic-year delete removed the semesters but
-/// not what hung off them). Decided 2026-10-08, spec item 8: they are never deleted, detected or
+/// not what hung off them). They are never deleted, detected or
 /// reported; instead every query that spans all semesters excludes them, so they cannot block a
 /// course or instructor delete ("it has sections" with nothing visible), or be rewritten by the room
 /// and scheduling-environment delete sweeps or a course's apply-tags-to-all-sections. (Course History

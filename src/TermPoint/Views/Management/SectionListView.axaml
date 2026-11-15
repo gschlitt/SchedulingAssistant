@@ -63,7 +63,7 @@
         </Style>
 
         <!--
-            No class-conditioned styles for the section card's own elements (spec item 21, step 4b).
+            No class-conditioned styles for the section card's own elements.
             In Avalonia a style whose selector has a class condition (Path.xxx.expanded,
             TextBlock.xxx, Run.xxx, ...) attaches a style instance and class activators to EVERY
             element of the target type in this view, whether it matches or not. The list is not
@@ -134,7 +134,7 @@
                     </Grid>
                 </Border>
 
-                <!--  Conflict advisory: room and instructor conflicts this section would have if saved now, one per line (designs/conflict-muting.md, Part A).  -->
+                <!--  Conflict advisory: room and instructor conflicts this section would have if saved now, one per line.  -->
                 <!--  No Dismiss button on purpose: it would look like muting, which does not exist yet; the card keeps its flag after saving.  -->
                 <Border
                     Padding="6,3"
@@ -709,7 +709,7 @@
                                         <ScrollViewer VerticalScrollBarVisibility="Auto">
                                             <ItemsControl Margin="2" ItemsSource="{Binding InstructorSelections}">
                                                 <!--
-                                                    Out-of-focus instructors (spec item 20) show the name lighter. The class sits on the
+                                                    Out-of-focus instructors show the name lighter. The class sits on the
                                                     name's TextBlock (not the CheckBox) so the CheckBox's own checked/hover states cannot
                                                     repaint it. Only the one open editor has these rows, so the class style is cheap.
                                                 -->
@@ -1077,7 +1077,7 @@
         <x:Double x:Key="SectionRow1TypeMinWidth">64</x:Double>
 
         <!--
-            Minimum width of the Room column in the card's meeting table (spec item 21, step 4).
+            Minimum width of the Room column in the card's meeting table.
             It exists so the Type column, which follows Room, starts at the same x position on
             every card; a very long room name still widens its own card's Room column. Local to
             this view and tuned by eye, like the Row 1 widths above.
@@ -1137,7 +1137,7 @@
             its child with infinite height, which would make the list full height and leave an
             outer ScrollViewer to do the scrolling; that defeats virtualization and gives the
             list no scrollbar or PageUp / PageDown of its own. This layout applies whether or not
-            the list virtualizes (see the ListBox below and spec_version_1.2.3.md, item 23).
+            the list virtualizes (see the ListBox below).
         -->
         <Panel
             x:Name="ListContentPanel"
@@ -1199,7 +1199,6 @@
                         Opt-in: Preferences > "Faster section list for large schedules"
                         (AppSettings.VirtualizeSectionList, default off, never on in the WASM demo).
                         Re-run tools/ScrollAnchorProbe after every Avalonia upgrade.
-                        See spec_version_1.2.3.md, item 23 (and item 21, "Virtualization re-test").
                     -->
                     <ListBox.ItemContainerTheme>
                         <ControlTheme BasedOn="{StaticResource {x:Type ListBoxItem}}" TargetType="ListBoxItem">
@@ -1332,7 +1331,7 @@
                                                         is a RotateTransform whose Angle is bound to IsCollapsed through
                                                         CollapsedToDisclosureAngleConverter (0 collapsed, 90 expanded), set
                                                         directly on this Path rather than through a class-conditioned style,
-                                                        which would cost every Path in the list (spec item 21, step 4b).
+                                                        which would cost every Path in the list.
                                                         RenderTransform does not affect layout and the icon's 10x10 box is
                                                         square, so the toggle takes exactly the same space in both states and
                                                         nothing shifts. The origin is set explicitly to the centre of the shape
@@ -1353,11 +1352,11 @@
                                                         </Path.RenderTransform>
                                                     </Path>
                                                 </Button>
-                                                <!--  Heading, preceded by the subject marker (colour by subject, Revision 1):
+                                                <!--  Heading, preceded by the subject marker (colour by subject):
                                                       a small rounded square of the subject's colour, hidden (taking no
                                                       space) when the card has no subject colour, so the heading then sits
-                                                      exactly where it did in 1.2.3. Values set directly, no style class:
-                                                      this sits on every card (item 21). VerticalAlignment Top keeps the panel
+                                                      exactly where it did before. Values set directly, no style class:
+                                                      this sits on every card. VerticalAlignment Top keeps the panel
                                                       one heading line tall, so the marker centres on the heading even when
                                                       the instructor names wrap and make the row taller.  -->
                                                 <StackPanel
@@ -1423,7 +1422,7 @@
                                             </Grid>
 
                                             <!--
-                                                Row 2: Meetings (when not collapsed) — spec item 21, step 4.
+                                                Row 2: Meetings (when not collapsed).
 
                                                 ONE Grid with ONE TextBlock per column (Day, Start, End, Freq, Room,
                                                 Type), instead of a header Grid plus an ItemsControl that built a Grid
@@ -1431,8 +1430,7 @@
                                                 Run followed by a second Run bound to the view model's Meeting*Lines
                                                 string, which is a line break plus one meeting's value for each
                                                 meeting, in order. So the header is line 1 and meeting n is line n + 1.
-                                                The block is 7 controls whatever the meeting count (it used to be
-                                                11 plus 8 per meeting).
+                                                The block is 7 controls whatever the meeting count..
 
                                                 Rows line up between the columns only because every column has the
                                                 same number of equally tall lines. The view model guarantees that: an
@@ -1455,7 +1453,7 @@
                                                 FontSize="9" plus the muted Foreground on each header Run. A
                                                 class-conditioned style (TextBlock.xxx / Run.xxx) would attach style
                                                 machinery to every TextBlock and Run in the list, which is a real
-                                                per-element cost across hundreds of cards (spec item 21, step 4b).
+                                                per-element cost across hundreds of cards.
                                             -->
                                             <Grid Margin="6,2,8,6" IsVisible="{Binding !IsCollapsed}">
                                                 <Grid.ColumnDefinitions>
@@ -1481,22 +1479,20 @@
                                                 Spacing="2">
                                                 <!--
                                                     Property lines (room and instructor conflict warnings, tags,
-                                                    reserves, resources) in ONE wrapping TextBlock (spec item 21,
-                                                    step 3). PropertyLinesBehavior builds inlines only for the
+                                                    reserves, resources) in ONE wrapping TextBlock.
+                                                    PropertyLinesBehavior builds inlines only for the
                                                     lines that are present, so a card with none creates no inlines
-                                                    or icons at all (this used to be about 16 always-built
-                                                    controls per card). Presentation (warning weight and colour,
+                                                    or icons at all. Presentation (warning weight and colour,
                                                     icon size, spacing, stroke brush and the three geometries)
                                                     is supplied by the PropertyLinesBehavior attached properties
                                                     below, and the behavior copies those values straight onto
                                                     the Runs, Viewboxes and Paths it builds. There are no
                                                     class-conditioned styles for this, because those would cost
-                                                    every Run and Path in the list (spec item 21, step 4b).
+                                                    every Run and Path in the list.
                                                     Note that long lines now wrap as running text, so a
                                                     continuation line starts at the left edge rather than
                                                     under the icon's text.
-                                                    When the user shows conflicts as flags (Preferences, spec item
-                                                    25), the conflicts become one line of flags: the door icon for
+                                                    When the user shows conflicts as flags (Preferences), the conflicts become one line of flags: the door icon for
                                                     rooms, the person icon for instructors, the full list on hover.
                                                 -->
                                                 <TextBlock

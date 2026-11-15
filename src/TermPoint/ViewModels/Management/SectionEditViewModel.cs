@@ -143,6 +143,17 @@ public partial class SectionEditViewModel : UnappliedChangesEditor
     /// True when course is selected, section code is non-empty, and the code has been
     /// validated as unique (by CommitSectionCode on LostFocus or at construction).
     /// Purely derived from the validated course+code snapshot.
+    /// <para>
+    /// Second step of the editor's step-gate: course first (<see cref="IsSectionCodeEnabled"/>),
+    /// then a validated section code unlocks every other field. Keep this computed — do not
+    /// replace it with a mutable "validated" flag. Avalonia re-fires <c>SelectedValue</c> setters
+    /// after a ComboBox's <c>ItemsSource</c> loads; with a flag those re-fires could leave it wrong,
+    /// whereas here they only re-evaluate against an unchanged snapshot. Any real change to course
+    /// or code no longer matches the snapshot, so the gate closes without anyone resetting state.
+    /// The snapshot (<see cref="_validatedCourseId"/>, <see cref="_validatedSectionCode"/>) is set
+    /// only by a successful <c>CommitSectionCode</c>, or by the constructor when the section
+    /// already has both a course and a code (existing sections, and Copy with a derived code).
+    /// </para>
     /// </summary>
     public bool AreOtherFieldsEnabled =>
         !string.IsNullOrEmpty(SelectedCourseId)
@@ -499,7 +510,7 @@ public partial class SectionEditViewModel : UnappliedChangesEditor
     /// <param name="blockPatternRepository">Repository used to load saved block patterns.</param>
     /// <param name="roomTypes">Room type scheduling environment values for the room type dropdown.</param>
     /// <param name="outOfFocusInstructorIds">
-    /// Ids of instructors outside the subject focus (spec item 20): shown dimmed, with an "Other instructors"
+    /// Ids of instructors outside the subject focus: shown dimmed, with an "Other instructors"
     /// heading above the first of them when an in-focus instructor precedes it. Null or empty means no grouping.
     /// The caller must already have ordered <paramref name="instructors"/> so these come last.
     /// </param>
@@ -688,12 +699,12 @@ public partial class SectionEditViewModel : UnappliedChangesEditor
         if (isNew && !string.IsNullOrEmpty(SelectedCourseId))
             MergeCourseTags(SelectedCourseId);
 
-        // Last of all, so "as opened" includes the merged tags and every other value set above (spec item 3.1).
+        // Last of all, so "as opened" includes the merged tags and every other value set above.
         TakeSnapshot();
     }
 
     /// <summary>
-    /// The values this editor would save, as comparable text, for the unapplied-changes check (spec item 3.1).
+    /// The values this editor would save, as comparable text, for the unapplied-changes check.
     /// Compared against the values at open, so a setter Avalonia re-fires with the same value changes nothing.
     /// Unselected instructor and reserve rows are left out (their text is not saved).
     /// </summary>
@@ -1227,7 +1238,7 @@ public partial class SectionEditViewModel : UnappliedChangesEditor
                 .WithExtensionDataFrom(originalAssignments.FirstOrDefault(a => a.InstructorId == i.Value.Id)))
             .ToList();
 
-    // ── Live conflict notice (designs/conflict-muting.md, Part A) ─────────────
+    // ── Live conflict notice ─────────────
 
     /// <summary>
     /// Returns the room and instructor conflicts a draft of this section would have, one description each
@@ -1250,7 +1261,7 @@ public partial class SectionEditViewModel : UnappliedChangesEditor
     /// Advisory listing the room and instructor conflicts this section would have if saved now, one per line,
     /// or null when there are none. Non-blocking: Save still works, since some conflicts are intended.
     /// Deliberately has no Dismiss: hiding it here would suggest the conflict had been muted, and it still shows
-    /// on the card after saving (muting is designs/conflict-muting.md, Part B, a later release).
+    /// on the card after saving (muting is not yet available).
     /// </summary>
     [ObservableProperty] private string? _conflictWarning;
 

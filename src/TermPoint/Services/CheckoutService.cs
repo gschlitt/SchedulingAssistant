@@ -52,7 +52,7 @@ namespace TermPoint.Services;
 /// update), and the session opens read-only on a D'' snapshot with
 /// <see cref="RequiredAppVersion"/> set so the UI can explain why. It follows the same pattern as
 /// the license-gated read-only mode. A brand-new database carries no stamp, so it passes the gate.
-/// The gate fails SAFE (spec item 3, step 3c): if the stamp cannot be read at all (a copy another program is
+/// The gate fails SAFE: if the stamp cannot be read at all (a copy another program is
 /// holding), or a stamp this release must write cannot be written, it retries quietly and then
 /// REFUSES write access (<see cref="CheckoutOutcome.VersionCheckUnavailable"/>) rather than letting a session edit
 /// without having checked or without having stamped. A D' that SQLite reports as damaged is left to the open-time
@@ -120,7 +120,7 @@ namespace TermPoint.Services;
 ///         from "lock genuinely taken" (demote via <see cref="HandleLockLossAsync"/>).
 ///         This matches the save-time and wake-from-sleep paths, which already make
 ///         this distinction, and prevents false-positive demotions during transient
-///         network interruptions. (F11, 2026-05-04; W1, 2026-06-24; spec item 32, 2026-10-27.)</item>
+///         network interruptions.</item>
 /// </list>
 /// </summary>
 public sealed class CheckoutService : IDisposable
@@ -155,7 +155,7 @@ public sealed class CheckoutService : IDisposable
 
     /// <summary>
     /// The minimum writer version this release stamps into databases it opens for writing.
-    /// Defaults to <see cref="MinimumVersionToWrite.ThisReleaseRequires"/> (null in 1.2.3 —
+    /// Defaults to <see cref="MinimumVersionToWrite.ThisReleaseRequires"/> (null while
     /// the raising code is dormant). Settable only so tests can exercise the stamping path.
     /// </summary>
     internal string? ThisReleaseRequires { get; set; } = MinimumVersionToWrite.ThisReleaseRequires;
@@ -196,7 +196,7 @@ public sealed class CheckoutService : IDisposable
     internal Func<TimeSpan, Task> GateRetryDelay { get; set; } = delay => Task.Delay(delay);
 
     /// <summary>
-    /// DEBUG-ONLY fault injection for the version gate (spec item 3, step 3c): when non-null and its fault is
+    /// DEBUG-ONLY fault injection for the version gate: when non-null and its fault is
     /// <see cref="InjectedIntegrityFault.Stamp"/>, each of the gate's stamp-read attempts that the plan's budget
     /// covers reports the file as unreadable. Null (the default) means every real code path runs untouched. Only
     /// <c>App.Checkout</c> ever gets a plan, the very one <c>App.IntegrityFaults</c> holds, which is null in
@@ -206,7 +206,7 @@ public sealed class CheckoutService : IDisposable
     internal IntegrityFaultPlan? IntegrityFaultPlan { get; set; }
 
     /// <summary>
-    /// DEBUG-ONLY fault injection (spec item 4d): when non-null, <see cref="CheckoutAsync"/> and
+    /// DEBUG-ONLY fault injection: when non-null, <see cref="CheckoutAsync"/> and
     /// <see cref="SetupReadOnlySnapshotAsync"/> fail on purpose as the plan dictates, so the failed-switch
     /// recovery and the "Couldn't Open the Database" prompt can be exercised by hand. Null (the default)
     /// means every real code path runs untouched. Only <c>App.Checkout</c> ever gets a plan, from
@@ -216,7 +216,7 @@ public sealed class CheckoutService : IDisposable
     internal CheckoutFaultPlan? FaultPlan { get; set; }
 
     /// <summary>
-    /// DEBUG-ONLY fault injection for <see cref="RestoreFromBackupAsync"/> (spec item 5): when non-null, a
+    /// DEBUG-ONLY fault injection for <see cref="RestoreFromBackupAsync"/>: when non-null, a
     /// restore fails on purpose at the stage the plan names, so a severed network mid-restore, a damaged
     /// backup, a lost lock or an unconfirmed rename can be exercised by hand. Null (the default) means every
     /// real code path runs untouched. Only <c>App.Checkout</c> ever gets a plan, from
@@ -226,7 +226,7 @@ public sealed class CheckoutService : IDisposable
     internal RestoreFaultPlan? RestoreFaultPlan { get; set; }
 
     /// <summary>
-    /// DEBUG-ONLY fault injection for <see cref="RefreshReadOnlySnapshotAsync"/> (spec item 4.6): when non-null, the
+    /// DEBUG-ONLY fault injection for <see cref="RefreshReadOnlySnapshotAsync"/>: when non-null, the
     /// rename of the fresh copy, or the reopen of the connection, fails on purpose as the plan dictates. Null (the
     /// default) means every real code path runs untouched. Only <c>App.Checkout</c> ever gets a plan, from
     /// <see cref="Services.RefreshFaultPlan.FromEnvironment"/>, which returns null in Release builds. Settable so
@@ -285,7 +285,7 @@ public sealed class CheckoutService : IDisposable
     /// The number of the current session. Goes up when a session ends (the start of <see cref="ReleaseAsync"/>) and when a
     /// new one starts (the start of every checkout attempt, read-only or not). Work started for one session (a demotion, a
     /// posted banner, a lock check) captures the number when it starts and acts only while it is still the current one, so
-    /// nothing that belongs to the old database can land on the new one (close/switch design, items F16, F17, F18).
+    /// nothing that belongs to the old database can land on the new one.
     /// Mutated only via <see cref="Interlocked"/>.
     /// </summary>
     private int     _sessionId;
@@ -309,7 +309,7 @@ public sealed class CheckoutService : IDisposable
     /// <summary>
     /// True from the moment a close or switch begins ending the session (<see cref="ReleaseAsync"/>) until the next
     /// checkout starts. While true, the ending's own final save reports only to its caller: its banners and lock loss
-    /// are dropped by <see cref="PostForSession"/> and no demotion is started (item F17).
+    /// are dropped by <see cref="PostForSession"/> and no demotion is started.
     /// </summary>
     public bool IsEnding => Volatile.Read(ref _isEnding) == 1;
 
@@ -378,7 +378,7 @@ public sealed class CheckoutService : IDisposable
     }
 
     /// <summary>
-    /// 0 = this write session has not yet reported losing the lock, 1 = it has (A12). Makes
+    /// 0 = this write session has not yet reported losing the lock, 1 = it has. Makes
     /// <see cref="HandleLockLossAsync"/> run AT MOST ONCE per write session: the first check to find the lock
     /// gone raises <see cref="WriteLockLost"/>, and every later check — the wake check and the heartbeat both run
     /// when a computer wakes, and a save can find the same loss — returns without raising it again. Without this the
@@ -445,7 +445,7 @@ public sealed class CheckoutService : IDisposable
 
     /// <summary>
     /// The content fingerprint (<see cref="SqliteContentHash"/>) of D as of the last checkout, refresh or real save: the
-    /// SHA-256 of the file with the five header fields that hold no data read as zeros (spec item 3.4, F5). A save whose
+    /// SHA-256 of the file with the five header fields that hold no data read as zeros. A save whose
     /// snapshot has the same fingerprint, with no pending hash and no dirty marker, holds nothing D does not already
     /// have, so it writes nothing.
     ///
@@ -466,7 +466,7 @@ public sealed class CheckoutService : IDisposable
     public bool SessionDirty { get; private set; }
 
     /// <summary>
-    /// Count of user writes made in this session (spec item 3.2). Changed only with <see cref="Interlocked"/>, through
+    /// Count of user writes made in this session. Changed only with <see cref="Interlocked"/>, through
     /// <see cref="NoteEdit"/>. A save reads it before its snapshot and again at step 6; a difference means an edit
     /// arrived while the save ran, so the save must keep the dirty marker.
     /// </summary>
@@ -485,7 +485,7 @@ public sealed class CheckoutService : IDisposable
 
     /// <summary>
     /// True when the most recent <see cref="SaveAsync"/> succeeded but KEPT the dirty marker because an edit arrived
-    /// while it ran (spec item 3.2). Reset to false at the start of every save. Read by
+    /// while it ran. Reset to false at the start of every save. Read by
     /// <see cref="SaveUntilMarkerClearAsync"/> and by the restore from backup, which must not treat such a save as
     /// "everything is saved". Not a <see cref="SaveOutcome"/>: the save did succeed, and every caller tests
     /// <c>== Success</c>.
@@ -553,11 +553,11 @@ public sealed class CheckoutService : IDisposable
     /// and returned <see cref="CheckoutOutcome.StaleHolder"/>; null at any other time. This is the
     /// "expected" side of the click-time re-check: <see cref="ForceCheckoutAsync"/> hands it to
     /// <see cref="WriteLockService.ForceAcquire"/>, which deletes the lock file only if it still holds
-    /// this same session and heartbeat (spec item 9a). Cleared at the start of every checkout and once
+    /// this same session and heartbeat. Cleared at the start of every checkout and once
     /// <see cref="ForceCheckoutAsync"/> has used it, so a takeover can never run on a stale snapshot.
     /// <para>Its local observation time (when this process first saw exactly this session and heartbeat)
     /// is kept by the lock service's <see cref="LockHeartbeatWatch"/> and read back through
-    /// <see cref="GetTakeOverWait"/> (spec item 9b).</para>
+    /// <see cref="GetTakeOverWait"/>.</para>
     /// </summary>
     private LockFileData? _staleHolderAtDetection;
 
@@ -573,7 +573,6 @@ public sealed class CheckoutService : IDisposable
     /// <summary>
     /// True once a save has been refused with <see cref="SaveOutcome.SourceModified"/>: the shared database was
     /// changed by someone else since this session opened it, so this session's changes can never be written to it
-    /// (spec item 10, step 10a).
     ///
     /// <para><b>Sticky.</b> Nothing clears it while the session lives: not a later successful-looking save, not the
     /// user dismissing a banner. It is cleared only by a NEW checkout (the first thing <see cref="CheckoutAsync"/>
@@ -652,10 +651,9 @@ public sealed class CheckoutService : IDisposable
     /// <c>_dirtyFired</c> is reset to 0 BEFORE the marker is removed. Any user-initiated
     /// write that arrives in the very small window between reset and delete will be able
     /// to re-fire <c>MarkDirty</c> (CAS 0→1 succeeds), giving the post-save edit a chance
-    /// to re-write the marker. This closes the F2 race documented in
-    /// <c>data-integrity-agenda.md</c>: the previous wiring (via the post-step-7
-    /// <see cref="SaveCompleted"/> event, dispatched to the UI thread) could leave a
-    /// hundred-millisecond gap during which writes silently failed to re-arm the marker,
+    /// to re-write the marker. Do not re-arm the marker from a
+    /// post-save event dispatched to the UI thread: that leaves a
+    /// hundred-millisecond gap during which writes silently fail to re-arm the marker,
     /// causing crash recovery to misreport "clean exit" and discard real edits.</para>
     /// </summary>
     public event Action? BeforeDirtyMarkerDeleted;
@@ -670,7 +668,7 @@ public sealed class CheckoutService : IDisposable
     /// manual save).</para>
     /// <para>A <see cref="SaveOutcome.SourceModified"/> refusal does NOT raise this event: it raises
     /// <see cref="SaveConflictDetected"/> instead, which the main window shows as its own persistent banner.</para>
-    /// <para><b>The outage notice</b> (spec item 28, finding F15): every "the database location isn't responding"
+    /// <para><b>The outage notice</b>: every "the database location isn't responding"
     /// failure, from a save of any kind or from the heartbeat's lock check, raises this event with the one text
     /// <see cref="SavePrompt.OutageNotice"/> and <c>autoDismiss: false</c>, so it stays up until the location responds
     /// again. The window clears it on <see cref="SaveCompleted"/> (a save worked) or on
@@ -694,8 +692,7 @@ public sealed class CheckoutService : IDisposable
     /// <summary>
     /// Raised on the UI thread when a save is refused with <see cref="SaveOutcome.SourceModified"/> (the shared
     /// database was changed elsewhere since this session opened it), after <see cref="HasSaveConflict"/> has been
-    /// set. Replaces the <see cref="SaveFailed"/> call that used to be made here (spec item 10, step 10a).
-    ///
+    /// set.    ///
     /// <para><b>Raised on EVERY refused save</b>, not just the first (a manual save after autosave stopped is refused
     /// the same way), so handlers must be idempotent.</para>
     /// </summary>
@@ -810,7 +807,7 @@ public sealed class CheckoutService : IDisposable
         HasSaveConflict = false;    // a new checkout starts from a fresh copy of D — no conflict yet
         RequiredAppVersion = null;  // version gate has not tripped for this checkout (yet)
         _pendingSaveHash  = null;   // fresh session — no unconfirmed rename outstanding
-        ContentHashAtCheckout = null;   // not known until a fresh copy of D is verified (spec item 3.4): never skip a save before that
+        ContentHashAtCheckout = null;   // not known until a fresh copy of D is verified: never skip a save before that
         _staleHolderAtDetection = null;   // a takeover may only act on THIS checkout's stale judgement
 
         // DEBUG-ONLY fault injection (TERMPOINT_DEBUG_FAIL_CHECKOUT; null in Release builds and in
@@ -992,7 +989,7 @@ public sealed class CheckoutService : IDisposable
         }
 
         // D' is byte-identical to D (just proven): remember D's content fingerprint, BEFORE the version gate (which may
-        // write a stamp into D') and before DatabaseContext opens D', so a later save can tell "nothing changed" (item 3.4).
+        // write a stamp into D') and before DatabaseContext opens D', so a later save can tell "nothing changed".
         ContentHashAtCheckout = TryComputeContentHash(WorkingPath);
 
         CrashPoints.Hit("Checkout.AfterCopyVerified");
@@ -1017,7 +1014,7 @@ public sealed class CheckoutService : IDisposable
 
     /// <summary>
     /// How much longer the user must wait before a confirmed takeover of the lock that
-    /// <see cref="CheckoutAsync"/> judged inactive may go ahead (spec item 9b). The takeover requires that
+    /// <see cref="CheckoutAsync"/> judged inactive may go ahead. The takeover requires that
     /// holder's heartbeat to have been seen UNCHANGED for <see cref="WriteLockService.StaleConfirmationSeconds"/>
     /// of this computer's own time, counted from the first time this process saw it — usually when the
     /// checkout read it. That is typically already satisfied by the time the user has read the prompt;
@@ -1075,9 +1072,9 @@ public sealed class CheckoutService : IDisposable
     /// they wish to take over the abandoned session (i.e., after
     /// <see cref="CheckoutAsync"/> returned <see cref="CheckoutOutcome.StaleHolder"/>)
     /// and after any wait that <see cref="GetTakeOverWait"/> asked for has run out
-    /// (<see cref="WaitForTakeOverConfirmationAsync"/>; spec item 9b).
+    /// (<see cref="WaitForTakeOverConfirmationAsync"/>).
     ///
-    /// <para><b>Click-time re-check (spec item 9a):</b> the prompt may have been open for minutes, so
+    /// <para><b>Click-time re-check:</b> the prompt may have been open for minutes, so
     /// before anything is deleted <see cref="WriteLockService.ForceAcquire"/> re-reads the lock file and
     /// compares it with the holder <see cref="CheckoutAsync"/> judged inactive
     /// (<see cref="_staleHolderAtDetection"/>). Only the SAME lock (same session, same heartbeat) is
@@ -1111,7 +1108,7 @@ public sealed class CheckoutService : IDisposable
     {
         BeginSession();
         RequiredAppVersion = null;  // version gate has not tripped for this checkout (yet)
-        ContentHashAtCheckout = null;   // not known until a fresh copy of D is verified (spec item 3.4)
+        ContentHashAtCheckout = null;   // not known until a fresh copy of D is verified
 
         // The snapshot the user's yes was given on. Single use: a second takeover needs a new
         // CheckoutAsync (and a new prompt). Without one there is nothing to compare the lock file
@@ -1220,7 +1217,7 @@ public sealed class CheckoutService : IDisposable
             return CheckoutOutcome.Failed;
         }
 
-        // Same as CheckoutAsync: D' is proven identical to D, so remember D's content fingerprint (item 3.4).
+        // Same as CheckoutAsync: D' is proven identical to D, so remember D's content fingerprint.
         ContentHashAtCheckout = TryComputeContentHash(WorkingPath);
 
         CrashPoints.Hit("Checkout.AfterCopyVerified");
@@ -1350,7 +1347,7 @@ public sealed class CheckoutService : IDisposable
 
         // D is byte-identical to what the crashed session checked out — safe to resume.
         HashAtCheckout = sourceHash;
-        ContentHashAtCheckout = null;   // D' holds kept edits and D's fingerprint is not known: this session's first save is a real one (item 3.4)
+        ContentHashAtCheckout = null;   // D' holds kept edits and D's fingerprint is not known: this session's first save is a real one
         CrashPoints.Hit("Recovery.AfterSourceVerified");
 
         // Version gate on the ADOPTED D' (its stamp is a superset of D's: stamps only go up).
@@ -1372,7 +1369,7 @@ public sealed class CheckoutService : IDisposable
     }
 
     /// <summary>
-    /// The version gate (spec item 3, steps 3b and 3c). Called at each of the three write-access exits —
+    /// The version gate. Called at each of the three write-access exits —
     /// <see cref="CheckoutAsync"/>, <see cref="ForceCheckoutAsync"/>, and
     /// <see cref="FinishRecoveryCheckoutAsync"/> — once D' is verified and the lock is held, but
     /// BEFORE <see cref="Mode"/> becomes <see cref="CheckoutMode.WriteAccess"/> and before the
@@ -1391,12 +1388,11 @@ public sealed class CheckoutService : IDisposable
     /// <para><b>A damaged D'</b> (<see cref="StampReadKind.Damaged"/>) is neither retried nor refused here: the
     /// gate stops (no block, no raise) and the checkout continues, so the open-time integrity check — which
     /// runs next on every path into editing (startup and <c>SwitchDatabaseAsync</c>, which serves Open/Recent,
-    /// take-over and the wizard) — refuses the file and handles the damage as spec item 5, step 5d designed
+    /// take-over and the wizard) — refuses the file and handles the damage
     /// (fresh copy, after which this gate runs again; the recovery chooser and one report if D itself is
     /// damaged). Refusing here instead would show the "in use" prompt for damage, and since D' is a verified
     /// byte copy of D, every Try again would copy the same damage and loop, never reaching the restore. A
-    /// damaged file cannot pass that check, so it is never edited with its stamp unknown (user decision,
-    /// 2026-10-14).</para>
+    /// damaged file cannot pass that check, so it is never edited with its stamp unknown.</para>
     ///
     /// <para><b>2. Block.</b> If this app is older than the stamp, write access is refused and the session
     /// falls back to a read-only D'' snapshot, exactly like the license-gated read-only mode:</para>
@@ -1411,13 +1407,12 @@ public sealed class CheckoutService : IDisposable
     ///   <item><see cref="RequiredAppVersion"/> records the stamp for the banner.</item>
     /// </list>
     ///
-    /// <para><b>3. Raise (dormant in 1.2.3).</b> When not blocked, and this release sets
+    /// <para><b>3. Raise.</b> When not blocked, and this release sets
     /// <see cref="ThisReleaseRequires"/>, and the install channel is <see cref="InstallChannel.Store"/> or
     /// <see cref="InstallChannel.DirectDownload"/>, the stamp is raised in D'. Writing into D' means it
     /// reaches D in the same save as the data it protects. A raise that fails is retried quietly like the
     /// read, and if it still fails write access is REFUSED: editing without the stamp would save new-format
-    /// data where older versions can still edit it (user decision, 2026-10-14; before step 3c a failed raise
-    /// was logged and ignored). A malformed <see cref="ThisReleaseRequires"/> is a bug in the release, not
+    /// data where older versions can still edit it. A malformed <see cref="ThisReleaseRequires"/> is a bug in the release, not
     /// something waiting helps, so it is refused at once (and reported).</para>
     ///
     /// <para><b>Refusing write access</b> (<see cref="CheckoutOutcome.VersionCheckUnavailable"/>): the lock is
@@ -1598,7 +1593,7 @@ public sealed class CheckoutService : IDisposable
     }
 
     /// <summary>
-    /// Refuses write access because the version gate could not do its job (spec item 3, step 3c): the stamp
+    /// Refuses write access because the version gate could not do its job: the stamp
     /// could not be read, or a stamp this release must write could not be written, even after the quiet
     /// retries. Gives up the write session (<see cref="StandDownFromWriteAccess"/>) and logs it. Nothing is
     /// reported to the developers: a file another program is holding is an ordinary local condition.
@@ -1636,8 +1631,8 @@ public sealed class CheckoutService : IDisposable
     /// (<see cref="SavePrompt.OutageNotice"/>), whoever started the save.
     /// </param>
     /// <returns>
-    /// A <see cref="SaveOutcome"/> describing the result. <b>This method does not throw</b> (spec item 4,
-    /// step 4c): a plain file error on D, D.tmp or D' (a sharing violation, access denied, a vanished
+    /// A <see cref="SaveOutcome"/> describing the result. <b>This method does not throw</b>:
+    /// a plain file error on D, D.tmp or D' (a sharing violation, access denied, a vanished
     /// file) and any exception nobody anticipated come back as <see cref="SaveOutcome.CopyError"/> with a
     /// <see cref="SaveFailed"/> banner (exactly one, with a <see cref="SavePrompt"/> text and no
     /// <see cref="IAppLogger.LogError"/> call, so no second banner; the problem is reported through
@@ -1666,7 +1661,7 @@ public sealed class CheckoutService : IDisposable
             _dispatch(() => SaveStarted?.Invoke());
             var outcome = await SaveAsyncCore(releaseLockAfter, isAutoSave);
 
-            // Field reporting (1.2.4 item 7.2): feed the failure-streak tracker. Never throws.
+            // Field reporting: feed the failure-streak tracker. Never throws.
             TrackSaveOutcome(outcome, isAutoSave);
             return outcome;
         }
@@ -1682,14 +1677,14 @@ public sealed class CheckoutService : IDisposable
             //
             // ReportSaveFailure (not LogError): an exception we did not anticipate must still reach
             // Bugsnag, but as ONE path-free handled report — LogError would also raise ErrorLogged and
-            // put a second, red banner next to the save banner (spec item 12).
+            // put a second, red banner next to the save banner.
             // Nothing is deleted here — we cannot know whether the temporary file on the share or the
             // local snapshot got as far as being written; a leftover on the share is removed by the sweep
             // at the next write-access open, and the local snapshot is swept at startup.
             ReportSaveFailure(SaveStep.Unexpected, ex,
                 "unexpected exception in SaveAsync — treating as a failed save", isAutoSave);
             RaiseTransientSaveError(SavePrompt.UnexpectedMessage, isAutoSave);
-            TrackSaveOutcome(SaveOutcome.CopyError, isAutoSave);   // field reporting (1.2.4 item 7.2); never throws
+            TrackSaveOutcome(SaveOutcome.CopyError, isAutoSave);   // field reporting; never throws
             return SaveOutcome.CopyError;
         }
         finally
@@ -1703,7 +1698,7 @@ public sealed class CheckoutService : IDisposable
 
     /// <summary>
     /// Saves, and when that save succeeded but KEPT the dirty marker because an edit arrived while it ran
-    /// (<see cref="LastSaveKeptMarker"/>, spec item 3.2), saves exactly one more time with the same flag. The one shared
+    /// (<see cref="LastSaveKeptMarker"/>), saves exactly one more time with the same flag. The one shared
     /// helper for callers that need "everything is saved" before they go on: the exit/switch save
     /// (<see cref="ReleaseAsync"/>) and the save before a restore from backup.
     ///
@@ -1752,7 +1747,7 @@ public sealed class CheckoutService : IDisposable
         => RaiseSaveError(SavePrompt.ForTransientFailure(message, isAutoSave), isAutoSave);
 
     /// <summary>
-    /// Raises the ONE notice for "the database location isn't responding" (spec item 28, finding F15) through
+    /// Raises the ONE notice for "the database location isn't responding" through
     /// <see cref="SaveFailed"/>, for a save of any kind (autosave, manual, the exit save) that timed out and for the
     /// heartbeat's lock check. The text is <see cref="SavePrompt.OutageNotice"/>: with unsaved changes it says they are
     /// kept and how they get saved (autosave retries; otherwise press Save), and with none it says so. The banner is
@@ -1771,7 +1766,7 @@ public sealed class CheckoutService : IDisposable
 
     /// <summary>
     /// A save gave up because the database location did not respond: reports it to the developers once per run
-    /// (<see cref="HandledEvent.SaveLocationNotResponding"/>, spec item 7), then raises the one outage notice exactly
+    /// (<see cref="HandledEvent.SaveLocationNotResponding"/>), then raises the one outage notice exactly
     /// as <see cref="RaiseLocationUnreachable"/> does. The heartbeat's lock check, which raises the same notice, is not
     /// a save and calls <see cref="RaiseLocationUnreachable"/> directly.
     /// </summary>
@@ -1780,9 +1775,9 @@ public sealed class CheckoutService : IDisposable
     /// <param name="saveStartTimestamp">The <see cref="Stopwatch.GetTimestamp"/> value taken when the save started, to work out how long it ran.</param>
     private void RaiseSaveLocationUnreachable(bool isAutoSave, SaveStall stalledAt, long saveStartTimestamp)
     {
-        SetSaveFailureKind("NotResponding");   // field reporting (1.2.4 item 7.2)
+        SetSaveFailureKind("NotResponding");   // field reporting
 
-        // Field reporting (1.2.4 item 7.1): nothing here may throw into the save. Every value is a number, a
+        // Field reporting: nothing here may throw into the save. Every value is a number, a
         // True/False or a fixed name, so no path or message text can leak.
         try
         {
@@ -1831,10 +1826,10 @@ public sealed class CheckoutService : IDisposable
         Rename,
     }
 
-    /// <summary>How many "Save recovered after failing" events one run may send (1.2.4 item 7.2).</summary>
+    /// <summary>How many "Save recovered after failing" events one run may send.</summary>
     private const int MaxSaveRecoveredEventsPerRun = 3;
 
-    /// <summary>The failure kind of a failed save that no failure choke point named (1.2.4 item 7.2).</summary>
+    /// <summary>The failure kind of a failed save that no failure choke point named.</summary>
     private const string SaveFailureKindOther = "Other";
 
     /// <summary>
@@ -1845,7 +1840,7 @@ public sealed class CheckoutService : IDisposable
     private string? _saveFailureKind;
 
     /// <summary>
-    /// Remembers runs of failed saves so the first success after one can be reported (1.2.4 item 7.2). Fed only by
+    /// Remembers runs of failed saves so the first success after one can be reported. Fed only by
     /// <see cref="SaveAsync"/>, one save at a time; the tracker locks anyway.
     /// </summary>
     private readonly FailureStreakTracker _saveStreak = new();
@@ -1855,7 +1850,7 @@ public sealed class CheckoutService : IDisposable
     private void SetSaveFailureKind(string kind) => Volatile.Write(ref _saveFailureKind, kind);
 
     /// <summary>
-    /// Field reporting (1.2.4 item 7.2): tells <see cref="_saveStreak"/> how a save ended, and reports a recovery.
+    /// Field reporting: tells <see cref="_saveStreak"/> how a save ended, and reports a recovery.
     /// <list type="bullet">
     /// <item><description><see cref="SaveOutcome.CopyError"/>: one more failure, of the kind the failure choke points
     /// recorded (<c>Other</c> if none did).</description></item>
@@ -1981,8 +1976,7 @@ public sealed class CheckoutService : IDisposable
 
     /// <summary>
     /// Records a save failure that is NOT an ordinary retryable condition, without raising
-    /// <see cref="IAppLogger.ErrorLogged"/> (so the save banner is the only banner). Replaces the
-    /// <c>LogError</c> calls the save path used to make (spec item 12).
+    /// <see cref="IAppLogger.ErrorLogged"/> (so the save banner is the only banner).
     ///
     /// <para>1. A LOCAL log line with the full original exception (paths in it are fine: it never leaves
     /// this computer). 2. A handled report to the error reporter, ONCE PER SESSION PER STEP: a persistent
@@ -1998,7 +1992,7 @@ public sealed class CheckoutService : IDisposable
     /// <param name="isAutoSave">Whether the failing save was an autosave (goes into the report's metadata).</param>
     private void ReportSaveFailure(SaveStep step, Exception? original, string logContext, bool isAutoSave)
     {
-        // Field reporting (1.2.4 item 7.2): the current save's failure kind is its step name, set before the
+        // Field reporting: the current save's failure kind is its step name, set before the
         // once-per-step throttle below. The crash-protection marker is reported from SUCCESSFUL saves (and from
         // MarkDirty), so it must not make a save look failed.
         if (step != SaveStep.CrashProtectionMarker)
@@ -2067,7 +2061,7 @@ public sealed class CheckoutService : IDisposable
         {
             _logger.LogInfo($"CheckoutService: {logContext} — file in use or access denied ({ex.GetType().Name}: {ex.Message})");
 
-            // Field reporting (1.2.4 item 7.3): a rename refused after its own retries is counted and reported
+            // Field reporting: a rename refused after its own retries is counted and reported
             // (once per run). Only numbers, names and the HRESULT are sent. Never throws.
             if (step == SaveStep.Rename)
             {
@@ -2094,12 +2088,12 @@ public sealed class CheckoutService : IDisposable
                     // Reporting must never turn a handled save failure into a crash.
                 }
             }
-            SetSaveFailureKind("InUse");   // field reporting (1.2.4 item 7.2): another program held the file
+            SetSaveFailureKind("InUse");   // field reporting: another program held the file
             return SavePrompt.InUseMessage;
         }
 
         ReportSaveFailure(step, ex, logContext, isAutoSave);
-        SetSaveFailureKind("FileError");   // field reporting (1.2.4 item 7.2): replaces the step name ReportSaveFailure set
+        SetSaveFailureKind("FileError");   // field reporting: replaces the step name ReportSaveFailure set
         return ex is FileNotFoundException or DirectoryNotFoundException
             ? SavePrompt.InUseMessage
             : SavePrompt.WriteFailedMessage;
@@ -2146,7 +2140,7 @@ public sealed class CheckoutService : IDisposable
     /// ghost is harmless (D' content and ghost content are identical) and the in-memory
     /// copy covers the rest of this session.
     ///
-    /// <para><b>When it is called (F8):</b> <see cref="SaveAsyncCore"/> calls this immediately BEFORE the
+    /// <para><b>When it is called:</b> <see cref="SaveAsyncCore"/> calls this immediately BEFORE the
     /// step-5 rename, not only after a rename that timed out or threw. Until the marker is deleted in
     /// step 6, a crash or power cut can strike at any point after a rename that did succeed; without the
     /// fingerprint in the marker, the next start finds D changed, matches neither the marker's
@@ -2167,7 +2161,7 @@ public sealed class CheckoutService : IDisposable
 
     /// <summary>
     /// Runs one save. A thin wrapper that owns the <see cref="SaveSnapshotState"/> (the open source connection on D'
-    /// and the edit counters read before the snapshot, spec item 3.2) so it is disposed on EVERY exit path of
+    /// and the edit counters read before the snapshot) so it is disposed on EVERY exit path of
     /// <see cref="SaveAsyncCoreBody"/>, however the save ends, and resets <see cref="LastSaveKeptMarker"/>.
     /// </summary>
     /// <param name="releaseLockAfter">See <see cref="SaveAsync"/>.</param>
@@ -2176,7 +2170,7 @@ public sealed class CheckoutService : IDisposable
     private async Task<SaveOutcome> SaveAsyncCore(bool releaseLockAfter, bool isAutoSave)
     {
         LastSaveKeptMarker = false;
-        Volatile.Write(ref _saveFailureKind, null);   // field reporting (1.2.4 item 7.2): this save has not failed yet
+        Volatile.Write(ref _saveFailureKind, null);   // field reporting: this save has not failed yet
         using var snapshot = new SaveSnapshotState();
         return await SaveAsyncCoreBody(releaseLockAfter, isAutoSave, snapshot);
     }
@@ -2190,7 +2184,7 @@ public sealed class CheckoutService : IDisposable
     /// <returns>The save's outcome.</returns>
     private async Task<SaveOutcome> SaveAsyncCoreBody(bool releaseLockAfter, bool isAutoSave, SaveSnapshotState snapshot)
     {
-        var saveStart = Stopwatch.GetTimestamp();   // field reporting (1.2.4 item 7.1): times this save, real time
+        var saveStart = Stopwatch.GetTimestamp();   // field reporting: times this save, real time
 
         _logger.LogBreadcrumb("Save: started", new()
         {
@@ -2199,8 +2193,7 @@ public sealed class CheckoutService : IDisposable
         });
 
         // Invariant guard — a working copy must never be D itself. CheckoutAsync always
-        // hands out D' or D'' (the old "new database runs directly on D" shortcut was
-        // removed in 1.2.3, spec item 4a), so this is unreachable in normal operation. It
+        // hands out D' or D'', so this is unreachable in normal operation. It
         // stays as a cheap safety net: if WorkingPath ever equalled SourcePath, the
         // D' → D pipeline below would snapshot and rename D onto itself, so treat the save
         // as a no-op instead. (CleanupWorkingCopy, MarkDirty and HasDirtyMarker carry the
@@ -2231,14 +2224,14 @@ public sealed class CheckoutService : IDisposable
         //     LOCAL temp file: the consistency guarantee is about the engine-
         //     coordinated READ of D'; the network only ever sees the finished,
         //     quiescent snapshot. This keeps SQLite's page-level writes off SMB
-        //     and out from under any network deadline (finding #7).
-        // The upload gets a name of its own for THIS attempt (ShareTempFile, 1.2.4 item 4.1): a frozen upload
+        //     and out from under any network deadline.
+        // The upload gets a name of its own for THIS attempt (ShareTempFile): a frozen upload
         // another writer's (or an earlier attempt's) server-side handle still holds can never block this one, and
         // nothing below can delete or rename a file this save did not write.
         var tmpPath   = ShareTempFile.NewPath(SourcePath);
         var localTmp  = WorkingPath + ".savetmp";
         string newSourceHash;
-        string? snapshotContentHash = null;   // the snapshot's content fingerprint (spec item 3.4); null = not known
+        string? snapshotContentHash = null;   // the snapshot's content fingerprint; null = not known
         try
         {
             try
@@ -2246,7 +2239,7 @@ public sealed class CheckoutService : IDisposable
                 // The source connection is kept (snapshot.Source) until step 6. On its own connection, immediately
                 // BEFORE the pages are read, the save reads the edit count (G0) and SQLite's data_version (v0):
                 //   a write committed before v0 is in the snapshot; one committed after v0 changes data_version;
-                //   a write that starts after G0 changes the edit count. Step 6 compares both (spec item 3.2).
+                //   a write that starts after G0 changes the edit count. Step 6 compares both.
                 // snapshot.Source is assigned only on success; on a failure SnapshotWorkingCopy disposes it itself.
                 snapshot.Source = await Task.Run(() => SnapshotWorkingCopy(WorkingPath, localTmp, source =>
                 {
@@ -2286,7 +2279,7 @@ public sealed class CheckoutService : IDisposable
                 return SaveOutcome.CopyError;
             }
 
-            // 3b'. The snapshot's content fingerprint (spec item 3.4): the SHA-256 with the five header fields that hold
+            // 3b'. The snapshot's content fingerprint: the SHA-256 with the five header fields that hold
             //      no data read as zeros. Taken here, while the local snapshot still exists, for two uses: the skip
             //      decision just below, and step 6 (a real save makes it the new "D as last seen"). Null when it cannot
             //      be read, which only means "not known": never skip, and ContentHashAtCheckout becomes null.
@@ -2381,7 +2374,7 @@ public sealed class CheckoutService : IDisposable
         if (!string.Equals(tmpHash, newSourceHash, StringComparison.OrdinalIgnoreCase))
         {
             _logger.LogInfo("CheckoutService: D.tmp does not match the local snapshot — torn transfer; aborting save.");
-            SetSaveFailureKind("TornTransfer");   // field reporting (1.2.4 item 7.2)
+            SetSaveFailureKind("TornTransfer");   // field reporting
             _logger.LogBreadcrumb("Save: TornTransfer");
             HandledEventReporter.Report(HandledEvent.SaveTornTransfer, _logger,
                 new Dictionary<string, string> { ["autoSave"] = isAutoSave.ToString() });
@@ -2392,7 +2385,7 @@ public sealed class CheckoutService : IDisposable
 
         CrashPoints.Hit("Save.AfterTmpVerify");
 
-        // ── Step 4b: Final check — the lock is still ours and D is still unchanged (F12) ────────────
+        // ── Step 4b: Final check — the lock is still ours and D is still unchanged ──────────
         // Steps 1–2 ran before the snapshot and the upload. The upload takes seconds on a slow link, and
         // hours when the laptop goes to sleep mid-save ("click X, then shut the lid" starts the exit save
         // and suspends the machine before it ends). Meanwhile our lock can have gone stale and another
@@ -2402,7 +2395,7 @@ public sealed class CheckoutService : IDisposable
         // the stamp changed). If either refuses, D is untouched: return the refusal; the working copy D'
         // and its dirty marker stay, exactly as for a refusal at the start, so nothing the user typed is
         // lost. The temporary file is deleted on EVERY refusal, with or without the lock: it has a name of
-        // its own (ShareTempFile, 1.2.4 item 4.1), so it is ours and nobody else's, and deleting a file we
+        // its own (ShareTempFile), so it is ours and nobody else's, and deleting a file we
         // created needs no lock (rule 2). A delete that fails (the share is down) is only logged; the sweep
         // at the next write-access open removes the leftover (CleanupOrphanedTmpAsync).
         //
@@ -2424,7 +2417,7 @@ public sealed class CheckoutService : IDisposable
         CrashPoints.Hit("Save.AfterFinalCheck");
 
         // ── Step 5: Atomically rename D.tmp → D ──────────────────────────────
-        // Record the snapshot's fingerprint BEFORE the rename (F8), in memory and in the dirty marker.
+        // Record the snapshot's fingerprint BEFORE the rename, in memory and in the dirty marker.
         // Until step 6 deletes the marker, a crash or power cut can strike after a rename that DID
         // succeed. If the marker lacked the fingerprint, the next start would see D changed, match
         // neither HashAtCheckout nor a pending save hash, and refuse the Restore with "Can't Restore"
@@ -2483,10 +2476,10 @@ public sealed class CheckoutService : IDisposable
 
         // D now holds exactly this snapshot (also on the "rename timed out but D already matches" path above, which falls
         // through to here): its content fingerprint is the new "D as last seen" for the skip decision of later saves
-        // (spec item 3.4). Set whether or not an edit arrived during the save (both branches below). Null if it could not be read.
+        // Set whether or not an edit arrived during the save (both branches below). Null if it could not be read.
         ContentHashAtCheckout = snapshotContentHash;
 
-        // D' now matches D — UNLESS an edit arrived while this save ran (spec item 3.2, finding F2). The save's
+        // D' now matches D — UNLESS an edit arrived while this save ran. The save's
         // snapshot was taken before that edit, so the edit is in D' only; deleting the marker would leave it
         // unmarked, and a lost lock, a failed exit save or a crash would then throw it away. So the marker is
         // deleted only when BOTH counters say nothing happened since the snapshot:
@@ -2501,7 +2494,7 @@ public sealed class CheckoutService : IDisposable
         {
             // Fire BeforeDirtyMarkerDeleted SYNCHRONOUSLY first so subscribers (notably
             // DatabaseContext.ResetDirty) can rearm MarkDirty before the marker file is
-            // removed. See the event docstring for the F2 race rationale. (Resetting the flag first also makes
+            // removed. See the event docstring for the race rationale. (Resetting the flag first also makes
             // the next edit write the marker again; that write waits for this lock.)
             BeforeDirtyMarkerDeleted?.Invoke();
 
@@ -2566,7 +2559,7 @@ public sealed class CheckoutService : IDisposable
     }
 
     /// <summary>
-    /// The end of a SKIPPED save (spec item 3.4): the snapshot holds nothing D does not already have, so nothing was
+    /// The end of a SKIPPED save: the snapshot holds nothing D does not already have, so nothing was
     /// uploaded, verified or renamed. The lock and D were checked (steps 1-2) and the snapshot and its fingerprint were
     /// taken (steps 3a-3b); this finishes the save as a success without changing any state.
     ///
@@ -2581,7 +2574,7 @@ public sealed class CheckoutService : IDisposable
     ///
     /// <para><b>Timing:</b> the duration goes into the breadcrumb but NOT into the recent-save statistics
     /// (<see cref="RecordSuccessfulSaveMs"/>), which describe how long saves take to reach the share; a skipped save never
-    /// touches it for the upload, and counting its few milliseconds would hide a slow share from the field report (item 7.1).</para>
+    /// touches it for the upload, and counting its few milliseconds would hide a slow share from the field report.</para>
     /// </summary>
     /// <param name="releaseLockAfter">Release the write lock (exit), unless an edit arrived during the save.</param>
     /// <param name="isAutoSave">Whether the save was started by the autosave timer (for the breadcrumb).</param>
@@ -2649,7 +2642,7 @@ public sealed class CheckoutService : IDisposable
     /// is the cue to look closer; a stamp that has not changed is accepted as "D has not changed" (a hash
     /// would only confirm it, at the cost of reading the whole database over the network).
     ///
-    /// <para><b>Freshness:</b> SMB may serve a size and time that are up to about 10 seconds old (E2, <c>designs/network-experiments-5.8.md</c>),
+    /// <para><b>Freshness:</b> SMB may serve a size and time that are up to about 10 seconds old),
     /// so an unchanged stamp is not proof on its own. It is covered because the lock check made just before the stamp
     /// (step 2, in the same <c>CheckLockAndSourceAsync</c> call) refuses first if the lock is no longer ours: another
     /// writer cannot have replaced D without having taken the lock, so a stale stamp cannot hide a real change.</para>
@@ -2695,7 +2688,7 @@ public sealed class CheckoutService : IDisposable
 
     /// <summary>
     /// The two checks a save makes before it may write to the shared database D, run at the start of the save
-    /// (steps 1–2) and again, as the final check, immediately before the rename onto D (step 4b, F12).
+    /// (steps 1–2) and again, as the final check, immediately before the rename onto D (step 4b).
     ///
     /// <para><b>Step 1 — the lock is still ours.</b> <see cref="VerifyLockIsOursAsync"/>, which re-reads once after
     /// a NotOurs answer unless the lock file names another session (that is a takeover, final: no re-read). A
@@ -2740,8 +2733,7 @@ public sealed class CheckoutService : IDisposable
     /// <c>LockConfirmed</c>: true when step 1 CONFIRMED the lock is ours (the lock file named this session, or a
     /// merely removed lock file was re-created by <see cref="TryRecoverRemovedLockAsync"/>), so every return from
     /// step 2 on carries true; false on the two step-1 refusals, the share not answering (CopyError) and the lock
-    /// being someone else's (LockLost). No caller acts on it any more (the final check's caller used to delete its
-    /// temporary file only when this was true, spec item 32 change (d); since 1.2.4 item 4.1 it always does).
+    /// being someone else's (LockLost). No caller acts on it any more
     /// </returns>
     /// <param name="saveStartTimestamp">The <see cref="Stopwatch.GetTimestamp"/> value taken when the save started (for the timeout report's elapsed time).</param>
     private async Task<(SaveOutcome? Refusal, SourceStamp? Stamp, bool LockConfirmed)> CheckLockAndSourceAsync(
@@ -2847,7 +2839,7 @@ public sealed class CheckoutService : IDisposable
                 _logger.LogBreadcrumb("Save: GhostRenameHealed");
                 HashAtCheckout   = _pendingSaveHash;
                 _pendingSaveHash = null;
-                ContentHashAtCheckout = null;   // D's content as of that ghost save is not known: never skip until a real save sets it (item 3.4)
+                ContentHashAtCheckout = null;   // D's content as of that ghost save is not known: never skip until a real save sets it
                 // Fall through — the current save proceeds normally.
             }
             else
@@ -2859,7 +2851,7 @@ public sealed class CheckoutService : IDisposable
                     ["autoSave"]   = isAutoSave.ToString(),
                     ["finalCheck"] = isFinalCheck.ToString(),
                 });
-                // A genuine conflict the user must resolve (spec item 10, step 10a). Not a SaveFailed
+                // A genuine conflict the user must resolve. Not a SaveFailed
                 // banner: the sticky state is HasSaveConflict, and the main window shows its own
                 // persistent banner (Save a Copy… / Discard Changes) when SaveConflictDetected fires.
                 HasSaveConflict = true;
@@ -2922,7 +2914,7 @@ public sealed class CheckoutService : IDisposable
 
         try
         {
-            // Backstop (spec item 3.2, audit finding): while the dirty marker exists there are edits that are in D'
+            // Backstop: while the dirty marker exists there are edits that are in D'
             // only. A confirmed restore ends the session and DiscardCrash then deletes D' and the marker, which would
             // destroy them. SessionLifecycle's save-first already refuses to start in that case; this keeps any other
             // caller honest. Checked after the in-flight gate (a running save is answered "Busy" first, and the marker
@@ -3286,7 +3278,7 @@ public sealed class CheckoutService : IDisposable
 
         // One read of D: copy it to D''.tmp and hash the bytes as they pass. TermPoint only ever replaces D by renaming
         // a finished copy over it, so one open handle reads one whole version; no second read is needed to detect a
-        // change mid-copy (designs/reader-single-read-1.2.4.md). A damaged copy is caught by the integrity check below.
+        // change mid-copy. A damaged copy is caught by the integrity check below.
         string? sourceHash;
         try
         {
@@ -3302,7 +3294,7 @@ public sealed class CheckoutService : IDisposable
         }
         catch (Exception ex)
         {
-            // LogInfo, not LogError: LogError would also put a red log-text banner on screen (spec item 28); the
+            // LogInfo, not LogError: LogError would also put a red log-text banner on screen; the
             // view model shows one plain line instead. The exception's type and message stay in the log line.
             _logger.LogInfo(
                 $"CheckoutService: failed to copy D to D''.tmp during refresh ({ex.GetType().Name}: {ex.Message})");
@@ -3487,7 +3479,7 @@ public sealed class CheckoutService : IDisposable
             //
             // Taken under _markerGate: step 6 of a save resets the first-write flag, compares the edit counters and
             // then deletes or rewrites the marker under the same lock, so this write cannot fall between that
-            // comparison and that delete (spec item 3.2). The lock covers only the local file write.
+            // comparison and that delete. The lock covers only the local file write.
             bool written;
             lock (_markerGate)
                 written = WriteDirtyMarker() || WriteDirtyMarker();
@@ -3606,7 +3598,7 @@ public sealed class CheckoutService : IDisposable
     /// A read-only open would refuse to roll back the journal and misreport a perfectly
     /// recoverable D' as damaged.</para>
     ///
-    /// <para><b>Three-way verdict (1.2.4 item 4.7, D1).</b> A D' that another program holds open (antivirus
+    /// <para><b>Three-way verdict.</b> A D' that another program holds open (antivirus
     /// scanning it, say) is NOT damaged: it comes back <see cref="IntegrityCheckResult.Unreadable"/> after
     /// <see cref="LocalCopyIntegrity.MaxAttempts"/> quiet attempts, <see cref="LocalCopyIntegrity.RetryDelay"/>
     /// apart (waited with <see cref="GateRetryDelay"/>, so tests do not sleep; async so the window stays
@@ -3642,7 +3634,7 @@ public sealed class CheckoutService : IDisposable
 
     /// <summary>
     /// Saves the unsaved changes held in the crash-recovery file D' of <paramref name="sourcePath"/> as a NEW,
-    /// standalone database at <paramref name="destPath"/> (spec item 16, step 16a). Offered after a
+    /// standalone database at <paramref name="destPath"/>. Offered after a
     /// <see cref="CheckoutOutcome.RecoveryConflict"/>: D changed since the crash, so the unsaved changes cannot be
     /// resumed, and this keeps them as a separate file the user can open later.
     ///
@@ -3767,7 +3759,7 @@ public sealed class CheckoutService : IDisposable
 
     /// <summary>
     /// Sets aside the local copy of the current session — D' for a writer, D'' for a reader — because it keeps
-    /// failing its open-time integrity check (spec item 5, step 5d). The file is RENAMED to
+    /// failing its open-time integrity check. The file is RENAMED to
     /// <c>.corrupt-yyyyMMdd-HHmmss</c> beside where it was (with its WAL sidecar and any dirty marker handled as
     /// <see cref="ArchiveCorruptWorkingCopy"/> does), never deleted: it is evidence for IT support and, for a writer
     /// whose copy somehow held unsaved work, the only copy of it. If the rename fails the file is left exactly
@@ -3837,7 +3829,7 @@ public sealed class CheckoutService : IDisposable
 
     /// <summary>
     /// Makes ONE fresh local copy of the shared database after the open-time integrity check of the current local
-    /// copy failed with damage and the shared database itself passed (spec item 5, step 5d). Never throws; D is
+    /// copy failed with damage and the shared database itself passed. Never throws; D is
     /// never changed.
     ///
     /// <para><b>Writer</b> (<see cref="Mode"/> is <see cref="CheckoutMode.WriteAccess"/>, the lock is ours):</para>
@@ -3851,8 +3843,7 @@ public sealed class CheckoutService : IDisposable
     /// retry).</description></item>
     /// <item><description>Replaces D' with the verified file (its WAL sidecars are removed first) and updates
     /// <see cref="HashAtCheckout"/> to D's hash, so a later save sees D as unchanged.</description></item>
-    /// <item><description><b>Runs the version gate again</b> on the new D' (<see cref="ApplyVersionGateAsync"/>; spec
-    /// item 3, step 3c), because the gate that ran at checkout judged the file just replaced: it reads the
+    /// <item><description><b>Runs the version gate again</b> on the new D' (<see cref="ApplyVersionGateAsync"/>), because the gate that ran at checkout judged the file just replaced: it reads the
     /// stamp and, in a release that raises it, raises it into the new D'. If the new D' must be read-only
     /// (this app is older than its stamp) the writer is stood down — see <see cref="LocalCopyRefreshResult.NowReadOnly"/>.</description></item>
     /// </list>
@@ -3980,10 +3971,10 @@ public sealed class CheckoutService : IDisposable
             // D' now IS D as of sourceHash: that is the baseline every later save compares D against.
             HashAtCheckout   = sourceHash;
             _pendingSaveHash = null;
-            ContentHashAtCheckout = TryComputeContentHash(WorkingPath);   // the fresh copy is byte-identical to D (verified above), and not yet opened or stamped (item 3.4)
+            ContentHashAtCheckout = TryComputeContentHash(WorkingPath);   // the fresh copy is byte-identical to D (verified above), and not yet opened or stamped
             _logger.LogInfo("CheckoutService: RefreshLocalCopy — D' replaced by a fresh, verified copy of D.");
 
-            // The version gate ran at checkout on the D' that has just been thrown away (spec item 3, step 3c):
+            // The version gate ran at checkout on the D' that has just been thrown away:
             // the new D' was never checked, and a stamp this release raised into the old one is gone. Run the
             // gate again. It stands the writer down itself if it must: the lock is released, RequiredAppVersion
             // is set and a read-only D'' is made (NowReadOnly), or write access is refused (Unreadable).
@@ -4009,7 +4000,7 @@ public sealed class CheckoutService : IDisposable
     /// <summary>
     /// Deletes every leftover temporary file of the database beside D: the per-attempt names
     /// (<c>D.&lt;8 hex&gt;.tmp</c>, see <see cref="ShareTempFile"/>) that a crashed, frozen or abandoned save left
-    /// behind, and the old shared <c>D.tmp</c> that 1.2.3 wrote. Matching is strict
+    /// behind, and the old shared <c>D.tmp</c> that earlier versions wrote. Matching is strict
     /// (<see cref="ShareTempFile.IsLeftoverOf"/>), so a user's own <c>D.backup.tmp</c> is never touched.
     ///
     /// <para>The folder is listed once under the network deadline; each match is then deleted with
@@ -4018,7 +4009,7 @@ public sealed class CheckoutService : IDisposable
     ///
     /// <para><b>Runs ONLY while this process holds the write lock</b>, through
     /// <see cref="CleanupOrphanedTmpOnceWriterAsync"/>, at the three write-access exits of a checkout
-    /// (spec item 4): a temporary file is the in-flight file of someone who is saving, and before the lock is ours
+    /// A temporary file is the in-flight file of someone who is saving, and before the lock is ours
     /// it could be a colleague's save in progress. No read-only, observer, licence-gated, version-gated, failed or
     /// refused open ever calls this. It is <c>internal</c> (not public) so nothing outside the checkout can call it
     /// at the wrong time; tests reach it directly.</para>
@@ -4122,14 +4113,14 @@ public sealed class CheckoutService : IDisposable
 
         // A lost-lock demotion that is still running finishes first (normally a second or two): it leaves the session
         // read-only, so the save below is skipped and the release sees the read-only snapshot, never the marked D'
-        // (item F16). Bounded, like the in-flight save wait; a demotion that outlasts it is stopped by its own session
+        // Bounded, like the in-flight save wait; a demotion that outlasts it is stopped by its own session
         // check once the session is marked ending next. Waiting BEFORE EndSession is what lets it finish normally.
         var demotion = _demotionTask;
         if (demotion is not null && !await WaitBoundedAsync(demotion, DemotionWaitLimit))
             _logger.LogInfo("CheckoutService: ReleaseAsync — the demotion is still running after the wait; ending the session anyway (the demotion will stop itself).");
 
         // From here on this session is over: anything still posted or running for it is stale, and the final save
-        // below reports only to the caller (item F17).
+        // below reports only to the caller.
         EndSession();
 
         var outcome = SaveOutcome.Success;
@@ -4141,7 +4132,7 @@ public sealed class CheckoutService : IDisposable
             // _saveInFlight gate and being skipped.
             await WaitForInFlightSaveAsync();
 
-            // One more pass when an edit arrived during the first one (spec item 3.2): SaveUntilMarkerClearAsync.
+            // One more pass when an edit arrived during the first one: SaveUntilMarkerClearAsync.
             outcome = await SaveUntilMarkerClearAsync(releaseLockAfter: true);
             CrashPoints.Hit("Release.AfterFinalSave");
 
@@ -4187,7 +4178,7 @@ public sealed class CheckoutService : IDisposable
     /// are nowhere else, so it is KEPT, with its marker, and offered back the next time the database is opened for editing.
     /// The callers' own guard ("the final save succeeded, or there is no marker") is not enough on its own: a session that
     /// is read-only skips the final save and reports Success, and a lost-lock demotion whose copy for reading failed is
-    /// read-only while still on its marked working copy (known finding F21: the next Close deleted the edit). A successful
+    /// read-only while still on its marked working copy. A successful
     /// save always deletes the marker first, read-only snapshots never have one, and a deliberate discard goes through
     /// <see cref="DiscardCrash"/>, so no legitimate delete is refused.</para>
     /// </summary>
@@ -4209,7 +4200,7 @@ public sealed class CheckoutService : IDisposable
 
     /// <summary>
     /// Returns the service to a clean "no database open" state after an open or switch FAILED once the
-    /// previous database had already been closed (spec item 4d). Call it before showing the database
+    /// previous database had already been closed. Call it before showing the database
     /// chooser, so the next attempt starts from a known state and nothing left over can do harm:
     ///
     /// <list type="bullet">
@@ -4361,7 +4352,7 @@ public sealed class CheckoutService : IDisposable
     ///         write session regained in the app after a loss (a reader choosing "Take over as writer") report its
     ///         own next loss; if a start of write access skipped it, that next loss would be swallowed as
     ///         "already handled" and the user would never be told.</item>
-    ///   <item>Subscribes <see cref="OnWake"/> and <see cref="OnHeartbeatFailed"/> to the lock service (F11).
+    ///   <item>Subscribes <see cref="OnWake"/> and <see cref="OnHeartbeatFailed"/> to the lock service.
     ///         <see cref="HandleLockLossAsync"/> unsubscribes both on the session's first loss.</item>
     /// </list>
     /// The guard is reset BEFORE the handlers are subscribed, so a check that fires at once sees a fresh guard.
@@ -4378,7 +4369,7 @@ public sealed class CheckoutService : IDisposable
         _lockService.WakeDetected    -= OnWake;
         _lockService.HeartbeatFailed -= OnHeartbeatFailed;
         _lockService.WakeDetected    += OnWake;
-        _lockService.HeartbeatFailed += OnHeartbeatFailed;   // F11
+        _lockService.HeartbeatFailed += OnHeartbeatFailed;
     }
 
     /// <summary>
@@ -4449,7 +4440,7 @@ public sealed class CheckoutService : IDisposable
     ///
     /// <para>The heartbeat check (<see cref="OnHeartbeatFailed"/>) runs at the same moment on waking, so both can
     /// find the same loss. Only the first to do so raises <see cref="WriteLockLost"/> (once per write session —
-    /// see <see cref="_lockLossRaised"/>, A12); the other logs that and does nothing.</para>
+    /// see <see cref="_lockLossRaised"/>); the other logs that and does nothing.</para>
     ///
     /// <para>The event is dispatched on the UI thread, but the verification work
     /// (reading the <c>.lock</c> file on a network share) can block for 20–30
@@ -4518,8 +4509,7 @@ public sealed class CheckoutService : IDisposable
     /// <para><b>When it runs:</b> lock verification found the file <i>missing</i> with the share reachable and no new
     /// holder (<see cref="LockLossNewHolder"/> is null). Two real causes look exactly like that: another program
     /// (antivirus, cloud sync, backup, someone tidying the folder) deleted the file, or <b>another TermPoint took the
-    /// lock over while this computer slept and has since closed</b>, which deletes the file (found by the 1.2.4 field
-    /// test M5 (4), 2026-11-12). This method cannot tell them apart and does not need to.</para>
+    /// lock over while this computer slept and has since closed</b>, which deletes the file. This method cannot tell them apart and does not need to.</para>
     ///
     /// <para><b>Why this is safe:</b> re-creation goes through <see cref="WriteLockService.TryAcquire"/>, whose
     /// <c>FileMode.CreateNew</c> is atomic at the SMB level: if another instance claims the lock in the race window,
@@ -4529,7 +4519,7 @@ public sealed class CheckoutService : IDisposable
     /// if the other TermPoint saved before closing, this session's next save is refused (SourceModified) and its work
     /// is kept. <c>Harness/TakeoverThenReleaseProofTests</c> pins both routes.</para>
     ///
-    /// <para><b>No message (1.2.4, Greg 2026-11-12).</b> On success the session simply continues as writer
+    /// <para><b>No message.</b> On success the session simply continues as writer
     /// (TryAcquire restarted the heartbeat and wake timers; our event subscriptions were never removed). The user is
     /// not told: there is nothing for them to do, and the old notice ("Another program removed the file…") named a
     /// cause that was wrong when another TermPoint had closed. If the database changed meanwhile, the conflict banner
@@ -4571,9 +4561,9 @@ public sealed class CheckoutService : IDisposable
     /// the UI stays consistent with <see cref="CheckoutService"/> state, and the
     /// existing view-model / banner is preserved.</para>
     ///
-    /// <para><b>Once per write session (A12).</b> Only the FIRST caller in a write session does any of the above.
+    /// <para><b>Once per write session.</b> Only the FIRST caller in a write session does any of the above.
     /// The wake check, the heartbeat check and a save can all find the same loss at the same moment (on waking, the
-    /// first two always do), and each used to raise <see cref="WriteLockLost"/>: the window then ran two overlapping
+    /// first two always do), and each would raise <see cref="WriteLockLost"/> again: the window would then run two overlapping
     /// demotions, the second reopened the database on a working copy the first had already deleted, and the user saw
     /// "connection could not be restored" instead of "has taken over editing". Later callers log one line and return.
     /// The guard (<see cref="_lockLossRaised"/>) is re-armed by <see cref="StartWatchingForLockLoss"/> whenever write
@@ -4581,7 +4571,7 @@ public sealed class CheckoutService : IDisposable
     /// </summary>
     private Task HandleLockLossAsync()
     {
-        // F17: a close or switch is already ending this session, and its final save may find the lock gone (a takeover).
+        // A close or switch is already ending this session, and its final save may find the lock gone (a takeover).
         // That outcome goes to the caller alone ("Changes Not Saved"): raising WriteLockLost would only start a demotion
         // during teardown (and PostForSession would drop it anyway, since IsEnding is true). So say so and stop here.
         if (IsEnding)
@@ -4598,11 +4588,11 @@ public sealed class CheckoutService : IDisposable
 
         StopAutoSave();
         _lockService.WakeDetected    -= OnWake;
-        _lockService.HeartbeatFailed -= OnHeartbeatFailed;   // F11 — unsubscribe on first loss
+        _lockService.HeartbeatFailed -= OnHeartbeatFailed;   // unsubscribe on first loss
         var reason = LockLossNewHolder is not null
             ? WriteLockLostReason.TakenOver
             : WriteLockLostReason.LockFileRemoved;
-        // The holder's relation to this user, never their name (spec item 6, step 6c).
+        // The holder's relation to this user, never their name.
         var newHolder = _lockService.DescribeHolder(LockLossNewHolder);
         _logger.LogBreadcrumb("Lock lost", new()
         {
@@ -4619,7 +4609,7 @@ public sealed class CheckoutService : IDisposable
     /// <summary>
     /// Called when <see cref="WriteLockService.HeartbeatFailed"/> fires — i.e., the heartbeat
     /// timer has failed to renew the lock file <see cref="WriteLockService.HeartbeatFailureThreshold"/>
-    /// consecutive times, OR (spec item 32, change (c)) it read the lock file and found it naming
+    /// consecutive times, OR it read the lock file and found it naming
     /// another session, in which case it wrote nothing and raised the event on that very beat. The
     /// second case needs no special handling here: the verification below reads the same file, finds the
     /// other session's name, and answers <see cref="LockVerificationResult.NotOurs"/> at once.
@@ -4630,13 +4620,13 @@ public sealed class CheckoutService : IDisposable
     /// state) from "lock genuinely taken" (permanent — demote). If we skipped that check
     /// here, a 2–4 minute WiFi/VPN interruption on the writer's own machine would trigger a
     /// false-positive demotion and destroy unsaved edits, even though no other instance ever
-    /// contended for the lock. (W1, write-access-loss-agenda 2026-06-24.)</para>
+    /// contended for the lock.</para>
     ///
     /// <para><b>Sequence:</b> <see cref="VerifyLockIsOursAsync"/> reads the lock file with
     /// the same reachability-probe logic used by the save and wake paths.
     /// <list type="bullet">
     ///   <item><see cref="LockVerificationResult.NotOurs"/> — genuine loss. Route through
-    ///         <see cref="HandleLockLossAsync"/> (same as before W1).</item>
+    ///         <see cref="HandleLockLossAsync"/>.</item>
     ///   <item><see cref="LockVerificationResult.Unreachable"/> — transient network issue.
     ///         Keep writer state; surface the one sticky outage notice
     ///         (<see cref="RaiseLocationUnreachable"/>, the same notice a save that cannot reach
@@ -4655,7 +4645,7 @@ public sealed class CheckoutService : IDisposable
     ///
     /// <para>The wake check (<see cref="OnWake"/>) runs at the same moment on waking, so both can find the same
     /// loss. Only the first to do so raises <see cref="WriteLockLost"/> (once per write session — see
-    /// <see cref="_lockLossRaised"/>, A12); the other logs that and does nothing.</para>
+    /// <see cref="_lockLossRaised"/>); the other logs that and does nothing.</para>
     ///
     /// <para>This handler is called from the heartbeat timer thread (not the UI thread).
     /// The verification runs on a thread-pool thread via <see cref="Task.Run"/> (the SMB
@@ -4705,7 +4695,7 @@ public sealed class CheckoutService : IDisposable
 
                     case LockVerificationResult.Unreachable:
                         _logger.LogInfo("CheckoutService: heartbeat verify — share unreachable; keeping writer state.");
-                        // The same sticky notice a save that cannot reach the location raises (spec item 28, F15).
+                        // The same sticky notice a save that cannot reach the location raises.
                         RaiseLocationUnreachable();
                         break;
 
@@ -4786,7 +4776,7 @@ public sealed class CheckoutService : IDisposable
             return false;
 
         // Remembered, BEFORE the body starts (its first part runs synchronously), so ReleaseAsync can wait for it
-        // (item F16). The signal completes when the body ends however it ends; it never carries an exception, so
+        // The signal completes when the body ends however it ends; it never carries an exception, so
         // nobody has to observe it.
         var finished = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
         _demotionTask = finished.Task;
@@ -4984,12 +4974,12 @@ public sealed class CheckoutService : IDisposable
     /// re-read and proceed to demotion. Only a transient that self-heals within the
     /// window is absorbed.</para>
     ///
-    /// <para><b>A name that is not ours needs no re-read (spec item 32, change (a)):</b><br/>
+    /// <para><b>A name that is not ours needs no re-read:</b><br/>
     /// when the lock file parses and carries a non-empty <c>SessionGuid</c> that is not
     /// ours, another session took the lock over. Our own heartbeat never invents a
     /// name — it copies the one already in the file — so no hiccup on this computer
     /// can produce that content, and a second read cannot change the answer. It is
-    /// returned at once. Re-reading used to be harmful here: right after a laptop wakes,
+    /// returned at once. Do not re-read here: right after a laptop wakes,
     /// the second read collided with our own overdue heartbeat's rename, failed as
     /// "contended", was classed <see cref="LockVerificationResult.Unreachable"/>, and the
     /// session carried on as the editor for minutes after losing the lock.</para>
@@ -5010,11 +5000,11 @@ public sealed class CheckoutService : IDisposable
     /// <see cref="SourcePath"/> (through the parameterless method, so their behaviour is unchanged); a restore into a
     /// database this app does not have open (<see cref="RestoreIntoAsync"/>) calls it with that database's path.
     ///
-    /// <para><b>The re-read (spec item 32, change (a)).</b> A NotOurs answer is read once more after
+    /// <para><b>The re-read.</b> A NotOurs answer is read once more after
     /// <see cref="LockRetryDelayMs"/> ms, unless the first read already named ANOTHER session
     /// (<see cref="VerifyLockIsOursOnceAtAsync"/> reports that): such a name is final, because only a takeover can put
     /// it in the file, so the answer comes back at once. This matters most right after a laptop wakes: a re-read
-    /// made while our own overdue heartbeat is rewriting the file used to fail as "contended", be taken for a network
+    /// made while our own overdue heartbeat is rewriting the file would fail as "contended", be taken for a network
     /// blip, and leave the session believing it was still the editor for up to ten minutes. The re-read stays for
     /// what it was meant for: the file missing, unreadable or without a session name for a moment.</para>
     /// </summary>
@@ -5083,7 +5073,7 @@ public sealed class CheckoutService : IDisposable
     /// The decision table, the reachability probe and the contended-read handling are exactly those of the
     /// session's own check.
     ///
-    /// <para><b>Why it also reports <c>NamesOtherSession</c> (spec item 32, change (a)).</b> A lock file that
+    /// <para><b>Why it also reports <c>NamesOtherSession</c>.</b> A lock file that
     /// parsed and carries a non-empty <c>SessionGuid</c> that is not ours is proof of a takeover: this computer's
     /// own heartbeat can only write a name that was already in the file, and the only way another session's name
     /// gets there is that session taking the lock over. So a second read cannot change the answer, and the caller
@@ -5344,7 +5334,7 @@ public sealed class CheckoutService : IDisposable
 
         // One read of D: copy it to D''.tmp and hash the bytes as they pass (no separate hash of D, no second copy).
         // D is only ever replaced by a rename of a finished copy, so one open handle reads one whole version
-        // (designs/reader-single-read-1.2.4.md); the integrity check below guards against a damaged copy.
+        // The integrity check below guards against a damaged copy.
         string? roSourceHash;
         try
         {
@@ -5474,7 +5464,7 @@ public sealed class CheckoutService : IDisposable
 
     /// <summary>
     /// <see cref="SqliteContentHash.Compute"/> of a local file, reporting a failure as null instead of throwing: a
-    /// fingerprint that cannot be taken only means "not known", which means a save is never skipped (spec item 3.4),
+    /// fingerprint that cannot be taken only means "not known", which means a save is never skipped,
     /// and must never make a checkout or a save fail.
     /// </summary>
     /// <param name="path">A local file (D', or a local snapshot of it).</param>
@@ -5630,10 +5620,10 @@ public sealed class CheckoutService : IDisposable
     /// the slowest possible I/O pattern for SMB and impossible to bound with a
     /// deadline. The save pipeline snapshots locally, then streams the finished file
     /// to the network with the stall-aware <see cref="NetworkFileOps.CopyAsync"/>.</para>
-    /// <para><b>The source connection is handed back, still open</b> (renamed from <c>BackupSqliteDatabase</c> in 1.2.4: "backup"
-    /// meant SQLite's backup API and was easily confused with TermPoint's backup files). The save keeps it open from
+    /// <para><b>The source connection is handed back, still open</b> ("snapshot" rather than SQLite's backup API, which is easily confused with
+    /// TermPoint's backup files). The save keeps it open from
     /// before the snapshot until step 6 and reads <c>PRAGMA data_version</c> on it, which changes whenever ANOTHER
-    /// connection (the app's) has committed since the last reading (spec item 3.2). The caller owns it and must dispose
+    /// connection (the app's) has committed since the last reading. The caller owns it and must dispose
     /// it on every path; the export caller disposes it at once.</para>
     /// </summary>
     /// <param name="sourcePath">Path to the source SQLite database (typically D').</param>
@@ -5702,7 +5692,7 @@ public sealed class CheckoutService : IDisposable
     /// Reads SQLite's <c>PRAGMA data_version</c> on a connection. The value changes whenever ANOTHER connection to the
     /// same file has committed since this connection's previous reading, and never for this connection's own writes
     /// (this one only reads). A save compares a reading taken just before its snapshot with one taken at step 6: a
-    /// difference means a write committed in between that the snapshot may not contain (spec item 3.2).
+    /// difference means a write committed in between that the snapshot may not contain.
     /// </summary>
     /// <param name="connection">An open connection to the working copy D'.</param>
     /// <returns>The current data version.</returns>
@@ -5715,7 +5705,7 @@ public sealed class CheckoutService : IDisposable
     }
 
     /// <summary>
-    /// What one save knows about the edits made while it ran (spec item 3.2): the edit count and SQLite's
+    /// What one save knows about the edits made while it ran: the edit count and SQLite's
     /// <c>data_version</c> as read just before the snapshot, and the open source connection the second reading is
     /// taken on at step 6. Disposed by <see cref="SaveAsyncCore"/> on every exit path, so D' is never left held open.
     /// </summary>
@@ -5768,7 +5758,7 @@ public sealed class CheckoutService : IDisposable
 }
 
 /// <summary>
-/// How <see cref="CheckoutService.RefreshLocalCopyAfterFailedCheckAsync"/> ended (spec item 5, step 5d).
+/// How <see cref="CheckoutService.RefreshLocalCopyAfterFailedCheckAsync"/> ended.
 /// </summary>
 public enum LocalCopyRefreshResult
 {
@@ -5796,7 +5786,7 @@ public enum LocalCopyRefreshResult
     HoldsUnsavedChanges,
 
     /// <summary>
-    /// The fresh copy was made, but the version gate, run again on it (spec item 3, step 3c), found that the database
+    /// The fresh copy was made, but the version gate, run again on it, found that the database
     /// requires a newer TermPoint than this one. The writer has been stood down: the lock is released, the new local
     /// copy removed, <see cref="CheckoutService.RequiredAppVersion"/> is set and the session is now a read-only one on
     /// a fresh snapshot D'' (<see cref="CheckoutService.WorkingPath"/>). The caller opens again from
@@ -5874,7 +5864,7 @@ public enum CheckoutOutcome
     /// </summary>
     HolderActiveAgain,
     /// <summary>
-    /// The write lock was taken and D' made, but the version gate (spec item 3, step 3c) could not do its job: the
+    /// The write lock was taken and D' made, but the version gate could not do its job: the
     /// database's <see cref="MinimumVersionToWrite"/> stamp could not be read, or a stamp this release must write
     /// could not be written, even after quiet retries (3 attempts, 1 s apart) — typically antivirus or backup
     /// software still holding the file that was just copied. Write access is REFUSED rather than guessed at.

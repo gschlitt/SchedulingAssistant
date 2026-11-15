@@ -107,7 +107,7 @@ public class PreferencesViewModel : ViewModelBase
     }
 
     /// <summary>
-    /// True when section cards show conflicts in full, one line per conflict (spec item 25).
+    /// True when section cards show conflicts in full, one line per conflict.
     /// Mutually exclusive with <see cref="ShowConflictsAsFlags"/>.
     /// </summary>
     public bool ShowConflictsInFull
@@ -117,7 +117,7 @@ public class PreferencesViewModel : ViewModelBase
     }
 
     /// <summary>
-    /// True when section cards show one compact flag per kind of conflict, with the details on hover (spec item 25).
+    /// True when section cards show one compact flag per kind of conflict, with the details on hover.
     /// Mutually exclusive with <see cref="ShowConflictsInFull"/>.
     /// </summary>
     public bool ShowConflictsAsFlags

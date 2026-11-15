@@ -4,7 +4,7 @@ namespace TermPoint.Services;
 
 /// <summary>
 /// The first of the two seams between the database-session lifecycle (open, switch, leave, lost lock, kept and
-/// stranded work) and the window it runs in (spec item 9.1): everything the lifecycle uses to ASK or TELL the
+/// stranded work) and the window it runs in: everything the lifecycle uses to ASK or TELL the
 /// user. <see cref="MainWindow"/> implements it with the modal dialogs it already has; a test supplies a scripted
 /// fake that answers from a script and records every title and text.
 ///

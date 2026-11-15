@@ -29,7 +29,7 @@ public interface IProgramWatchRepository
     int CountBySemesterId(string semesterId);
 
     /// <summary>
-    /// Deletes every watch belonging to the given semester (part of Empty Semester, spec item 8).
+    /// Deletes every watch belonging to the given semester (part of Empty Semester).
     /// </summary>
     /// <param name="semesterId">The semester whose watches are deleted.</param>
     /// <param name="tx">

@@ -7,7 +7,9 @@
     <Nullable>enable</Nullable>
     <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
     <NoWarn>$(NoWarn);CS8632;IL2026;IL2057;IL2075;IL2104</NoWarn>
+    <!-- Required: full trimming breaks Avalonia's reflection-based bindings and JSON serialization. -->
     <TrimMode>partial</TrimMode>
+    <!-- Required with trimming on: System.Text.Json otherwise refuses reflection-based (de)serialization. -->
     <JsonSerializerIsReflectionEnabledByDefault>true</JsonSerializerIsReflectionEnabledByDefault>
     <WasmNativeOptimization>-O1</WasmNativeOptimization>
   </PropertyGroup>
@@ -17,6 +19,7 @@
   </ItemGroup>
 
   <ItemGroup>
+    <!-- Must be the AssemblyName (TermPoint), not the project folder name. -->
     <TrimmerRootAssembly Include="TermPoint" />
   </ItemGroup>
 

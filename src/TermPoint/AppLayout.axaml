@@ -53,7 +53,7 @@
     -->
     <x:Double x:Key="MultiSemesterInternalTilePadding">0</x:Double>
 
-    <!--  ── Folded day strips and day headers (collapse days, designs/collapse-days.md)  ─────────────────  -->
+    <!--  ── Folded day strips and day headers (collapse days)  ─────────────────  -->
     <!--
         Padding on EACH side of a folded day's strip. The strip is as wide as its letter or its section count
         (whichever is wider) plus this on both sides: about 24 px at the default size.
@@ -68,13 +68,13 @@
     <!--  Gap at the top and bottom of every band, so two back-to-back sections show a hairline between them  -->
     <x:Double x:Key="FoldedDayBandVerticalInset">1</x:Double>
     <!--
-        Revision 3: "other things" (meetings, overlay sections and commitments, shared tiles) get side-by-side lanes
+        "Other things" (meetings, overlay sections and commitments, shared tiles) get side-by-side lanes
         centred on the crease. Width of ONE lane, and the gap between neighbouring lanes.
     -->
     <x:Double x:Key="FoldedDayLaneWidth">3</x:Double>
     <x:Double x:Key="FoldedDayLaneGap">1</x:Double>
     <!--
-        Revision 3: an attention mark is a bracket. Width of the vertical bar down EACH outer edge of the strip, and
+        An attention mark is a bracket. Width of the vertical bar down EACH outer edge of the strip, and
         thickness of the horizontal line across the strip at the mark's start and end.
     -->
     <x:Double x:Key="FoldedDayMarkEdgeWidth">3</x:Double>

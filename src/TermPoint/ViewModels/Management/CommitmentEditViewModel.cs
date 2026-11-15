@@ -157,7 +157,7 @@ public partial class CommitmentEditViewModel : UnappliedChangesEditor
             Day = SelectedDayOption.Day,
             StartMinutes = SelectedStartMinutes,
             EndMinutes = SelectedEndMinutes
-        }.WithExtensionDataFrom(_originalCommitment); // this replaces the stored record: keep its unknown JSON fields (spec item 3)
+        }.WithExtensionDataFrom(_originalCommitment); // this replaces the stored record: keep its unknown JSON fields
 
         await _onSave(commitment);
         MarkApplied();

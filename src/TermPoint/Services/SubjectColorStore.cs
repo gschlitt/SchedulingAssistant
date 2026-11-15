@@ -110,7 +110,7 @@ public class SubjectColorStore
     }
 
     /// <summary>
-    /// Rename support (spec P2-3, Phase 2 rule 7): copies the old abbreviation's colour to the new one, replacing any
+    /// Rename support: copies the old abbreviation's colour to the new one, replacing any
     /// colour the new one had, and keeps the old entry. If the old abbreviation has no valid colour, or both are the
     /// same key (ignoring case and spaces), nothing changes and nothing is saved.
     /// </summary>

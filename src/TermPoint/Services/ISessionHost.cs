@@ -4,8 +4,8 @@ using TermPoint.ViewModels;
 namespace TermPoint.Services;
 
 /// <summary>
-/// The second of the two seams between the database-session lifecycle and the window it runs in (spec item
-/// 9.1): everything the lifecycle uses to TOUCH the window or the dependency-injection container.
+/// The second of the two seams between the database-session lifecycle and the window it runs in:
+/// everything the lifecycle uses to TOUCH the window or the dependency-injection container.
 /// <see cref="MainWindow"/> implements it by delegating to <c>App</c> and to its own window code; a test supplies
 /// a fake that opens a plain database context on the working file.
 ///
@@ -69,7 +69,7 @@ public interface ISessionHost
 
     /// <summary>
     /// Finds the one open editor (in any panel, flyout or detached window) that holds changes the user has typed
-    /// but not applied (spec item 3.1), or null when there is none or no database is wired to the window.
+    /// but not applied, or null when there is none or no database is wired to the window.
     /// </summary>
     /// <returns>The editor with unapplied changes, or null.</returns>
     IUnappliedChanges? FindUnappliedChanges();
@@ -139,12 +139,12 @@ public interface ISessionHost
     /// </summary>
     /// <param name="reopenPath">
     /// The restored database, passed to the new copy (<see cref="RestartArguments.ForReopen"/>) so it opens it directly
-    /// instead of showing the database chooser (spec 1.2.4 item 4.3).
+    /// instead of showing the database chooser.
     /// </param>
     void RelaunchApplication(string reopenPath);
 
     /// <summary>
-    /// Arms the shutdown backstop (<see cref="ShutdownBackstop"/>, spec 1.2.4 item 4.3) at the end of the exit teardown,
+    /// Arms the shutdown backstop (<see cref="ShutdownBackstop"/>) at the end of the exit teardown,
     /// so the process ends even if Avalonia's main loop never does. The default does nothing: a test host must never
     /// end the test process.
     /// </summary>

@@ -37,10 +37,9 @@ public readonly record struct ExportWriteResult(ExportWriteOutcome Outcome, stri
 }
 
 /// <summary>
-/// One place for "write a file the user picked" (1.2.4 item 4.10, group 3). Every export (shared schedule, course
-/// history, workload report, schedule PNG) used to write straight to the picked path on the UI thread; when the folder
-/// is on a network share that has stopped answering, that froze the window for the SMB timeout and then showed
-/// exception text. This writer runs the write under the <see cref="NetworkFileOps"/> deadline and turns every ending
+/// One place for "write a file the user picked". Every export (shared schedule, course
+/// history, workload report, schedule PNG) goes through it, so that a folder on a network share that has stopped
+/// answering cannot freeze the window for the SMB timeout or show exception text. This writer runs the write under the <see cref="NetworkFileOps"/> deadline and turns every ending
 /// into a result whose <see cref="ExportWriteResult.Message"/> says what happened, that nothing else was affected, and
 /// what to do next. The exception, if any, goes to the local log, never to the screen.
 ///

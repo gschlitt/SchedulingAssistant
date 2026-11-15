@@ -5,7 +5,7 @@
 	x:CompileBindings="False">
 
 	<!--
-		The reusable subject-focus statement (spec item 20; chips from 1.2.4 item 2.14):
+		The reusable subject-focus statement:
 		"Subjects: ■CIVL ■ECON ■MATH ■MECH ■PHYS ■STAT +9", large text in the standard colour (TextPrimary)
 		and the normal weight of the header's academic unit and semester (only the panel title is bold). Each subject is a chip (marker + short
 		name); the marker shows only while colour by subject is on. After FocusViewModel.IndicatorMaxChips chips the

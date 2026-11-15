@@ -9,7 +9,7 @@ namespace TermPoint.Services;
 
 /// <summary>
 /// Result of <see cref="WriteLockService.ForceAcquire"/>: what became of a user-confirmed
-/// stale-lock takeover once the lock file was re-checked at click time (spec item 9a).
+/// stale-lock takeover once the lock file was re-checked at click time.
 /// </summary>
 public enum ForceAcquireResult
 {
@@ -49,13 +49,13 @@ public enum ForceAcquireResult
 /// existing file is read. If it looks abandoned (<see cref="IsStaleLock"/>; see below) the caller
 /// asks the user and, on a yes, waits out <see cref="StaleConfirmationRemaining"/> and calls
 /// <see cref="ForceAcquire"/>, which re-reads the file and deletes it only if it is still the same
-/// abandoned lock (spec item 9a). A
+/// abandoned lock. A
 /// live-looking lock means this instance enters read-only mode and starts a polling timer that
 /// fires every <see cref="PollIntervalSeconds"/> seconds. When the poll detects the lock is
 /// gone or stale, it raises <see cref="LockStateChanged"/> on the UI thread so the banner
 /// can offer the user a prompt to switch to edit mode.</para>
 ///
-/// <para><b>What "abandoned" means (spec item 9b).</b> The reader never trusts the writer's clock.
+/// <para><b>What "abandoned" means.</b> The reader never trusts the writer's clock.
 /// A lock is abandoned when its heartbeat (its <see cref="LockFileData.SessionGuid"/> and
 /// <see cref="LockFileData.Heartbeat"/>) has been seen <b>unchanged for
 /// <see cref="StaleLockThresholdSeconds"/> of this computer's own time</b> (<see cref="LockHeartbeatWatch"/>).
@@ -116,7 +116,7 @@ public sealed class WriteLockService : IDisposable
     /// <summary>
     /// How long, in seconds, Windows can still deliver an operation that TermPoint has given up on: an SMB delete or
     /// rename that was in flight when the network went away lands whenever the connection comes back, up to this long
-    /// after it was issued. Measured as 85.4 to 85.8 s in experiment E1 (1.2.4 items 4.12 and 4.14) on Windows with the
+    /// after it was issued. Measured as 85.4 to 85.8 s on Windows with the
     /// default workstation SessTimeout of 60 s; a raised SessTimeout lengthens it. A part of
     /// <see cref="StaleConfirmationSeconds"/>.
     /// </summary>
@@ -127,12 +127,12 @@ public sealed class WriteLockService : IDisposable
 
     /// <summary>
     /// How long, in seconds of this computer's own time, a lock's heartbeat must be seen UNCHANGED
-    /// before a user-confirmed takeover may go ahead (spec item 9b). 170 s, derived as: long enough that no
+    /// before a user-confirmed takeover may go ahead. 170 s, derived as: long enough that no
     /// abandoned operation of the old holder can still land. Its next heartbeat starts up to
     /// <see cref="HeartbeatIntervalSeconds"/> (60 s) after the last one landed, a slow beat issues its rename up
     /// to <see cref="HeartbeatRenameDelaySeconds"/> (10 s) later, and Windows can still deliver an abandoned
     /// SMB delete or rename for about <see cref="AbandonedOperationDeliverySeconds"/> (85 s; measured 85.4 to
-    /// 85.8 s in experiment E1, 1.2.4 items 4.12 and 4.14, on Windows with the default workstation SessTimeout
+    /// 85.8 s on Windows with the default workstation SessTimeout
     /// of 60 s; a raised SessTimeout lengthens it) = 155 s, plus a <see cref="StaleConfirmationMarginSeconds"/>
     /// (15 s) margin. Seeing the heartbeat stand still that long proves the writer is not renewing, independent
     /// of either computer's clock, and that nothing it started can still land. Stays below
@@ -149,7 +149,7 @@ public sealed class WriteLockService : IDisposable
     /// action (write the temporary file, move it onto the lock, delete the lock) is about to happen, the read is
     /// repeated first (see <see cref="IsLockCheckFresh"/>). NOT scaled by <see cref="LockTimings"/>: it is not a
     /// lock timer, it detects a computer that was frozen or asleep between a check and the action that
-    /// relied on it (findings F19 and F22), which takes as long in a test build as anywhere.
+    /// relied on it, which takes as long in a test build as anywhere.
     /// </summary>
     internal static readonly TimeSpan LockCheckFreshness = TimeSpan.FromSeconds(2);
 
@@ -158,7 +158,7 @@ public sealed class WriteLockService : IDisposable
     /// <see cref="HeartbeatFailed"/> is raised. Set to 3 (matching
     /// <c>StaleLockThresholdSeconds / HeartbeatIntervalSeconds</c>) so the event
     /// fires at roughly the same moment an external reader would classify the lock as
-    /// stale and attempt a takeover. (F11, data-integrity-agenda 2026-05-04.)
+    /// stale and attempt a takeover.
     /// </summary>
     public const int HeartbeatFailureThreshold = 3;
 
@@ -246,7 +246,7 @@ public sealed class WriteLockService : IDisposable
     private readonly TimeProvider _time;
 
     /// <summary>
-    /// This service's own lock timers (spec item 8.7): the production values at factor 1, scaled in a test build. Used for everything this
+    /// This service's own lock timers: the production values at factor 1, scaled in a test build. Used for everything this
     /// service DOES itself (its heartbeat, its polling, its wake check, the factor it writes into its lock file). Judging someone ELSE'S lock
     /// never uses it: that uses <see cref="LockTimings.ForHolder"/>, the factor recorded in that lock file.
     /// </summary>
@@ -414,7 +414,7 @@ public sealed class WriteLockService : IDisposable
     /// readers, who may attempt a takeover; the second that another computer already took the lock over (the
     /// heartbeat then writes nothing: see <see cref="RenewHeartbeatAsync"/>). Subscribers should route this through
     /// the same lock-loss handling path used for save-time and wake-check failures.
-    /// (F11, data-integrity-agenda 2026-05-04; spec item 32, change (c), 2026-10-27.)
+    ///
     ///
     /// <para>For failures it fires at most once per threshold-window: the failure counter is reset to
     /// zero after the event, so a further uninterrupted run of failures triggers the
@@ -585,7 +585,7 @@ public sealed class WriteLockService : IDisposable
     /// reclaims it, so abandonment inconveniences but never blocks another user.
     /// Non-faulting by construction: callers may Wait() on it without exception handling.
     ///
-    /// <para><b>A check counts for <see cref="LockCheckFreshness"/> (finding F22).</b> The ownership read and the delete
+    /// <para><b>A check counts for <see cref="LockCheckFreshness"/> .</b> The ownership read and the delete
     /// are separate operations; a computer that froze between them would delete the lock of whoever took over meanwhile.
     /// Right before the delete the read is repeated if it is more than 2 seconds old; a lock that is then no longer ours
     /// is left alone. A stalled delete that lands late (rather than a frozen computer) is not covered here: it is covered
@@ -617,12 +617,12 @@ public sealed class WriteLockService : IDisposable
                 return;
             }
 
-            // The point between the check and the delete: a test freezes the computer here (F22).
+            // The point between the check and the delete: a test freezes the computer here.
             CrashPoints.Hit("Release.AfterOwnershipCheck");
 
             // A check counts for LockCheckFreshness: if this computer froze since the read (it slept), the lock may have
             // been taken over meanwhile, so the read is repeated right before the delete and a lock that is no longer
-            // ours is left alone (F22).
+            // ours is left alone.
             check = await EnsureFreshOwnershipAsync(path, check, "Release", "deleting").ConfigureAwait(false);
             if (check.Verdict == LockOwnership.ReadTimedOut || check.Verdict == LockOwnership.WentStale)
             {
@@ -719,7 +719,7 @@ public sealed class WriteLockService : IDisposable
     /// <see cref="TryAcquire"/> call), passing the holder snapshot that <see cref="TryAcquire"/>
     /// judged stale.
     ///
-    /// <para><b>Click-time re-check (spec item 9a).</b> The takeover prompt can sit open for minutes.
+    /// <para><b>Click-time re-check.</b> The takeover prompt can sit open for minutes.
     /// A laptop that was asleep may wake and resume its heartbeats in the meantime, or another
     /// machine may take the lock over. So immediately before deleting anything the lock file is
     /// re-read (<see cref="RecheckStaleHolder"/>) and compared with <paramref name="expectedHolder"/>:</para>
@@ -771,7 +771,7 @@ public sealed class WriteLockService : IDisposable
         var recheck = RecheckStaleHolder(expectedHolder, out var currentHolder);
         var recheckStamp = StampLockCheck();
 
-        // A check counts for LockCheckFreshness (F19/F22 family): if this computer froze between the check and the
+        // A check counts for LockCheckFreshness: if this computer froze between the check and the
         // delete (it slept, or the share stalled), the lock may have been renewed or taken over since. Check again
         // before deleting; the second answer (possibly Changed, the HolderActiveAgain route below) is the one acted on.
         if (recheck == StaleRecheck.Unchanged && !IsLockCheckFresh(recheckStamp, out var recheckAge))
@@ -841,7 +841,7 @@ public sealed class WriteLockService : IDisposable
 
     /// <summary>
     /// How much longer a user-confirmed takeover of <paramref name="staleHolder"/> must wait before
-    /// <see cref="ForceAcquire"/> may be called (spec item 9b). The takeover needs the holder's heartbeat
+    /// <see cref="ForceAcquire"/> may be called. The takeover needs the holder's heartbeat
     /// to have been seen unchanged for <see cref="StaleConfirmationSeconds"/> of this computer's own time
     /// (<see cref="LockHeartbeatWatch"/>), counted from the first time this process saw that very
     /// snapshot, which is when <see cref="TryAcquire"/> read it (or earlier, if the polling path had
@@ -936,7 +936,7 @@ public sealed class WriteLockService : IDisposable
     /// <list type="number">
     ///   <item>Try to create the file atomically (<see cref="TryCreateOnce"/>). Success ⇒ writer.</item>
     ///   <item>Otherwise an existing lock is present and <see cref="CurrentHolder"/> is populated.
-    ///         If it names <b>our own</b> <see cref="SessionGuid"/> it is our own leftover (finding F20) and is
+    ///         If it names <b>our own</b> <see cref="SessionGuid"/> it is our own leftover and is
     ///         taken back by <see cref="TryTakeBackOwnLeftoverLock"/> (no <see cref="ReclaimedDeadSession"/>).
     ///         Otherwise decide based on whether the <b>holding process is alive</b>:
     ///     <list type="bullet">
@@ -962,7 +962,7 @@ public sealed class WriteLockService : IDisposable
 
         // An existing lock blocked us; CurrentHolder is now populated.
         //
-        // Finding F20: a lock naming OUR OWN session was written by this very process (a release whose delete was
+        // A lock naming OUR OWN session was written by this very process (a release whose delete was
         // refused, or a lock parked by Suspend), so no other program can own it: take it back instead of judging our own
         // live process as a rival. If that cannot be done safely we fall through to the ordinary path (read-only).
         if (!IsWriter && CurrentHolder is { SessionGuid: { Length: > 0 } ownGuid } && ownGuid == SessionGuid
@@ -1075,7 +1075,7 @@ public sealed class WriteLockService : IDisposable
 
     /// <summary>
     /// The one checked delete of a lock file another route has judged it may break (a dead holder's, or this process's own
-    /// leftover). A read counts for <see cref="LockCheckFreshness"/> (finding F22 family): the judgement was made on the read
+    /// leftover). A read counts for <see cref="LockCheckFreshness"/>: the judgement was made on the read
     /// that <see cref="ReadCurrentHolder"/> stamped, and if this computer froze since (it slept, or the share stalled),
     /// someone may have replaced the lock. A read older than that is repeated first, and only a lock that still names the same
     /// session and heartbeat as <paramref name="judged"/> is deleted. Never creates anything: the caller's atomic
@@ -1114,11 +1114,11 @@ public sealed class WriteLockService : IDisposable
         return true;
     }
 
-    /// <summary>How long <see cref="TryTakeBackOwnLeftoverLock"/> waits for this service's own pending release before giving up (finding F20).</summary>
+    /// <summary>How long <see cref="TryTakeBackOwnLeftoverLock"/> waits for this service's own pending release before giving up.</summary>
     internal TimeSpan OwnLeftoverReleaseWait { get; set; } = TimeSpan.FromSeconds(10);
 
     /// <summary>
-    /// Finding F20: the lock file that blocks us names <b>our own</b> <see cref="SessionGuid"/>. That GUID is per process
+    /// The lock file that blocks us names <b>our own</b> <see cref="SessionGuid"/>. That GUID is per process
     /// (one <see cref="WriteLockService"/> per process in the app), so the file was written by THIS running program: a release
     /// whose delete failed because another program held the file, or a lock deliberately parked by <see cref="Suspend"/> after
     /// a failed final save. Its liveness check would find our own PID alive and leave us read-only against ourselves; nobody else
@@ -1210,11 +1210,11 @@ public sealed class WriteLockService : IDisposable
             // and a blocked write (e.g. Controlled Folder Access surfaces ERROR_FILE_NOT_FOUND /
             // ERROR_ACCESS_DENIED), so the exception TYPE alone is ambiguous; its error CODE is not.
             //
-            // 1. "Already exists" (spec item 5.1): the server decided that, so it is trusted as is. Asking
+            // 1. "Already exists": the server decided that, so it is trusted as is. Asking
             //    File.Exists here instead could be answered from this computer's cached "not found" (up to
             //    ~5 s old, also for a failed open): two readers both see the lock vanish, the other one
             //    creates it first, and we would show the can't-write message instead of opening read-only.
-            //    Measured on the rig (designs/network-experiments-5.8.md, E1b): SMB returns 0x80070050.
+            //    Measured on the test rig: SMB returns 0x80070050.
             // 2. Any other code: ask whether the file is actually present. A READ (File.Exists) is not
             //    restricted by Controlled Folder Access, which only blocks modification.
             if (IsAlreadyExistsError(ex) || File.Exists(_lockFilePath!))
@@ -1260,7 +1260,7 @@ public sealed class WriteLockService : IDisposable
     /// true so the caller can prompt the user before calling <see cref="ForceAcquire"/>. Does NOT
     /// auto-reclaim the lock.
     ///
-    /// <para><b>Two signals (spec item 9b).</b> The lock is offered for takeover when EITHER
+    /// <para><b>Two signals.</b> The lock is offered for takeover when EITHER
     /// <list type="bullet">
     ///   <item>the timestamp inside the file is older than <see cref="StaleLockThresholdSeconds"/> by this
     ///         computer's clock. This is only a <b>hint</b>: it compares two computers' clocks, which can
@@ -1361,7 +1361,7 @@ public sealed class WriteLockService : IDisposable
 
     /// <summary>
     /// Turns a lock file's text into its holder, and registers the holder's user name and machine name with
-    /// <see cref="PrivacyScrubber"/> so they are removed from anything sent in an error report (spec item 6, step 6c).
+    /// <see cref="PrivacyScrubber"/> so they are removed from anything sent in an error report.
     /// Every read of a lock file, here and in <see cref="CheckoutService"/>, goes through this one method, so no
     /// holder's name can be missed.
     /// </summary>
@@ -1395,7 +1395,7 @@ public sealed class WriteLockService : IDisposable
     internal const string HolderOther = "other";
 
     /// <summary>
-    /// What a breadcrumb records about a lock holder instead of their name (spec item 6, step 6c; decided 2026-10-21):
+    /// What a breadcrumb records about a lock holder instead of their name:
     /// how the holder relates to this user, which is what diagnosis needs, and identifies nobody.
     /// </summary>
     /// <param name="holder">The holder, or null.</param>
@@ -1495,7 +1495,7 @@ public sealed class WriteLockService : IDisposable
 
     /// <summary>
     /// Makes sure a check that said "ours" is still fresh right before the action that relies on it (the temporary-file write,
-    /// the move onto the lock file, the delete: findings F19 and F22). A fresh check (or one that did not say "ours") is
+    /// the move onto the lock file, the delete). A fresh check (or one that did not say "ours") is
     /// returned unchanged. A stale one is replaced by one more read, once. If that read is again stale by the time it is
     /// handed back (a second freeze) the answer is <see cref="LockOwnership.WentStale"/>, and the caller gives the action up.
     /// Nothing user-facing changes: a stale check costs one extra read and one log line.
@@ -1655,7 +1655,7 @@ public sealed class WriteLockService : IDisposable
     /// <summary>
     /// Rewrites the lock file with a fresh heartbeat timestamp, preserving the
     /// original <see cref="LockFileData.Acquired"/> value, but ONLY when the lock file names this session
-    /// (spec item 32, change (c)). Uses an atomic write-to-temp-then-rename pattern so readers never see a
+    /// Uses an atomic write-to-temp-then-rename pattern so readers never see a
     /// partial file. Fired by the heartbeat timer (fire-and-forget); non-throwing — logs and
     /// returns on any error. All share I/O is deadline-bounded via
     /// <see cref="NetworkFileOps"/> so the gate is never held longer than
@@ -1680,7 +1680,7 @@ public sealed class WriteLockService : IDisposable
     ///   <item><b>Unparseable text</b> — an exception, counted as a failed renewal, as before.</item>
     /// </list>
     ///
-    /// <para><b>A check counts for <see cref="LockCheckFreshness"/> (finding F19).</b> The read and the move are separate
+    /// <para><b>A check counts for <see cref="LockCheckFreshness"/> .</b> The read and the move are separate
     /// operations on the share; a computer that sleeps or freezes between them could move its lock back over the lock of
     /// whoever took over meanwhile. So the read is trusted for 2 seconds only: if more time has passed right before the
     /// temporary file is written, or right before the move, the lock file is read and judged again (the same three
@@ -1715,7 +1715,7 @@ public sealed class WriteLockService : IDisposable
                 // counted as a failure below.)
                 var check = await ReadOwnershipAsync(path).ConfigureAwait(false);
 
-                // A check counts for LockCheckFreshness (F19): if this computer froze since the read, it is repeated
+                // A check counts for LockCheckFreshness: if this computer froze since the read, it is repeated
                 // before anything is written. The temporary file is NOT built before this first verification (its
                 // name is shared by every computer that heartbeats this lock).
                 check = await EnsureFreshOwnershipAsync(path, check, "Heartbeat", "writing").ConfigureAwait(false);
@@ -1743,7 +1743,7 @@ public sealed class WriteLockService : IDisposable
                     if (tmpWritten)
                     {
                         // The same freshness rule right before the move, which is the step that would put our lock back over
-                        // the lock of a computer that took over while this one was asleep (F19). If it went stale and the
+                        // the lock of a computer that took over while this one was asleep. If it went stale and the
                         // repeated check names another session, nothing is moved.
                         var beforeMove = await EnsureFreshOwnershipAsync(path, check, "Heartbeat", "writing").ConfigureAwait(false);
                         if (beforeMove.Verdict == LockOwnership.Ours)
@@ -1779,13 +1779,13 @@ public sealed class WriteLockService : IDisposable
             }
             else if (renewed)
             {
-                // Successful renewal: reset the consecutive-failure counter. (F11.)
+                // Successful renewal: reset the consecutive-failure counter.
                 _heartbeatConsecutiveFailures = 0;
             }
             else
             {
                 // Escalate after enough consecutive failures: the lock file is likely stale
-                // from the perspective of readers. (F11, data-integrity-agenda 2026-05-04.)
+                // from the perspective of readers.
                 _heartbeatConsecutiveFailures++;
                 if (_heartbeatConsecutiveFailures >= HeartbeatFailureThreshold)
                 {
@@ -1931,7 +1931,7 @@ public sealed class WriteLockService : IDisposable
     /// Checks whether the write lock is still held by another process. Called on
     /// the UI thread by the polling timer. If the lock file is absent, or its heartbeat
     /// has stood unchanged for <see cref="StaleLockThresholdSeconds"/> of this computer's
-    /// own time (spec item 9b; the timestamp inside the file is never compared with this
+    /// own time (the timestamp inside the file is never compared with this
     /// computer's clock), sets <see cref="WriteLockBecameAvailable"/> to true,
     /// stops the polling timer, and raises <see cref="LockStateChanged"/> so the
     /// UI can offer the "Switch to edit mode" prompt.
@@ -2019,7 +2019,7 @@ public sealed class WriteLockService : IDisposable
 
             // Judge the lock by whether its heartbeat CHANGES, timed on this computer's own clock —
             // never by comparing the timestamp inside the file with this computer's clock, which can
-            // be minutes off the writer's (spec item 9b). A live writer rewrites the heartbeat every
+            // be minutes off the writer's. A live writer rewrites the heartbeat every
             // minute, so every poll that sees a new heartbeat restarts the measurement; only a lock
             // that stands still for the whole stale threshold is offered for takeover.
             //

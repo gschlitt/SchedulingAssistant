@@ -1,7 +1,7 @@
 namespace TermPoint.Exceptions;
 
 /// <summary>
-/// The step of a save that failed (spec item 12). Used by <see cref="SaveFailedException"/> to name the failure in a
+/// The step of a save that failed. Used by <see cref="SaveFailedException"/> to name the failure in a
 /// handled report, and as the key that throttles reports to one per step per session.
 /// </summary>
 public enum SaveStep
@@ -29,7 +29,7 @@ public enum SaveStep
 }
 
 /// <summary>
-/// The named exception of a SAVE-FAILURE REPORT (spec item 12): never thrown to anyone — the save already failed,
+/// The named exception of a SAVE-FAILURE REPORT: never thrown to anyone — the save already failed,
 /// the user already has a banner — it exists so BugSnag receives an error that has a name and groups sensibly.
 /// <c>CheckoutService</c> creates it and hands it to <see cref="Services.IAppLogger.ReportHandled"/>.
 /// Modelled on <see cref="DatabaseDamagedException"/>.

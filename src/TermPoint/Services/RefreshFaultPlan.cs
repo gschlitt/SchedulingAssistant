@@ -25,7 +25,7 @@ public enum InjectedRefreshFault
 /// <summary>
 /// A DEBUG-ONLY plan for making a read-only refresh fail on purpose, driven by the
 /// <c>TERMPOINT_DEBUG_FAIL_REFRESH</c> environment variable, so the unhappy paths of the Refresh button
-/// (spec item 4.6) can be exercised by hand.
+/// can be exercised by hand.
 ///
 /// <para><b>Syntax:</b> <c>value[:count[:skip]]</c>, case-insensitive, exactly as for
 /// <see cref="RestoreFaultPlan"/> (parsing and budget are the shared <see cref="DebugFaultBudget"/>). <c>value</c> is

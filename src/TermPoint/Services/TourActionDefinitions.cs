@@ -591,7 +591,7 @@ internal static class TourActionDefinitions
                     }
 
                     // Committing a start time no longer rebuilds the Length suggestion list (a
-                    // list is rebuilt only when its own dropdown opens — spec item 22), so do
+                    // list is rebuilt only when its own dropdown opens), so do
                     // here what opening the Length dropdown does: refresh the list so it holds
                     // the lengths legal at the start time just committed. The Start list needs
                     // no such refresh: it is read above before any block length is set, when

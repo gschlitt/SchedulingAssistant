@@ -241,7 +241,7 @@ public partial class SemesterManagerViewModel : ViewModelBase, IUnappliedChanges
             Name           = SelectedSemester.Semester.Name,
             SortOrder      = SelectedSemester.Semester.SortOrder,
             Color          = SelectedSemester.Semester.Color
-        }.WithExtensionDataFrom(SelectedSemester.Semester); // Update rewrites the data column: keep unknown JSON fields (spec item 3).
+        }.WithExtensionDataFrom(SelectedSemester.Semester); // Update rewrites the data column: keep unknown JSON fields.
         EditVm = new SemesterEditViewModel(copy, isNew: false,
             onSave: s =>
             {

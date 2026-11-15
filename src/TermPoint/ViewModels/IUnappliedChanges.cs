@@ -5,7 +5,7 @@ using System.Text;
 namespace TermPoint.ViewModels;
 
 /// <summary>
-/// Implemented by every inline or flyout editor view model that has an Apply / Save button (spec item 3.1).
+/// Implemented by every inline or flyout editor view model that has an Apply / Save button.
 /// Before the window closes or the database is switched, the lifecycle asks the open editor, through this contract,
 /// whether it holds changes the user has typed but not applied, and carries out the user's answer (apply them,
 /// drop them, or stop).

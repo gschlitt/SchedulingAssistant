@@ -1,7 +1,7 @@
 namespace TermPoint.Services.SectionImport;
 
 /// <summary>
-/// Decides whether two meetings of one section overlap in a way worth a warning (design D11): they
+/// Decides whether two meetings of one section overlap in a way worth a warning: they
 /// are on the same day, their times overlap, <b>and</b> they can meet in the same week. Odd-week and
 /// even-week meetings at the same time are legitimate and never overlap.
 /// </summary>

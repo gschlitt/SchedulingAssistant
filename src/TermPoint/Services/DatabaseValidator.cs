@@ -44,7 +44,7 @@ public static class DatabaseValidator
     /// Uses <see cref="NetworkFileOps"/> for timeout-aware I/O so the caller does not
     /// hang when the path is on an unreachable network share.
     ///
-    /// <para><b>Damage report (spec item 5, step 5e).</b> Positive evidence of damage inside the database
+    /// <para><b>Damage report.</b> Positive evidence of damage inside the database
     /// (<c>integrity_check</c> problems, SQLITE_CORRUPT) is also reported, once per run per kind, through
     /// <see cref="DatabaseDamageReporter"/>. A file that is not a SQLite database at all, locked, unreadable or
     /// unreachable is never reported. The returned value is unaffected.</para>
@@ -109,7 +109,7 @@ public static class DatabaseValidator
 
     /// <summary>
     /// The front-door check of the SHARED database: what every open, switch and chooser pick runs on the file
-    /// before anything else happens (spec 1.2.4 item 4.7, D2). It is the header-only
+    /// before anything else happens. It is the header-only
     /// <see cref="ValidateWithoutSqliteAsync"/> under a name that says why.
     ///
     /// <para><b>Why not <see cref="ValidateAsync"/>:</b> that runs a full <c>integrity_check</c>, which reads the
@@ -144,7 +144,7 @@ public static class DatabaseValidator
     /// <c>PRAGMA integrity_check</c>. For the shared database D that is exactly what must never
     /// happen: even a read-only open leaves a pooled file handle on D, which makes the active
     /// editor's save rename (D.tmp → D) fail, and any non-read-only open flips the journal-mode
-    /// header and so changes D's hash (spec item 4). Use this method wherever D itself is being
+    /// header and so changes D's hash. Use this method wherever D itself is being
     /// checked; the real integrity check runs later, on the local working copy.</para>
     ///
     /// <para>What it checks: the location answers (tri-state probe), the file exists, and its

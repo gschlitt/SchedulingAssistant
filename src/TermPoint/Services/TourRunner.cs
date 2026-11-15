@@ -38,7 +38,7 @@ public class TourRunner
     private int _bodyIndex;
 
     /// <summary>
-    /// The subject focus (spec item 20). Tours switch it to All when they start, because several steps open a
+    /// The subject focus. Tours switch it to All when they start, because several steps open a
     /// section card or its editor and need the cards to exist.
     /// </summary>
     private readonly FocusService _focus;

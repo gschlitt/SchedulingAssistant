@@ -855,7 +855,7 @@ public partial class ScheduleGridView : UserControl
             _canvas.Children.Add(timeTb);
         }
 
-        // ── Folded day strips (collapse days, Revision 1: a sheet folded almost shut) ────────────────
+        // ── Folded day strips (collapse days: a sheet folded almost shut) ────────────────
         // Drawn after the gridlines so a strip covers them: full grid height below the header. A light left face, a
         // shadowed right face (flat fills) and a crease down the middle. Where any section meets the day, a band of tile
         // blue on each face (R1-2); where a meeting, commitment, shared tile or overlay tile sits, a narrower bar on the
@@ -950,7 +950,7 @@ public partial class ScheduleGridView : UserControl
                 double creaseTop = countY + entryLineH + contentGap;
                 AddFlat(stripX + half - creaseW / 2, creaseTop, creaseW, totalHeight - creaseTop, creaseBrush);
 
-                // Other things (Revision 3): side-by-side lanes centred on the crease, on top of the section bands. The
+                // Other things: side-by-side lanes centred on the crease, on top of the section bands. The
                 // lane of each kind comes from FoldedDayStrip.OtherLanes; kinds sharing a lane are merged together.
                 foreach (var laneGroup in (col.Folded?.OtherSpans ?? []).GroupBy(o => FoldedDayStrip.LaneOf(o.Kind)))
                 {
@@ -1076,7 +1076,7 @@ public partial class ScheduleGridView : UserControl
                         TextDecorations = entry.IsDeemphasized ? TextDecorations.Strikethrough : null,
                     };
 
-                    // Colour by subject (Revision 1): a coloured line gets a small rounded square of the subject's
+                    // Colour by subject: a coloured line gets a small rounded square of the subject's
                     // colour before the text. The text stays one trimming block, so a narrow tile trims the initials
                     // first. A line with no colour is the text block alone, exactly as before the feature.
                     Control entryText = entryLabel;
@@ -1147,7 +1147,7 @@ public partial class ScheduleGridView : UserControl
                         Child        = entryContent,
                     };
                     // A line whose instructor initials were shortened to "+N" shows every instructor's full name
-                    // on hover (spec 1.2.4 item 2.5). Lines that weren't shortened carry no names and get no tooltip,
+                    // on hover. Lines that weren't shortened carry no names and get no tooltip,
                     // so most section lines pay nothing. Set directly on the row, never via a style class.
                     if (!string.IsNullOrEmpty(entry.InstructorNames))
                         ToolTip.SetTip(entryRow, BuildTileTooltipContent(new TileTooltip([], entry.InstructorNames)));
@@ -1497,7 +1497,7 @@ public partial class ScheduleGridView : UserControl
                 var marks = marksByDay[day];
                 foreach (var mark in marks)
                 {
-                    // A bracket (Revision 3): a bar down BOTH outer edges for the span, and a thin line across the
+                    // A bracket: a bar down BOTH outer edges for the span, and a thin line across the
                     // strip at its start and end, so the bands and lanes inside stay visible. Everything stays inside
                     // the strip's own bounds.
                     double top = YOf(mark.Start);
@@ -1659,7 +1659,7 @@ public partial class ScheduleGridView : UserControl
     ///
     /// <para>The render must happen on the UI thread; only the file write may be moved off it. Callers that write to a
     /// user-picked file use <see cref="ExportToPngBytes"/> and hand the bytes to
-    /// <see cref="Services.ExportFileWriter"/> (1.2.4 item 4.10), so a share that stopped answering cannot freeze the
+    /// <see cref="Services.ExportFileWriter"/> so a share that stopped answering cannot freeze the
     /// window. This path-taking form remains for local, known-good paths (the layout probes).</para>
     /// </summary>
     /// <param name="outputPath">Absolute path for the output PNG file.</param>

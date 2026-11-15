@@ -5,12 +5,12 @@ namespace TermPoint.Services.SectionImport;
 
 /// <summary>
 /// The sentence an import adds to its "done" message when some of the sections it just created are in
-/// subjects the user has not chosen (spec item 20, step 7, and import decision D6), so the user is not
+/// subjects the user has not chosen, so the user is not
 /// left wondering where they went. The import is never scoped to the subject focus; this only explains
 /// why some of the new sections are not shown in the section list or grid.
 ///
 /// <para>Used by the Import Sections flyout (<c>ImportSectionsViewModel</c>). The sentences are the ones the
-/// retired Dev Tools section import used (step 24.10), moved here from its <c>BuildOutsideChosenSubjectsNote</c>.</para>
+/// retired Dev Tools section import used, moved here from its <c>BuildOutsideChosenSubjectsNote</c>.</para>
 /// </summary>
 public static class OutsideChosenSubjectsNote
 {

@@ -2,7 +2,7 @@ namespace TermPoint.Services;
 
 /// <summary>
 /// What the database-session lifecycle (<see cref="SessionLifecycle"/>) needs from a database that has just been
-/// opened (spec item 9.1, step 9.1b): exactly the operations it performs on the root view model today, and
+/// opened: exactly the operations it performs on the root view model today, and
 /// nothing more, so the lifecycle itself never references a view model type. <see cref="MainWindow"/> wraps the
 /// <c>MainWindowViewModel</c> that <c>App.InitializeServices</c> returns in a small adapter that implements this
 /// by calling exactly the same members; a test supplies a plain fake.

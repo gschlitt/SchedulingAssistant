@@ -283,7 +283,7 @@
 						</Panel>
 
 						<!--
-							Subjects picker (spec item 20): the subject focus as a coordinate of where the user is working, a
+							Subjects picker: the subject focus as a coordinate of where the user is working, a
 							peer of Academic Year and Semester. The button shows "All", "Choose…" or the chosen abbreviations
 							("BIOL, CHEM"), trimmed at SubjectsButtonMaxWidth with the full list in the tooltip. Clicking opens
 							the picker popup below; the button is disabled (tooltip "Finish editing first") while a section
@@ -442,7 +442,7 @@
 					FontSize="{StaticResource FontSizeNormal}"
 					IsVisible="{Binding ShowWriteLockAvailablePrompt}"
 					ToolTip.Tip="The database is now available to edit. Click to acquire write access." />
-				<!--  Shown when this database needs a newer TermPoint and the app came from the Microsoft Store (spec item 3)  -->
+				<!--  Shown when this database needs a newer TermPoint and the app came from the Microsoft Store  -->
 				<Button
 					Margin="8,0,0,0"
 					Padding="8,2"
@@ -486,7 +486,7 @@
 		</Border>
 
 		<!--
-			Row 2 holds two stacked banners: the persistent save-conflict banner (spec item 10, step 10a) above the
+			Row 2 holds two stacked banners: the persistent save-conflict banner above the
 			ordinary save-error banner. The StackPanel keeps the grid's row numbering unchanged; a collapsed banner
 			takes no space.
 		-->
@@ -622,7 +622,7 @@
 									FontSize="10"
 									Foreground="{StaticResource TextFaint}"
 									ToolTip.Tip="Switch between Section View and Events View" />
-								<!--  Prototype 2026-10-23: subjects shown in the top bar instead; restore if the header statement is wanted back.
+								<!--  Prototype: subjects shown in the top bar instead; restore if the header statement is wanted back.
 								<Panel VerticalAlignment="Center" IsVisible="{Binding IsShowingSections}">
 									<controls:FocusIndicator DataContext="{Binding FocusVm}" />
 								</Panel>
@@ -718,7 +718,7 @@
 							<!--
 								Subject focus: the outermost layer, so it comes before "Filtered by:". Same pattern as the statements
 								below (separator + statement), in its own colour: "Subjects:" then one chip per subject (with its colour
-								marker when colour by subject is on), capped with "+N" (1.2.4 item 2.14). The top bar shows the subjects
+								marker when colour by subject is on), capped with "+N". The top bar shows the subjects
 								too, but this one travels with the panel when it is detached. The statement hides itself under All; the
 								separator follows the same condition. A detached window builds the same header in MainWindow.axaml.cs.
 							-->

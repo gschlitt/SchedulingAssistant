@@ -160,7 +160,7 @@ public partial class SectionListItemViewModel : ObservableObject, ISectionListEn
             var lines = new List<CardPropertyLine>(5);
             if (AppSettings.Current.SectionConflictDisplay == ConflictDisplayMode.Flag)
             {
-                // Spec item 25: one compact flag per kind, the full list kept for the hover.
+                // One compact flag per kind, the full list kept for the hover.
                 AddConflictFlag(lines, CardPropertyKind.RoomConflictFlag,       RoomConflictFlagText,       RoomConflictWarning);
                 AddConflictFlag(lines, CardPropertyKind.InstructorConflictFlag, InstructorConflictFlagText, InstructorConflictWarning);
             }
@@ -195,10 +195,10 @@ public partial class SectionListItemViewModel : ObservableObject, ISectionListEn
             lines.Add(new CardPropertyLine(kind, text));
     }
 
-    /// <summary>The text of a room-conflict flag (spec item 25; wording approved by Greg 2026-10-26).</summary>
+    /// <summary>The text of a room-conflict flag (approved wording).</summary>
     public const string RoomConflictFlagText = "Room conflict";
 
-    /// <summary>The text of an instructor-conflict flag (spec item 25; wording approved by Greg 2026-10-26).</summary>
+    /// <summary>The text of an instructor-conflict flag (approved wording).</summary>
     public const string InstructorConflictFlagText = "Instructor conflict";
 
     /// <summary>
@@ -217,7 +217,7 @@ public partial class SectionListItemViewModel : ObservableObject, ISectionListEn
     }
 
     /// <summary>
-    /// Tells the card to rebuild its property lines, after the conflict display setting changed (spec item 25):
+    /// Tells the card to rebuild its property lines, after the conflict display setting changed:
     /// <see cref="PropertyLines"/> reads the setting each time, so re-raising it is all a redraw needs.
     /// </summary>
     public void RefreshPropertyLines()
@@ -226,7 +226,7 @@ public partial class SectionListItemViewModel : ObservableObject, ISectionListEn
         OnPropertyChanged(nameof(HasPropertyLines));
     }
 
-    // ── Subject colour chip (colour by subject, designs/subject-colours.md) ─────
+    // ── Subject colour chip (colour by subject) ─────
 
     /// <summary>
     /// Answers this card's chip colour (normally <see cref="SubjectColorPresenter.ColorFor"/>), or null when the card

@@ -3,7 +3,7 @@ namespace TermPoint.Services;
 /// <summary>
 /// The stage of <see cref="DatabaseRestore.ReplaceAsync"/> that a <see cref="RestoreFaultPlan"/> fails.
 /// Each value names the real-world failure it stands in for, so a developer can hand-test the unhappy
-/// paths of a restore (spec item 5) that cannot be reached on demand — above all "the network was cut
+/// paths of a restore that cannot be reached on demand — above all "the network was cut
 /// mid-restore", which is <see cref="Copy"/>.
 /// </summary>
 public enum InjectedRestoreFault
@@ -43,7 +43,7 @@ public enum InjectedRestoreFault
 /// <summary>
 /// A DEBUG-ONLY plan for making a restore fail on purpose, driven by the
 /// <c>TERMPOINT_DEBUG_FAIL_RESTORE</c> environment variable. It exists so the failure handling around
-/// <see cref="DatabaseRestore"/> (spec item 5) can be exercised by hand — a severed network mid-restore,
+/// <see cref="DatabaseRestore"/> can be exercised by hand — a severed network mid-restore,
 /// a damaged backup, a lost lock, an unconfirmed rename — none of which can be produced on demand
 /// against a healthy share.
 ///

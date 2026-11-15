@@ -18,7 +18,7 @@ public enum FocusKind
 }
 
 /// <summary>
-/// An immutable "what am I working on" value (spec item 20, load by subject): All, None, or a non-empty set of
+/// An immutable "what am I working on" value: All, None, or a non-empty set of
 /// subjects. Levels play no part. Two foci with the same kind and the same subject ids are equal, whatever order
 /// the ids were given in.
 /// <para>

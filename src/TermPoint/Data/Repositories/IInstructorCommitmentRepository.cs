@@ -34,7 +34,7 @@ public interface IInstructorCommitmentRepository
 
     /// <summary>
     /// Deletes every commitment (all instructors) belonging to the given semester
-    /// (part of Empty Semester, spec item 8).
+    /// (part of Empty Semester).
     /// </summary>
     /// <param name="semesterId">The semester whose commitments are deleted.</param>
     /// <param name="tx">

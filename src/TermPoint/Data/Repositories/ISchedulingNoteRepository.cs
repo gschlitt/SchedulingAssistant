@@ -33,7 +33,7 @@ public interface ISchedulingNoteRepository
 
     /// <summary>
     /// Deletes every note (all instructors) belonging to the given semester
-    /// (part of Empty Semester, spec item 8).
+    /// (part of Empty Semester).
     /// </summary>
     /// <param name="semesterId">The semester whose notes are deleted.</param>
     /// <param name="tx">

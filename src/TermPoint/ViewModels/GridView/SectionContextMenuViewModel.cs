@@ -86,8 +86,8 @@ public partial class SectionContextMenuViewModel : ObservableObject
 
         // Instructors — multi-select: active instructors, plus any inactive instructor the section already has.
         // Confirm rebuilds the assignments from the ticked rows, so an assigned instructor missing from the list
-        // would be silently unassigned (the item 3 family of bug); listing them, ticked, keeps them.
-        // Under chosen subjects (spec item 20) the caller has ordered the list in-focus first; out-of-focus rows are
+        // would be silently unassigned; listing them, ticked, keeps them.
+        // Under chosen subjects the caller has ordered the list in-focus first; out-of-focus rows are
         // dimmed, with an "Other instructors" heading above the first of them when an in-focus row precedes it.
         Instructors.Clear();
         var assignedIds = section.InstructorIds.ToHashSet();

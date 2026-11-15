@@ -29,7 +29,7 @@ public partial class SectionListViewModel : ViewModelBase, IUnappliedChangesHost
     private readonly WriteLockService _lockService;
 
     /// <summary>
-    /// The user's subject focus (spec item 20). Sections outside it get no card; the service is also told
+    /// The user's subject focus. Sections outside it get no card; the service is also told
     /// whenever an inline editor opens or closes, which is what disables every focus-changing control while
     /// an editor holds unapplied edits (rule 3). Taken as a constructor dependency so dependency injection
     /// builds it, and so subscribes its <see cref="SectionStore.SectionsChanged"/> handler, before this VM's
@@ -168,7 +168,7 @@ public partial class SectionListViewModel : ViewModelBase, IUnappliedChangesHost
     /// <summary>
     /// Reacts to the two settings the section list shows live: a change of the virtualization preference is
     /// forwarded to the view, which is bound to <see cref="IsListVirtualized"/>; a change of the conflict display
-    /// (spec item 25) makes every card rebuild its property lines. Other settings are ignored.
+    /// makes every card rebuild its property lines. Other settings are ignored.
     /// </summary>
     /// <param name="settingName">The name of the setting that changed (see <see cref="AppSettings.SettingChanged"/>).</param>
     private void OnAppSettingChanged(string settingName)
@@ -1256,7 +1256,7 @@ public partial class SectionListViewModel : ViewModelBase, IUnappliedChangesHost
         Section section, bool isNew, EditorContext ctx,
         string semesterId, string callerTag, bool isCopy = false)
     {
-        // The Subject chooser follows the subject focus (spec item 20), but always keeps the section's current
+        // The Subject chooser follows the subject focus, but always keeps the section's current
         // subject (an edit or a copy), so an untouched section can never lose its course. The Course Number list
         // still shows only the chosen subject's courses.
         var currentSubjectId = section.CourseId is null
@@ -1313,7 +1313,7 @@ public partial class SectionListViewModel : ViewModelBase, IUnappliedChangesHost
             defaultSectionCapacity: AppSettings.Current.DefaultSectionCapacity,
             outOfFocusInstructorIds: instructorOrder.OutOfFocusIds);
 
-        // Live conflict notice (design: designs/conflict-muting.md, Part A). The labels are built once here, from
+        // Live conflict notice. The labels are built once here, from
         // the lists the editor already loaded; the semester's sections are read from the store at each check, so a
         // check always sees the latest saved state. Unlike the cards, this also runs in multi-semester mode: the
         // editor's own semester is always well defined.
@@ -1518,6 +1518,16 @@ public partial class SectionListViewModel : ViewModelBase, IUnappliedChangesHost
 
     // ── Copy ───────────────────────────────────────────────────────────────────
 
+    /// <summary>
+    /// Adds a new section immediately below the selected one, in the same semester, with the
+    /// source's course, campus and capacity. The section code is derived when possible: the first
+    /// configured <see cref="SectionCodePattern"/> (in sort order) that the source code matches
+    /// supplies the next unused code in its sequence (<see cref="SectionCodeGenerator.GetNextCode"/>).
+    /// If no pattern matches, or the sequence is exhausted, the code is left blank. The editor opens
+    /// under the usual step-gate; when course and code are both pre-filled, the editor validates
+    /// them at construction, so all fields are editable at once.
+    /// Does nothing if the editor is busy, nothing is selected, or the source has no semester.
+    /// </summary>
     [RelayCommand(CanExecute = nameof(CanWrite))]
     private async Task Copy()
     {
@@ -1691,7 +1701,7 @@ public partial class SectionListViewModel : ViewModelBase, IUnappliedChangesHost
     /// section and for each nested meeting, assignment and reserve, via
     /// <see cref="PersistedRecordExtensions.WithExtensionDataFrom{T}"/>. The values are immutable
     /// <see cref="System.Text.Json.JsonElement"/> snapshots, so copying the entries is enough.
-    /// Without this, the first Apply by an older client would delete those fields (spec item 3).
+    /// Without this, the first Apply by an older client would delete those fields.
     /// </para>
     /// </summary>
     /// <param name="s">The section to copy.</param>

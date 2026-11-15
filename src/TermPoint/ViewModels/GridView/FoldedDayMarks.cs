@@ -3,8 +3,7 @@ using TermPoint.Services;
 namespace TermPoint.ViewModels.GridView;
 
 /// <summary>
-/// The kinds of attention mark a folded strip can carry (collapse days, <c>designs/collapse-days.md</c>, Revision 2:
-/// "mark what the user pointed at"). Each kind has ONE row in <see cref="FoldedDayMarks.Kinds"/> giving its priority,
+/// The kinds of attention mark a folded strip can carry (collapse days: "mark what the user pointed at"). Each kind has ONE row in <see cref="FoldedDayMarks.Kinds"/> giving its priority,
 /// its brush resource and its tooltip words, so a new kind (the Slot Browser's "moving from", "moving to", "breaks")
 /// is a new enum value plus a new row, with no change to the strip-drawing code.
 /// </summary>
@@ -29,7 +28,7 @@ public enum MarkKind
 public sealed record AttentionMark(MarkKind Kind, int Start, int End, string? SectionId = null, string Label = "");
 
 /// <summary>
-/// The current pointers the user has set, from which a folded day's marks are worked out (Revision 2).
+/// The current pointers the user has set, from which a folded day's marks are worked out.
 /// Filters, subject focus and flags are deliberately NOT here: they narrow the view and are never marked.
 /// </summary>
 /// <param name="SelectedSectionIds">Ids of the selected sections (the section store's selection).</param>

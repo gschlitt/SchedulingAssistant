@@ -41,7 +41,7 @@ public sealed partial class FocusSubjectItem : ObservableObject
 }
 
 /// <summary>
-/// One subject chip in the focus statement (spec 1.2.4 item 2.14): the subject's short name and, when colour by
+/// One subject chip in the focus statement: the subject's short name and, when colour by
 /// subject is on, its marker colour. Immutable; the list is rebuilt whenever the focus or the colours change.
 /// </summary>
 /// <param name="Label">The short name: the calendar abbreviation, or the subject's name when that is blank.</param>
@@ -53,7 +53,7 @@ public sealed record FocusSubjectChip(string Label, string ColorHex)
 }
 
 /// <summary>
-/// The view model behind every place that shows the subject focus (spec item 20): the reusable focus statement
+/// The view model behind every place that shows the subject focus: the reusable focus statement
 /// ("Subjects:" followed by subject chips, shown in the Schedule View header) and the Focus picker (a checklist of subjects with
 /// All, None, Apply and Cancel). A singleton shared by all of them, built over <see cref="FocusService"/> and
 /// <see cref="ISubjectRepository"/>, and exposed as <c>MainWindowViewModel.FocusVm</c>.
@@ -69,8 +69,7 @@ public sealed partial class FocusViewModel : ObservableObject, IDisposable
     public const string NoSubjectsText = "Subjects: none";
 
     /// <summary>
-    /// How many subject chips the focus statement shows before the rest fold into a "+N" chip (spec 1.2.4 item
-    /// 2.14). One over the cap shows them all, since a "+1" chip takes as much room as the subject it hides.
+    /// How many subject chips the focus statement shows before the rest fold into a "+N" chip. One over the cap shows them all, since a "+1" chip takes as much room as the subject it hides.
     /// A count of items, not a size: the chips' sizes live in App.axaml.
     /// </summary>
     public const int IndicatorMaxChips = 6;

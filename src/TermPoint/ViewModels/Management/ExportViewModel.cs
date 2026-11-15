@@ -69,7 +69,7 @@ public partial class ExportViewModel : ViewModelBase
             if (file is null) return;
 
             // Render on the UI thread (it must), then write the bytes under the network deadline: the folder may be a
-            // share that stopped answering (1.2.4 item 4.10, A8).
+            // share that stopped answering.
             var png = window.ScheduleGridViewInstance?.ExportToPngBytes();
             if (png is null)
             {

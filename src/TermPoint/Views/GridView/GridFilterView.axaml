@@ -24,7 +24,7 @@
 			<Setter Property="MinHeight" Value="0" />
 		</Style>
 		<!--
-			The Tags popup's all/any choice (spec item 31): the same text size and spacing as the popup's checkboxes,
+			The Tags popup's all/any choice: the same text size and spacing as the popup's checkboxes,
 			so it reads as part of the list rather than as larger instructions. The circles keep the theme's 20 px,
 			the size of the checkboxes' boxes, so the two line up.
 		-->
@@ -451,7 +451,7 @@
 								CornerRadius="5"
 								BoxShadow="{StaticResource FilterPopupShadow}">
 								<!--
-									Tag logic (spec item 31, wording approved): all of the checked tags (the default) or any
+									Tag logic: all of the checked tags (the default) or any
 									of them. The choice stays at the top while the tag list scrolls; the toggle reads
 									"Tags (any of N)" while "any" is chosen. Not saved; Clear resets it to "all".
 								-->

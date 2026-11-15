@@ -3,8 +3,7 @@ using TermPoint.Models;
 namespace TermPoint.Services;
 
 /// <summary>
-/// Finds the room and instructor conflicts a section would have if it were saved as it is now in the editor
-/// (design: <c>designs/conflict-muting.md</c>, Part A). It runs the same detectors the section cards use
+/// Finds the room and instructor conflicts a section would have if it were saved as it is now in the editor. It runs the same detectors the section cards use
 /// (<see cref="RoomConflictService"/> and <see cref="InstructorConflictService"/>), so the editor and the
 /// cards always agree on what a conflict is and how it is worded.
 /// </summary>

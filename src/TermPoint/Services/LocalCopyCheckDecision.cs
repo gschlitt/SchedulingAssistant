@@ -1,7 +1,7 @@
 namespace TermPoint.Services;
 
 /// <summary>
-/// What the open-time check of the local copy (D' for a writer, D'' for a reader) said (spec item 5, step 5d).
+/// What the open-time check of the local copy (D' for a writer, D'' for a reader) said.
 /// </summary>
 public enum LocalCopyVerdict
 {
@@ -102,7 +102,7 @@ public enum LocalCopyAction
 }
 
 /// <summary>
-/// The decision table of the shared handler for a failed open-time check of the local copy (spec item 5, step 5d),
+/// The decision table of the shared handler for a failed open-time check of the local copy,
 /// as a pure function: no I/O, no UI, no state. <c>MainWindow</c> gathers the inputs (it only asks for the ones a
 /// row needs, in the order the rows are evaluated here), performs the action returned, and asks again with the
 /// updated inputs until the answer is <see cref="LocalCopyAction.OpenNormally"/> or a give-up.

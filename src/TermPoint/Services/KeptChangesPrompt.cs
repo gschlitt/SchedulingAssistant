@@ -1,19 +1,18 @@
 namespace TermPoint.Services;
 
 /// <summary>
-/// Every user-facing text that tells the user their unsaved changes were <b>kept</b> after something went wrong (spec
-/// item 28; data-persistence review finding F6): the lock-lost banner's kept-changes sentences, "Unsaved Changes Kept"
+/// Every user-facing text that tells the user their unsaved changes were <b>kept</b> after something went wrong: the lock-lost banner's kept-changes sentences, "Unsaved Changes Kept"
 /// (shown when a recovery open lands in read-only), and the two "Changes Not Saved" messages (a failed save when
 /// switching database, and a failed save when closing). Kept out of <c>SessionLifecycle</c> so the wording can be pinned
 /// by unit tests. Modelled on <see cref="SavePrompt"/>, <see cref="RecoveryConflictPrompt"/> and
 /// <see cref="LocalCopyCheckPrompt"/>.
 ///
-/// <para><b>What 1.2.3 really does, and so what the wording promises.</b> Kept changes (left by a failed save, a lost
+/// <para><b>What the app really does, and so what the wording promises.</b> Kept changes (left by a failed save, a lost
 /// lock, a failed exit save or a crash) are offered back at the next open of the database for editing, by "Restore
 /// Unsaved Changes?". If the database changed in the meantime they cannot be added, and the user gets "Can't Restore
-/// Unsaved Changes" with <see cref="RecoveryConflictPrompt.SaveCopyButton"/>. The old texts promised "TermPoint will offer
-/// to restore them" as though that always works. These say exactly what happens: <see cref="OfferToAdd"/> names both
-/// outcomes. The restore flow and its prompts are untouched (they are replaced in 1.2.4).</para>
+/// Unsaved Changes" with <see cref="RecoveryConflictPrompt.SaveCopyButton"/>. The texts do not promise "TermPoint will offer
+/// to restore them" as though that always works; they say exactly what happens: <see cref="OfferToAdd"/> names both
+/// outcomes.</para>
 ///
 /// <para><b>The rules the wording keeps</b> (rule 4 of the four rules for the shared database): every text says what
 /// happened, that the work is kept and where (on this computer), and what happens next. No text carries a path, a raw

@@ -315,7 +315,7 @@ public partial class CourseListViewModel : ViewModelBase, IDismissableEditor, IU
         // copy back, so every persisted field must be carried over here: Level and Capacity seed
         // the editor's Level and Capacity controls (a clone that omitted them reset both to
         // blank/auto on every Apply), and ExtensionData keeps unknown JSON fields written by a
-        // newer app version (spec item 3).
+        // newer app version.
         var clone = new Course
         {
             Id = SelectedCourse.Id,
@@ -393,7 +393,7 @@ public partial class CourseListViewModel : ViewModelBase, IDismissableEditor, IU
         LastErrorMessage = null;
         if (SelectedSubject is null) return;
         var originalAbbreviation = SelectedSubject.CalendarAbbreviation;
-        // Save writes the whole copy back, so unknown JSON fields (spec item 3) are carried over too.
+        // Save writes the whole copy back, so unknown JSON fields are carried over too.
         var clone = new Subject
         {
             Id = SelectedSubject.Id,

@@ -5,7 +5,7 @@ namespace TermPoint.ViewModels;
 
 /// <summary>
 /// Base class for every editor view model with an Apply / Save button: implements <see cref="IUnappliedChanges"/>
-/// once, so the snapshot comparison is the same in all of them (spec item 3.1).
+/// once, so the snapshot comparison is the same in all of them.
 ///
 /// <para>An editor derives from this class and supplies three things: <see cref="CaptureState"/> (the values it
 /// would save, as comparable text built with <see cref="UnappliedChangesKey.Of"/>), <see cref="ApplyCommand"/> (its

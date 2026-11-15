@@ -33,8 +33,7 @@ public sealed class DayPatternItemViewModel
 }
 
 /// <summary>
-/// State of the right-click menu on a day header or a folded strip (collapse days, <c>designs/collapse-days.md</c>
-/// Phase 3): "Show only Tuesday", one "Show &lt;pattern&gt;" per block pattern, and "Show all days". The view prepares
+/// State of the right-click menu on a day header or a folded strip (collapse days): "Show only Tuesday", one "Show &lt;pattern&gt;" per block pattern, and "Show all days". The view prepares
 /// it with <see cref="Prepare"/> and then sets <see cref="IsOpen"/>, exactly as it does for the tile menu.
 /// <para>
 /// The block patterns are read from the repository each time the menu opens, so a pattern edited in Settings shows

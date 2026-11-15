@@ -14,7 +14,7 @@ namespace TermPoint.Behaviors;
 /// <see cref="TextBlock"/>'s <c>Inlines</c>. It is how a section card shows its conflict
 /// warnings and its tag, reserve and resource lines.
 ///
-/// <b>Why it exists (spec item 21, "lightweight section card"):</b> every section in the loaded
+/// <b>Why it exists (the lightweight section card):</b> every section in the loaded
 /// semester gets a card, and the section list is not virtualized, so each control on a card is
 /// paid for hundreds of times over. The old card built a hidden row (a panel, an icon
 /// <see cref="Viewbox"/>, a <see cref="Path"/> and a <see cref="TextBlock"/>) for every possible
@@ -43,7 +43,7 @@ namespace TermPoint.Behaviors;
 ///         <see cref="ResourceIconProperty"/>), followed by a <see cref="Run"/> with the line's
 ///         text.</item>
 ///   <item><b>Conflict flags</b> (<see cref="CardPropertyKind.RoomConflictFlag"/>,
-///         <see cref="CardPropertyKind.InstructorConflictFlag"/>; spec item 25, used when the user shows conflicts as
+///         <see cref="CardPropertyKind.InstructorConflictFlag"/>; used when the user shows conflicts as
 ///         flags): one <see cref="InlineUIContainer"/> per flag holding the icon
 ///         (<see cref="RoomConflictIconProperty"/> / <see cref="InstructorConflictIconProperty"/>) and the flag's text
 ///         in the warning look, with the line's <see cref="CardPropertyLine.Detail"/> as its tooltip. Consecutive flags
@@ -57,7 +57,7 @@ namespace TermPoint.Behaviors;
 /// That is deliberate. In Avalonia a style whose selector has a class condition (for example
 /// <c>Run.warning</c> or <c>Path.cardPropertyIcon</c>) attaches a style instance and class
 /// activators to <em>every</em> element of the target type in the view, whether it matches or not,
-/// which with hundreds of section cards cost real memory (spec item 21, step 4b). Values set
+/// which with hundreds of section cards cost real memory. Values set
 /// directly on the elements cost nothing extra.
 ///
 /// <b>Rebuilding:</b> the inlines are rebuilt from scratch whenever <em>any</em> of the attached
@@ -180,7 +180,7 @@ public static class PropertyLinesBehavior
             "ResourceIcon", typeof(PropertyLinesBehavior));
 
     /// <summary>
-    /// Icon geometry for a <see cref="CardPropertyKind.RoomConflictFlag"/> (spec item 25). Null (the default) shows an
+    /// Icon geometry for a <see cref="CardPropertyKind.RoomConflictFlag"/>. Null (the default) shows an
     /// empty icon box.
     /// </summary>
     public static readonly AttachedProperty<Geometry?> RoomConflictIconProperty =
@@ -188,7 +188,7 @@ public static class PropertyLinesBehavior
             "RoomConflictIcon", typeof(PropertyLinesBehavior));
 
     /// <summary>
-    /// Icon geometry for a <see cref="CardPropertyKind.InstructorConflictFlag"/> (spec item 25). Null (the default)
+    /// Icon geometry for a <see cref="CardPropertyKind.InstructorConflictFlag"/>. Null (the default)
     /// shows an empty icon box.
     /// </summary>
     public static readonly AttachedProperty<Geometry?> InstructorConflictIconProperty =
@@ -196,8 +196,8 @@ public static class PropertyLinesBehavior
             "InstructorConflictIcon", typeof(PropertyLinesBehavior));
 
     /// <summary>
-    /// Space before a conflict flag that follows another flag on the same line, in device-independent pixels
-    /// (spec item 25). Defaults to 12.
+    /// Space before a conflict flag that follows another flag on the same line, in device-independent pixels.
+    /// Defaults to 12.
     /// </summary>
     public static readonly AttachedProperty<double> FlagSpacingProperty =
         AvaloniaProperty.RegisterAttached<TextBlock, double>(
@@ -380,7 +380,7 @@ public static class PropertyLinesBehavior
         foreach (var line in lines)
         {
             // A line break between lines only, never before the first or after the last, and none between two
-            // conflict flags: all the flags share one line (spec item 25).
+            // conflict flags: all the flags share one line.
             var afterFlag = IsConflictFlag(line.Kind) && previous is { } p && IsConflictFlag(p);
             if (previous is not null && !afterFlag)
                 inlines.Add(new LineBreak());
@@ -390,7 +390,7 @@ public static class PropertyLinesBehavior
         }
     }
 
-    /// <summary>True for the compact conflict-flag kinds (spec item 25), which share one line.</summary>
+    /// <summary>True for the compact conflict-flag kinds, which share one line.</summary>
     /// <param name="kind">The line's kind.</param>
     private static bool IsConflictFlag(CardPropertyKind kind) =>
         kind is CardPropertyKind.RoomConflictFlag or CardPropertyKind.InstructorConflictFlag;
@@ -466,7 +466,7 @@ public static class PropertyLinesBehavior
     }
 
     /// <summary>
-    /// Adds a compact conflict flag (spec item 25): one <see cref="InlineUIContainer"/> holding a horizontal
+    /// Adds a compact conflict flag: one <see cref="InlineUIContainer"/> holding a horizontal
     /// <see cref="StackPanel"/> of the icon box and a <see cref="TextBlock"/> with the flag's text, both in the warning
     /// look (the icon is stroked with <see cref="WarningForegroundProperty"/>, or the icon brush when none is set). The
     /// line's <see cref="CardPropertyLine.Detail"/> (the full conflict list) is the panel's tooltip; the panel has a

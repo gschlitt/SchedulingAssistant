@@ -39,15 +39,15 @@ public partial class ScheduleGridViewModel : ViewModelBase
     private readonly SharedScheduleService _sharedScheduleService;
 
     /// <summary>
-    /// The subject focus (spec item 20). Pass 1 asks it whether a section is in focus; overlays, meetings, shared
+    /// The subject focus. Pass 1 asks it whether a section is in focus; overlays, meetings, shared
     /// schedules and ghosts never do (see <see cref="BuildFilteredBlocks"/> and <see cref="BuildOverlayBlocks"/>).
     /// </summary>
     private readonly FocusService _focus;
 
     /// <summary>
-    /// Subject colours (colour by subject, <c>designs/subject-colours.md</c> Phase 5). Every section block is stamped
+    /// Subject colours (colour by subject). Every section block is stamped
     /// with <see cref="SubjectColorPresenter.ColorFor"/>, and the grid reloads once on
-    /// <see cref="SubjectColorPresenter.Changed"/> (P5-5).
+    /// <see cref="SubjectColorPresenter.Changed"/>.
     /// </summary>
     private readonly SubjectColorPresenter _subjectColors;
 
@@ -305,7 +305,7 @@ public partial class ScheduleGridViewModel : ViewModelBase
         var section = _sectionRepo.GetById(sectionId);
         if (section is null) return;
 
-        // Same grouping as the section editor's instructor chooser (spec item 20): in-focus instructors first, the
+        // Same grouping as the section editor's instructor chooser: in-focus instructors first, the
         // rest dimmed under "Other instructors". Nobody is dropped.
         var order       = _focus.OrderInstructorsForChooser(_instructorRepo.GetAll());
         var rooms       = _roomRepo.GetAll();
@@ -347,7 +347,7 @@ public partial class ScheduleGridViewModel : ViewModelBase
         }
     }
 
-    // ── Collapse days (designs/collapse-days.md, task 3) ─────────────────────────
+    // ── Collapse days ─────────────────────────
     //
     // Folding is a VIEW choice (Q9): it never changes sections, filters, selection or the database. The folded set
     // lives only here, in memory, for this view model's life (Q2: never stored). Opening a database rebuilds the
@@ -563,7 +563,7 @@ public partial class ScheduleGridViewModel : ViewModelBase
     ///                     Room overlays are resolved per-meeting inside Pass 1 instead.
     ///   6. BuildFilteredBlocks (Pass 1) — iterate sections and emit one
     ///                     <see cref="SectionMeetingBlock"/> per meeting that passes the
-    ///                     subject focus (spec item 20) and all active filter predicates.
+    ///                     subject focus and all active filter predicates.
     ///   7. BuildOverlayBlocks (Pass 2) — add any overlay-matched meetings that were
     ///                     excluded by the filters in Pass 1, so overlays always show up
     ///                     regardless of other active filters and of the subject focus.
@@ -649,7 +649,7 @@ public partial class ScheduleGridViewModel : ViewModelBase
         if (enabledWatches.Count > 0)
         {
             // Program access watches scan only the sections on the grid: Pass 1, which applies the chosen subjects
-            // and then the ordinary filter (spec item 20, decided 2026-10-23). Scanning out-of-subject sections
+            // and then the ordinary filter. Scanning out-of-subject sections
             // reported clashes with sections the user couldn't see, each one a puzzle to track down. The trade-off,
             // accepted: a clash with a section in an unchosen subject goes unreported until that subject is chosen.
             var visibleSectionIds = filtered.OfType<SectionMeetingBlock>()
@@ -809,7 +809,7 @@ public partial class ScheduleGridViewModel : ViewModelBase
     }
 
     /// <summary>
-    /// Narrows the lookups that feed the filter option lists to the subject focus (spec item 20, step 20.4): the
+    /// Narrows the lookups that feed the filter option lists to the subject focus: the
     /// Subjects list keeps only focused subjects, the Courses list (the active courses) only courses of focused
     /// subjects, and the Instructors list (the active instructors, which the overlay instructor list mirrors) only
     /// instructors <see cref="FocusService.IsInFocus"/> accepts. Under None all three are empty. Under All the
@@ -910,7 +910,7 @@ public partial class ScheduleGridViewModel : ViewModelBase
     }
 
     /// <summary>
-    /// How many instructors' initials a section tile shows before the "+N" count (spec 1.2.4 item 2.5).
+    /// How many instructors' initials a section tile shows before the "+N" count.
     /// One keeps long team-taught lists from widening the whole Schedule view column.
     /// </summary>
     internal const int SectionInitialsShown = 1;
@@ -1000,7 +1000,7 @@ public partial class ScheduleGridViewModel : ViewModelBase
     /// course or the course ID cannot be resolved from the lookup.
     ///
     /// Initials format: the first <see cref="SectionInitialsShown"/> instructor's initials, in the order they
-    /// appear in <see cref="Section.InstructorIds"/>, then " +N" for the rest (e.g. "JRS +2"; spec 1.2.4 item 2.5).
+    /// appear in <see cref="Section.InstructorIds"/>, then " +N" for the rest (e.g. "JRS +2").
     /// There is no lead instructor: the first shown is simply the first stored. Returns an empty string when no
     /// instructor assignments exist or none resolve in the lookup.
     ///
@@ -1099,7 +1099,7 @@ public partial class ScheduleGridViewModel : ViewModelBase
     ///   </item>
     /// </list>
     ///
-    /// <b>Subject focus (spec item 20):</b> a section outside the focus emits nothing here, and this test comes
+    /// <b>Subject focus:</b> a section outside the focus emits nothing here, and this test comes
     /// before every ordinary filter (focus is the outer layer; the filter narrows within it). A section hidden by the
     /// focus is still picked up by <see cref="BuildOverlayBlocks"/> when it matches the overlay, because overlays
     /// ignore the focus.
@@ -1186,7 +1186,7 @@ public partial class ScheduleGridViewModel : ViewModelBase
             if (snap.FilterSectionType && !snap.SectionTypeIds.Contains(section.SectionTypeId ?? string.Empty))
                 continue;
 
-            // Tags: by default the section must carry ALL selected tags; with "any" (spec item 31) one is enough.
+            // Tags: by default the section must carry ALL selected tags; with "any" one is enough.
             if (!snap.PassesTagFilter(section.TagIds))
                 continue;
 
@@ -1263,7 +1263,7 @@ public partial class ScheduleGridViewModel : ViewModelBase
     /// All blocks emitted here carry <c>IsOverlay=true</c>. Returns an empty list when
     /// no overlay is active.
     ///
-    /// <b>Overlays ignore the subject focus (spec item 20).</b> This pass takes no focus test on purpose:
+    /// <b>Overlays ignore the subject focus.</b> This pass takes no focus test on purpose:
     /// <paramref name="overlayMatchedIds"/> and the room scan are built from every section, so an out-of-focus
     /// section that Pass 1 skipped is added here just as a filter-excluded one is. An instructor overlay that hid
     /// the instructor's out-of-focus sections would make them look free when they are busy.

@@ -18,7 +18,6 @@ public class DatabaseContext : IDatabaseContext
     /// skipping all per-column proxy checks. Increment this constant whenever a new
     /// <c>AddColumnIfMissing</c> call or any other migration step is added to
     /// <see cref="Migrate"/> — that is the only update required to make the check robust.
-    /// (F6, data-integrity-agenda 2026-05-04.)
     /// </summary>
     internal const int CurrentSchemaVersion = 1;
     // Stored as SqliteConnection so internal helpers (SeedData, schema migrations) can use it
@@ -33,7 +32,7 @@ public class DatabaseContext : IDatabaseContext
     /// <summary>
     /// Called on EVERY user write, after the read-only check and before the first-write compare-and-swap, so the
     /// checkout service can count edits (<c>CheckoutService.NoteEdit</c>). A save compares that count before and after
-    /// its snapshot to learn that an edit arrived while it ran (spec item 3.2). Null in tests and demo contexts.
+    /// its snapshot to learn that an edit arrived while it ran. Null in tests and demo contexts.
     /// </summary>
     private readonly Action? _onEveryWrite;
 
@@ -63,8 +62,7 @@ public class DatabaseContext : IDatabaseContext
     /// <summary>
     /// Starts a write transaction. A writer gets the usual <c>BEGIN IMMEDIATE</c> (unchanged). A read-only session gets
     /// a deferred <c>BEGIN</c>, which SQLite's <c>query_only</c> switch allows, so the first repository write inside it
-    /// reaches <see cref="MarkDirty"/> and is refused with the plain <see cref="WriteAccessLostException"/>, exactly as
-    /// before item 4.4. (<c>BEGIN IMMEDIATE</c> would fail at once with SQLITE_READONLY, usually outside the caller's
+    /// reaches <see cref="MarkDirty"/> and is refused with the plain <see cref="WriteAccessLostException"/>. (<c>BEGIN IMMEDIATE</c> would fail at once with SQLITE_READONLY, usually outside the caller's
     /// try block.)
     /// </summary>
     /// <returns>The open transaction (never null for this context).</returns>
@@ -83,7 +81,7 @@ public class DatabaseContext : IDatabaseContext
             throw new WriteAccessLostException();
 
         // Count the edit BEFORE anything touches the database: a save that reads the counter, snapshots, and reads
-        // it again must never miss a write that started after its first reading (spec item 3.2).
+        // it again must never miss a write that started after its first reading.
         _onEveryWrite?.Invoke();
 
         if (Interlocked.CompareExchange(ref _dirtyFired, 1, 0) == 0)
@@ -107,8 +105,7 @@ public class DatabaseContext : IDatabaseContext
     /// <summary>
     /// Records the session's mode on the freshly opened connection. Sets <c>_readOnly</c> (the
     /// <see cref="MarkDirty"/> refusal) and, for a read-only session, also turns on SQLite's own
-    /// <c>PRAGMA query_only</c> on <see cref="_conn"/> as a second, database-level guard (spec 1.2.4 item 4.4,
-    /// design <c>designs/read-only-guard-1.2.4.md</c>): a write that ever slips past <see cref="MarkDirty"/> then
+    /// <c>PRAGMA query_only</c> on <see cref="_conn"/> as a second, database-level guard: a write that ever slips past <see cref="MarkDirty"/> then
     /// fails at SQLite (SQLITE_READONLY) instead of landing silently in a throw-away copy.
     /// <para>Must be called only after the open's schema setup, migrations and seeding (they legitimately write to a
     /// snapshot of an older database) and after <see cref="ConfigureConnection"/>. The switch belongs to this one
@@ -434,7 +431,6 @@ public class DatabaseContext : IDatabaseContext
                 // would silently destroy real data. This indicates a partially-failed migration
                 // where the rename completed on a previous run but SectionPropertyValues was
                 // not cleaned up, or some other unexpected state. Abort rather than data-loss.
-                // (F7, data-integrity-agenda 2026-05-04.)
                 cmd.CommandText = "SELECT COUNT(*) FROM sqlite_master WHERE type='table' AND name='SchedulingEnvironmentValues'";
                 var newTableAlreadyExists = Convert.ToInt32(cmd.ExecuteScalar()) > 0;
                 if (newTableAlreadyExists)
@@ -490,7 +486,6 @@ public class DatabaseContext : IDatabaseContext
             // the next startup, without re-running every proxy check. This is the last write
             // inside the migration transaction — if anything above fails and we rollback,
             // the stamp is also rolled back, so the DB correctly shows as un-migrated.
-            // (F6, data-integrity-agenda 2026-05-04.)
             cmd.CommandText = $"PRAGMA user_version = {CurrentSchemaVersion}";
             cmd.ExecuteNonQuery();
 
@@ -508,7 +503,7 @@ public class DatabaseContext : IDatabaseContext
     /// Returns false when the database is fully up-to-date, avoiding unnecessary
     /// pre-migration backups on every startup.
     ///
-    /// <para><b>Fast path (F6):</b> when <c>PRAGMA user_version</c> equals
+    /// <para><b>Fast path:</b> when <c>PRAGMA user_version</c> equals
     /// <see cref="CurrentSchemaVersion"/>, migration has already run and this method
     /// returns <c>false</c> immediately without inspecting individual tables or columns.
     /// <see cref="Migrate"/> writes the stamp at the end of its transaction, so the fast
@@ -532,7 +527,7 @@ public class DatabaseContext : IDatabaseContext
 
         // Legacy proxy: check for the last AddColumnIfMissing column added before the
         // version stamp was introduced. This check is superseded by user_version for any
-        // database migrated after the F6 fix; kept for databases migrated earlier.
+        // database migrated with the stamp; kept for databases migrated earlier.
         cmd.CommandText = "PRAGMA table_info(InstructorCommitments)";
         var hasInstructorName = false;
         using (var r = cmd.ExecuteReader())
@@ -717,7 +712,7 @@ public class DatabaseContext : IDatabaseContext
         // Open a new connection to the (possibly replaced) database file. Mode=ReadWrite: the file
         // must already exist. The default (ReadWriteCreate) would silently create an EMPTY, schema-less
         // database if the working copy had vanished (e.g. deleted while the app runs on macOS) — the
-        // session would then show and save nothing. Missing must fail loudly instead (spec item 4c).
+        // session would then show and save nothing. Missing must fail loudly instead.
         _dbPath = newDbPath;
         _conn   = new SqliteConnection($"Data Source={newDbPath};Mode=ReadWrite");
         try

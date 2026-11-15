@@ -111,7 +111,7 @@ public partial class MainWindow : Window, ILifecyclePrompts, ISessionHost
         var version = Assembly.GetExecutingAssembly().GetName().Version;
         var shown = version is null ? "0.0.0" : version.ToString(version.Revision > 0 ? 4 : 3);
         // A build running its lock timers faster (TERMPOINT_TEST_TIMINGS, a Sideload or Development build only) says so in the title,
-        // so it can never be mistaken for a normal one; the suffix is empty at factor 1 (spec item 8.7).
+        // so it can never be mistaken for a normal one; the suffix is empty at factor 1.
         Title = $"TermPoint v{shown}{LockTimings.Current.TitleSuffix}";
 
 
@@ -208,14 +208,14 @@ public partial class MainWindow : Window, ILifecyclePrompts, ISessionHost
     }
 
     /// <summary>
-    /// The pure decision behind every close request (spec item 15): the first request starts the teardown, further
+    /// The pure decision behind every close request: the first request starts the teardown, further
     /// requests while it runs are ignored, and the window closes for real once the teardown has finished (or its
     /// two-minute backstop has passed). Also read by the key handler, which blocks shortcuts once the exit has begun.
     /// </summary>
     private readonly ExitCloseGuard _exitGuard = new();
 
     /// <summary>
-    /// True while the "Unapplied Changes" question (spec item 3.1) is showing for a close request, so a second close
+    /// True while the "Unapplied Changes" question is showing for a close request, so a second close
     /// request in the meantime is ignored rather than stacking a second question.
     /// </summary>
     private bool _unappliedQuestionShowing;
@@ -224,7 +224,7 @@ public partial class MainWindow : Window, ILifecyclePrompts, ISessionHost
     /// Called whenever the window is about to close — whether via Files → Exit or the title-bar X.
     /// The first request cancels the close, hides the secondary windows, covers the window with the loading
     /// curtain and runs the async shutdown (save to D, release lock); the teardown then calls Close() again, which
-    /// falls through. A further request while the teardown runs is ignored (it used to end the process mid-save);
+    /// falls through. A further request while the teardown runs is ignored (letting it through would end the process mid-save);
     /// only after <see cref="ExitCloseGuard.Backstop"/> is one let through. The decisions live in
     /// <see cref="ExitCloseGuard"/>; this method only does the window work.
     /// </summary>
@@ -257,7 +257,7 @@ public partial class MainWindow : Window, ILifecyclePrompts, ISessionHost
             }
         }
 
-        // Spec item 3.1: a writer with an editor holding unapplied changes is asked once, BEFORE the exit guard
+        // A writer with an editor holding unapplied changes is asked once, BEFORE the exit guard
         // moves on. The close is cancelled while the question shows; a second close request in the meantime is
         // ignored. On "carry on" Close() runs again and finds nothing left to ask, so the exit proceeds as always.
         // All the behaviour is in SessionLifecycle.ResolveUnappliedChangesAsync / UnappliedChangesGate.
@@ -312,8 +312,7 @@ public partial class MainWindow : Window, ILifecyclePrompts, ISessionHost
     }
 
     /// <summary>
-    /// Once the main window has closed, makes sure the application shuts down (spec 1.2.4 item 4.3, design
-    /// <c>designs/restore-relaunch-1.2.4.md</c>, change A). <c>ShutdownMode.OnMainWindowClose</c> should already have
+    /// Once the main window has closed, makes sure the application shuts down. <c>ShutdownMode.OnMainWindowClose</c> should already have
     /// done it, but after a Save &amp; Backup restore Avalonia's shutdown was seen never to run (or to be abandoned),
     /// leaving an invisible TermPoint alive until sign-out. So a request is posted at background priority: on a normal
     /// exit the main loop has ended by then and it never runs; otherwise it asks for the shutdown and logs that it had
@@ -609,7 +608,7 @@ public partial class MainWindow : Window, ILifecyclePrompts, ISessionHost
     /// databases, browse, create new, or restore. Falls back to the chooser in recovery
     /// mode if the saved database is missing or corrupt.
     ///
-    /// <para><b>Order once a database is chosen (spec item 4b):</b> (1) take the single-instance guard
+    /// <para><b>Order once a database is chosen:</b> (1) take the single-instance guard
     /// (<see cref="DatabaseInstanceGuard"/>; if another live TermPoint of this user holds it: message, then
     /// the chooser again, nothing else runs); (2) record the recent database and evaluate the license;
     /// (3) <see cref="SessionLifecycle.CleanUpAndOfferRecoveryAsync"/> — stale-artifact sweep, crash-recovery offer;
@@ -617,7 +616,7 @@ public partial class MainWindow : Window, ILifecyclePrompts, ISessionHost
     /// only once write access is confirmed); (5) services and window. The guard is released when the app
     /// exits (<see cref="OnClosing"/>).</para>
     ///
-    /// <para><b>Steps (1)–(5) are <see cref="SessionLifecycle.OpenStartupDatabaseAsync"/>, run in a loop (spec item 5, step 5d):</b>
+    /// <para><b>Steps (1)–(5) are <see cref="SessionLifecycle.OpenStartupDatabaseAsync"/>, run in a loop:</b>
     /// when the shared database turns out to be damaged, the recovery chooser is shown and whatever the user picks
     /// there is opened by running steps (1)–(5) again for it, rather than by a second copy of them.</para>
     /// </summary>
@@ -625,7 +624,7 @@ public partial class MainWindow : Window, ILifecyclePrompts, ISessionHost
     {
         string dbPath;
 
-        // A relaunch after a restore names the restored database (spec 1.2.4 item 4.3): open it directly this once,
+        // A relaunch after a restore names the restored database: open it directly this once,
         // exactly as the "Always open the most recent database" setting would (same check, same fallback).
         var reopenAfterRestore = RestartArguments.ShouldReopen(Program.StartupArgs, settings.DatabasePath);
         if (reopenAfterRestore)
@@ -871,8 +870,7 @@ public partial class MainWindow : Window, ILifecyclePrompts, ISessionHost
     }
 
     /// <summary>
-    /// Covers the window for the "no database open" state that follows a failed database switch (spec
-    /// item 4d), so nothing bound to the database that was just closed can be seen or clicked: clears
+    /// Covers the window for the "no database open" state that follows a failed database switch, so nothing bound to the database that was just closed can be seen or clicked: clears
     /// the stale <see cref="Window.DataContext"/> and raises the loading curtain — the same cover the
     /// window wears at launch.
     ///
@@ -887,7 +885,7 @@ public partial class MainWindow : Window, ILifecyclePrompts, ISessionHost
     }
 
     /// <summary>
-    /// Covers the window for the exit sequence (spec item 15): raises the loading curtain showing "Saving and
+    /// Covers the window for the exit sequence: raises the loading curtain showing "Saving and
     /// closing…" when the session is in write mode (<c>CheckoutMode.WriteAccess</c>) or "Closing…" otherwise, with
     /// its lift disarmed so nothing can uncover it, and takes the main view out of the keyboard's reach (focus
     /// moved onto the curtain, view disabled), because the curtain stops only the pointer. Unlike
@@ -1157,7 +1155,7 @@ public partial class MainWindow : Window, ILifecyclePrompts, ISessionHost
         await msg.ShowDialog(owner);
     }
 
-    // ── Restore from backup (spec item 5, step 5b) ───────────────────────────
+    // ── Restore from backup ──────────────────────────────────────────────────
 
     /// <summary>
     /// Restores <paramref name="backupPath"/> over the open database, safely. Called (after the user has
@@ -1173,7 +1171,7 @@ public partial class MainWindow : Window, ILifecyclePrompts, ISessionHost
 
     /// <summary>
     /// Starts a fresh copy of TermPoint (after a confirmed restore), asking it to reopen <paramref name="reopenPath"/>
-    /// (<see cref="RestartArguments"/>; spec 1.2.4 item 4.3). Never throws: if it cannot be started the application
+    /// (<see cref="RestartArguments"/>). Never throws: if it cannot be started the application
     /// still closes, and the user reopens it by hand.
     /// </summary>
     /// <param name="reopenPath">The restored database; blank starts the new copy without the argument.</param>
@@ -1270,7 +1268,7 @@ public partial class MainWindow : Window, ILifecyclePrompts, ISessionHost
         return await workTask;
     }
 
-    // ── Save conflict (spec item 10, step 10a) ───────────────────────────────
+    // ── Save conflict ────────────────────────────────────────────────────────
 
     /// <summary>
     /// Carries out the user's choice from the save-conflict banner (<see cref="CheckoutService.HasSaveConflict"/>):
@@ -1414,8 +1412,7 @@ public partial class MainWindow : Window, ILifecyclePrompts, ISessionHost
     /// <summary>
     /// The core of every two-button dialog: built in code and Topmost (see <see cref="ShowFatalAsync"/>), and it
     /// reports THREE outcomes, so a caller can tell a button press from the window's X. Used directly by the
-    /// crash-recovery questions, where the X must never be taken for "discard my unsaved work" (data-persistence
-    /// review, F1); every other caller goes through the <c>bool</c> wrapper <see cref="ShowChoiceDialogAsync"/>.
+    /// crash-recovery questions, where the X must never be taken for "discard my unsaved work"; every other caller goes through the <c>bool</c> wrapper <see cref="ShowChoiceDialogAsync"/>.
     /// </summary>
     /// <param name="owner">Window to parent the dialog to.</param>
     /// <param name="title">Dialog window title.</param>
@@ -1504,7 +1501,7 @@ public partial class MainWindow : Window, ILifecyclePrompts, ISessionHost
 
     /// <summary>
     /// Shows the short "Checking the Lock" wait that follows a confirmed stale-lock takeover when the
-    /// holder's heartbeat has not yet stood still long enough (spec item 9b). The dialog is only the
+    /// holder's heartbeat has not yet stood still long enough. The dialog is only the
     /// view: the waiting itself is <see cref="CheckoutService.WaitForTakeOverConfirmationAsync"/>, which
     /// never blocks the UI thread. The dialog closes by itself when the wait ends; its Cancel button (or
     /// closing it) cancels the wait. Built in code and Topmost like every other modal dialog here (see
@@ -1631,7 +1628,7 @@ public partial class MainWindow : Window, ILifecyclePrompts, ISessionHost
         // The detached header mirrors the inline one: the focus statement fills the width and the Events toggle
         // docks right. The statement shows in the Section View only (the wrapper Panel carries that condition,
         // because FocusIndicator's own DataContext is the FocusViewModel) and hides itself under focus All.
-        // Prototype 2026-10-23: subjects shown in the top bar instead; restore if the header statement is wanted back.
+        // Subjects are shown in the top bar instead; restore this if the header statement is wanted back.
         //var focusPanel = new Panel
         //{
         //    VerticalAlignment = VerticalAlignment.Center,
@@ -1696,7 +1693,7 @@ public partial class MainWindow : Window, ILifecyclePrompts, ISessionHost
             },
             headerContext);
 
-        // The window's title bar names the chosen subjects too (1.2.4 item 2.14), as plain text with the same
+        // The window's title bar names the chosen subjects too, as plain text with the same
         // "+N" cap, so a minimised or background window still says it is not the whole timetable.
         _scheduleGridWindow?.Bind(Window.TitleProperty, new Binding(nameof(FocusViewModel.ShortSubjectsText))
         {
@@ -1797,7 +1794,7 @@ public partial class MainWindow : Window, ILifecyclePrompts, ISessionHost
         stack.Children.Add(semItemsControl);
 
         // Subject focus (outermost layer, so before "Filtered by:"): separator + the shared statement control
-        // (subject chips capped with "+N", 1.2.4 item 2.14), both hidden under focus All. In a detached window
+        // (subject chips capped with "+N"), both hidden under focus All. In a detached window
         // this is the only place the chosen subjects show, since the main window's top bar is out of sight.
         var focusSeparator = new Border
         {
@@ -1913,7 +1910,7 @@ public partial class MainWindow : Window, ILifecyclePrompts, ISessionHost
         win.Show(this);
     }
 
-    // ── Lifecycle seams (designs/data-persistence-review-2026-10.md, step 9.1a) ─────────────────────────────────────
+    // ── Lifecycle seams ─────────────────────────────────────
     // ILifecyclePrompts and ISessionHost are the two interfaces a future non-UI session-lifecycle class will
     // depend on. This window implements both EXPLICITLY, each member delegating to the code that already
     // existed, so introducing them changes no behaviour. The lifecycle methods below call themselves through
@@ -2060,8 +2057,8 @@ public partial class MainWindow : Window, ILifecyclePrompts, ISessionHost
 
     /// <summary>
     /// Adapter that lets the session lifecycle use the root view model without referencing its type: it
-    /// implements <see cref="IOpenedDatabase"/> by calling exactly the members the lifecycle used to call on the
-    /// view model directly, and hands the view model back to this window to wire up
+    /// implements <see cref="IOpenedDatabase"/> by calling exactly the members the lifecycle needs on the
+    /// view model, and hands the view model back to this window to wire up
     /// (<see cref="ISessionHost.SetupWindowAsync"/>).
     /// </summary>
     private sealed class OpenedDatabase : IOpenedDatabase

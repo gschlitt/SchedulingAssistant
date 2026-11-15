@@ -205,7 +205,7 @@ public partial class CourseHistoryExportViewModel : ViewModelBase
             if (file is null) return;
 
             // Encode with the UTF-8 BOM (Excel needs it), then write under the network deadline: the folder may be
-            // a share that has stopped answering (1.2.4 item 4.10, A8).
+            // a share that has stopped answering.
             var result = await ExportFileWriter.WriteAsync(file, ExportFileWriter.EncodeUtf8(csv.ToString(), withBom: true));
             if (!result.Succeeded)
             {

@@ -41,7 +41,7 @@ public class CourseRepository(IDatabaseContext db) : ICourseRepository
     /// Returns true if any section references this course.
     /// <para>
     /// Ignores orphans: sections whose semester no longer exists, left behind by older app versions
-    /// when an academic year was deleted (see spec item 8). They are invisible to the user, so
+    /// when an academic year was deleted. They are invisible to the user, so
     /// counting them made "cannot delete course: it has sections" appear with nothing to remove.
     /// The orphans themselves are left untouched in the database.
     /// </para>
