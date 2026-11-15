@@ -1,8 +1,8 @@
 # TermPoint 1.2.5 backlog (moved from 1.2.4, 2026-11-11)
 
 Greg closed 1.2.4's work list on 2026-11-11. Everything below was still open and moves to 1.2.5. Numbers are the
-1.2.4 numbers: the full text, sources and any partial notes stay in `designs/spec_version_1.2.4_summary.md` (each
-item there is tagged `moved to 1.2.5`) and `designs/spec_version_1.2.4.md`. Nothing here has been re-prioritised:
+1.2.4 numbers: the full text, sources and any partial notes stay in `designs/1.2.4 and prior/spec_version_1.2.4_summary.md` (each
+item there is tagged `moved to 1.2.5`) and `designs/1.2.4 and prior/spec_version_1.2.4.md`. Nothing here has been re-prioritised:
 pick the order with Greg when 1.2.5 starts.
 
 **Ask the `MinimumVersionToWrite` question for every item picked** (`CLAUDE.md`). Items marked *version gate* raise
