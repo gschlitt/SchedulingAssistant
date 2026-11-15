@@ -44,7 +44,6 @@ publish-wasm.ps1
 
 
 #Markdown
-CLAUDE.md
 WORKAROUNDS.md
 
 # License signing keys — NEVER commit the private key
