@@ -165,7 +165,8 @@ public sealed class WriteLockReadOnlyTests : IDisposable
             _legalStartTimeRepo, _semesterRepo, _blockPatternRepo, _codePatternRepo,
             _semesterContext, _sectionStore, _propertyRepo, _campusRepo, _meetingRepo,
             _dialog, _lock,
-            FocusTestSupport.AllFocus(_semesterContext, _sectionStore));
+            FocusTestSupport.AllFocus(_semesterContext, _sectionStore),
+            FocusTestSupport.NoColours(_courseRepo, _subjectRepo, _sectionStore));
 
     /// <summary>Creates the service that owns the empty/delete-semester rules, over the fixture's repositories.</summary>
     private SemesterContentsService CreateContentsService() =>
@@ -185,7 +186,9 @@ public sealed class WriteLockReadOnlyTests : IDisposable
     /// <summary>Creates a fully-wired <see cref="CourseListViewModel"/> in reader mode.</summary>
     private CourseListViewModel CreateCourseListVm() =>
         new(_courseRepo, _subjectRepo, _propertyRepo, _dialog, _sectionRepo,
-            _semesterRepo, _ayRepo, _instructorRepo, _lock, _sectionStore);
+            _semesterRepo, _ayRepo, _instructorRepo, _lock, _sectionStore,
+            new SubjectColorStore(new[] { "#B7E79D" }, () => new AppSettings()),
+            FocusTestSupport.NoColours(_courseRepo, _subjectRepo, _sectionStore));
 
     /// <summary>Creates a fully-wired <see cref="InstructorListViewModel"/> in reader mode.</summary>
     private InstructorListViewModel CreateInstructorListVm() =>

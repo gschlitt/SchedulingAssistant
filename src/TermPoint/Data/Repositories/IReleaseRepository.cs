@@ -35,7 +35,7 @@ public interface IReleaseRepository
     int CountBySemesterId(string semesterId);
 
     /// <summary>
-    /// Deletes every release belonging to the given semester (part of Empty Semester, spec item 8).
+    /// Deletes every release belonging to the given semester (part of Empty Semester).
     /// </summary>
     /// <param name="semesterId">The semester whose releases are deleted.</param>
     /// <param name="tx">

@@ -8,7 +8,7 @@ internal enum PromiseKind
 {
     /// <summary>
     /// "TermPoint will offer to add them to the database the next time you open it for editing. If someone else changes the
-    /// database first, they can't be added, but you'll be able to save them as a separate copy" (the wording of spec item 28,
+    /// database first, the changes can't be added, but you'll be able to save them as a separate copy" (the wording of spec item 28,
     /// the four kept-changes messages; the production flow behind it is "Restore Unsaved Changes?" and, when the database
     /// changed, "Can't Restore Unsaved Changes" with Save a Copy…). At the computer's next edit-access open of the same
     /// database the work must come back through Restore, OR the database must really have changed (someone else's DATA is in
@@ -60,7 +60,7 @@ internal static class MessagePromises
     {
         // (a) The kept changes will be offered back later (spec item 28's wording): both "Changes Not Saved" messages,
         // "Unsaved Changes Kept" and the lock-lost banner all say "TermPoint will offer to add them to the database [or to "name"]
-        // the next time you open it for editing. If someone else changes the database first, they can't be added, but you'll be
+        // the next time you open it for editing. If someone else changes the database first, the changes can't be added, but you'll be
         // able to save them as a separate copy." The old phrases ("will offer to restore", "will ask about them") are
         // deliberately GONE from the catalogue: if the old wording ever comes back it mentions kept / restore and matches nothing,
         // so the harness reports it as an unclassified promise instead of judging it against the new promise.
@@ -109,11 +109,8 @@ internal static class MessagePromises
         // and "Choose a New Name" (the recovered copy is never saved over an existing file), a rule about file names.
         new(RecoveryConflictPrompt.AlreadyExistsTitle, "", PromiseKind.Info),
 
-        // The banner after an externally removed lock file was put back (LockLossPrompt.LockFilePutBack, "... TermPoint has put it
-        // back, and you can carry on as normal"): it states a fact about the file TermPoint uses to mark the database as in use, and
-        // promises nothing about unsaved work. (It has no promise word, so it needs no entry to avoid "unclassified"; the entry
-        // documents that it was looked at.)
-        new(null, "termpoint has put it back", PromiseKind.Info),
+        // (Removed 2026-11-12: the "TermPoint has put it back" notice. A missing lock file that is put back now shows no message;
+        // the notice named a wrong cause when another TermPoint had taken over and closed. Harness/TakeoverThenReleaseProofTests.)
     };
 
     /// <summary>The result of looking a message up in the catalogue.</summary>

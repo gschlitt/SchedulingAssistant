@@ -243,5 +243,6 @@ public sealed class AppLicenseManagerTests : IDisposable
     {
         public DateTime UtcNow { get; }
         public FixedClock(DateTime utcNow) => UtcNow = utcNow;
+        public DateOnly Today => DateOnly.FromDateTime(UtcNow);
     }
 }

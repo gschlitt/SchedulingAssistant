@@ -4,7 +4,7 @@ using System.Globalization;
 namespace TermPoint.Services;
 
 /// <summary>
-/// A DEBUG-ONLY switch for hand-testing the exit guard (spec item 15): the environment variable
+/// A DEBUG-ONLY switch for hand-testing the exit guard: the environment variable
 /// <c>TERMPOINT_DEBUG_SLOW_EXIT_SAVE=&lt;seconds&gt;</c> makes the window-close teardown wait that many seconds
 /// JUST BEFORE the exit save, so a developer can click X again, try to type, and wait out the guard's two-minute
 /// backstop without needing a slow network share.

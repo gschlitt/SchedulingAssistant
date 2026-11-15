@@ -151,4 +151,35 @@ public sealed class NetworkFileOpsChunkedTests : IDisposable
         await Assert.ThrowsAsync<FileNotFoundException>(
             () => NetworkFileOps.ComputeHashAsync(Path.Combine(_dir, "gone.bin")));
     }
+
+    /// <summary>
+    /// The hashing copy returns the same hash <see cref="NetworkFileOps.ComputeHashAsync"/> gives for the result: for an
+    /// empty file, a sub-chunk file, and a multi-chunk file that is not a multiple of the chunk size.
+    /// </summary>
+    [Theory]
+    [InlineData(0)]
+    [InlineData(12_345)]
+    [InlineData(3 * NetworkFileOps.ChunkSize + 777)]
+    public async Task CopyAndHashAsync_HashEqualsComputeHashAsyncOfTheCopy(int size)
+    {
+        var src  = CreateRandomFile("cah-src.bin", size);
+        var dest = Path.Combine(_dir, "cah-dest.bin");
+
+        var (completed, hash) = await NetworkFileOps.CopyAndHashAsync(src, dest);
+
+        Assert.True(completed);
+        Assert.Equal(size, new FileInfo(dest).Length);
+        var (hashCompleted, expected) = await NetworkFileOps.ComputeHashAsync(dest);
+        Assert.True(hashCompleted);
+        Assert.Equal(expected, hash);
+        Assert.Equal(NetworkFileOps.ComputeHash(src), hash);
+    }
+
+    /// <summary>A missing source propagates the open exception, exactly as <see cref="NetworkFileOps.CopyAsync"/> does.</summary>
+    [Fact]
+    public async Task CopyAndHashAsync_MissingSource_Throws()
+    {
+        await Assert.ThrowsAsync<FileNotFoundException>(
+            () => NetworkFileOps.CopyAndHashAsync(Path.Combine(_dir, "nope.bin"), Path.Combine(_dir, "x.bin")));
+    }
 }

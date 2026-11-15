@@ -10,7 +10,7 @@ namespace TermPoint.Services;
 /// plain-English explanation under <see cref="ReasonKey"/>. A database with no such row is
 /// "unstamped" and opens normally in every version — the gate can never make a normal database
 /// read-only. A file that could not be READ at all (locked, held by another program) is a different
-/// answer from "unstamped" (<see cref="StampReadKind.Unreadable"/>, spec item 3, step 3c) and is never
+/// answer from "unstamped" (<see cref="StampReadKind.Unreadable"/>) and is never
 /// waved through: the gate retries quietly and, if it still cannot look, refuses write access. A file
 /// SQLite reports as damaged is a third answer (<see cref="StampReadKind.Damaged"/>): the gate leaves
 /// it to the open-time integrity check, which refuses it and handles the damage.</para>
@@ -45,16 +45,16 @@ public static class MinimumVersionToWrite
     /// <summary>
     /// The <c>AppConfiguration.key</c> holding the optional one-line, plain-English reason the
     /// stamp was raised (e.g. "Section-type colours are now saved."). Informational only — nothing
-    /// in 1.2.3 reads it back; it exists so a support person looking at the table can see why.
+    /// reads it back; it exists so a support person looking at the table can see why.
     /// </summary>
     public const string ReasonKey = "MinimumVersionToWrite.Reason";
 
-    // ── What THIS release requires (dormant in 1.2.3) ─────────────────────────
+    // ── What THIS release requires ────────────────────────────────────────────
 
     /// <summary>
     /// The stamp this build writes into every database it edits: the version of the release that
-    /// introduced the newest data this build can save. <b>Null in 1.2.3: the check ships, the
-    /// raising does not.</b> (Full procedure: <c>UPDATE_NUMBERING_README.md</c> at the repo root.)
+    /// introduced the newest data this build can save. <b>Null until a release first raises it: the check
+    /// ships, the raising does not.</b> (Full procedure: <c>UPDATE_NUMBERING_README.md</c> at the repo root.)
     ///
     /// <para><b>Once set, it stays set in every later release</b> — never back to null, never
     /// lower. A later release still saves that newer data, so it must keep stamping at least that
@@ -68,7 +68,7 @@ public static class MinimumVersionToWrite
     /// </list>
     ///
     /// <para><b>Yes:</b> section-type colours (a new saved field); a fix that stops an edit wiping a
-    /// field (1.2.3's Flag/Capacity fixes: same edit, different record); a CSV import fix (same file,
+    /// field (the Flag/Capacity fixes: same edit, different record); a CSV import fix (same file,
     /// different records).<br/>
     /// <b>No:</b> card layout, scrolling, a crash fix in a view, performance work.</para>
     ///
@@ -83,7 +83,7 @@ public static class MinimumVersionToWrite
     /// with the Store identity counts as a Store install and WILL stamp. Test such a build on
     /// database copies only, never on a department's live database.</para>
     ///
-    /// <para>A test pins this to null for 1.2.3; if you set it deliberately, update that test.</para>
+    /// <para>A test pins this to its current value; if you set it deliberately, update that test.</para>
     /// </summary>
     public const string? ThisReleaseRequires = null;
 
@@ -91,7 +91,7 @@ public static class MinimumVersionToWrite
     /// One-line, plain-English reason stored beside the stamp when it is raised (see
     /// <see cref="ThisReleaseRequires"/>). Describes the most recent raise; like
     /// <see cref="ThisReleaseRequires"/> it is changed only when a release raises the stamp again,
-    /// never cleared. Null in 1.2.3.
+    /// never cleared. Null until a release first raises it.
     /// </summary>
     public const string? ThisReleaseReason = null;
 
@@ -105,8 +105,7 @@ public static class MinimumVersionToWrite
     /// <para>Chosen over TermPoint's own product page (<c>ms-windows-store://pdp/?PFN=…</c>)
     /// because this page has a "Get updates" button that makes the Store check right away — a user
     /// who hits the banner usually has an update the Store has not fetched yet, and the product
-    /// page then just shows "Open" with no hint of what to do (user check on a Store install,
-    /// 2026-10-11). The banner text names the button (see <see cref="BuildMessage"/>).</para>
+    /// page then just shows "Open" with no hint of what to do. The banner text names the button (see <see cref="BuildMessage"/>).</para>
     /// </summary>
     public const string StoreUri = "ms-windows-store://downloadsandupdates";
 
@@ -116,8 +115,8 @@ public static class MinimumVersionToWrite
     /// Reads the <see cref="ConfigKey"/> value from the SQLite file at <paramref name="dbPath"/>
     /// without modifying it (read-only connection, no pooling, so no handle is left open), and says
     /// HOW the read ended — <see cref="StampReadKind"/> — instead of collapsing "there is no stamp"
-    /// and "I could not look" into one null (spec item 3, step 3c). The old null-on-any-error read
-    /// let a locked or damaged working copy (antivirus holding a file that was just copied) pass
+    /// and "I could not look" into one null. A null-on-any-error read
+    /// would let a locked or damaged working copy (antivirus holding a file that was just copied) pass
     /// the version gate as if it were unstamped.
     ///
     /// <para><b>Classification:</b></para>
@@ -368,7 +367,7 @@ public static class MinimumVersionToWrite
 }
 
 /// <summary>
-/// How a read of a database's <see cref="MinimumVersionToWrite"/> stamp ended (spec item 3, step 3c).
+/// How a read of a database's <see cref="MinimumVersionToWrite"/> stamp ended.
 /// </summary>
 public enum StampReadKind
 {

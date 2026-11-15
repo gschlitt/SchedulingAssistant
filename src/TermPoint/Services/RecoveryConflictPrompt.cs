@@ -1,7 +1,7 @@
 namespace TermPoint.Services;
 
 /// <summary>
-/// Every user-facing text of the "can't restore unsaved changes" flow (spec item 16, step 16a): the prompt shown
+/// Every user-facing text of the "can't restore unsaved changes" flow: the prompt shown
 /// when crash recovery finds that the shared database changed since the unsaved changes were made, the save dialog
 /// that offers to keep them as a separate file, and the two messages that can follow (the chosen name is taken; the
 /// copy could not be written). The wording is kept out of <c>MainWindow</c> so it can be pinned by unit tests.
@@ -46,7 +46,7 @@ public static class RecoveryConflictPrompt
     /// <summary>Label of the prompt's other button: give up the unsaved changes.</summary>
     public const string DiscardButton = "Discard";
 
-    // ── The "discard?" confirmation (data-persistence review, F1) ────────────
+    // ── The "discard?" confirmation ────────────
 
     /// <summary>
     /// Title of the confirmation shown when the user chooses Discard on "Restore Unsaved Changes?" or on "Can't

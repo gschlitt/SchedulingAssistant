@@ -4,8 +4,7 @@ namespace TermPoint.Services;
 
 /// <summary>
 /// Who has taught which subjects, and in which academic year: the "small table of (instructor, subject, academic
-/// year)" that <see cref="InstructorFocusRule"/> decides from (spec item 20, "Who counts as an in-focus
-/// instructor"). Immutable once built, and pure: <see cref="Build"/> takes plain in-memory collections, so it can
+/// year)" that <see cref="InstructorFocusRule"/> decides from. Immutable once built, and pure: <see cref="Build"/> takes plain in-memory collections, so it can
 /// be tested without a database.
 /// <para>
 /// Academic years are identified by their POSITION in a fixed order (<see cref="AcademicYear.StartYear"/>, then

@@ -17,7 +17,7 @@ public partial class InstructorSelectionViewModel : ObservableObject
     [ObservableProperty] private string _workloadText = "1";
 
     /// <summary>
-    /// True when the instructor is outside the subject focus (spec item 20): the editor shows the name in a lighter
+    /// True when the instructor is outside the subject focus: the editor shows the name in a lighter
     /// colour, under the "Other instructors" heading. Set at construction; purely presentational.
     /// </summary>
     public bool IsOutOfFocus { get; }

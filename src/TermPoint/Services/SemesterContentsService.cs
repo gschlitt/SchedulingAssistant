@@ -5,8 +5,8 @@ using TermPoint.Data.Repositories;
 namespace TermPoint.Services;
 
 /// <summary>
-/// The single owner of the rules for emptying and deleting semesters and academic years
-/// (spec item 8). Every screen that empties or deletes one (Empty Semester, the Semester Manager,
+/// The single owner of the rules for emptying and deleting semesters and academic years.
+/// Every screen that empties or deletes one (Empty Semester, the Semester Manager,
 /// the Academic Year list) must go through this service, so the rules cannot drift apart again.
 /// <para>
 /// Six tables are tied to a semester by <c>semester_id</c>: Sections, Meetings, Releases,
@@ -253,7 +253,7 @@ public sealed class SemesterContentsService(
     /// <param name="work">The writes to perform; receives the transaction (or <c>null</c>).</param>
     private void RunInTransaction(Action<DbTransaction?> work)
     {
-        using var tx = db.SupportsTransactions ? db.Connection.BeginTransaction() : null;
+        using var tx = db.BeginWriteTransaction();
         try
         {
             work(tx);

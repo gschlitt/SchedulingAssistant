@@ -5,7 +5,7 @@ using TermPoint.Exceptions;
 namespace TermPoint.Services;
 
 /// <summary>
-/// Which database file a damage report is about (spec item 5, step 5e). Each kind is reported at most once per run.
+/// Which database file a damage report is about. Each kind is reported at most once per run.
 /// </summary>
 public enum DamagedFileKind
 {
@@ -23,7 +23,7 @@ public enum DamagedFileKind
 }
 
 /// <summary>
-/// Reports a DAMAGED database to the developers (spec item 5, step 5e): a local log line and, to BugSnag, one named
+/// Reports a DAMAGED database to the developers: a local log line and, to BugSnag, one named
 /// error per kind of file per run — with no path, file name or user name in anything sent.
 ///
 /// <para><b>What counts as damage.</b> Only positive evidence of damage INSIDE a SQLite database:

@@ -26,7 +26,7 @@ public partial class SchedulingNotesViewModel : ViewModelBase
     /// The note most recently loaded for the current (instructor, semester), or null when none is
     /// stored yet. <see cref="Save"/> writes a freshly built <see cref="SchedulingNote"/> over the
     /// stored row, so it carries this note's unknown JSON fields
-    /// (<see cref="PersistedRecord.ExtensionData"/>, spec item 3) across; otherwise saving the text
+    /// (<see cref="PersistedRecord.ExtensionData"/>) across; otherwise saving the text
     /// from an older app version would delete fields a newer version stored on the note.
     /// </summary>
     private SchedulingNote? _loadedNote;

@@ -9,8 +9,9 @@ namespace TermPoint.Tests.Harness;
 /// Proof tests for the pause (spec item 9.3, step 9.3c-2b): an operation held at a named crash point while one other event happens,
 /// then released. Like the other proof tests they make the thing really happen and assert what the harness sees: that the operation
 /// is really held and really released, that a case replays to the same story and shrinks, that a deadlock becomes a Hang and not a
-/// hung test run, that designed waiting is not a violation, that the F2 and F16 routes (and invariant I6) classify as the design note
-/// says, and that the F12 route, fixed 2026-10-21, now ends with the save refused. They run only with <c>TERMPOINT_HARNESS=1</c> (<see cref="HarnessFactAttribute"/>), except the plain key test.
+/// hung test run, that designed waiting is not a violation, that invariant I6 (on planted states) classifies as the design note
+/// says, that the F2 route, fixed in 1.2.4 (item 3.2), now keeps the edit, and that the F12 route, fixed 2026-10-21, now ends with the save refused. (The F16 route, fixed in 1.2.4, is a proof test in
+/// <see cref="FixedFindingsProofTests"/>.) They run only with <c>TERMPOINT_HARNESS=1</c> (<see cref="HarnessFactAttribute"/>), except the plain key test.
 /// </summary>
 public sealed class PauseProofTests
 {
@@ -34,7 +35,7 @@ public sealed class PauseProofTests
             new RunOptions { Title = "a pause proof", ExtraEvents = EventCatalogue.ExtrasFor(keys) });
     }
 
-    /// <summary>The keys of the F2 route: Bob edits while his own save is held after its snapshot, then his computer crashes.</summary>
+    /// <summary>The keys of the old F2 route (fixed in 1.2.4, item 3.2): Bob edits while his own save is held after its snapshot, then his computer crashes.</summary>
     private static readonly string[] F2Route =
     {
         "Open(bob)", "Edit(bob)", "Pause(Save(bob) at Save.AfterLocalSnapshot; BobEdits)", "Crash(bob)", "Open(bob)"
@@ -47,13 +48,6 @@ public sealed class PauseProofTests
     private static readonly string[] F12Route =
     {
         "Open(bob)", "Edit(bob)", "Pause(Save(bob) at Save.AfterLocalSnapshot; AliceTakesOverAndSaves)", "Crash(bob)", "Open(bob)"
-    };
-
-    /// <summary>The keys of the F16 route: Bob's computer wakes to find his lock gone; the demotion that starts is held while Bob switches database.</summary>
-    private static readonly string[] F16Route =
-    {
-        "Open(bob)", "Edit(bob)", "AdvanceTime(4m)", "Open(alice)",
-        "Pause(Sleep(bob,10m) at Demote.AfterWorkingCopyHandled; BobSwitches)", "Crash(bob)", "Open(bob)"
     };
 
     // ═════════════════════════════════════════════════════════════════════════
@@ -75,7 +69,6 @@ public sealed class PauseProofTests
         await bob.OpenAsync();
         bob.Edit();
 
-        var tmp = world.DatabasePath + ".tmp";
         List<string>? editsDuring = null;
         bool tmpDuring = false, savedDuring = true;
         Task<SaveOutcome>? save = null;
@@ -86,7 +79,7 @@ public sealed class PauseProofTests
             pauseEvent: () =>
             {
                 editsDuring = world.EditsInDatabase();
-                tmpDuring   = File.Exists(tmp);
+                tmpDuring   = world.CurrentSaveTempFile() is not null;   // the save's own, per-attempt temporary file
                 savedDuring = save is { IsCompleted: true };
                 return Task.CompletedTask;
             });
@@ -97,7 +90,7 @@ public sealed class PauseProofTests
         Assert.False(savedDuring);       // and was still held
         Assert.Equal(SaveOutcome.Success, await save!);
         Assert.Equal(new[] { "bob-1" }, world.EditsInDatabase());
-        Assert.False(File.Exists(tmp));
+        Assert.Null(world.CurrentSaveTempFile());
 
         var story = world.PrintStory(Array.Empty<string>());
         Assert.True(story.IndexOf("is held there", StringComparison.Ordinal) > 0);
@@ -127,32 +120,33 @@ public sealed class PauseProofTests
     }
 
     /// <summary>
-    /// The existing shrinker shortens a long pause case: Bob opens, edits, saves, edits again, and in his NEXT save, held after the
-    /// snapshot, edits once more, then crashes: the loss (F2) is shrunk to the few events that matter, and the pause stays in it.
+    /// The existing shrinker still shortens a long case. It used to be shown on a long pause case that ended in F2; F2 is fixed (1.2.4
+    /// item 3.2) and no pause route ends in a known finding any more, so the case is now the F20 route (the one known finding the
+    /// shrinker can still be shown on; its known sequence is 5 events) padded with events that do not matter: an edit and a save by Alice,
+    /// time passing, and a second edit. The shrunk case keeps the finding's signature and drops the padding.
     /// </summary>
     [HarnessFact]
-    public async Task PauseCase_IsShrunkByTheExistingShrinker()
+    public async Task LongCase_IsShrunkByTheExistingShrinker()
     {
         var keys = new[]
         {
-            "Open(bob)", "Edit(bob)", "Save(bob)", "Edit(bob)", "AdvanceTime(30s)", "Edit(bob)",
-            "Pause(Save(bob) at Save.AfterLocalSnapshot; BobEdits)", "Crash(bob)", "Open(bob)"
+            "Open(alice)", "Edit(alice)", "Save(alice)", "AdvanceTime(30s)", "Edit(alice)",
+            "ColleagueWrites", "AutosaveTick(alice)", "OtherProgramOpens(lockfile,none)", "ResolveSaveCopy(alice)"
         };
-        var options = new RunOptions { Title = "a long pause case", ExtraEvents = EventCatalogue.ExtrasFor(keys) };
+        var options = new RunOptions { Title = "a long case", ExtraEvents = EventCatalogue.ExtrasFor(keys) };
         var record  = new RunRecord();
         foreach (var key in keys) record.Steps.Add(new RecordedStep { EventKey = key });
 
         var run = await RunExecutor.ExecuteAsync(new ReplaySource(record), options);
-        var f2  = run.Violations.FirstOrDefault(v => v.FindingId == "F2");
-        Assert.NotNull(f2);
+        var f20 = run.Violations.FirstOrDefault(v => v.FindingId == "F20");
+        Assert.NotNull(f20);
 
-        var shrunk = await Shrinker.ShrinkAsync(run.Record.Take(f2!.EventIndex), f2.Signature, options);
+        var shrunk = await Shrinker.ShrinkAsync(run.Record.Take(f20!.EventIndex), f20.Signature, options);
         _output.WriteLine(shrunk.Story);
 
         Assert.True(shrunk.Reproduced);
         Assert.True(shrunk.Events < keys.Length, $"the case was not shortened: {shrunk.Events} of {keys.Length} events");
-        Assert.True(shrunk.Events <= 4, $"the shrunk case still has {shrunk.Events} events");
-        Assert.Contains("is held there", shrunk.Story);
+        Assert.True(shrunk.Events <= 5, $"the shrunk case still has {shrunk.Events} events");
     }
 
     /// <summary>
@@ -264,9 +258,49 @@ public sealed class PauseProofTests
             Assert.True(switches.IsOfferedWhileHolding(new OpenEvent(paused)));
 
             // Everything else may happen during the paused computer's close, and the other computer's own Close is not this rule's business.
-            foreach (var action in PauseActions.For(paused).Where(a => a is not PausedComputerSwitchesAction))
+            // (The heartbeat, wake-check and network-drop actions are offered only for the interleaving they exist for: see below.)
+            foreach (var action in PauseActions.For(paused).Where(a =>
+                         a is not (PausedComputerSwitchesAction or PausedComputerHeartbeatTicksAction or PausedComputerWakeCheckRunsAction
+                                   or PausedComputerNetworkDropsAction or PausedComputerNetworkHangsAction or OtherProgramOpensAction)))
                 Assert.True(action.IsOfferedWhileHolding(new CloseEvent(paused)), $"{action.Key} during {paused}'s close");
+
+            // Another program opening a file (spec item 8.3): only while a save is held, and only at the save's points between its snapshot and its rename.
+            foreach (var opens in PauseActions.For(paused).OfType<OtherProgramOpensAction>())
+            {
+                Assert.True(opens.IsOfferedWhileHolding(new SaveEvent(paused)), $"{opens.Key} during a save");
+                Assert.True(opens.IsOfferedWhileHolding(new AutosaveTickEvent(paused)), $"{opens.Key} during an autosave");
+                Assert.False(opens.IsOfferedWhileHolding(new CloseEvent(paused)), $"{opens.Key} during a close");
+                Assert.True(opens.IsOfferedAtPoint(new SaveEvent(paused), "Save.AfterTmpCopy"));
+                Assert.False(opens.IsOfferedAtPoint(new SaveEvent(paused), "Save.AfterRename"));
+            }
+
+            // A heartbeat during a held sleep (the wake check and the heartbeat of a real wake), a wake check during a held heartbeat tick; nothing else.
+            var heartbeat = PauseActions.For(paused).OfType<PausedComputerHeartbeatTicksAction>().Single();
+            var wakeCheck = PauseActions.For(paused).OfType<PausedComputerWakeCheckRunsAction>().Single();
+            Assert.True(heartbeat.IsOfferedWhileHolding(new SleepEvent(paused, TimeSpan.FromMinutes(10), "10m", "4m")));
+            Assert.False(heartbeat.IsOfferedWhileHolding(new CloseEvent(paused)));
+            Assert.False(heartbeat.IsOfferedWhileHolding(new SleepEvent(other, TimeSpan.FromMinutes(10), "10m", "4m")));
+            Assert.True(wakeCheck.IsOfferedWhileHolding(new HeartbeatTickEvent(paused)));
+            Assert.False(wakeCheck.IsOfferedWhileHolding(new CloseEvent(paused)));
+            Assert.False(wakeCheck.IsOfferedWhileHolding(new HeartbeatTickEvent(other)));
             Assert.True(switches.IsOfferedWhileHolding(new CloseEvent(other)));
+
+            // The network drop: only while the same computer's open is held, and only at the point just before the read-only copy.
+            var drops = PauseActions.For(paused).OfType<PausedComputerNetworkDropsAction>().Single();
+            Assert.True(drops.IsOfferedWhileHolding(new OpenEvent(paused)));
+            Assert.False(drops.IsOfferedWhileHolding(new OpenEvent(other)));
+            Assert.False(drops.IsOfferedWhileHolding(new CloseEvent(paused)));
+            Assert.False(drops.IsOfferedWhileHolding(new SaveEvent(paused)));
+            Assert.True(drops.IsOfferedAtPoint(new OpenEvent(paused), "Checkout.AfterLiveHolderSeen"));
+            Assert.False(drops.IsOfferedAtPoint(new OpenEvent(paused), "Checkout.AfterLockAcquired"));
+
+            // The network hang (item 8.2) is offered at exactly the same moment as the drop, and nowhere else.
+            var hangs = PauseActions.For(paused).OfType<PausedComputerNetworkHangsAction>().Single();
+            Assert.True(hangs.IsOfferedWhileHolding(new OpenEvent(paused)));
+            Assert.False(hangs.IsOfferedWhileHolding(new OpenEvent(other)));
+            Assert.False(hangs.IsOfferedWhileHolding(new SaveEvent(paused)));
+            Assert.True(hangs.IsOfferedAtPoint(new OpenEvent(paused), "Checkout.AfterLiveHolderSeen"));
+            Assert.False(hangs.IsOfferedAtPoint(new OpenEvent(paused), "Checkout.AfterLockAcquired"));
         }
     }
 
@@ -476,60 +510,58 @@ public sealed class PauseProofTests
     }
 
     // ═════════════════════════════════════════════════════════════════════════
-    // F2, F12 and F16 routes
+    // F2 and F12 routes, both fixed (F16 is a proof test in FixedFindingsProofTests)
     // ═════════════════════════════════════════════════════════════════════════
 
     /// <summary>
-    /// F2: Bob edits while his own save is held after its snapshot. The edit misses the snapshot, the save's last step deletes the
-    /// marker, and when Bob's computer crashes before another save, his kept working file has no marker: the edit is nowhere. The
-    /// loss is found at the crash and classified F2 (not "new"); nothing else is wrong.
+    /// F2, FIXED in 1.2.4 (item 3.2): Bob edits while his own save is held after its snapshot. The edit misses the snapshot, but the
+    /// save notices it (the edit count and SQLite's data_version moved) and keeps the marker, so when Bob's computer crashes before
+    /// another save his kept working file still has its marker: the edit is offered back at the next start. No violation at all.
+    /// (Until 1.2.4 the save deleted the marker and the next start deleted the unmarked file: the edit was lost and classified F2.)
     /// </summary>
     [HarnessFact]
-    public async Task F2_AnEditDuringTheOwnSave_IsLostAtTheNextCrash_AndClassifiedF2()
+    public async Task F2_AnEditDuringTheOwnSave_IsKeptAtTheNextCrash_AndOfferedBack()
     {
         var run = await RunKeysAsync(F2Route);
         _output.WriteLine(run.Story);
 
-        var lost = Assert.Single(run.Violations);
-        Assert.Equal("F2", lost.FindingId);
-        Assert.Equal("I2", lost.Invariant);
-        Assert.Contains("bob-2", lost.Reason);
+        Assert.Empty(run.Violations);
         Assert.Empty(run.NewViolations);
         Assert.Equal(PauseOutcome.Interleaved, Assert.Single(run.PauseResults).Outcome);
+        Assert.Contains("Restore Unsaved Changes?", run.Story);
     }
 
 
     /// <summary>
-    /// The clean-close face of F2 (spec item 15: "edits made during the exit save are deleted"): Bob closes TermPoint and, while his
-    /// final save is held at its last step (the marker is already deleted), makes another edit. The edit is not in the save, and
-    /// when the close goes on, the lock is released and the working copy that holds the edit is deleted. No crash is needed: the edit
-    /// is gone when Bob's TermPoint has closed. Classified F2, not "new".
+    /// The clean-close face of F2 (spec item 15: "edits made during the exit save are deleted"), now FIXED by 1.2.4 summary item 3.12: Bob closes
+    /// TermPoint and, while his final save is held at its last step (the marker is already deleted), makes another edit. The edit is not in the
+    /// save and re-writes the marker. Until 1.2.4 the close then deleted the working copy that held it (F2). Now the working-copy delete refuses a
+    /// file that still has its marker, so the edit is kept: when Bob opens the database again it is offered back, and the run has no breach at all.
     /// </summary>
     [HarnessFact]
-    public async Task F2_AnEditDuringTheExitSave_IsDeletedWithTheWorkingCopy_AndClassifiedF2()
+    public async Task F2_AnEditDuringTheExitSave_IsKept_AndOfferedBackAtTheNextOpen()
     {
-        var run = await RunKeysAsync("Open(bob)", "Pause(Close(bob) at Save.AfterMarkerDelete; BobEdits)");
+        var run = await RunKeysAsync("Open(bob)", "Edit(bob)", "Pause(Close(bob) at Save.AfterMarkerDelete; BobEdits)", "Open(bob)");   // Edit(bob) first: with no edit the exit save is skipped (item 3.4) and never reaches the marker delete
         _output.WriteLine(run.Story);
 
-        var lost = Assert.Single(run.Violations);
-        Assert.Equal("F2", lost.FindingId);
-        Assert.Equal("I2", lost.Invariant);
-        Assert.Empty(run.NewViolations);
+        Assert.Empty(run.Violations);
+        Assert.Contains("Restore Unsaved Changes?", run.Story);
     }
 
     /// <summary>
-    /// The same loss when the edit lands after the final save has returned but before the close cleans up (held at
-    /// <c>Release.AfterFinalSave</c>). The edit has to wait for the close's lock release, so this pause is "waited"; the loss is F2 all the same.
+    /// The same edit when it lands after the final save has returned but before the close cleans up (held at <c>Release.AfterFinalSave</c>;
+    /// the pause is "waited", because the edit waits for the close's lock release). Also kept since 1.2.4 item 3.12, and offered back.
     /// </summary>
     [HarnessFact]
-    public async Task F2_AnEditBetweenTheExitSaveAndTheCleanup_IsDeleted_AndClassifiedF2()
+    public async Task F2_AnEditBetweenTheExitSaveAndTheCleanup_IsKept_AndOfferedBackAtTheNextOpen()
     {
-        var run = await RunKeysAsync("Open(bob)", "Pause(Close(bob) at Release.AfterFinalSave; BobEdits)");
+        var run = await RunKeysAsync("Open(bob)", "Pause(Close(bob) at Release.AfterFinalSave; BobEdits)", "Open(bob)");
         _output.WriteLine(run.Story);
 
-        Assert.Equal("F2", Assert.Single(run.Violations).FindingId);
-        Assert.Empty(run.NewViolations);
+        Assert.Empty(run.Violations);
+        Assert.Contains("Restore Unsaved Changes?", run.Story);
     }
+
     /// <summary>
     /// The same edit made BEFORE the save's snapshot (held at <c>Save.AfterSourceCheck</c>) is in the snapshot, so it is saved: no
     /// loss, no violation. Pins that the F2 rule is about the window after the snapshot, not about any edit during a save.
@@ -565,8 +597,8 @@ public sealed class PauseProofTests
     }
 
     /// <summary>
-    /// When Alice takes over and saves while Bob's save is held AFTER his D.tmp is verified, her save uses the same D.tmp (the
-    /// name is shared) and moves it onto D. Before the fix Bob's rename then found no D.tmp and failed (CopyError), and only I4 saw that the lock
+    /// When Alice takes over and saves while Bob's save is held AFTER his temporary file is verified, her save uses a temporary file of
+    /// its own (since 1.2.4 item 4.1; the name used to be shared) and moves it onto D. Before the F12 fix Bob's rename then found no D.tmp and failed (CopyError), and only I4 saw that the lock
     /// was Alice's. Now Bob's final check refuses the save first (LockLost): nothing is overwritten, no committed edit is lost, his edit
     /// stays kept, and I4 has nothing to report.
     /// </summary>
@@ -582,52 +614,10 @@ public sealed class PauseProofTests
         Assert.Contains("Bob saved the database — LockLost", run.Story);
     }
 
-    /// <summary>
-    /// F16 through invariant I6: Bob's computer wakes to find his lock gone, and the demotion that starts is held in the middle while
-    /// Bob switches database. When it goes on it copies the NEW database and leaves a session that holds the new lock read-only.
-    /// Both clauses fire and are F16: (b) the demotion started on dept.db and finds the session on other.db, and (a) the read-only
-    /// session on other.db holds other.db's lock.
-    /// </summary>
-    [HarnessFact]
-    public async Task F16_ADemotionHeldWhileTheUserSwitches_FiresBothClausesOfI6()
-    {
-        var run = await RunKeysAsync(F16Route);
-        _output.WriteLine(run.Story);
+    // RETIRED (1.2.4 item 3.2): KnownSequences_OfThePauseFindings_AreAlreadyShrunk. It checked that the pause entries of KnownSequences
+    // (F2 was the last one; F12 and F16 went earlier) were as short as they can be. F2 is fixed and no known sequence uses a pause any
+    // more, so there is nothing for it to check. A pause entry that is added to KnownSequences again should bring the test back.
 
-        var i6 = run.Violations.Where(v => v.Invariant == "I6").ToList();
-        Assert.Equal(2, i6.Count);
-        Assert.All(i6, v => Assert.Equal("F16", v.FindingId));
-        Assert.Contains(i6, v => v.Reason.Contains("started on dept.db") && v.Reason.Contains("other.db"));
-        Assert.Contains(i6, v => v.Reason.Contains("read-only") && v.Reason.Contains("holds a lock it cannot use"));
-        Assert.Empty(run.NewViolations);
-    }
-
-
-    /// <summary>
-    /// The pause entries of <see cref="KnownSequences"/> (F2, F16; F12 is fixed and its entry is gone) are already as short as they
-    /// can be: each shows its finding, has no breach nobody explains, and the shrinker cannot take an event out of it. (A sequence
-    /// that could be shortened is a sequence that says more than it needs to.)
-    /// </summary>
-    [HarnessFact]
-    public async Task KnownSequences_OfThePauseFindings_AreAlreadyShrunk()
-    {
-        foreach (var finding in new[] { "F2", "F16" })
-        {
-            var sequence = KnownSequences.All.Single(s => s.Finding == finding);
-            var options  = new RunOptions { Title = sequence.Name, ExtraEvents = EventCatalogue.ExtrasFor(sequence.Events) };
-            var run      = await RunExecutor.ExecuteAsync(new ReplaySource(sequence.ToRecord()), options);
-
-            var shown = run.Violations.FirstOrDefault(v => v.FindingId == finding);
-            Assert.NotNull(shown);
-            Assert.Empty(run.NewViolations);
-
-            var shrunk = await Shrinker.ShrinkAsync(run.Record.Take(shown!.EventIndex), shown.Signature, options);
-            _output.WriteLine($"{finding}: {sequence.Events.Count} events listed, {shrunk.Events} after shrinking.\n{shrunk.Story}");
-            Assert.True(shrunk.Reproduced);
-            Assert.True(shrunk.Events >= sequence.Events.Count,
-                $"{finding}'s known sequence can be shortened to {shrunk.Events} events: {string.Join(", ", shrunk.Record.Steps.Select(s => s.EventKey))}");
-        }
-    }
     /// <summary>
     /// I6 does NOT fire on an ordinary demotion that nobody interrupts: Bob's computer wakes to find his lock gone, the demotion runs
     /// to the end on dept.db, and Bob is a read-only reader that holds no lock.

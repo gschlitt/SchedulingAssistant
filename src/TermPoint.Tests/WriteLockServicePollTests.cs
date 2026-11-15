@@ -334,6 +334,88 @@ public sealed class WriteLockServicePollTests : IDisposable
         Assert.True(svc.WriteLockBecameAvailable);
     }
 
+    // ── Share outages (lock-scenario review 2026-11-12, scenarios S32 and S34) ──
+
+    /// <summary>
+    /// Runs the reader's polls through an outage: every share call times out (the fault seam, so nothing waits five real
+    /// seconds) while <paramref name="minutes"/> minutes pass, one poll a minute, as the poll timer would. Each of those polls
+    /// skips its cycle. The fault seam is cleared again before returning, even if a poll throws.
+    /// </summary>
+    /// <param name="svc">The reader.</param>
+    /// <param name="clock">The reader's fake clock.</param>
+    /// <param name="minutes">How long the outage lasts, in minutes.</param>
+    /// <param name="duringOutage">Runs after the outage's last poll and before the share comes back (for example: the writer renews).</param>
+    private static async Task PollThroughAnOutageAsync(WriteLockService svc, FakeTimeProvider clock, int minutes, Action? duringOutage = null)
+    {
+        NetworkFaults.Decide = _ => NetworkFaultDecision.TimeOut;
+        try
+        {
+            for (var i = 0; i < minutes; i++)
+            {
+                clock.Advance(TimeSpan.FromSeconds(WriteLockService.PollIntervalSeconds));
+                await svc.PollLockFile();
+                Assert.False(svc.WriteLockBecameAvailable, "a poll that cannot reach the share must skip its cycle");
+            }
+            duringOutage?.Invoke();
+        }
+        finally
+        {
+            NetworkFaults.Decide = null;
+        }
+    }
+
+    /// <summary>
+    /// <b>Scenario S34 (control): only the READER's network drops.</b> Bob keeps writing his heartbeat while Carol's polls
+    /// time out for five minutes. When her network returns, the first read shows a heartbeat she has never seen, so timing
+    /// starts again from zero and she is not offered the lock.
+    /// </summary>
+    [Fact]
+    public async Task PollLockFile_ReadersOwnOutage_WriterKeptRenewing_IsNotOffered()
+    {
+        var clock = new FakeTimeProvider();
+        var t0 = DateTime.UtcNow;
+        WriteLock("bob", t0);
+        using var svc = CreateReader(clock);
+        await svc.PollLockFile();                                    // Carol starts timing Bob's heartbeat
+
+        // Bob's own network is fine: his heartbeat moved on while Carol could not see it.
+        await PollThroughAnOutageAsync(svc, clock, minutes: 5, duringOutage: () => WriteLock("bob", t0.AddMinutes(5)));
+
+        await svc.PollLockFile();                                    // Carol's network is back
+
+        Assert.False(svc.WriteLockBecameAvailable);
+        Assert.Equal(TimeSpan.FromSeconds(WriteLockService.StaleConfirmationSeconds),
+                     svc.StaleConfirmationRemaining(svc.CurrentHolder!));   // a full wait would be ahead of any takeover
+    }
+
+    /// <summary>
+    /// <b>Scenario S32: the whole share is offline, PINNED AS IT IS TODAY (wrong).</b> Bob is a live writer and Alice a
+    /// reader. The file server is unreachable for ten minutes: Bob's heartbeat cannot land and Alice's polls time out. When
+    /// the share comes back, Alice's first poll (which can run before Bob's next heartbeat, up to a minute later) reads the
+    /// same heartbeat she saw before the outage. Her timing was never restarted, so ten minutes the lock could not be seen
+    /// count as "unchanged": she is offered the lock at once, and a takeover would need no further wait. If she clicks before
+    /// Bob's heartbeat lands, she takes the lock from a writer who is alive. (Bob's work is kept by the lock-loss path; no
+    /// data is lost, but he is demoted for nothing.)
+    ///
+    /// <para><b>When this is fixed</b> (a poll that cannot reach the share should restart the timing), turn both assertions
+    /// round: no offer on the first poll after the outage, and the full confirmation wait still ahead.</para>
+    /// </summary>
+    [Fact]
+    public async Task PollLockFile_WholeShareOutage_SameHeartbeatOnReturn_IsOfferedAtOnce_PinnedAsToday()
+    {
+        var clock = new FakeTimeProvider();
+        WriteLock("bob", DateTime.UtcNow);
+        using var svc = CreateReader(clock);
+        await svc.PollLockFile();                                    // Alice starts timing Bob's heartbeat
+
+        await PollThroughAnOutageAsync(svc, clock, minutes: 10);     // nobody reaches the share: Bob's heartbeat stands still
+
+        await svc.PollLockFile();                                    // the share is back; Bob's next heartbeat has not landed yet
+
+        Assert.True(svc.WriteLockBecameAvailable, "today: the outage is counted as time the heartbeat stood still");
+        Assert.Equal(TimeSpan.Zero, svc.StaleConfirmationRemaining(svc.CurrentHolder!));   // today: no wait left before a takeover
+    }
+
     // ── Spec item 9b: the open path (TryAcquire) and the takeover confirmation ──
 
     /// <summary>

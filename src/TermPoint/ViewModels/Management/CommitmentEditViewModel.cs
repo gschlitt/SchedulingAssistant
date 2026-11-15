@@ -6,7 +6,7 @@ using System.Collections.ObjectModel;
 
 namespace TermPoint.ViewModels.Management;
 
-public partial class CommitmentEditViewModel : ViewModelBase
+public partial class CommitmentEditViewModel : UnappliedChangesEditor
 {
     public record DayOption(int Day, string Display);
     public record TimeOption(int Minutes, string Display);
@@ -72,7 +72,19 @@ public partial class CommitmentEditViewModel : ViewModelBase
             if (e.PropertyName == nameof(SelectedStartOption))
                 UpdateStartTimeOptions();
         };
+
+        TakeSnapshot();
     }
+
+    /// <inheritdoc/>
+    protected override string CaptureState() => UnappliedChangesKey.Of(
+        Name.Trim(), SelectedDayOption?.Day, SelectedStartMinutes, SelectedEndMinutes);
+
+    /// <inheritdoc/>
+    protected override System.Windows.Input.ICommand ApplyCommand => SaveCommand;
+
+    /// <inheritdoc/>
+    protected override System.Windows.Input.ICommand CancelCommandForDiscard => CancelCommand;
 
     private void UpdateStartTimeOptions()
     {
@@ -145,9 +157,10 @@ public partial class CommitmentEditViewModel : ViewModelBase
             Day = SelectedDayOption.Day,
             StartMinutes = SelectedStartMinutes,
             EndMinutes = SelectedEndMinutes
-        }.WithExtensionDataFrom(_originalCommitment); // this replaces the stored record: keep its unknown JSON fields (spec item 3)
+        }.WithExtensionDataFrom(_originalCommitment); // this replaces the stored record: keep its unknown JSON fields
 
         await _onSave(commitment);
+        MarkApplied();
     }
 
     [RelayCommand]

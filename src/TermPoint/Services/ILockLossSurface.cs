@@ -1,7 +1,7 @@
 namespace TermPoint.Services;
 
 /// <summary>
-/// The window-side objects the lost-write-lock handler works on (spec item 9.1, step 9.1c): the root view model
+/// The window-side objects the lost-write-lock handler works on: the root view model
 /// of the open database and its data connection, CAPTURED TOGETHER AT ONE MOMENT by
 /// <see cref="ISessionHost.CaptureLockLossSurface"/> and then used, unchanged, for the whole demotion. The old
 /// handler read both once at its start (<c>DataContext as MainWindowViewModel</c> and

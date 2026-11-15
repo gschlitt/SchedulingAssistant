@@ -244,7 +244,7 @@ public sealed class RecoveredCopyExportTests : IDisposable
         Assert.Equal(NewDatabaseOutcome.AlreadyExists, result.Outcome);
         Assert.False(result.Succeeded);
         Assert.Equal(original, File.ReadAllBytes(dest));
-        Assert.False(File.Exists(dest + ".tmp"));
+        ShareTemp.AssertNone(dest);
         Assert.Equal(
             new[] { db, dest }.OrderBy(p => p, StringComparer.Ordinal),
             Directory.GetFileSystemEntries(_shareDir).OrderBy(p => p, StringComparer.Ordinal));
@@ -266,7 +266,7 @@ public sealed class RecoveredCopyExportTests : IDisposable
         Assert.Equal(NewDatabaseOutcome.AlreadyExists, result.Outcome);
         Assert.Equal(before, BytesOf(db));
         Assert.Equal("someone-elses-edit", ReadTestValue(db));
-        Assert.False(File.Exists(db + ".tmp"));
+        ShareTemp.AssertNone(db);
         AssertLocalFolderEmpty();
     }
 
@@ -284,7 +284,7 @@ public sealed class RecoveredCopyExportTests : IDisposable
 
         Assert.Equal(NewDatabaseOutcome.Created, result.Outcome);
         Assert.Equal(UnsavedValue, ReadTestValue(db));
-        Assert.False(File.Exists(db + ".tmp"));
+        ShareTemp.AssertNone(db);
         Assert.Equal(new[] { db }, Directory.GetFileSystemEntries(_shareDir));
         AssertLocalFolderEmpty();
     }
@@ -354,7 +354,7 @@ public sealed class RecoveredCopyExportTests : IDisposable
         Assert.Equal(NewDatabaseOutcome.Failed, result.Outcome);
         Assert.NotNull(result.Error);
         Assert.False(File.Exists(dest));
-        Assert.False(File.Exists(dest + ".tmp"));
+        ShareTemp.AssertNone(dest);
         Assert.Equal(new[] { db }, Directory.GetFileSystemEntries(_shareDir));
         Assert.True(File.Exists(wp), "D' is never deleted by the export, even when it cannot be read");
         AssertLocalFolderEmpty();

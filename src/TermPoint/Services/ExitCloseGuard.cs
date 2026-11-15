@@ -27,9 +27,9 @@ public enum ExitCloseDecision
 }
 
 /// <summary>
-/// The pure decision behind the main window's close (spec item 15, the 1.2.3 part). Today's problem: the first
+/// The pure decision behind the main window's close. The problem it solves: the first
 /// click on the window's X cancels the close and runs the exit save, but a SECOND click while that save is still
-/// running used to be let straight through, ending the process mid-save (the next start then offered
+/// running must not be let straight through, because that would end the process mid-save (the next start then offered
 /// "Restore Unsaved Changes?" to a user who had simply closed TermPoint). This class answers one question for
 /// every close request: start the teardown, ignore the request, or let the window close.
 ///

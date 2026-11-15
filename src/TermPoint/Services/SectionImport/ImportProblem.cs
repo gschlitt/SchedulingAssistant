@@ -17,7 +17,7 @@ public sealed record ImportProblem(int? Row, string? Column, string Message);
 
 /// <summary>
 /// Something worth a second look that does not stop the import. Warnings are grouped, one line per
-/// problem rather than one per row (spec Phase 4, 2026-10-24). The planner builds them with
+/// problem rather than one per row. The planner builds them with
 /// <see cref="ImportWarningCollector"/>; <see cref="ImportWarningKinds"/> lists the kinds.
 /// </summary>
 /// <param name="Kind">A short identifier of the sort of warning, used to group and order them.</param>

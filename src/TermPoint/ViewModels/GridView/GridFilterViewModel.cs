@@ -100,7 +100,7 @@ public partial class GridFilterViewModel : ViewModelBase
         FilterChanged?.Invoke();
     }
 
-    // ── Tag logic (spec item 31) ──────────────────────────────────────────────
+    // ── Tag logic ──────────────────────────────────────────────
 
     /// <summary>
     /// How the Tags filter combines the checked tags: false (the default) = a section must carry all of them; true =
@@ -375,7 +375,7 @@ public partial class GridFilterViewModel : ViewModelBase
             id => courseLookup.TryGetValue(id, out var v) ? v.CalendarCode : null);
 
         // An overlay whose instructor, room or tag is no longer offered is dropped, like a filter tick on an item
-        // that left its list (spec item 20: an instructor outside the newly chosen subjects, or one deactivated).
+        // that left its list (an instructor outside the newly chosen subjects, or one deactivated).
         // Otherwise the overlay would keep drawing while its "Overlay: …" summary went blank and the item it names
         // could no longer be clicked to turn it off.
         if (HasOverlay && !OverlayTargetIsOffered()) ClearOverlayCore();
@@ -591,7 +591,7 @@ public partial class GridFilterViewModel : ViewModelBase
             FilterChanged = handler;
         }
 
-        // A clean slate includes the tag logic: back to "all of the checked tags" (spec item 31).
+        // A clean slate includes the tag logic: back to "all of the checked tags".
         if (_tagsMatchAny)
         {
             _tagsMatchAny = false;

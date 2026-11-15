@@ -140,8 +140,12 @@ Consequences of D3, to settle in Phase 2:
 - **How program levels combine with the other preferences** (any free room, spread): one ordering to settle in Phase 2.
 - **Level 2 is judged pair by pair, and that can be wrong** (raised 2026-10-30 in `designs/access-analyzer.md`, Q12).
   "Students still have 250 B" ignores whether 250 B fits with the program's *other* courses. If it clashes with the
-  only CHEM 213 section, nobody can take every course, so the placement is really level 3. Proposal there: judge levels
-  by whole timetables, with one engine shared by the finder and the Access Analyzer. Open; D3 stands until Greg decides.
+  only CHEM 213 section, no full slate is left, so the placement is really level 3. Proposal there: judge levels by
+  whole slates, with one engine shared by the finder and the Access Analyzer. Open; D3 stands until Greg decides.
+  (Terms per access-analyzer D2: access watch, course set, slate; "program" is not used for these.)
+- **The finder's program check calls the access-watch API** (access-analyzer D8): one UI-free service for watch
+  coverage, the clash test and slate analysis, with a "what if" entry point for a proposed placement. The finder
+  doesn't compute access itself.
 
 Consequences of D4:
 - **The musts can leave nothing.** Then the finder must say which must did it, in plain words, with a next step:

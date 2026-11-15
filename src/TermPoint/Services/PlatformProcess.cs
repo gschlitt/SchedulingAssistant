@@ -61,28 +61,70 @@ public static partial class PlatformProcess
 #endif
     }
 
+#if !BROWSER
     /// <summary>
-    /// Launches an executable by path. On macOS, uses <c>open</c> for .app bundles.
+    /// Opens the platform's file manager at the folder holding <paramref name="filePath"/>, with the file selected
+    /// where the platform supports it (Explorer's <c>/select</c>, Finder's <c>open -R</c>; elsewhere just the folder).
     /// </summary>
-    /// <param name="exePath">Full path to the executable.</param>
-    public static void LaunchExecutable(string exePath)
+    /// <param name="filePath">Full path of a file that exists.</param>
+    /// <exception cref="System.ComponentModel.Win32Exception">The file manager could not be started.</exception>
+    public static void ShowInFolder(string filePath)
     {
         if (RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
         {
-            Process.Start(new ProcessStartInfo(exePath) { UseShellExecute = true });
+            // Explorer parses its own command line and wants the quotes around the path only: /select,"C:\a b\c.zip".
+            Process.Start(new ProcessStartInfo("explorer.exe", $"/select,\"{filePath}\"") { UseShellExecute = false });
+        }
+        else if (RuntimeInformation.IsOSPlatform(OSPlatform.OSX))
+        {
+            var psi = new ProcessStartInfo("open");
+            psi.ArgumentList.Add("-R");
+            psi.ArgumentList.Add(filePath);
+            Process.Start(psi);
+        }
+        else
+        {
+            var psi = new ProcessStartInfo("xdg-open");
+            psi.ArgumentList.Add(Path.GetDirectoryName(filePath) ?? filePath);
+            Process.Start(psi);
+        }
+    }
+#endif
+
+    /// <summary>
+    /// Launches an executable by path, as a NEW process. On macOS, uses <c>open -n</c> for .app bundles: without
+    /// <c>-n</c>, <c>open</c> only brings an already-running copy forward, and the copy that relaunches is still
+    /// running when it does so.
+    /// </summary>
+    /// <param name="exePath">Full path to the executable.</param>
+    /// <param name="args">Arguments for the new process, one per element (quoted by .NET as needed); none by default.</param>
+    public static void LaunchExecutable(string exePath, params string[] args)
+    {
+        if (RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
+        {
+            var psi = new ProcessStartInfo(exePath) { UseShellExecute = true };
+            foreach (var a in args) psi.ArgumentList.Add(a);
+            Process.Start(psi);
         }
         else if (RuntimeInformation.IsOSPlatform(OSPlatform.OSX))
         {
             // If the path points inside a .app bundle, open the bundle itself
             var appBundleRoot = FindAppBundle(exePath);
+            var psi = appBundleRoot is not null ? new ProcessStartInfo("open") : new ProcessStartInfo(exePath);
             if (appBundleRoot is not null)
-                Process.Start("open", appBundleRoot);
-            else
-                Process.Start(exePath);
+            {
+                psi.ArgumentList.Add("-n");
+                psi.ArgumentList.Add(appBundleRoot);
+                if (args.Length > 0) psi.ArgumentList.Add("--args");
+            }
+            foreach (var a in args) psi.ArgumentList.Add(a);
+            Process.Start(psi);
         }
         else
         {
-            Process.Start(exePath);
+            var psi = new ProcessStartInfo(exePath);
+            foreach (var a in args) psi.ArgumentList.Add(a);
+            Process.Start(psi);
         }
     }
 

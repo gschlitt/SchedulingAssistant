@@ -90,7 +90,8 @@ public partial class CourseListView : UserControl
             vm.EditCommand.Execute(null);
             e.Handled = true;
         }
-        else if (dataGrid.ItemsSource == vm.Subjects && vm.EditSubjectCommand.CanExecute(null))
+        // The Subjects grid binds to SubjectRows (row view models), not Subjects.
+        else if (dataGrid.ItemsSource == vm.SubjectRows && vm.EditSubjectCommand.CanExecute(null))
         {
             vm.EditSubjectCommand.Execute(null);
             e.Handled = true;

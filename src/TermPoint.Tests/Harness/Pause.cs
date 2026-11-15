@@ -56,7 +56,8 @@ internal sealed record PauseLimits(TimeSpan Grace, TimeSpan ReachLimit, TimeSpan
 internal static class PausePoints
 {
     /// <summary>
-    /// The edit-loss window (finding F2; spec item 15): from a save's local snapshot to the cleanup of the working copy. An edit applied
+    /// The edit-loss window (finding F2, FIXED in 1.2.4 item 3.2: the save now keeps the marker for an edit made in this window, and the
+    /// classifier rule stays as the regression detector; spec item 15): from a save's local snapshot to the cleanup of the working copy. An edit applied
     /// while the computer's own operation is held at one of these points is not in the save, and what protected it is thrown away when
     /// the operation ends: the save's last step deletes the unsaved-changes marker (a crash before another save then makes the next
     /// start delete the unmarked working file), and a final save (close, switch) is followed by the release and the cleanup of the
@@ -93,6 +94,20 @@ internal static class PausePoints
     /// <summary>True when no pause sweep holds an operation at <paramref name="point"/> (see <see cref="NeverPaused"/>).</summary>
     /// <param name="point">A crash point name.</param>
     public static bool IsNeverPaused(string point) => NeverPaused.Contains(point);
+
+    /// <summary>
+    /// The restore window (finding F24, summary item 3.13): every crash point of a Restore from Backup. An edit applied while the computer's own
+    /// restore is held at one of these (a detached panel or sticky note still takes edits; the wait dialog blocks only the main window) is not in
+    /// the save that preceded the restore. Retire with the finding when 3.13 is built (the session then refuses edits while a restore runs).
+    /// </summary>
+    public static readonly IReadOnlyList<string> RestoreWindow = new[]
+    {
+        "Restore.AfterStaged", "Restore.AfterPreRestoreCopy", "Restore.AfterTmpWritten", "Restore.AfterTmpVerified", "Restore.AfterRename"
+    };
+
+    /// <summary>True when an edit applied while the computer's own operation is held at <paramref name="point"/> falls in the restore window (finding F24).</summary>
+    /// <param name="point">A crash point name.</param>
+    public static bool IsInRestoreWindow(string point) => RestoreWindow.Contains(point);
 
     /// <summary>True when an edit applied while the computer's own operation is held at <paramref name="point"/> falls in the edit-loss window (finding F2).</summary>
     /// <param name="point">A crash point name.</param>
@@ -243,7 +258,7 @@ internal sealed class PauseEvent : HarnessEvent
     public override int Weight => 1;
 
     /// <inheritdoc/>
-    public override bool IsEnabled(RunContext ctx) => _inner.IsEnabled(ctx) && _action.IsOfferedWhileHolding(_inner);
+    public override bool IsEnabled(RunContext ctx) => _inner.IsEnabled(ctx) && _action.IsOfferedWhileHolding(_inner) && _action.IsOfferedAtPoint(_inner, Point);
 
     /// <inheritdoc/>
     public override async Task ExecuteAsync(RunContext ctx)

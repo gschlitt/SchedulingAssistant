@@ -4,7 +4,7 @@ namespace TermPoint.ViewModels.Management;
 
 /// <summary>
 /// One row of the Instructors flyout's list: an <see cref="Instructor"/> plus the presentation state the list needs
-/// under a Subjects focus (spec item 20, step 6). The persisted <see cref="Instructor"/> model must not carry
+/// under a Subjects focus. The persisted <see cref="Instructor"/> model must not carry
 /// display-only properties, so they live here; the flyout view model keeps selecting, editing and deleting
 /// <see cref="Value"/> exactly as before and only the list itself binds to these rows. Built once per list rebuild
 /// and never changed afterwards, so it needs no change notification.

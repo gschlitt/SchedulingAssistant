@@ -48,7 +48,7 @@ public partial class App : Application
 
     /// <summary>
     /// Builds the BugSnag client. Every error report and session batch it sends goes through
-    /// <see cref="ScrubbingDelivery"/> (spec item 6, step 6b), which removes paths, email addresses and known user and
+    /// <see cref="ScrubbingDelivery"/>, which removes paths, email addresses and known user and
     /// computer names, takes out the computer's name, stamps the anonymous install ID, and drops anything it can't check.
     /// </summary>
     /// <returns>The configured client.</returns>
@@ -97,8 +97,8 @@ public partial class App : Application
     public static WriteLockService LockService { get; } = new WriteLockService();
 
     /// <summary>
-    /// DEBUG-ONLY fault injection for the open-time integrity check of the local copy (spec item 5, step 5d) and
-    /// for the version gate's stamp read (spec item 3, step 3c), from the <c>TERMPOINT_DEBUG_FAIL_INTEGRITY</c>
+    /// DEBUG-ONLY fault injection for the open-time integrity check of the local copy and
+    /// for the version gate's stamp read, from the <c>TERMPOINT_DEBUG_FAIL_INTEGRITY</c>
     /// environment variable (see <see cref="IntegrityFaultPlan"/>). Consulted by <see cref="InitializeServices"/>
     /// (the <c>locked</c> and <c>damaged</c> faults), by the main window's re-check of the shared database (the
     /// <c>shared</c> fault) and by <see cref="Checkout"/> (the <c>stamp</c> fault). Null in a Release build and in
@@ -129,7 +129,7 @@ public partial class App : Application
     public static CheckoutService Checkout { get; } = CreateCheckoutService();
 
     /// <summary>
-    /// The per-database, per-user single-instance guard (spec item 4b). <c>MainWindow</c> takes it for a
+    /// The per-database, per-user single-instance guard. <c>MainWindow</c> takes it for a
     /// database BEFORE any cleanup, crash detection or checkout — at startup and on every database switch
     /// — and releases it when the database is closed and on exit. Declared after <see cref="Logger"/> so
     /// the logger exists when it is created (static initializers run in textual order).
@@ -142,8 +142,9 @@ public partial class App : Application
     /// time it runs (static initializers run in textual order).
     ///
     /// <para>Also attaches the DEBUG-ONLY fault plans from the <c>TERMPOINT_DEBUG_FAIL_CHECKOUT</c>,
-    /// <c>TERMPOINT_DEBUG_FAIL_RESTORE</c> and <c>TERMPOINT_DEBUG_FAIL_INTEGRITY</c> environment variables (see
-    /// <see cref="CheckoutFaultPlan"/>, <see cref="RestoreFaultPlan"/> and <see cref="IntegrityFaultPlan"/>): their
+    /// <c>TERMPOINT_DEBUG_FAIL_RESTORE</c>, <c>TERMPOINT_DEBUG_FAIL_REFRESH</c> and <c>TERMPOINT_DEBUG_FAIL_INTEGRITY</c>
+    /// environment variables (see <see cref="CheckoutFaultPlan"/>, <see cref="RestoreFaultPlan"/>,
+    /// <see cref="RefreshFaultPlan"/> and <see cref="IntegrityFaultPlan"/>): their
     /// <c>FromEnvironment</c> methods return null in Release builds, so a shipped build never injects a fault. A
     /// plan that is attached is announced in the log, so a forgotten variable in a launch profile can't go
     /// unnoticed. The integrity plan is the SAME object as <see cref="IntegrityFaults"/> (one shared budget); the
@@ -156,6 +157,7 @@ public partial class App : Application
         {
             FaultPlan          = CheckoutFaultPlan.FromEnvironment(),
             RestoreFaultPlan   = RestoreFaultPlan.FromEnvironment(),
+            RefreshFaultPlan   = RefreshFaultPlan.FromEnvironment(),
             IntegrityFaultPlan = IntegrityFaults
         };
 
@@ -168,6 +170,11 @@ public partial class App : Application
             Logger.LogInfo(
                 $"[DEBUG fault injection] {RestoreFaultPlan.EnvironmentVariableName} is set: " +
                 $"restores will fail at the {restorePlan.Fault} stage; {restorePlan.Description}.");
+
+        if (service.RefreshFaultPlan is { } refreshPlan)
+            Logger.LogInfo(
+                $"[DEBUG fault injection] {RefreshFaultPlan.EnvironmentVariableName} is set: " +
+                $"read-only refreshes will fail as {refreshPlan.Fault}; {refreshPlan.Description}.");
 
         return service;
     }
@@ -185,6 +192,59 @@ public partial class App : Application
     };
 
     /// <summary>
+    /// The clock licensing runs on: the system clock, or (DEBUG builds only) a fixed date from the
+    /// TERMPOINT_DEBUG_DATE environment variable. Shared by the open-time evaluation and the daily check.
+    /// </summary>
+    internal static IClock LicenseClock { get; } = CreateLicenseClock();
+
+    /// <summary>Builds <see cref="LicenseClock"/>, logging a DEBUG date override if there is one.</summary>
+    /// <returns>The clock.</returns>
+    private static IClock CreateLicenseClock()
+    {
+#if DEBUG
+        var clock = FixedClock.FromEnvironmentOrSystem();
+        if (clock is FixedClock fc)
+            Logger.LogInfo($"[Licensing] DEBUG clock override: {fc.UtcNow:yyyy-MM-dd}");
+        return clock;
+#else
+        return new SystemClock();
+#endif
+    }
+
+    /// <summary>
+    /// Builds a licence manager (validator + trial + remembered-licence cache) over the real AppData folder.
+    /// The one place this is constructed, used by the open-time evaluation and the daily check.
+    /// </summary>
+    /// <returns>A new manager.</returns>
+    internal static AppLicenseManager CreateLicenseManager()
+    {
+        var appData = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), "TermPoint");
+        void Log(string line) => Logger.LogInfo(line);
+        return new AppLicenseManager(
+            new LicenseValidator(LicenseKeys.PublicKeyPem, LicenseClock),
+            new TrialService(appData, LicenseClock, Log),
+            new LicenseCache(appData, Log),
+            Log);
+    }
+
+    /// <summary>
+    /// Evaluates licence + trial for a share folder under the network deadline: reading
+    /// <c>termpoint.lic</c> from a dead share must not freeze the caller for the SMB redirector timeout.
+    /// Does not change <see cref="LicenseStatus"/>.
+    /// </summary>
+    /// <param name="shareDir">The folder holding the shared database and <c>termpoint.lic</c>.</param>
+    /// <returns>The access result, or null when the deadline passed.</returns>
+    /// <exception cref="Exception">Anything the evaluation itself throws.</exception>
+    internal static AppAccessResult? TryEvaluateLicense(string shareDir)
+    {
+        var manager = CreateLicenseManager();
+        var (completed, result) = NetworkFileOps.RunAsync(
+            () => manager.EvaluateAccess(shareDir), "EvaluateLicense")
+            .GetAwaiter().GetResult();
+        return completed ? result : null;
+    }
+
+    /// <summary>
     /// Evaluates the license and trial state for the given database path.
     /// Must be called before <see cref="CheckoutService.CheckoutAsync"/> so
     /// the license gate can block lock acquisition when access is read-only.
@@ -192,36 +252,15 @@ public partial class App : Application
     public static void EvaluateLicense(string dbPath)
     {
         var shareDir = Path.GetDirectoryName(dbPath) ?? string.Empty;
-#if DEBUG
-        var clock = FixedClock.FromEnvironmentOrSystem();
-        if (clock is FixedClock fc)
-            Logger.LogInfo($"[Licensing] DEBUG clock override: {fc.UtcNow:yyyy-MM-dd}");
-#else
-        var clock = new SystemClock();
-#endif
-        var licenseValidator = new LicenseValidator(LicenseKeys.PublicKeyPem, clock);
-        var trialService = new TrialService(
-            Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), "TermPoint"),
-            clock);
-        var licenseManager = new AppLicenseManager(licenseValidator, trialService);
 
-        // EvaluateAccess → ValidateLicenseFile reads termpoint.lic from the share
-        // directory with raw File.Exists + File.ReadAllText. Wrap in a deadline so
-        // a dead share doesn't freeze the UI thread for the SMB redirector timeout.
-        // On timeout, treat as NotFound → falls through to trial evaluation.
-        var (completed, result) = NetworkFileOps.RunAsync(
-            () => licenseManager.EvaluateAccess(shareDir), "EvaluateLicense")
-            .GetAwaiter().GetResult();
-
-        if (completed && result is not null)
+        // On timeout the remembered licence for this folder (if any) is used, else the trial.
+        var result = TryEvaluateLicense(shareDir);
+        if (result is null)
         {
-            LicenseStatus = result;
+            Logger.LogInfo("[Licensing] License check timed out — share unreachable; using remembered license or trial");
+            result = CreateLicenseManager().EvaluateAccessWithoutLicense(shareDir);
         }
-        else
-        {
-            Logger.LogInfo("[Licensing] License check timed out — share unreachable; falling back to trial");
-            LicenseStatus = licenseManager.EvaluateAccessWithoutLicense();
-        }
+        LicenseStatus = result;
 
         Logger.LogInfo($"[Licensing] {LicenseStatus.Reason}, access={LicenseStatus.AccessLevel}" +
             (LicenseStatus.DepartmentName != null ? $", dept={LicenseStatus.DepartmentName}" : "") +
@@ -268,7 +307,7 @@ public partial class App : Application
 
         // ── Popup wheel containment ─────────────────────────────────────────
         // Stops a mouse-wheel tick inside any popup (dropdowns, pickers, flyouts)
-        // from escaping and scrolling the area behind it (spec item 19). Kept
+        // from escaping and scrolling the area behind it. Kept
         // outside the #if so the WASM demo gets it too.
         TermPoint.Behaviors.PopupWheelContainment.Register();
 
@@ -380,9 +419,9 @@ public partial class App : Application
         foreach (var err in TourCatalog.Validate())
             Logger.LogInfo($"[TourCatalog] {err}");
 
-        // Integrity gate on the LOCAL copy. dbPath is always the local copy — D' (writer) or D'' (reader): since
-        // spec item 4a nothing opens the shared D, and every caller (startup, switch, the wizard) passes the
-        // copy that the checkout made. The gate is three-way (spec item 5, step 5d): Ok opens; a copy that
+        // Integrity gate on the LOCAL copy. dbPath is always the local copy — D' (writer) or D'' (reader): nothing
+        // opens the shared D, and every caller (startup, switch, the wizard) passes the
+        // copy that the checkout made. The gate is three-way: Ok opens; a copy that
         // another program holds open (antivirus checking a file that was just copied) is retried quietly,
         // 3 attempts a second apart, and then reported as DatabaseInUseException; only positive evidence of
         // damage is DatabaseCorruptException. Both are handled by MainWindow, which decides what to do next.
@@ -405,10 +444,10 @@ public partial class App : Application
 
         var dbCtx = Services.GetRequiredService<IDatabaseContext>();
         // Subscribe ResetDirty to BeforeDirtyMarkerDeleted (synchronous, fires inside
-        // SaveAsyncCore step 7 right before the marker file is deleted). The previous
-        // wiring used SaveCompleted, which is dispatched to the UI thread AFTER the
+        // SaveAsyncCore step 7 right before the marker file is deleted). Do not use
+        // SaveCompleted instead: it is dispatched to the UI thread AFTER the
         // marker is already gone — opening a window during which a write could fail
-        // to re-arm the marker, leading to silent data loss on crash. (F2.)
+        // to re-arm the marker, leading to silent data loss on crash.
         App.Checkout.BeforeDirtyMarkerDeleted += dbCtx.ResetDirty;
 
         // Fall back to persisted AppSettings values when no in-memory IDs were passed.
@@ -462,9 +501,11 @@ public partial class App : Application
 
         // readOnly: any session that does not hold the write lock (reader / observer mode, the version-gate
         // or fallback snapshot D''). Checkout has already run by the time this is resolved, so Mode is final.
-        // Mode, not IsReadOnlyMode: IsReadOnlyMode is sticky after a switch from reader to writer.
+        // Mode, not IsReadOnlyMode: IsReadOnlyMode means "on a D'' snapshot", and a demoted writer is read-only before
+        // its snapshot exists. (It is not sticky: every checkout clears it.)
         services.AddSingleton<IDatabaseContext>(_ => new DatabaseContext(
-            dbPath, App.Checkout.MarkDirty, readOnly: App.Checkout.Mode != CheckoutMode.WriteAccess));
+            dbPath, App.Checkout.MarkDirty, readOnly: App.Checkout.Mode != CheckoutMode.WriteAccess,
+            onEveryWrite: App.Checkout.NoteEdit));   // counts every edit so a save can tell one arrived while it ran
         services.AddSingleton<IAcademicYearRepository, AcademicYearRepository>();
         services.AddSingleton<ISemesterRepository, SemesterRepository>();
         services.AddSingleton<IInstructorRepository, InstructorRepository>();
@@ -484,30 +525,31 @@ public partial class App : Application
         services.AddSingleton<ISectionCodePatternRepository, SectionCodePatternRepository>();
         services.AddSingleton<IProgramWatchRepository, ProgramWatchRepository>();
 
-        // Owns the empty / delete semester and academic year rules (spec item 8).
+        // Owns the empty / delete semester and academic year rules.
         services.AddSingleton<SemesterContentsService>();
 
-        // Subject focus (spec item 20), remembered per SHARED database. The key is read when the service is first
+        // Subject focus, remembered per SHARED database. The key is read when the service is first
         // resolved: every path that builds this container (startup, database switch, the wizard, reader mode) has
         // already run CheckoutAsync, which sets Checkout.SourcePath to D, so it names the right database.
         RegisterFocusService(services, DesktopFocusDatabaseKey);
+
+        // Subject colours (colour-by-subject feature): one store over settings.json; palette read from AppColors.axaml.
+        RegisterSubjectColorStore(services);
+        RegisterSubjectColorPresenter(services);
 
         RegisterViewModels(services);
 
         services.AddTransient<SaveAndBackupViewModel>();
         services.AddTransient<NewDatabaseViewModel>();
 
-#if DEBUG
-        // The generator class only exists in Debug builds (#if DEBUG in
-        // DebugTestDataGenerator.cs). DebugTestDataViewModel itself stays registered in
-        // all builds — its debug-only members are compiled out, leaving an empty shell —
-        // so the Dev Tools menu (Ctrl+Shift+D) remains functional in Release.
-        services.AddTransient<DebugTestDataGenerator>();
-#endif
+        // Dev Tools (Ctrl+Shift+D). DebugTestDataViewModel is registered in all builds, but its members are
+        // Debug-only and its menu item is hidden in Release. The Support panel (logs zip + Support ID) is in all
+        // desktop builds; the demo has neither log files nor BugSnag, so ConfigureDemoServices registers none of it.
         services.AddTransient<DebugTestDataViewModel>();
-        services.AddTransient<MigrationViewModel>();
+        services.AddTransient<ISupportPlatform, AvaloniaSupportPlatform>();
+        services.AddTransient<SupportViewModel>();
 
-        // Import Sections (spec item 24, desktop only: the demo has no file system and no Import Sections menu
+        // Import Sections (desktop only: the demo has no file system and no Import Sections menu
         // item, so ConfigureDemoServices registers none of these). The file reader, snapshot builder, writer and
         // service are stateless over the singleton repositories; the host and platform are the flyout's narrow
         // seams onto the main window (see IImportSectionsHost, IImportSectionsPlatform).
@@ -578,6 +620,9 @@ public partial class App : Application
     /// <summary>
     /// Registers demo repositories and services into a service collection.
     /// Platform-neutral — all Demo* classes compile on all targets.
+    /// When adding a registration here, compare against the desktop <c>ConfigureServices</c>
+    /// (and vice versa): services are easy to miss in one of the two (this happened with
+    /// <see cref="AppNotificationService"/>), and the miss only shows at runtime.
     /// </summary>
     private static void ConfigureDemoServices(IServiceCollection services)
     {
@@ -613,15 +658,57 @@ public partial class App : Application
         services.AddSingleton<ISectionCodePatternRepository,  DemoSectionCodePatternRepository>();
         services.AddSingleton<IProgramWatchRepository,       DemoProgramWatchRepository>();
 
-        // Owns the empty / delete semester and academic year rules (spec item 8).
+        // Owns the empty / delete semester and academic year rules.
         services.AddSingleton<SemesterContentsService>();
 
-        // Subject focus (spec item 20). A null key means the demo: it always starts at All and is never read from
+        // Subject focus. A null key means the demo: it always starts at All and is never read from
         // or written to settings (the browser's settings do not survive a visit anyway).
         RegisterFocusService(services, () => null);
 
+        // Subject colours (colour-by-subject feature): one store over settings.json; palette read from AppColors.axaml.
+        RegisterSubjectColorStore(services);
+        RegisterSubjectColorPresenter(services);
+
         RegisterViewModels(services);
     }
+
+    /// <summary>
+    /// Reads the subject-colour palette from the application resources: <c>SubjectPalette01</c>, <c>SubjectPalette02</c>,
+    /// ... in <c>AppColors.axaml</c> (colours live there, never in code: CLAUDE.md), stopping at the first missing
+    /// number. Adding a colour is adding the next numbered resource.
+    /// </summary>
+    /// <returns>The palette in order as <c>#RRGGBB</c> strings (alpha dropped).</returns>
+    private static List<string> ReadSubjectPalette()
+    {
+        var palette = new List<string>();
+        var resources = Current!.Resources;
+        for (var n = 1; resources.TryGetResource($"SubjectPalette{n:00}", null, out var value)
+                        && value is Avalonia.Media.Color c; n++)
+            palette.Add($"#{c.R:X2}{c.G:X2}{c.B:X2}");
+        return palette;
+    }
+
+    /// <summary>
+    /// Registers <see cref="SubjectColorStore"/> as a singleton, built lazily (so the application resources exist)
+    /// with the palette from <see cref="ReadSubjectPalette"/>. Shared by the desktop and demo registrations.
+    /// </summary>
+    /// <param name="services">The collection to register into.</param>
+    private static void RegisterSubjectColorStore(IServiceCollection services) =>
+        services.AddSingleton(_ => new SubjectColorStore(ReadSubjectPalette()));
+
+    /// <summary>
+    /// Registers <see cref="SubjectColorPresenter"/> as a singleton: the one place both views ask "are colours on?"
+    /// and "what is this section's colour?". Shared by the desktop and demo registrations.
+    /// </summary>
+    /// <param name="services">The collection to register into.</param>
+    private static void RegisterSubjectColorPresenter(IServiceCollection services) =>
+        services.AddSingleton(sp => new SubjectColorPresenter(
+            sp.GetRequiredService<SubjectColorStore>(),
+            // A constructor dependency so FocusService is built, and subscribes to SectionsChanged, first.
+            sp.GetRequiredService<FocusService>(),
+            sp.GetRequiredService<SectionStore>(),
+            sp.GetRequiredService<ICourseRepository>(),
+            sp.GetRequiredService<ISubjectRepository>()));
 
     /// <summary>
     /// Registers <see cref="FocusService"/> as a singleton over whichever repositories the container holds. Shared by
@@ -671,7 +758,7 @@ public partial class App : Application
             sp.GetRequiredService<ICourseRepository>(),
             // Watches are saved only while the write lock is ours; a reader keeps them in memory (see the class).
             () => sp.GetRequiredService<WriteLockService>().IsWriter));
-        // Shared by every indicator and the Focus picker (spec item 20); exposed as MainWindowViewModel.FocusVm.
+        // Shared by every indicator and the Focus picker; exposed as MainWindowViewModel.FocusVm.
         services.AddSingleton<FocusViewModel>();
         services.AddSingleton<MainWindowViewModel>();
         services.AddSingleton<SectionListViewModel>();
@@ -695,7 +782,11 @@ public partial class App : Application
             sp.GetRequiredService<SharedScheduleService>(),
             sp.GetRequiredService<AccessPanelViewModel>(),
             // A constructor dependency so FocusService is built, and subscribes to SectionsChanged, first.
-            sp.GetRequiredService<FocusService>()));
+            sp.GetRequiredService<FocusService>(),
+            // Likewise, so the presenter drops its caches on SectionsChanged/FocusChanged before the grid reloads.
+            sp.GetRequiredService<SubjectColorPresenter>(),
+            // Read each time the day-header menu opens (both ConfigureServices and ConfigureDemoServices register it).
+            sp.GetRequiredService<IBlockPatternRepository>()));
         services.AddSingleton<WorkloadPanelViewModel>(sp => new WorkloadPanelViewModel(
             sp.GetRequiredService<IInstructorRepository>(),
             sp.GetRequiredService<ISectionRepository>(),

@@ -103,19 +103,37 @@ public sealed class DatabaseChooserViewModelTests : IDisposable
         Assert.Equal(path, vm.ResolvedPath);
     }
 
-    /// <summary>A genuinely corrupt recent database is still called damaged, with the existing wording.</summary>
+    /// <summary>A recent file that is not a SQLite database (no signature, here zero bytes) is still called damaged, with the existing wording.</summary>
     [Fact]
     public async Task OpenRecent_CorruptFile_StillSaysDamaged()
     {
         using var settingsGuard = new SettingsFileGuard();
-        var path = HealthyDb("corrupt.db");
-        DbFileTestHelpers.TrashPage(path, pageNumber: 2);
+        var path = Path.Combine(_tempDir, "corrupt.db");
+        File.WriteAllBytes(path, []);
         var vm = BuildChooser([path]);
 
         await vm.OpenRecentDatabaseCommand.ExecuteAsync(vm.RecentDatabases[0]);
 
         Assert.Equal("That database failed its integrity check and may be damaged.", vm.RecentError);
         Assert.Equal(ChooserOutcome.None, vm.Outcome);
+    }
+
+    /// <summary>
+    /// 1.2.4 item 4.7, D2: the chooser's open uses the header-only door, so a damaged-but-signed recent database is
+    /// not flagged before it is clicked; it resolves and the local-copy check plus the re-check catch it later.
+    /// </summary>
+    [Fact]
+    public async Task OpenRecent_SignedButDamagedFile_PassesTheDoor()
+    {
+        using var settingsGuard = new SettingsFileGuard();
+        var path = HealthyDb("signed-damaged.db");
+        DbFileTestHelpers.TrashPage(path, pageNumber: 2);
+        var vm = BuildChooser([path]);
+
+        await vm.OpenRecentDatabaseCommand.ExecuteAsync(vm.RecentDatabases[0]);
+
+        Assert.Null(vm.RecentError);
+        Assert.Equal(ChooserOutcome.Resolved, vm.Outcome);
     }
 
     /// <summary>A recent database whose file has gone is still "could not be found" (Unreadable didn't swallow it).</summary>

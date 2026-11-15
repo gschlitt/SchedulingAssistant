@@ -1,7 +1,7 @@
 namespace TermPoint.Models;
 
 /// <summary>
-/// How a section card shows the section's room and instructor conflicts (spec item 25). A per-user display choice,
+/// How a section card shows the section's room and instructor conflicts. A per-user display choice,
 /// stored in <see cref="Services.AppSettings.SectionConflictDisplay"/>; conflicts are detected the same way in both.
 /// </summary>
 public enum ConflictDisplayMode

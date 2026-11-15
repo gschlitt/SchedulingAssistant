@@ -11,7 +11,7 @@ public partial class ContextMenuItemVm : ObservableObject
     [ObservableProperty] private bool _isChecked;
 
     /// <summary>
-    /// True for an instructor outside the chosen subjects (spec item 20): the menu shows the name in a lighter colour,
+    /// True for an instructor outside the chosen subjects: the menu shows the name in a lighter colour,
     /// under the "Other instructors" heading. Set at construction; purely presentational.
     /// </summary>
     public bool IsOutOfFocus { get; }

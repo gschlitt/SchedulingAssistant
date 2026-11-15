@@ -11,7 +11,7 @@ namespace TermPoint.Services.SectionImport;
 /// transaction, through the repositories' <c>Insert</c> methods and nothing else.
 ///
 /// <para><b>Insert only.</b> This class never calls an <c>Update</c> or <c>Delete</c> method and never builds
-/// a replacement for an existing record, so no existing row can change (spec Phase 2, invariant 2). Every
+/// a replacement for an existing record, so no existing row can change. Every
 /// record it inserts is brand new, so there is no extension data to carry across
 /// (<see cref="PersistedRecord"/>).</para>
 ///
@@ -99,7 +99,7 @@ public sealed class SectionImportWriter
 
         // Nullable-tx pattern, as SemesterContentsService.RunInTransaction: a context without transactions
         // (the WASM demo) runs the same inserts with a null transaction.
-        using var tx = _db.SupportsTransactions ? _db.Connection.BeginTransaction() : null;
+        using var tx = _db.BeginWriteTransaction();
         try
         {
             var counts = InsertAll(plan, sections, tx);

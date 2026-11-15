@@ -36,7 +36,7 @@ public interface IAppLogger
     ///
     /// <para><b>Privacy.</b> Where the implementation has a remote sink (<c>FileAppLogger</c> and BugSnag), the
     /// exception's message (and its inner exceptions') and <paramref name="context"/> are sent off the machine after
-    /// the report passes <c>ScrubbingDelivery</c> (spec item 6), which replaces paths, email addresses, database file
+    /// the report passes <c>ScrubbingDelivery</c>, which replaces paths, email addresses, database file
     /// names and known user and computer names with tags. The local log keeps them in full.</para>
     /// </summary>
     /// <param name="ex">The exception to log.</param>
@@ -63,7 +63,7 @@ public interface IAppLogger
     /// <param name="message">Short human-readable description of the event (e.g. "Checkout: WriteAccess").</param>
     /// <param name="metadata">
     /// Optional key-value pairs with additional context (e.g. path, outcome). A path is sent only as its shape
-    /// (<c>ScrubbingDelivery</c>, spec item 6). Never pass a person's name: a lock holder is recorded as its relation to
+    /// (<c>ScrubbingDelivery</c>). Never pass a person's name: a lock holder is recorded as its relation to
     /// this user (<see cref="WriteLockService.DescribeHolder"/>).
     /// </param>
     void LogBreadcrumb(string message, Dictionary<string, string>? metadata = null);
@@ -72,7 +72,7 @@ public interface IAppLogger
     /// Records a HANDLED problem that is worth knowing about but that the user has already been told about (or
     /// that needs no banner): the application dealt with it, and the report exists so the developers can see how
     /// often it happens and in what circumstances. Examples: a damaged database that was refused and routed to
-    /// recovery (spec item 5, step 5e); the not-an-exception problems of spec item 7.
+    /// recovery; the not-an-exception problems such as an unavailable backup folder.
     ///
     /// <para><b>Contract.</b> Always leaves a local log line (text, exception type and the metadata). Where the
     /// implementation has a remote sink (<c>FileAppLogger</c> and BugSnag) the problem is also sent there.
@@ -83,7 +83,7 @@ public interface IAppLogger
     /// <para><b>Privacy.</b> Everything passed here is sent off the machine by implementations that have a remote
     /// sink: <paramref name="context"/>, <paramref name="metadata"/> and <paramref name="groupingKey"/> must carry
     /// no paths, file names, user names or user data. Callers are responsible for that. As a safety net,
-    /// <c>FileAppLogger</c>'s BugSnag client scrubs every report (<c>ScrubbingDelivery</c>, spec item 6: paths, email
+    /// <c>FileAppLogger</c>'s BugSnag client scrubs every report (<c>ScrubbingDelivery</c>: paths, email
     /// addresses, database file names and known user and computer names become tags), but it can only recognise what
     /// it knows: a name it was never told about would get through.</para>
     ///
@@ -101,12 +101,18 @@ public interface IAppLogger
     /// Optional stable key that makes the remote sink put every report with the same key into one issue,
     /// whatever the stack trace; null leaves the sink's own grouping.
     /// </param>
+    /// <param name="informational">
+    /// True for a report that is good news or plain information (for example "a save recovered after failing"):
+    /// a remote sink sends it with its lowest severity (BugSnag "info") instead of the default
+    /// warning, so it does not count as a problem. The local log line is unchanged.
+    /// </param>
     void ReportHandled(
         Exception ex,
         string context,
         IReadOnlyDictionary<string, string>? metadata = null,
         string metadataTab = "details",
-        string? groupingKey = null)
+        string? groupingKey = null,
+        bool informational = false)
         => LogWarning(AppLoggerText.DescribeHandled(ex, metadata), context);
 
     /// <summary>

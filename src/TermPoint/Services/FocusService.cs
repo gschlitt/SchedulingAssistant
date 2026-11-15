@@ -6,7 +6,7 @@ using TermPoint.Models;
 namespace TermPoint.Services;
 
 /// <summary>
-/// Holds the user's subject focus (spec item 20, "load by subject / focus"): which subjects the section list, grid,
+/// Holds the user's subject focus ("load by subject / focus"): which subjects the section list, grid,
 /// filter lists, choosers and workload views should show. One focus per user per database, remembered in
 /// <see cref="AppSettings.FocusByDatabase"/>; nothing is written to the database. The service only DECIDES what is
 /// in focus; every view that hides or offers things reads its answer from here, so they all agree.
@@ -246,7 +246,7 @@ public sealed class FocusService : ObservableObject, IDisposable
     };
 
     /// <summary>
-    /// The subjects the section editor's Subject chooser should offer (spec item 20, step 20.5). Under a Subjects
+    /// The subjects the section editor's Subject chooser should offer. Under a Subjects
     /// focus: the focused subjects, plus the section's CURRENT subject when it is not one of them, so editing or
     /// copying an out-of-focus section never blanks its course. Under All: every subject. Under None: also every
     /// subject, because None means "nothing chosen yet" and Add still works (no section cards exist then, so there
@@ -281,7 +281,7 @@ public sealed class FocusService : ObservableObject, IDisposable
     }
 
     /// <summary>
-    /// Orders the section editor's instructor chooser (spec item 20, step 20.5): under a Subjects focus, the
+    /// Orders the section editor's instructor chooser: under a Subjects focus, the
     /// in-focus instructors first, then every other instructor, each group keeping the input order. NO instructor
     /// is ever dropped, so a section's current instructors always stay listed (and ticked, by the caller) even when
     /// they are out of focus; they simply sit in the second group. Under All or None the list is returned as given

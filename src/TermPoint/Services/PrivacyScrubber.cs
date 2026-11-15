@@ -4,7 +4,7 @@ using System.Text.RegularExpressions;
 namespace TermPoint.Services;
 
 /// <summary>
-/// Removes private details from free text before it leaves this computer in an error report (spec item 6, step 6a):
+/// Removes private details from free text before it leaves this computer in an error report:
 /// file paths, database file names, email addresses, and the names of people and computers that TermPoint knows about.
 /// Each is replaced by a short tag that keeps what is useful for diagnosis and identifies nobody.
 ///
@@ -21,7 +21,7 @@ namespace TermPoint.Services;
 ///   <c>&lt;file&gt;</c>.</item>
 ///   <item><b>A registered name</b> (<see cref="RegisterSensitive"/>): its label, <see cref="UserLabel"/> or
 ///   <see cref="MachineLabel"/>, matched as a whole word in any letter case. This computer's user name and machine name
-///   are registered from the start; the lock service adds every holder name and machine it reads (step 6c).</item>
+///   are registered from the start; the lock service adds every holder name and machine it reads.</item>
 /// </list>
 ///
 /// <para><b>Paths end at a line break or a quote, not at a space</b>, so a user folder such as "Jo Smith" can't leak

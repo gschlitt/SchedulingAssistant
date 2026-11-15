@@ -106,8 +106,20 @@
                     FontWeight="SemiBold"
                     Foreground="{StaticResource TextLabel}"
                     Text="Schedule" />
+                <!--  Column headers + slot rows share column widths via SharedSizeGroup  -->
+                <StackPanel Grid.IsSharedSizeScope="True">
                 <!--  Column headers (rendered once above all slots)  -->
-                <Grid Margin="5,0,0,1" ColumnDefinitions="Auto,42,42,Auto,Auto,Auto,Auto,20">
+                <Grid Margin="5,0,0,1">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="Auto" SharedSizeGroup="MtgDay" />
+                        <ColumnDefinition Width="Auto" SharedSizeGroup="MtgStart" />
+                        <ColumnDefinition Width="Auto" SharedSizeGroup="MtgLen" />
+                        <ColumnDefinition Width="Auto" SharedSizeGroup="MtgFreq" />
+                        <ColumnDefinition Width="Auto" SharedSizeGroup="MtgMtgType" />
+                        <ColumnDefinition Width="Auto" SharedSizeGroup="MtgRmType" />
+                        <ColumnDefinition Width="Auto" SharedSizeGroup="MtgRoom" />
+                        <ColumnDefinition Width="Auto" SharedSizeGroup="MtgDel" />
+                    </Grid.ColumnDefinitions>
                     <TextBlock
                         Grid.Column="0"
                         Margin="0,0,2,0"
@@ -165,12 +177,23 @@
                                     weeks TextBox (row 1, shown only when Frequency="Custom"). Row 1
                                     occupies only col 3 so both controls share the same column width.
                                 -->
-                                <Grid ColumnDefinitions="Auto,42,42,Auto,Auto,Auto,Auto,Auto" RowDefinitions="Auto,Auto">
+                                <Grid RowDefinitions="Auto,Auto">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="Auto" SharedSizeGroup="MtgDay" />
+                                        <ColumnDefinition Width="Auto" SharedSizeGroup="MtgStart" />
+                                        <ColumnDefinition Width="Auto" SharedSizeGroup="MtgLen" />
+                                        <ColumnDefinition Width="Auto" SharedSizeGroup="MtgFreq" />
+                                        <ColumnDefinition Width="Auto" SharedSizeGroup="MtgMtgType" />
+                                        <ColumnDefinition Width="Auto" SharedSizeGroup="MtgRmType" />
+                                        <ColumnDefinition Width="Auto" SharedSizeGroup="MtgRoom" />
+                                        <ColumnDefinition Width="Auto" SharedSizeGroup="MtgDel" />
+                                    </Grid.ColumnDefinitions>
 
                                     <!--  Day  -->
                                     <ComboBox
                                         Grid.Row="0"
                                         Grid.Column="0"
+                                        MinWidth="60"
                                         Margin="0,0,2,0"
                                         Padding="3,1"
                                         HorizontalAlignment="Stretch"
@@ -191,6 +214,7 @@
                                     <AutoCompleteBox
                                         Grid.Row="0"
                                         Grid.Column="1"
+                                        MinWidth="42"
                                         Margin="2,0,2,0"
                                         Padding="3,1"
                                         HorizontalAlignment="Stretch"
@@ -209,6 +233,7 @@
                                     <AutoCompleteBox
                                         Grid.Row="0"
                                         Grid.Column="2"
+                                        MinWidth="42"
                                         Margin="2,0,2,0"
                                         Padding="3,1"
                                         HorizontalAlignment="Stretch"
@@ -227,6 +252,7 @@
                                     <ComboBox
                                         Grid.Row="0"
                                         Grid.Column="3"
+                                        MinWidth="55"
                                         Margin="2,0,2,0"
                                         Padding="3,1"
                                         HorizontalAlignment="Stretch"
@@ -338,6 +364,7 @@
                         </DataTemplate>
                     </ItemsControl.ItemTemplate>
                 </ItemsControl>
+                </StackPanel>
                 <Button
                     Padding="4,1"
                     Command="{Binding AddSlotCommand}"

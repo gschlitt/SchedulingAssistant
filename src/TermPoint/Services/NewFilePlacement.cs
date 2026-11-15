@@ -25,13 +25,14 @@ namespace TermPoint.Services;
 internal static class NewFilePlacement
 {
     /// <summary>
-    /// The sibling a file is written to before it is moved into place: the target path plus <c>.tmp</c>. A stray
-    /// one left by a crash is swept by <see cref="CheckoutService.CleanupOrphanedTmpAsync"/> on the next
-    /// write-access open.
+    /// The sibling a file is written to before it is moved into place: a fresh per-attempt temporary name beside
+    /// the target (<see cref="ShareTempFile.NewPath"/>, <c>target.&lt;8 hex&gt;.tmp</c>). A different name is returned on
+    /// every call, so call it once per placement. A stray one left by a crash is swept by
+    /// <see cref="CheckoutService.CleanupOrphanedTmpAsync"/> on the next write-access open.
     /// </summary>
     /// <param name="targetPath">Full path of the file being created.</param>
-    /// <returns>Full path of its <c>.tmp</c> sibling.</returns>
-    internal static string TmpPathFor(string targetPath) => targetPath + ".tmp";
+    /// <returns>Full path of its temporary sibling.</returns>
+    internal static string TmpPathFor(string targetPath) => ShareTempFile.NewPath(targetPath);
 
     /// <summary>
     /// Makes sure the target's folder exists. <see cref="Directory.CreateDirectory(string)"/> is a network round

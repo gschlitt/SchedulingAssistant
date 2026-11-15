@@ -377,6 +377,62 @@ public sealed class DatabaseValidatorTests : IDisposable
         Assert.Equal(DatabaseValidationResult.Ok, await DatabaseValidator.ValidateWithoutSqliteAsync(path));
     }
 
+    // ── ValidateSharedAtOpenAsync: the front-door check (1.2.4 item 4.7, D2) ──
+
+    /// <summary>
+    /// A damaged-but-signed file (valid 16-byte SQLite header followed by garbage) passes the front door, while the
+    /// full check still calls it Corrupt: the door no longer reads the whole file, the local-copy check and the
+    /// re-check catch the damage later.
+    /// </summary>
+    [Fact]
+    public async Task ValidateSharedAtOpen_DamagedButSigned_ReturnsOk_WhileValidateAsyncReturnsCorrupt()
+    {
+        var path = DbPath("signed-garbage.db");
+        var bytes = new byte[8192];
+        new Random(7).NextBytes(bytes);
+        DatabaseValidator.SqliteHeaderMagic.CopyTo(bytes);
+        File.WriteAllBytes(path, bytes);
+
+        Assert.Equal(DatabaseValidationResult.Ok, await DatabaseValidator.ValidateSharedAtOpenAsync(path));
+        Assert.Equal(DatabaseValidationResult.Corrupt, await DatabaseValidator.ValidateAsync(path));
+    }
+
+    /// <summary>A zero-byte file and a non-SQLite file are refused (Corrupt) at the door.</summary>
+    [Fact]
+    public async Task ValidateSharedAtOpen_ZeroByteOrNotSqlite_ReturnsCorrupt()
+    {
+        var empty = DbPath("empty.db");
+        File.WriteAllBytes(empty, []);
+        var text = DbPath("text.db");
+        File.WriteAllText(text, "this is not a sqlite database");
+
+        Assert.Equal(DatabaseValidationResult.Corrupt, await DatabaseValidator.ValidateSharedAtOpenAsync(empty));
+        Assert.Equal(DatabaseValidationResult.Corrupt, await DatabaseValidator.ValidateSharedAtOpenAsync(text));
+    }
+
+    /// <summary>Healthy, missing and blank paths map as <see cref="DatabaseValidator.ValidateAsync"/> does.</summary>
+    [Fact]
+    public async Task ValidateSharedAtOpen_HealthyMissingAndBlank_MapAsBefore()
+    {
+        var path = DbPath();
+        CreateValidDatabase(path);
+
+        Assert.Equal(DatabaseValidationResult.Ok, await DatabaseValidator.ValidateSharedAtOpenAsync(path));
+        Assert.Equal(DatabaseValidationResult.Missing, await DatabaseValidator.ValidateSharedAtOpenAsync(DbPath("nonexistent.db")));
+        Assert.Equal(DatabaseValidationResult.Missing, await DatabaseValidator.ValidateSharedAtOpenAsync(null));
+    }
+
+    /// <summary>A healthy file held exclusively by another program is Unreadable at the door, never Corrupt.</summary>
+    [FactWindowsOnly]
+    public async Task ValidateSharedAtOpen_HeldExclusively_ReturnsUnreadable()
+    {
+        var path = DbPath("locked-door.db");
+        DbFileTestHelpers.CreateHealthyDatabase(path);
+
+        using (DbFileTestHelpers.LockExclusively(path))
+            Assert.Equal(DatabaseValidationResult.Unreadable, await DatabaseValidator.ValidateSharedAtOpenAsync(path));
+    }
+
     /// <summary>
     /// <see cref="DatabaseValidator.IsLockedOrAccessDenied"/> recognises access-denied and the two
     /// Win32 "someone else has it" HRESULTs (sharing violation 0x80070020, lock violation

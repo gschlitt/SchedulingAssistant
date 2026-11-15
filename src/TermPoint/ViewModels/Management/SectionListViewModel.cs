@@ -10,7 +10,7 @@ using System.Threading.Tasks;
 
 namespace TermPoint.ViewModels.Management;
 
-public partial class SectionListViewModel : ViewModelBase, IDisposable
+public partial class SectionListViewModel : ViewModelBase, IUnappliedChangesHost, IDisposable
 {
     private readonly ISectionRepository _sectionRepo;
     private readonly ICourseRepository _courseRepo;
@@ -29,13 +29,21 @@ public partial class SectionListViewModel : ViewModelBase, IDisposable
     private readonly WriteLockService _lockService;
 
     /// <summary>
-    /// The user's subject focus (spec item 20). Sections outside it get no card; the service is also told
+    /// The user's subject focus. Sections outside it get no card; the service is also told
     /// whenever an inline editor opens or closes, which is what disables every focus-changing control while
     /// an editor holds unapplied edits (rule 3). Taken as a constructor dependency so dependency injection
     /// builds it, and so subscribes its <see cref="SectionStore.SectionsChanged"/> handler, before this VM's
     /// own: the service's caches are then fresh when this VM asks <see cref="FocusService.Matches"/>.
     /// </summary>
     private readonly FocusService _focus;
+
+    /// <summary>
+    /// Subject colours (colour by subject): gives each card its heading chip colour, and raises
+    /// <see cref="SubjectColorPresenter.Changed"/> when those may differ, which refreshes every card in place.
+    /// Taken as a constructor dependency so it is built, and subscribes to <see cref="SectionStore.SectionsChanged"/>,
+    /// before this VM: its answers are then fresh when <see cref="Reload"/> rebuilds the cards.
+    /// </summary>
+    private readonly SubjectColorPresenter _subjectColors;
 
     /// <summary>
     /// True only while <see cref="OnStoreSelectionChanged"/> clears <see cref="SelectedItem"/> because the section
@@ -72,6 +80,9 @@ public partial class SectionListViewModel : ViewModelBase, IDisposable
 
     [ObservableProperty] private SectionListItemViewModel? _expandedItem;
     [ObservableProperty] private SectionEditViewModel? _editVm;
+
+    /// <inheritdoc/>
+    public IUnappliedChanges? FindUnappliedChanges() => UnappliedChangesFinder.First(EditVm);
     [ObservableProperty] private int _selectedSortModeIndex;
 
     /// <summary>
@@ -157,7 +168,7 @@ public partial class SectionListViewModel : ViewModelBase, IDisposable
     /// <summary>
     /// Reacts to the two settings the section list shows live: a change of the virtualization preference is
     /// forwarded to the view, which is bound to <see cref="IsListVirtualized"/>; a change of the conflict display
-    /// (spec item 25) makes every card rebuild its property lines. Other settings are ignored.
+    /// makes every card rebuild its property lines. Other settings are ignored.
     /// </summary>
     /// <param name="settingName">The name of the setting that changed (see <see cref="AppSettings.SettingChanged"/>).</param>
     private void OnAppSettingChanged(string settingName)
@@ -167,6 +178,17 @@ public partial class SectionListViewModel : ViewModelBase, IDisposable
         else if (settingName == nameof(AppSettings.SectionConflictDisplay))
             foreach (var item in SectionItems.OfType<SectionListItemViewModel>())
                 item.RefreshPropertyLines();
+    }
+
+    /// <summary>
+    /// Re-reads every card's subject chip colour (<see cref="SectionListItemViewModel.RefreshSubjectChip"/>), the
+    /// way <see cref="OnAppSettingChanged"/> refreshes property lines: the cards stay, only the changed colours
+    /// raise a property change.
+    /// </summary>
+    private void RefreshSubjectChips()
+    {
+        foreach (var item in SectionItems.OfType<SectionListItemViewModel>())
+            item.RefreshSubjectChip();
     }
 
     /// <summary>
@@ -299,9 +321,11 @@ public partial class SectionListViewModel : ViewModelBase, IDisposable
         IMeetingRepository meetingRepo,
         IDialogService dialog,
         WriteLockService lockService,
-        FocusService focus)
+        FocusService focus,
+        SubjectColorPresenter subjectColors)
     {
         _focus = focus;
+        _subjectColors = subjectColors;
         _sectionRepo = sectionRepo;
         _courseRepo = courseRepo;
         _subjectRepo = subjectRepo;
@@ -338,6 +362,9 @@ public partial class SectionListViewModel : ViewModelBase, IDisposable
         // A changed focus (picker, Show all, tour start, a deleted subject) shows a different set of cards.
         // The service refuses a change while an editor is open, so the rebuild never closes unapplied edits.
         _focus.FocusChanged += Reload;
+
+        // New subject colours, display mode or "colours on?" answer: repaint every card's chip in place (no reload).
+        _subjectColors.Changed += RefreshSubjectChips;
 
         _sortMode = AppSettings.Current.SectionSortMode;
         _selectedSortModeIndex = SortModeToIndex(_sortMode);
@@ -613,7 +640,8 @@ public partial class SectionListViewModel : ViewModelBase, IDisposable
     private SectionListItemViewModel CreateSectionItem(
         Section s, ItemLookups lk, string semesterName, string semesterColor) =>
         new(s, lk.Courses, lk.Instructors, lk.Rooms, lk.SectionTypes, lk.Campuses,
-            lk.Tags, lk.Resources, lk.Reserves, lk.MeetingTypes, semesterName, semesterColor);
+            lk.Tags, lk.Resources, lk.Reserves, lk.MeetingTypes, semesterName, semesterColor,
+            _subjectColors.ColorFor);
 
     /// <summary>
     /// Fast path for refreshing the list after editing a single existing section: replaces just
@@ -804,13 +832,8 @@ public partial class SectionListViewModel : ViewModelBase, IDisposable
             return;
         }
 
-        var courseCodeById = courseLookup.ToDictionary(
-            kv => kv.Key,
-            kv => kv.Value.CalendarCode ?? kv.Value.Id);
-
-        var roomNameById = roomLookup.ToDictionary(
-            kv => kv.Key,
-            kv => $"{kv.Value.Building} {kv.Value.RoomNumber}".Trim());
+        var courseCodeById = BuildCourseCodeLabels(courseLookup);
+        var roomNameById = BuildRoomLabels(roomLookup);
 
         // Detect conflicts per semester independently.
         var allConflicts = new Dictionary<string, List<string>>();
@@ -850,13 +873,8 @@ public partial class SectionListViewModel : ViewModelBase, IDisposable
             return;
         }
 
-        var courseCodeById = courseLookup.ToDictionary(
-            kv => kv.Key,
-            kv => kv.Value.CalendarCode ?? kv.Value.Id);
-
-        var instructorLabelById = instructorLookup.ToDictionary(
-            kv => kv.Key,
-            kv => FormatInstructorLabel(kv.Value));
+        var courseCodeById = BuildCourseCodeLabels(courseLookup);
+        var instructorLabelById = BuildInstructorLabels(instructorLookup);
 
         var allConflicts = new Dictionary<string, List<string>>();
         foreach (var (semesterId, sections) in _sectionStore.SectionsBySemester)
@@ -873,6 +891,27 @@ public partial class SectionListViewModel : ViewModelBase, IDisposable
                 : null;
         }
     }
+
+    /// <summary>
+    /// Builds the course labels used in conflict descriptions: the calendar code, or the ID when there is none.
+    /// Shared by the section cards and the editor's live conflict notice so both word conflicts the same way.
+    /// </summary>
+    /// <param name="courseLookup">Courses keyed by ID.</param>
+    /// <returns>Course ID → label (e.g. "CHEM101").</returns>
+    private static Dictionary<string, string> BuildCourseCodeLabels(Dictionary<string, Course> courseLookup) =>
+        courseLookup.ToDictionary(kv => kv.Key, kv => kv.Value.CalendarCode ?? kv.Value.Id);
+
+    /// <summary>Builds the room labels used in conflict descriptions ("Building Number").</summary>
+    /// <param name="roomLookup">Rooms keyed by ID.</param>
+    /// <returns>Room ID → label (e.g. "A 121").</returns>
+    private static Dictionary<string, string> BuildRoomLabels(Dictionary<string, Room> roomLookup) =>
+        roomLookup.ToDictionary(kv => kv.Key, kv => $"{kv.Value.Building} {kv.Value.RoomNumber}".Trim());
+
+    /// <summary>Builds the instructor labels used in conflict descriptions ("F. LastName").</summary>
+    /// <param name="instructorLookup">Instructors keyed by ID.</param>
+    /// <returns>Instructor ID → label (e.g. "J. Smith").</returns>
+    private static Dictionary<string, string> BuildInstructorLabels(Dictionary<string, Instructor> instructorLookup) =>
+        instructorLookup.ToDictionary(kv => kv.Key, kv => FormatInstructorLabel(kv.Value));
 
     /// <summary>Formats an instructor as "F. LastName" for conflict descriptions.</summary>
     private static string FormatInstructorLabel(Instructor instructor)
@@ -1178,7 +1217,7 @@ public partial class SectionListViewModel : ViewModelBase, IDisposable
     /// </summary>
     /// <param name="section">The new section model that the placeholder represents.</param>
     /// <param name="ctx">Editor context containing all needed list data.</param>
-    private static SectionListItemViewModel BuildPlaceholder(Section section, EditorContext ctx)
+    private SectionListItemViewModel BuildPlaceholder(Section section, EditorContext ctx)
     {
         var placeholder = new SectionListItemViewModel(
             section,
@@ -1190,7 +1229,8 @@ public partial class SectionListViewModel : ViewModelBase, IDisposable
             ctx.AllTags.ToDictionary(v => v.Id),
             ctx.AllResources.ToDictionary(v => v.Id),
             ctx.AllReserves.ToDictionary(v => v.Id),
-            ctx.MeetingTypes.ToDictionary(v => v.Id));
+            ctx.MeetingTypes.ToDictionary(v => v.Id),
+            subjectChipColorFor: _subjectColors.ColorFor);
         placeholder.IsBeingCreated = true;
         return placeholder;
     }
@@ -1216,7 +1256,7 @@ public partial class SectionListViewModel : ViewModelBase, IDisposable
         Section section, bool isNew, EditorContext ctx,
         string semesterId, string callerTag, bool isCopy = false)
     {
-        // The Subject chooser follows the subject focus (spec item 20), but always keeps the section's current
+        // The Subject chooser follows the subject focus, but always keeps the section's current
         // subject (an edit or a copy), so an untouched section can never lose its course. The Course Number list
         // still shows only the chosen subject's courses.
         var currentSubjectId = section.CourseId is null
@@ -1272,6 +1312,19 @@ public partial class SectionListViewModel : ViewModelBase, IDisposable
             defaultBlockLength: ctx.DefaultBlockLength,
             defaultSectionCapacity: AppSettings.Current.DefaultSectionCapacity,
             outOfFocusInstructorIds: instructorOrder.OutOfFocusIds);
+
+        // Live conflict notice. The labels are built once here, from
+        // the lists the editor already loaded; the semester's sections are read from the store at each check, so a
+        // check always sees the latest saved state. Unlike the cards, this also runs in multi-semester mode: the
+        // editor's own semester is always well defined.
+        var conflictCourseLabels     = BuildCourseCodeLabels(ctx.AllCourses.ToDictionary(c => c.Id));
+        var conflictRoomLabels       = BuildRoomLabels(ctx.Rooms.ToDictionary(r => r.Id));
+        var conflictInstructorLabels = BuildInstructorLabels(ctx.Instructors.ToDictionary(i => i.Id));
+        editVm.CheckConflicts = draft =>
+            DraftConflictCheck.Check(
+                draft,
+                _sectionStore.SectionsBySemester.TryGetValue(semesterId, out var semSections) ? semSections : [],
+                conflictRoomLabels, conflictInstructorLabels, conflictCourseLabels);
 
         // Wire the Room Availability Browser factory (disabled in multi-semester mode)
         if (!_semesterContext.IsMultiSemesterMode)
@@ -1465,6 +1518,16 @@ public partial class SectionListViewModel : ViewModelBase, IDisposable
 
     // ── Copy ───────────────────────────────────────────────────────────────────
 
+    /// <summary>
+    /// Adds a new section immediately below the selected one, in the same semester, with the
+    /// source's course, campus and capacity. The section code is derived when possible: the first
+    /// configured <see cref="SectionCodePattern"/> (in sort order) that the source code matches
+    /// supplies the next unused code in its sequence (<see cref="SectionCodeGenerator.GetNextCode"/>).
+    /// If no pattern matches, or the sequence is exhausted, the code is left blank. The editor opens
+    /// under the usual step-gate; when course and code are both pre-filled, the editor validates
+    /// them at construction, so all fields are editable at once.
+    /// Does nothing if the editor is busy, nothing is selected, or the source has no semester.
+    /// </summary>
     [RelayCommand(CanExecute = nameof(CanWrite))]
     private async Task Copy()
     {
@@ -1601,6 +1664,7 @@ public partial class SectionListViewModel : ViewModelBase, IDisposable
         _sectionStore.FilteredIdsChanged -= ApplyFilterHighlights;
         AppSettings.SettingChanged -= OnAppSettingChanged;
         _focus.FocusChanged -= Reload;
+        _subjectColors.Changed -= RefreshSubjectChips;
     }
 
     // ── Debug / Dev ────────────────────────────────────────────────────────────
@@ -1618,48 +1682,6 @@ public partial class SectionListViewModel : ViewModelBase, IDisposable
         LastErrorMessage = "An error occurred loading the section list. See logs for details.";
     }
 
-    /// <summary>
-    /// DEV ONLY — Generate and insert random sections for testing.
-    /// Remove before shipping.
-    /// </summary>
-    [RelayCommand]
-    public void GenerateRandomSections(int count)
-    {
-        try
-        {
-            var semesterId = _semesterContext.SelectedSemesterDisplay?.Semester.Id;
-            if (semesterId is null)
-            {
-                App.Logger.LogWarning("No semester selected for test data generation", "GenerateRandomSections");
-                return;
-            }
-
-            App.Logger.LogInfo($"Starting generation of {count} sections for semester {semesterId}", "GenerateRandomSections");
-
-            var generator = new DebugTestDataGenerator(
-                _sectionRepo, _courseRepo, _instructorRepo, _roomRepo,
-                _legalStartTimeRepo, _semesterRepo, _blockPatternRepo, _propertyRepo, _campusRepo);
-
-            var sections = generator.GenerateSections(count, semesterId);
-            App.Logger.LogInfo($"Generator created {sections.Count} sections", "GenerateRandomSections");
-
-            foreach (var section in sections)
-            {
-                App.Logger.LogInfo($"Inserting section {section.Id} ({section.SectionCode}) for course {section.CourseId}", "GenerateRandomSections");
-                _sectionRepo.Insert(section);
-            }
-
-            App.Logger.LogInfo("All sections inserted, reloading store...", "GenerateRandomSections");
-            var semIds = _semesterContext.SelectedSemesters.Select(s => s.Semester.Id);
-            _sectionStore.Reload(_sectionRepo, semIds); // notifies Grid + Workload + this VM via SectionsChanged
-
-            App.Logger.LogInfo($"Generated {sections.Count} test sections successfully", "GenerateRandomSections");
-        }
-        catch (Exception ex)
-        {
-            App.Logger.LogError(ex, "GenerateRandomSections");
-        }
-    }
 #endif
 
     // ── Helpers ────────────────────────────────────────────────────────────────
@@ -1679,7 +1701,7 @@ public partial class SectionListViewModel : ViewModelBase, IDisposable
     /// section and for each nested meeting, assignment and reserve, via
     /// <see cref="PersistedRecordExtensions.WithExtensionDataFrom{T}"/>. The values are immutable
     /// <see cref="System.Text.Json.JsonElement"/> snapshots, so copying the entries is enough.
-    /// Without this, the first Apply by an older client would delete those fields (spec item 3).
+    /// Without this, the first Apply by an older client would delete those fields.
     /// </para>
     /// </summary>
     /// <param name="s">The section to copy.</param>

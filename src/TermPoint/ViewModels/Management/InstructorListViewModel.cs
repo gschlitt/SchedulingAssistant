@@ -8,7 +8,7 @@ using System.Collections.ObjectModel;
 
 namespace TermPoint.ViewModels.Management;
 
-public partial class InstructorListViewModel : ViewModelBase, IDisposable, IDismissableEditor
+public partial class InstructorListViewModel : ViewModelBase, IDisposable, IDismissableEditor, IUnappliedChangesHost
 {
     private readonly IInstructorRepository _repo;
     private readonly ISchedulingEnvironmentRepository _propertyRepo;
@@ -33,7 +33,7 @@ public partial class InstructorListViewModel : ViewModelBase, IDisposable, IDism
 
     /// <summary>
     /// The instructors listed, in list order: filtered by "Show only active", sorted by the chosen sort mode, and
-    /// under a Subjects focus split into the in-focus group followed by the rest (spec item 20, step 6), each group
+    /// under a Subjects focus split into the in-focus group followed by the rest, each group
     /// keeping the sort order. Selection, edit and delete all work on these <see cref="Instructor"/> objects.
     /// </summary>
     [ObservableProperty] private ObservableCollection<Instructor> _instructors = new();
@@ -65,6 +65,9 @@ public partial class InstructorListViewModel : ViewModelBase, IDisposable, IDism
         }
     }
     [ObservableProperty] private InstructorEditViewModel? _editVm;
+
+    /// <inheritdoc/>
+    public IUnappliedChanges? FindUnappliedChanges() => UnappliedChangesFinder.First(EditVm, ReleaseVm, CommitmentsVm);
 
     /// <inheritdoc/>
     public bool DismissActiveEditor()
@@ -451,7 +454,7 @@ public partial class InstructorListViewModel : ViewModelBase, IDisposable, IDism
             Notes = s.Notes,
             IsActive = s.IsActive,
             StaffTypeId = s.StaffTypeId,
-        }.WithExtensionDataFrom(s); // Save writes the whole copy back: keep unknown JSON fields (spec item 3).
+        }.WithExtensionDataFrom(s); // Save writes the whole copy back: keep unknown JSON fields.
         EditVm = new InstructorEditViewModel(copy, isNew: false,
             staffTypes: GetStaffTypes(),
             onSave: i =>

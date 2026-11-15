@@ -42,7 +42,7 @@ public sealed record NewDatabaseResult(NewDatabaseOutcome Outcome, Exception? Er
 ///
 /// <para><b>Why:</b> the shared database D is only ever copied, never opened. Building the schema
 /// directly at D (<c>new DatabaseContext(D)</c>) made SQLite open a file over the share and leave
-/// a WAL-mode header on it until the first save (spec item 4, path 3). Instead the schema and seed
+/// a WAL-mode header on it until the first save. Instead the schema and seed
 /// data are built in a LOCAL temporary file, the file is converted to rollback-journal mode (WAL
 /// must never be active on a network file), and the finished, quiescent file is streamed to the
 /// share with the stall-aware <see cref="NetworkFileOps"/> copy — the same pipeline the save path
@@ -122,7 +122,7 @@ public static class NewDatabaseFile
         using (new DatabaseContext(localPath)) { }
 
         // WAL must never be active on a network file (the shipped file must be a self-contained
-        // single .db). Same normalisation CheckoutService.BackupSqliteDatabase applies to D.
+        // single .db). Same normalisation CheckoutService.SnapshotWorkingCopy applies to D.
         // Pooling=False is essential: a pooled connection would keep the file open after Dispose.
         using (var conn = new SqliteConnection($"Data Source={localPath};Pooling=False"))
         {

@@ -98,13 +98,10 @@ public sealed class GeneratedRunTests
     }
 
     /// <summary>
-    /// Across the known-sequence replays and both strategies at the budget, the generated runs find F2, F6, F7 and F16.
-    /// F7 comes from the search; F6 needs a route longer than the search reaches by default; F2 needs a pause in the
-    /// middle of a save so that another event happens meanwhile (the search has none), so it comes from the replay list
-    /// (<see cref="KnownSequences"/>) and the report says so. F16 needs a demotion that is still running when the user switches
-    /// database: the search can reach the harness-artifact form of it (the lost-lock handler runs inline) and invariant I6 flags
-    /// it; the replay list carries the pause form. The pause sweep finds F2 and F16. F5 is reported. F1, F8 and F12 are fixed
-    /// (2026-10-21) and no longer expected: their old routes are proof tests (<see cref="FixedFindingsProofTests"/>).
+    /// Across the known-sequence replays and both strategies at the budget, the generated runs find F7 (from the search).
+    /// F5 and F6 (1.2.4, item 3.4), F1, F8 and F12 (2026-10-21), F2 (1.2.4, item 3.2)
+    /// and F16, F17 and F23 (1.2.4, the close/switch sequence) are fixed and no longer expected: their old routes are proof tests
+    /// (<see cref="FixedFindingsProofTests"/>).
     /// </summary>
     [HarnessFact]
     public async Task Generated_RediscoversKnownFindings()
@@ -122,9 +119,7 @@ public sealed class GeneratedRunTests
 
         Say("Known findings found by the search: " + (bySearch.Count == 0 ? "none" : string.Join(", ", bySearch.OrderBy(f => f))));
         Say("Known findings found by a replay: " + (byReplay.Count == 0 ? "none" : string.Join(", ", byReplay.OrderBy(f => f))));
-        Say($"F5 reached: {found.Contains("F5")}.");
-
-        foreach (var id in new[] { "F2", "F6", "F7", "F16" })
+        foreach (var id in new[] { "F7" })
             Assert.True(found.Contains(id), $"{id} was not found by a replay, the exhaustive search or the random walks at this budget.");
     }
 
@@ -187,12 +182,13 @@ public sealed class GeneratedRunTests
     }
 
     /// <summary>
-    /// F5 reached by a written-down run: Bob edits and crashes, Alice takes over the stale lock, changes NOTHING and closes
-    /// (her close still rewrites the shared database), and Bob returns and is refused although nobody changed any data.
+    /// The old F5 route, FIXED in 1.2.4 (item 3.4): Bob edits and crashes, Alice takes over the stale lock, changes NOTHING and closes
+    /// (her close used to rewrite the shared database, so Bob was refused although nobody changed any data). Now her no-edit save
+    /// writes nothing, so Bob's restore works: no violation at all, known or new.
     /// The record names only events; every dialog gets its simplest answer (take over, wait, Restore, Save a Copy…).
     /// </summary>
     [HarnessFact]
-    public async Task Replay_OfANoEditSession_IsClassifiedAsF5_NotF7()
+    public async Task Replay_OfANoEditSession_ShowsNoViolation_SinceItNoLongerRewritesD()
     {
         var record = new RunRecord();
         foreach (var key in new[]
@@ -205,9 +201,9 @@ public sealed class GeneratedRunTests
         var result = await RunExecutor.ExecuteAsync(new ReplaySource(record), new RunOptions { Title = "a no-edit session" });
         _output.WriteLine(result.Story);
 
-        Assert.Contains(result.Violations, v => v.FindingId == "F5");
-        Assert.DoesNotContain(result.Violations, v => v.FindingId == "F7");
+        Assert.Empty(result.Violations);
         Assert.Empty(result.NewViolations);
+        Assert.DoesNotContain("Can't Restore", result.Story);
     }
 
     /// <summary>

@@ -5,7 +5,7 @@
 	x:CompileBindings="False">
 
 	<!--
-		The Focus picker (spec item 20): a checklist of subjects, All / None (apply at once and close) and
+		The Focus picker: a checklist of subjects, All / None (apply at once and close) and
 		Apply / Cancel. DataContext = FocusViewModel. Compact, like the rest of the section list. Apply, All
 		and None are disabled while a section editor is open.
 	-->

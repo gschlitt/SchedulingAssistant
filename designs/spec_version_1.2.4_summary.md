@@ -1,0 +1,1229 @@
+# TermPoint 1.2.4: what's on the list
+
+> **Work list closed 2026-11-11 (Greg).** Every item still open is tagged `moved to 1.2.5` and listed in
+> `designs/backlog-1.2.5.md`. What remains for 1.2.4 is shipping it: `HANDOFF.md`, "Ship 1.2.4", and
+> `docs/testing/release-tests-1.2.4.md`. The "Done" counts in the table below are from before the close.
+
+A summary of `designs/spec_version_1.2.4.md` as of 2026-11-01 (statuses updated 2026-11-10). That file stays the record (history, evidence, file and
+line references). This one only says what is to be done. It also picks up the 1.2.4 items that live only in the
+field-test doc (`docs/testing/network-field-tests-1.2.3.md`, "Open issues"), in `HANDOFF.md` and in other design docs.
+
+**How to read it.** Three levels:
+1. **At a glance**: the whole release on one screen.
+2. **The groups**: one line per item.
+3. **Click an item** to open a short description: the problem, the fix direction, what makes it risky, and where the
+   full write-up is.
+
+**Labels on item headings.** First the status:
+`done` ·
+`done · check left` built; an eye check, field check or first run is still to do (the Done note says which) ·
+`partly done` ·
+`not started` ·
+`not started · decide first` needs Greg's call before design ·
+`deferred` not in 1.2.4 ·
+`waiting on Greg` ·
+`later` ·
+`shelved` dropped for now, with Greg's reason in the item.
+Then any of these tags:
+`data risk` work can be lost or stranded today ·
+`save path` changes save, lock or exit code, so a risk review (Alice-and-Bob story, the four rules) comes before the
+design ·
+`version gate` would raise `MinimumVersionToWrite`.
+
+---
+
+## At a glance
+
+About 97 items in nine groups. Most were deferred from 1.2.3 or found while testing it. "Done" counts `done`,
+`done · check left` and `partly done`.
+
+| # | Group | What it covers | Items | Done |
+|---|---|---|---|---|
+| 1 | [Store release](#1.%20Store%20release) | The 1.2.3 update that wouldn't open; a smaller package; test flights | 6 | 4 |
+| 2 | [Features and user-facing gaps](#2.%20Features%20and%20user-facing%20gaps) | Requests from Greg and clients; the licence-expiry warning | 19 | 8 |
+| 3 | [Protecting unsaved work](#3.%20Protecting%20unsaved%20work) | The remaining ways edits can be lost or stranded; the recovery redesign | 13 | 5 |
+| 4 | [Lock, save, open and restore](#4.%20Lock,%20save,%20open%20and%20restore) | Correctness gaps in the persistence paths | 14 | 9 (+1 shelved) |
+| 5 | [Network shares](#5.%20Network%20shares) | What SMB caching, antivirus and unusual storage do to us | 8 | 0 |
+| 6 | [Messages](#6.%20Messages) | Wrong, doubled, hidden or jargon messages | 14 | 3 |
+| 7 | [Field reporting](#7.%20Field%20reporting) | Learning from BugSnag whether a failure ended well | 5 | 3 |
+| 8 | [Testing](#8.%20Testing) | Harness gaps that let field bugs through; cheaper hand tests | 12 | 11 |
+| 9 | [Smaller fixes and housekeeping](#9.%20Smaller%20fixes%20and%20housekeeping) | Bugs, consistency, upstream | 8 | 0 |
+
+**The urgent and high-value items, and where they stand (2026-11-10)**
+- **Section 4, Greg's priority from 2026-11-09:** 4.2, 4.3, 4.4, 4.5, 4.6, 4.7, 4.8 and 4.9 done (4.3's by-hand check passed 2026-11-10; macOS relaunch left); 4.11 shelved. 4.7 D1 closed a
+  rule-3 hole (crash recovery could delete kept changes that antivirus was holding). 4.10 done 2026-11-10; 4.13's remainder
+  accepted for 1.2.4 (2026-11-11). Section 4 is closed.
+- **Store package** (1.2–1.4): done. The shared Windows file and the graphics PDBs are left out (55.5 MB); the flight
+  procedure is written. Left: the first flight with the 1.2.4 submission, and the support case for 1.1 (Greg).
+- **Unapplied editor changes dropped at close or switch** (3.1): done. TermPoint always asks Apply / Discard / Cancel.
+- **Experimenting without saving, and a real Save a Copy command** (2.1): not started. Greg's top request, but too big
+  for 1.2.4; it needs Recovered Versions (3.5) for two of its three designs.
+- **Edits lost during a save; no-edit sessions rewriting the database** (3.2, 3.4): done (`1d13956`, `301252b`).
+  Spin-offs: 3.13 (an edit during Restore from Backup; harness known finding F24) and 6.14 (two messages).
+- **Why saves fail in the field** (7.1, with 7.3 and 7.4): done. Save timings, blocked renames and recovery answers now
+  reach the breadcrumbs and failure reports.
+- **Licence-expiry warning** (2.2): not started. Licensed departments still lose editing with no notice.
+- **The GitHub Tests workflow** (1.5): nothing to fix; it passed on the 1.2.3 push.
+
+**What shapes the rest of the plan**
+- **The version gate.** Everything done so far is `MinimumVersionToWrite` No. 2.8 and 2.9 (each would raise it) are
+  left out of 1.2.4, so 1.2.4 doesn't raise it and in-app Store updates (1.6) aren't needed first.
+- **Risk reviews first.** Done with reviews: per-session temporary files (4.1), the close/switch sequence (3.1, 3.3),
+  test timings (8.7), the harness's hang mode (8.2), the edit counter (3.2) and skipping no-edit saves (3.4). Still to
+  come, each needing one: longer rename retries (5.4), the post-rename check (5.6) and the save-recovery report (7.2).
+- **Two network experiments come first** (5.8). They decide how 5.1, 5.3 and 5.4 are built.
+- **Order constraints.** The recovery redesign (3.5) is too big for now; its messages will replace 1.2.3's interim
+  wording, and 2.1 waits on it. The harness gaps and test timings are in, so the automated two-machine rig (8.10) is
+  no longer blocked.
+- **Also waiting:** 6.12 (a writer whose clock is behind looks inactive), and teaching the harness the ~85 s death of a
+  stalled network call (then known finding F22 retires).
+
+---
+
+## 1. Store release
+
+> [!note]- **1.1 The 1.2.3 Store update wouldn't open until a restart** (a Windows bug): open a support case `waiting on Greg`
+> After the Store installed or updated 1.2.3, clicking TermPoint did nothing until the computer restarted. It happened
+> on both of Greg's computers. TermPoint never started; instead, each click made Windows re-register the package.
+> **Cause:** removing 1.2.2 couldn't delete `Microsoft.DiaSymReader.Native.amd64.dll`. Windows shares that file between
+> packages, and another app (Phone Link) had it loaded. The failed removal left a stale, empty package record in
+> Windows' cache, and only a restart clears it. **To do:** open a Microsoft support case with the evidence (a Process
+> Monitor export on GregDeskTop), and watch for "TermPoint won't open" reports; the answer is to restart. The packaging
+> hasn't changed since 1.2.2, so 1.2.2 may have done the same.
+> *Source: spec, "Release and distribution"; HANDOFF next steps.*
+
+> [!note]- **1.2 Leave that shared debugging DLL out of the package** `done · check left`
+> TermPoint doesn't need the file: it reads Windows debug-symbol files, which TermPoint never uses. Exclude it from the
+> publish output or from `build-msix.ps1`. This helps from 1.2.4 on. The 1.2.3 → 1.2.4 update can still hit the bug
+> once, because the 1.2.3 package contains the file. Check that crash and log stack traces still work. Other shared
+> .NET files could in principle cause the same problem.
+>
+> **Done 2026-11-09 (with 1.4):** `build-msix.ps1` leaves `Microsoft.DiaSymReader.Native.amd64.dll` out of the
+> mapping in both modes and prints each file it leaves out. Check on the sideload that a logged error still has its stack
+> trace (`docs/testing/release-tests-1.2.4.md`, Part 5).
+
+> [!note]- **1.3 Test flights before every Store release** `done · check left`
+> In Partner Center, release each submission first to a flight group that holds only our own accounts. Update a
+> computer that has the previous Store version, click TermPoint, and only then release to everyone. This would have
+> caught 1.1. A flight is also the place to test the Store-only paths (the "Store" install channel, the update link).
+>
+> **Done 2026-11-09 (procedure only):** step-by-step flight procedure in `docs/testing/release-tests-1.2.4.md`, Part 5.
+> Greg sets up the known user group and runs the first flight with the 1.2.4 submission.
+
+> [!note]- **1.4 Remove 105 MB of graphics-library debug files from the Store package** `done`
+> The Store build carries `libSkiaSharp.pdb` (84 MB) and `libHarfBuzzSharp.pdb` (21 MB). Store mode drops only
+> TermPoint's own PDB today. Excluding these two makes the download noticeably smaller.
+>
+> **Done 2026-11-09:** Store mode leaves every `.pdb` out of the mapping. The 1.2.4 Store MSIX is 55.5 MB.
+
+> [!note]- **1.5 The GitHub Tests workflow fails on `master`** `done`
+> It has failed since at least 1.2.2. The local suite and the harness pass. Not investigated.
+>
+> **Done (nothing to change, checked 2026-11-09):** the last `master` run (1.2.3 push, 2026-10-28) passed: 3923
+> passed, 110 skipped. The runs that failed (July to 2026-10-07) failed in `WizardRoutingTests`, which were fixed before
+> 1.2.3. The workflow runs only on `master` and on PRs into it, so 1.2.4 is first checked when it merges.
+
+> [!note]- **1.6 In-app updates for the Store build** `moved to 1.2.5`
+> Use the Store API to check for updates while TermPoint runs, show "An update is available — Update now", and honour
+> Partner Center's mandatory flag (TermPoint ignores it today). This needs a Windows-specific target framework for the
+> MSIX build, with changes to packaging. The payoff is a much shorter window in which old and new versions share a
+> database. It was meant to land before the first release that raises the version gate, which 1.2.4 may be.
+> *Source: 1.2.3 spec, parking lot (P7).*
+
+---
+
+## 2. Features and user-facing gaps
+
+> [!note]- **2.1 Experimenting without saving, plus a Save a Copy… command** (Greg's priority) `moved to 1.2.5`
+> **Problem:** a user can't try something out ("what if this section moved to Tuesday?") because autosave and the exit
+> save always save. There is also no general Save As: "Save a Copy…" exists only inside the save-conflict and
+> can't-restore flows.
+> **Possible designs:**
+> - **A.** "Close without saving" at exit, offered when autosave is off.
+> - **B.** A "Try things out" mode: autosave pauses, a banner says so, and the user chooses Keep or Throw away at the
+>   end.
+> - **C.** A Save a Copy… command in the Files menu, then work on the copy.
+>
+> A and B must move the work to Recovered Versions rather than delete it (rule 3), so they wait for the recovery
+> redesign (3.5). They also share the close sequence with 3.1: one close should ask at most one question. C stands
+> alone.
+> **Pitfalls for C:** don't suggest a folder beside the shared database (colleagues could open the copy by mistake), a
+> synced folder, or Documents/Desktop. "Open the most recent database at startup" would reopen the copy next time.
+> Changes made in a copy can't go back into the real database. The conflict flow's export can be reused.
+> *Source: 1.2.3 spec, item 26.*
+
+> [!note]- **2.2 Licence-expiry warning** `done`
+> **Done (2026-11-11, design `designs/licence-checks-1.2.4.md`):** the notice for the last 30 days, plus the audit fixes:
+> a trial start in the future resets to 30 days (a Debug test date had left 131 days on GregDeskTop), a daily check for
+> sessions left open (notice only, no mid-session read-only), a remembered licence when the share is slow or
+> unreadable, expiry by local date, sturdier `trial.json` handling. MinimumVersionToWrite No. Licensing tests 101
+> passed; full suite 4588 passed, 0 failed.
+>
+> Today a licensed department sees only the footer line "Licensed to … (expires …)". The day after expiry, editing
+> turns read-only behind a banner that can't be dismissed. The check also runs only at startup, so a session left open
+> across the expiry date keeps editing until the next launch. **Fix:** within 30 days of expiry (not for permanent
+> licences), show a dismissable notice: "Your license expires on &lt;date&gt;. Purchase or renew", linking to
+> termpoint.ca/license. The wording should read well at 1 day and at 0 days. Test the 30/31-day boundary and a
+> permanent licence. No data risk.
+> *Source: spec, "Licensing".*
+
+> [!note]- **2.3 Colour by subject** (replaces section-type colours, client request) `done · check left`
+> Give each section type a colour, and colour sections by type in the Section List and the Schedule view. The
+> presentation in each view is still to be designed. Storage is one new field on the section-type record. Set brushes
+> directly on each card, never through per-type style classes (performance rule).
+> *Source: 1.2.3 spec, parking lot (P9).*
+>
+> **Update 2026-11-03:** Greg's request is now **colour by subject**, stored in AppSettings (no version gate). Spec:
+> `designs/subject-colours.md` (spec locked 2026-11-04; five implementation tasks, next task 1). **Replaces** section-type colours (decided 2026-11-03), so this item no longer needs the version gate.
+>
+> **Done 2026-11-04 (tasks 1–4 and Revision 1; `3b5d71e`, `d257914`, `d04cb0b`, `c33861f`):** colours per subject
+> abbreviation in AppSettings, set in the Courses flyout (swatch + chooser, Suggest colours, Clear, display mode Always /
+> Only when more than one subject is shown / Never). Revision 1 (Greg, after seeing tiles): a small outlined rounded
+> square before the section code, not a background chip, on Schedule view tiles (0.9 × tile font) and section cards
+> (11 px). New mid-tone palette; the too-dark note is gone. `MinimumVersionToWrite`: No (nothing reaches the database).
+> Task 5 checks: demo registers the same services (code read) and compiles for the browser; palette spacing passes.
+> **Left:** Greg's by-eye pass on real data (the list in the spec's task 4 and Revision 1).
+> **Palette kept as is (Greg, 2026-11-04):** palette blue #2F6FC4 and green #3A9A3A nearly match the blue and green
+> flags (OKLab 0.027 and 0.037), but marker and flag differ in shape and place; the suggester's minimum distance stays
+> 0.04 (closest palette pair 0.092).
+
+> [!note]- **2.4 Hide sections that meet for only part of the semester** `moved to 1.2.5`
+> Sections that meet for, say, the first three weeks clutter the grid. Wanted: a way to filter them out, or to suppress
+> chosen sections from the grid. Not designed yet.
+
+> [!note]- **2.5 Shorten long instructor lists on Schedule view tiles** `done`
+> **Problem:** long instructor lists make the Schedule view very wide. Greg's screenshot (2026-11-04) shows Monday alone
+> filling the screen. Within a group of overlapping tiles, each side-by-side column is as wide as its widest entry
+> (`ScheduleGridView.axaml.cs`, Phase 1.5). So one entry like "MECH221 T1B GH JC2 LD FM2 AD2" widens the whole column
+> for the whole group, not just its own tile.
+>
+> **Design (option 1, chosen 2026-11-04):** show the first instructors' initials plus a count of the rest, e.g.
+> "MECH221 T1B GH +4". A count, not "…", because it says how many are hidden. Hovering a shortened entry shows the
+> full instructor names in the same tooltip style meeting tiles use. Entries that aren't shortened get no tooltip
+> (section tiles have none today).
+> - **Reuse:** meeting tiles already do this (first 5 initials + "+N", names on hover) in
+>   `ScheduleGridViewModel.cs` (meeting block build). Move it into one shared helper with the limit as a parameter, and
+>   use it for both. Meetings keep their limit of 5.
+> - **Width measurement** must measure the shortened label, so the column actually narrows.
+> - **Cost:** a tooltip is a single property set on the entry row that's already drawn; Avalonia builds the popup only on
+>   hover. Set it directly, not through a style class (performance rule).
+> - **Section List cards are unchanged:** they wrap names onto more lines and are a separate concern.
+> - **No data risk:** display only; nothing reaches the database. `MinimumVersionToWrite`: No.
+>
+> **Decided (Greg, 2026-11-04):**
+> - **D1.** There is no lead instructor; the first shown is simply the first in the section's stored order.
+> - **D2.** One instructor's initials before "+N": "GH +4", and two instructors become "PO +1".
+>
+> **Done 2026-11-04:** shared helper `ScheduleGridViewModel.BuildInstructorText` (limits
+> `SectionInitialsShown` = 1, `MeetingInitialsShown` = 5) used by section and meeting tiles; full names ride on
+> `SectionMeetingBlock`/`TileEntry.InstructorNames` only when shortened, and the view sets a per-line tooltip from
+> them. Column widths measure the shortened text. Tests in `GridPipelineTests`; full suite green apart from the
+> `SubjectPaletteTests` repo-root lookup, which fails only when built to a temp output folder.
+> Greg checked it by eye in the app on 2026-11-04 (Monday width, hover on a shortened line, meetings still showing 5).
+>
+> **Later, only if Monday is still too wide after option 1:**
+> - **Option 2:** in a tall single-entry tile whose time-based height already fits a second line, put the initials on
+>   line 2 at no vertical cost. Bends the one-line rule only where the space is already empty. Medium complexity.
+> - **Option 3:** draw initials one font step smaller than the course and section code (an app.axaml resource). Cheap;
+>   about 10–15% narrower. Could ship alongside option 1.
+>
+> **Rejected:** vertical text (needs a rotation wrapper per entry, doesn't work with stacked entries, hard to read);
+> dropping the subject prefix when the colour marker shows the subject (colours aren't unique enough, and screenshots or
+> printouts would lose the subject); re-packing the side-by-side columns (what's left of the width comes from genuinely
+> different time spans).
+
+> [!note]- **2.6 Instructor names don't wrap properly in the Workload view** `moved to 1.2.5`
+> Not investigated.
+
+> [!note]- **2.7 Workload view: show out-of-scope instructors who teach loaded sections** `moved to 1.2.5`
+> With only some subjects loaded, an instructor outside that scope who teaches a loaded section should still appear in
+> the Workload view. Not investigated.
+
+> [!note]- **2.8 "Subjects taught" on instructors** (follow-up to Load by subject) `moved to 1.2.5` `version gate`
+> Add an explicit "Subjects taught" field on the instructor for Load by subject's focus. The derived rule stays as the
+> fallback for instructors with nothing set. It was held back from 1.2.3 because a 1.2.2 client would wipe the field.
+> *Source: `designs/load-by-subject.md`, "Later release (1.2.4)".*
+
+> [!note]- **2.9 Access watches: the same all/any tag choice the grid filter got** `moved to 1.2.5` `version gate`
+> 1.2.3 gave the grid's Tags filter a "match all / match any" choice; program watches should get the same. Watches are
+> saved in the database, and older versions would read an "any" watch as "all", so the version-gate answer is probably
+> Yes. The two rules live today in `ProgramConflictService` and `FilterSnapshot`.
+> *Source: 1.2.3 spec, item 31.*
+
+> [!note]- **2.10 A meeting's room type should show the chosen room's type** `moved to 1.2.5`
+> Today a meeting's room type is the type it *needs*. It starts at "(none)", picking a room never fills it in, and a
+> type given to a room later never reaches its meetings. Users find this odd. **Fix direction:** when a meeting has a
+> room, show that room's type, read directly from the room. The stored value matters only for meetings with no room,
+> and those are the only ones the Room Browser uses it for. **Decide:** setting the type box narrows the room dropdown
+> (after picking a lab, only labs are listed). Either accept that, or show the room's type as a separate read-only
+> label. If the editor starts *storing* the type, ask the version-gate question (probably No).
+
+> [!note]- **2.11 Copy Semester doesn't carry meeting room types** `moved to 1.2.5`
+> Meetings are copied without their room type, even when meeting times and room assignments are included, so a
+> "Remote" meeting arrives as an ordinary one. Nothing is lost, because the source semester is untouched. **Decide:**
+> should room type follow the "meeting times" option or the "room assignments" option? Once 2.10 is in, this matters
+> less for meetings that have a room.
+
+> [!note]- **2.12 Sections should show credits** `moved to 1.2.5`
+> Sections should show the credits available. Should really attach credit to a course, then propagate to sections, with an over-ride in section editor.
+
+> [!note]- **2.13 Collapse days in the Schedule view** (Greg's idea, 2026-11-04) `done · check left`
+> **Done (2026-11-05), all six tasks in `designs/collapse-days.md`.** Click a day's name to fold it into a strip
+> drawn as a folded page (letter, section count, bands where sections meet, bars for meetings and commitments); click
+> the strip to open it; right-click for "Show only", block patterns and "Show all days". A selection, a Room Browser
+> slot or an Access conflict behind a fold shows a bar and flashes once. The PNG title names the open days. Tiles are
+> narrower too (task 1: about 100–130 px back on a busy week). Nothing stored; `MinimumVersionToWrite`: No. Left:
+> Greg's eye pass in the desktop app, macOS on the next signed build, and the small points in the spec's task 4–5
+> Outcome notes (faint meeting bar first). That file supersedes the design direction below.
+>
+> **Problem:** a busy week doesn't fit on one monitor. In real UBC data (Winter Term 1), 400-level CIVL + MECH needs
+> 2,642 px and 300-level CIVL + ELEC + MECH needs 2,961 px; a monitor's grid area is about 1,500 px. With time running
+> down the page and readable labels, a day holds about two side-by-side tiles, and real slices need three or more at
+> busy times. Ways of narrowing the tiles themselves were tried and set aside (see "Decided against").
+>
+> **Idea:** let the user collapse days that can't affect the question. Sections that meet more than once keep to MWF or
+> TR (163 of 199 in the same data; another 310 meet on one day), so someone placing an MWF section collapses T and R.
+> Two days fit 1,500 px for both slices above (about 1,210–1,260 px). MWF needs about 1,700–1,800 px; the padding
+> change below brings it close.
+>
+> **Design direction:**
+> - M T W R F toggles in the grid toolbar, with MWF, TR and All shortcuts. Stored in AppSettings: display only, no
+>   data risk, no version gate.
+> - A collapsed day stays as a narrow strip with its letter, and clicking it reopens the day, so the view never looks
+>   complete when it isn't.
+> - The list of days shown is built in one place (`ScheduleGridViewModel`, where it picks the day numbers after the
+>   grid's start and end rows).
+> - **Trap:** the view works out a tile's day from its column position (`clickDay = (d / semCount) + 1` in
+>   `ScheduleGridView.axaml.cs`), which assumes Monday is first and no day is skipped. With a day hidden, clicks, the
+>   right-click menu and program-conflict marks would point at the wrong day. Each column must carry its real day
+>   number; check the Room Browser's slot tiles and the conflict lines for the same assumption.
+> - **Less padding (do with this item):** each tile's width allowance (28 px) assumes 3 px multi-semester borders and
+>   includes an 8 px safety margin. With one semester shown, about 10 px per side-by-side column could come back,
+>   roughly 100–150 px on a busy week.
+> - **Open:** should printing and export follow the collapsed days? Does Saturday (when turned on) get a toggle too?
+> - **Later:** the Slot Browser could collapse the grid to the days of the pattern it's searching.
+>
+> *Mocks built from the real data (local only, in the ignored `tmp/` folder on GregDesktop):*
+> `tmp/monday_tile_layouts.html`, `tmp/week_fit_mock.html`, `tmp/week_more_mock.html`.
+
+> [!note]- **2.14 Show the chosen subjects in the Schedule View's title** (Greg, 2026-11-04) `done`
+> When subjects are chosen (the subject focus from Load by subject), only the app's top menu bar says so, where it's
+> easy to miss. With the Schedule View detached into its own window it can't be seen at all, so the grid looks like
+> the whole timetable when it isn't. **Fix:** show the chosen subjects in the Schedule View's title, each with its
+> colour marker when colour by subject is on (for example "Schedule View · ■ CIVL ■ MECH"). The title is a fixed
+> "Schedule View" today (the panel header in `MainView.axaml`); the detached window needs the same text. Keep it short
+> when many subjects are chosen (the first few, then "+N"). Display only: no data risk, no version gate.
+>
+> **Scheme (2026-11-05):**
+> - **Already there:** the header is a `WrapPanel` of statements (`MainView.axaml`, Schedule View panel) and the
+>   detached window builds a copy in `CreateScheduleGridHeaderContext` (`MainWindow.axaml.cs`). A focus statement
+>   (`FocusIndicator`, "Focus: BIOL, CHEM" + Show all) sat in both and was commented out on 2026-10-23 when subjects
+>   moved to the top bar. This item brings it back with markers and a cap.
+> - **Chips, not a string:** each subject is a chip (colour marker + short name) in an `ItemsControl` with a
+>   `WrapPanel` panel, so lines break between chips, never inside one. Colours off: the markers collapse.
+>   Example: `Science · Fall 2026 · 212 sections │ Subjects: ■CIVL ■ECON ■MATH ■MECH ■PHYS ■STAT +9 · Show all │ Filtered by: …`
+> - **Cap by count:** the first 6 subjects (alphabetical), then a "+N" chip whose tooltip lists them all (reuse
+>   `FocusVm.SubjectsToolTip`). One over the cap shows them all (a "+1" chip costs as much as the subject it hides).
+>   Worst case about one header line, two in a narrow detached window. Not a width-based cap: that needs a custom
+>   panel re-measuring on every resize, and the count jumps as the splitter moves.
+> - **Wrapping:** the whole statement ("Subjects:", chips, Show all) is one child of the header `WrapPanel`: it stays
+>   after the stats if it fits, otherwise starts its own line and wraps inside itself, like "Filtered by:" today.
+> - **Long names:** a subject with no abbreviation falls back to its full name; each chip label gets a max width (new
+>   `App.axaml` resource) with ellipsis and the full name in the tooltip.
+> - **Filtered down later:** the statement describes the focus only; "Filtered by:" right after it says what the
+>   filter removed. No merging the two, no dimming subjects with nothing on the grid.
+> - **Build it once:** change `FocusIndicator` to chips + cap and use it in both the inline and detached headers
+>   (restoring the commented-out lines). The Section View header can reuse it later.
+> - **Detached window title bar:** plain text from the same VM, e.g. "Schedule View — CIVL, ECON, MATH +12".
+> - **States:** focus All hides the statement (as now); None shows "Subjects: none".
+> - **Test:** one VM test pins the cap: first 6 + "+N", 7 shows all 7, tooltip lists everyone, None and All.
+>   Edits `MainView.axaml` and `FocusIndicator.axaml` (close those tabs in VS first).
+>
+> **Coded (2026-11-05, `8c1ee7e`):** `FocusViewModel` builds `IndicatorChips` / `IndicatorMoreCount` /
+> `IndicatorFallbackText` / `ShortSubjectsText` (cap in `CapChips`, `IndicatorMaxChips = 6`) and rebuilds on
+> `SubjectColorPresenter.Changed`; markers come from the new `SubjectColorPresenter.ColorForSubject`, so the header
+> agrees with the tiles. `FocusIndicator` docks "Subjects:" left and wraps the chips beside it (hanging indent, so the
+> label is never orphaned at a line end). Restored in the inline header and the detached header; the detached window's
+> title follows `ShortSubjectsText`. Sizes in `App.axaml` (`FocusChipMarkerSize`, `FocusChipSpacing`,
+> `FocusChipLineSpacing`, `FocusChipLabelMaxWidth`). Plain text now says "Subjects: …" / "Subjects: none" (was
+> "Focus: …"). Tests: 7 new in `FocusViewModelTests`; full suite green. Left: eye check in the app (colours on and
+> off, 7 vs 9+ subjects, a narrow detached window, the title bar).
+>
+> **Revision 1 (Greg, 2026-11-05):** the "45 sections · 83 meetings shown" stats line is gone from both headers (it
+> helped nobody and took space); `ScheduleGridViewModel.StatsLine` removed. "Subjects:" (with Show all) and "Filtered
+> by:" now use the standard text colour (`TextPrimary`): their own colours (teal, dark blue) appeared nowhere else and
+> only raised the question of what they meant. Overlays (purple) and shared schedules (orange) keep theirs.
+> `FocusBadgeText`, `FocusLinkText`, `FocusColor` and `FilterBadgeText` retired from `AppColors.axaml`
+> (`FilterColor` stays for the filter bar's headings).
+>
+> **Revision 2 (Greg, 2026-11-05):** the subjects statement uses the normal weight of the academic unit and semester
+> (only the "Schedule View" title stays bold). The "Show all" link is gone (no real need; the top bar's Subjects
+> picker changes the focus), and with it `FocusViewModel.ShowAllCommand` and its test.
+
+>[!note]- **2.15 Mute instructor conflicts, mute room conflicts** `not started` `version gate`
+> **Moved to the next release (Greg, 2026-11-06)** because it raises `MinimumVersionToWrite`. Designed: right-click a
+> red conflict notice to mute it (hover says so); it becomes a light *Conflicts muted* line on both cards; right-click
+> that to unmute. Stored on the section as pairs (kind, other section, instructor or room), so deleted or changed
+> sections need no clean-up; a copied section clears its mutes. Full design: `designs/conflict-muting.md`, Part B.
+
+>[!note]- **2.19 Show instructor and room conflicts in the section editor before saving** `done`
+> Today conflicts appear only on the card after saving. A live, non-blocking notice in the editor (like the capacity
+> warning) re-checks the semester with the unsaved edits whenever an instructor or a meeting's time or room changes.
+> No dialog on save. No data change, no version gate. Design: `designs/conflict-muting.md`, Part A.
+> **Done (2026-11-06):** `DraftConflictCheck` (runs the card detectors on the unsaved draft); the editor re-checks on
+> instructor ticks and meeting changes; `Save()` and the check share one builder for schedule and instructors. **No
+> Dismiss button** (Greg): it would look like muting, which doesn't exist yet; the card keeps its flag after saving.
+> Tests: `DraftConflictCheckTests`. Greg's eye check passed. Note: the editor also checks in multi-semester mode,
+> where the cards show no conflicts.
+
+>[!note]- **2.16 Events editor meeting editor is completely messed up.** `done · check left`
+> **Cause (2026-11-05):** in the meeting editor (`MeetingListView.axaml`), the Schedule column headings and each
+> meeting-time row were separate grids with their own `Auto` columns, so each sized itself to its own contents and the
+> headings drifted away from the choosers under them. **Fixed (`ad04fd0`):** headings and rows now share column
+> widths (`SharedSizeGroup` inside a `Grid.IsSharedSizeScope` panel), as the section editor already does; Day, Start,
+> Length and Freq got minimum widths in place of the old fixed 42 px Start/Length columns. Layout only: no data risk,
+> no version gate. Left: eye check in the app, including a slot with Custom frequency.
+
+>[!note]- **2.17 Rooms and possibly other Scheduling Environment fields don't show up in the Filter Bar until after a semester change** `done · check left`
+> **Cause (2026-11-05):** the filter lists (and the names on tiles) are rebuilt only when the grid reloads, and the
+> Courses, Instructors and Scheduling Environment flyouts save straight to the repositories without telling the grid.
+> So added, renamed or deleted rooms, campuses, subjects, courses, instructors, section types, tags and meeting types
+> stayed stale until something else reloaded it (a semester change). **Fixed:** `MainWindowViewModel.OnFlyoutPageChanged`
+> reloads the grid when one of those three flyouts closes (`EditsGridLookups`). Read-only reload; ticks survive (the
+> rebuild matches by ID). No data risk, no version gate. Left: eye check in the app.
+
+>[!note]- **2.18 Is the Room Browser functional? Consider CIVL 215 T1B in Winter Term 1 UBC** `done · check left`
+> **Cause (2026-11-05):** the Room Browser's campus filter (`RoomAvailabilityService.ApplyFilter`) kept only rooms
+> whose campus matched the section's, so a room with no campus was dropped. In UBC1-TT, T1B is on Vancouver and the
+> only room, A121, had no campus, so every search said "No solutions", with the meeting's own time or with an open
+> start. The editor's room picker and the import warnings already treat a room with no campus as a match. **Fixed
+> (`fa0fba0`):** rooms with no campus are kept; rooms on another campus are still dropped. Also: with only Remote
+> meetings the browser said "Every meeting must have a duration…"; both editors now say Remote meetings don't need a
+> room. Test: `ApplyFilter_ByCampus_KeepsRoomsWithNoCampus`. Suggestions only; no data risk, no version gate. Left:
+> eye check in the app with A121's campus blank.
+
+---
+---
+
+## 3. Protecting unsaved work
+
+Everything in this group is checked against rule 3 (never delete the only copy of someone's unsaved work).
+
+> [!note]- **3.1 Unapplied editor changes are dropped at close or database switch** `done` `data risk`
+> **Problem:** edits in an open inline editor exist only in memory until Apply. Closing the window or switching
+> database throws them away silently. The same happens when TermPoint goes read-only after losing the lock: the reload
+> closes the section editor and drops its change without a word. Nothing could have been saved by then, but the user
+> isn't told. The persistence review rates this the likeliest remaining loss.
+> **Fix direction:** before a close or a switch, detect an editor with unapplied changes and ask Apply / Discard /
+> Cancel. Apply runs the editor's normal validation, and the window stays open if validation fails. This needs a
+> common "has unapplied changes" contract across the editors, so inventory them first.
+> **Decide:** always ask, or apply silently when the changes are valid? Fit this into one close sequence with 2.1.
+> Surviving a hang or crash is out of scope (that would need saved drafts).
+> *Source: 1.2.3 spec, item 14; field-test open issue A3.*
+>
+> **Done (8 Nov 2026, `454a38c`; design `designs/close-switch-sequence.md`; full suite with harness 4501 passed, 0 failed; MinimumVersionToWrite No):** Greg chose *always ask*. Before a close or switch, a writer with an editor holding unapplied changes is asked once: "Unapplied Changes" (Apply / Discard / Cancel). Apply runs the editor's own Save; a refusal stops the close. All 15 editors covered (snapshot compare). The lost-lock banner gains "Changes you hadn't applied in the open editor couldn't be saved." By-hand check that an unchanged editor never triggers the question (Avalonia re-fires combo setters): passed, Greg, 9 Nov 2026.
+
+> [!note]- **3.2 An edit made during a save can be lost** `done` `data risk` `save path`
+> An edit made while a save is running isn't covered by that save. The save clears the "unsaved" marker anyway, so if
+> the computer crashes before the next save, or the exit save finishes, the edit is deleted. The harness reproduces
+> this in three steps. 1.2.3 added the exit guard (repeated X, "Saving and closing…") but not the fix. **Fix
+> direction:** an edit counter, so that a save clears the marker only if no edit arrived while it ran.
+> **Partly fixed (2 Nov 2026) by 3.12:** when the edit lands after the save's marker delete (it re-writes the marker),
+> the close or switch no longer deletes it; it is offered back at the next open. The crash route remains.
+> *Source: spec, data-loss table (F2 / item 15).*
+>
+> **Done (9 Nov 2026, `1d13956`; design `designs/mid-save-edits-and-no-edit-saves.md`; full suite with harness 4537 passed, 0 failed, 2 skipped; MinimumVersionToWrite No):** a save reads an edit count and SQLite's `data_version` before its snapshot and again at the end. If either moved, the marker is kept, rewritten with the new hash. This covers the crash, the lost-lock and the failed-exit routes. The exit and Restore from Backup save once more before going on. If the marker is still kept, the restore isn't started and Bob sees the new message "You made a change while TermPoint was saving before the restore…" (wording approved by Greg). `BackupSqliteDatabase` is renamed `SnapshotWorkingCopy`. F2 is retired to `FixedFindingsProofTests`. Spin-offs: 3.13 and 6.14.
+
+> [!note]- **3.3 A demotion still running during a database switch lands on the new session** `done` `data risk` `save path`
+> Losing the lock starts a demotion that copies a read-only snapshot. If Bob switches database during that copy, the
+> demotion finishes against the *new* database. The new session then holds that database's lock but is read-only as
+> far as the save code knows. Edits made there may not be saved at close, and they have no marker. A unit test (skipped
+> until fixed) and the harness both reproduce it. **Fix direction:** tie each demotion to the session it started for,
+> and check that before every state change. Refuse a switch while a demotion is running.
+> *Source: spec, data-loss table (F16).*
+>
+> **Done (8 Nov 2026, `454a38c`; design `designs/close-switch-sequence.md`; full suite with harness 4501 passed, 0 failed; MinimumVersionToWrite No):** a session id in CheckoutService; the release waits (60 s) for a running demotion; a demotion or session-bound post stops or is dropped when its session ended. F16 is a proof test.
+
+> [!note]- **3.4 A session with no edits still rewrites the shared database** `done` `data risk` `save path`
+> **Problem:** when the shared database was last written by something other than TermPoint's save (a new database, a
+> restored backup, 1.2.2 opening it directly, another SQLite version), a session's first save rewrites it even with no
+> edits, because five header fields differ. Anyone's changes kept from before then can't be restored. There is a
+> second route: after "Can't Restore" falls back to a normal open, the "save the restored changes at once" step still
+> runs, saving a session that restored nothing.
+> **Fix direction:** skip the upload when the save's snapshot matches the shared database with those header fields
+> ignored, plus a guard for the case with no marker. Run the post-restore save only when the open really took on the
+> kept changes. This was designed, probed and risk-reviewed for 1.2.3, then moved out as a risky save-code change.
+> *Source: 1.2.3 spec, section 29; field-test open issue A9.*
+>
+> **Done (9 Nov 2026, `301252b`; design `designs/mid-save-edits-and-no-edit-saves.md`; full suite with harness 4571 passed, 0 failed, 2 skipped; MinimumVersionToWrite No):** a save skips the upload when it has no marker and its snapshot holds the same data as D was last seen holding (`SqliteContentHash`: SHA-256 with the five data-free header fields masked). It also skips nothing when the starting point is unknown (recovery, an unconfirmed rename). A skipped save changes no state. F5 and F6 are retired to `FixedFindingsProofTests`. The second route was already fixed as F23. The harness found a crash variant of 3.13 that F5 had hidden; it is known finding F24 until 3.13 is built. The upgrade checklist in the local `CLAUDE.md` gains the "open, no edit, save, compare" check.
+
+> [!note]- **3.5 The recovery redesign: checks decide, Recovered Versions, no questions** `moved to 1.2.5` `save path`
+> **Problem:** kept changes (left by a crash, a lost lock or a failed exit save) sit in the one place a normal open
+> needs. So the user has to be asked about them first, some answers (or the X) delete them, and "Restore?" is asked
+> before anything checks whether a restore is still possible. 1.2.3 ships interim honest wording.
+> **The design (agreed 2026-10-18):** checks decide, not the user. At the next open:
+> - **Database unchanged:** add the changes and save.
+> - **Database changed:** move the changes into a TermPoint-managed Recovered Versions folder (a checked copy first,
+>   then delete the original), then open normally.
+> - **Can't tell:** stop; nothing moves.
+>
+> A save refused because someone else changed the database shows a banner with a Reopen button. Closing or switching
+> moves the work without asking. A Recovered Versions list offers Open (read-only), Save a Copy… and Delete. The new
+> messages say plainly that recovered work is "for reference".
+> **Four steps:** the store (no UI); the open decides by itself; the conflict banner; the list and the new messages.
+> Each step removes the code it replaces.
+> *Source: `designs/data-persistence-review-2026-10.md`, section 8.*
+
+> [!note]- **3.6 Kept work lives in roaming AppData** `moved to 1.2.5`
+> Roaming AppData can roam back an older copy, or sit on a server under folder redirection. Move kept work to local
+> AppData, with a migration that still finds files kept by 1.2.2 and 1.2.3. Recovered Versions is meant to live there
+> too.
+
+> [!note]- **3.7 Read-only mode never mentions changes waiting on this computer** `moved to 1.2.5`
+> A user who opens read-only isn't told that unsaved changes from earlier are waiting on this computer. Add a message;
+> the redesign's draft wording covers it.
+
+> [!note]- **3.8 Changes kept on another computer are invisible** `moved to 1.2.5`
+> Changes kept on Bob's laptop can't be seen when he opens the database from his desktop. Hard to fix; probably a
+> message only.
+
+> [!note]- **3.9 macOS: deleting the local copy mid-session strands the edits in memory** (future) `moved to 1.2.5` `data risk`
+> On macOS an open file can be deleted. If the local copy is deleted during a session, saves fail safely, but the edits
+> exist only in the deleted file that the connection still holds, so they are lost at close. Autosave meanwhile keeps
+> promising a retry. Possible design: snapshot through the live connection into a recovery file, and tell the user.
+
+> [!note]- **3.10 A demotion could leave our own lock file behind** (latent) `moved to 1.2.5`
+> Unreachable today, because a demotion only ever follows a lost lock. If a future change demotes while still holding
+> the lock, the background delete of the lock file and reader mode's read of it can collide, leaving our own lock file
+> on the share. If that happens: open the read with delete sharing, or wait for the release to finish first.
+
+> [!note]- **3.11 A fresh assessment once the redesign is in** `moved to 1.2.5`
+> Redo the persistence review's situation-by-situation walkthrough against the new behaviour, then its inventory of
+> the other ways data can be lost (backups, imports, Copy and Empty Semester).
+
+> [!note]- **3.12 A failed demotion, then Close, deletes the unsaved edit** `done` `data loss` `save path`
+> Alice has an unsaved edit when her computer wakes to find Bob took over. The switch to read-only keeps her edit, but its
+> copy of the database for reading fails (another program has it open, or the network drops at that moment). She stays
+> on her own working file, read-only. At Close the skipped final save reports Success, so the teardown deletes the file
+> despite its unsaved-changes marker. No message. **Fix:** the working-copy delete itself refuses a file that still has
+> unsaved changes (rule 3 at the data layer); the end of a restore deletes it through the discard path.
+> **Done (2 Nov 2026):** with a regression test; it also closes the close-time route of 3.2.
+> *Source: harness, another program holding a file (8.3), known finding F21.*
+
+> [!note]- **3.13 An edit made during Restore from Backup is deleted** `moved to 1.2.5` `data risk`
+> Bob clicks Restore… in Save and Backup. TermPoint saves his work, then copies the chosen backup onto the shared
+> database. The wait dialog blocks only the main window, so during that copy Bob can still apply an edit in a detached
+> panel or a sticky note. When the restore ends, the session's local copy is deleted along with its marker
+> (`EndSessionAfterRestoreAsync` → `DiscardCrash`), and the edit with it. He isn't told. This happens in today's code,
+> not only with 3.2. **Crash variant** (the harness pause sweep, 2026-11-09): if TermPoint crashes after the restore but
+> before that clean-up, the edit survives. At the next open Bob is asked "Restore Unsaved Changes?", picks Restore, and is
+> told "Can't Restore" because D is now the backup. The edit survives only through Save a Copy, and he was asked a
+> question only to be refused (rule 4). It's a harness known finding until this item is fixed. **Fix direction:** the session refuses writes from the start of the save-first until the restore
+> ends (rule 3 at the data layer, not the dialog), with plain wording for a refused edit (Greg approves). 3.2's backstop
+> (the restore refuses while a marker exists) narrows this but can't close it.
+> *Source: audit for 3.2 (2026-11-09), `designs/mid-save-edits-and-no-edit-saves.md` step 7.*
+
+---
+
+## 4. Lock, save, open and restore
+
+> [!note]- **4.1 Every writer uses the same temporary file name** `done` `save path`
+> **Seen in the field:** a writer frozen mid-save (a Surface in Modern Standby can do this) held the temporary upload
+> file open. For 6 minutes the new writer's saves all failed, with a message blaming "another program". Nothing was
+> lost.
+> **Worse case, found in 1.2.3:** Bob's laptop sleeps during his upload, and Alice takes over and starts her own upload
+> under the same name. When Bob wakes, his failed upload deletes the temporary file, which may be Alice's. That is a
+> write to the share without the lock.
+> **Fix direction:** give each session its own temporary name. That removes every such delete at once.
+>
+> **Done (8 Nov 2026, `30fcb84`):** design `designs/own-temp-file-names.md`. Every save attempt, restore and new-file
+> placement uploads to `<db>.<8 hex>.tmp` (`ShareTempFile`); every failure path, including a final-check refusal, deletes
+> only its own file; the checkout sweep (lock held) removes the database's own leftovers incl. 1.2.3's `<db>.tmp`,
+> strictly matched. Heartbeat `.lock.tmp` unchanged. Two harness proofs (`OwnTempFileProofTests`): a frozen writer's held
+> file no longer blocks the next writer; a lock-lost writer's late save can't touch the new holder's upload. Full suite
+> with harness 4460 passed, 0 failed. MinimumVersionToWrite: **No**. Left: the now-unread `LockConfirmed` return of
+> `CheckLockAndSourceAsync` (tidy-up).
+> *Source: spec, follow-ups table (F12); field-test open issue A11; 1.2.3 spec item 32, "Not fixed now".*
+
+> [!note]- **4.2 An exit save that loses the lock starts a demotion while the window closes** `done` `save path`
+> When the exit save is refused because the lock was lost, the in-place demotion still starts, and its last steps can
+> run after services are disposed. The log gets an ERROR ("Cannot access a disposed object"), BugSnag probably gets a
+> report, and in a rare ordering "Changes Not Saved" isn't shown. No data risk: the local copy and its marker are kept,
+> and Restore is offered next time. Seen in the field. **Fix direction:** skip the demotion while closing, or read the
+> marker state before the save.
+>
+> **Done (9 Nov 2026; fixed by F17/F16 in `454a38c`, pinned now):** from the start of `ReleaseAsync` the session is
+> ending, so an exit save that finds the lock taken over raises no lock loss (`HandleLockLossAsync`); a demotion
+> already running is waited for before the save. Bob sees only "Changes Not Saved"; D' and its marker are kept.
+> Test `ExitSave_FindsTheLockTakenOver_StartsNoDemotion_AndKeepsTheChanges`. MinimumVersionToWrite No.
+
+> [!note]- **4.3 Restoring a backup leaves the old process running; the relaunch should reopen the restored database** `done`
+> After a Save & Backup restore, the old TermPoint process stays alive with no windows until sign-out (about 265 MB).
+> It may hold up a Store update, and it reports an unclean exit later. No data risk: the lock, guard and connection are
+> released first. The database chooser has been ruled out. The suspects are the relaunch (which starts just before
+> the main window closes) and the stale-session teardown. Separately, the relaunched copy shows the chooser instead of
+> reopening the restored database. **Fix direction:** once the main window has closed, force a shutdown (guarded
+> against "already shutting down"), and pass the restored path to the relaunched copy.
+> *Source: spec, "Item 5 (M11)"; the field-test doc has the stack and heap evidence.*
+>
+> **Done (10 Nov 2026; design `designs/restore-relaunch-1.2.4.md`; Greg chose the backstop for every close;
+> MinimumVersionToWrite No; no new wording).** Cause not pinned down (relaunch, stale-session teardown, or the
+> code-driven close right after a dialog); the fix works for any of them and its log lines will name it:
+> (A) `MainWindow.OnClosed` posts a shutdown request at background priority (never runs on a normal exit; logs
+> "The main window closed but the main loop is still running…" when it does); (B) `ShutdownBackstop`, armed at
+> "Managed teardown complete" on every close: if `Main` hasn't returned 15 s later it waits up to 5 s for the lock
+> file's background delete, ends the run marker, logs, reports `HandledEvent.ShutdownBackstopFired` and exits 0;
+> (C) the relaunch passes `--reopen-after-restore <path>` (`RestartArguments`); when it names the saved most-recent
+> database the start takes the auto-open branch once. macOS relaunch is now `open -n … --args` (check on the next
+> signed Mac build). Tests: `ShutdownBackstopTests`, `SessionLifecycleLeaveTests` (relaunch path, backstop armed last).
+> **By-hand check passed (Greg, 10 Nov 2026, fresh 1.2.4.0 sideload on GregDeskTop, local database):** 3 restores,
+> each time the old process ended (one TermPoint left), the relaunch reopened the restored database (no chooser) and
+> the edit made after the backup was gone. Every time A's line appeared ("…asking for the shutdown again") and the loop
+> ended ~10 ms later; B never fired. So the close after a restore reliably never starts Avalonia's shutdown, and A
+> cures it. **Left:** the macOS `open -n` relaunch on the next signed Mac build.
+
+> [!note]- **4.4 Read-only connections: a second, database-level guard** `done`
+> 1.2.3 refuses writes in read-only sessions in TermPoint's code. Also turn on SQLite's own read-only switch
+> (`query_only`) for read-only connections. It must be applied after the open's schema setup, migration and seeding.
+>
+> **Done (10 Nov 2026; design `designs/read-only-guard-1.2.4.md`; MinimumVersionToWrite No; no new wording):**
+> `DatabaseContext.ApplyReadOnly` turns on `PRAGMA query_only` for a read-only session, last in the constructor and
+> in `ReinitializeConnection`, so a write that ever skips `MarkDirty()` fails at SQLite (SQLITE_READONLY) instead of
+> landing silently in the throw-away copy. Not in `MarkReadOnly()` (it can run off the UI thread; `MarkDirty()` covers
+> the seconds until the demotion reopens). `ConfigureConnection` turns the switch off at the start of every open, so a
+> pooled connection a reader left with it on can't affect a writer or the open's setup. Survey: every repository write
+> already calls `MarkDirty()`; the other writes are the open's setup or use their own connections. Found by the full
+> suite: `BeginTransaction()` is `BEGIN IMMEDIATE`, which `query_only` refuses, so the five write transactions now
+> start through `IDatabaseContext.BeginWriteTransaction()` (deferred `BEGIN` for a reader, unchanged for a writer); a
+> reader sees the same plain refusal as before. Tests in `ReadOnlySessionTests` (raw write refused / allowed, reopen
+> both ways, pooled connection) plus the import tests that caught it.
+
+> [!note]- **4.5 Audit the "read-only" flag that never clears** `done`
+> `IsReadOnlyMode` is cleared only by a failed open. Refresh now goes by the session's mode instead; check the
+> remaining uses.
+>
+> **Done (10 Nov 2026):** no longer sticky: since `454a38c` (3.3) `BeginSession()` clears it at every checkout. Its one
+> production reader (the guard in `RefreshReadOnlySnapshotAsync`, with `Mode == ReadOnly`) is correct. Corrected four
+> stale comments; pin test `CheckoutServiceTests.ReaderThenWriter_OnTheSameService_IsReadOnlyModeIsCleared`. (A demoted
+> writer has `Mode == ReadOnly` with the flag false until its D'' exists: intended, the flag means "on a snapshot".)
+
+> [!note]- **4.6 Reader Refresh: reopen the connection after a failed refresh** `done`
+> If a reader's refresh fails after the connection was closed (for example, antivirus holding the file), the
+> connection is never reopened, and the session is dead until restart. The plan was approved in October: always
+> reopen, on the new data or on the previous copy, retry a failed reopen, and report the outcome in the existing yellow
+> row. The honest messages shipped in 1.2.3; the reconnection didn't.
+> *Source: 1.2.3 spec, item 11.*
+>
+> **Done (9 Nov 2026; design `designs/reader-refresh-reconnect.md`; full suite with harness 4577 passed, 0 failed;
+> MinimumVersionToWrite No):** once the connection is closed for the swap, the refresh always reopens it (fresh copy,
+> or the previous one when the swap failed), 3 attempts 1 s apart, stopping if the session ends. New outcomes
+> `ReplaceFailed` ("Couldn't refresh just now…") and `ConnectionLost` (close-and-reopen line, now only after three
+> failed reopens). No new wording. DEBUG switch `TERMPOINT_DEBUG_FAIL_REFRESH=replace|reopen[:count[:skip]]`.
+> **Hand test passed (Greg, 10 Nov 2026, DEBUG build, reader on a local copy):** `replace:1` showed the "just now"
+> line, the next Refresh worked; `reopen:2` worked with no line; `reopen:3` showed the close-and-reopen line, and
+> later Refreshes (fault budget used up) reconnected and cleared it. Note: a bare `replace` / `reopen` fails every
+> call until restart (the `DebugFaultBudget` default), so give a count.
+
+> [!note]- **4.7 Opening: a lighter check of the shared database; locked vs damaged local copy** `done` `data risk`
+> Two leftovers from 1.2.3's open rework:
+> - **(a)** The open-time check reads the whole shared database, which can block a writer's save while it runs. A
+>   16-byte header check would do here, leaving the full check to the local copy.
+> - **(b)** A local copy that another program has open (antivirus, say) is treated as damaged: the user gets "may be
+>   corrupt" with a restore offer, or "Unsaved Changes Lost… damaged" in crash recovery. Tell a locked copy from a
+>   damaged one.
+>
+> *Source: 1.2.3 spec, item 4.*
+>
+> **Done (10 Nov 2026; design `designs/open-checks-1.2.4.md`, decisions D1–D3 + wording W1 approved by Greg;
+> MinimumVersionToWrite No):**
+> - **(b) D1, `2b08cf8`** (full suite with harness 4583/0): the open path was already three-way (1.2.3 step 5d), but
+>   crash recovery wasn't. Kept changes held by antivirus counted as damaged and were archived, or **deleted** when
+>   the rename failed (rule 3). Now the check is three-way with quiet retries. If the file stays unreadable, nothing is
+>   touched: "Couldn't Open the Database" + "Your unsaved changes from last time are kept." with Try again / Close.
+>   Close gives up before any checkout.
+> - **(a) D2** (full suite with harness 4591/0): the six front-door checks of the shared database (startup ×2, switch
+>   pre-check, chooser ×3) use the 16-byte header check (`DatabaseValidator.ValidateSharedAtOpenAsync`). The full check
+>   stays on the local copy, the re-check of D, and backups being restored.
+
+> [!note]- **4.8 A slow link stops the open** (measure, then decide) `done`
+> With about 220 ms added to each round trip (clumsy), every open stopped at the full integrity check of the shared
+> database, which has a 5-second step limit. Saves at the same lag worked. Ordinary home VPNs add far less delay.
+> **Next:** find the latency at which opening starts to fail, and what the user is told then. Overlaps with 4.7 (a).
+> *Source: field-test open issue A6.*
+>
+> **Update (10 Nov 2026):** 4.7 D2 removed the full check of the shared database from the open, the step every
+> slow-link open stopped at. Next: measure again with clumsy at ~220 ms.
+>
+> **Measured (10 Nov 2026, GregDeskTop → Mekler, Debug build with D2, clumsy Lag only on port 445, writer open;
+> lag checked by an existence probe before each run):**
+>
+> | Added round trip | Result | Lock | Hash + copy done | Open finished |
+> |---|---|---|---|---|
+> | 0 (baseline) | opened | 1.4 s | 1.8 s | 2.8 s |
+> | ~220 ms | opened (failed every time before D2) | 5.9 s | 9.1 s | 10.3 s |
+> | ~330 ms | opened | 7.9 s | 18.6 s | 20.2 s |
+> | ~500 ms | **fails** at the front door, twice: "Cannot reach database…" | — | — | — |
+>
+> At ~500 ms, the first open of D's file handle alone took ~7 s (6973 ms, timed by hand), against the header read's 5 s
+> step limit (`NetworkFileOps`, `ReadDatabaseHeader`). Once that first open completes, further opens take ~0 ms. So the
+> limit sits between ~330 and ~500 ms added round trip, far above ordinary home VPNs. The hash + copy step grows
+> fastest (3.2 s → 10.7 s) and would be the next limit. Closes worked at every lag (save skipped, lock released in ~1 s).
+> **Decision (Greg, 10 Nov 2026): leave as is.** A front-door retry after a timeout was considered (the abandoned open
+> usually finishes in the background, so a retry would find the connection ready) and not taken: ~330 ms is far beyond
+> ordinary links.
+
+> [!note]- **4.9 Backups turn over too fast** `done` (timing only)
+> A backup is made at every open and five are kept, so five opens in a row delete every older backup. A user who
+> restarts a few times while troubleshooting a bad edit loses the backups from before it. Consider count versus age:
+> for example, always keep the newest backup from each of the last few days. The persistence review adds two more
+> points: there is no "skip if unchanged", and a backup that fails its integrity check still counts toward the five.
+> *Source: field-test open issue A7.*
+>
+> **Done (10 Nov 2026, timing only; rule and wording L1 approved by Greg; MinimumVersionToWrite No):** rotation
+> (`BackupService.SelectBackupsToDelete`, called by `RotateBackups`) now keeps three things:
+> - the newest N (the setting, now labelled "Recent backups to keep", default 5);
+> - the last backup of each of the 7 most recent days **before today** that have backups;
+> - the last backup of each of the 4 most recent weeks **before this one** (Monday to Sunday) that have backups.
+>
+> It deletes the rest, at most N + 11 kept, and always keeps a superset of what the old rule kept. New line under the
+> setting (Greg's wording): "TermPoint also keeps the last backup of each of the prior 7 days and each of the prior 4 weeks."
+> Also fixed: only files named exactly `{database}_{timestamp}.db` count, so `BIOL`'s rotation no longer deletes the
+> backups of a database named `BIOL_TT`. A 1.2.3 computer sharing the backup folder still trims to N. Tests:
+> `BackupRetentionTests`; full suite 4487 passed, 0 failed. **Not done (per Greg):** "skip if unchanged", and backups
+> that fail their check still counting.
+
+> [!note]- **4.10 24 network file calls outside the save path have no deadline** `done`
+> `tools/NetworkProbe/GAP-AUDIT.md` lists them; each could freeze the UI on a dead share. 1.2.3 fixed the backup-cleanup
+> call.
+> **Design 2026-11-10:** `designs/network-deadlines-1.2.4.md`, awaiting Greg's lock. Re-checked on 1.2.4: 18 lines in
+> scope (backups' CSV, rotation and list; .tpconfig; four exports; network folder suggestions), 6 in the Dev Tools
+> migration utility left alone. Greg chose all four groups. Nothing on the save, lock, restore or recovery paths.
+> **Done 2026-11-10 (`79e6007`):** built to the locked design. New `NetworkFileOps.WriteAllBytesAsync` and
+> `ExportFileWriter` (one wording for every picked-file write); backup CSV, rotation (one listing, stops at the first
+> time-out, skips a refused delete) and list (one listing, `HasCsv` fixed at listing time); .tpconfig; the four exports
+> plus Files → Print PNG; network folder suggestions. `NetworkDeadlinesTests` (21). The
+> three new NetworkProbe cases (`write-bytes`, `export-write`, `rotate`) await the clumsy rig.
+> By-hand check 2026-11-11 (VS Debug, local database, backups and exports on Mekler, clumsy Drop 100% on port 445) passed: backups, rotation with a CSV open in Excel, all five exports, the empty backup list and the backup result on a dead share, recovery after. The export time-out itself was not reached by hand: with the share dead, Windows' own Save dialog hangs first (it still answers Cancel). Covered by NetworkDeadlinesTests.
+
+> [!note]- **4.11 Cloud-synced folders: more providers, and a warning at File → Open** `moved to 1.2.5`
+> Detection misses Google Drive for desktop, Box and macOS CloudStorage (1.2.3 added SharePoint and Teams libraries on
+> Windows). File → Open and Recent don't check the folder at all, for any provider: the warning shows only in the
+> wizard and in New Database. Adding it needs a message route and wording, and touches the open flow. Warn, don't
+> block.
+> *Source: 1.2.3 spec, item 13.*
+>
+> **Shelved (Greg, 10 Nov 2026):** File → Open and Recent open databases whose location was already looked at when the
+> database was created (wizard or New Database), and that is when the caution is given. Checking again at every open
+> adds little.
+
+> [!note]- **4.12 A held heartbeat puts its own lock back over the new holder's** `done`
+> The heartbeat reads its lock, writes a temp file, then moves it onto the lock file. A computer that sleeps between the
+> last two steps, while someone takes over, replaces the new holder's lock with its own. No data risk (every save checks
+> the database is as last seen), but the two computers fight over the lock.
+> *Source: harness lock-file check (8.5), known finding F19.*
+>
+> **Done (3 Nov 2026, with 4.14):** two parts.
+> - *A check counts for 2 seconds* (`WriteLockService.LockCheckFreshness`, not scaled). Before the heartbeat's temp
+>   write and its move, the release's delete, and both takeover deletes (`ForceAcquire`, `TryReclaimDeadHolder`), a
+>   check older than 2 s on either clock (steady or wall) is read again first. This closes the sleep/freeze route.
+> - *Takeover confirmation 70 s → 170 s* (`StaleConfirmationSeconds` = 60 next beat + 10 slow beat + 85 Windows
+>   give-up + 15 margin; stays below the 180 s stale threshold). This closes the stalled-network route for any clock
+>   skew. The wait dialog now says "(up to 3 minutes)" (minutes from 90 s on).
+>
+> *Experiment E1 (3 Nov, GregDeskTop Win10 → Mekler, NetworkProbe `--late-landing`):* an abandoned SMB delete or
+> rename lands when the network returns if the outage is ≤ 60 s; at 90 s and 180 s outages it dies about 85 s
+> (85.4–85.8 s) after it was issued. Assumes the writer's SessTimeout is the Windows default (60 s); a raised
+> SessTimeout lengthens the 85 s. Report: `tmp/netprobe/netprobe-20261103-093522.md` (local).
+>
+> F19 is off the harness's known list (proof test in `FixedFindingsProofTests`). Full suite with harness: 4182
+> passed, 0 failed. MinimumVersionToWrite: **No** (nothing new is saved).
+>
+> *Left open:* (1) the harness doesn't model the ~85 s death of a stalled operation, so F22 stays known (hung delete
+> landing after a takeover); an H-item for the harness. (2) Test-timing builds scale the 170 s but not the 85 s, so
+> they are not protected against late landings. (3) Later options: record each writer's SessTimeout in the lock
+> file; probe SessTimeout=30 and macOS. (4) Separate item to place: the save's dirty-marker write sits between its
+> final check and the rename.
+
+> [!note]- **4.13 A lock left behind by a switch makes you read-only when you come back** `partly done` `remainder moved to 1.2.5`
+> If another program holds the lock file (so it can't be deleted), or the database (so the switch's final save fails)
+> when the user switches database, the old lock stays, naming their own live session. Switching back, they are told
+> "Someone else is editing this database right now" and their kept changes can't be restored yet. No data loss.
+> *Source: harness, another program holding a file (8.3), known finding F20.*
+>
+> **Partly done (8 Nov 2026, `454a38c`; design `designs/close-switch-sequence.md`; full suite with harness 4501 passed, 0 failed; MinimumVersionToWrite No):** a leftover lock naming this very TermPoint is taken back (checked delete + CreateNew, own pending release waited for first; no "closed unexpectedly" notice). Accepted remainder, F20 stays known: another program still holds the lock file when the session goes read-only.
+>
+> **Remainder confirmed accepted for 1.2.4 (Greg, 2026-11-11):** worst case a colleague is kept out about 3 min until the lock goes stale; no data at risk. 1.2.5 candidate: retry the release's checked delete every ~30 s while the lock file still names this session.
+
+> [!note]- **4.14 A held release deletes the new holder's lock** `done`
+> A release checks the lock file is its own, then deletes it. A computer that sleeps between the two deletes the lock
+> of whoever took over meanwhile, so a third person could open for editing alongside them (saves stay protected: the
+> second saver is refused and keeps their changes). Same shape as 4.12; fix both together.
+> *Source: harness hang mode (8.2), known finding F22.*
+>
+> **Done (3 Nov 2026):** fixed with 4.12, see there. The freeze route is closed by the 2 s check (new crash
+> point `Release.AfterOwnershipCheck`); a stalled delete is covered by the 170 s confirmation. F22 stays on the
+> harness's known list only because the harness doesn't model the 85 s limit.
+
+---
+
+## 5. Network shares
+
+From the 2026-10-30 review of SMB client caching, antivirus and sync agents holding files, and renames that aren't
+atomic. **Verdict:** nothing found can lose data or let two people write at once. The gaps are failed saves and wrong
+messages, plus one kind of storage the design can't protect. Nothing here touches the version gate.
+
+> [!note]- **5.1 Lock checks start with an existence test that Windows may answer from its cache** `done`
+> **Done (2026-11-11):** 5.8 showed the writer story can't happen (our own create clears the cached "not found"). The
+> real route was two readers racing for a released lock: the loser's follow-up "exists?" got its cached "not found"
+> and showed the can't-write message. A failed lock create is now judged from its own error code ("already exists" =
+> someone holds it; `WriteLockService.IsAlreadyExistsError`). The exists/read race in the writer's check is left as
+> is (Greg, 2026-11-11): it only delays detection by one check, with nothing written meanwhile. No message changes;
+> MinimumVersionToWrite No.
+>
+> Windows can answer "does the lock file exist?" from its client cache: a not-found answer can be about 5 s old, file
+> information about 10 s. The effects:
+> - A stale "missing" makes the writer delete and re-create its own lock, then tell Bob "the lock file was removed and
+>   put back" when nothing happened.
+> - A reader can be told "you can edit now" early or late (harmless).
+> - A failed create shows the can't-write message instead of opening read-only.
+>
+> No data risk. **Fix direction:** read the file directly, treat file-not-found as "missing", and keep the existing
+> folder probe. That also removes a race between the existence test and the read. Run experiment 5.8 (1) first.
+
+> [!note]- **5.2 Two code comments promise more than SMB gives** `done`
+> **Done (2026-11-11, `designs/reader-single-read-1.2.4.md`, with 5.2/5.3/5.5):** readers read D once (copy and
+> hash together) at open and on Refresh; the local copy passes the integrity check before it is used (a locked
+> result is retried like the open-time check); the Refresh delay is gone and the comments corrected. Reader side
+> only; MinimumVersionToWrite No. Harness suite 4716 passed, 1 unrelated flake.
+>
+> The check just before the rename treats an unchanged size and time as "database unchanged", but that information can
+> be 10 s old. This is covered, because the lock check just before it refuses first. The 500 ms "SMB cache delay"
+> before a reader's refresh does nothing. Correct the comments, and remove or re-comment the delay. No behaviour change.
+
+> [!note]- **5.3 Our own readers block the writer's rename** `done`
+> **Done (2026-11-11, `designs/reader-single-read-1.2.4.md`, with 5.2/5.3/5.5):** readers read D once (copy and
+> hash together) at open and on Refresh; the local copy passes the integrity check before it is used (a locked
+> result is retried like the open-time check); the Refresh delay is gone and the comments corrected. Reader side
+> only; MinimumVersionToWrite No. Harness suite 4716 passed, 1 unrelated flake.
+>
+> Readers hash and copy the shared database and read the lock file without delete sharing. While any reader opens or
+> refreshes, the writer's rename is refused. **Story:** Alice refreshes over VPN (a 4-second copy), Bob's autosave
+> lands during it and fails with "in use", and the next autosave works. It gets worse with more readers. **Fix
+> direction:** add delete sharing to our read opens. That certainly works on Samba, but a Windows server may still
+> refuse; experiment 5.8 (2) decides.
+
+> [!note]- **5.4 The rename retry is too short** `moved to 1.2.5` `save path`
+> Three attempts 150 ms apart (about 0.3 s) is short for a server-side virus scan of a freshly written multi-MB file,
+> or for a sync client. **Fix direction:**
+> - Growing delays (about 4.6 s in all), with their own budget, separate from the 5-second "share hung" deadline.
+> - A cancellation check before each attempt, so an abandoned loop can never rename late (rule 2).
+> - Leave the heartbeat's rename as it is.
+>
+> See also 7.1 on whether the 5-second deadline is too short.
+
+> [!note]- **5.5 A reader's Refresh can swap in a damaged copy** `done`
+> **Done (2026-11-11, `designs/reader-single-read-1.2.4.md`, with 5.2/5.3/5.5):** readers read D once (copy and
+> hash together) at open and on Refresh; the local copy passes the integrity check before it is used (a locked
+> result is retried like the open-time check); the Refresh delay is gone and the comments corrected. Reader side
+> only; MinimumVersionToWrite No. Harness suite 4716 passed, 1 unrelated flake.
+>
+> Refresh compares hashes and swaps the copy in without an integrity check. A damaged shared database that has stopped
+> changing passes, and the reader then gets SQLite errors at query time instead of a clear message. **Fix direction:**
+> run the existing local-copy integrity check before the swap (milliseconds). On failure, keep the old copy and show
+> the existing refresh-failure line.
+
+> [!note]- **5.6 The writer reports a server-damaged file as "changed by someone else"** `moved to 1.2.5` `save path`
+> Nothing re-reads the shared database after the rename. If the server damaged it, the next save's hash differs and the
+> user is told someone else changed the database. The work stays safe, but the message is wrong. **Fix direction (pick
+> one):** a cheap header check right after the rename, or a header or integrity check on a hash mismatch before
+> choosing the wording. Related to 4.7 (a).
+
+> [!note]- **5.7 Say which storage is supported** `moved to 1.2.5`
+> Renames that aren't atomic come mainly from synced folders and multi-site cloud gateways. On those, the lock itself
+> fails (each machine's lock create succeeds in its own local copy), and no checksum can fix that. A gateway behind a
+> mapped drive can't be detected. Windows file servers, enterprise filers and ordinary Samba NAS boxes are fine. Say
+> so in the docs and Help.
+
+> [!note]- **5.8 Two experiments on the three-machine rig** `done`
+> **Done (2026-11-11, `designs/network-experiments-5.8.md`, NetworkProbe `--share-semantics`):** a failed open is cached
+> like "exists?" (~5 s), but our own create clears it and `CreateNew` always reaches the server, so 5.1 shrinks to the
+> two-reader fix plus tidying. On Mekler, `Delete` sharing does **not** let a rename through, so 5.3 becomes "readers
+> hold D for less time" and 5.4 is still needed; never add `Delete` sharing to lock-file reads (a deleted-but-open lock
+> blocks every `CreateNew`).
+>
+> 1. Does opening the lock file see a new or deleted lock sooner than an existence test does? This decides 5.1.
+> 2. Does a rename over a file that another machine holds open with delete sharing succeed, on the Windows server and
+>    on Samba? This decides whether 5.3 is enough there, or whether 5.4 has to carry it.
+
+---
+
+## 6. Messages
+
+Everything in this group is checked against rule 4: one message per problem, in plain words, saying what happened,
+whether the work is safe, and what to do next.
+
+> [!note]- **6.1 Error lines are invisible while an editor is open** `moved to 1.2.5`
+> In the management views the inline error line sits in the list panel, which is hidden while an editor is open (the
+> Instructors view, for example). So any save failure inside an editor shows nothing. Move the line out of the hidden
+> panel, in about 10 views. As a stopgap, 1.2.3 sends the write-access message to the banner.
+
+> [!note]- **6.2 Review the order of the banner stack** `moved to 1.2.5`
+> General notifications sit below the trial and save banners. Review the stack as a whole.
+
+> [!note]- **6.3 About 14 places show raw exception text** `moved to 1.2.5`
+> These include Commitments, Release, Scheduling notes and the imports. The text can be raw SQLite output. Replace it
+> with plain wording.
+
+> [!note]- **6.4 Scheduling notes typed after a lost lock vanish silently** `moved to 1.2.5`
+> After a lost lock, the notes panel returns early without saving, so the note is dropped without a word. It needs a
+> message.
+
+> [!note]- **6.5 A failed read-only copy at open shows two messages, the first one wrong** `moved to 1.2.5`
+> When someone else holds the lock and the read-only copy fails (rare: a network drop or antivirus during a 50 ms
+> copy), the user first sees "Checkout Failed — Could not open the database for editing…". Only then comes the right
+> prompt, "Couldn't Open the Database… Try again / Close". **Fix:** a separate outcome for this case that goes straight
+> to the right prompt. No data risk.
+> *Source: spec, follow-ups table (A13).*
+
+> [!note]- **6.6 The refused-write message waits behind other notices, and repeats** `moved to 1.2.5`
+> In the field tests, the refused-write message waited behind a licence notice that was already showing, and each
+> refused Apply queued another copy of it.
+> *Source: field-test open issue A4.*
+
+> [!note]- **6.7 "Closed unexpectedly" shown after a clean exit** `moved to 1.2.5`
+> The notice "Recovered the lock from a previous session that closed unexpectedly" also appears after a clean exit
+> whose final save failed (the lock is left in place on purpose then). Say "unexpectedly" only when a stale running
+> file was found too.
+
+> [!note]- **6.8 The "session file missing" message doesn't say whether the work is kept** `moved to 1.2.5`
+> Reword it so it does.
+
+> [!note]- **6.9 Save a Copy suggests a name that may already exist** `moved to 1.2.5`
+> The can't-restore flow always suggests "&lt;name&gt; (recovered).db", even when that file exists. Suggest the next free
+> name instead. The redesign (3.5) may remove this flow anyway.
+> *Source: field-test open issue A10.*
+
+> [!note]- **6.10 Closing or switching after a save problem shows a banner and a dialog** `done`
+> When the save that a close or a switch runs finds a problem (someone took over, the location can't be reached, the
+> lock file was removed, the file is in use), the user sees the problem's banner and then "Changes Not Saved". Both say
+> what happens to their changes. **Fix:** in that case show only the dialog. Also check that a switch never leaves the old
+> database's "read-only for you now" banner showing over the new database. No data risk.
+> *Source: harness message checks (8.6), known finding F17.*
+>
+> **Done (8 Nov 2026, `454a38c`; design `designs/close-switch-sequence.md`; full suite with harness 4501 passed, 0 failed; MinimumVersionToWrite No):** while a close or switch is ending the session, its final save's banners and lock loss are not delivered: only "Changes Not Saved" (wording unchanged). Old database's banners can no longer land on the new one (session id).
+
+> [!note]- **6.11 Two different lock-lost banners for one loss** `done`
+> Seen once in the harness: a heartbeat check still running while the user switches database shows "Another program
+> removed the file…" and then "… has taken over editing". Not investigated yet; possibly related to the demotion that
+> lands on the new session (F16).
+> *Source: harness message checks (8.6), known finding F18.*
+>
+> **Done (8 Nov 2026, `454a38c`; design `designs/close-switch-sequence.md`; full suite with harness 4501 passed, 0 failed; MinimumVersionToWrite No):** not switch-related after all: a save that put back a deleted lock file and then failed showed two banners. The "lock put back" notice now shows only when that save succeeds.
+
+> [!note]- **6.12 A writer whose clock is behind looks inactive** `moved to 1.2.5`
+> Bob edits with his clock an hour behind. Alice opens and is told his lock "hasn't been active for 55 minutes". Taking
+> over still waits for his heartbeat to stand still, so nothing is lost, but the message is wrong. The wall-clock hint
+> in the stale check fires on any skew over about 3 minutes.
+> *Source: harness clock skew (8.4).*
+
+> [!note]- **6.13 A "changes kept" banner outlives a Discard** `done`
+> After a failed switch save, Can't Restore, and a confirmed Discard, a banner still says the changes are kept. Long
+> route with another program holding the database; not investigated.
+> *Source: harness clock skew walks (8.4), known finding F23.*
+>
+> **Done (8 Nov 2026, `454a38c`; design `designs/close-switch-sequence.md`; full suite with harness 4501 passed, 0 failed; MinimumVersionToWrite No):** the post-open "save restored changes at once" ran after a Can't Restore + Discard (3.4's second route). It now runs only when the open really restored kept changes.
+
+> [!note]- **6.14 Restore from Backup: two messages when the save before it fails** `moved to 1.2.5`
+> Bob clicks Restore… while the share is unreachable. The save before the restore fails, so Bob sees that save's banner
+> (for example "TermPoint can't reach…") and then the dialog "Restore Not Started: Your latest changes couldn't be saved,
+> so the restore wasn't started…". That's one problem shown twice. The code says the banner has already been shown
+> (`SessionLifecycle.RestoreFromBackupAsync`). **Fix direction:** like F17 for close and switch, the restore's save
+> reports only to the restore, so only the dialog shows.
+> *Source: conversation about 3.2 (2026-11-09).*
+
+---
+
+## 7. Field reporting
+
+> [!note]- **7.1 Time each save, to tell a slow server from an outage** (cheap; do this first) `done`
+> Reports keep arriving from users' machines: a run of successful saves, one "location did not respond", then nothing.
+> Two explanations fit. Either a slow server sometimes misses the 5-second deadline and the next autosave works, or a
+> real outage stranded the user. **Experiment:** add the elapsed milliseconds to the save-success breadcrumb, and add
+> the deadline that was hit and the last few save times to the failure report. Saves that were already taking 3–4 s
+> mean a slow server; fast saves followed by a sudden failure mean an outage. It's a breadcrumb and a metadata field
+> only, so it can ship first. If a slow server is confirmed, ask whether 5 s is too short; changing it is a save-path
+> change, so a risk review comes first.
+>
+> **Done (9 Nov 2026, `7d54a7d`; design `designs/field-reporting-1.2.4.md`, with 7.3 and 7.4; full suite with harness 4521 passed, 1 failed (CrashSweep "planned cut did not fire" at `Lock.AfterDeleted` on Close, a timing flake: 3/3 passes alone), 2 skipped; MinimumVersionToWrite No):** `Save: Success` carries `elapsedMs` and `autoSave`. `SaveLocationNotResponding` (once per run) carries `autoSave`, `stalledAt` (LockCheck / SourceStat / SourceHash / CopyToLocation / VerifyAtLocation / Rename), `deadlineMs` (5000), `elapsedMs`, `recentSaveMs` (last 5 successes, oldest first, or `none`); every such failure also leaves a `Save: LocationNotResponding` breadcrumb (`stalledAt`, `elapsedMs`). Real time (Stopwatch); all reporting inside try/catch; nothing written or decided changes. Tests `SaveFieldReportingTests` (17).
+
+> [!note]- **7.2 Report when a save recovers after a failure** `done` `save path`
+> BugSnag shows that a save failed, but never that a later one worked: success is only a breadcrumb, and each failure
+> kind is reported once. **Fix:** when the first save succeeds after a reported failure, send one report ("recovered
+> after N attempts, S seconds"), and do the same for refresh. The code only reads state and reports, and must never
+> throw or block.
+>
+> **Done (10 Nov 2026, uncommitted; design `designs/field-reporting-1.2.4.md`, section 7.2; MinimumVersionToWrite No):** `FailureStreakTracker` (reusable) fed from `CheckoutService.SaveAsync` and the reader refresh. The first success after failures sends `SaveRecovered` / `RefreshRecovered` (BugSnag severity Info, at most 3 per run) with `failedAttempts`, `failedSeconds`, `firstKind`, `lastKind` (NotResponding / InUse / FileError / TornTransfer / step name / Other; refresh: outcome name or Threw), `spellInRun`, and for saves `autoSave`; a `Save: Recovered` / `Refresh: Recovered` breadcrumb every time. A spell ended by LockLost/SourceModified leaves only a local line and the `Save: FailuresEndedWithoutRecovery` breadcrumb. The "save already in progress" refusal is not counted. Tests `FailureStreakTrackerTests`, `RecoveryReportingTests`. **Deferred past 1.2.4 (Greg):** a per-run summary (option B); BugSnag can't sum metadata, so it wants a usage-metrics tool and a privacy decision.
+
+> [!note]- **7.3 Report a rename blocked by another program** `done`
+> Today this goes only to the local log. Send one counted event (numbers only, through the scrubber). It can ship
+> before 5.3 and 5.4, to learn whether that problem happens at all.
+>
+> **Done (9 Nov 2026, `7d54a7d`; design `designs/field-reporting-1.2.4.md`; with 7.1 and 7.4; MinimumVersionToWrite No):** a rename refused "in use or access denied" after its 3 retries sends `HandledEvent.SaveRenameBlocked` ("Save rename refused: the file was in use or access was denied") once per run, metadata `autoSave`, `exceptionType`, `hresult`, `attempts`; every one leaves a `Save: rename blocked` breadcrumb with `count` and `hresult`. Copy/verify in-use stay local-only. Tests `SaveFieldReportingTests`.
+
+> [!note]- **7.4 Log the choice on "Restore Unsaved Changes?"** `done`
+> In the field tests a kept edit vanished, and the log couldn't say whether Restore or Discard had been chosen. Log one
+> INFO line per choice. The redesign removes the question later.
+> *Source: field-test open issue A5.*
+>
+> **Done (9 Nov 2026, `7d54a7d`; design `designs/field-reporting-1.2.4.md`):** `SessionLifecycle.AskKeepOrDiscardAsync` writes one `Recovery: "<title>" answered <button>…` INFO line per answer (Restore, Discard → confirm, the X, Discard confirmed, Go Back), for "Restore Unsaved Changes?" and "Can't Restore Unsaved Changes". Local log only. Tests in `SessionLifecycleTests`.
+
+> [!note]- **7.5 Gaps in the exception-reporting tests** (test-only) `moved to 1.2.5`
+> 1. **Most important:** nothing tests that the production BugSnag client goes through the privacy scrubber. Remove
+>    that line from `App` and no test fails. Move the client setup into a testable factory.
+> 2. The scrubber is tested only on example strings. Add realistic Windows and macOS messages: long paths, file URIs,
+>    accented user names, names in stack frames, and paths with parentheses.
+> 3. Names that tests register with the scrubber are never cleared. Add a test-only reset.
+> 4. The lock-loss tests poll with a 10-second deadline. If they flake on CI, raise the deadline.
+> 5. Decide whether a swallowed reporting failure should write a log line, then test it, or say why not in the test.
+
+---
+
+## 8. Testing
+
+The 1.2.3 field tests took about 18 hours. Nearly every finding came from something the harness simulates more
+kindly than reality. So: close the harness gaps first, then make the remaining hand tests cheaper.
+
+*What's left of this section, and in what order: [`testing-readiness-1.2.4.md`](testing-readiness-1.2.4.md).*
+
+> [!note]- **8.1 Harness: run the wake check and the heartbeat together** `done`
+> The harness's sleep step runs them one after the other, but a real wake (or a frozen process resuming) fires both at
+> once. Both field bugs that needed new test builds came from this. Run them concurrently (consider the reader poll
+> too), and harden the 40 ms quiet window when settling background work; that window caused the crash-sweep timing
+> failure.
+> **Done (2 Nov 2026, `aa34e6a`):** pause actions hold the wake check while the heartbeat ticks, and the reverse; four
+> proof tests pin the once-per-session lock-loss guard (field bug A12). The quiet window is gone: the harness awaits the
+> checkout service's background checks instead. The reader poll was not added.
+
+> [!note]- **8.2 Harness: a network fault that hangs instead of failing at once** `done`
+> Today "network down" answers every call with an immediate timeout, so a call that blocks before its deadline starts
+> can never show up. (That is the bug the probe found.) Add a hang mode in which calls block until the network
+> returns. The deadlines use real time, so either keep such walks few (5 s each) or give the deadlines the test clock.
+> The test-clock route changes the save path, so a risk review comes first.
+> **Done (2 Nov 2026):** the deadline reads a replaceable clock (no other change); hang mode, including at the A1 spot.
+> Found 4.14.
+
+> [!note]- **8.3 Harness: another process holding a share file open** `done`
+> Add an event that holds the database, its temporary file or the lock file open with a chosen sharing mode. Let the
+> pause sweep keep a paused save's files open as well.
+> **Done (2 Nov 2026):** the event, nine pause actions during held saves, and power cuts with a file held. Found 3.12
+> (data loss) and 4.13. Also seen, not yet items: with the lock file held, the save banner wrongly says the location
+> can't be reached; with the database held, a close with nothing to save still shows "couldn't save".
+
+> [!note]- **8.4 Harness: one clock per computer** `done`
+> One fake clock serves every computer, so clock skew can't be expressed. Give each computer its own wall-clock offset
+> over a shared steady clock.
+> **Done (2 Nov 2026):** staleness holds with clocks ±1 h off, and clock jumps don't cost the lock. Found 6.12 and 6.13.
+
+> [!note]- **8.5 Harness: a computer rewrites only its own lock file** `done`
+> The heartbeat renewing someone else's lock (fixed in 1.2.3) broke no invariant. Add one: a computer rewrites a lock
+> file only if the file names its own session (creating a lock and a confirmed takeover aside). Record the no-edit save
+> rewrite (3.4) as a known finding.
+> **Done (2 Nov 2026):** the check is in; it found 4.12. The no-edit rewrite touches the database, not the lock file, so
+> the check does not fire on it.
+
+> [!note]- **8.6 Harness: check messages for "one per problem" and banned words** `done`
+> The harness records every dialog, but checks neither rule 4's "one message per problem" nor the banned words
+> ("working copy", "local copy", "safe", paths, log text). Add both. Also add an event for the read-only copy failing
+> at open, which would have caught 6.5.
+> **Done (2 Nov 2026):** both checks are in. The wording check found nothing. The pair check found 6.5 and two new
+> problems, 6.10 and 6.11, all recorded as known findings until fixed. The database chooser's dialogs are not checked.
+
+> [!note]- **8.7 Test timings: one scale factor for the lock timers** `done` `save path`
+> About 50 minutes of each takeover pass is spent waiting on lock timers (heartbeat 60 s, stale 180 s, and so on). Put
+> them in one timings object scaled by one factor, because the safety rests on the ratios. At ×6, the heartbeat is
+> 10 s and stale is 30 s. Never scale the 5-second network deadline, or anything Windows owns.
+> **Risk:** Bob points a test-timed build at a real department database. It judges Alice (on 1.2.3) stale after 30 s
+> and takes over while she works. The database stays safe, but she is switched to read-only mid-edit.
+> **Guards:**
+> - Sideload builds only, plus an environment variable.
+> - The lock file records its scale, and a computer judges staleness only for locks at its own scale.
+> - "Test timings" in the title bar.
+> - A test that pins the production values.
+>
+> **Done (2 Nov 2026), at ×3 at most:** the 5 s network deadline doesn't scale, so at ×6 one slow heartbeat (~15 s)
+> would leave too little margin before stale (30 s). A lock is judged stale at the speed recorded in it, so a test build
+> and a normal one never misjudge each other.
+
+> [!note]- **8.8 Scripted setup and checks** `done`
+> PowerShell from one console through Remoting: reset the test database, launch through a scheduled task,
+> kill/suspend/resume by PID, sample the lock file, compare hashes, list test sections in the database and in kept
+> copies, and run integrity checks. Add a log checker that looks for each scenario's expected lines in order, with no
+> ERROR, and prints pass or fail. Fold in the existing `tmp\handtest_*` scripts. No product change.
+> **Built (3 Nov 2026), VM parts not yet run:** the `tools/FieldTest` module (`README.md` there). Machines are listed
+> in a gitignored config: this computer, VMs over PowerShell Direct, and an optional WinRM computer. Scenario files
+> check the logs for M1 B, M2 C1/C3, M4 B2/B3 and M5. The handtest scripts are folded in. The local commands pass a
+> self-test in PowerShell 5.1 and 7. ~~The VM commands are untested until a VM exists.~~ **The VM commands work
+> (2026-11-06 to 11-08, on TPVM1):** checkpoints, install, test timings, start/suspend/stop TermPoint, log collection;
+> M5 passed through them.
+> Dialog-only outcomes (the restore offer, the banners) have no log line, so they're still checked by eye.
+
+> [!note]- **8.9 A Hyper-V VM as the second and third computer** `done`
+> Suspending a VM freezes the whole machine, network included. That is closer to real sleep than suspending the
+> process, it can be scripted to the second, and there are no Modern Standby self-wakes. Checkpoints reset a VM. A
+> second VM is the third computer the field tests never had, and a Windows 11 VM covers the untested Windows 11
+> checks. Keep one real Surface sleep per release.
+> **Started (3 Nov 2026):** `tools/FieldTest/New-TestComputer.ps1` makes the VM:
+> - Generation 2, with a virtual TPM and Secure Boot. Windows 11 installs even though this host's i5-7500T can't run
+>   it itself.
+> - Checkpoints hold memory, so a reset brings back a signed-in computer.
+> - An external switch on the wired adapter.
+> - A copy mode for the third computer.
+>
+> **TPVM1 built (6 Nov 2026)** on the Default Switch rather than an external switch (the README has the share
+> sign-in lessons); checkpoint `Ready` taken after one clean TermPoint run on the test database.
+>
+> **Clock answer (6 Nov 2026):** both freeze modes step the guest clock forward at once. After 240 s frozen, the
+> offset at the first PowerShell Direct answer was 0.7 s (Pause) and 0.8 s (Save), and 0.2 s thirty seconds later.
+> The wake check compares only wall-clock time between its 30 s ticks, so TermPoint sees a ~240 s gap and treats it
+> as a wake: **a paused VM stands in for a sleeping laptop.** Pause is the default (seconds to resume); Save also
+> works but drops an open VM Connection window. Neither reproduces item 6.12 (clock behind), which still needs a
+> clock set back by hand.
+>
+> **First scripted scenario (6 Nov 2026): M5 passed** on the 1.2.3 build. TPVM1 (writer, one unsaved section) was
+> paused for 600 s; GregDeskTop took over the stale lock and saved; TPVM1 noticed the wake and the lost lock, and
+> kept its unsaved section in its kept changes. All four log checks matched, no errors, integrity ok.
+
+> [!note]- **8.10 Later: an automated two-machine rig** `moved to 1.2.5`
+> Extend `tools/NetworkProbe` so each machine runs the real checkout and lock services as an agent, coordinated by a
+> step file on the share. The main contention, takeover and exit scenarios then become scripts that check outcomes
+> directly. Do this after 8.1–8.9.
+
+> [!note]- **8.11 Trim the hand-test tier** `done`
+> Once 8.1–8.6 are in, drop the hand tests that found nothing new in 1.2.3 (they re-checked logic the harness
+> covers), keeping their on-screen wording checks in one short pass. Keep by hand only what can't be simulated:
+> - real SMB behaviour;
+> - the on-screen messages;
+> - Avalonia and process shutdown;
+> - MSIX install and upgrade;
+> - a real 1.2.2 alongside;
+> - one real sleep;
+> - macOS;
+> - Store flights.
+>
+> **Done (8 Nov 2026):** `docs/testing/release-tests-1.2.4.md`. It lists what the harness covers (M1 B, M2, M3, M9,
+> M10, M12, S2; S1 and S6 by unit tests), the field tests kept (M1 A, M4, M5, M6, M7, M8 with 1.2.3, M11, S3, S4), one
+> wording pass, platforms and 1.2.4 features, and the Store steps. Later fixes add their own checks to it.
+
+> [!note]- **8.12 Flaky tests and small harness cleanups** `done`
+> - A pause-proof test fails about 2–7% of the time; its wake-check settle waits 5 × 8 ms of real time.
+> - A fault-seam test caught a background task left over from an earlier test. Settle that test's work in `Dispose`,
+>   or make the recorder ignore paths outside its own folder.
+> - Six "lock file deleted during a held close" cases dropped out of the pause plan. Cause unknown.
+> - From HANDOFF: after a release and a fresh checkout, the heartbeat-failure handler is subscribed twice (only the
+>   wake handler is unsubscribed). Harmless.
+>
+> **Partly done (2 Nov 2026):** the double subscription is fixed with a test, and the six cases are back and stable
+> across two sweeps. The two flaky tests remain.
+>
+> **New (5 Nov 2026, not looked at yet):** `WizardExistingDbJoinTests.Step1a_JoinExistingDb_DoesNotOpenOrChangeD`
+> (`readerMode: True`) failed once in a full-suite run: it expected one temp path and got two. It passed in three
+> other full runs that day and when run alone or with its class. Guess (unconfirmed): something left in a shared temp
+> folder by an earlier test, since tests run one at a time. Seen during collapse-days task 2, which doesn't touch the
+> wizard.
+>
+> **Done (8 Nov 2026), test code only:**
+> - Pause-proof: its real-time settle was already replaced on 2 Nov (`aa34e6a`: the harness awaits the checkout
+>   service's background checks). No failures since; 20 back-to-back runs of the 29 pause-proof tests were clean.
+> - Fault seam: the recorders in `FaultSeamTests` keep only calls from their own test (an async-local token,
+>   `ClaimFlow`), so another test's leftover background work can't add to an exact sequence.
+> - Wizard join: the extra entry was the wizard's own write probe. Setting `DbPath`/`BackupFolder` starts a
+>   fire-and-forget folder check that creates and deletes `.sa-write-probe-*.tmp` in the test folder. The test now
+>   ignores those files.
+> - Found on the way: `SubjectPaletteTests` (3 tests) failed in every run built with `-o E:/...`, because they
+>   looked for `AppColors.axaml` above the test binaries. They now start from their own source file
+>   (`[CallerFilePath]`).
+
+---
+
+## 9. Smaller fixes and housekeeping
+
+> [!note]- **9.1 Campus look-ups by name and sort order silently fail** `moved to 1.2.5`
+> The campus queries ask for `$.Name` and `$.SortOrder`, but campus JSON is camelCase, so the queries get nothing back.
+> As a result:
+> - campuses are listed in no particular order;
+> - the duplicate-name check never matches;
+> - seeding from a `.tpconfig` file can create a duplicate campus.
+>
+> Fix the key case, then check the real databases for duplicate campuses before any clean-up. Campus order will change
+> visibly (to the intended order).
+
+> [!note]- **9.2 One rule for "do two meetings share a week?"** `moved to 1.2.5`
+> The conflict checks and the Room Browser expand "odd" and "even" to weeks 1–18 only, so an "odd" meeting against a
+> list that includes week 21 shows no clash. The section import has its own, correct copy of the rule. Put the parity
+> rule in the shared method, have the import use it, and delete the copy. Add a test for week 21. Harmless in a normal
+> semester.
+
+> [!note]- **9.3 The shared-schedule import should use the shared day and frequency helpers** `moved to 1.2.5`
+> It keeps its own day map and frequency check. Switch it to the helpers the section import uses. The input it accepts
+> changes slightly (compact days such as `MWF`), so check that existing shared-schedule files still parse.
+
+> [!note]- **9.4 Section import refuses semicolon- or tab-separated files** `moved to 1.2.5`
+> Such files are refused with a missing-header message.
+> *Source: `designs/section-import-by-user.md`.*
+
+> [!note]- **9.5 A section picked while the section list is hidden isn't scrolled into view** `moved to 1.2.5`
+> For example: pick a section on the grid while the Events list is showing, then switch back, and the card isn't
+> revealed. Reveal it when the list is shown again (through the scroll-anchor behaviour, never by scrolling the list
+> directly).
+
+> [!note]- **9.6 Room Browser: test that every option is valid and none is missed** `moved to 1.2.5`
+> Add tests against the real-data database:
+> 1. Every slot is valid across many scenarios.
+> 2. Exact completeness for the "same room, same time" tier.
+> 3. For the other tiers, which only sample, never "nothing available" when brute force finds an arrangement.
+>
+> Check from the raw data, not the solver's own index, or the tests repeat its mistakes.
+
+> [!note]- **9.7 Review Avalonia 12.1.4's release notes** `moved to 1.2.5`
+> Published 2026-10-09. One fix touches the section card's property-line icons. Re-run the scroll-anchor probe after
+> any upgrade.
+
+> [!note]- **9.8 File an Avalonia bug for the list "jump"** `moved to 1.2.5`
+> Virtualizing the section list cut an 800-section heap from 475 MB to 160 MB, but it is blocked by a jump when an
+> on-screen item grows. Build a tiny stand-alone repro, and Greg files the issue. About an hour, with no risk to the
+> app.
+
+---
+
+## Decided against
+
+- **A switch that overlaps a close can delete kept work.** Only the harness can reach it, so it is not pursued (Greg,
+  2026-10-21). Recorded so it isn't rediscovered as new.
+- **Merging stranded changes back into the database** (Bob's changes alongside Alice's, after he lost the lock): not
+  for 1.2.4 (Greg, 2026-11-01). Recovered Versions (3.5) keeps his version "for reference". A merge would need the
+  version Bob started from to be kept on disk (persistence review, sections 5 and 8.6).
+- **Other ways to narrow the Schedule view** (Greg, 2026-11-04; tried with real data while designing 2.5 and 2.13):
+  - *Cascading* overlapping tiles over each other's empty lower part: Monday 468 → 412 px. The widest groups start
+    together, so there is little to gain.
+  - *Notched tiles*, which drop a label below an earlier tile and keep a thin tab at the real start: 24% narrower,
+    but start times read up to an hour late, and the tabs look like separate tiles in the shared fill.
+  - *Fit the week to the window* by scaling: 0.56 for the narrowest slice, cutting course codes on 38% of lines.
+  - *"+N more" tiles* for crowded times: the week fits only at two columns per day, which folds away 23–62% of
+    sections.
+  - *Turning the grid* (days as rows, time across) would fix the geometry, but it overturns the primary view.
+    Parked, not rejected.
+
+## Notes for tidying the spec file
+
+- **Rows done in 1.2.3, still listed as pointers:** Load by subject, Section Import by User, the BugSnag scrubber
+  and reports, and the heartbeat takeover fix.
+- **Duplicate number:** two different entries are both "P10" (the macOS local-copy deletion, and part-semester
+  sections). P11 and two unnumbered rows sit at the end of "Other items" with no notes.
+- **1.2.4 items that aren't in the spec** (all included above): field-test open issues A3–A7, A9 and A10; the
+  HANDOFF harness notes; "Subjects taught" (`designs/load-by-subject.md`); semicolon and tab imports
+  (`designs/section-import-by-user.md`).
+- **Designs in progress, not placed in a release:** Slot Browser and Access Analyzer (both at Phase 1). The Slot
+  Browser spec relies on 2.10's reading of room type.
+- **Before 1.2.4 work (HANDOFF):** the Microsoft support case; restart GregDeskTop and remove the sideload build and
+  the test MSIX folders; check the Store update link now that 1.2.3 is certified; `master` is 7 doc commits ahead of
+  `origin`.

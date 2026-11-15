@@ -4,8 +4,26 @@ using TermPoint.ViewModels;
 namespace TermPoint.Services;
 
 /// <summary>
-/// The database-session lifecycle, moved out of the main window so it can be driven without any UI (spec item
-/// 9.1, step 9.1b): opening a database at startup, switching to another one, and the recovery at open (crash
+/// What the crash-recovery offer at open decided (<c>SessionLifecycle.OfferCrashRecoveryAsync</c>): how the open
+/// goes on. Three results, not two, because "the kept changes are locked by another program and the user chose
+/// Close" must stop the open BEFORE any checkout: a normal (non-recovery) checkout copies D over D' and rewrites
+/// the dirty marker, which would replace the user's only copy of their unsaved work.
+/// </summary>
+internal enum CrashRecoveryChoice
+{
+    /// <summary>No recovery: run a normal checkout (nothing was kept, or it was discarded or archived).</summary>
+    StartFresh,
+
+    /// <summary>The user chose Restore: run the checkout in recovery mode.</summary>
+    Restore,
+
+    /// <summary>Give up the open before any checkout; D' and its marker are untouched.</summary>
+    GiveUp
+}
+
+/// <summary>
+/// The database-session lifecycle, moved out of the main window so it can be driven without any UI:
+/// opening a database at startup, switching to another one, and the recovery at open (crash
 /// recovery and the export of kept changes). Everything that asks or tells the user goes through
 /// <see cref="ILifecyclePrompts"/>; everything that touches the window or the service container goes through
 /// <see cref="ISessionHost"/>; both are implemented by <see cref="MainWindow"/>.
@@ -22,6 +40,14 @@ public sealed class SessionLifecycle
 {
     /// <summary>The checkout service (was <c>App.Checkout</c>; created once and never replaced).</summary>
     private readonly CheckoutService _checkout;
+
+    /// <summary>
+    /// Whether the checkout that <see cref="RunCheckoutAsync"/> finally ran (after any recovery-conflict re-run) was asked to
+    /// restore a crashed session's unsaved changes. The caller's own "restore" answer is NOT enough: when the
+    /// recovery conflicts, the user saves a copy or discards, the checkout re-runs as a normal one, and nothing was restored.
+    /// Read only by <see cref="SaveRestoredChangesAsync"/>.
+    /// </summary>
+    private bool _lastCheckoutRestoredChanges;
 
     /// <summary>The single-instance guard (was <c>App.InstanceGuard</c>).</summary>
     private readonly DatabaseInstanceGuard _instanceGuard;
@@ -98,7 +124,7 @@ public sealed class SessionLifecycle
     /// Steps (1)–(5) of the returning-user startup, for one database (see <see cref="MainWindow.RunReturningUserStartupAsync"/>
     /// for their order): the single-instance guard, the recent list and the licence, crash recovery and checkout,
     /// then the services and the window. Extracted so the recovery chooser that follows a damaged shared database
-    /// (spec item 5, step 5d) can open its pick through the same steps.
+    /// can open its pick through the same steps.
     /// </summary>
     /// <param name="dbPath">The shared database (D) to open.</param>
     /// <param name="settings">The application settings (the recent list is updated).</param>
@@ -109,7 +135,7 @@ public sealed class SessionLifecycle
     /// </returns>
     public async Task<string?> OpenStartupDatabaseAsync(string dbPath, AppSettings settings)
     {
-        // ── Single-instance guard (spec item 4b) ──────────────────────────────
+        // ── Single-instance guard ──────────────────────────────
         // Taken BEFORE anything below touches shared or local state (the stale artifact sweep, crash
         // detection, the checkout). If another LIVE TermPoint of this user already
         // has this database open on this computer, none of that may run: its dirty marker would look
@@ -134,7 +160,18 @@ public sealed class SessionLifecycle
         // acquire the write lock and copy D → D' (or D → D'' for read-only mode). An orphaned D.tmp on
         // the share is deleted by the checkout itself, and only once write access is confirmed.
         // The result determines which path is passed to InitializeServices.
-        var recoverUnsaved = await CleanUpAndOfferRecoveryAsync(dbPath, ignoreObserverMode: false);
+        var recovery = await CleanUpAndOfferRecoveryAsync(dbPath, ignoreObserverMode: false);
+        if (recovery == CrashRecoveryChoice.GiveUp)
+        {
+            // The user's kept changes are locked by another program and they chose Close.
+            // Nothing was taken or built — no lock, no services — and D' with its marker are untouched. End the
+            // open exactly like a checkout that was refused after its dialog: forget the working-copy
+            // bookkeeping (which keeps a marked D'), then close, as there is no previous database to fall back to.
+            await _checkout.ResetAfterFailedOpenAsync();
+            _host.CloseWindow();
+            return null;
+        }
+        var recoverUnsaved = recovery == CrashRecoveryChoice.Restore;
 
         var checkoutResult = await RunCheckoutAsync(dbPath, recoverUnsaved);
         if (checkoutResult is null)
@@ -159,12 +196,12 @@ public sealed class SessionLifecycle
         var canonicalPath = _checkout.SourcePath;
 
         // Initialize DI and DB, wire up the view model, then reveal the window. The open-time integrity check of
-        // the local copy (spec item 5, step 5d) can stop it: a copy another program is using, or a damaged one.
+        // the local copy can stop it: a copy another program is using, or a damaged one.
         // OpenWithLocalCopyCheckAsync handles both — Try again, one fresh copy, or the recovery chooser — and
         // returns no view model only after it has ended the half-opened session WITHOUT saving.
         //
-        // The local file to open is read from the checkout at the moment of each call, NOT captured above
-        // (spec item 3, step 3c): after a fresh copy the checkout may now hold a different file — a new D', or,
+        // The local file to open is read from the checkout at the moment of each call, NOT captured above:
+        // after a fresh copy the checkout may now hold a different file — a new D', or,
         // when the version gate ran again on it and found the database needs a newer TermPoint, a read-only D''
         // (RequiredAppVersion set, so the usual "needs TermPoint X" banner appears).
         IOpenedDatabase vm;
@@ -215,14 +252,25 @@ public sealed class SessionLifecycle
         vm.SetDatabaseName(Path.GetFileNameWithoutExtension(canonicalPath), canonicalPath);
         await _host.SetupWindowAsync(canonicalPath, vm);
 
-        // Restored unsaved changes are still only in the working copy — make them
-        // durable right away rather than leaving them one crash away from a second
-        // recovery. Failure is non-fatal: the standard save-error banner (wired by
-        // SetupMainWindowAsync) surfaces it and autosave/manual save will retry.
-        if (recoverUnsaved && _checkout.Mode == CheckoutMode.WriteAccess)
-            await _checkout.SaveAsync();
+        // Restored unsaved changes are still only in the working copy — make them durable right away.
+        await SaveRestoredChangesAsync();
 
         return null;
+    }
+
+    /// <summary>
+    /// The post-open step shared by startup and <see cref="SwitchCoreAsync"/>: when the open really restored a crashed
+    /// session's unsaved changes, they are still only in the working copy, so save them at once rather than leaving them one
+    /// crash away from a second recovery. Runs only when the checkout that finally succeeded was a recovery
+    /// (<see cref="_lastCheckoutRestoredChanges"/>; not when a recovery conflict was dealt with by Save a Copy or
+    /// Discard, where nothing was restored and a failing save would wrongly say the changes are kept) and the session has
+    /// write access. A failure is non-fatal: the standard save-error banner surfaces it and autosave/manual save will retry.
+    /// </summary>
+    /// <returns>A task that completes when the save (if any) has finished.</returns>
+    private async Task SaveRestoredChangesAsync()
+    {
+        if (_lastCheckoutRestoredChanges && _checkout.Mode == CheckoutMode.WriteAccess)
+            await _checkout.SaveAsync();
     }
 
     /// <summary>
@@ -237,7 +285,7 @@ public sealed class SessionLifecycle
     /// </list>
     /// Both steps touch only this user's LOCAL files. The orphaned <c>D.tmp</c> on the share is NOT
     /// deleted here: it may be a colleague's in-flight save, so <see cref="CheckoutService"/> removes it
-    /// itself, and only once this process holds the write lock (spec item 4).
+    /// itself, and only once this process holds the write lock.
     ///
     /// <para><b>Call this ONLY while this process holds the single-instance guard for
     /// <paramref name="dbPath"/></b> (<see cref="DatabaseInstanceGuard"/>): every step assumes no other
@@ -247,13 +295,17 @@ public sealed class SessionLifecycle
     /// <para><b>Observer mode skips step 2.</b> Crash recovery means taking over a prior <i>write</i>
     /// session, which is wrong for an observer who never holds the lock. The test mirrors
     /// <see cref="CheckoutService.CheckoutAsync"/>'s own: the "open as observer" setting applies unless
-    /// <paramref name="ignoreObserverMode"/> (a database the user has just created). Startup and switching
-    /// previously disagreed here (switching offered recovery to observers).</para>
+    /// <paramref name="ignoreObserverMode"/> (a database the user has just created).</para>
     /// </summary>
     /// <param name="dbPath">The database (D) about to be checked out.</param>
     /// <param name="ignoreObserverMode">True only for a database the user has just created, which opens for editing.</param>
-    /// <returns>True when the user chose to restore unsaved changes (the checkout then runs in recovery mode).</returns>
-    private async Task<bool> CleanUpAndOfferRecoveryAsync(string dbPath, bool ignoreObserverMode)
+    /// <returns>
+    /// <see cref="CrashRecoveryChoice.Restore"/> when the user chose to restore unsaved changes (the checkout then
+    /// runs in recovery mode); <see cref="CrashRecoveryChoice.GiveUp"/> when the open must be abandoned before any
+    /// checkout (the kept changes are locked by another program and the user chose Close); otherwise
+    /// <see cref="CrashRecoveryChoice.StartFresh"/>.
+    /// </returns>
+    private async Task<CrashRecoveryChoice> CleanUpAndOfferRecoveryAsync(string dbPath, bool ignoreObserverMode)
     {
         _checkout.CleanupStaleCrashArtifacts(dbPath);
 
@@ -261,7 +313,7 @@ public sealed class SessionLifecycle
         if (!isObserver && _checkout.DetectCrashRecovery(dbPath))
             return await OfferCrashRecoveryAsync(dbPath);
 
-        return false;
+        return CrashRecoveryChoice.StartFresh;
     }
 
     /// <summary>
@@ -327,6 +379,10 @@ public sealed class SessionLifecycle
     private async Task<string?> RunCheckoutAsync(
         string sourcePath, bool recoverUnsaved = false, bool ignoreObserverMode = false)
     {
+        // Each (re-)run overwrites this, so after a recovery conflict re-runs us with recoverUnsaved: false the final
+        // value is false: the post-open save (SaveRestoredChangesAsync) then does not run for changes that were not restored.
+        _lastCheckoutRestoredChanges = recoverUnsaved;
+
         var outcome = await _checkout.CheckoutAsync(sourcePath, recoverUnsaved, ignoreObserverMode);
 
         switch (outcome)
@@ -361,7 +417,7 @@ public sealed class SessionLifecycle
                         StaleLockPrompt.TakeOverButton,
                         StaleLockPrompt.OpenReadOnlyButton);
 
-                    // Spec item 9b: the takeover also needs the holder's heartbeat to have stood still for
+                    // The takeover also needs the holder's heartbeat to have stood still for
                     // a full confirmation window on THIS computer's clock. Usually reading the prompt took
                     // long enough and there is nothing to wait for; otherwise show a short cancellable
                     // wait. Cancelling (or closing it) is exactly "Open read-only".
@@ -372,7 +428,7 @@ public sealed class SessionLifecycle
                     if (take)
                     {
                         // ForceCheckoutAsync re-reads the lock file first and only breaks it if it is
-                        // still the same lock the prompt was about (spec item 9a).
+                        // still the same lock the prompt was about.
                         var forceOutcome = await _checkout.ForceCheckoutAsync(recoverUnsaved);
                         if (forceOutcome == CheckoutOutcome.WriteAccess)
                             return _checkout.WorkingPath;
@@ -390,8 +446,7 @@ public sealed class SessionLifecycle
                         }
                         if (forceOutcome == CheckoutOutcome.NetworkUnreachable)
                         {
-                            await _prompts.ShowMessageAsync("Network Unreachable",
-                                "Cannot reach the database — check your network connection and try again.");
+                            await _prompts.ShowMessageAsync("Network Unreachable", NetworkFileOps.UnreachableMessage);
                             return null;
                         }
                         if (forceOutcome == CheckoutOutcome.SourceUnreadable)
@@ -435,8 +490,7 @@ public sealed class SessionLifecycle
                 }
 
             case CheckoutOutcome.NetworkUnreachable:
-                await _prompts.ShowMessageAsync("Network Unreachable",
-                    "Cannot reach the database — check your network connection and try again.");
+                await _prompts.ShowMessageAsync("Network Unreachable", NetworkFileOps.UnreachableMessage);
                 return null;
 
             case CheckoutOutcome.SourceMissing:
@@ -472,7 +526,7 @@ public sealed class SessionLifecycle
     }
 
     /// <summary>
-    /// Handles <see cref="CheckoutOutcome.VersionCheckUnavailable"/> (spec item 3, step 3c): the version gate could
+    /// Handles <see cref="CheckoutOutcome.VersionCheckUnavailable"/>: the version gate could
     /// not read, or raise, the database's stamp even after its quiet retries, so write access was refused. Shows the
     /// same "Couldn't Open the Database" prompt the open-time integrity check uses for a local copy that another
     /// program is holding (<see cref="LocalCopyCheckPrompt"/>; the cause is the same kind of thing and the wording
@@ -505,7 +559,7 @@ public sealed class SessionLifecycle
     /// <summary>
     /// Sets up the local read-only snapshot D'' and, when that fails, asks the user whether to
     /// try again — instead of falling back to opening the shared database D itself (which changes
-    /// D's header and holds it open; spec item 4). The retry loop is
+    /// D's header and holds it open). The retry loop is
     /// <see cref="CheckoutService.SetupReadOnlySnapshotWithRetryAsync"/>; this method only supplies
     /// the Topmost "Try again / Close" dialog.
     /// </summary>
@@ -523,8 +577,8 @@ public sealed class SessionLifecycle
     /// Tells the user their unsaved changes are kept but can't be added yet
     /// because this session did not get write access. Shown when a recovery-mode
     /// checkout lands in read-only (another writer holds the lock, or the user
-    /// declined a stale-lock takeover). The text (<see cref="KeptChangesPrompt"/>) says what 1.2.3 really
-    /// does: they are kept on this computer, offered back at the next open for editing, and saved as a
+    /// declined a stale-lock takeover). The text (<see cref="KeptChangesPrompt"/>) says what really
+    /// happens: they are kept on this computer, offered back at the next open for editing, and saved as a
     /// separate copy if someone else changes the database first.
     /// </summary>
     /// <returns>A task that completes when the user has dismissed the message.</returns>
@@ -532,7 +586,7 @@ public sealed class SessionLifecycle
         => _prompts.ShowMessageAsync(KeptChangesPrompt.UnsavedChangesKeptTitle,
             KeptChangesPrompt.UnsavedChangesKeptMessage);
 
-    // ── Open-time integrity check of the local copy (spec item 5, step 5d) ─────
+    // ── Open-time integrity check of the local copy ─────
 
     /// <summary>
     /// How <see cref="OpenWithLocalCopyCheckAsync"/> ended: the opened database, or null when the
@@ -547,7 +601,7 @@ public sealed class SessionLifecycle
 
     /// <summary>
     /// Runs <paramref name="initialize"/> (a call of <see cref="App.InitializeServices"/>) and handles what its
-    /// open-time integrity check of the local copy can say (spec item 5, step 5d) — the ONE handler shared by
+    /// open-time integrity check of the local copy can say — the ONE handler shared by
     /// startup and by database switching. The decisions are the pure table in
     /// <see cref="LocalCopyCheckDecision"/>; this method gathers the inputs, performs the action and asks again.
     ///
@@ -580,7 +634,7 @@ public sealed class SessionLifecycle
     /// Builds the services over the local copy and returns the opened database; may throw the two exceptions above.
     /// It is called again after a fresh copy and must therefore read the local file from
     /// <see cref="CheckoutService.WorkingPath"/> at the moment it is called, not from a path captured earlier: a
-    /// fresh copy can change which file the checkout holds (spec item 3, step 3c) — a new D', or, if the version
+    /// fresh copy can change which file the checkout holds — a new D', or, if the version
     /// gate then found the database needs a newer TermPoint, a read-only D'' (<see cref="CheckoutService.RequiredAppVersion"/>
     /// set, so the read-only banner explains why).
     /// </param>
@@ -743,7 +797,7 @@ public sealed class SessionLifecycle
     /// those cases was discovered only after the current database had been saved and disposed — and a
     /// missing target silently produced a new, empty database at the old path.</para>
     ///
-    /// <para><b>Single-instance guard (spec item 4b), the very first step:</b> the guard for the TARGET
+    /// <para><b>Single-instance guard, the very first step:</b> the guard for the TARGET
     /// database is taken before the pre-check and before anything is closed
     /// (<see cref="DatabaseInstanceGuard"/>). If another live TermPoint of this user already holds it, the
     /// user is told ("TermPoint Is Already Open") and the switch is refused exactly like a pre-check
@@ -765,7 +819,7 @@ public sealed class SessionLifecycle
     /// and crash-recovery steps behave as for any other open, and the setting still applies to every
     /// later open of the database.</para>
     ///
-    /// <para><b>When the switch fails (spec item 4d):</b> a failure BEFORE the previous database is touched
+    /// <para><b>When the switch fails:</b> a failure BEFORE the previous database is touched
     /// (the pre-check's refusal) leaves the user on it, exactly as before — provided a database is actually
     /// open (<see cref="ISessionHost.IsDatabaseOpen"/>). Once it has been closed, or when no database is open to begin
     /// with (retrying from the chooser, the post-wizard open), a failure ends in the same clean "no database
@@ -788,8 +842,7 @@ public sealed class SessionLifecycle
     /// that already EXISTS is refused too (File → New never adopts an existing file).
     /// </param>
     /// <param name="resolveKeptChanges">
-    /// Null for every caller except the save-conflict banner (<see cref="ResolveSaveConflictAsync"/>, spec item 10,
-    /// step 10a). When given, the current session is ended WITHOUT saving (its save would be refused anyway, and must
+    /// Null for every caller except the save-conflict banner (<see cref="ResolveSaveConflictAsync"/>. When given, the current session is ended WITHOUT saving (its save would be refused anyway, and must
     /// never write D), its unsaved changes are NOT cleaned up as a normal switch would, and this callback — handed
     /// the old database's path D — decides their fate (save them as a separate file, or discard them) once the
     /// services are closed. See <see cref="SwitchCoreAsync"/>. Never carried into the chooser's retries.
@@ -811,12 +864,63 @@ public sealed class SessionLifecycle
         string newDatabasePath, bool isNewDatabase = false, bool createIfMissing = false,
         Func<string, Task>? resolveKeptChanges = null)
     {
+        // Before anything else (before the pre-check records the new path in the settings and the
+        // recents, and before the instance guard), ask about an open editor's unapplied changes. Stop leaves the
+        // open database exactly as it is.
+        if (!await ResolveUnappliedChangesAsync())
+        {
+            _logger().LogBreadcrumb("SwitchDatabase: stopped by the unapplied-changes question");
+            return false;
+        }
+
         var result = await SwitchCoreAsync(newDatabasePath, isNewDatabase, createIfMissing, resolveKeptChanges);
 
         if (result == SwitchResult.NoDatabaseOpen)
             await RecoverToDatabaseChooserAsync(newDatabasePath);
 
         return result == SwitchResult.Opened;
+    }
+
+    /// <summary>
+    /// True while this session holds the write lock and is not ending: the only state in which an editor's
+    /// unapplied changes could still be applied and saved, so the only state in which they are asked about.
+    /// </summary>
+    private bool IsWriterSession =>
+        _checkout.Mode == CheckoutMode.WriteAccess && !_checkout.IsEnding;
+
+    /// <summary>
+    /// True when a close or switch must first ask about unapplied changes: a writer session with an
+    /// open editor that has them. Read synchronously by the window's closing handler, so it can cancel the close
+    /// before the question is shown.
+    /// </summary>
+    public bool NeedsUnappliedChangesQuestion => IsWriterSession && OpenEditorWithChanges() is not null;
+
+    /// <summary>
+    /// The open editor that really holds unapplied changes, or null. The host is trusted to find it; the editor is
+    /// asked once more, so a host that returns a clean editor can never cause a question with nothing to decide.
+    /// </summary>
+    /// <returns>The editor, or null.</returns>
+    private IUnappliedChanges? OpenEditorWithChanges() =>
+        _host.FindUnappliedChanges() is { HasUnappliedChanges: true } editor ? editor : null;
+
+    /// <summary>
+    /// Asks the one "Unapplied Changes" question (<see cref="UnappliedChangesGate"/>) for each open editor that has
+    /// unapplied changes, until none is left. Normally that is one question; a second editor in another panel
+    /// asks once more. If the same editor is still open with changes after the user's answer (an Apply the editor
+    /// accepted but its list refused to complete), it stops rather than ask again.
+    /// </summary>
+    /// <returns>True to carry on with the close or switch; false to stop (Cancel, X, or an Apply that was refused).</returns>
+    public async Task<bool> ResolveUnappliedChangesAsync()
+    {
+        IUnappliedChanges? previous = null;
+        while (IsWriterSession && OpenEditorWithChanges() is { } editor)
+        {
+            if (ReferenceEquals(editor, previous)) return false;
+            if (!await UnappliedChangesGate.ResolveAsync(editor, IsWriterSession, _prompts, () => IsWriterSession))
+                return false;
+            previous = editor;
+        }
+        return true;
     }
 
     /// <summary>
@@ -851,7 +955,7 @@ public sealed class SessionLifecycle
         _noDatabaseReason = RecoveryReason.SwitchFailed;
         try
         {
-            // ── Single-instance guard for the TARGET (spec item 4b) ──────────────────────────────
+            // ── Single-instance guard for the TARGET ──────────────────────────────
             // Taken first, before the pre-check and before anything is closed or recorded, and before
             // any cleanup or crash detection below. If another live TermPoint of this user has the
             // target open, nothing at all happens to it (no cleanup, no recovery offer, no lock, no
@@ -922,7 +1026,7 @@ public sealed class SessionLifecycle
 
             if (resolveKeptChanges is not null)
             {
-                // ── SAVE-CONFLICT RESOLUTION (spec item 10, step 10a) ────────────────────────────
+                // ── SAVE-CONFLICT RESOLUTION ────────────────────────────
                 // THE ORDINARY CLEANUP BELOW MUST NOT RUN HERE. With saveFirst:false the release
                 // reports Success, so "saveOutcome == Success" would DELETE D' — and D' holds the
                 // user's changes, which were never written anywhere else. They are the only copy.
@@ -931,7 +1035,7 @@ public sealed class SessionLifecycle
                 // here nothing in any window can write D'. The callback saves D' as a separate file
                 // and deletes it only after that copy is confirmed, or deletes it after a confirmed
                 // Discard — and if it fails or throws, D' and its marker stay: the reopen's crash
-                // recovery offers them again (spec item 16a's loop), or the failed-switch path
+                // recovery offers them again, or the failed-switch path
                 // (ResetAfterFailedOpenAsync) keeps a marked D'. Nothing is deleted in a catch.
                 await resolveKeptChanges(oldSourcePath);
             }
@@ -1004,7 +1108,16 @@ public sealed class SessionLifecycle
             // Run crash recovery + checkout for the new path. The guard for it was taken at the top, so
             // this housekeeping (stale-artifact sweep, recovery offer) cannot disturb a
             // live copy of TermPoint on the same database. Observers are not offered recovery, as at startup.
-            var recoverUnsaved = await CleanUpAndOfferRecoveryAsync(newDatabasePath, ignoreObserverMode: isNewDatabase);
+            var recovery = await CleanUpAndOfferRecoveryAsync(newDatabasePath, ignoreObserverMode: isNewDatabase);
+            if (recovery == CrashRecoveryChoice.GiveUp)
+            {
+                // The kept changes are locked by another program and the user chose Close.
+                // The previous database is already closed here, so — like a checkout that was refused after its
+                // dialog — this ends in the no-database state and the chooser. No lock was taken and D' with
+                // its marker are untouched (ResetAfterFailedOpenAsync keeps a marked D').
+                return await AbandonFailedSwitchAsync();
+            }
+            var recoverUnsaved = recovery == CrashRecoveryChoice.Restore;
 
             var checkoutPath = await RunCheckoutAsync(
                 newDatabasePath, recoverUnsaved, ignoreObserverMode: isNewDatabase);
@@ -1016,15 +1129,15 @@ public sealed class SessionLifecycle
             }
 
             // Reinitialize DI and set new data context. The open-time integrity check of the local copy
-            // (spec item 5, step 5d) is handled here exactly as at startup: a copy another program is using
+            // is handled here exactly as at startup: a copy another program is using
             // (Try again / Close) or a damaged one (one fresh copy, or the recovery chooser). It returns no
             // view model only after ending the half-opened session WITHOUT saving; the previous database is
             // already closed, so that ends in the no-database state — with the damaged reason when it is the
             // shared database that is damaged. The raw "Failed to switch to database: ..." text below can
             // therefore never name the local copy's path for these two failures.
             //
-            // As at startup, the local file is read from the checkout at the moment of each call (spec item 3,
-            // step 3c), because a fresh copy can leave the checkout holding a different file: a new D', or a
+            // As at startup, the local file is read from the checkout at the moment of each call,
+            // because a fresh copy can leave the checkout holding a different file: a new D', or a
             // read-only D'' when the version gate ran again on the fresh copy and found it needs a newer
             // TermPoint. (checkoutPath above is that file for the first call; it is only used for the null test.)
             var opened = await OpenWithLocalCopyCheckAsync(
@@ -1058,10 +1171,8 @@ public sealed class SessionLifecycle
                     vm.RestoreSemesterSelection(savedYearId, savedSemesterIds);
 
                 // Restored unsaved changes are still only in the working copy — make them
-                // durable right away (mirrors the startup path; failure surfaces through
-                // the standard save-error banner).
-                if (recoverUnsaved && _checkout.Mode == CheckoutMode.WriteAccess)
-                    await _checkout.SaveAsync();
+                // durable right away (the same shared step as the startup path).
+                await SaveRestoredChangesAsync();
             }
             catch (Exception ex)
             {
@@ -1096,7 +1207,7 @@ public sealed class SessionLifecycle
         => _instanceGuard.ReleaseAllExcept(_host.IsDatabaseOpen ? _checkout.SourcePath : null);
 
     /// <summary>
-    /// Cleans up after a switch that FAILED once the previous database had been closed (spec item 4d),
+    /// Cleans up after a switch that FAILED once the previous database had been closed,
     /// returning the app to the same "no database open" state as startup — the state the database
     /// chooser then starts from. Never throws; each step is attempted even if an earlier one failed.
     ///
@@ -1111,7 +1222,7 @@ public sealed class SessionLifecycle
     /// chooser can never delete a kept working copy (the previous database's unsaved changes) through a
     /// stale <c>WorkingPath</c>. A working copy with a dirty marker is never deleted.</description></item>
     /// <item><description><see cref="DatabaseInstanceGuard.ReleaseAll"/> gives back the single-instance guard
-    /// that was taken for the database whose open just failed (spec item 4b), so the no-database state holds
+    /// that was taken for the database whose open just failed, so the no-database state holds
     /// no guard and the user can pick that same database again, or another process may open it. Done LAST,
     /// after the working-copy bookkeeping above, because the guard is what keeps a second TermPoint out of
     /// those files while they are being sorted out.</description></item>
@@ -1137,7 +1248,7 @@ public sealed class SessionLifecycle
     }
 
     /// <summary>
-    /// The "no database open" recovery that follows a failed switch (spec item 4d): shows the startup
+    /// The "no database open" recovery that follows a failed switch: shows the startup
     /// database chooser in recovery mode and keeps showing it until a database opens or the user leaves
     /// (<see cref="DatabaseSwitchRecovery.RunChooserLoopAsync"/>). Each pick is opened through
     /// <see cref="SwitchCoreAsync"/> itself — the same pre-check, checkout and wiring as any switch, which
@@ -1171,8 +1282,8 @@ public sealed class SessionLifecycle
     /// <summary>
     /// Covers the window and shows the startup database chooser in recovery mode with
     /// <see cref="_noDatabaseReason"/> — <see cref="RecoveryReason.SwitchFailed"/>, or
-    /// <see cref="RecoveryReason.AlreadyOpen"/> when the single-instance guard refused the database (spec
-    /// item 4b). Chooser outcomes behave exactly as at startup, because
+    /// <see cref="RecoveryReason.AlreadyOpen"/> when the single-instance guard refused the database.
+    /// Chooser outcomes behave exactly as at startup, because
     /// this goes through the very same <see cref="MainWindow.ShowDatabaseChooserAsync"/>: a pick is returned, Create
     /// New hands over to the setup wizard (null), Exit shows the cancel message and shuts down (null). The
     /// chooser is shown NON-modally and never closed, as there (Avalonia 12 compositor deadlock).
@@ -1205,26 +1316,43 @@ public sealed class SessionLifecycle
     /// from their point of view TermPoint simply "kept their unsaved changes."</para>
     /// </summary>
     /// <param name="sourcePath">The database path with crash artifacts.</param>
-    /// <returns>True when the checkout should run in recovery mode (user chose Restore).</returns>
-    private async Task<bool> OfferCrashRecoveryAsync(string sourcePath)
+    /// <returns>
+    /// <see cref="CrashRecoveryChoice.Restore"/> (user chose Restore: the checkout should run in recovery mode),
+    /// <see cref="CrashRecoveryChoice.GiveUp"/> (the kept changes are locked by another program and the user chose
+    /// Close: no checkout may run), or <see cref="CrashRecoveryChoice.StartFresh"/>.
+    /// </returns>
+    private async Task<CrashRecoveryChoice> OfferCrashRecoveryAsync(string sourcePath)
     {
-        var info = _checkout.InspectCrashRecovery(sourcePath);
-        if (info is null) return false;
+        // A kept file another program holds is NOT damaged. Unreadable (after the quiet
+        // retries inside the inspection) never archives, renames or deletes anything: the user is told the
+        // changes are kept and chooses Try again (inspect again, with its retries) or Close (give up the open).
+        var info = await _checkout.InspectCrashRecoveryAsync(sourcePath);
+        while (info is not null && info.WorkingCopyVerdict == IntegrityCheckResult.Unreadable)
+        {
+            var tryAgain = await _prompts.ShowChoiceAsync(
+                LocalCopyCheckPrompt.CouldntOpenTitle, LocalCopyCheckPrompt.InUseWithKeptChangesMessage,
+                LocalCopyCheckPrompt.TryAgainButton, LocalCopyCheckPrompt.CloseButton);
+            if (!tryAgain)
+                return CrashRecoveryChoice.GiveUp;
 
-        if (!info.WorkingCopyIntact)
+            info = await _checkout.InspectCrashRecoveryAsync(sourcePath);
+        }
+        if (info is null) return CrashRecoveryChoice.StartFresh;
+
+        if (info.WorkingCopyVerdict == IntegrityCheckResult.Damaged)
         {
             // The crash damaged the unsaved data beyond SQLite's own journal recovery.
             // Archive it (support-level salvage stays possible) and tell the user honestly.
             _checkout.ArchiveCorruptWorkingCopy(sourcePath);
             await _prompts.ShowMessageAsync(
                 LocalCopyCheckPrompt.UnsavedChangesLostTitle, LocalCopyCheckPrompt.UnsavedChangesLostMessage);
-            return false;
+            return CrashRecoveryChoice.StartFresh;
         }
 
         // Neutral phrasing: these artifacts can come from a crash, a failed
         // save-on-exit, or a lock-loss demotion — "did not close properly" would
         // be wrong for the latter two.
-        // F1 / rule 3: the kept changes are the user's only copy, so neither the window's X nor a single click on
+        // Rule 3: the kept changes are the user's only copy, so neither the window's X nor a single click on
         // Discard may delete them — the helper keeps asking until the user presses Restore or confirms the discard.
         var restore = await AskKeepOrDiscardAsync("Restore Unsaved Changes?",
             "Unsaved changes from a previous session with this database were kept." +
@@ -1234,15 +1362,15 @@ public sealed class SessionLifecycle
         if (!restore)
         {
             _checkout.DiscardCrash(sourcePath);
-            return false;
+            return CrashRecoveryChoice.StartFresh;
         }
 
-        return true;
+        return CrashRecoveryChoice.Restore;
     }
 
     /// <summary>
     /// Asks a keep-or-discard question about the user's kept unsaved changes and returns only when the user has
-    /// made a real decision (data-persistence review, F1; rule 3 of the shared-database rules: never delete the only
+    /// made a real decision (rule 3 of the shared-database rules: never delete the only
     /// copy of someone's unsaved work on a click that was not a decision). Loops:
     /// <list type="bullet">
     /// <item><description>The window's X (<see cref="ChoiceResult.Closed"/>): asks the same question again. The X is not a decision.</description></item>
@@ -1265,18 +1393,36 @@ public sealed class SessionLifecycle
         {
             var answer = await _prompts.ShowChoiceOrCloseAsync(title, message, keepLabel, discardLabel);
 
+            // Field reporting: one local INFO line per answer, so a log can say which button was
+            // pressed. Titles and labels are our own fixed text; no paths.
             if (answer == ChoiceResult.Affirmative)
+            {
+                _logger().LogInfo($"Recovery: \"{title}\" answered {keepLabel}.");
                 return true;
+            }
 
             if (answer == ChoiceResult.Negative)
             {
+                _logger().LogInfo($"Recovery: \"{title}\" answered {discardLabel}; asking to confirm.");
+
                 // Discard is asked about before it is done. The confirmation's X is Go Back (ShowChoiceAsync folds
                 // the X into its negative button), so only the Discard button deletes anything.
                 var confirmed = await _prompts.ShowChoiceAsync(
                     RecoveryConflictPrompt.DiscardConfirmTitle, confirmMessage,
                     RecoveryConflictPrompt.DiscardConfirmButton, RecoveryConflictPrompt.GoBackButton);
                 if (confirmed)
+                {
+                    _logger().LogInfo($"Recovery: \"{RecoveryConflictPrompt.DiscardConfirmTitle}\" answered " +
+                                      $"{RecoveryConflictPrompt.DiscardConfirmButton}; the kept changes will be discarded.");
                     return false;
+                }
+
+                _logger().LogInfo($"Recovery: \"{RecoveryConflictPrompt.DiscardConfirmTitle}\" answered " +
+                                  $"{RecoveryConflictPrompt.GoBackButton}; asking again.");
+            }
+            else
+            {
+                _logger().LogInfo($"Recovery: \"{title}\" closed with the window's X; asking again.");
             }
 
             // Closed with the X, or Go Back: ask the original question again.
@@ -1296,11 +1442,11 @@ public sealed class SessionLifecycle
     /// <param name="sourcePath">The database path whose recovery hit a conflict.</param>
     private async Task HandleRecoveryConflictAsync(string sourcePath)
     {
-        var info = _checkout.InspectCrashRecovery(sourcePath);
+        var info = await _checkout.InspectCrashRecoveryAsync(sourcePath);
 
         while (info is not null)
         {
-            // F1 / rule 3: only a CONFIRMED discard leaves the loop without a copy; the window's X just asks again.
+            // Rule 3: only a CONFIRMED discard leaves the loop without a copy; the window's X just asks again.
             var export = await AskKeepOrDiscardAsync(
                 RecoveryConflictPrompt.ConflictTitle,
                 RecoveryConflictPrompt.ConflictMessage,
@@ -1383,7 +1529,7 @@ public sealed class SessionLifecycle
         }
     }
 
-    // ── Restore from backup (spec item 5, step 5b) ───────────────────────────
+    // ── Restore from backup ───────────────────────────
     // RestoreFromBackupAsync sets these; OnClosing reads them. See RestoreFromBackupAsync for the sequence.
 
     /// <summary>
@@ -1394,7 +1540,14 @@ public sealed class SessionLifecycle
     /// </summary>
     private bool _restoreInProgress;
 
-    // ── Save conflict (spec item 10, step 10a) ───────────────────────────────
+    /// <summary>
+    /// Set by <see cref="SaveThenRestoreAsync"/> when the save before a restore worked but an edit arrived while it ran
+    /// (twice in a row), so the restore was not started although nothing failed. Read once by
+    /// <see cref="RestoreFromBackupAsync"/> to choose the true "not started" message; reset at the start of each restore.
+    /// </summary>
+    private bool _restoreStoppedForEdit;
+
+    // ── Save conflict ───────────────────────────────
 
     /// <summary>
     /// True while the user's choice from the save-conflict banner (Save a Copy… / Discard Changes) is ending the
@@ -1527,7 +1680,7 @@ public sealed class SessionLifecycle
         // copy started earlier would be refused as "already open"), the lock is given back and the working
         // copy is gone, so the new copy opens the restored database from a clean state.
         if (_relaunchAfterClose)
-            _host.RelaunchApplication();
+            _host.RelaunchApplication(_restoredSourcePath ?? string.Empty);
 
         // ── Shutdown checkpoint #1 ───────────────────────────────────────────
         // Managed teardown (save → release lock → dispose DI container → cleanup
@@ -1535,9 +1688,13 @@ public sealed class SessionLifecycle
         // if BOTH lines are logged but TermPoint.exe lingers, the leftover is a
         // debugger/native artifact, not our code.
         _logger().LogInfo("[Shutdown] Managed teardown complete; closing main window.");
+
+        // Everything is saved, released and disposed: from here the process may be ended if Avalonia's main loop never
+        // ends (seen after a restore). Every close. Does nothing on a normal exit.
+        _host.ArmShutdownBackstop();
     }
 
-    // ── Restore from backup (spec item 5, step 5b) ───────────────────────────
+    // ── Restore from backup ───────────────────────────
 
     /// <summary>
     /// Restores <paramref name="backupPath"/> over the open database, safely. Called (after the user has
@@ -1582,7 +1739,8 @@ public sealed class SessionLifecycle
         // Captured now, before anything is torn down: OnClosing needs it to discard this session's crash marker.
         var sourcePath = _checkout.SourcePath;
 
-        _restoreInProgress = true;
+        _restoreInProgress     = true;
+        _restoreStoppedForEdit = false;
         _checkout.StopAutoSave();
 
         // Null means "the save failed, so the restore was never started".
@@ -1605,10 +1763,15 @@ public sealed class SessionLifecycle
             _restoreInProgress = false;
         }
 
-        // The save failed: the restore was not started. (SaveAsync has already shown its own save banner.)
+        // The restore was not started: either the save failed (SaveAsync has already shown its own save banner), or
+        // the save worked but an edit arrived while it ran, twice in a row, so that edit is not in D yet.
+        // The second is not a failure and gets its own, true message.
         if (result is null)
         {
-            await _prompts.ShowMessageAsync(RestorePrompt.NotStartedTitle, RestorePrompt.SaveFailedMessage);
+            var notStartedMessage = _restoreStoppedForEdit
+                ? RestorePrompt.EditDuringSaveMessage
+                : RestorePrompt.SaveFailedMessage;
+            await _prompts.ShowMessageAsync(RestorePrompt.NotStartedTitle, notStartedMessage);
             ResumeAutoSave();
             return;
         }
@@ -1662,10 +1825,23 @@ public sealed class SessionLifecycle
         // "already in progress" — reported to the user as a failed save. Same as ReleaseAsync's exit save.
         await _checkout.WaitForInFlightSaveAsync();
 
-        var save = await _checkout.SaveAsync();
+        // SaveUntilMarkerClearAsync: when an edit arrives while the save runs, the save keeps the marker (the edit is
+        // not in D) and the helper saves once more.
+        var save = await _checkout.SaveUntilMarkerClearAsync(releaseLockAfter: false);
         if (save != SaveOutcome.Success)
         {
             _logger().LogInfo($"MainWindow: restore not started — the save before it ended with {save}.");
+            return null;
+        }
+
+        // Success, but the latest edit is still not in D (it arrived during the second save too, or after the
+        // first): a confirmed restore would end the session and delete the working copy and its marker, losing it.
+        // So the restore is not started; returning null shows the "couldn't be saved, restore wasn't started" message,
+        // which is true. (CheckoutService.RestoreFromBackupAsync refuses on the marker as well, as a backstop.)
+        if (_checkout.LastSaveKeptMarker || _checkout.HasDirtyMarker)
+        {
+            _logger().LogInfo("MainWindow: restore not started — unsaved changes remain after the save before it.");
+            _restoreStoppedForEdit = true;   // nothing failed: the caller shows EditDuringSaveMessage, not SaveFailedMessage
             return null;
         }
 
@@ -1720,7 +1896,7 @@ public sealed class SessionLifecycle
         }
     }
 
-    // ── Save conflict (spec item 10, step 10a) ───────────────────────────────
+    // ── Save conflict ───────────────────────────────
 
     /// <summary>
     /// Carries out the user's choice from the save-conflict banner (<see cref="CheckoutService.HasSaveConflict"/>):
@@ -1755,7 +1931,7 @@ public sealed class SessionLifecycle
             return;
         }
 
-        // An unapplied inline edit is not in the database at all (item 14 will handle it later): refuse first.
+        // An unapplied inline edit is not in the database at all: refuse first.
         if (_host.IsInlineEditorOpen)
         {
             _logger().LogBreadcrumb("SaveConflict: refused — an editor is open");
@@ -1906,7 +2082,8 @@ public sealed class SessionLifecycle
     {
         try
         {
-            var banner = BuildLockLossBanner(reason);
+            // Detected BEFORE the demotion runs (it closes the connection and the reload closes the editor).
+            var banner = BuildLockLossBanner(reason, hadUnappliedEditorChanges: OpenEditorWithChanges() is not null);
 
             var surface = _host.CaptureLockLossSurface();
 
@@ -1967,8 +2144,9 @@ public sealed class SessionLifecycle
     /// (pure text, pinned by tests); this method only gathers the three facts it needs.
     /// </summary>
     /// <param name="reason">Why the write lock was lost: a takeover, or the lock file was deleted or is unreadable.</param>
+    /// <param name="hadUnappliedEditorChanges">True when an open editor held changes the user had not applied (adds one sentence).</param>
     /// <returns>The banner text (sticky; the caller shows it before demotion starts).</returns>
-    private string BuildLockLossBanner(WriteLockLostReason reason)
+    private string BuildLockLossBanner(WriteLockLostReason reason, bool hadUnappliedEditorChanges)
     {
         var holder = _checkout.LockLossNewHolder;
 
@@ -1978,6 +2156,7 @@ public sealed class SessionLifecycle
             takenOver:         reason == WriteLockLostReason.TakenOver,
             holderUsername:    holder?.Username,
             holderMachine:     holder?.Machine,
-            hadUnsavedChanges: _checkout.HasDirtyMarker);
+            hadUnsavedChanges: _checkout.HasDirtyMarker,
+            hadUnappliedEditorChanges: hadUnappliedEditorChanges);
     }
 }

@@ -67,6 +67,9 @@ deploy.zip
 # Personal local dev overrides
 src/TermPoint/Properties/launchSettings.json
 
+# Field-test machine names, share paths and accounts (tools/FieldTest; the tracked example shows the format)
+tools/FieldTest/fieldtest.config.psd1
+
 # Local scratch files (exports, pasted reports) — never committed
 /tmp/
 

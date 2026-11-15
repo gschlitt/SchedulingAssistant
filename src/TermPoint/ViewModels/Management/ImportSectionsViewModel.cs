@@ -52,7 +52,7 @@ public enum ImportStage
 ///
 /// <para><b>The four rules for the shared database.</b> The only write is
 /// <see cref="SectionImportService.Import"/>, one transaction of repository inserts into the open copy; the
-/// save, lock, checkout and recovery code is untouched (rules 1 to 3 as in the design, Phase 4). Rule 4: every
+/// save, lock, checkout and recovery code is untouched (rules 1 to 3). Rule 4: every
 /// message says what happened, whether the user's work is safe and what to do, with no path, no exception text
 /// and no "working copy". A failed write stays on Ready-to-import with the text <see cref="WriteFailureText"/>
 /// chooses, and the details go to the log only.</para>
@@ -83,7 +83,7 @@ public partial class ImportSectionsViewModel : ViewModelBase, IDisposable
     /// <summary>The parsed file of the result on screen, kept so Import re-plans the same rows.</summary>
     private ImportSheet? _sheet;
 
-    /// <summary>The report the user is looking at; what Import compares the database against (decision D4).</summary>
+    /// <summary>The report the user is looking at; what Import compares the database against.</summary>
     private ImportReport? _shownReport;
 
     /// <summary>The problems on screen, kept as records so Copy list can write them as columns.</summary>
@@ -95,7 +95,7 @@ public partial class ImportSectionsViewModel : ViewModelBase, IDisposable
     /// <param name="service">Reads, checks and imports the file.</param>
     /// <param name="host">The main window's facts: write access, shown semester, section editing, reload.</param>
     /// <param name="platform">The pickers, the clipboard, the bundled template and the bundled instructions.</param>
-    /// <param name="focus">The subject focus, for the "not shown" sentence after an import (decision D6).</param>
+    /// <param name="focus">The subject focus, for the "not shown" sentence after an import.</param>
     /// <param name="courses">Read after a write to find which new sections are outside the chosen subjects.</param>
     /// <param name="logger">Where failures are logged (the app's logger).</param>
     public ImportSectionsViewModel(
@@ -183,7 +183,7 @@ public partial class ImportSectionsViewModel : ViewModelBase, IDisposable
         }
     }
 
-    /// <summary>A line above the result: the "something changed" heading (D4) or the "semester changed" note; null when none.</summary>
+    /// <summary>A line above the result: the "something changed" heading or the "semester changed" note; null when none.</summary>
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(HasNotice))]
     private string? _notice;
@@ -264,7 +264,7 @@ public partial class ImportSectionsViewModel : ViewModelBase, IDisposable
 
     /// <summary>
     /// The further lines of the done message, each shown on its own: the setup values and the new-rooms
-    /// sentence, the "not shown" sentence (D6), and the undo hint (D5), in that order, only those that apply.
+    /// sentence, the "not shown" sentence, and the undo hint, in that order, only those that apply.
     /// </summary>
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(HasDoneNotes))]
@@ -584,7 +584,7 @@ public partial class ImportSectionsViewModel : ViewModelBase, IDisposable
 
     /// <summary>
     /// Shows a report as the stage it calls for: Problems, Nothing-to-add or Ready-to-import. Used for the first
-    /// check and for the up-to-date result after the database changed (decision D4).
+    /// check and for the up-to-date result after the database changed.
     /// </summary>
     /// <param name="report">The report to show; it becomes the one Import compares against.</param>
     private void ShowReport(ImportReport report)
@@ -713,7 +713,7 @@ public partial class ImportSectionsViewModel : ViewModelBase, IDisposable
     /// the one the file was checked against.
     /// <list type="bullet">
     /// <item><b>Written:</b> Done stage with the done message, then the section views are reloaded.</item>
-    /// <item><b>Changed</b> (the database changed since the check, decision D4): nothing is written; the new
+    /// <item><b>Changed</b> (the database changed since the check): nothing is written; the new
     /// result is shown with <see cref="ImportMessages.ChangedNotice"/>.</item>
     /// <item><b>Failed:</b> logged; the inline message follows <see cref="WriteFailureText"/>; the stage stays
     /// Ready-to-import and nothing was written (the writer rolled back).</item>

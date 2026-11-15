@@ -2,8 +2,8 @@ namespace TermPoint.Tests.Harness;
 
 /// <summary>
 /// One written-down sequence of events that is replayed at the start of every generated exploration (spec item 9.3,
-/// step 9.3c-1). The search is bounded, so it cannot reach every finding: F6, for instance, needs about seven events in
-/// one order, beyond the exhaustive depth, and a few hundred random walks may never hit it. A known sequence is the
+/// step 9.3c-1). The search is bounded, so it cannot reach every finding: a route of about seven events in one order, for instance,
+/// is beyond the exhaustive depth, and a few hundred random walks may never hit it (F6 was one such, now fixed). A known sequence is the
 /// honest way to say "this route is known, replay it every time": it counts toward
 /// <c>Generated_RediscoversKnownFindings</c>, and the report says which findings were found by the search, by a replay,
 /// or both, so the search is never credited with something only a replay reached.
@@ -17,8 +17,8 @@ namespace TermPoint.Tests.Harness;
 /// over, wait to completion, Restore, Save a Copy…. An event that is not enabled when its turn comes is skipped, so a
 /// sequence that stops being possible shows up as the finding no longer being reproduced.</para>
 /// </summary>
-/// <param name="Name">A short name for the report ("F6: judged at the next open of the same database").</param>
-/// <param name="Finding">The known finding the replay must show ("F6"). A replay that no longer shows it fails its test.</param>
+/// <param name="Name">A short name for the report ("F20: another program holds the lock file while the session goes read-only").</param>
+/// <param name="Finding">The known finding the replay must show ("F20"). A replay that no longer shows it fails its test.</param>
 /// <param name="Reason">One line: why this sequence is on the list.</param>
 /// <param name="Events">The event keys, in order.</param>
 internal sealed record KnownSequence(string Name, string Finding, string Reason, IReadOnlyList<string> Events)
@@ -42,38 +42,28 @@ internal static class KnownSequences
     /// <summary>Every known sequence, in the order they are replayed.</summary>
     public static IReadOnlyList<KnownSequence> All { get; } = new KnownSequence[]
     {
-        new("F6: judged at the next open of the same database",
-            "F6",
-            "Bob's stale lock is taken over, he switches away; the promise (a restore will be offered next time he opens " +
-            "dept.db) is judged when he comes back to dept.db, where Restore is chosen and \"Can't Restore\" follows. About " +
-            "seven events in one order: beyond the exhaustive depth, and not hit by the random walks at the default budget.",
+        new("F20: another program holds the lock file while the session goes read-only",
+            "F20",
+            "Alice's save conflicts (a 1.2.2 colleague changed the database, found by the autosave), another program opens the lock file " +
+            "(so TermPoint cannot delete it), and Alice chooses Save a Copy on the conflict banner. Her session goes read-only but the lock " +
+            "file is still there naming her own session, so a read-only session holds the database's lock until the other program lets go or " +
+            "the lock goes stale (invariant I6 a). This is the route of F20 that remains after 1.2.4 (the switch away and back route is fixed: " +
+            "a leftover lock naming our own session is taken back); it is accepted. Found by the generated search in 5 runs, shrunk to 5 events.",
             new[]
             {
-                "Open(bob)", "Edit(bob)", "AdvanceTime(4m)", "Open(alice)", "SwitchAway(bob)", "Close(alice)", "SwitchBack(bob)"
+                "Open(alice)", "ColleagueWrites", "AutosaveTick(alice)", "OtherProgramOpens(lockfile,none)", "ResolveSaveCopy(alice)"
             }),
 
-        new("F2: an edit made while the save is running loses its marker",
-            "F2",
-            "Bob presses Save. His save has taken its snapshot of the working file (Save.AfterLocalSnapshot) and is held there " +
-            "while Bob makes another edit. The edit is not in the snapshot, and the save's last step still deletes the " +
-            "unsaved-changes marker. When Bob's computer crashes before another save lands, his kept working file has no marker and " +
-            "the next start deletes it as \"nothing was edited\": the edit is gone. Found by the pause sweep (step 9.3c-2b).",
+        new("F24: an edit made while the person's own Restore from Backup is held",
+            "F24",
+            "Bob saves, then restores a backup; the restore is held after it has staged the backup, and Bob makes an edit (a detached panel or sticky " +
+            "note still takes edits while the wait dialog blocks the main window). The edit missed the save before the restore. After a crash " +
+            "Bob is offered \"Restore Unsaved Changes?\" over the restored database and is refused (\"Can't Restore\"); the edit survives only through " +
+            "Save a Copy. Found by the pause sweep (shrunk to 7 events). Summary item 3.13 (the session refuses edits while a restore runs) closes it.",
             new[]
             {
-                "Open(bob)", "Pause(Save(bob) at Save.AfterLocalSnapshot; BobEdits)", "Crash(bob)"
-            }),
-
-        new("F16: a demotion still running when the user switches database",
-            "F16",
-            "Bob's computer wakes to find his lock was taken over, and the demotion that starts (it makes Bob's session read-only) " +
-            "is held before it copies the database. Bob switches to the other database: it gets write access and the other " +
-            "database's lock. The old demotion goes on against the service's current database: it copies the NEW database and " +
-            "leaves Bob's session read-only while it holds the new lock (I6, both clauses). The harness runs the lost-lock handler " +
-            "inline where production posts it, so the production route is the unit test CheckoutServiceTests.F16_...; this is the " +
-            "same race, held deterministically (step 9.3c-2b).",
-            new[]
-            {
-                "Open(bob)", "AdvanceTime(4m)", "Open(alice)", "Pause(Sleep(bob,10m) at Demote.AfterWorkingCopyHandled; BobSwitches)"
+                "TakeSnapshot", "Open(bob)", "Edit(bob)", "Save(bob)",
+                "Pause(RestoreBackup(bob) at Restore.AfterStaged; BobEdits)", "Crash(bob)", "Open(bob)"
             }),
     };
 }

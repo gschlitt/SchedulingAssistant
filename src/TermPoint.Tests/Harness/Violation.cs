@@ -47,7 +47,19 @@ internal enum ViolationKind
     DemotionOnAnotherDatabase,
 
     /// <summary>A paused operation, or the event run while it was held, did not finish within the real-time limit (step 9.3c-2b): the harness abandoned the stuck work.</summary>
-    Hang
+    Hang,
+
+    /// <summary>I7: a message, choice or banner uses words or shows text the project's "plain words" rule forbids (see <see cref="MessageWording"/>).</summary>
+    MessageNotPlainWords,
+
+    /// <summary>I8 (a): the same message was shown twice, on one computer, in one step.</summary>
+    MessageShownTwice,
+
+    /// <summary>I8 (b): two different messages were shown on one computer in one step, and the pair is not on the allow-list (see <see cref="MessageAllowList"/>).</summary>
+    TwoMessagesForOneProblem,
+
+    /// <summary>I9: a computer wrote, replaced or deleted a lock file on the share that names another session (or no session at all). Creating a lock where none exists, and a confirmed takeover or reclaim of a dead holder's lock, are not breaches.</summary>
+    LockFileOfAnotherSessionWritten
 }
 
 /// <summary>
@@ -59,7 +71,7 @@ internal sealed class Violation
     /// <summary>The funnel step at whose end the breach was found (0 = before any step).</summary>
     public required int Step { get; init; }
 
-    /// <summary>The invariant: "I1" to "I6", or "Hang" for a pause that did not finish.</summary>
+    /// <summary>The invariant: "I1" to "I9", or "Hang" for a pause that did not finish.</summary>
     public required string Invariant { get; init; }
 
     /// <summary>What kind of breach it is.</summary>
@@ -82,6 +94,12 @@ internal sealed class Violation
 
     /// <summary>For <see cref="ViolationKind.WriteWithoutLockOrOnStaleVersion"/>: the crash point at which it was seen.</summary>
     public string? CrashPoint { get; init; }
+
+    /// <summary>For <see cref="ViolationKind.ReadOnlySessionHoldsLock"/> and <see cref="ViolationKind.EditLost"/>: true when another program has held a file on the share in this run (spec item 8.3), which is what the classifier reads to tell finding F20 from F16 (it told F21, now fixed, from an edit lost for another reason).</summary>
+    public bool OtherProgramInvolved { get; init; }
+
+    /// <summary>For <see cref="ViolationKind.LockFileOfAnotherSessionWritten"/>: the file operation that touched the lock file ("File.Move" is a heartbeat renewal landing, "File.Delete" a release).</summary>
+    public string? Operation { get; init; }
 
     /// <summary>
     /// For <see cref="ViolationKind.RestoreOfferedThenImpossible"/>: true when the shared database's set of edits had NOT
@@ -110,13 +128,28 @@ internal sealed class Violation
     /// <summary>
     /// For <see cref="ViolationKind.EditLost"/>: true when the lost edit was applied by its computer WHILE that computer's own
     /// operation was held in the edit-loss window (<see cref="PausePoints.EditLossWindow"/>: from a save's snapshot to the cleanup of the
-    /// working copy; the edit missed the save, and what protected it was thrown away: the marker, or for a close or switch the whole working copy: finding F2). Null for every other kind.
+    /// working copy; the edit missed the save, and what protected it was thrown away: the marker, or for a close or switch the whole working copy: finding F2, FIXED in 1.2.4 item 3.2; the rule stays to report a regression). Null for every other kind.
     /// </summary>
     public bool? EditAppliedDuringHeldSave { get; init; }
+
+    /// <summary>
+    /// For <see cref="ViolationKind.EditLost"/> (the edit itself) and <see cref="ViolationKind.RestoreOfferedThenImpossible"/> (at least
+    /// one of the computer's unsaved edits): true when the edit was applied by its computer WHILE that computer's own Restore from
+    /// Backup was held at one of the restore's crash points (<see cref="PausePoints.RestoreWindow"/>). Such an edit missed the save before
+    /// the restore; kept after a crash it is offered back over the restored database and refused, and without a crash the end of the
+    /// restore deletes it (finding F24, summary item 3.13: the session will refuse edits while a restore runs). Null for every other kind.
+    /// </summary>
+    public bool? EditAppliedDuringHeldRestore { get; init; }
 
     /// <summary>The dialogs the concerned computer was asked during the step (for classification).</summary>
     public IReadOnlyList<PromptCall> ComputerPrompts { get; init; } = Array.Empty<PromptCall>();
 
-    /// <summary>The finding id the classifier gave it: "F1".."F16" or "new". Set when the violation is recorded.</summary>
+    /// <summary>
+    /// For <see cref="ViolationKind.TwoMessagesForOneProblem"/>: the identities (title plus first sentence, see <see cref="MessageChecker.IdentityOf"/>) of the
+    /// two messages, in sorted order. Empty for every other kind.
+    /// </summary>
+    public IReadOnlyList<string> MessageIdentities { get; init; } = Array.Empty<string>();
+
+    /// <summary>The finding id the classifier gave it: "F1".."F19", "A13" or "new". Set when the violation is recorded.</summary>
     public string FindingId { get; set; } = Findings.NewFinding;
 }

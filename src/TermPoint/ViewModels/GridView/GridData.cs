@@ -40,7 +40,7 @@ public abstract record GridBlock(int Day, int StartMinutes, int EndMinutes, bool
 /// <summary>
 /// A single scheduled meeting for a section (one slot in section.Schedule).
 /// Label               = display text shown on the tile, e.g. "HIST101 A"
-/// Initials            = space-joined instructor initials, e.g. "JRS MKL" (may be empty)
+/// Initials            = the first instructor's initials plus " +N" for the rest, e.g. "JRS +1" (may be empty)
 /// SectionId           = database ID of the section — used to highlight/select the tile
 /// IsOverlay           = true when the section matches the active overlay (renders red)
 /// SemesterId          = database ID of the semester this section belongs to
@@ -51,6 +51,12 @@ public abstract record GridBlock(int Day, int StartMinutes, int EndMinutes, bool
 ///                       The renderer applies a strikethrough to visually de-emphasise staffed tiles.
 /// IsEmphasized        = true when "Emphasize Unstaffed" is active and this section is unstaffed.
 ///                       The renderer applies a distinct background to make these tiles stand out.
+/// Flag                = the section's advisory attention flag.
+/// SubjectColor        = the section's subject marker colour (<c>#RRGGBB</c>) from
+///                       <see cref="TermPoint.Services.SubjectColorPresenter.ColorFor"/>; empty string when colours are
+///                       off or the subject has none (the line is then drawn exactly as without the feature).
+/// InstructorNames     = every instructor's full name, comma-separated, for the line's hover tooltip. Set only when
+///                       Initials was shortened to "+N"; empty otherwise, meaning no tooltip.
 /// </summary>
 public record SectionMeetingBlock(
     int Day, int StartMinutes, int EndMinutes, bool IsOverlay,
@@ -59,7 +65,9 @@ public record SectionMeetingBlock(
     string FrequencyAnnotation = "",
     bool IsDeemphasized = false,
     bool IsEmphasized = false,
-    SectionFlag Flag = SectionFlag.None
+    SectionFlag Flag = SectionFlag.None,
+    string SubjectColor = "",
+    string InstructorNames = ""
 ) : GridBlock(Day, StartMinutes, EndMinutes, IsOverlay, SemesterId, SemesterName, SemesterColor);
 
 /// <summary>
@@ -88,10 +96,17 @@ public record MeetingBlock(
 /// </summary>
 /// <param name="RoomLabel">Room display label, e.g. "A 101".</param>
 /// <param name="TimeLabel">Time range display, e.g. "8:00–9:15".</param>
+/// <param name="Kind">
+/// What this ghost means when its day is folded: the kind of attention mark the strip draws for it
+/// (<see cref="FoldedDayMarks"/>). Defaults to <see cref="MarkKind.Proposal"/> (the Room Browser's candidate slot), so
+/// the Room Browser needs no change. This is the hook for the Slot Browser: it passes its own kind (moving from,
+/// moving to, a break...) and the strip code stays the same.
+/// </param>
 public record GhostBlock(
     int Day, int StartMinutes, int EndMinutes,
     string RoomLabel, string TimeLabel,
-    string SemesterId = "", string SemesterName = "", string SemesterColor = ""
+    string SemesterId = "", string SemesterName = "", string SemesterColor = "",
+    MarkKind Kind = MarkKind.Proposal
 ) : GridBlock(Day, StartMinutes, EndMinutes, IsOverlay: false, SemesterId, SemesterName, SemesterColor);
 
 /// <summary>
@@ -165,7 +180,18 @@ public record TileEntry(
     /// <summary>True when this entry came from a <see cref="SharedScheduleBlock"/>. The renderer applies purple outlined styling.</summary>
     bool IsSharedSchedule = false,
     /// <summary>The section's advisory attention flag, drawn as a small colored icon after the label. None = no icon.</summary>
-    SectionFlag Flag = SectionFlag.None);
+    SectionFlag Flag = SectionFlag.None,
+    /// <summary>
+    /// The subject marker colour (<c>#RRGGBB</c>): a small rounded square drawn before the section text, carried from
+    /// <see cref="SectionMeetingBlock.SubjectColor"/>. Empty string = no marker (always empty for non-section entries).
+    /// </summary>
+    string SubjectColor = "",
+    /// <summary>
+    /// Full instructor names for this line's own hover tooltip, carried from
+    /// <see cref="SectionMeetingBlock.InstructorNames"/>. Non-empty only when the line's initials were shortened
+    /// to "+N"; empty = no tooltip on the line.
+    /// </summary>
+    string InstructorNames = "");
 
 /// <summary>
 /// A single tile drawn on the grid, potentially containing multiple co-scheduled sections
@@ -188,6 +214,58 @@ public record GridTile(
     string SemesterColor = "");
 
 /// <summary>
+/// What a folded day's strip needs to say about the day it hides (collapse days). Built by <see cref="ScheduleGridViewModel"/> from the day's blocks across ALL shown semesters, and
+/// carried only by the FIRST sub-column of a folded day.
+/// </summary>
+/// <param name="SectionCount">
+/// Distinct sections with at least one non-overlay section meeting on the day, each counted once (so two meetings
+/// of one section on the day count 1, and an overlay turning on never changes the number).
+/// </param>
+/// <param name="HasOtherThings">
+/// True when the day also holds anything else the grid draws: faculty/committee meetings, instructor commitments,
+/// shared-schedule tiles or overlay section tiles. Keeps "T · 0" from suggesting the day is empty.
+/// </param>
+/// <param name="SectionMeetings">
+/// Every non-overlay section meeting on the day (one entry per meeting, all semesters). The strip draws the union of
+/// their time spans as remnant bands.
+/// </param>
+/// <param name="OtherSpans">
+/// The time span of every other thing the grid draws on the day, with its kind (R1-3): faculty/committee meetings,
+/// instructor commitments, shared-schedule tiles and overlay section tiles. Drawn as bars in each kind's own colour.
+/// </param>
+public record FoldedDaySummary(
+    int SectionCount,
+    bool HasOtherThings,
+    IReadOnlyList<FoldedSectionMeeting> SectionMeetings,
+    IReadOnlyList<FoldedOtherSpan> OtherSpans);
+
+/// <summary>One section meeting on a folded day: which section, and when it starts and ends (minutes from midnight).</summary>
+/// <param name="SectionId">Database ID of the section.</param>
+/// <param name="StartMinutes">Start time in minutes from midnight.</param>
+/// <param name="EndMinutes">End time in minutes from midnight (exclusive).</param>
+/// <param name="Label">The meeting's tile label, e.g. "MECH361 001" (used in the strip's tooltip when it is marked). Empty when unknown.</param>
+public record FoldedSectionMeeting(string SectionId, int StartMinutes, int EndMinutes, string Label = "");
+
+/// <summary>The kinds of "other thing" a folded strip shows as bars; each uses its own tile colour on the grid.</summary>
+public enum FoldedOtherKind
+{
+    /// <summary>A faculty/committee meeting (the Meetings table).</summary>
+    Meeting,
+    /// <summary>An instructor commitment (always drawn in the overlay style).</summary>
+    Commitment,
+    /// <summary>A tile from an imported shared schedule.</summary>
+    SharedSchedule,
+    /// <summary>A section tile shown because an overlay (instructor/room/etc.) matches it.</summary>
+    OverlaySection,
+}
+
+/// <summary>One other thing on a folded day: what kind, and when it starts and ends (minutes from midnight).</summary>
+/// <param name="Kind">Which kind of thing it is (decides the bar colour).</param>
+/// <param name="StartMinutes">Start time in minutes from midnight.</param>
+/// <param name="EndMinutes">End time in minutes from midnight (exclusive).</param>
+public record FoldedOtherSpan(FoldedOtherKind Kind, int StartMinutes, int EndMinutes);
+
+/// <summary>
 /// One day-semester column's worth of positioned tiles.
 /// In single-semester mode, Header is the day name and SemesterName is empty.
 /// In multi-semester mode, SemesterName identifies which semester this sub-column belongs to
@@ -195,12 +273,20 @@ public record GridTile(
 /// when the column has no tiles.
 /// SemesterColor is the hex color string assigned to the semester; empty string falls back
 /// to name-based color lookup in the renderer.
+/// DayNumber is the real day of the week this column shows (1 = Monday ... 7 = Sunday). Never work out a
+/// column's day from its position: the shown days can have gaps (e.g. Sunday on, Saturday off).
+/// IsFolded is true when the user has folded this column's day: the column then has NO tiles (so nothing is
+/// measured for it) and the renderer draws a strip instead. Every sub-column of a folded day has it set.
+/// Folded is the strip's summary; set only on the FIRST sub-column of a folded day, null everywhere else.
 /// </summary>
 public record GridDayColumn(
     string Header,
+    int DayNumber,
     IReadOnlyList<GridTile> Tiles,
     string SemesterName = "",
-    string SemesterColor = "");
+    string SemesterColor = "",
+    bool IsFolded = false,
+    FoldedDaySummary? Folded = null);
 
 /// <summary>
 /// Data for a tooltip shown when the user hovers over a tile on the schedule grid.
@@ -241,7 +327,34 @@ public record GridData(
     /// <summary>True when more than one semester's data is displayed side-by-side.</summary>
     public bool IsMultiSemester => SemesterCount > 1;
 
-    public bool HasData => DayColumns.Any(d => d.Tiles.Count > 0);
+    /// <summary>
+    /// True when the grid holds anything to draw. A folded day has no tiles, so its summary counts too: folding
+    /// must not make a busy week look empty.
+    /// </summary>
+    public bool HasData => DayColumns.Any(d => d.Tiles.Count > 0
+                                            || d.Folded is { SectionCount: > 0 } or { HasOtherThings: true });
+
+    /// <summary>
+    /// The real day of the week (1 = Monday ... 7 = Sunday) shown by a flat column. Reads
+    /// <see cref="GridDayColumn.DayNumber"/>, never the column's position, so it stays right when the
+    /// shown days have gaps.
+    /// </summary>
+    /// <param name="flatCol">Flat column index, 0 .. DayColumns.Count - 1.</param>
+    /// <returns>The day number of that column.</returns>
+    /// <exception cref="ArgumentOutOfRangeException">The index is outside <see cref="DayColumns"/>.</exception>
+    public int DayOfColumn(int flatCol) => DayColumns[flatCol].DayNumber;
+
+    /// <summary>
+    /// Finds the first flat column of a day (its first semester sub-column).
+    /// </summary>
+    /// <param name="day">Day number, 1 = Monday ... 7 = Sunday.</param>
+    /// <returns>The first column index of that day, or null when the day isn't shown.</returns>
+    public int? FirstColumnOfDay(int day)
+    {
+        for (int i = 0; i < DayColumns.Count; i++)
+            if (DayColumns[i].DayNumber == day) return i;
+        return null;
+    }
 
     /// <summary>
     /// Program conflicts detected among the filtered sections by enabled watches.

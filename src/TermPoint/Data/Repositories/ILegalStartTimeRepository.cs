@@ -41,7 +41,7 @@ public interface ILegalStartTimeRepository
 
     /// <summary>
     /// Deletes every legal start time entry belonging to the given academic year
-    /// (part of deleting an academic year, spec item 8).
+    /// (part of deleting an academic year).
     /// </summary>
     /// <param name="academicYearId">The academic year whose entries are deleted.</param>
     /// <param name="tx">

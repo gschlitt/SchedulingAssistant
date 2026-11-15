@@ -13,7 +13,7 @@ namespace TermPoint.ViewModels.Management;
 /// Backs the Empty Semester screen: lets the user pick a semester and delete everything attached to
 /// it (sections, meetings, releases, scheduled commitments, scheduling notes and watches) so the
 /// semester can then be deleted from Academic Years. All counting, the loaded-semester guard and the
-/// delete itself are owned by <see cref="SemesterContentsService"/> (spec item 8); this class only
+/// delete itself are owned by <see cref="SemesterContentsService"/>; this class only
 /// presents them.
 /// </summary>
 public partial class EmptySemesterViewModel : ViewModelBase, IDisposable
@@ -244,7 +244,7 @@ public partial class EmptySemesterViewModel : ViewModelBase, IDisposable
     }
 
     /// <summary>
-    /// The extra sentence for the confirmation when the user has chosen subjects (spec item 20): Empty Semester is a
+    /// The extra sentence for the confirmation when the user has chosen subjects: Empty Semester is a
     /// whole-semester operation, so it empties EVERY subject, not only the ones the section list shows. Without
     /// this a user who sees only their own subjects could take "Empty Semester" to mean just those. The sentence
     /// appears under a Subjects focus and under None (where the section list shows nothing at all) and not under

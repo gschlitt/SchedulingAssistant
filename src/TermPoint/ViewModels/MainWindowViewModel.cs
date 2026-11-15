@@ -30,7 +30,7 @@ public partial class MainWindowViewModel : ViewModelBase
     public SectionListViewModel SectionListVm { get; }
 
     /// <summary>
-    /// The subject-focus view model (spec item 20) shared by the indicator control and the Focus picker wherever
+    /// The subject-focus view model shared by the indicator control and the Focus picker wherever
     /// they appear. Held for app lifetime.
     /// </summary>
     public FocusViewModel FocusVm { get; }
@@ -58,6 +58,15 @@ public partial class MainWindowViewModel : ViewModelBase
     /// Drives the left-panel column width via ConditionalColumnWidthBehavior.
     /// </summary>
     public bool IsAnyPanelEditing => SectionListVm.IsEditing || MeetingListVm.IsEditing;
+
+    /// <summary>
+    /// Finds the one open editor that holds changes the user has not applied, looking in the
+    /// section list, the meeting list and the open flyout page. Detached panels share these same view models,
+    /// so they are covered. Asked before a close or a database switch.
+    /// </summary>
+    /// <returns>The editor with unapplied changes, or null when there is none.</returns>
+    public IUnappliedChanges? FindUnappliedChanges() =>
+        UnappliedChangesFinder.First(SectionListVm, MeetingListVm, FlyoutPage);
 
     /// <summary>Title shown in the left panel header — changes with the active view.</summary>
     public string LeftPanelTitle => IsShowingMeetings ? "Events View" : "Section View";
@@ -373,7 +382,7 @@ public partial class MainWindowViewModel : ViewModelBase
         _saveErrorDismissTimer.Start();
     }
 
-    // ── Save conflict (spec item 10, step 10a) ────────────────────────────────
+    // ── Save conflict ─────────────────────────────────────────────────────────
 
     /// <summary>
     /// True once a save was refused because the shared database was changed elsewhere since this session opened it
@@ -467,6 +476,16 @@ public partial class MainWindowViewModel : ViewModelBase
     /// the browser demo has no read-only snapshot to refresh.
     /// </summary>
     private string? _refreshErrorText;
+
+    /// <summary>
+    /// Remembers runs of failed refreshes so the first one that works after them can be reported.
+    /// Replaced by a fresh tracker when the checkout session changes (<see cref="_refreshStreakSessionId"/>), so a
+    /// reader that becomes a writer, or switches database, starts clean; an open spell is dropped silently.
+    /// </summary>
+    private FailureStreakTracker _refreshStreak = new();
+
+    /// <summary>The <see cref="CheckoutService.SessionId"/> that <see cref="_refreshStreak"/> belongs to.</summary>
+    private int _refreshStreakSessionId = int.MinValue;
 #endif
 
     /// <summary>
@@ -554,8 +573,7 @@ public partial class MainWindowViewModel : ViewModelBase
     }
 
     /// <summary>
-    /// The read-only banner text for "a live TermPoint on THIS computer holds the write lock" (spec item
-    /// 4b). Names the person editing and tells the reader what to do if that window has stopped
+    /// The read-only banner text for "a live TermPoint on THIS computer holds the write lock". Names the person editing and tells the reader what to do if that window has stopped
     /// responding. Only another operating-system user of the same computer can reach this state now — the
     /// same user's second copy is refused by the single-instance guard before it gets this far.
     /// </summary>
@@ -895,9 +913,9 @@ public partial class MainWindowViewModel : ViewModelBase
 
     /// <summary>
     /// True when the session should refresh by re-copying D to D'': it is a read-only (snapshot) session. Decided by
-    /// the checkout <see cref="CheckoutService.Mode"/> alone. <see cref="CheckoutService.IsReadOnlyMode"/> is NOT
-    /// used: it is set when a snapshot is made but never cleared when the same window later switches to write
-    /// access, so a former reader would otherwise be treated as a reader forever.
+    /// the checkout <see cref="CheckoutService.Mode"/> alone. <see cref="CheckoutService.IsReadOnlyMode"/> is not
+    /// needed here: <c>RefreshReadOnlySnapshotAsync</c> checks it itself. (Every checkout clears it, including a switch from reader
+    /// to writer.)
     /// </summary>
     /// <param name="mode">The current <see cref="CheckoutService.Mode"/>.</param>
     /// <returns>True for <see cref="CheckoutMode.ReadOnly"/>.</returns>
@@ -906,15 +924,13 @@ public partial class MainWindowViewModel : ViewModelBase
 
 #if !BROWSER
     /// <summary>
-    /// Re-copies D to D'' for a read-only session and works out what happened (spec item 28, from item 11). Gathers
+    /// Re-copies D to D'' for a read-only session and works out what happened. Gathers
     /// the facts and hands them to <see cref="RefreshPrompt.FailureLine"/>, which picks the one line to show.
     ///
     /// <para><b>How "the connection was lost" is known.</b> The service calls <c>BeforeOverwrite</c> (here: close the
-    /// connection to D'') just before it swaps the file and <c>AfterOverwrite</c> (here: reopen it) just after. If the
-    /// swap, or the reopen, fails, the service returns without the reopen having completed. So the flags
-    /// <c>connectionClosed</c> (set only once the close has really happened) and <c>connectionReopened</c> (set only
-    /// once the reopen has returned without throwing) say exactly that: closed and not reopened means the connection is
-    /// gone and, in 1.2.3, nothing reopens it.</para>
+    /// connection to D'') just before it swaps the file and <c>AfterOverwrite</c> (here: reopen it) just after, whatever
+    /// happened to the swap, retrying the reopen (3 attempts). The outcome it returns says it all:
+    /// <see cref="RefreshOutcome.ConnectionLost"/> means every reopen attempt failed.</para>
     ///
     /// <para>A failure is logged with <c>LogInfo</c> (type and message of any exception), never <c>LogError</c>, so no
     /// red log-text banner appears next to the plain line this method's caller shows.</para>
@@ -924,8 +940,6 @@ public partial class MainWindowViewModel : ViewModelBase
     {
         var dbContext = _services.GetRequiredService<IDatabaseContext>() as DatabaseContext;
 
-        var connectionClosed   = false;
-        var connectionReopened = false;
         RefreshOutcome? outcome = null;
         var threw = false;
 
@@ -934,16 +948,13 @@ public partial class MainWindowViewModel : ViewModelBase
             async Task BeforeOverwrite()
             {
                 await Task.CompletedTask;
-                if (dbContext is null) return;
-                dbContext.CloseConnection();
-                connectionClosed = true;      // known to be closed only from here
+                dbContext?.CloseConnection();
             }
 
             async Task AfterOverwrite()
             {
                 await Task.CompletedTask;
                 dbContext?.ReinitializeConnection(App.Checkout.WorkingPath, readOnly: true);
-                connectionReopened = true;    // reached only when the reopen did not throw
             }
 
             outcome = await App.Checkout.RefreshReadOnlySnapshotAsync(BeforeOverwrite, AfterOverwrite);
@@ -954,19 +965,80 @@ public partial class MainWindowViewModel : ViewModelBase
             App.Logger.LogInfo($"MainWindowViewModel: refresh threw ({ex.GetType().Name}: {ex.Message})");
         }
 
-        var connectionLost = connectionClosed && !connectionReopened;
-        var line = RefreshPrompt.FailureLine(outcome, connectionLost, threw, _lastRefreshedAt);
+        var line = RefreshPrompt.FailureLine(outcome, threw, _lastRefreshedAt);
         App.Logger.LogInfo(
             $"MainWindowViewModel: refresh {(line is null ? "worked" : "failed")} " +
-            $"(outcome: {outcome?.ToString() ?? "none"}, connection lost: {connectionLost}).");
+            $"(outcome: {outcome?.ToString() ?? "none"}).");
 
-        // Spec item 7: the two refresh failures the developers count, once per run each (the "anything else" line is
+        // The two refresh failures the developers count, once per run each (the "anything else" line is
         // not reported). Fully qualified: this file is also built for the browser, which has no TermPoint.Exceptions.
-        if (connectionLost)
+        if (!threw && outcome == RefreshOutcome.ConnectionLost)
             HandledEventReporter.Report(TermPoint.Exceptions.HandledEvent.RefreshConnectionLost, App.Logger);
-        else if (line is not null && outcome == RefreshOutcome.SourceUnavailable)
+        else if (!threw && outcome == RefreshOutcome.SourceUnavailable)
             HandledEventReporter.Report(TermPoint.Exceptions.HandledEvent.RefreshNotResponding, App.Logger);
+
+        // A refresh that works after failed ones is reported as a recovery. Fresh tracker per session.
+        try
+        {
+            var session = App.Checkout.SessionId;
+            if (session != _refreshStreakSessionId)
+            {
+                _refreshStreak          = new FailureStreakTracker();
+                _refreshStreakSessionId = session;
+            }
+        }
+        catch (Exception)
+        {
+            // Reporting must never turn a refresh into a failure; keep the current tracker.
+        }
+        TrackRefreshOutcome(_refreshStreak, App.Logger, line, threw, outcome, System.Diagnostics.Stopwatch.GetTimestamp());
         return line;
+    }
+
+    /// <summary>
+    /// Field reporting: feeds a refresh's result to <paramref name="tracker"/> and reports a
+    /// recovery. A failed refresh (<paramref name="line"/> is not null) is one more failure of kind
+    /// <paramref name="outcome"/> (or <c>Threw</c>). A refresh that worked closes an open spell: breadcrumb
+    /// <c>Refresh: Recovered</c> every time and <see cref="TermPoint.Exceptions.HandledEvent.RefreshRecovered"/>
+    /// (informational, at most 3 per run) with only numbers and kind names. Never throws, awaits nothing, and changes
+    /// nothing about the refresh. Static so a test can drive it without a window.
+    /// </summary>
+    /// <param name="tracker">The reader's failure-streak tracker.</param>
+    /// <param name="logger">The logger that receives the breadcrumb and the report.</param>
+    /// <param name="line">The failure line from <see cref="RefreshPrompt.FailureLine"/>, or null when the refresh worked.</param>
+    /// <param name="threw">True when the refresh threw.</param>
+    /// <param name="outcome">What the refresh returned, or null when it threw.</param>
+    /// <param name="timestamp">A <see cref="System.Diagnostics.Stopwatch.GetTimestamp"/> value for now.</param>
+    internal static void TrackRefreshOutcome(
+        FailureStreakTracker tracker, IAppLogger logger, string? line, bool threw, RefreshOutcome? outcome, long timestamp)
+    {
+        try
+        {
+            if (line is not null)
+            {
+                tracker.RecordFailure(threw ? "Threw" : outcome?.ToString() ?? "Other", timestamp);
+                return;
+            }
+
+            if (tracker.RecordSuccess(timestamp) is not { } spell)
+                return;
+
+            var metadata = new Dictionary<string, string>
+            {
+                ["failedAttempts"] = spell.FailedAttempts.ToString(),
+                ["failedSeconds"]  = spell.FailedSeconds.ToString(),
+                ["firstKind"]      = spell.FirstKind,
+                ["lastKind"]       = spell.LastKind,
+                ["spellInRun"]     = spell.SpellInRun.ToString(),
+            };
+            logger.LogBreadcrumb("Refresh: Recovered", new Dictionary<string, string>(metadata));
+            HandledEventReporter.Report(TermPoint.Exceptions.HandledEvent.RefreshRecovered, logger, metadata,
+                maxPerRun: 3, informational: true);
+        }
+        catch (Exception)
+        {
+            // Reporting must never turn a refresh into a failure or a crash.
+        }
     }
 
     /// <summary>
@@ -1039,7 +1111,22 @@ public partial class MainWindowViewModel : ViewModelBase
             (oldValue as IDisposable)?.Dispose();
 
         IsMoreOpen = ReferenceEquals(newValue, MoreMenuVm);
+
+        // These flyouts add, rename and delete the things the grid's filter lists and tiles
+        // are built from, but save straight to the repositories without telling the grid. Reloading on close
+        // brings the filter lists and tile names up to date (ticks survive; the rebuild matches by ID).
+        if (EditsGridLookups(oldValue))
+            _scheduleGridVm.Reload();
     }
+
+    /// <summary>
+    /// Tells whether a flyout page edits data the schedule grid reads as lookups (rooms, campuses, subjects,
+    /// courses, instructors, scheduling environment values), so the grid must reload when the page closes.
+    /// </summary>
+    /// <param name="page">The flyout page that is closing, or null.</param>
+    /// <returns>True for the Courses, Instructors and Scheduling Environment flyouts; false otherwise.</returns>
+    private static bool EditsGridLookups(object? page) =>
+        page is CourseListViewModel or InstructorListViewModel or SchedulingEnvironmentViewModel;
 
     /// <summary>
     /// Handles the Escape key for flyouts. If the current flyout page has an active inline
@@ -1186,12 +1273,28 @@ public partial class MainWindowViewModel : ViewModelBase
 
     [ObservableProperty] private bool _isDevToolsVisible;
 
-#if !BROWSER
-    [RelayCommand]
-    private void OpenDebug() => OpenFlyout<DebugTestDataViewModel>("Debug: Generate Test Data");
+    /// <summary>
+    /// True in Debug builds. Shows the Dev Tools "Debug View..." item, whose panel only has content in Debug builds.
+    /// </summary>
+    public bool IsDebugBuild =>
+#if DEBUG
+        true;
+#else
+        false;
+#endif
 
+#if !BROWSER
+    /// <summary>Opens the Debug panel (the ThrowOnError switch). Debug builds only show the menu item.</summary>
     [RelayCommand]
-    private void OpenMigration() => OpenFlyout<MigrationViewModel>("Migration: CSV → JSON (one-time utility)");
+    private void OpenDebug() => OpenFlyout<DebugTestDataViewModel>("Debug");
+
+    /// <summary>
+    /// Opens the Support panel: save logs as a zip to attach to an email, and show the Support ID that matches
+    /// BugSnag reports to this computer. Reached only through Dev Tools (Ctrl+Shift+D), which the developer tells a
+    /// user about when they ask for help.
+    /// </summary>
+    [RelayCommand]
+    private void OpenSupport() => OpenFlyout<SupportViewModel>("Support");
 #endif
 
 #if !BROWSER
@@ -1290,10 +1393,19 @@ public partial class MainWindowViewModel : ViewModelBase
 
             if (file is null) return;
 
-            var path = file.Path.LocalPath;
-            window.ScheduleGridViewInstance?.ExportToPng(path);
+            // Same as Export > Print Schedule: render on the UI thread, write under the network deadline.
+            var png = window.ScheduleGridViewInstance?.ExportToPngBytes();
+            if (png is null) return;
 
-            settings.LastExportPath = path;
+            var result = await ExportFileWriter.WriteAsync(file, png);
+            if (!result.Succeeded)
+            {
+                // This menu item has no status line, so the one plain message goes to the notification banner.
+                App.Logger.NotifyUser(result.Message!);
+                return;
+            }
+
+            settings.LastExportPath = file.Path.LocalPath;
             settings.Save();
         }
         catch (Exception ex)

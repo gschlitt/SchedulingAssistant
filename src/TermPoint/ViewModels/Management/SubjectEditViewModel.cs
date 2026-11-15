@@ -4,7 +4,7 @@ using TermPoint.Models;
 
 namespace TermPoint.ViewModels.Management;
 
-public partial class SubjectEditViewModel : ViewModelBase
+public partial class SubjectEditViewModel : UnappliedChangesEditor
 {
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(ValidationError))]
@@ -59,7 +59,18 @@ public partial class SubjectEditViewModel : ViewModelBase
 
         Name = subject.Name;
         CalendarAbbreviation = subject.CalendarAbbreviation;
+
+        TakeSnapshot();
     }
+
+    /// <inheritdoc/>
+    protected override string CaptureState() => UnappliedChangesKey.Of(Name.Trim(), CalendarAbbreviation.Trim());
+
+    /// <inheritdoc/>
+    protected override System.Windows.Input.ICommand ApplyCommand => SaveCommand;
+
+    /// <inheritdoc/>
+    protected override System.Windows.Input.ICommand CancelCommandForDiscard => CancelCommand;
 
     [RelayCommand(CanExecute = nameof(CanSave))]
     private async Task Save()
@@ -67,6 +78,7 @@ public partial class SubjectEditViewModel : ViewModelBase
         _subject.Name = Name.Trim();
         _subject.CalendarAbbreviation = CalendarAbbreviation.Trim();
         await _onSave(_subject);
+        MarkApplied();
     }
 
     [RelayCommand]

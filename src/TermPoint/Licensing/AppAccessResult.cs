@@ -54,6 +54,9 @@ public class AppAccessResult
     /// <summary>License expiry date, if licensed with an expiry.</summary>
     public DateTime? ExpiryDate { get; init; }
 
+    /// <summary>The moment the trial ends (UTC), when <see cref="Reason"/> is <see cref="AccessReason.Trial"/>.</summary>
+    public DateTime? TrialEndsUtc { get; init; }
+
     /// <summary>Whether the UI should show a purchase prompt.</summary>
     public bool ShowPurchasePrompt { get; init; }
 }

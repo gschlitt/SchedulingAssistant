@@ -398,7 +398,7 @@ internal sealed class NetworkDownEvent : ComputerEvent
     public override int Weight => 1;
 
     /// <inheritdoc/>
-    public override bool IsEnabled(RunContext ctx) => !On(ctx).NetworkIsDown;
+    public override bool IsEnabled(RunContext ctx) => !On(ctx).NetworkIsFaulty;
 
     /// <inheritdoc/>
     public override Task ExecuteAsync(RunContext ctx)
@@ -408,7 +408,32 @@ internal sealed class NetworkDownEvent : ComputerEvent
     }
 }
 
-/// <summary>The computer's connection to the share returns. Enabled while it is down.</summary>
+/// <summary>
+/// The computer's connection to the share HANGS (spec item 8.2): every call it makes on the share blocks instead of failing, until the network
+/// returns (<see cref="NetworkUpEvent"/>). The caller sees only the deadline (a timeout after five seconds, here fired at once); when the network
+/// returns each blocked call really runs and lands late. Enabled while the network is up.
+/// </summary>
+internal sealed class NetworkHangEvent : ComputerEvent
+{
+    /// <summary>Creates the event.</summary>
+    /// <param name="name">The computer's name.</param>
+    public NetworkHangEvent(string name) : base(name, "NetworkHang", "{0}'s network hangs") { }
+
+    /// <inheritdoc/>
+    public override int Weight => 1;
+
+    /// <inheritdoc/>
+    public override bool IsEnabled(RunContext ctx) => !On(ctx).NetworkIsFaulty;
+
+    /// <inheritdoc/>
+    public override Task ExecuteAsync(RunContext ctx)
+    {
+        ctx.World.NetworkHang(On(ctx));
+        return Task.CompletedTask;
+    }
+}
+
+/// <summary>The computer's connection to the share returns (from a drop or a hang). Enabled while it is down or hanging.</summary>
 internal sealed class NetworkUpEvent : ComputerEvent
 {
     /// <summary>Creates the event.</summary>
@@ -419,7 +444,7 @@ internal sealed class NetworkUpEvent : ComputerEvent
     public override int Weight => 3;
 
     /// <inheritdoc/>
-    public override bool IsEnabled(RunContext ctx) => On(ctx).NetworkIsDown;
+    public override bool IsEnabled(RunContext ctx) => On(ctx).NetworkIsFaulty;
 
     /// <inheritdoc/>
     public override Task ExecuteAsync(RunContext ctx)
@@ -434,6 +459,12 @@ internal sealed class NetworkUpEvent : ComputerEvent
 /// network returns, the wake check runs (which re-verifies the lock, and demotes the session if it was taken over) and,
 /// if the computer is still the writer, a heartbeat is sent. Enabled when the computer has an open session and its
 /// network is up.
+///
+/// <para><b>The wake check and the heartbeat run one after the other here, on purpose.</b> On a real wake they run at the same
+/// moment (field bug A12: both found the lock gone and both raised WriteLockLost). That concurrency is NOT modelled by this
+/// event, which stays deterministic; it is covered by the pause interleavings instead: the wake check held at
+/// <c>WakeCheck.AfterVerify</c> while the same computer's heartbeat ticks (<see cref="PausedComputerHeartbeatTicksAction"/>), and a heartbeat
+/// verify held at <c>HeartbeatVerify.AfterVerify</c> while the wake check runs (<see cref="PausedComputerWakeCheckRunsAction"/>).</para>
 /// </summary>
 internal sealed class SleepEvent : ComputerEvent
 {
@@ -466,7 +497,7 @@ internal sealed class SleepEvent : ComputerEvent
     public override int Weight => 1;
 
     /// <inheritdoc/>
-    public override bool IsEnabled(RunContext ctx) => On(ctx).HasOpenSession && !On(ctx).NetworkIsDown;
+    public override bool IsEnabled(RunContext ctx) => On(ctx).HasOpenSession && !On(ctx).NetworkIsFaulty;
 
     /// <inheritdoc/>
     public override async Task ExecuteAsync(RunContext ctx)
@@ -523,6 +554,52 @@ internal sealed class RelaunchEvent : ComputerEvent
     public override Task ExecuteAsync(RunContext ctx)
     {
         On(ctx).Relaunch();
+        return Task.CompletedTask;
+    }
+}
+
+/// <summary>
+/// A computer's wall clock is set ahead or behind true time (spec item 8.4): a wrong clock at boot, a person fixing the time, a
+/// time-sync service stepping the clock. Done while sessions are open this is also a clock JUMP (forward or back, by the difference
+/// between the old and the new offset). Only wall time moves: elapsed time on the computer's stopwatch and its timers do not
+/// (<see cref="SkewedTimeProvider"/>). Enabled while the computer's clock is not already at that offset. A zero offset is "the clock is
+/// corrected" and has the key <c>SetClock(bob,0)</c>.
+/// </summary>
+internal sealed class SetClockEvent : ComputerEvent
+{
+    /// <summary>The offset the clock is set to.</summary>
+    private readonly TimeSpan _offset;
+
+    /// <summary>The offset as the key writes it ("+1h", "-5m", "0").</summary>
+    private readonly string _label;
+
+    /// <summary>Creates the event.</summary>
+    /// <param name="name">The computer's name.</param>
+    /// <param name="offset">The offset from true time the clock is set to.</param>
+    /// <param name="label">The offset as the key writes it.</param>
+    public SetClockEvent(string name, TimeSpan offset, string label)
+        : base(name, "SetClock", offset == TimeSpan.Zero
+            ? "{0}'s computer clock is corrected to the true time"
+            : "{0}'s computer clock is set " + (offset > TimeSpan.Zero ? "ahead" : "behind") + " by " + label.TrimStart('+', '-'))
+    {
+        _offset = offset;
+        _label  = label;
+    }
+
+    /// <inheritdoc/>
+    public override string Key => $"SetClock({ComputerName},{_label})";
+
+    /// <inheritdoc/>
+    public override int Weight => 1;
+
+    /// <inheritdoc/>
+    public override bool IsEnabled(RunContext ctx) => On(ctx).Clock.Offset != _offset;
+
+    /// <inheritdoc/>
+    public override Task ExecuteAsync(RunContext ctx)
+    {
+        var computer = On(ctx);
+        ctx.World.Do(null, Story, () => computer.Clock.Offset = _offset);
         return Task.CompletedTask;
     }
 }
@@ -665,6 +742,70 @@ internal sealed class DeleteLockFileEvent : HarnessEvent
 }
 
 /// <summary>
+/// Another program (antivirus, a backup tool, cloud sync) opens a file on the share and keeps it open, with a chosen sharing mode (spec item 8.3). Enabled
+/// while it holds nothing and the file exists. The handle is a real one, so the code under test meets the real sharing violation.
+/// </summary>
+internal sealed class OtherProgramOpensEvent : HarnessEvent
+{
+    /// <summary>Which file it opens.</summary>
+    private readonly OtherProgramFile _file;
+
+    /// <summary>What it lets others do with the file.</summary>
+    private readonly OtherProgramShare _share;
+
+    /// <summary>Creates the event.</summary>
+    /// <param name="file">Which file it opens.</param>
+    /// <param name="share">What it lets others do with the file while it has it open.</param>
+    public OtherProgramOpensEvent(OtherProgramFile file, OtherProgramShare share)
+    {
+        _file  = file;
+        _share = share;
+    }
+
+    /// <inheritdoc/>
+    public override string Key => $"OtherProgramOpens({OtherProgramNames.KeyOf(_file)},{OtherProgramNames.KeyOf(_share)})";
+
+    /// <inheritdoc/>
+    public override string Story => $"Another program opens {OtherProgramNames.Words(_file)}, {OtherProgramNames.Words(_share)}";
+
+    /// <inheritdoc/>
+    public override int Weight => 1;
+
+    /// <inheritdoc/>
+    public override bool IsEnabled(RunContext ctx) => ctx.World.OtherProgramCanOpen(_file);
+
+    /// <inheritdoc/>
+    public override Task ExecuteAsync(RunContext ctx)
+    {
+        ctx.World.OtherProgramOpens(_file, _share);
+        return Task.CompletedTask;
+    }
+}
+
+/// <summary>The other program lets go of the file it has open. Enabled while it holds one.</summary>
+internal sealed class OtherProgramReleasesEvent : HarnessEvent
+{
+    /// <inheritdoc/>
+    public override string Key => "OtherProgramReleases";
+
+    /// <inheritdoc/>
+    public override string Story => "The other program lets go of the file it had open";
+
+    /// <inheritdoc/>
+    public override int Weight => 3;
+
+    /// <inheritdoc/>
+    public override bool IsEnabled(RunContext ctx) => ctx.World.OtherProgramHolding is not null;
+
+    /// <inheritdoc/>
+    public override Task ExecuteAsync(RunContext ctx)
+    {
+        ctx.World.OtherProgramReleases();
+        return Task.CompletedTask;
+    }
+}
+
+/// <summary>
 /// The catalogue of events (spec item 9.3, step 9.3c): for each computer, the things a person or their machine does;
 /// for the world, the things that happen to the share. Built once per run in a fixed order, so the same state always
 /// offers the same events in the same order (the exhaustive search depends on it).
@@ -694,11 +835,19 @@ internal static class EventCatalogue
             events.Add(new ResolveConflictEvent(name, saveCopy: true));
             events.Add(new ResolveConflictEvent(name, saveCopy: false));
             events.Add(new NetworkDownEvent(name));
+            events.Add(new NetworkHangEvent(name));
             events.Add(new NetworkUpEvent(name));
             events.Add(new SleepEvent(name, TimeSpan.FromMinutes(4), "4m", null));
             events.Add(new SleepEvent(name, TimeSpan.FromMinutes(10), "10m", "4m"));
             events.Add(new CrashEvent(name));
             events.Add(new RelaunchEvent(name));
+
+            // Each computer's own clock (spec item 8.4): ahead, behind, or put right. Setting it while sessions are open is a clock jump.
+            events.Add(new SetClockEvent(name, TimeSpan.FromMinutes(5), "+5m"));
+            events.Add(new SetClockEvent(name, TimeSpan.FromMinutes(-5), "-5m"));
+            events.Add(new SetClockEvent(name, TimeSpan.FromHours(1), "+1h"));
+            events.Add(new SetClockEvent(name, TimeSpan.FromHours(-1), "-1h"));
+            events.Add(new SetClockEvent(name, TimeSpan.Zero, "0"));
         }
 
         events.Add(new AdvanceTimeEvent(TimeSpan.FromSeconds(30), "30s", null));
@@ -708,6 +857,12 @@ internal static class EventCatalogue
         events.Add(new TakeSnapshotEvent());
         events.Add(new ItRestoresOldFileEvent());
         events.Add(new DeleteLockFileEvent());
+
+        // Another program holding a file on the share (spec item 8.3): each file with each sharing mode, and the release.
+        foreach (var file in Enum.GetValues<OtherProgramFile>())
+            foreach (var share in Enum.GetValues<OtherProgramShare>())
+                events.Add(new OtherProgramOpensEvent(file, share));
+        events.Add(new OtherProgramReleasesEvent());
         return events;
     }
 

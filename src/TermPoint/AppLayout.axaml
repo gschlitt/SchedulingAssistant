@@ -12,10 +12,39 @@
     <!--  Vertical gap between the gridline and the top/bottom of a tile  -->
     <x:Double x:Key="TilePaddingVertical">2</x:Double>
     <!--
-        Horizontal gap between the day-column edge and tile edges;
-        also used as the slot-allocation gap when scaling tile widths
+        Horizontal gap between the day-column edge and tile edges, and between side-by-side tiles.
+        Also the gap each tile's width allowance includes (see TileChrome).
     -->
-    <x:Double x:Key="TilePaddingHorizontal">8</x:Double>
+    <x:Double x:Key="TilePaddingHorizontal">4</x:Double>
+
+    <!--
+        Total space between the last tile of one day and the first tile of the next. The gap between tiles
+        inside a day stays TilePaddingHorizontal. Each day group is inset by half of this on its outer edges.
+    -->
+    <x:Double x:Key="DayEdgeGap">16</x:Double>
+
+    <!--
+        Tile chrome. The schedule grid both DRAWS its tiles and WIDTHS its columns from these values (TileChrome),
+        so changing one here keeps the two in step: a tile is never drawn narrower than its text needs.
+    -->
+    <!--  Border of a plain tile (one semester shown, no overlay)  -->
+    <x:Double x:Key="TileBorderThickness">1</x:Double>
+    <!--  Border of a tile drawn in a semester colour (several semesters shown), and of any overlay tile  -->
+    <x:Double x:Key="TileThickBorderThickness">3</x:Double>
+    <!--  Outer (overlay) border of an overlay tile that also has a semester colour; the semester border sits inside it  -->
+    <x:Double x:Key="TileOverlayOuterBorderThickness">4</x:Double>
+    <!--  Padding between a tile's border and its lines (left/right, top/bottom)  -->
+    <Thickness x:Key="TileContentPadding">3,2</Thickness>
+    <!--  Padding inside one line's row of a tile (left/right, top/bottom)  -->
+    <Thickness x:Key="TileEntryRowPadding">1,0</Thickness>
+    <!--  Border drawn around a selected line, on every side  -->
+    <x:Double x:Key="TileSelectionBorderThickness">3</x:Double>
+    <!--  Size of the flag icon docked at the right of a flagged line  -->
+    <x:Double x:Key="TileFlagIconSize">12</x:Double>
+    <!--  Margin around that flag icon (left, top, right, bottom)  -->
+    <Thickness x:Key="TileFlagIconMargin">3,2,0,0</Thickness>
+    <!--  Small allowance, in pixels, added to every tile's width for rounding in text measurement  -->
+    <x:Double x:Key="TileMeasuringMargin">1</x:Double>
 
     <!--
         Spacing inserted on each side of an internal semester boundary in multi-semester
@@ -23,5 +52,48 @@
         edges of the first or last semester. Total visual gap = 2 × this value.
     -->
     <x:Double x:Key="MultiSemesterInternalTilePadding">0</x:Double>
+
+    <!--  ── Folded day strips and day headers (collapse days)  ─────────────────  -->
+    <!--
+        Padding on EACH side of a folded day's strip. The strip is as wide as its letter or its section count
+        (whichever is wider) plus this on both sides: about 24 px at the default size.
+    -->
+    <x:Double x:Key="FoldedDayStripPadding">4</x:Double>
+    <!--  Vertical gap between the strip's header row, its section count, and its "other things" sign  -->
+    <x:Double x:Key="FoldedDayStripContentGap">3</x:Double>
+    <!--  Width of the crease line down the middle of a folded strip  -->
+    <x:Double x:Key="FoldedDayCreaseThickness">1</x:Double>
+    <!--  Gap between a strip's outer edge and the end of its section bands (the bands meet at the crease)  -->
+    <x:Double x:Key="FoldedDayBandEdgeInset">3</x:Double>
+    <!--  Gap at the top and bottom of every band, so two back-to-back sections show a hairline between them  -->
+    <x:Double x:Key="FoldedDayBandVerticalInset">1</x:Double>
+    <!--
+        "Other things" (meetings, overlay sections and commitments, shared tiles) get side-by-side lanes
+        centred on the crease. Width of ONE lane, and the gap between neighbouring lanes.
+    -->
+    <x:Double x:Key="FoldedDayLaneWidth">3</x:Double>
+    <x:Double x:Key="FoldedDayLaneGap">1</x:Double>
+    <!--
+        An attention mark is a bracket. Width of the vertical bar down EACH outer edge of the strip, and
+        thickness of the horizontal line across the strip at the mark's start and end.
+    -->
+    <x:Double x:Key="FoldedDayMarkEdgeWidth">3</x:Double>
+    <x:Double x:Key="FoldedDayMarkLineThickness">1</x:Double>
+    <!--  Minimum height of a mark bracket (selection, ghost...), so a very short span still shows  -->
+    <x:Double x:Key="FoldedDayMarkHeight">3</x:Double>
+    <!--
+        The attention flash on a folded strip (task 5): the strip's faces pulse toward FoldedDayFlashBrush and back.
+        Duration is the TOTAL time in milliseconds for all pulses; Count is how many pulses (an integer, kept as a double).
+    -->
+    <x:Double x:Key="FoldedDayFlashDurationMs">1000</x:Double>
+    <x:Double x:Key="FoldedDayFlashCount">2</x:Double>
+    <!--  Weight of the strip's day letter and of its section count  -->
+    <FontWeight x:Key="FoldedDayLetterFontWeight">SemiBold</FontWeight>
+    <FontWeight x:Key="FoldedDayCountFontWeight">SemiBold</FontWeight>
+    <!--  Size of the fold icon that appears at the right end of a hovered day header, and its line thickness  -->
+    <x:Double x:Key="FoldDayIconSize">12</x:Double>
+    <x:Double x:Key="FoldDayIconStrokeThickness">1.5</x:Double>
+    <!--  Space between the fold icon and the right edge of the day header  -->
+    <x:Double x:Key="FoldDayIconRightMargin">2</x:Double>
 
 </ResourceDictionary>

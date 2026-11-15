@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using TermPoint.Data.Repositories;
 using TermPoint.Models;
 using TermPoint.Services;
 
@@ -122,4 +123,20 @@ internal static class FocusTestSupport
     public static FocusService AllFocus(SemesterContext? semesterContext = null, SectionStore? sectionStore = null) =>
         new(null!, null!, null!, null!, null!,
             semesterContext ?? new SemesterContext(), sectionStore ?? new SectionStore(), databaseKey: null);
+
+    /// <summary>
+    /// A subject colour presenter with no colours set (colour by subject), for tests of views that need one but
+    /// don't test colours: every <c>ColorFor</c> answer is empty, so cards look exactly as before the feature.
+    /// </summary>
+    /// <param name="courseRepo">The test's course repository.</param>
+    /// <param name="subjectRepo">The test's subject repository.</param>
+    /// <param name="sectionStore">The section store the test already uses; a fresh one when null.</param>
+    /// <returns>A presenter over an empty colour store and a focus fixed at All.</returns>
+    public static SubjectColorPresenter NoColours(
+        ICourseRepository courseRepo, ISubjectRepository subjectRepo, SectionStore? sectionStore = null)
+    {
+        var store = sectionStore ?? new SectionStore();
+        return new SubjectColorPresenter(new SubjectColorStore([], () => new AppSettings()),
+            AllFocus(sectionStore: store), store, courseRepo, subjectRepo);
+    }
 }

@@ -1,7 +1,7 @@
 namespace TermPoint.Services;
 
 /// <summary>
-/// Every user-facing text of the "your changes can't be saved" flow (spec item 10, step 10a): the persistent banner
+/// Every user-facing text of the "your changes can't be saved" flow: the persistent banner
 /// shown when a save is refused because the shared database was changed elsewhere since this session opened it, its
 /// two buttons, the wait dialog and the confirmation shown while the user's version is saved as a separate file, the
 /// "Discard Changes" confirmation, and the refusal shown while an inline editor is open. The wording is kept out of
@@ -26,7 +26,7 @@ public static class SaveConflictPrompt
     public const string BannerMessage =
         "TermPoint can't save your changes: the database was changed elsewhere since you opened it. " +
         "Save your version as a separate file, or discard your changes, " +
-        "and TermPoint will reopen the current database.";
+        "and TermPoint will reopen the database.";
 
     /// <summary>Label of the banner's first button: save the user's version as a separate file.</summary>
     public const string SaveCopyButton = "Save a Copy…";
@@ -78,8 +78,7 @@ public static class SaveConflictPrompt
 
     /// <summary>
     /// Title of the refusal shown when either choice is made while an inline editor is open. (An edit that has not
-    /// been applied is not in the database at all, so neither choice could keep it. Spec item 14 will handle it
-    /// properly later.)
+    /// been applied is not in the database at all, so neither choice could keep it.)
     /// </summary>
     public const string EditorOpenTitle = "Finish Editing First";
 

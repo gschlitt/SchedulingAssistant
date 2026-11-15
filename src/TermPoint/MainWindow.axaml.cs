@@ -58,6 +58,33 @@ public partial class MainWindow : Window, ILifecyclePrompts, ISessionHost
     /// </summary>
     private bool _isDatabaseOpen;
 
+#if !BROWSER
+    /// <summary>Daily licence check for the open database; replaced on each database open, disposed on close.</summary>
+    private LicenseWatcher? _licenseWatcher;
+
+    /// <summary>
+    /// Starts the daily licence check for the database that was just opened, replacing any watcher from the
+    /// previous database. Each check re-reads the licence from the CURRENT database folder under the network
+    /// deadline and posts a banner; it never changes <see cref="App.LicenseStatus"/>.
+    /// </summary>
+    /// <param name="notifier">Receives the daily notices (Enqueue is thread-safe).</param>
+    private void StartLicenseWatcher(AppNotificationService notifier)
+    {
+        _licenseWatcher?.Dispose();
+        _licenseWatcher = new LicenseWatcher(
+            App.LicenseClock,
+            evaluate: () =>
+            {
+                var folder = Path.GetDirectoryName(App.Checkout.SourcePath);
+                return string.IsNullOrEmpty(folder) ? null : App.TryEvaluateLicense(folder);
+            },
+            sessionStatus: () => App.LicenseStatus,
+            post: notifier.Enqueue,
+            log: line => App.Logger.LogInfo(line));
+        _licenseWatcher.Start();
+    }
+#endif
+
     /// <summary>
     /// The database-session lifecycle (open, switch, recovery at open), which lives in
     /// <see cref="SessionLifecycle"/> and reaches this window only through <see cref="ILifecyclePrompts"/> and
@@ -83,7 +110,9 @@ public partial class MainWindow : Window, ILifecyclePrompts, ISessionHost
         // field-test build such as 1.2.3.1 can be told apart from the release at a glance.
         var version = Assembly.GetExecutingAssembly().GetName().Version;
         var shown = version is null ? "0.0.0" : version.ToString(version.Revision > 0 ? 4 : 3);
-        Title = $"TermPoint v{shown}";
+        // A build running its lock timers faster (TERMPOINT_TEST_TIMINGS, a Sideload or Development build only) says so in the title,
+        // so it can never be mistaken for a normal one; the suffix is empty at factor 1.
+        Title = $"TermPoint v{shown}{LockTimings.Current.TitleSuffix}";
 
 
 
@@ -179,17 +208,23 @@ public partial class MainWindow : Window, ILifecyclePrompts, ISessionHost
     }
 
     /// <summary>
-    /// The pure decision behind every close request (spec item 15): the first request starts the teardown, further
+    /// The pure decision behind every close request: the first request starts the teardown, further
     /// requests while it runs are ignored, and the window closes for real once the teardown has finished (or its
     /// two-minute backstop has passed). Also read by the key handler, which blocks shortcuts once the exit has begun.
     /// </summary>
     private readonly ExitCloseGuard _exitGuard = new();
 
     /// <summary>
+    /// True while the "Unapplied Changes" question is showing for a close request, so a second close
+    /// request in the meantime is ignored rather than stacking a second question.
+    /// </summary>
+    private bool _unappliedQuestionShowing;
+
+    /// <summary>
     /// Called whenever the window is about to close — whether via Files → Exit or the title-bar X.
     /// The first request cancels the close, hides the secondary windows, covers the window with the loading
     /// curtain and runs the async shutdown (save to D, release lock); the teardown then calls Close() again, which
-    /// falls through. A further request while the teardown runs is ignored (it used to end the process mid-save);
+    /// falls through. A further request while the teardown runs is ignored (letting it through would end the process mid-save);
     /// only after <see cref="ExitCloseGuard.Backstop"/> is one let through. The decisions live in
     /// <see cref="ExitCloseGuard"/>; this method only does the window work.
     /// </summary>
@@ -220,6 +255,22 @@ public partial class MainWindow : Window, ILifecyclePrompts, ISessionHost
                 App.Logger.LogInfo("MainWindow: close request ignored — a save-conflict resolution is in progress.");
                 return;
             }
+        }
+
+        // A writer with an editor holding unapplied changes is asked once, BEFORE the exit guard
+        // moves on. The close is cancelled while the question shows; a second close request in the meantime is
+        // ignored. On "carry on" Close() runs again and finds nothing left to ask, so the exit proceeds as always.
+        // All the behaviour is in SessionLifecycle.ResolveUnappliedChangesAsync / UnappliedChangesGate.
+        if (_exitGuard.State == ExitCloseState.Open && Lifecycle.NeedsUnappliedChangesQuestion)
+        {
+            e.Cancel = true;
+            if (_unappliedQuestionShowing) return;
+            _unappliedQuestionShowing = true;
+            bool carryOn;
+            try { carryOn = await Lifecycle.ResolveUnappliedChangesAsync(); }
+            finally { _unappliedQuestionShowing = false; }
+            if (carryOn) Close();
+            return;
         }
 
         switch (_exitGuard.OnCloseRequested())
@@ -258,6 +309,45 @@ public partial class MainWindow : Window, ILifecyclePrompts, ISessionHost
         // ignoring its X. The one exception: the backstop already let a close through, so the window has closed.
         if (!_exitGuard.BackstopFired)
             Close(); // Re-trigger OnClosing; the guard is now ReadyToClose, so it falls through.
+    }
+
+    /// <summary>
+    /// Once the main window has closed, makes sure the application shuts down. <c>ShutdownMode.OnMainWindowClose</c> should already have
+    /// done it, but after a Save &amp; Backup restore Avalonia's shutdown was seen never to run (or to be abandoned),
+    /// leaving an invisible TermPoint alive until sign-out. So a request is posted at background priority: on a normal
+    /// exit the main loop has ended by then and it never runs; otherwise it asks for the shutdown and logs that it had
+    /// to (the evidence for the cause). Avalonia refuses a second shutdown with <see cref="InvalidOperationException"/>,
+    /// which is caught. If even this is abandoned, <see cref="ShutdownBackstop"/> ends the process. Never throws.
+    /// </summary>
+    /// <param name="e">The closed event args.</param>
+    protected override void OnClosed(EventArgs e)
+    {
+        base.OnClosed(e);
+        if (Avalonia.Controls.Design.IsDesignMode) return;
+#if !BROWSER
+        _licenseWatcher?.Dispose();
+#endif
+
+        Dispatcher.UIThread.Post(() =>
+        {
+            try
+            {
+                if (Avalonia.Application.Current?.ApplicationLifetime is not
+                    Avalonia.Controls.ApplicationLifetimes.IClassicDesktopStyleApplicationLifetime desktop)
+                    return;
+
+                App.Logger.LogInfo("[Shutdown] The main window closed but the main loop is still running; asking for the shutdown again.");
+                desktop.Shutdown();
+            }
+            catch (InvalidOperationException)
+            {
+                // Already shutting down: nothing to do.
+            }
+            catch (Exception ex)
+            {
+                App.Logger.LogError(ex, "MainWindow: asking for the shutdown after the main window closed failed");
+            }
+        }, DispatcherPriority.Background);
     }
 
     protected override async void OnOpened(EventArgs e)
@@ -518,7 +608,7 @@ public partial class MainWindow : Window, ILifecyclePrompts, ISessionHost
     /// databases, browse, create new, or restore. Falls back to the chooser in recovery
     /// mode if the saved database is missing or corrupt.
     ///
-    /// <para><b>Order once a database is chosen (spec item 4b):</b> (1) take the single-instance guard
+    /// <para><b>Order once a database is chosen:</b> (1) take the single-instance guard
     /// (<see cref="DatabaseInstanceGuard"/>; if another live TermPoint of this user holds it: message, then
     /// the chooser again, nothing else runs); (2) record the recent database and evaluate the license;
     /// (3) <see cref="SessionLifecycle.CleanUpAndOfferRecoveryAsync"/> — stale-artifact sweep, crash-recovery offer;
@@ -526,7 +616,7 @@ public partial class MainWindow : Window, ILifecyclePrompts, ISessionHost
     /// only once write access is confirmed); (5) services and window. The guard is released when the app
     /// exits (<see cref="OnClosing"/>).</para>
     ///
-    /// <para><b>Steps (1)–(5) are <see cref="SessionLifecycle.OpenStartupDatabaseAsync"/>, run in a loop (spec item 5, step 5d):</b>
+    /// <para><b>Steps (1)–(5) are <see cref="SessionLifecycle.OpenStartupDatabaseAsync"/>, run in a loop:</b>
     /// when the shared database turns out to be damaged, the recovery chooser is shown and whatever the user picks
     /// there is opened by running steps (1)–(5) again for it, rather than by a second copy of them.</para>
     /// </summary>
@@ -534,10 +624,16 @@ public partial class MainWindow : Window, ILifecyclePrompts, ISessionHost
     {
         string dbPath;
 
-        if (settings.AlwaysOpenMostRecentDatabase)
+        // A relaunch after a restore names the restored database: open it directly this once,
+        // exactly as the "Always open the most recent database" setting would (same check, same fallback).
+        var reopenAfterRestore = RestartArguments.ShouldReopen(Program.StartupArgs, settings.DatabasePath);
+        if (reopenAfterRestore)
+            App.Logger.LogInfo("[Startup] Started after a restore: reopening the restored database.");
+
+        if (settings.AlwaysOpenMostRecentDatabase || reopenAfterRestore)
         {
             // Auto-open mode — validate the saved path and proceed if OK.
-            var validation = await DatabaseValidator.ValidateAsync(settings.DatabasePath);
+            var validation = await DatabaseValidator.ValidateSharedAtOpenAsync(settings.DatabasePath);
             if (validation == DatabaseValidationResult.Ok)
             {
                 dbPath = settings.DatabasePath!;
@@ -565,7 +661,7 @@ public partial class MainWindow : Window, ILifecyclePrompts, ISessionHost
             // Even in chooser mode, validate the saved path so we can warn the user
             // if their most recent database has gone missing, is corrupt, can't be read
             // right now (held open by another program), or its network location is unreachable.
-            var validation = await DatabaseValidator.ValidateAsync(settings.DatabasePath);
+            var validation = await DatabaseValidator.ValidateSharedAtOpenAsync(settings.DatabasePath);
             var mode = ChooserMode.Normal;
             RecoveryReason? reason = null;
 
@@ -655,35 +751,14 @@ public partial class MainWindow : Window, ILifecyclePrompts, ISessionHost
                     AutoDismissAfter = TimeSpan.FromSeconds(8)
                 });
 
-            // Licensing notification — shown when the user is in trial, expired, or unlicensed.
+            // Licensing notification (trial countdown, expired, trial ended, licence expiring soon),
+            // then the daily check for a session left open across days.
 #if !BROWSER
-            var ls = App.LicenseStatus;
-            if (ls.Reason == Licensing.AccessReason.Trial && ls.DaysRemaining.HasValue)
-                notifier.Enqueue(new AppNotification
-                {
-                    Message  = $"You have {ls.DaysRemaining} days remaining in your trial.",
-                    Severity = NotificationSeverity.Info,
-                    LinkText = "Purchase a license",
-                    LinkUrl  = "https://termpoint.ca/license"
-                });
-            else if (ls.Reason == Licensing.AccessReason.Expired)
-                notifier.Enqueue(new AppNotification
-                {
-                    Message       = "Your license has expired. Editing is disabled.",
-                    Severity      = NotificationSeverity.Warning,
-                    IsDismissable = false,
-                    LinkText      = "Purchase or renew",
-                    LinkUrl       = "https://termpoint.ca/license"
-                });
-            else if (ls.Reason == Licensing.AccessReason.Unlicensed)
-                notifier.Enqueue(new AppNotification
-                {
-                    Message       = "Your trial has ended. Editing is disabled.",
-                    Severity      = NotificationSeverity.Warning,
-                    IsDismissable = false,
-                    LinkText      = "Purchase a license",
-                    LinkUrl       = "https://termpoint.ca/license"
-                });
+            var openNotice = Licensing.LicenseNotices.ForOpen(App.LicenseStatus, App.LicenseClock.Today);
+            if (openNotice is not null)
+                notifier.Enqueue(openNotice);
+
+            StartLicenseWatcher(notifier);
 #endif
 
             notifier.EnqueueUnseenAnnouncements();
@@ -795,8 +870,7 @@ public partial class MainWindow : Window, ILifecyclePrompts, ISessionHost
     }
 
     /// <summary>
-    /// Covers the window for the "no database open" state that follows a failed database switch (spec
-    /// item 4d), so nothing bound to the database that was just closed can be seen or clicked: clears
+    /// Covers the window for the "no database open" state that follows a failed database switch, so nothing bound to the database that was just closed can be seen or clicked: clears
     /// the stale <see cref="Window.DataContext"/> and raises the loading curtain — the same cover the
     /// window wears at launch.
     ///
@@ -811,7 +885,7 @@ public partial class MainWindow : Window, ILifecyclePrompts, ISessionHost
     }
 
     /// <summary>
-    /// Covers the window for the exit sequence (spec item 15): raises the loading curtain showing "Saving and
+    /// Covers the window for the exit sequence: raises the loading curtain showing "Saving and
     /// closing…" when the session is in write mode (<c>CheckoutMode.WriteAccess</c>) or "Closing…" otherwise, with
     /// its lift disarmed so nothing can uncover it, and takes the main view out of the keyboard's reach (focus
     /// moved onto the curtain, view disabled), because the curtain stops only the pointer. Unlike
@@ -1081,7 +1155,7 @@ public partial class MainWindow : Window, ILifecyclePrompts, ISessionHost
         await msg.ShowDialog(owner);
     }
 
-    // ── Restore from backup (spec item 5, step 5b) ───────────────────────────
+    // ── Restore from backup ──────────────────────────────────────────────────
 
     /// <summary>
     /// Restores <paramref name="backupPath"/> over the open database, safely. Called (after the user has
@@ -1096,10 +1170,12 @@ public partial class MainWindow : Window, ILifecyclePrompts, ISessionHost
         => Lifecycle.RestoreFromBackupAsync(backupPath);
 
     /// <summary>
-    /// Starts a fresh copy of TermPoint (after a confirmed restore). Never throws: if it cannot be started the
-    /// application still closes, and the user reopens it by hand.
+    /// Starts a fresh copy of TermPoint (after a confirmed restore), asking it to reopen <paramref name="reopenPath"/>
+    /// (<see cref="RestartArguments"/>). Never throws: if it cannot be started the application
+    /// still closes, and the user reopens it by hand.
     /// </summary>
-    private static void RelaunchApplication()
+    /// <param name="reopenPath">The restored database; blank starts the new copy without the argument.</param>
+    private static void RelaunchApplication(string reopenPath)
     {
         try
         {
@@ -1110,7 +1186,8 @@ public partial class MainWindow : Window, ILifecyclePrompts, ISessionHost
                 return;
             }
 
-            PlatformProcess.LaunchExecutable(exePath);
+            var args = string.IsNullOrWhiteSpace(reopenPath) ? [] : RestartArguments.ForReopen(reopenPath);
+            PlatformProcess.LaunchExecutable(exePath, args);
         }
         catch (Exception ex)
         {
@@ -1191,7 +1268,7 @@ public partial class MainWindow : Window, ILifecyclePrompts, ISessionHost
         return await workTask;
     }
 
-    // ── Save conflict (spec item 10, step 10a) ───────────────────────────────
+    // ── Save conflict ────────────────────────────────────────────────────────
 
     /// <summary>
     /// Carries out the user's choice from the save-conflict banner (<see cref="CheckoutService.HasSaveConflict"/>):
@@ -1335,8 +1412,7 @@ public partial class MainWindow : Window, ILifecyclePrompts, ISessionHost
     /// <summary>
     /// The core of every two-button dialog: built in code and Topmost (see <see cref="ShowFatalAsync"/>), and it
     /// reports THREE outcomes, so a caller can tell a button press from the window's X. Used directly by the
-    /// crash-recovery questions, where the X must never be taken for "discard my unsaved work" (data-persistence
-    /// review, F1); every other caller goes through the <c>bool</c> wrapper <see cref="ShowChoiceDialogAsync"/>.
+    /// crash-recovery questions, where the X must never be taken for "discard my unsaved work"; every other caller goes through the <c>bool</c> wrapper <see cref="ShowChoiceDialogAsync"/>.
     /// </summary>
     /// <param name="owner">Window to parent the dialog to.</param>
     /// <param name="title">Dialog window title.</param>
@@ -1347,7 +1423,52 @@ public partial class MainWindow : Window, ILifecyclePrompts, ISessionHost
     internal static async Task<ChoiceResult> ShowChoiceOrCloseDialogAsync(
         Window owner, string title, string message, string affirmative, string negative)
     {
-        var result = ChoiceResult.Closed; // stays Closed unless a button sets it first
+        var pressed = await ShowButtonsDialogAsync(owner, title, message, affirmative, negative);
+        return pressed switch
+        {
+            0 => ChoiceResult.Affirmative,
+            1 => ChoiceResult.Negative,
+            _ => ChoiceResult.Closed
+        };
+    }
+
+    /// <summary>
+    /// The three-button dialog behind <see cref="ILifecyclePrompts.ShowThreeChoiceAsync"/>, built by the same code as
+    /// the two-button ones (<see cref="ShowButtonsDialogAsync"/>). The window's X is reported as the third button.
+    /// </summary>
+    /// <param name="owner">Window to parent the dialog to.</param>
+    /// <param name="title">Dialog window title.</param>
+    /// <param name="message">Body text; wraps automatically.</param>
+    /// <param name="first">Label of the first button.</param>
+    /// <param name="second">Label of the second button.</param>
+    /// <param name="third">Label of the third button (also the window's X).</param>
+    /// <returns>Which button was pressed; <see cref="ThreeChoiceResult.Third"/> for the third button or the X.</returns>
+    internal static async Task<ThreeChoiceResult> ShowThreeChoiceDialogAsync(
+        Window owner, string title, string message, string first, string second, string third)
+    {
+        var pressed = await ShowButtonsDialogAsync(owner, title, message, first, second, third);
+        return pressed switch
+        {
+            0 => ThreeChoiceResult.First,
+            1 => ThreeChoiceResult.Second,
+            _ => ThreeChoiceResult.Third
+        };
+    }
+
+    /// <summary>
+    /// The one builder behind every two- and three-button dialog: built in code and Topmost (see
+    /// <see cref="ShowFatalAsync"/>). Buttons are given in order of preference, first = the main answer, and shown
+    /// right to left (the first rightmost, the last leftmost), exactly as the two-button dialogs always were.
+    /// </summary>
+    /// <param name="owner">Window to parent the dialog to.</param>
+    /// <param name="title">Dialog window title.</param>
+    /// <param name="message">Body text; wraps automatically.</param>
+    /// <param name="labels">The button labels, in order of preference (at least one).</param>
+    /// <returns>The zero-based index of the button pressed; -1 when the window was closed without a button.</returns>
+    private static async Task<int> ShowButtonsDialogAsync(
+        Window owner, string title, string message, params string[] labels)
+    {
+        var result = -1; // stays -1 (closed with the X) unless a button sets it first
         var dlg = new Window
         {
             Title = title,
@@ -1359,26 +1480,28 @@ public partial class MainWindow : Window, ILifecyclePrompts, ISessionHost
             Topmost = true // see ShowFatalAsync — modal dialogs must never be occluded
         };
 
-        var yes   = new Button { Content = affirmative, HorizontalAlignment = HorizontalAlignment.Right, Padding = new Thickness(16, 4) };
-        var no    = new Button { Content = negative,    HorizontalAlignment = HorizontalAlignment.Right, Padding = new Thickness(16, 4) };
-        var btns  = new StackPanel { Orientation = Orientation.Horizontal, HorizontalAlignment = HorizontalAlignment.Right, Spacing = 8 };
-        btns.Children.Add(no);
-        btns.Children.Add(yes);
+        // Added last-to-first so the first label ends up rightmost (the layout is a left-to-right row).
+        var btns = new StackPanel { Orientation = Orientation.Horizontal, HorizontalAlignment = HorizontalAlignment.Right, Spacing = 8 };
+        for (var i = labels.Length - 1; i >= 0; i--)
+        {
+            var index  = i; // captured by the click handler below
+            var button = new Button { Content = labels[i], HorizontalAlignment = HorizontalAlignment.Right, Padding = new Thickness(16, 4) };
+            button.Click += (_, _) => { result = index; Dispatcher.UIThread.Post(() => dlg.Close()); };
+            btns.Children.Add(button);
+        }
 
         var panel = new StackPanel { Margin = new Thickness(24), Spacing = 16 };
         panel.Children.Add(new TextBlock { Text = message, TextWrapping = TextWrapping.Wrap, FontSize = 13 });
         panel.Children.Add(btns);
         dlg.Content = panel;
 
-        yes.Click += (_, _) => { result = ChoiceResult.Affirmative; Dispatcher.UIThread.Post(() => dlg.Close()); };
-        no.Click  += (_, _) => { result = ChoiceResult.Negative;    Dispatcher.UIThread.Post(() => dlg.Close()); };
         await dlg.ShowDialog(owner);
         return result;
     }
 
     /// <summary>
     /// Shows the short "Checking the Lock" wait that follows a confirmed stale-lock takeover when the
-    /// holder's heartbeat has not yet stood still long enough (spec item 9b). The dialog is only the
+    /// holder's heartbeat has not yet stood still long enough. The dialog is only the
     /// view: the waiting itself is <see cref="CheckoutService.WaitForTakeOverConfirmationAsync"/>, which
     /// never blocks the UI thread. The dialog closes by itself when the wait ends; its Cancel button (or
     /// closing it) cancels the wait. Built in code and Topmost like every other modal dialog here (see
@@ -1505,7 +1628,7 @@ public partial class MainWindow : Window, ILifecyclePrompts, ISessionHost
         // The detached header mirrors the inline one: the focus statement fills the width and the Events toggle
         // docks right. The statement shows in the Section View only (the wrapper Panel carries that condition,
         // because FocusIndicator's own DataContext is the FocusViewModel) and hides itself under focus All.
-        // Prototype 2026-10-23: subjects shown in the top bar instead; restore if the header statement is wanted back.
+        // Subjects are shown in the top bar instead; restore this if the header statement is wanted back.
         //var focusPanel = new Panel
         //{
         //    VerticalAlignment = VerticalAlignment.Center,
@@ -1569,10 +1692,28 @@ public partial class MainWindow : Window, ILifecyclePrompts, ISessionHost
                 _scheduleGridWindow = null;
             },
             headerContext);
+
+        // The window's title bar names the chosen subjects too, as plain text with the same
+        // "+N" cap, so a minimised or background window still says it is not the whole timetable.
+        _scheduleGridWindow?.Bind(Window.TitleProperty, new Binding(nameof(FocusViewModel.ShortSubjectsText))
+        {
+            Source = Vm.FocusVm,
+            Converter = new FuncValueConverter<string?, string>(subjects => ScheduleViewWindowTitle(slot.Header, subjects))
+        });
     }
 
     /// <summary>
-    /// Builds the header shown above a detached Schedule View window: academic unit, semesters, stats, focus,
+    /// The title of a detached Schedule View window: the panel's name, then the chosen subjects when there is a
+    /// subject focus, e.g. "Schedule View — Subjects: CIVL, ECON +4". Under focus All it is just the panel's name.
+    /// </summary>
+    /// <param name="panelName">The panel's header text ("Schedule View").</param>
+    /// <param name="shortSubjects"><see cref="FocusViewModel.ShortSubjectsText"/>; empty or null under All.</param>
+    /// <returns>The window title.</returns>
+    private static string ScheduleViewWindowTitle(string panelName, string? shortSubjects) =>
+        string.IsNullOrEmpty(shortSubjects) ? panelName : $"{panelName} — Subjects: {shortSubjects}";
+
+    /// <summary>
+    /// Builds the header shown above a detached Schedule View window: academic unit, semesters, focus,
     /// filter, overlay and shared-schedule statements, mirroring the inline header in MainView.axaml.
     /// A <see cref="WrapPanel"/>, like the inline header, so in a narrow window the statements move onto further
     /// lines instead of running off the edge (a horizontal StackPanel never wraps).
@@ -1652,46 +1793,18 @@ public partial class MainWindow : Window, ILifecyclePrompts, ISessionHost
             new Binding("ScheduleGridVm.SemesterLineSegments") { Source = Vm });
         stack.Children.Add(semItemsControl);
 
-        // Stats separator
-        var statsSeparator = new Border
+        // Subject focus (outermost layer, so before "Filtered by:"): separator + the shared statement control
+        // (subject chips capped with "+N"), both hidden under focus All. In a detached window
+        // this is the only place the chosen subjects show, since the main window's top bar is out of sight.
+        var focusSeparator = new Border
         {
             Width = 1,
             Background = (IBrush)(this.FindResource("SeparatorLine") ?? Brushes.Gray),
             Margin = new Thickness(0, 3)
         };
-        statsSeparator.Bind(IsVisibleProperty, new Binding("ScheduleGridVm.StatsLine")
-        {
-            Source = Vm,
-            Converter = StringConverters.IsNotNullOrEmpty
-        });
-        stack.Children.Add(statsSeparator);
-
-        // Stats
-        var statsTextBlock = new TextBlock
-        {
-            FontSize = (double)(this.FindResource("FontSizeLarge") ?? 14d),
-            VerticalAlignment = VerticalAlignment.Center
-        };
-        statsTextBlock.Bind(TextBlock.TextProperty, new Binding("ScheduleGridVm.StatsLine") { Source = Vm });
-        statsTextBlock.Bind(IsVisibleProperty, new Binding("ScheduleGridVm.StatsLine")
-        {
-            Source = Vm,
-            Converter = StringConverters.IsNotNullOrEmpty
-        });
-        stack.Children.Add(statsTextBlock);
-
-        // Subject focus (outermost layer, so before "Filtered by:"): separator + the shared statement control,
-        // both hidden under focus All.
-        // Prototype 2026-10-23: subjects shown in the top bar instead; restore if the header statement is wanted back.
-        //var focusSeparator = new Border
-        //{
-        //    Width = 1,
-        //    Background = (IBrush)(this.FindResource("SeparatorLine") ?? Brushes.Gray),
-        //    Margin = new Thickness(0, 3)
-        //};
-        //focusSeparator.Bind(IsVisibleProperty, new Binding("IsIndicatorVisible") { Source = Vm.FocusVm });
-        //stack.Children.Add(focusSeparator);
-        //stack.Children.Add(new FocusIndicator { DataContext = Vm.FocusVm, VerticalAlignment = VerticalAlignment.Center });
+        focusSeparator.Bind(IsVisibleProperty, new Binding("IsIndicatorVisible") { Source = Vm.FocusVm });
+        stack.Children.Add(focusSeparator);
+        stack.Children.Add(new FocusIndicator { DataContext = Vm.FocusVm, VerticalAlignment = VerticalAlignment.Center });
 
         // Filter separator
         var filterSeparator = new Border
@@ -1709,7 +1822,7 @@ public partial class MainWindow : Window, ILifecyclePrompts, ISessionHost
             Text = "Filtered by:",
             FontSize = (double)(this.FindResource("FontSizeLarge") ?? 14d),
             FontWeight = FontWeight.Bold,
-            Foreground = (IBrush)(this.FindResource("FilterBadgeText") ?? Brushes.Black),
+            Foreground = (IBrush)(this.FindResource("TextPrimary") ?? Brushes.Black),
             VerticalAlignment = VerticalAlignment.Center
         };
         filteredByLabel.Bind(IsVisibleProperty, new Binding("Filter.IsActive") { Source = Vm.ScheduleGridVm });
@@ -1720,7 +1833,7 @@ public partial class MainWindow : Window, ILifecyclePrompts, ISessionHost
         {
             FontSize = (double)(this.FindResource("FontSizeLarge") ?? 14d),
             FontWeight = FontWeight.Bold,
-            Foreground = (IBrush)(this.FindResource("FilterBadgeText") ?? Brushes.Black),
+            Foreground = (IBrush)(this.FindResource("TextPrimary") ?? Brushes.Black),
             VerticalAlignment = VerticalAlignment.Center,
             TextTrimming = TextTrimming.CharacterEllipsis,
             MaxWidth = 400
@@ -1797,7 +1910,7 @@ public partial class MainWindow : Window, ILifecyclePrompts, ISessionHost
         win.Show(this);
     }
 
-    // ── Lifecycle seams (designs/data-persistence-review-2026-10.md, step 9.1a) ─────────────────────────────────────
+    // ── Lifecycle seams ─────────────────────────────────────
     // ILifecyclePrompts and ISessionHost are the two interfaces a future non-UI session-lifecycle class will
     // depend on. This window implements both EXPLICITLY, each member delegating to the code that already
     // existed, so introducing them changes no behaviour. The lifecycle methods below call themselves through
@@ -1820,6 +1933,10 @@ public partial class MainWindow : Window, ILifecyclePrompts, ISessionHost
     /// <inheritdoc cref="ILifecyclePrompts.ShowChoiceOrCloseAsync"/>
     Task<ChoiceResult> ILifecyclePrompts.ShowChoiceOrCloseAsync(string title, string message, string affirmative, string negative)
         => ShowChoiceOrCloseDialogAsync(this, title, message, affirmative, negative);
+
+    /// <inheritdoc cref="ILifecyclePrompts.ShowThreeChoiceAsync"/>
+    Task<ThreeChoiceResult> ILifecyclePrompts.ShowThreeChoiceAsync(string title, string message, string first, string second, string third)
+        => ShowThreeChoiceDialogAsync(this, title, message, first, second, third);
 
     /// <inheritdoc cref="ILifecyclePrompts.RunWithWaitAsync{T}"/>
     Task<T> ILifecyclePrompts.RunWithWaitAsync<T>(string title, string message, Func<Task<T>> work)
@@ -1870,6 +1987,9 @@ public partial class MainWindow : Window, ILifecyclePrompts, ISessionHost
 
     /// <inheritdoc cref="ISessionHost.IsInlineEditorOpen"/>
     bool ISessionHost.IsInlineEditorOpen => DataContext is MainWindowViewModel { IsAnyPanelEditing: true };
+
+    /// <inheritdoc cref="ISessionHost.FindUnappliedChanges"/>
+    IUnappliedChanges? ISessionHost.FindUnappliedChanges() => (DataContext as MainWindowViewModel)?.FindUnappliedChanges();
 
     /// <inheritdoc cref="ISessionHost.SetupWindowAsync"/>
     /// <exception cref="InvalidCastException"><paramref name="opened"/> was not produced by <see cref="ISessionHost.OpenServices"/> of this window.</exception>
@@ -1924,7 +2044,10 @@ public partial class MainWindow : Window, ILifecyclePrompts, ISessionHost
     }
 
     /// <inheritdoc cref="ISessionHost.RelaunchApplication"/>
-    void ISessionHost.RelaunchApplication() => RelaunchApplication();
+    void ISessionHost.RelaunchApplication(string reopenPath) => RelaunchApplication(reopenPath);
+
+    /// <inheritdoc cref="ISessionHost.ArmShutdownBackstop"/>
+    void ISessionHost.ArmShutdownBackstop() => Program.Backstop?.Arm();
 
     /// <inheritdoc cref="ISessionHost.CaptureLockLossSurface"/>
     ILockLossSurface ISessionHost.CaptureLockLossSurface()
@@ -1934,8 +2057,8 @@ public partial class MainWindow : Window, ILifecyclePrompts, ISessionHost
 
     /// <summary>
     /// Adapter that lets the session lifecycle use the root view model without referencing its type: it
-    /// implements <see cref="IOpenedDatabase"/> by calling exactly the members the lifecycle used to call on the
-    /// view model directly, and hands the view model back to this window to wire up
+    /// implements <see cref="IOpenedDatabase"/> by calling exactly the members the lifecycle needs on the
+    /// view model, and hands the view model back to this window to wire up
     /// (<see cref="ISessionHost.SetupWindowAsync"/>).
     /// </summary>
     private sealed class OpenedDatabase : IOpenedDatabase

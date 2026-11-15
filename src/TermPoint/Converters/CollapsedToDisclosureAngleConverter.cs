@@ -12,7 +12,7 @@ namespace TermPoint.Converters;
 /// Bind it to a <c>RotateTransform.Angle</c> on the triangle's <c>RenderTransform</c>. The section
 /// list does exactly that instead of using a style with an <c>expanded</c> class: a style with a
 /// class condition attaches style machinery to every <c>Path</c> in the view, and the list has one
-/// toggle <c>Path</c> per section card (spec item 21, step 4b). A binding costs nothing on the
+/// toggle <c>Path</c> per section card. A binding costs nothing on the
 /// other elements.
 ///
 /// Anything that is not a boolean (null, or an unset binding value) is treated as collapsed, the

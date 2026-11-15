@@ -53,6 +53,31 @@ public sealed class FaultSeamTests : IDisposable
 
     // ── Helpers ───────────────────────────────────────────────────────────────
 
+    /// <summary>This test instance's token: what <see cref="FlowOwner"/> holds in code this test started.</summary>
+    private readonly object _owner = new();
+
+    /// <summary>
+    /// Which test started the code running on the current async flow. It flows into every await, <c>Task.Run</c> and
+    /// timer the test's code starts, but not into work an EARLIER test left running in the background (a lock-file
+    /// delete finishing after its test ended, say): that work carries its own test's token, or none.
+    /// </summary>
+    private static readonly AsyncLocal<object?> FlowOwner = new();
+
+    /// <summary>
+    /// Marks the current flow as this test's and returns a check for it, so a recorder installed in the static
+    /// <see cref="CrashPoints.Hook"/> or <see cref="NetworkFaults.Decide"/> keeps only this test's calls. Both hooks
+    /// are process-wide: without the check, a background task from another test can hit them while this test records,
+    /// which made an exact-sequence assertion fail once (spec item 8.12).
+    /// <para>Must be called from the test method itself, not from inside an <c>async</c> helper: an async method
+    /// restores the caller's async-local values when it returns, so the mark would be lost.</para>
+    /// </summary>
+    /// <returns>True while running on a flow this test started.</returns>
+    private Func<bool> ClaimFlow()
+    {
+        FlowOwner.Value = _owner;
+        return () => ReferenceEquals(FlowOwner.Value, _owner);
+    }
+
     /// <summary>Path of D inside the fake share.</summary>
     private string DbPath => Path.Combine(_shareDir, "test.db");
 
@@ -179,7 +204,7 @@ public sealed class FaultSeamTests : IDisposable
             $"A faulted timeout must not wait the deadline (took {clock.ElapsedMilliseconds} ms).");
         Assert.Equal(SavePrompt.OutageNotice(hasUnsavedChanges: true, autoSaveEnabled: false), Assert.Single(banners));   // the one sticky outage notice (spec item 28)
         Assert.Equal(before, NetworkFileOps.ComputeHash(DbPath));
-        Assert.False(File.Exists(DbPath + ".tmp"));
+        ShareTemp.AssertNone(DbPath);
         Assert.True(File.Exists(svc.WorkingPath));
         Assert.True(File.Exists(svc.WorkingPath + ".dirty"));
 
@@ -292,7 +317,7 @@ public sealed class FaultSeamTests : IDisposable
         Assert.Equal(SaveOutcome.CopyError, outcome);
         Assert.Equal(SavePrompt.OutageNotice(hasUnsavedChanges: true, autoSaveEnabled: false), Assert.Single(banners));   // the one sticky outage notice (spec item 28)
         Assert.Equal("unsaved-edit", ReadTestValue(DbPath));   // the abandoned rename landed
-        Assert.False(File.Exists(DbPath + ".tmp"));
+        ShareTemp.AssertNone(DbPath);
         var marker = JsonSerializer.Deserialize<DirtyMarkerData>(File.ReadAllText(svc.WorkingPath + ".dirty"));
         Assert.NotNull(marker?.PendingSaveHash);
         Assert.Equal(NetworkFileOps.ComputeHash(DbPath), marker!.PendingSaveHash, ignoreCase: true);
@@ -316,7 +341,7 @@ public sealed class FaultSeamTests : IDisposable
         var banners = CaptureBanners(svc);
         var before = NetworkFileOps.ComputeHash(DbPath);
 
-        NetworkFaults.Decide = r => r.Label == "CopyFile" && r.DestinationPath == DbPath + ".tmp"
+        NetworkFaults.Decide = r => r.Label == "CopyFile" && r.DestinationPath is { } d && ShareTempFile.IsLeftoverOf(DbPath, d)
             ? NetworkFaultDecision.Throwing(new IOException("simulated: the share refused the write"))
             : NetworkFaultDecision.None;
 
@@ -325,7 +350,7 @@ public sealed class FaultSeamTests : IDisposable
         Assert.Equal(SaveOutcome.CopyError, outcome);
         Assert.Equal(SavePrompt.ForTransientFailure(SavePrompt.WriteFailedMessage, isAutoSave: false), Assert.Single(banners));
         Assert.Equal(before, NetworkFileOps.ComputeHash(DbPath));
-        Assert.False(File.Exists(DbPath + ".tmp"));
+        ShareTemp.AssertNone(DbPath);
         Assert.True(File.Exists(svc.WorkingPath));
         Assert.True(File.Exists(svc.WorkingPath + ".dirty"));
     }
@@ -455,6 +480,39 @@ public sealed class FaultSeamTests : IDisposable
     }
 
     /// <summary>
+    /// The hashing copy goes through the same seam, under the same "CopyFile" label, and behaves as the plain copy does:
+    /// TimeOut does nothing, TimeOutAfterRunning copies everything but reports "not completed" with no hash, Throw
+    /// throws before any work, and with no fault it returns the real hash.
+    /// </summary>
+    [Fact]
+    public async Task CopyAndHashAsync_HonoursEachFaultKind_AndUsesTheCopyFileLabel()
+    {
+        var src = Path.Combine(_shareDir, "src.bin");
+        var dst = Path.Combine(_shareDir, "dst.bin");
+        File.WriteAllBytes(src, new byte[200_000]);
+
+        var labels = new List<string>();
+        NetworkFaults.Decide = r => { labels.Add(r.Label); return NetworkFaultDecision.TimeOut; };
+        Assert.Equal((false, null), await NetworkFileOps.CopyAndHashAsync(src, dst));
+        Assert.False(File.Exists(dst));
+        Assert.Equal(new[] { "CopyFile" }, labels);
+
+        NetworkFaults.Decide = _ => NetworkFaultDecision.TimeOutAfterRunning;
+        Assert.Equal((false, null), await NetworkFileOps.CopyAndHashAsync(src, dst));
+        Assert.Equal(200_000, new FileInfo(dst).Length);
+
+        File.Delete(dst);
+        NetworkFaults.Decide = _ => NetworkFaultDecision.Throwing(new IOException("boom"));
+        await Assert.ThrowsAsync<IOException>(() => NetworkFileOps.CopyAndHashAsync(src, dst));
+        Assert.False(File.Exists(dst));
+
+        NetworkFaults.Decide = _ => NetworkFaultDecision.None;
+        var (completed, hash) = await NetworkFileOps.CopyAndHashAsync(src, dst);
+        Assert.True(completed);
+        Assert.Equal((await NetworkFileOps.ComputeHashAsync(dst)).Hash, hash);
+    }
+
+    /// <summary>
     /// The generic RunAsync (used directly by callers such as "lock acquire") is consulted by its label and gives
     /// exactly what a real timeout gives: (false, default) for a result-returning operation, false for an action.
     /// A run-then-timeout runs the operation once; a plain timeout never runs it.
@@ -493,7 +551,8 @@ public sealed class FaultSeamTests : IDisposable
         CreateSqliteDb(a);
 
         var seen = new ConcurrentQueue<NetworkFaultRequest>();
-        NetworkFaults.Decide = r => { seen.Enqueue(r); return NetworkFaultDecision.None; };
+        var mine = ClaimFlow();
+        NetworkFaults.Decide = r => { if (mine()) seen.Enqueue(r); return NetworkFaultDecision.None; };
 
         async Task<NetworkFaultRequest> Single(Func<Task> call)
         {
@@ -530,7 +589,8 @@ public sealed class FaultSeamTests : IDisposable
     {
         var svc = await CheckoutWithUnsavedEditAsync(new RecordingLogger());
         var hits = new ConcurrentQueue<string>();
-        CrashPoints.Hook = hits.Enqueue;
+        var mine = ClaimFlow();
+        CrashPoints.Hook = name => { if (mine()) hits.Enqueue(name); };
 
         Assert.Equal(SaveOutcome.Success, await svc.SaveAsync());
 
@@ -547,7 +607,8 @@ public sealed class FaultSeamTests : IDisposable
         var svc = CreateService(new RecordingLogger());
         CreateSqliteDb(DbPath);
         var hits = new ConcurrentQueue<string>();
-        CrashPoints.Hook = hits.Enqueue;
+        var mine = ClaimFlow();
+        CrashPoints.Hook = name => { if (mine()) hits.Enqueue(name); };
 
         Assert.Equal(CheckoutOutcome.WriteAccess, await svc.CheckoutAsync(DbPath));
         InsertTestValue(svc.WorkingPath, "edit");
@@ -580,7 +641,7 @@ public sealed class FaultSeamTests : IDisposable
         Assert.Equal(SaveOutcome.CopyError, outcome);
         Assert.Equal(SavePrompt.ForTransientFailure(SavePrompt.UnexpectedMessage, isAutoSave: false), Assert.Single(banners));
         Assert.Equal(before, NetworkFileOps.ComputeHash(DbPath));
-        Assert.True(File.Exists(DbPath + ".tmp"), "A crash after the copy leaves D.tmp behind.");
+        Assert.Single(ShareTemp.Leftovers(DbPath));   // a crash after the copy leaves the save's temporary file behind
         Assert.True(File.Exists(svc.WorkingPath));
         Assert.True(File.Exists(svc.WorkingPath + ".dirty"));
     }
@@ -601,7 +662,7 @@ public sealed class FaultSeamTests : IDisposable
         Assert.Equal(SaveOutcome.CopyError, await svc.SaveAsync());
 
         Assert.Equal("unsaved-edit", ReadTestValue(DbPath));
-        Assert.False(File.Exists(DbPath + ".tmp"));
+        ShareTemp.AssertNone(DbPath);
         Assert.True(File.Exists(svc.WorkingPath + ".dirty"));
     }
 

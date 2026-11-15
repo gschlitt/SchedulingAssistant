@@ -7,7 +7,7 @@ using System.Collections.ObjectModel;
 
 namespace TermPoint.ViewModels.Management;
 
-public partial class SubjectListViewModel : ViewModelBase, IDisposable
+public partial class SubjectListViewModel : ViewModelBase, IUnappliedChangesHost, IDisposable
 {
     private readonly ISubjectRepository _repo;
     private readonly IDialogService _dialog;
@@ -17,6 +17,9 @@ public partial class SubjectListViewModel : ViewModelBase, IDisposable
     [ObservableProperty] private ObservableCollection<Subject> _subjects = new();
     [ObservableProperty] private Subject? _selectedSubject;
     [ObservableProperty] private SubjectEditViewModel? _editVm;
+
+    /// <inheritdoc/>
+    public IUnappliedChanges? FindUnappliedChanges() => UnappliedChangesFinder.First(EditVm);
 
     /// <summary>True when the current user holds the write lock; controls whether CRUD buttons are enabled.</summary>
     public bool IsWriteEnabled => _lockService.IsWriter;
@@ -79,7 +82,7 @@ public partial class SubjectListViewModel : ViewModelBase, IDisposable
     {
         LastErrorMessage = null;
         if (SelectedSubject is null) return;
-        // Save writes the whole copy back, so unknown JSON fields (spec item 3) are carried over too.
+        // Save writes the whole copy back, so unknown JSON fields are carried over too.
         var clone = new Subject
         {
             Id = SelectedSubject.Id,

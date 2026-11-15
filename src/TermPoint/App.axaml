@@ -45,11 +45,49 @@
 			<!--  Font size of the Import Sections flyout's reading text: the sentences of the numbered steps and the instructions document  -->
 			<x:Double x:Key="ImportReadingFontSize">12</x:Double>
 
+			<!--  Font size of the Support panel's text (Dev Tools → Support), and the longest line, in pixels, of its explanations  -->
+			<x:Double x:Key="SupportFontSize">12</x:Double>
+			<x:Double x:Key="SupportReadingMaxWidth">560</x:Double>
+
 			<!--  Longest line, in pixels, of the Import Sections flyout's first screen text and instructions document. The flyout is as wide as the window, so longer lines would be hard to read  -->
 			<x:Double x:Key="ImportReadingMaxWidth">680</x:Double>
 
 			<!--  Weight of headings inside flyout bodies (the Import Sections problems heading and the "New in TermPoint" group headings)  -->
 			<FontWeight x:Key="FlyoutHeadingWeight">SemiBold</FontWeight>
+
+			<!--  Font of the section card heading (e.g. "BIOL 105 AB1"). The section card heading should use these too; the subject colour chooser's preview chip already does  -->
+			<x:Double x:Key="SectionHeadingFontSize">12</x:Double>
+			<FontWeight x:Key="SectionHeadingFontWeight">SemiBold</FontWeight>
+
+			<!--
+				Subject marker (colour by subject, designs/subject-colours.md Revision 1): a small rounded square of the
+				subject's colour before the section code, outlined with SubjectMarkerOutline (AppColors.axaml).
+				SubjectMarkerSizeRatio: the marker's side as a fraction of the text's font size (close to the text height),
+				used by the Schedule view tiles so the marker follows the grid's font-size selector.
+				SubjectMarkerGap: pixels between a tile marker and the section code.
+				SectionListSubjectMarkerSize: the marker's side on section cards and in the Courses flyout preview
+				(the 12 pt card heading; 12 × the ratio, rounded).
+				SectionListSubjectMarkerMargin: the card marker's margin. Its right side plus the heading's own 2 px left
+				margin makes the same 3 px gap as on tiles.
+			-->
+			<x:Double x:Key="SubjectMarkerSizeRatio">0.9</x:Double>
+			<x:Double x:Key="SubjectMarkerGap">3</x:Double>
+			<CornerRadius x:Key="SubjectMarkerCornerRadius">2</CornerRadius>
+			<Thickness x:Key="SubjectMarkerBorderThickness">1</Thickness>
+			<x:Double x:Key="SectionListSubjectMarkerSize">11</x:Double>
+			<Thickness x:Key="SectionListSubjectMarkerMargin">2,0,1,0</Thickness>
+
+			<!--
+				Subject chips in the Schedule View header's focus statement (1.2.4 item 2.14, Controls/FocusIndicator.axaml).
+				FocusChipMarkerSize: the marker's side beside the 16 px header text (FontSizeLarge × SubjectMarkerSizeRatio, rounded).
+				FocusChipSpacing: horizontal gap between chips; FocusChipLineSpacing: gap between wrapped lines.
+				FocusChipLabelMaxWidth: widest a chip's name grows before it is trimmed (a subject with no abbreviation
+				shows its full name); the chip's tooltip shows the full name.
+			-->
+			<x:Double x:Key="FocusChipMarkerSize">14</x:Double>
+			<x:Double x:Key="FocusChipSpacing">6</x:Double>
+			<x:Double x:Key="FocusChipLineSpacing">2</x:Double>
+			<x:Double x:Key="FocusChipLabelMaxWidth">160</x:Double>
 
 			<!--  Converters  -->
 			<conv:MinutesToTimeConverter x:Key="MinutesToTimeConverter" />
@@ -68,6 +106,23 @@
 		<SimpleTheme />
 		<StyleInclude Source="avares://Avalonia.Controls.DataGrid/Themes/Simple.xaml" />
 		<StyleInclude Source="avares://Avalonia.Controls.ColorPicker/Themes/Simple/Simple.xaml" />
+
+		<!--
+			Colour choosers (subjects, semesters, wizard): hide the ColorView's tab strip.
+			Since the Avalonia 12 upgrade its tab icons and palette swatches render blank, leaving an empty
+			pale band above the spectrum. Every chooser only needs the spectrum tab (the default tab), so the
+			strip (the TabControl's header ItemsPresenter), its background band and the content's 48 px top
+			offset are removed. Applies only inside ColorView templates, so no other control pays for it.
+		-->
+		<Style Selector="ColorView /template/ TabControl#PART_TabControl /template/ ItemsPresenter">
+			<Setter Property="IsVisible" Value="False" />
+		</Style>
+		<Style Selector="ColorView /template/ Border#TabBackgroundBorder">
+			<Setter Property="IsVisible" Value="False" />
+		</Style>
+		<Style Selector="ColorView /template/ Border#ContentBackgroundBorder">
+			<Setter Property="Margin" Value="0" />
+		</Style>
 
 		<!--
 			Inter is the application-wide font. It is registered as the default in

@@ -6,7 +6,7 @@ namespace TermPoint.Services;
 /// <summary>
 /// Measures, on THIS computer's own clock, how long the lock file's holder snapshot (its
 /// <see cref="LockFileData.SessionGuid"/> and <see cref="LockFileData.Heartbeat"/>) has gone without
-/// changing (spec item 9b).
+/// changing.
 ///
 /// <para><b>Why this exists.</b> A live writer rewrites its heartbeat every
 /// <see cref="WriteLockService.HeartbeatIntervalSeconds"/> seconds, so "the heartbeat has not changed

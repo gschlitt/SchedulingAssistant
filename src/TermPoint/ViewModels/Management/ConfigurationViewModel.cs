@@ -8,8 +8,12 @@ namespace TermPoint.ViewModels.Management;
 /// Hosts a left-sidebar list of configuration categories; selecting one displays
 /// its view in the right panel via the ViewLocator.
 /// </summary>
-public partial class ConfigurationViewModel : ViewModelBase, IDismissableEditor
+public partial class ConfigurationViewModel : ViewModelBase, IDismissableEditor, IUnappliedChangesHost
 {
+    /// <inheritdoc/>
+    public IUnappliedChanges? FindUnappliedChanges() =>
+        UnappliedChangesFinder.First(Categories.Cast<object?>().ToArray());
+
     /// <summary>Ordered list of configuration category ViewModels shown in the left sidebar.</summary>
     public ObservableCollection<ViewModelBase> Categories { get; }
 

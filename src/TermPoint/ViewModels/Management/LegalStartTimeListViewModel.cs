@@ -20,7 +20,7 @@ public record LegalStartTimeRow(LegalStartTime Entry, string BlockLengthDisplay)
     public string StartTimesDisplay => Entry.StartTimesDisplay;
 }
 
-public partial class LegalStartTimeListViewModel : ViewModelBase, IDisposable, IDismissableEditor
+public partial class LegalStartTimeListViewModel : ViewModelBase, IDisposable, IDismissableEditor, IUnappliedChangesHost
 {
     /// <summary>Category label shown in the Configuration flyout sidebar.</summary>
     public string DisplayName => "Scheduling";
@@ -54,6 +54,9 @@ public partial class LegalStartTimeListViewModel : ViewModelBase, IDisposable, I
     private LegalStartTime? SelectedEntry => SelectedRow?.Entry;
 
     [ObservableProperty] private LegalStartTimeEditViewModel? _editVm;
+
+    /// <inheritdoc/>
+    public IUnappliedChanges? FindUnappliedChanges() => UnappliedChangesFinder.First(EditVm);
 
     /// <inheritdoc/>
     public bool DismissActiveEditor()

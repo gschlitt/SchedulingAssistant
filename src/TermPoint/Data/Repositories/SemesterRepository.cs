@@ -90,7 +90,7 @@ public class SemesterRepository(IDatabaseContext db) : ISemesterRepository
     /// <para>
     /// Any unknown fields found in the data column when the semester was loaded
     /// (<see cref="PersistedRecord.ExtensionData"/>) are written back alongside Color, so an older
-    /// app version does not delete fields a newer one added (spec item 3). The payload keeps its
+    /// app version does not delete fields a newer one added. The payload keeps its
     /// historical format: default System.Text.Json options, hence <c>"Color"</c> not <c>"color"</c>.
     /// </para>
     /// </summary>

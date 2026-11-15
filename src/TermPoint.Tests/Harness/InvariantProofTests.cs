@@ -242,8 +242,8 @@ public sealed class InvariantProofTests
     /// share (the walk writes it from <see cref="World.AtCrashPoint"/>). Before this fix the save did not look at the lock
     /// again, the rename landed and I4 reported it. Now the save's final check, made immediately before the rename, finds the
     /// lock is not Bob's: his save is refused (LockLost), D is byte-for-byte what it was, and his edit stays in his kept working
-    /// file with its marker. His D.tmp is left where it is: without the lock his save may not write to the share (rule 2), and the
-    /// file's one shared name may by now be Alice's save in progress. I4 has nothing to report because there is no rename.
+    /// file with its marker. His temporary file is deleted (1.2.4 item 4.1): it has a name of its own, so it is his and nobody
+    /// else's, and deleting it needs no lock. D is untouched. I4 has nothing to report because there is no rename.
     /// </summary>
     [HarnessFact]
     public async Task I4_ALockThatChangesHandsBeforeTheRename_IsRefusedByTheFinalCheck_F12IsFixed()
@@ -264,7 +264,7 @@ public sealed class InvariantProofTests
         Assert.Empty(world.Violations);                                    // I4 had no rename to look at
         Assert.Equal(databaseBefore, world.CurrentDatabaseHash());         // D was never touched
         Assert.Empty(world.EditsInDatabase());
-        Assert.Contains("dept.db.tmp", world.ShareFiles());                // without the lock, the refused save leaves D.tmp alone
+        Assert.Null(world.CurrentSaveTempFile());                          // the refused save deleted its own temporary file, lock or no lock
         Assert.True(bob.HasWorkingFile, "D' is kept");
         Assert.True(bob.HasDirtyMarker, "and so is its marker");
         Assert.Equal(new[] { "bob-1" }, bob.WorkingFileEdits());
@@ -432,11 +432,6 @@ public sealed class InvariantProofTests
             "Network connection interrupted — your changes are safe locally but cannot be saved until the connection is restored.")
             .IsUnclassifiedPromise);
 
-        // The lock put back: a fact about the file TermPoint uses to mark the database as in use.
-        var putBack = MessagePromises.Classify("", LockLossPrompt.LockFilePutBack);
-        Assert.False(putBack.IsUnclassifiedPromise);
-        Assert.Equal(new[] { PromiseKind.Info }, putBack.Kinds);
-
         var missingFile = MessagePromises.Classify("", SavePrompt.SessionFileMissingMessage);
         Assert.False(missingFile.IsUnclassifiedPromise);
         Assert.Equal(new[] { PromiseKind.Info }, missingFile.Kinds);
@@ -502,9 +497,9 @@ public sealed class InvariantProofTests
 
     /// <summary>
     /// Bob opens dept.db and edits; four minutes pass; Alice takes over his stale lock; Bob switches to other.db. His
-    /// final save finds the lock gone, so he is told twice (the lock-lost banner and "Changes Not Saved") that TermPoint
-    /// will offer to restore his changes next time he opens dept.db. Leaves Bob with other.db open and the
-    /// promise pending, and Alice holding dept.db.
+    /// final save finds the lock gone, so he is told once (the "Changes Not Saved" dialog; since 1.2.4 the ending save's lock-lost
+    /// banner is not delivered, F17) that TermPoint will offer to restore his changes next time he opens dept.db. Leaves Bob
+    /// with other.db open and the promise pending, and Alice holding dept.db.
     /// </summary>
     /// <param name="world">The world (already created with dept.db).</param>
     /// <param name="bob">Bob.</param>
@@ -523,11 +518,9 @@ public sealed class InvariantProofTests
 
         bob.Prompts.ExpectMessage(ChangesNotSavedTitle);
         Assert.True(await bob.SwitchToAsync(world.EnsureOtherDatabase()));
-        // Bob's mode on other.db is deliberately not asserted: the harness runs the lost-lock handler inline, so the demotion
-        // his final save starts can land after the new checkout and flip it to read-only (see F16 in the design note and
-        // CheckoutServiceTests.F16_...). The promise is about dept.db whichever way that race goes. Since step 9.3c-2b invariant I6
-        // sees that race (a demotion that goes on against other.db, and a read-only session that holds other.db's lock), so the
-        // tests that use this walk declare F16: here it is the harness form of the race, not the production form (the unit test).
+        // Bob's mode on other.db is deliberately not asserted: the promise is about dept.db. (Until 1.2.4 the demotion his final save
+        // started could land after the new checkout and flip it to read-only, F16, and the walk declared F16 and F17; both are fixed, see
+        // FixedFindingsProofTests, so the walks that use this one now declare no finding about the switch.)
     }
 
     /// <summary>
@@ -540,7 +533,7 @@ public sealed class InvariantProofTests
     public async Task I5_ARestorePromisedForOneDatabase_IsNotJudgedAtTheOpenOfAnother()
     {
         using var world = new World(_output, nameof(I5_ARestorePromisedForOneDatabase_IsNotJudgedAtTheOpenOfAnother));
-        world.ExpectFindings("F16");   // the promise is not broken, it is not yet due. F16: the harness-inline form of the switch race (see BobLeavesDeptAfterAliceTookOverAsync)
+        world.ExpectFindings();   // the promise is not broken, it is not yet due, and nothing else is wrong (F16 and F17 are fixed)
         world.CreateDatabase();
         var bob   = world.AddComputer("bob");
         var alice = world.AddComputer("alice");
@@ -549,33 +542,34 @@ public sealed class InvariantProofTests
 
         Assert.True(world.HasPendingPromise(bob), "the promise is about dept.db; opening other.db does not judge it");
         Assert.Equal("d", world.PendingPromiseCode(bob));
-        Assert.All(world.Violations, v => Assert.Equal("I6", v.Invariant));   // nothing about the promise: only the inline-handler form of F16
+        Assert.Empty(world.Violations);   // nothing about the promise, and nothing else
         Assert.True(bob.HasDirtyMarker, "Bob's kept changes to dept.db are still on his disk");
         world.AssertAllScriptsConsumed();
         world.Finish();
     }
 
     /// <summary>
-    /// One failure shows the same promise twice (the lock-lost banner, then "Changes Not Saved"): that is ONE claim, so
-    /// it is held once and, if it turned out false, would be reported once (the review's smallest F6 story listed the
-    /// identical violation twice). Pins that two messages made one pending promise.
+    /// One failure promises the restore ONCE since 1.2.4 (F17 fixed): the ending save's lock-lost banner is not delivered, and
+    /// "Changes Not Saved" is the only message. (Before, the banner and the dialog both promised it: two messages made one claim,
+    /// which the tracker held once and would have reported once, the review's smallest F6 story having listed the identical violation
+    /// twice.) Pins that the one message makes one pending promise.
     /// </summary>
     [HarnessFact]
-    public async Task I5_TwoMessagesPromisingTheSameRestore_AreOnePromise()
+    public async Task I5_TheOneMessagePromisingTheRestore_IsOnePromise()
     {
-        using var world = new World(_output, nameof(I5_TwoMessagesPromisingTheSameRestore_AreOnePromise));
-        world.ExpectFindings("F16");   // the harness-inline form of the switch race (see BobLeavesDeptAfterAliceTookOverAsync)
+        using var world = new World(_output, nameof(I5_TheOneMessagePromisingTheRestore_IsOnePromise));
+        world.ExpectFindings();   // F16 and F17 are fixed: one message, no breach
         world.CreateDatabase();
         var bob   = world.AddComputer("bob");
         var alice = world.AddComputer("alice");
 
         await BobLeavesDeptAfterAliceTookOverAsync(world, bob, alice);
 
-        // Both messages really were shown to Bob ...
-        Assert.Single(bob.Host.LockLossSurface.SaveErrors);
+        // Only the dialog was shown to Bob: the banner of the ending save was not delivered ...
+        Assert.Empty(bob.Host.LockLossSurface.SaveErrors);
         Assert.Contains(bob.Prompts.Calls, c => c.Kind == PromptKind.Message && c.Title == ChangesNotSavedTitle);
 
-        // ... and they are one pending promise, so the closing notes name it once.
+        // ... and it is one pending promise, so the closing notes name it once.
         var pending = world.PendingPromiseLines();
         var line = Assert.Single(pending);
         Assert.Contains("dept.db", line);
@@ -584,18 +578,19 @@ public sealed class InvariantProofTests
 
     /// <summary>
     /// The promise about dept.db IS judged at Bob's next edit-access open of dept.db: once Alice has closed, Bob opens
-    /// dept.db, is offered his kept changes and chooses Restore, and today "Can't Restore" follows (Alice's close rewrote
-    /// the file, F5). Alice changed NO data, so the exception the message named ("unless someone else changes the database
-    /// first", spec item 28's wording) did not happen: the promise is false and reported ONCE (F6), at that open (not at the
-    /// earlier open of other.db), although two messages made it. This is the F6 route that survives the new wording; it goes
-    /// away when item 29 (skip a save when nothing changed) removes F5. See
-    /// <see cref="I5_ARestoreRefusedBecauseSomeoneElseChangedData_KeepsThePromise"/> for the case where Alice does change data.
+    /// dept.db, is offered his kept changes and chooses Restore. Until 1.2.4 "Can't Restore" followed (Alice's no-edit close rewrote
+    /// the file, F5) and the promise was broken and reported ONCE (F6), at that open. FIXED in 1.2.4 (item 3.4): Alice's no-edit
+    /// save writes nothing, so the restore WORKS and the promise is KEPT. This test keeps invariant I5's coverage by proving the
+    /// promise is still JUDGED at the open of dept.db (not at the earlier open of other.db) and now comes out kept: no violation, and no
+    /// "Can't Restore". The broken-promise face of I5 is covered by
+    /// <see cref="I5_ARestoreRefusedBecauseSomeoneElseChangedData_KeepsThePromise"/> (Alice really changes data: the refusal is the
+    /// F7 shape the message warned about) and the planted-state tests of the tracker.
     /// </summary>
     [HarnessFact]
-    public async Task I5_ARestorePromisedForOneDatabase_IsJudgedAtTheNextOpenOfThatDatabase()
+    public async Task I5_ARestorePromisedForOneDatabase_IsJudgedAtTheNextOpenOfThatDatabase_AndNowKept()
     {
-        using var world = new World(_output, nameof(I5_ARestorePromisedForOneDatabase_IsJudgedAtTheNextOpenOfThatDatabase));
-        world.ExpectFindings("F5", "F6", "F16");   // F16: the harness-inline form of the switch race (see BobLeavesDeptAfterAliceTookOverAsync)
+        using var world = new World(_output, nameof(I5_ARestorePromisedForOneDatabase_IsJudgedAtTheNextOpenOfThatDatabase_AndNowKept));
+        world.ExpectFindings();   // F5 and F6 are fixed: the no-edit close writes nothing, the restore works
         world.CreateDatabase();
         var bob   = world.AddComputer("bob");
         var alice = world.AddComputer("alice");
@@ -605,21 +600,15 @@ public sealed class InvariantProofTests
 
         await alice.CloseAsync();                       // Alice gives dept.db back, so Bob can get write access to it
 
-        var export = Path.Combine(world.RootDir, "exports", "bob-recovered.db");
-        Directory.CreateDirectory(Path.GetDirectoryName(export)!);
-        bob.Prompts.ExpectChoice(HarnessTitles.RestoreUnsavedChanges, ChoiceAnswer.Affirmative)
-                   .ExpectChoice(HarnessTitles.CantRestore, ChoiceAnswer.Affirmative)
-                   .ExpectPick("Save Recovered Copy", export);
+        bob.Prompts.ExpectChoice(HarnessTitles.RestoreUnsavedChanges, ChoiceAnswer.Affirmative);
         Assert.True(await bob.SwitchToAsync(world.DatabasePath));
 
         Assert.Equal(CheckoutMode.WriteAccess, bob.Checkout.Mode);
         Assert.False(world.HasPendingPromise(bob), "dept.db was opened for editing: the promise was judged");
 
-        // Judged exactly once, at the open of dept.db (step 8), not at the open of other.db (step 6).
-        var broken = Assert.Single(world.Violations, v => v.Kind == ViolationKind.BrokenPromise);
-        Assert.Equal("F6", broken.FindingId);
-        Assert.True(broken.Step > 6, "the promise is judged at the open of dept.db, after the open of other.db");
-        Assert.Contains("Can't Restore", broken.Reason);
+        // Judged at the open of dept.db and KEPT: the restore worked, so nothing is reported and Bob's edit is in the database.
+        Assert.Empty(world.Violations);
+        Assert.DoesNotContain(bob.Prompts.Calls, c => c.Title == HarnessTitles.CantRestore);
         world.AssertAllScriptsConsumed();
         world.Finish();
     }
@@ -630,15 +619,15 @@ public sealed class InvariantProofTests
     /// Here Alice really DOES change the database (she takes Bob's stale lock, edits and saves alice-1, then closes), so at Bob's
     /// next open "Can't Restore" with Save a Copy… is exactly what he was told might happen: the promise is KEPT and nothing is
     /// reported as F6 (this is the route that was F6 before the wording changed; compare
-    /// <see cref="I5_ARestorePromisedForOneDatabase_IsJudgedAtTheNextOpenOfThatDatabase"/>, where nobody changes data and the same
-    /// refusal does break it). The refusal itself is still F7 (the question "Restore?" is asked and then refused), a separate
+    /// <see cref="I5_ARestorePromisedForOneDatabase_IsJudgedAtTheNextOpenOfThatDatabase_AndNowKept"/>, where nobody changes data: that
+    /// restore used to be refused and the promise broken, and now simply works). The refusal itself is still F7 (the question "Restore?" is asked and then refused), a separate
     /// finding that 1.2.4 replaces.
     /// </summary>
     [HarnessFact]
     public async Task I5_ARestoreRefusedBecauseSomeoneElseChangedData_KeepsThePromise()
     {
         using var world = new World(_output, nameof(I5_ARestoreRefusedBecauseSomeoneElseChangedData_KeepsThePromise));
-        world.ExpectFindings("F7", "F16");   // F7: "Restore?" then "Can't Restore". F16: the harness-inline form of the switch race (see BobLeavesDeptAfterAliceTookOverAsync)
+        world.ExpectFindings("F7");   // F7: "Restore?" then "Can't Restore"
         world.CreateDatabase();
         var bob   = world.AddComputer("bob");
         var alice = world.AddComputer("alice");
@@ -742,7 +731,7 @@ public sealed class InvariantProofTests
     /// <summary>
     /// What the program does after the cut is thrown away. A <c>finally</c> block around Bob's save deletes two files after
     /// the power went (one on the share, one on Bob's own disk); after the frozen disk is put back, both are still there, as
-    /// they would be after a real power cut, and so is the verified <c>dept.db.tmp</c> the save had written at the cut.
+    /// they would be after a real power cut, and so is the verified <c>dept.db.&lt;8 hex&gt;.tmp</c> the save had written at the cut.
     /// </summary>
     [HarnessFact]
     public async Task PowerCut_WhatAFinallyBlockDoesAfterTheCut_IsThrownAway()
@@ -771,7 +760,7 @@ public sealed class InvariantProofTests
         Assert.True(fired);
         Assert.True(File.Exists(shareCanary), "the file the finally block deleted on the share must be back");
         Assert.True(File.Exists(localCanary), "the file the finally block deleted on Bob's disk must be back");
-        Assert.Contains("dept.db.tmp", world.ShareFiles());   // the save's verified temp file, as the cut left it
+        Assert.NotNull(world.CurrentSaveTempFile());          // the save's verified temp file (its own per-save name), as the cut left it
         Assert.Empty(world.EditsInDatabase());                // the rename never happened
         world.Finish();
     }
@@ -914,6 +903,62 @@ public sealed class InvariantProofTests
         Assert.Contains("Bob's computer lost power at Save.AfterRename", story);
         Assert.DoesNotContain("Can't Restore", story);
         world.AssertAllScriptsConsumed();
+        world.Finish();
+    }
+
+    // ═════════════════════════════════════════════════════════════════════════
+    // I9: a computer rewrites only its own lock file
+    // ═════════════════════════════════════════════════════════════════════════
+
+    /// <summary>
+    /// Re-creates the SHAPE of the 1.2.3 bug (the heartbeat renewing a lock file that names ANOTHER session) without touching production:
+    /// Bob's heartbeat reads the lock (his own) and writes its temporary file; in the instant after that (<c>Heartbeat.AfterTmpWritten</c>)
+    /// Alice's lock appears on the share; Bob's renewal then moves its file over it. Today's heartbeat checks the name before writing, so
+    /// this window is the only way left to do it, and I9 sees the overwrite and reports Bob rewrote a lock that names another session.
+    /// Classified F19 (the finding for exactly this window; fixed for a held or sleeping computer, see
+    /// <see cref="FixedFindingsProofTests"/>); it proves the checker can fail. NO time passes between the heartbeat's check and its move
+    /// here, so the 2 second freshness rule (<c>WriteLockService.LockCheckFreshness</c>) rightly trusts the check: this is the residual
+    /// window of a few milliseconds that a file share cannot close, and a pause that lets time pass is what the fix handles.
+    /// </summary>
+    [HarnessFact]
+    public async Task I9_AHeartbeatRenewalOverAnotherSessionsLock_IsCaught()
+    {
+        using var world = new World(_output, nameof(I9_AHeartbeatRenewalOverAnotherSessionsLock_IsCaught));
+        world.ExpectFindings("F19");
+        world.CreateDatabase();
+        var bob = world.AddComputer("bob");
+
+        await bob.OpenAsync();
+        world.AtCrashPoint("Heartbeat.AfterTmpWritten", () => world.PlaceForeignLock("alice", "ALICE-PC"),
+            "(after Bob's heartbeat wrote its temporary file) Alice's lock appears");
+        await bob.HeartbeatTickAsync();
+
+        var violation = Only(world, "I9");
+        Assert.Equal(ViolationKind.LockFileOfAnotherSessionWritten, violation.Kind);
+        Assert.Equal("bob", violation.Computer);
+        Assert.Equal("F19", violation.FindingId);
+        Assert.Contains("names another session", violation.Reason);
+        Assert.Contains("dept.lock", violation.Reason);
+        world.Finish();
+    }
+
+    /// <summary>
+    /// A computer that rewrites and removes ITS OWN lock raises nothing: Bob opens (creates the lock), his heartbeat renews it, and he closes
+    /// (deletes it). Creating a lock where none exists is not looked at either.
+    /// </summary>
+    [HarnessFact]
+    public async Task I9_RenewingAndReleasingOwnLock_RaisesNothing()
+    {
+        using var world = new World(_output, nameof(I9_RenewingAndReleasingOwnLock_RaisesNothing));
+        world.CreateDatabase();
+        var bob = world.AddComputer("bob");
+
+        await bob.OpenAsync();
+        await bob.HeartbeatTickAsync();
+        await bob.HeartbeatTickAsync();
+        await bob.CloseAsync();
+
+        Assert.Empty(world.Violations);
         world.Finish();
     }
 

@@ -4,7 +4,7 @@ namespace TermPoint.Services;
 
 /// <summary>
 /// The first of the two seams between the database-session lifecycle (open, switch, leave, lost lock, kept and
-/// stranded work) and the window it runs in (spec item 9.1): everything the lifecycle uses to ASK or TELL the
+/// stranded work) and the window it runs in: everything the lifecycle uses to ASK or TELL the
 /// user. <see cref="MainWindow"/> implements it with the modal dialogs it already has; a test supplies a scripted
 /// fake that answers from a script and records every title and text.
 ///
@@ -46,6 +46,18 @@ public interface ILifecyclePrompts
     /// <param name="negative">Label of the declining button.</param>
     /// <returns><see cref="ChoiceResult.Affirmative"/>, <see cref="ChoiceResult.Negative"/>, or <see cref="ChoiceResult.Closed"/> when the dialog was closed without a button.</returns>
     Task<ChoiceResult> ShowChoiceOrCloseAsync(string title, string message, string affirmative, string negative);
+
+    /// <summary>
+    /// Shows a modal three-button dialog (today only the unapplied-changes question: "Apply" / "Discard" /
+    /// "Cancel"). Closing the dialog with the window's X counts as the third button, the one that backs out.
+    /// </summary>
+    /// <param name="title">Dialog window title.</param>
+    /// <param name="message">Body text; wraps automatically.</param>
+    /// <param name="first">Label of the first button.</param>
+    /// <param name="second">Label of the second button.</param>
+    /// <param name="third">Label of the third button (also the window's X).</param>
+    /// <returns>Which button was pressed; <see cref="ThreeChoiceResult.Third"/> for the third button OR for closing the dialog without a button.</returns>
+    Task<ThreeChoiceResult> ShowThreeChoiceAsync(string title, string message, string first, string second, string third);
 
     /// <summary>
     /// Runs <paramref name="work"/> under a modal wait dialog that the user cannot dismiss until the work ends.

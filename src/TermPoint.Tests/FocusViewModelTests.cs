@@ -74,7 +74,7 @@ public sealed class FocusViewModelTests : IDisposable
         Assert.Equal(string.Empty, vm.IndicatorText);
     }
 
-    /// <summary>Under None the statement reads "Focus: no subjects".</summary>
+    /// <summary>Under None the statement reads "Subjects: none".</summary>
     [Fact]
     public void Indicator_UnderNone_SaysNoSubjects()
     {
@@ -84,7 +84,7 @@ public sealed class FocusViewModelTests : IDisposable
         svc.SetFocus(SubjectFocus.None);
 
         Assert.True(vm.IsIndicatorVisible);
-        Assert.Equal("Focus: no subjects", vm.IndicatorText);
+        Assert.Equal("Subjects: none", vm.IndicatorText);
     }
 
     /// <summary>One focused subject: its abbreviation, with no count.</summary>
@@ -98,7 +98,7 @@ public sealed class FocusViewModelTests : IDisposable
         svc.SetFocus(SubjectFocus.ForSubjects([list[0].Id]));
 
         Assert.True(vm.IsIndicatorVisible);
-        Assert.Equal("Focus: BIOL", vm.IndicatorText);
+        Assert.Equal("Subjects: BIOL", vm.IndicatorText);
     }
 
     /// <summary>Two focused subjects are listed sorted by abbreviation, whatever order they were ticked in.</summary>
@@ -112,7 +112,7 @@ public sealed class FocusViewModelTests : IDisposable
 
         svc.SetFocus(SubjectFocus.ForSubjects([chem.Id, biol.Id]));
 
-        Assert.Equal("Focus: BIOL, CHEM", vm.IndicatorText);
+        Assert.Equal("Subjects: BIOL, CHEM", vm.IndicatorText);
     }
 
     /// <summary>A subject with a blank abbreviation is named by its name instead.</summary>
@@ -125,21 +125,7 @@ public sealed class FocusViewModelTests : IDisposable
 
         svc.SetFocus(SubjectFocus.ForSubjects([odd.Id]));
 
-        Assert.Equal("Focus: Interdisciplinary", vm.IndicatorText);
-    }
-
-    /// <summary>Show all sets the focus to All and the indicator hides.</summary>
-    [Fact]
-    public void ShowAll_SetsAll_AndHidesIndicator()
-    {
-        AddSubjects(4);
-        var (svc, vm) = Make();
-        svc.SetFocus(SubjectFocus.None);
-
-        vm.ShowAllCommand.Execute(null);
-
-        Assert.Equal(SubjectFocus.All, svc.Current);
-        Assert.False(vm.IsIndicatorVisible);
+        Assert.Equal("Subjects: Interdisciplinary", vm.IndicatorText);
     }
 
     /// <summary>The indicator follows a focus change made elsewhere (for example a tour starting).</summary>
@@ -149,11 +135,126 @@ public sealed class FocusViewModelTests : IDisposable
         var list = AddSubjects(4);
         var (svc, vm) = Make();
         svc.SetFocus(SubjectFocus.ForSubjects([list[1].Id]));
-        Assert.Equal("Focus: S2", vm.IndicatorText);
+        Assert.Equal("Subjects: S2", vm.IndicatorText);
 
         svc.SetFocus(SubjectFocus.All);
 
         Assert.False(vm.IsIndicatorVisible);
+    }
+
+    // ── Chips and the "+N" cap (1.2.4 item 2.14) ───────────────────────────────
+
+    /// <summary>Focuses the first <paramref name="count"/> of <paramref name="subjects"/>.</summary>
+    private static void FocusFirst(FocusService svc, List<Subject> subjects, int count) =>
+        svc.SetFocus(SubjectFocus.ForSubjects(subjects.Take(count).Select(s => s.Id).ToList()));
+
+    /// <summary>At the cap every subject has a chip and there is no "+N".</summary>
+    [Fact]
+    public void Chips_AtCap_AllShown()
+    {
+        var list = AddSubjects(12);
+        var (svc, vm) = Make();
+
+        FocusFirst(svc, list, FocusViewModel.IndicatorMaxChips);
+
+        Assert.Equal(FocusViewModel.IndicatorMaxChips, vm.IndicatorChips.Count);
+        Assert.False(vm.HasIndicatorMore);
+        Assert.Equal(string.Empty, vm.IndicatorMoreText);
+    }
+
+    /// <summary>One over the cap still shows every chip: a "+1" chip would take as much room as the one it hides.</summary>
+    [Fact]
+    public void Chips_OneOverCap_AllShown()
+    {
+        var list = AddSubjects(12);
+        var (svc, vm) = Make();
+
+        FocusFirst(svc, list, FocusViewModel.IndicatorMaxChips + 1);
+
+        Assert.Equal(FocusViewModel.IndicatorMaxChips + 1, vm.IndicatorChips.Count);
+        Assert.False(vm.HasIndicatorMore);
+        Assert.Equal("S1, S2, S3, S4, S5, S6, S7", vm.ShortSubjectsText);
+    }
+
+    /// <summary>
+    /// Well over the cap: the first chips (sorted), a "+N" for the rest, the full list in the tooltip text, and the
+    /// same cap in the short title-bar text.
+    /// </summary>
+    [Fact]
+    public void Chips_OverCap_FoldsRestIntoPlusN()
+    {
+        var list = AddSubjects(12);
+        var (svc, vm) = Make();
+
+        FocusFirst(svc, list, 9);
+
+        Assert.Equal(["S1", "S2", "S3", "S4", "S5", "S6"], vm.IndicatorChips.Select(c => c.Label));
+        Assert.True(vm.HasIndicatorMore);
+        Assert.Equal(3, vm.IndicatorMoreCount);
+        Assert.Equal("+3", vm.IndicatorMoreText);
+        Assert.Equal("Subjects: S1, S2, S3, S4, S5, S6, S7, S8, S9", vm.IndicatorText);
+        Assert.Equal("S1, S2, S3, S4, S5, S6 +3", vm.ShortSubjectsText);
+        Assert.False(vm.HasIndicatorFallback);
+    }
+
+    /// <summary>Under None there are no chips; the statement reads "Subjects: none".</summary>
+    [Fact]
+    public void Chips_UnderNone_ShowFallbackNone()
+    {
+        AddSubjects(4);
+        var (svc, vm) = Make();
+
+        svc.SetFocus(SubjectFocus.None);
+
+        Assert.Empty(vm.IndicatorChips);
+        Assert.False(vm.HasIndicatorMore);
+        Assert.True(vm.HasIndicatorFallback);
+        Assert.Equal("none", vm.IndicatorFallbackText);
+        Assert.Equal("none", vm.ShortSubjectsText);
+    }
+
+    /// <summary>Going back to All clears every part of the statement, including a "+N".</summary>
+    [Fact]
+    public void Chips_BackToAll_ClearsEverything()
+    {
+        var list = AddSubjects(12);
+        var (svc, vm) = Make();
+        FocusFirst(svc, list, 10);
+
+        svc.SetFocus(SubjectFocus.All);
+
+        Assert.Empty(vm.IndicatorChips);
+        Assert.False(vm.HasIndicatorMore);
+        Assert.False(vm.HasIndicatorFallback);
+        Assert.Equal(string.Empty, vm.ShortSubjectsText);
+    }
+
+    /// <summary>Without a colour presenter the chips carry no markers.</summary>
+    [Fact]
+    public void Chips_WithoutColours_HaveNoMarkers()
+    {
+        var list = AddSubjects(3);
+        var (svc, vm) = Make();
+
+        FocusFirst(svc, list, 2);
+
+        Assert.All(vm.IndicatorChips, c => Assert.False(c.HasColor));
+    }
+
+    /// <summary>The cap helper itself: below, at, one over and well over the cap, and a cap below 1.</summary>
+    [Fact]
+    public void CapChips_Rules()
+    {
+        int[] Items(int n) => Enumerable.Range(1, n).ToArray();
+
+        Assert.Equal((3, 0), Count(FocusViewModel.CapChips(Items(3), 6)));
+        Assert.Equal((6, 0), Count(FocusViewModel.CapChips(Items(6), 6)));
+        Assert.Equal((7, 0), Count(FocusViewModel.CapChips(Items(7), 6)));
+        Assert.Equal((6, 2), Count(FocusViewModel.CapChips(Items(8), 6)));
+        Assert.Equal((6, 19), Count(FocusViewModel.CapChips(Items(25), 6)));
+        Assert.Throws<ArgumentOutOfRangeException>(() => FocusViewModel.CapChips(Items(3), 0));
+
+        static (int, int) Count((IReadOnlyList<int> Shown, int More) r) => (r.Shown.Count, r.More);
     }
 
     // ── Subjects label (top-bar button) ────────────────────────────────────────
@@ -399,7 +500,6 @@ public sealed class FocusViewModelTests : IDisposable
         svc.SetEditorOpen(true);
 
         Assert.False(vm.OpenPickerCommand.CanExecute(null));
-        Assert.False(vm.ShowAllCommand.CanExecute(null));
         Assert.False(vm.AllCommand.CanExecute(null));
         Assert.False(vm.NoneCommand.CanExecute(null));
         Assert.False(vm.ApplyCommand.CanExecute(null));
@@ -410,7 +510,6 @@ public sealed class FocusViewModelTests : IDisposable
         svc.SetEditorOpen(false);
 
         Assert.True(vm.OpenPickerCommand.CanExecute(null));
-        Assert.True(vm.ShowAllCommand.CanExecute(null));
         Assert.True(vm.ApplyCommand.CanExecute(null));
         Assert.NotEqual(FocusViewModel.FinishEditingFirst, vm.ChangeFocusToolTip);
     }
@@ -441,12 +540,12 @@ public sealed class FocusViewModelTests : IDisposable
         subjects.DeleteCommand.Execute(null);
 
         Assert.Equal(SubjectFocus.ForSubjects([list[0].Id]), svc.Current);
-        Assert.Equal("Focus: S1", vm.IndicatorText);
+        Assert.Equal("Subjects: S1", vm.IndicatorText);
 
         subjects.SelectedSubject = subjects.Subjects.Single(s => s.Id == list[0].Id);
         subjects.DeleteCommand.Execute(null);
 
         Assert.Equal(SubjectFocus.None, svc.Current);
-        Assert.Equal("Focus: no subjects", vm.IndicatorText);
+        Assert.Equal("Subjects: none", vm.IndicatorText);
     }
 }

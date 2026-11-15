@@ -13,6 +13,7 @@ public partial class ProgramWatchItemViewModel : ObservableObject
 {
     private readonly Action<ProgramWatchItemViewModel> _onChanged;
     private readonly Action<ProgramWatchItemViewModel> _onDeleteRequested;
+    private readonly Action<ProgramWatchItemViewModel> _onEditRequested;
 
     /// <summary>The underlying watch model.</summary>
     public ProgramWatch Watch { get; }
@@ -26,6 +27,12 @@ public partial class ProgramWatchItemViewModel : ObservableObject
     /// <summary>Compact summary of the watch definition, e.g. "Tags: upper-level + BSc" or "Courses: 3".</summary>
     [ObservableProperty] private string _modeSummary;
 
+    /// <summary>
+    /// Hover text naming what the watch watches (its tags and levels, or its courses), so the user can see the
+    /// choices without opening the editor.
+    /// </summary>
+    public string Details { get; }
+
     /// <summary>Number of conflicts detected for this watch (updated after each grid reload).</summary>
     [ObservableProperty] private int _conflictCount;
 
@@ -37,20 +44,26 @@ public partial class ProgramWatchItemViewModel : ObservableObject
 
     /// <param name="watch">The underlying watch model.</param>
     /// <param name="modeSummary">Pre-formatted mode summary string.</param>
+    /// <param name="details">Hover text naming the watch's tags/levels or courses (see <see cref="Details"/>).</param>
     /// <param name="onChanged">Callback when Name or IsEnabled changes (triggers save + grid reload).</param>
     /// <param name="onDeleteRequested">Callback when the user clicks Delete.</param>
+    /// <param name="onEditRequested">Callback when the user clicks Edit (opens the watch form pre-filled).</param>
     public ProgramWatchItemViewModel(
         ProgramWatch watch,
         string modeSummary,
+        string details,
         Action<ProgramWatchItemViewModel> onChanged,
-        Action<ProgramWatchItemViewModel> onDeleteRequested)
+        Action<ProgramWatchItemViewModel> onDeleteRequested,
+        Action<ProgramWatchItemViewModel> onEditRequested)
     {
         Watch = watch;
         _name = watch.Name;
         _isEnabled = watch.IsEnabled;
         _modeSummary = modeSummary;
+        Details = details;
         _onChanged = onChanged;
         _onDeleteRequested = onDeleteRequested;
+        _onEditRequested = onEditRequested;
     }
 
     partial void OnNameChanged(string value)
@@ -78,4 +91,8 @@ public partial class ProgramWatchItemViewModel : ObservableObject
     /// <summary>Invoked by the Delete button in the watch list.</summary>
     [RelayCommand]
     private void RequestDelete() => _onDeleteRequested(this);
+
+    /// <summary>Invoked by the Edit button in the watch list.</summary>
+    [RelayCommand]
+    private void RequestEdit() => _onEditRequested(this);
 }

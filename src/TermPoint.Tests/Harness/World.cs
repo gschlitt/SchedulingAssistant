@@ -104,6 +104,15 @@ internal sealed class World : IDisposable
     /// <summary>The dialogs each computer was asked during the current step, by computer name.</summary>
     private readonly Dictionary<string, List<PromptCall>> _stepPrompts = new();
 
+    /// <summary>The messages and banners (not questions) shown during the current step, for invariant I8; cleared when a step begins.</summary>
+    private readonly List<SeenMessage> _stepMessages = new();
+
+    /// <summary>What was going on when a message appeared, during a pause: "" outside one (see <see cref="SeenMessage.Phase"/>). Written by <see cref="RunWithPauseAsync"/>, read by the observers.</summary>
+    private volatile string _phase = "";
+
+    /// <summary>Every pair of different messages one computer was shown in one step during this run (invariant I8 b), allowed or not.</summary>
+    private readonly List<MessagePairSighting> _pairSightings = new();
+
     /// <summary>The computers that completed an open during the current step.</summary>
     private readonly HashSet<Computer> _openedThisStep = new();
 
@@ -115,9 +124,6 @@ internal sealed class World : IDisposable
 
     /// <summary>How many "Save a Copy" paths have been handed out (numbers "copy-1.db", "copy-2.db", ...).</summary>
     private int _savedCopyCounter;
-
-    /// <summary>How many times the network fault hook has been asked about an operation (a sign that work is still running on the share).</summary>
-    private int _shareActivity;
 
     /// <summary>Every file a "Save a Copy" picker answered with.</summary>
     private readonly List<string> _savedCopyPaths = new();
@@ -166,6 +172,13 @@ internal sealed class World : IDisposable
     /// <summary>The edits a computer applied while its own operation was held in the edit-loss window, from a save's snapshot to the cleanup of the working copy (finding F2; <see cref="PausePoints.EditLossWindow"/>).</summary>
     private readonly HashSet<string> _editsAppliedDuringHeldSave = new();
 
+    /// <summary>
+    /// The edits a computer applied while its OWN Restore from Backup was held at one of the restore's crash points
+    /// (<see cref="PausePoints.RestoreWindow"/>): the wait dialog blocks only the main window, so detached panels and sticky notes still take edits
+    /// (finding F24, summary item 3.13). Narrower than <see cref="_editsAppliedDuringHeldSave"/>: it is the restore's window, not the save's.
+    /// </summary>
+    private readonly HashSet<string> _editsAppliedDuringHeldRestore = new();
+
     /// <summary>The edits another computer committed to the shared database while a save was held before its rename, by the step they were committed in (finding F12).</summary>
     private readonly Dictionary<string, int> _commitsDuringHeldSave = new();
 
@@ -206,6 +219,7 @@ internal sealed class World : IDisposable
 
         CrashPoints.Hook     = OnCrashPoint;
         NetworkFaults.Decide = DecideFault;
+        NetworkFileOps.SetTimeProviderForTests(_deadlineClock);
         ApplySettings();
     }
 
@@ -241,10 +255,13 @@ internal sealed class World : IDisposable
     public Func<Computer, PromptCall, PromptAnswer>? PromptPolicy { get; set; }
 
     /// <summary>
-    /// A number that grows whenever work touches the share (every operation asks the network fault hook) or a computer
-    /// logs something. A caller waiting for background work to finish watches it stand still.
+    /// The clock <see cref="NetworkFileOps"/> runs its deadlines on while this world exists (item 8.2): the real clock, except that the
+    /// deadline of a call held by a network hang fires at once. Restored to the system clock by <see cref="Dispose"/>.
     /// </summary>
-    public int Activity => Volatile.Read(ref _shareActivity) + _computers.Sum(c => c.LogActivity);
+    private readonly HangDeadlineClock _deadlineClock = new();
+
+    /// <summary>How many copies a hang has been asked about; every other copy blocks at its chunk write (field bug A1's spot), the rest at the open.</summary>
+    private int _hungCopies;
 
     /// <summary>The one fake clock every simulated lock service reads. It starts at the real current time.</summary>
     public FakeTimeProvider Clock { get; } = new();
@@ -374,8 +391,112 @@ internal sealed class World : IDisposable
     public void DeleteLockFile()
         => Do(null, "Somebody deleted the lock file from the share", () =>
         {
-            if (File.Exists(LockFilePath)) File.Delete(LockFilePath);
+            TryWhileOtherProgramMayHoldFile("the lock file", () => { if (File.Exists(LockFilePath)) File.Delete(LockFilePath); });
         });
+
+    // ── Another program holding a file on the share (spec item 8.3) ──────────
+
+    /// <summary>The file another program has open right now, or null. At most one at a time. Guarded by <see cref="_gate"/>.</summary>
+    private OtherProgramHandle? _otherProgram;
+
+    /// <summary>True once another program has held a file in this world (it may have let go since). Read by the classifier (finding F20).</summary>
+    public bool OtherProgramHasBeenUsed => Volatile.Read(ref _otherProgramUsed);
+
+    /// <summary>Backing field of <see cref="OtherProgramHasBeenUsed"/>.</summary>
+    private bool _otherProgramUsed;
+
+    /// <summary>The file another program has open right now, or null.</summary>
+    public OtherProgramHandle? OtherProgramHolding
+    {
+        get { lock (_gate) return _otherProgram; }
+    }
+
+    /// <summary>
+    /// Full path of a file another program may open. A save uploads to a temporary name of its own (1.2.4 item 4.1), so
+    /// <see cref="OtherProgramFile.SaveTemp"/> is whichever temporary file of the database exists on the share right now
+    /// (found by pattern, <see cref="ShareTempFile.IsLeftoverOf"/>; the first by name when there are several); when there is none
+    /// it is the legacy <c>D.tmp</c> name, a file that does not exist, so <see cref="OtherProgramCanOpen"/> says no.
+    /// </summary>
+    /// <param name="file">Which file.</param>
+    public string OtherProgramPath(OtherProgramFile file) => file switch
+    {
+        OtherProgramFile.Database => DatabasePath,
+        OtherProgramFile.SaveTemp => CurrentSaveTempFile() ?? DatabasePath + ".tmp",
+        _                         => LockFilePath
+    };
+
+    /// <summary>
+    /// The temporary file of the database that exists on the share right now, or null. When more than one exists (a leftover
+    /// beside a save in flight) the first by name is returned, which is deterministic though arbitrary.
+    /// </summary>
+    /// <returns>The file's full path, or null when no save has a temporary file there.</returns>
+    public string? CurrentSaveTempFile()
+        => Directory.GetFiles(ShareDir).Where(f => ShareTempFile.IsLeftoverOf(DatabasePath, f))
+                    .OrderBy(f => f, StringComparer.OrdinalIgnoreCase).FirstOrDefault();
+
+    /// <summary>True when another program could open <paramref name="file"/> now: it holds nothing yet and the file exists.</summary>
+    /// <param name="file">Which file.</param>
+    public bool OtherProgramCanOpen(OtherProgramFile file) => OtherProgramHolding is null && File.Exists(OtherProgramPath(file));
+
+    /// <summary>
+    /// <b>Another program opens a file on the share</b> (antivirus, a backup tool, cloud sync) and keeps it open until <see cref="OtherProgramReleases"/>,
+    /// the end of the world, or a power cut (which puts the disk back, see <see cref="RestoreFrozenDisk"/>). The handle is a real operating-system
+    /// handle opened for reading with the given sharing, so the code under test meets the real sharing violation. Does nothing when the program already
+    /// holds a file, or the file is not there, or somebody else has it open without sharing; the story says which.
+    /// </summary>
+    /// <param name="file">Which file.</param>
+    /// <param name="share">What the program lets others do with the file while it has it open.</param>
+    public void OtherProgramOpens(OtherProgramFile file, OtherProgramShare share)
+        => Do(null, $"Another program opened {OtherProgramNames.Words(file)}, {OtherProgramNames.Words(share)}", () =>
+        {
+            lock (_gate)
+            {
+                if (_otherProgram is not null) return "it already has a file open, so nothing changed";
+                try
+                {
+                    _otherProgram = new OtherProgramHandle(file, share, OtherProgramPath(file));
+                    Volatile.Write(ref _otherProgramUsed, true);
+                    return "it holds the file open";
+                }
+                catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+                {
+                    return "the file was not there or was in use, so nothing changed";
+                }
+            }
+        }, note => note);
+
+    /// <summary>The other program lets go of the file it had open. Does nothing when it has none.</summary>
+    public void OtherProgramReleases()
+        => Do(null, "The other program let go of the file it had open", () => { CloseOtherProgram(); });
+
+    /// <summary>Closes the other program's handle, if any, and says whether there was one.</summary>
+    /// <returns>True when a handle was closed.</returns>
+    private bool CloseOtherProgram()
+    {
+        OtherProgramHandle? handle;
+        lock (_gate)
+        {
+            handle = _otherProgram;
+            _otherProgram = null;
+        }
+        handle?.Dispose();
+        return handle is not null;
+    }
+
+    /// <summary>
+    /// Runs a change the harness itself makes to a file on the share (a colleague's write, IT's restore, someone deleting the lock file). If another
+    /// program has the file open without sharing, the change cannot be made, exactly as for a person: it is skipped and the story says so.
+    /// </summary>
+    /// <param name="what">The file, in words ("the lock file").</param>
+    /// <param name="change">The change.</param>
+    private void TryWhileOtherProgramMayHoldFile(string what, Action change)
+    {
+        try { change(); }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or SqliteException)
+        {
+            _story.Add(_step, 1, $"(nothing happened: {what} is open in another program)");
+        }
+    }
 
     /// <summary>True when D's lock file exists.</summary>
     public bool LockFileExists => File.Exists(LockFilePath);
@@ -564,6 +685,8 @@ internal sealed class World : IDisposable
         lock (_gate)
         {
             _stepPrompts.Clear();
+            _stepMessages.Clear();
+            _phase = "";
             _openedThisStep.Clear();
             _restoreSuspects.Clear();
         }
@@ -588,12 +711,39 @@ internal sealed class World : IDisposable
         Computer[] opened;
         lock (_gate) opened = _openedThisStep.ToArray();
 
+        found.AddRange(CheckMessagesOfStep());
         found.AddRange(_invariants.Check(this, now, _step));
         found.AddRange(_promises.Evaluate(this, _last, now, opened, _step));
         _last = now;
 
         Record(found);
     }
+
+    /// <summary>
+    /// Invariant I8 for the step that is ending: judges the messages and banners each computer showed (a message twice; two different messages), and
+    /// keeps the pairs of different messages in <see cref="MessagePairSightings"/>.
+    /// </summary>
+    /// <returns>The violations.</returns>
+    private IReadOnlyList<Violation> CheckMessagesOfStep()
+    {
+        List<SeenMessage> seen;
+        lock (_gate) seen = _stepMessages.ToList();
+        if (seen.Count < 2) return Array.Empty<Violation>();
+
+        var sightings = new List<MessagePairSighting>();
+        var violations = MessageChecker.CheckStep(seen, _step, Title, _story.HeadlineOf(_step), sightings);
+        lock (_gate) _pairSightings.AddRange(sightings);
+        return violations;
+    }
+
+    /// <summary>Every pair of different messages one computer was shown in one step during this run (invariant I8 b), allowed or not.</summary>
+    public IReadOnlyList<MessagePairSighting> MessagePairSightings
+    {
+        get { lock (_gate) return _pairSightings.ToList(); }
+    }
+
+    /// <summary>The folders the user must never be shown in a message: everything the harness puts under its temp folder (share, computers' local folders, scratch).</summary>
+    private IEnumerable<string> ForbiddenFolders => new[] { RootDir };
 
     /// <summary>
     /// Records the violations of a step (each key once), gives each its finding id, and throws when one of them is not a
@@ -732,7 +882,34 @@ internal sealed class World : IDisposable
     /// <summary>Restores a computer's connection to the share.</summary>
     /// <param name="computer">The computer that gets the network back.</param>
     public void NetworkUp(Computer computer)
-        => Do(null, $"{computer.DisplayName}'s network came back", () => { computer.NetworkIsDown = false; });
+        => Do(null, $"{computer.DisplayName}'s network came back", () =>
+        {
+            computer.NetworkIsDown = false;
+            computer.NetworkHangs  = false;
+
+            // A hang ends here: every call it held now goes on and lands late (this step waits for them, so the landings happen now).
+            var gate = computer.HangGate;
+            computer.HangGate = null;
+            if (gate is not null)
+            {
+                gate.Open();
+                if (gate.HeldCalls > 0)
+                    _story.Add(_step, 1, $"({gate.HeldCalls} call{(gate.HeldCalls == 1 ? "" : "s")} {computer.DisplayName}'s computer had made while the network hung went through now, long after it had given up on {(gate.HeldCalls == 1 ? "it" : "them")})");
+            }
+        });
+
+    /// <summary>
+    /// Makes a computer's network HANG (spec item 8.2): from now on every call that computer makes on the share blocks instead of failing,
+    /// until <see cref="NetworkUp"/>. The call's caller sees the ordinary deadline (the timeout is reported within the deadline, the log line is
+    /// written, the abandoned task is observed), and when the network returns each held call really runs and lands late. Local files keep working.
+    /// </summary>
+    /// <param name="computer">The computer whose network hangs.</param>
+    public void NetworkHang(Computer computer)
+        => Do(null, $"{computer.DisplayName}'s network hangs", () =>
+        {
+            computer.NetworkHangs = true;
+            computer.HangGate     = new NetworkHangGate();
+        });
 
     /// <summary>
     /// A colleague who is not one of the simulated computers changes the shared database: a row is inserted directly
@@ -744,15 +921,18 @@ internal sealed class World : IDisposable
     public void ColleagueWritesDatabase(string editId)
         => Do(null, $"A 1.2.2 colleague changed the database (edit {editId})", () =>
         {
-            using (var conn = new SqliteConnection($"Data Source={DatabasePath};Pooling=False"))
+            TryWhileOtherProgramMayHoldFile("the shared database", () =>
             {
-                conn.Open();
-                using var cmd = conn.CreateCommand();
-                cmd.CommandText = $"INSERT INTO {EditsTable}(id, actor) VALUES (@id, 'colleague')";
-                cmd.Parameters.AddWithValue("@id", editId);
-                cmd.ExecuteNonQuery();
-            }
-            SqliteConnection.ClearAllPools();
+                using (var conn = new SqliteConnection($"Data Source={DatabasePath};Pooling=False"))
+                {
+                    conn.Open();
+                    using var cmd = conn.CreateCommand();
+                    cmd.CommandText = $"INSERT INTO {EditsTable}(id, actor) VALUES (@id, 'colleague')";
+                    cmd.Parameters.AddWithValue("@id", editId);
+                    cmd.ExecuteNonQuery();
+                }
+                SqliteConnection.ClearAllPools();
+            });
         });
 
     /// <summary>
@@ -761,7 +941,13 @@ internal sealed class World : IDisposable
     /// TermPoint's back.
     /// </summary>
     /// <returns>D's bytes now.</returns>
-    public byte[] TakeSnapshot() => File.ReadAllBytes(DatabasePath);
+    public byte[] TakeSnapshot()
+    {
+        using var stream = ObserverFiles.OpenRead(DatabasePath);
+        using var memory = new MemoryStream();
+        stream.CopyTo(memory);
+        return memory.ToArray();
+    }
 
     /// <summary>
     /// <b>IT restores an old file:</b> an earlier snapshot of D is copied over D outside TermPoint (a backup tool, a
@@ -772,10 +958,13 @@ internal sealed class World : IDisposable
     public void ItRestoresOldFile(byte[] snapshot)
         => Do(null, $"IT restored an older copy of {Path.GetFileName(DatabasePath)} over the shared database", () =>
         {
-            var before = TryEditsInFile(DatabasePath) ?? new List<string>();
-            File.WriteAllBytes(DatabasePath, snapshot);
-            ExcuseEditsGoneFromDatabase(before);
-            _invariants.ResetBaselineAtNextCheck();
+            TryWhileOtherProgramMayHoldFile("the shared database", () =>
+            {
+                var before = TryEditsInFile(DatabasePath) ?? new List<string>();
+                File.WriteAllBytes(DatabasePath, snapshot);
+                ExcuseEditsGoneFromDatabase(before);
+                _invariants.ResetBaselineAtNextCheck();
+            });
         });
 
     /// <summary>
@@ -794,7 +983,7 @@ internal sealed class World : IDisposable
                 Username = userName, Machine = machineName, SessionGuid = Guid.NewGuid().ToString(),
                 Acquired = now, Heartbeat = now, ProcessId = 1, ProcessStartTimeUtc = now
             };
-            File.WriteAllText(LockFilePath, JsonSerializer.Serialize(data));
+            TryWhileOtherProgramMayHoldFile("the lock file", () => File.WriteAllText(LockFilePath, JsonSerializer.Serialize(data)));
         });
 
     /// <summary>
@@ -865,6 +1054,10 @@ internal sealed class World : IDisposable
     /// <param name="frozen">The copies made by <see cref="FreezeDisk"/>.</param>
     private void RestoreFrozenDisk(Computer computer, FrozenDisk frozen)
     {
+        // Another program's open handle would keep the share's files from being replaced. The disk is frozen THROUGH such a handle (the copy reads
+        // via it, see ObserverFiles), but putting the frozen disk back needs the files free, so at a power cut the other program lets go.
+        if (CloseOtherProgram()) _story.Add(_step, 1, "(the other program's hold on the file ended with the power cut)");
+
         ReplaceContents(ShareDir, frozen.Share);
         ReplaceContents(computer.LocalDir, frozen.Local);
         Directory.CreateDirectory(computer.GuardDir);
@@ -1050,6 +1243,7 @@ internal sealed class World : IDisposable
             try
             {
                 lock (_gate) _armedPause = pause;
+                _phase = "before the event";
                 opTask = Task.Run(() => RunHeldOperation(pause, operation));
 
                 // 1. The operation runs until it is held at the point, or it ends without reaching it.
@@ -1077,6 +1271,7 @@ internal sealed class World : IDisposable
                     }
                     else
                     {
+                        _phase      = "while held: " + eventStory;
                         eventTask   = Task.Run(pauseEvent);
                         interleaved = await CompletesWithinAsync(eventTask, lim.Grace);
                         if (interleaved) NoteCommitsDuringHeldSave(pause, heldAt);
@@ -1086,6 +1281,7 @@ internal sealed class World : IDisposable
                     }
 
                     // 3. Let the operation go on, and let both finish.
+                    _phase = "after release";
                     pause.Release();
                     var both = Task.WhenAll(opTask, eventTask);
                     if (!await CompletesWithinAsync(both, lim.FinishLimit))
@@ -1199,7 +1395,8 @@ internal sealed class World : IDisposable
     /// <summary>
     /// Called by a computer when one of its edits has been applied (the row is in its working file and the marker is written). An edit
     /// applied while that computer's own operation is held in the edit-loss window (<see cref="PausePoints.EditLossWindow"/>) is not in the save,
-    /// yet the save's last step deletes the marker that protected it and a close or switch deletes the working copy: finding F2. Remembered so that, if the edit is later lost, the classifier can say so.
+    /// so before 1.2.4 item 3.2 the save's last step deleted the marker that protected it and a close or switch deleted the working copy: finding F2
+    /// (now fixed: the save keeps the marker for such an edit, and this stays only as the regression detector). Remembered so that, if the edit is later lost, the classifier can say so.
     /// </summary>
     /// <param name="computer">The computer that edited.</param>
     /// <param name="editId">The edit's id.</param>
@@ -1208,6 +1405,18 @@ internal sealed class World : IDisposable
         var pause = _armedPause;
         if (pause is { IsFrozen: true } && pause.Computer == computer && PausePoints.IsInEditLossWindow(pause.Point))
             lock (_gate) _editsAppliedDuringHeldSave.Add(editId);
+
+        // Finding F24 (summary item 3.13): an edit made while this computer's own Restore from Backup is held. Its save-first is already
+        // over, so the edit is in neither the pre-restore copy nor the restored database; only the kept working file holds it.
+        if (pause is { IsFrozen: true } && pause.Computer == computer && PausePoints.IsInRestoreWindow(pause.Point))
+            lock (_gate) _editsAppliedDuringHeldRestore.Add(editId);
+    }
+
+    /// <summary>True when the edit was applied while its computer's own Restore from Backup was held (see <see cref="NoteEditApplied"/>; finding F24).</summary>
+    /// <param name="editId">The edit's id.</param>
+    public bool WasEditAppliedDuringHeldRestore(string editId)
+    {
+        lock (_gate) return _editsAppliedDuringHeldRestore.Contains(editId);
     }
 
     /// <summary>True when the edit was applied while its computer's own operation was held in the edit-loss window (see <see cref="NoteEditApplied"/>).</summary>
@@ -1328,6 +1537,7 @@ internal sealed class World : IDisposable
                 // Read now, while the kept working file is still on disk (the F5 and F8 rules both need it).
                 var dataUnchanged = DataUnchangedSinceKept(computer);
                 var allShared     = AllKeptEditsAreInShared(computer);
+                var duringRestore = HasUnsavedEditFromHeldRestore(computer);   // finding F24: an edit made while the computer's own restore was held
 
                 // The kept-changes messages promise "offered back unless someone else changes the database first, then a separate
                 // copy" (spec item 28): the promise tracker needs to know whether anybody really changed data, to tell the refusal
@@ -1339,6 +1549,7 @@ internal sealed class World : IDisposable
                     Step = _step, Invariant = "I5", Kind = ViolationKind.RestoreOfferedThenImpossible,
                     DataUnchangedSinceKept = dataUnchanged,
                     AllKeptEditsAlreadyShared = allShared,
+                    EditAppliedDuringHeldRestore = duringRestore,
                     Key = $"I5:F7:{_step}:{computer.Name}", Computer = computer.Name,
                     Reason = $"{computer.DisplayName} was asked \"{HarnessTitles.RestoreUnsavedChanges}\", chose Restore, and was then told " +
                              "\"Can't Restore Unsaved Changes\": the question should not have been asked",
@@ -1348,7 +1559,50 @@ internal sealed class World : IDisposable
         }
 
         if (call.Kind == PromptKind.Message)
+        {
             HandMessageToTracker(computer, call.Title, call.Text);
+            NoteMessageShown(computer, "message", call.Title, call.Text, call.Buttons, countsForOneMessagePerProblem: true, isQuestion: false);
+        }
+        else if (call.Kind == PromptKind.Choice)
+        {
+            NoteMessageShown(computer, "question", call.Title, call.Text, call.Buttons,
+                countsForOneMessagePerProblem: MessageChecker.IsProblemQuestion(call.Title), isQuestion: true);
+        }
+    }
+
+    /// <summary>
+    /// Invariants I7 and I8 for one message, question or banner as it appears: checks its wording now (a violation is raised when the step ends) and, for a
+    /// message or banner, remembers it for the step's "one message per problem" check.
+    /// </summary>
+    /// <param name="computer">The computer that showed it.</param>
+    /// <param name="kindName">"message", "question" or "banner".</param>
+    /// <param name="title">The title ("" for a banner).</param>
+    /// <param name="text">The text.</param>
+    /// <param name="buttons">The button labels ("a|b"), or "".</param>
+    /// <param name="countsForOneMessagePerProblem">True for a message or banner, or a question that reports a problem; false for any other question.</param>
+    /// <param name="isQuestion">True for a choice.</param>
+    private void NoteMessageShown(
+        Computer computer, string kindName, string title, string text, string buttons, bool countsForOneMessagePerProblem, bool isQuestion)
+    {
+        foreach (var violation in MessageChecker.CheckWording(computer, _step, kindName, title, text, buttons, ForbiddenFolders))
+            AddPending(violation);
+
+        if (countsForOneMessagePerProblem)
+            lock (_gate) _stepMessages.Add(new SeenMessage(computer.Name, computer.DisplayName, title, text, isQuestion, _phase));
+    }
+
+    /// <summary>
+    /// The F24 rule's question: is at least one of the computer's edits that the shared database does NOT hold (its unsaved work) an
+    /// edit it applied while its own Restore from Backup was held (<see cref="WasEditAppliedDuringHeldRestore"/>)? False when the
+    /// shared database cannot be read, and for a computer that made no edit during a held restore (a no-edit session, or an edit
+    /// made anywhere else), so a genuine F5 or F7 is never mistaken for F24. Read when "Can't Restore Unsaved Changes" is shown.
+    /// </summary>
+    /// <param name="computer">The computer that was refused.</param>
+    private bool HasUnsavedEditFromHeldRestore(Computer computer)
+    {
+        var shared = TryEditsInFile(DatabasePath);
+        if (shared is null) return false;
+        return computer.AppliedEdits.Any(e => !shared.Contains(e) && WasEditAppliedDuringHeldRestore(e));
     }
 
     /// <summary>
@@ -1403,6 +1657,7 @@ internal sealed class World : IDisposable
 
         _story.Add(_step, 1, $"{computer.DisplayName}'s screen showed a banner: {MessagePromises.FirstSentence(text)}");
         HandMessageToTracker(computer, "", text);
+        NoteMessageShown(computer, "banner", "", text, "", countsForOneMessagePerProblem: true, isQuestion: false);
     }
 
     /// <summary>Looks a message up in the promise tracker and keeps any violation it returns.</summary>
@@ -1790,7 +2045,7 @@ internal sealed class World : IDisposable
     /// <param name="path">The file.</param>
     private static string ReadSharedText(string path)
     {
-        using var stream = new FileStream(path, FileMode.Open, FileAccess.Read, FileShare.ReadWrite | FileShare.Delete);
+        using var stream = ObserverFiles.OpenRead(path);
         using var reader = new StreamReader(stream);
         return reader.ReadToEnd();
     }
@@ -1799,7 +2054,7 @@ internal sealed class World : IDisposable
     /// <param name="path">The file.</param>
     private static string HashFile(string path)
     {
-        using var stream = new FileStream(path, FileMode.Open, FileAccess.Read, FileShare.ReadWrite | FileShare.Delete);
+        using var stream = ObserverFiles.OpenRead(path);
         return Convert.ToHexString(SHA256.HashData(stream));
     }
 
@@ -1867,7 +2122,7 @@ internal sealed class World : IDisposable
     /// <returns>A timeout for a share operation of a computer whose network is down; otherwise no fault.</returns>
     private NetworkFaultDecision DecideFault(NetworkFaultRequest request)
     {
-        Interlocked.Increment(ref _shareActivity);
+        _deadlineClock.SetHold(null);   // no hold carries over from an earlier call (see HangDeadlineClock)
 
         // A process without power cannot reach anything: its operation throws at once (it neither waits nor times out).
         var life = ActingLife();
@@ -1881,10 +2136,100 @@ internal sealed class World : IDisposable
         }
 
         var actor = life?.Owner ?? _currentActor;
-        if (actor is null || !actor.NetworkIsDown) return NetworkFaultDecision.None;
+        if (actor is null || !actor.NetworkIsFaulty)
+        {
+            // The operation is going to run: invariant I9 looks at it first.
+            if (life is not null) ObserveLockFileWrite(life.Owner, request);
+            return NetworkFaultDecision.None;
+        }
 
         var onShare = IsUnderShare(request.Path) || IsUnderShare(request.DestinationPath) || IsGenericLockOperation(request);
-        return onShare ? NetworkFaultDecision.TimeOut : NetworkFaultDecision.None;
+        if (!onShare) return NetworkFaultDecision.None;
+
+        // A hanging network holds the call (up to the gate's limit; after that the call just times out).
+        if (!actor.NetworkIsDown && actor.NetworkHangs && actor.HangGate is { } gate && gate.TryHold())
+            return HoldCall(actor, gate, request);
+
+        return NetworkFaultDecision.TimeOut;
+    }
+
+    /// <summary>
+    /// The decision for a call a hanging network holds: the real call runs, blocked on the hang's gate inside the deadline-guarded part. Also hands
+    /// <see cref="NetworkFileOps"/>' clock a hold, so this call's deadline fires as soon as the call is parked instead of after five real seconds.
+    /// When the network returns and the call lands, invariant I9 looks at it then (a held lock-file write that lands over someone else's lock).
+    /// A copy blocks alternately at its chunk write (where field bug A1 blocked) and at its open.
+    /// </summary>
+    /// <param name="actor">The computer whose network hangs.</param>
+    /// <param name="gate">The hang's gate.</param>
+    /// <param name="request">The call being held.</param>
+    /// <returns>The hang decision.</returns>
+    private NetworkFaultDecision HoldCall(Computer actor, NetworkHangGate gate, NetworkFaultRequest request)
+    {
+        var hold = new HangDeadlineClock.Hold();
+        _deadlineClock.SetHold(hold);
+
+        var point = NetworkHangPoint.Start;
+        if (request.Label == "CopyFile" && Interlocked.Increment(ref _hungCopies) % 2 == 1)
+            point = NetworkHangPoint.ChunkWrite;
+
+        return NetworkFaultDecision.Hanging(() =>
+        {
+            hold.Parked();
+            return gate.Enter(() => ObserveLockFileWrite(actor, request));
+        }, point);
+    }
+
+    /// <summary>
+    /// <b>Invariant I9, a computer rewrites only its own lock file.</b> Observed in the network fault hook, just before an operation that
+    /// writes onto a lock file on the share really runs (a move onto it, which is how the heartbeat renews it; a write or copy onto it; a
+    /// delete of it, which is how a release removes it). The lock file as it is on the share at that instant must name the acting
+    /// computer's own session. Not breaches, and so not looked at: creating a lock where there is none (<c>FileMode.CreateNew</c> does not go
+    /// through the hook, and a move onto a missing file finds nothing to overwrite), and the user-confirmed takeover and the reclaim of a
+    /// provably dead holder's lock (both delete with a direct <c>File.Delete</c> that does not go through the hook, so they are never seen).
+    /// A lock file that cannot be read at that instant (another program has it open) cannot be judged and is skipped. The 1.2.3 bug this
+    /// is for: the heartbeat renewed (rewrote) a lock file that named ANOTHER session, holding a stranger's lock up as live.
+    /// </summary>
+    /// <param name="actor">The computer about to do the operation.</param>
+    /// <param name="request">The operation the fault hook was asked about.</param>
+    private void ObserveLockFileWrite(Computer actor, NetworkFaultRequest request)
+    {
+        // The path the operation writes to or removes, if it writes at all.
+        var target = request.Label switch
+        {
+            "File.Move"         => request.DestinationPath,
+            "CopyFile"          => request.DestinationPath,
+            "File.WriteAllText" => request.Path,
+            "File.Delete"       => request.Path,
+            _                   => null
+        };
+        if (target is null || !IsUnderShare(target)
+            || !string.Equals(Path.GetExtension(target), ".lock", StringComparison.OrdinalIgnoreCase)) return;
+
+        string? named;
+        try
+        {
+            if (!File.Exists(target)) return;                                   // creating a lock where none exists
+            named = JsonSerializer.Deserialize<LockFileData>(ReadSharedText(target))?.SessionGuid;
+        }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+        {
+            return;                                                             // cannot be read right now: cannot be judged
+        }
+        catch (JsonException)
+        {
+            named = null;                                                       // a damaged file names no session
+        }
+
+        if (string.Equals(named, actor.Locks.SessionGuid, StringComparison.Ordinal)) return;
+
+        var what = request.Label == "File.Delete" ? "deleted" : "rewrote";
+        var file = Path.GetFileName(target);
+        AddPending(new Violation
+        {
+            Step = _step, Invariant = "I9", Kind = ViolationKind.LockFileOfAnotherSessionWritten,
+            Key = $"I9:{_step}:{actor.Name}:{what}:{file}:{named ?? "none"}", Computer = actor.Name, Operation = request.Label,
+            Reason = $"{actor.DisplayName}'s session {what} {file}, which {(string.IsNullOrEmpty(named) ? "names no session" : "names another session")}, not {actor.DisplayName}'s own"
+        });
     }
 
     /// <summary>True when <paramref name="path"/> is inside the share folder.</summary>
@@ -1918,7 +2263,7 @@ internal sealed class World : IDisposable
         {
             // A file that is deleted while the copy is being made (by a thread of the process that is not the one being
             // frozen) simply was not there at that instant.
-            try { Inspector.CopyShared(file, Path.Combine(destination, Path.GetFileName(file))); }
+            try { CopyRetryingWhileInUse(file, Path.Combine(destination, Path.GetFileName(file))); }
             catch (FileNotFoundException) { }
             catch (DirectoryNotFoundException) { }
         }
@@ -1928,6 +2273,36 @@ internal sealed class World : IDisposable
             if (skipDirectory is not null && string.Equals(sub, skipDirectory, StringComparison.OrdinalIgnoreCase))
                 continue;
             CopyTree(sub, Path.Combine(destination, Path.GetFileName(sub)), skipDirectory);
+        }
+    }
+
+    /// <summary>The longest <see cref="CopyRetryingWhileInUse"/> keeps trying a file another handle holds without sharing.</summary>
+    private static readonly TimeSpan InUseRetryLimit = TimeSpan.FromSeconds(2);
+
+    /// <summary>
+    /// Copies one file like <see cref="Inspector.CopyShared"/>, retrying for a short while when another handle holds it without sharing (a sharing
+    /// violation). At a power cut just after a release, the lock service's background thread may be deleting the lock file at that instant; the copy
+    /// then waits until the delete is done (the file is gone, which <see cref="CopyTree"/> treats as "not there") or the handle is closed. Freezing a
+    /// few milliseconds later is still a faithful power cut: the disk at that later instant.
+    /// </summary>
+    /// <param name="source">The file to copy.</param>
+    /// <param name="destination">Where to copy it.</param>
+    /// <exception cref="IOException">The file stayed in use for longer than <see cref="InUseRetryLimit"/>.</exception>
+    private static void CopyRetryingWhileInUse(string source, string destination)
+    {
+        const int sharingViolation = unchecked((int)0x80070020);
+        var deadline = DateTime.UtcNow + InUseRetryLimit;
+        while (true)
+        {
+            try
+            {
+                Inspector.CopyShared(source, destination);
+                return;
+            }
+            catch (IOException ex) when (ex.HResult == sharingViolation && DateTime.UtcNow < deadline)
+            {
+                Thread.Sleep(20);
+            }
         }
     }
 
@@ -1953,10 +2328,16 @@ internal sealed class World : IDisposable
     /// </summary>
     public void Dispose()
     {
+        NetworkFileOps.SetTimeProviderForTests(null);   // first, so a failure below can never leave the real deadlines on the harness clock
         if (!_outputWritten) WriteOutput(PrintStory(_promises.PendingLines()));
+
+        // Let every held call of a hang that is still on go (and land) before the folders go, then give the deadlines back their real clock.
+        foreach (var computer in _computers) computer.HangGate?.Open();
+        NetworkFileOps.SetTimeProviderForTests(null);
 
         NetworkFaults.Decide = null;
         CrashPoints.Hook     = null;
+        CloseOtherProgram();
         foreach (var computer in _computers) computer.Dispose();
         SqliteConnection.ClearAllPools();
         _settingsGuard.Dispose();
@@ -2014,6 +2395,12 @@ internal static class HarnessDatabaseTemplate
         catch (ArgumentException)
         {
             return false;
+        }
+        catch (System.ComponentModel.Win32Exception)
+        {
+            // "Access is denied": a process with this id exists but is not ours to open (a protected system process that now
+            // owns a recycled id). It is alive, so it is not a dead test host's id; its folder is left alone, which is the safe side.
+            return true;
         }
     }
 

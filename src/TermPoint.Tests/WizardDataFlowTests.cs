@@ -22,8 +22,9 @@ namespace TermPoint.Tests;
 ///   <item>A real <see cref="DatabaseContext"/> is created in a temp directory so that
 ///     <c>SeedData.SeedWizardLegalStartTimes</c> can execute against a live schema.</item>
 ///   <item><c>InitializeServices</c> is a no-op — the wizard never builds the DI container.</item>
-///   <item><see cref="AppSettings.Current"/> writes to <c>%AppData%\TermPoint\settings.json</c>
-///     as a side effect; this is accepted for now.</item>
+///   <item><see cref="AppSettings.Current"/> is saved as a side effect, into the test run's private settings
+///     folder (<see cref="AppSettings.SettingsDirectoryOverride"/>, set by a module initializer in
+///     <c>RecordingAppLogger.cs</c>), never the developer's real <c>settings.json</c>.</item>
 /// </list>
 /// </summary>
 public class WizardDataFlowTests : IDisposable

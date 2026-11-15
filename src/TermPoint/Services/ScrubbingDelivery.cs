@@ -6,7 +6,7 @@ using Bugsnag.Payload;
 namespace TermPoint.Services;
 
 /// <summary>
-/// The one gate every error report and session batch passes on its way to BugSnag (spec item 6, step 6b). It wraps the
+/// The one gate every error report and session batch passes on its way to BugSnag. It wraps the
 /// real delivery and, before forwarding a payload, removes the private details from a fixed list of fields with
 /// <see cref="PrivacyScrubber.ScrubText"/>, takes out the computer's name, and stamps the anonymous install ID.
 ///

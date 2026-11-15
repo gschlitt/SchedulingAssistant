@@ -37,7 +37,7 @@ public sealed class FileAppLogger : IAppLogger
     internal static string? LogDirectoryOverride { get; set; }
 
     /// <summary>The folder log files go to: the test override when set, otherwise the real one.</summary>
-    private static string LogDirectory => LogDirectoryOverride ?? DefaultLogDirectory;
+    internal static string LogDirectory => LogDirectoryOverride ?? DefaultLogDirectory;
 
     private static readonly string AppVersion =
         Assembly.GetExecutingAssembly().GetName().Version?.ToString() ?? "unknown";
@@ -53,7 +53,7 @@ public sealed class FileAppLogger : IAppLogger
         // designed: leave a local line and show the one plain message as the banner (NotifyUser), never the
         // developer label in `context`. The banner, not the call site's inline error text: the management views
         // hide their inline error line while an editor is open, and a refused Apply keeps the editor open, so
-        // an inline message would be invisible (found in the F4 hand test, 2026-10-21). WriteFailureText.For
+        // an inline message would be invisible. WriteFailureText.For
         // therefore gives the call site no inline text for this exception. No BugSnag report, and no
         // ThrowOnError re-throw (that would break the debugger on something that is not a bug).
         if (WriteFailureText.IsWriteAccessLost(ex))
@@ -105,12 +105,14 @@ public sealed class FileAppLogger : IAppLogger
     /// <param name="metadata">Optional key/value details, sent under <paramref name="metadataTab"/>. No paths, file names or user names.</param>
     /// <param name="metadataTab">Name of the BugSnag tab that holds <paramref name="metadata"/>.</param>
     /// <param name="groupingKey">Optional stable key that groups every report that carries it into one BugSnag issue.</param>
+    /// <param name="informational">True to send the event with BugSnag severity Info instead of the default Warning (the local log level stays REPORT).</param>
     public void ReportHandled(
         Exception ex,
         string context,
         IReadOnlyDictionary<string, string>? metadata = null,
         string metadataTab = "details",
-        string? groupingKey = null)
+        string? groupingKey = null,
+        bool informational = false)
     {
         try
         {
@@ -119,6 +121,8 @@ public sealed class FileAppLogger : IAppLogger
             BugsnagClient?.Notify(ex, report =>
             {
                 report.Event.Context = context;
+                if (informational)
+                    report.Event.Severity = Bugsnag.Severity.Info;
                 if (groupingKey is not null)
                     report.Event.GroupingHash = groupingKey;
                 if (metadata is { Count: > 0 })

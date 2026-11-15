@@ -2,8 +2,7 @@ namespace TermPoint.Services.SectionImport;
 
 /// <summary>
 /// A fingerprint of an <see cref="ImportReport"/> made of everything the user could have seen in the
-/// preview, used at Import time to tell whether the database changed since the file was checked
-/// (spec decision D4).
+/// preview, used at Import time to tell whether the database changed since the file was checked.
 ///
 /// <para>The signature is a list of lines, one for every problem (row, column, message), every warning
 /// message, every skipped section's label, every new record's identity (subjects by abbreviation and name;

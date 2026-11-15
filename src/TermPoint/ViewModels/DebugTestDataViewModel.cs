@@ -1,40 +1,36 @@
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
-using TermPoint.Services;
-using TermPoint.ViewModels.Management;
 
 namespace TermPoint.ViewModels;
 
+/// <summary>
+/// The Dev Tools "Debug View..." flyout (Debug builds only; the menu item is hidden in Release). It holds the
+/// developer switch that makes <see cref="Services.IAppLogger.LogError"/> re-throw, and a button to test it.
+/// </summary>
 public partial class DebugTestDataViewModel : ViewModelBase
 {
 #if DEBUG
-    [ObservableProperty] private int _sectionCount = 10;
+    /// <summary>The result of the last <see cref="TestThrowCommand"/>, shown under the controls.</summary>
     [ObservableProperty] private string? _statusMessage;
-    [ObservableProperty] private bool _isGenerating;
 
     /// <summary>
-    /// When true, exceptions passed to <see cref="IAppLogger.LogError"/> are re-thrown
+    /// When true, exceptions passed to <see cref="Services.IAppLogger.LogError"/> are re-thrown
     /// after being written to the log file, so they surface immediately in the debugger
     /// rather than being silently swallowed by catch blocks.
-    /// Mirrors <see cref="IAppLogger.ThrowOnError"/> on the singleton logger.
+    /// Mirrors <see cref="Services.IAppLogger.ThrowOnError"/> on the singleton logger.
     /// </summary>
     [ObservableProperty]
     private bool _throwOnError = true;
 
     partial void OnThrowOnErrorChanged(bool value) => App.Logger.ThrowOnError = value;
 
-    private readonly SectionListViewModel _sectionListVm;
     private readonly MainWindowViewModel _mainWindowVm;
-    private readonly DebugTestDataGenerator _generator;
 
-    public DebugTestDataViewModel(
-        SectionListViewModel sectionListVm,
-        MainWindowViewModel mainWindowVm,
-        DebugTestDataGenerator generator)
+    /// <summary>Creates the flyout's view model and pushes the default <see cref="ThrowOnError"/> to the logger.</summary>
+    /// <param name="mainWindowVm">The main window's view model, used to close the flyout.</param>
+    public DebugTestDataViewModel(MainWindowViewModel mainWindowVm)
     {
-        _sectionListVm = sectionListVm;
         _mainWindowVm = mainWindowVm;
-        _generator = generator;
         // Sync the logger with the default field value — OnThrowOnErrorChanged
         // does not fire for field initializers, so we push the default manually.
         App.Logger.ThrowOnError = _throwOnError;
@@ -64,36 +60,7 @@ public partial class DebugTestDataViewModel : ViewModelBase
         }
     }
 
-    [RelayCommand]
-    private void Generate()
-    {
-        if (SectionCount <= 0)
-        {
-            StatusMessage = "Count must be greater than 0.";
-            return;
-        }
-
-        try
-        {
-            IsGenerating = true;
-            StatusMessage = $"Generating {SectionCount} sections...";
-
-            // Call the command on SectionListViewModel
-            _sectionListVm.GenerateRandomSectionsCommand.Execute(SectionCount);
-
-            StatusMessage = $"Successfully generated {SectionCount} test sections.";
-        }
-        catch (Exception ex)
-        {
-            StatusMessage = $"Error: {ex.Message}";
-            App.Logger.LogError(ex, "DebugTestDataViewModel.Generate");
-        }
-        finally
-        {
-            IsGenerating = false;
-        }
-    }
-
+    /// <summary>Closes the flyout.</summary>
     [RelayCommand]
     private void Cancel()
     {

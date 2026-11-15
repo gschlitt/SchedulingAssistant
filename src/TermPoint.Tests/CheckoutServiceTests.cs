@@ -76,7 +76,7 @@ public sealed class CheckoutServiceTests : IDisposable
     /// <summary>
     /// Creates a minimal valid SQLite database file at <paramref name="path"/>.
     /// Required for any test that exercises <see cref="CheckoutService.SaveAsync"/>,
-    /// because <c>BackupSqliteDatabase</c> uses the SQLite Online Backup API which
+    /// because <c>SnapshotWorkingCopy</c> uses the SQLite Online Backup API which
     /// requires a well-formed SQLite file as its source.
     /// <para><c>Pooling=False</c> ensures the connection is truly closed on Dispose
     /// rather than returned to the pool, preventing stale OS file handles.</para>
@@ -460,7 +460,7 @@ public sealed class CheckoutServiceTests : IDisposable
     {
         var (svc, _) = CreateService();
         var db = DbPath();
-        CreateFile(db);
+        CreateSqliteDb(db);   // a reader now integrity-checks its fresh copy, so D must be a real database
         WriteExternalFreshLock(db);
 
         var outcome = await svc.CheckoutAsync(db);
@@ -843,7 +843,7 @@ public sealed class CheckoutServiceTests : IDisposable
     {
         var (svc, lockSvc) = CreateService();
         var db = DbPath();
-        CreateFile(db);
+        CreateSqliteDb(db);   // a reader now integrity-checks its fresh copy, so D must be a real database
         WriteExternalStaleLock(db);
         Assert.Equal(CheckoutOutcome.StaleHolder, await svc.CheckoutAsync(db)); // precondition
         ModifyLock(db, d => d.Heartbeat = DateTime.UtcNow);
@@ -872,7 +872,7 @@ public sealed class CheckoutServiceTests : IDisposable
     {
         var (svc, lockSvc) = CreateService();
         var db = DbPath();
-        CreateFile(db);
+        CreateSqliteDb(db);   // a reader now integrity-checks its fresh copy, so D must be a real database
         WriteExternalStaleLock(db);
         Assert.Equal(CheckoutOutcome.StaleHolder, await svc.CheckoutAsync(db)); // precondition
         Assert.NotNull(await svc.SetupReadOnlySnapshotAsync());                   // the user chose "Open read-only"
@@ -1438,6 +1438,89 @@ public sealed class CheckoutServiceTests : IDisposable
         await svc.CleanupOrphanedTmpAsync(db);
 
         Assert.False(File.Exists(tmpPath));
+    }
+
+    /// <summary>
+    /// The sweep (1.2.4 item 4.1) deletes every leftover of the database, the per-attempt names and the legacy
+    /// <c>D.tmp</c> alike, and leaves look-alikes, other databases' files and D itself alone.
+    /// </summary>
+    [Fact]
+    public async Task CleanupOrphanedTmp_DeletesPerAttemptAndLegacyLeftovers_LeavesLookAlikesAlone()
+    {
+        var (svc, _) = CreateService();
+        var db = DbPath();
+        CreateFile(db);
+        var leftovers = new[] { ShareTempFile.NewPath(db), ShareTempFile.NewPath(db), db + ".tmp" };
+        var keepers   = new[]
+        {
+            db + ".backup.tmp", db + ".3f2a9c1e.tmp.x", db + ".3f2a9c1.tmp", db + ".3f2a9c1ea.tmp",
+            db + ".lock.tmp", Path.Combine(Path.GetDirectoryName(db)!, "OTHER.db.3f2a9c1e.tmp"),
+        };
+        foreach (var f in leftovers.Concat(keepers)) CreateFile(f, "x");
+
+        await svc.CleanupOrphanedTmpAsync(db);
+
+        Assert.All(leftovers, f => Assert.False(File.Exists(f), f));
+        Assert.All(keepers, f => Assert.True(File.Exists(f), f));
+        Assert.True(File.Exists(db));
+    }
+
+    /// <summary>
+    /// A leftover that cannot be deleted (another program holds it open) is skipped; the others are still
+    /// deleted, and the sweep does not throw.
+    /// </summary>
+    [FactWindowsOnly]
+    public async Task CleanupOrphanedTmp_OneLeftoverHeldOpen_OthersStillDeleted_NoException()
+    {
+        var (svc, _) = CreateService();
+        var db = DbPath();
+        CreateFile(db);
+        var held = ShareTempFile.NewPath(db);
+        var free = ShareTempFile.NewPath(db);
+        CreateFile(held, "x");
+        CreateFile(free, "x");
+
+        Exception? ex;
+        using (DbFileTestHelpers.LockExclusively(held))
+            ex = await Record.ExceptionAsync(() => svc.CleanupOrphanedTmpAsync(db));
+
+        Assert.Null(ex);
+        Assert.True(File.Exists(held));
+        Assert.False(File.Exists(free));
+    }
+
+    /// <summary>
+    /// A folder listing that times out or throws ends the sweep quietly: no exception, nothing deleted, and a
+    /// log line saying so.
+    /// </summary>
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task CleanupOrphanedTmp_ListingTimesOutOrThrows_DoesNotThrow_AndDeletesNothing(bool throws)
+    {
+        var logger = new RecordingAppLogger();
+        var (svc, _) = CreateService(logger: logger);
+        var db = DbPath();
+        CreateFile(db);
+        var leftover = ShareTempFile.NewPath(db);
+        CreateFile(leftover, "x");
+
+        Exception? ex;
+        try
+        {
+            NetworkFaults.Decide = r => r.Label == "Directory.GetFiles"
+                ? (throws ? NetworkFaultDecision.Throwing(new IOException("share gone")) : NetworkFaultDecision.TimeOut)
+                : NetworkFaultDecision.None;
+            ex = await Record.ExceptionAsync(() => svc.CleanupOrphanedTmpAsync(db));
+        }
+        finally
+        {
+            NetworkFaults.Decide = null;
+        }
+
+        Assert.Null(ex);
+        Assert.True(File.Exists(leftover));
+        Assert.Contains(logger.Infos, l => l.Contains("temporary-file sweep skipped"));
     }
 
     /// <summary>
@@ -2124,7 +2207,7 @@ public sealed class CheckoutServiceTests : IDisposable
     public async Task ReadOnlyCheckout_CreatesDSnapshot()
     {
         var db = DbPath("shared");
-        CreateFile(db);
+        CreateSqliteDb(db);   // a reader now integrity-checks its fresh copy, so D must be a real database
         var (writer, lockSvc) = CreateService();
 
         // Writer acquires the lock.
@@ -2147,6 +2230,33 @@ public sealed class CheckoutServiceTests : IDisposable
 
         // Reader's WorkingPath should point to D''.
         Assert.Equal(reader.ReadOnlyWorkingPath, reader.WorkingPath);
+    }
+
+    /// <summary>
+    /// 1.2.4 item 4.5: <see cref="CheckoutService.IsReadOnlyMode"/> is not sticky. A window that was a reader and then
+    /// opens a free database for writing (the same <see cref="CheckoutService"/>) is no longer marked read-only:
+    /// <c>BeginSession</c> clears the flag at the start of every checkout.
+    /// </summary>
+    [Fact]
+    public async Task ReaderThenWriter_OnTheSameService_IsReadOnlyModeIsCleared()
+    {
+        var shared = DbPath("shared");
+        var other  = DbPath("other");
+        CreateSqliteDb(shared);   // a reader now integrity-checks its fresh copy, so D must be a real database
+        CreateSqliteDb(other);   // a reader now integrity-checks its fresh copy, so D must be a real database
+        var (writer, _) = CreateService();
+        Assert.Equal(CheckoutOutcome.WriteAccess, await writer.CheckoutAsync(shared));
+
+        var (svc, lockSvc) = CreateService();
+        Assert.Equal(CheckoutOutcome.ReadOnly, await svc.CheckoutAsync(shared));
+        Assert.True(svc.IsReadOnlyMode);
+
+        await svc.ReleaseAsync(saveFirst: false);
+        Assert.Equal(CheckoutOutcome.WriteAccess, await svc.CheckoutAsync(other));
+
+        Assert.Equal(CheckoutMode.WriteAccess, svc.Mode);
+        Assert.True(lockSvc.IsWriter);
+        Assert.False(svc.IsReadOnlyMode, "a former reader that now writes must not be marked read-only");
     }
 
     /// <summary>
@@ -2223,60 +2333,273 @@ public sealed class CheckoutServiceTests : IDisposable
     }
 
     /// <summary>
-    /// Spec item 28 (from item 11): a refresh whose <c>beforeOverwrite</c> callback throws fails as
-    /// <see cref="RefreshOutcome.SourceUnavailable"/>, the connection is never reopened by the service (so
-    /// <c>afterOverwrite</c> is not called: the caller knows the connection was lost by seeing that "before" ran and
-    /// "after" did not complete), and the failure is logged with <c>LogInfo</c> (what failed, the exception's type and
-    /// message) and NEVER <c>LogError</c>, which would put a red log-text banner next to the plain line the window shows.
+    /// Makes the SQLite database at <paramref name="path"/> damaged but still recognisable: it is filled with enough rows to
+    /// span several pages, then every page after the first (header and schema) is overwritten with garbage.
+    /// </summary>
+    /// <param name="path">The database file to create and damage (any existing file is replaced).</param>
+    private static void CreateDamagedSqliteDb(string path)
+    {
+        File.Delete(path);
+        CreateSqliteDb(path);
+        for (var i = 0; i < 300; i++)
+            InsertTestValue(path, new string('x', 200) + i);
+        using (var fs = new FileStream(path, FileMode.Open, FileAccess.Write, FileShare.ReadWrite))
+        {
+            fs.Position = 4096;
+            var garbage = new byte[fs.Length - 4096];
+            Array.Fill(garbage, (byte)0xAB);
+            fs.Write(garbage);
+        }
+    }
+
+    /// <summary>
+    /// Single-read refresh (reader-single-read-1.2.4): when D copies fine but the fresh copy is damaged, the refresh is
+    /// <see cref="RefreshOutcome.SourceUnavailable"/>: <c>beforeOverwrite</c> and <c>afterOverwrite</c> are never called
+    /// (the connection is untouched), the old D'' still holds its old data and hash, D''.tmp is gone, and the log says
+    /// the fresh copy failed its integrity check.
+    /// </summary>
+    [Theory]
+    [InlineData(false)]   // not a SQLite database at all
+    [InlineData(true)]    // a database with its data pages overwritten
+    public async Task ReadOnlyRefresh_DamagedFreshCopy_KeepsOldSnapshot_AndNeverTouchesTheConnection(bool damagedPages)
+    {
+        var log = new RecordingAppLogger();
+        var (reader, db) = await OpenReaderForRefreshAsync(log);
+        var hashBefore = reader.HashAtCheckout;
+
+        if (damagedPages) CreateDamagedSqliteDb(db);
+        else File.WriteAllText(db, "this is not a database " + new string('z', 5000));
+
+        var beforeCalls = 0;
+        var afterCalls  = 0;
+        var outcome = await reader.RefreshReadOnlySnapshotAsync(
+            beforeOverwrite: () => { beforeCalls++; return Task.CompletedTask; },
+            afterOverwrite:  () => { afterCalls++;  return Task.CompletedTask; });
+
+        Assert.Equal(RefreshOutcome.SourceUnavailable, outcome);
+        Assert.Equal(0, beforeCalls);
+        Assert.Equal(0, afterCalls);
+        Assert.Equal(hashBefore, reader.HashAtCheckout);
+        Assert.Equal("original", ReadTestValue(reader.ReadOnlyWorkingPath!));
+        Assert.False(File.Exists(reader.ReadOnlyWorkingPath + ".tmp"), "The damaged copy must be deleted.");
+        Assert.Empty(log.Errors);
+        Assert.Contains(log.Infos, i => i.Contains("fresh copy") && i.Contains("integrity check"));
+    }
+
+    /// <summary>
+    /// A normal refresh is still <see cref="RefreshOutcome.Updated"/> with the new data, and the new
+    /// <c>HashAtCheckout</c> is the SHA-256 of the new D (the hash taken while copying).
     /// </summary>
     [Fact]
-    public async Task ReadOnlyRefresh_WhenBeforeOverwriteThrows_IsSourceUnavailable_LogsInfoNotError_AndSkipsAfterOverwrite()
+    public async Task ReadOnlyRefresh_ValidFreshCopy_Updates_AndHashIsTheHashOfD()
+    {
+        var log = new RecordingAppLogger();
+        var (reader, db) = await OpenReaderForRefreshAsync(log);
+
+        File.Delete(db);
+        CreateSqliteDb(db);
+        InsertTestValue(db, "modified");
+
+        Assert.Equal(RefreshOutcome.Updated, await reader.RefreshReadOnlySnapshotAsync());
+
+        Assert.Equal("modified", ReadTestValue(reader.ReadOnlyWorkingPath!));
+        Assert.Equal(NetworkFileOps.ComputeHash(db), reader.HashAtCheckout);
+        Assert.False(File.Exists(reader.ReadOnlyWorkingPath + ".tmp"));
+    }
+
+    /// <summary>
+    /// Reader setup with a damaged D fails the way an unreadable D does: it returns null (so the Try again / Close prompt
+    /// appears), leaves no D''.tmp, and makes no D''. Once D is healthy again the next attempt succeeds, and
+    /// <c>HashAtCheckout</c> is the hash of D.
+    /// </summary>
+    [Fact]
+    public async Task SetupReadOnlySnapshotAsync_DamagedSource_ReturnsNull_ThenSucceedsOnceHealthy()
+    {
+        var (svc, _) = CreateService();
+        var db = DbPath();
+        CreateSqliteDb(db);
+        WriteExternalFreshLock(db);
+        Assert.Equal(CheckoutOutcome.ReadOnly, await svc.CheckoutAsync(db));   // sets SourcePath, makes D''
+        File.Delete(svc.ReadOnlyWorkingPath!);
+
+        CreateDamagedSqliteDb(db);
+        Assert.Null(await svc.SetupReadOnlySnapshotAsync());
+        Assert.False(File.Exists(svc.ReadOnlyWorkingPath + ".tmp"), "No half-made snapshot may be left.");
+        Assert.False(File.Exists(svc.ReadOnlyWorkingPath), "A damaged copy must never become D''.");
+
+        File.Delete(db);
+        CreateSqliteDb(db);
+        InsertTestValue(db, "healthy");
+        Assert.NotNull(await svc.SetupReadOnlySnapshotAsync());
+        Assert.Equal("healthy", ReadTestValue(svc.ReadOnlyWorkingPath!));
+        Assert.Equal(NetworkFileOps.ComputeHash(db), svc.HashAtCheckout);
+    }
+
+    /// <summary>
+    /// Opens a writer (so D has a lock holder) and a read-only reader on a fresh database that holds
+    /// <c>"original"</c>, with the reader's reopen pause removed so tests don't wait between attempts.
+    /// </summary>
+    /// <param name="log">The logger the reader writes to.</param>
+    /// <returns>The reader (opened read-only) and the path of the shared database D.</returns>
+    private async Task<(CheckoutService Reader, string Db)> OpenReaderForRefreshAsync(RecordingAppLogger log)
     {
         var db = DbPath("shared");
         CreateSqliteDb(db);
+        InsertTestValue(db, "original");
         var (writer, _) = CreateService();
         await writer.CheckoutAsync(db);
-        var log = new RecordingAppLogger();
         var (reader, _) = CreateService(logger: log);
         await reader.CheckoutAsync(db);
-        var afterCalled = false;
+        reader.RefreshReopenDelay = _ => Task.CompletedTask;
+        return (reader, db);
+    }
+
+    /// <summary>
+    /// Spec item 4.6: a refresh whose <c>beforeOverwrite</c> callback throws (the connection may be half-closed) still
+    /// reopens through <c>afterOverwrite</c>, and ends as <see cref="RefreshOutcome.ReplaceFailed"/> with
+    /// <c>HashAtCheckout</c> unchanged. The failure is logged with <c>LogInfo</c> (type and message), never <c>LogError</c>.
+    /// </summary>
+    [Fact]
+    public async Task ReadOnlyRefresh_WhenBeforeOverwriteThrows_IsReplaceFailed_StillReopens_LogsInfoNotError()
+    {
+        var log = new RecordingAppLogger();
+        var (reader, _) = await OpenReaderForRefreshAsync(log);
+        var hashBefore = reader.HashAtCheckout;
+        var afterCalls = 0;
 
         var outcome = await reader.RefreshReadOnlySnapshotAsync(
             beforeOverwrite: () => throw new InvalidOperationException("close failed"),
-            afterOverwrite:  () => { afterCalled = true; return Task.CompletedTask; });
+            afterOverwrite:  () => { afterCalls++; return Task.CompletedTask; });
 
-        Assert.Equal(RefreshOutcome.SourceUnavailable, outcome);
-        Assert.False(afterCalled);
+        Assert.Equal(RefreshOutcome.ReplaceFailed, outcome);
+        Assert.Equal(1, afterCalls);
+        Assert.Equal(hashBefore, reader.HashAtCheckout);
         Assert.Empty(log.Errors);
         Assert.Contains(log.Infos, i => i.Contains("beforeOverwrite") && i.Contains("InvalidOperationException") && i.Contains("close failed"));
     }
 
     /// <summary>
-    /// Spec item 28 (from item 11): a refresh whose <c>afterOverwrite</c> callback (the reopen of the connection)
-    /// throws fails as <see cref="RefreshOutcome.SourceUnavailable"/> after <c>beforeOverwrite</c> had run, which is
-    /// exactly the "connection lost" state the window detects; the failure is logged with <c>LogInfo</c>, with the
-    /// exception's type and message, and never <c>LogError</c>.
+    /// Spec item 4.6: when the rename of the fresh copy fails (the DEBUG fault plan <c>replace</c> stands in for a
+    /// scanner holding the old file), the outcome is <see cref="RefreshOutcome.ReplaceFailed"/>, <c>afterOverwrite</c>
+    /// is called once, the OLD D'' is still readable through it, and <c>HashAtCheckout</c> is unchanged.
     /// </summary>
     [Fact]
-    public async Task ReadOnlyRefresh_WhenAfterOverwriteThrows_IsSourceUnavailable_LogsInfoNotError()
+    public async Task ReadOnlyRefresh_WhenRenameFails_IsReplaceFailed_OldCopyReadable_HashUnchanged()
     {
-        var db = DbPath("shared");
-        CreateSqliteDb(db);
-        var (writer, _) = CreateService();
-        await writer.CheckoutAsync(db);
         var log = new RecordingAppLogger();
-        var (reader, _) = CreateService(logger: log);
-        await reader.CheckoutAsync(db);
-        var beforeRan = false;
+        var (reader, db) = await OpenReaderForRefreshAsync(log);
+        var hashBefore = reader.HashAtCheckout;
+
+        // D changes after the reader opened, so a successful swap would change D''.
+        File.Delete(db);
+        CreateSqliteDb(db);
+        InsertTestValue(db, "modified");
+
+        reader.RefreshFaultPlan = RefreshFaultPlan.Parse("replace");
+        var afterCalls = 0;
+        string? seenThroughReopen = null;
 
         var outcome = await reader.RefreshReadOnlySnapshotAsync(
-            beforeOverwrite: () => { beforeRan = true; return Task.CompletedTask; },
-            afterOverwrite:  () => throw new InvalidOperationException("reopen failed"));
+            beforeOverwrite: () => Task.CompletedTask,
+            afterOverwrite:  () => { afterCalls++; seenThroughReopen = ReadTestValue(reader.ReadOnlyWorkingPath!); return Task.CompletedTask; });
 
-        Assert.Equal(RefreshOutcome.SourceUnavailable, outcome);
-        Assert.True(beforeRan);
+        Assert.Equal(RefreshOutcome.ReplaceFailed, outcome);
+        Assert.Equal(1, afterCalls);
+        Assert.Equal("original", seenThroughReopen);
+        Assert.Equal(hashBefore, reader.HashAtCheckout);
+        Assert.False(File.Exists(reader.ReadOnlyWorkingPath + ".tmp"), "the .tmp copy should be cleaned up");
+        Assert.Empty(log.Errors);
+    }
+
+    /// <summary>
+    /// Spec item 4.6: a reopen that fails once and then works ends as <see cref="RefreshOutcome.Updated"/> after two
+    /// <c>afterOverwrite</c> calls; the failed attempt is logged with type and message, never as an error.
+    /// </summary>
+    [Fact]
+    public async Task ReadOnlyRefresh_WhenReopenFailsOnce_ThenWorks_IsUpdated_WithTwoCalls()
+    {
+        var log = new RecordingAppLogger();
+        var (reader, _) = await OpenReaderForRefreshAsync(log);
+        var calls = 0;
+
+        var outcome = await reader.RefreshReadOnlySnapshotAsync(
+            beforeOverwrite: () => Task.CompletedTask,
+            afterOverwrite:  () => { if (++calls == 1) throw new InvalidOperationException("reopen failed"); return Task.CompletedTask; });
+
+        Assert.Equal(RefreshOutcome.Updated, outcome);
+        Assert.Equal(2, calls);
         Assert.Empty(log.Errors);
         Assert.Contains(log.Infos, i => i.Contains("afterOverwrite") && i.Contains("InvalidOperationException") && i.Contains("reopen failed"));
+    }
+
+    /// <summary>
+    /// Spec item 4.6: three failed reopen attempts end as <see cref="RefreshOutcome.ConnectionLost"/>, with exactly
+    /// three <c>afterOverwrite</c> calls, each logged with <c>LogInfo</c> (type and message) and never <c>LogError</c>.
+    /// </summary>
+    [Fact]
+    public async Task ReadOnlyRefresh_WhenReopenFailsThreeTimes_IsConnectionLost_WithThreeCalls()
+    {
+        var log = new RecordingAppLogger();
+        var (reader, _) = await OpenReaderForRefreshAsync(log);
+        var calls = 0;
+
+        var outcome = await reader.RefreshReadOnlySnapshotAsync(
+            beforeOverwrite: () => Task.CompletedTask,
+            afterOverwrite:  () => { calls++; throw new InvalidOperationException("reopen failed"); });
+
+        Assert.Equal(RefreshOutcome.ConnectionLost, outcome);
+        Assert.Equal(3, calls);
+        Assert.Empty(log.Errors);
+        Assert.Equal(3, log.Infos.Count(i => i.Contains("afterOverwrite") && i.Contains("InvalidOperationException") && i.Contains("reopen failed")));
+    }
+
+    /// <summary>
+    /// Spec item 4.6: the DEBUG fault plan <c>reopen:2</c> makes two reopen attempts throw (before the callback is
+    /// reached) and the third work (<see cref="RefreshOutcome.Updated"/>); <c>reopen:3</c> gives
+    /// <see cref="RefreshOutcome.ConnectionLost"/> and the callback is never reached.
+    /// </summary>
+    /// <param name="spec">The fault plan text.</param>
+    /// <param name="expected">The outcome the refresh must end with.</param>
+    /// <param name="callbackCalls">How many times the reopen callback itself must have been reached.</param>
+    [Theory]
+    [InlineData("reopen:2", RefreshOutcome.Updated, 1)]
+    [InlineData("reopen:3", RefreshOutcome.ConnectionLost, 0)]
+    public async Task ReadOnlyRefresh_ReopenFaultPlan_BehavesAsDocumented(string spec, RefreshOutcome expected, int callbackCalls)
+    {
+        var log = new RecordingAppLogger();
+        var (reader, _) = await OpenReaderForRefreshAsync(log);
+        reader.RefreshFaultPlan = RefreshFaultPlan.Parse(spec);
+        var calls = 0;
+
+        var outcome = await reader.RefreshReadOnlySnapshotAsync(
+            beforeOverwrite: () => Task.CompletedTask,
+            afterOverwrite:  () => { calls++; return Task.CompletedTask; });
+
+        Assert.Equal(expected, outcome);
+        Assert.Equal(callbackCalls, calls);
+        Assert.Empty(log.Errors);
+    }
+
+    /// <summary>
+    /// Spec item 4.6: when the session ends while the reopen is being retried (a close or a switch during the pause),
+    /// no further <c>afterOverwrite</c> call is made and the outcome is <see cref="RefreshOutcome.ConnectionLost"/>.
+    /// </summary>
+    [Fact]
+    public async Task ReadOnlyRefresh_WhenSessionEndsDuringRetries_StopsAndIsConnectionLost()
+    {
+        var log = new RecordingAppLogger();
+        var (reader, _) = await OpenReaderForRefreshAsync(log);
+        // The pause before the first retry is where the window is closed.
+        reader.RefreshReopenDelay = _ => reader.ReleaseAsync(saveFirst: false);
+        var calls = 0;
+
+        var outcome = await reader.RefreshReadOnlySnapshotAsync(
+            beforeOverwrite: () => Task.CompletedTask,
+            afterOverwrite:  () => { calls++; throw new InvalidOperationException("reopen failed"); });
+
+        Assert.Equal(RefreshOutcome.ConnectionLost, outcome);
+        Assert.Equal(1, calls);
+        Assert.Empty(log.Errors);
     }
 
     /// <summary>
@@ -3026,11 +3349,79 @@ public sealed class CheckoutServiceTests : IDisposable
         SimulateCrash(lockSvc1, db);
 
         var (svc2, _) = CreateService();
-        var info = svc2.InspectCrashRecovery(db);
+        var info = await svc2.InspectCrashRecoveryAsync(db);
 
         Assert.NotNull(info);
-        Assert.True(info!.WorkingCopyIntact);
+        Assert.Equal(IntegrityCheckResult.Ok, info!.WorkingCopyVerdict);
         Assert.Equal(svc1.HashAtCheckout, info.HashAtCheckout);
+    }
+
+    /// <summary>
+    /// 1.2.4 item 4.7, D1: a D' that another program holds (here: opened with FileShare.None) is Unreadable, not
+    /// damaged. It is tried 3 times in all with 2 waits of 1 s (recorded, not slept), and nothing is renamed or
+    /// deleted: D', its marker and the folder's contents are exactly as they were, with no .corrupt-* archive.
+    /// </summary>
+    [Fact]
+    public async Task InspectCrashRecovery_HeldWorkingCopy_IsUnreadable_AfterThreeAttempts_AndTouchesNothing()
+    {
+        var (svc1, lockSvc1) = CreateService();
+        var db = DbPath();
+        CreateSqliteDb(db);
+        await svc1.CheckoutAsync(db);
+        InsertTestValue(svc1.WorkingPath, "kept-edit");
+        svc1.MarkDirty();
+        var workingPath = svc1.WorkingPath;
+        SimulateCrash(lockSvc1, db);
+        SqliteConnection.ClearAllPools();
+
+        var filesBefore = Directory.GetFiles(Path.GetDirectoryName(workingPath)!).Order().ToArray();
+        var (svc2, _) = CreateService();
+        var delays = new DelayRecorder();
+        svc2.GateRetryDelay = delays.WaitAsync;
+
+        CrashRecoveryInfo? info;
+        using (new FileStream(workingPath, FileMode.Open, FileAccess.ReadWrite, FileShare.None))
+            info = await svc2.InspectCrashRecoveryAsync(db);
+
+        Assert.NotNull(info);
+        Assert.Equal(IntegrityCheckResult.Unreadable, info!.WorkingCopyVerdict);
+        Assert.Equal(new[] { LocalCopyIntegrity.RetryDelay, LocalCopyIntegrity.RetryDelay }, delays.Waits);
+        Assert.True(File.Exists(workingPath));
+        Assert.True(File.Exists(workingPath + ".dirty"));
+        Assert.Equal(filesBefore, Directory.GetFiles(Path.GetDirectoryName(workingPath)!).Order().ToArray());
+        Assert.Empty(Directory.GetFiles(Path.GetDirectoryName(workingPath)!, "*corrupt*"));
+    }
+
+    /// <summary>
+    /// D' is held on the first attempt and free by the second: the verdict is Ok after exactly one wait, and the
+    /// kept change is still in D'.
+    /// </summary>
+    [Fact]
+    public async Task InspectCrashRecovery_HeldThenReleased_IsOk_AfterOneWait()
+    {
+        var (svc1, lockSvc1) = CreateService();
+        var db = DbPath();
+        CreateSqliteDb(db);
+        await svc1.CheckoutAsync(db);
+        InsertTestValue(svc1.WorkingPath, "kept-edit");
+        svc1.MarkDirty();
+        var workingPath = svc1.WorkingPath;
+        SimulateCrash(lockSvc1, db);
+        SqliteConnection.ClearAllPools();
+
+        var (svc2, _) = CreateService();
+        var delays = new DelayRecorder();
+        var holder = new FileStream(workingPath, FileMode.Open, FileAccess.ReadWrite, FileShare.None);
+        svc2.GateRetryDelay = delay => { holder.Dispose(); return delays.WaitAsync(delay); };
+
+        CrashRecoveryInfo? info;
+        try { info = await svc2.InspectCrashRecoveryAsync(db); }
+        finally { holder.Dispose(); }
+
+        Assert.NotNull(info);
+        Assert.Equal(IntegrityCheckResult.Ok, info!.WorkingCopyVerdict);
+        Assert.Single(delays.Waits);
+        Assert.True(File.Exists(workingPath + ".dirty"));
     }
 
     /// <summary>
@@ -3052,21 +3443,21 @@ public sealed class CheckoutServiceTests : IDisposable
         File.WriteAllText(svc1.WorkingPath, "garbage-not-a-database");
 
         var (svc2, _) = CreateService();
-        var info = svc2.InspectCrashRecovery(db);
+        var info = await svc2.InspectCrashRecoveryAsync(db);
 
         Assert.NotNull(info);
-        Assert.False(info!.WorkingCopyIntact);
+        Assert.Equal(IntegrityCheckResult.Damaged, info!.WorkingCopyVerdict);
     }
 
     /// <summary>InspectCrashRecovery returns null when no crash artifacts exist.</summary>
     [Fact]
-    public void InspectCrashRecovery_NoArtifacts_ReturnsNull()
+    public async Task InspectCrashRecovery_NoArtifacts_ReturnsNull()
     {
         var (svc, _) = CreateService();
         var db = DbPath();
         CreateSqliteDb(db);
 
-        Assert.Null(svc.InspectCrashRecovery(db));
+        Assert.Null(await svc.InspectCrashRecoveryAsync(db));
     }
 
     /// <summary>
@@ -3347,6 +3738,8 @@ public sealed class CheckoutServiceTests : IDisposable
         await svc.CheckoutAsync(db);
         InsertTestValue(svc.WorkingPath, "edit-during-av-delete");
         svc.MarkDirty();
+        var messages = new List<string>();
+        svc.SaveFailed += (msg, _) => messages.Add(msg);
 
         // Simulate antivirus deleting the lock file mid-session.
         var lockPath = Path.ChangeExtension(db, ".lock");
@@ -3355,6 +3748,7 @@ public sealed class CheckoutServiceTests : IDisposable
         var outcome = await svc.SaveAsync();
 
         Assert.Equal(SaveOutcome.Success, outcome);
+        Assert.Empty(messages);   // put back silently (1.2.4, 2026-11-12)
         Assert.True(lockSvc.IsWriter, "Session must continue as writer after re-acquisition.");
         Assert.True(File.Exists(lockPath), "Lock file must be re-created.");
         Assert.Equal(CheckoutMode.WriteAccess, svc.Mode);
@@ -3362,12 +3756,13 @@ public sealed class CheckoutServiceTests : IDisposable
     }
 
     /// <summary>
-    /// The heartbeat path heals a deleted lock file too: instead of demoting, the
-    /// lock is re-acquired, the informational banner fires, and the session
-    /// continues as writer with the file back in place.
+    /// The heartbeat path heals a missing lock file too: instead of demoting, the lock is re-acquired and the session
+    /// continues as writer with the file back in place, and the user is shown NO message (1.2.4, 2026-11-12: there is
+    /// nothing for them to do, and the cause can't be known: another program may have deleted the file, or another
+    /// TermPoint may have taken over and closed).
     /// </summary>
     [Fact]
-    public async Task HeartbeatFailed_WhenLockFileDeleted_ReacquiresInsteadOfDemoting()
+    public async Task HeartbeatFailed_WhenLockFileDeleted_ReacquiresInsteadOfDemoting_AndShowsNoMessage()
     {
         var (svc, lockSvc) = CreateService();
         var db = DbPath();
@@ -3376,31 +3771,28 @@ public sealed class CheckoutServiceTests : IDisposable
 
         var lockLostFired = false;
         svc.WriteLockLost += (_) => lockLostFired = true;
-
-        // The re-acquisition banner is the completion signal for the async handler.
-        var recoveredTcs = new TaskCompletionSource<(string Message, bool AutoDismiss)>(TaskCreationOptions.RunContinuationsAsynchronously);
-        svc.SaveFailed += (msg, autoDismiss) => recoveredTcs.TrySetResult((msg, autoDismiss));
+        var messages = new List<string>();
+        svc.SaveFailed += (msg, _) => { lock (messages) messages.Add(msg); };
 
         var lockPath = Path.ChangeExtension(db, ".lock");
-        File.Delete(lockPath); // antivirus/cloud-sync deletion
+        File.Delete(lockPath); // another program deleted it, or another TermPoint took over and closed
 
         // Missing file makes renewals fail → threshold → HeartbeatFailed.
         // (Awaited — unawaited bursts skip as contended ticks.)
         for (int i = 0; i < WriteLockService.HeartbeatFailureThreshold; i++)
             await lockSvc.ForceRenewHeartbeat();
 
-        var completed = await Task.WhenAny(recoveredTcs.Task, Task.Delay(10_000));
-        Assert.True(completed == recoveredTcs.Task, "Re-acquisition banner must fire.");
-        var (recoveredMessage, recoveredAutoDismiss) = recoveredTcs.Task.Result;
-        Assert.Equal(
-            "Another program removed the file TermPoint uses to mark this database as in use " +
-            "(antivirus or cloud-sync software can do this). TermPoint has put it back, and you can carry on as normal.",
-            recoveredMessage);
-        Assert.True(recoveredAutoDismiss, "the put-back notice is informational and clears itself");
+        // The re-acquisition runs in the background: wait for the file to come back (no banner to wait on any more).
+        var deadline = DateTime.UtcNow.AddSeconds(10);
+        while (!File.Exists(lockPath) && DateTime.UtcNow < deadline)
+            await Task.Delay(20);
+        await Task.Delay(200);   // let any message the handler might still post arrive before asserting there is none
+
+        Assert.True(File.Exists(lockPath), "Lock file must be re-created.");
         Assert.False(lockLostFired, "WriteLockLost must NOT fire for a healed removal.");
         Assert.True(lockSvc.IsWriter);
-        Assert.True(File.Exists(lockPath), "Lock file must be re-created.");
         Assert.Equal(CheckoutMode.WriteAccess, svc.Mode);
+        lock (messages) Assert.Empty(messages);
     }
 
     /// <summary>
@@ -3527,12 +3919,11 @@ public sealed class CheckoutServiceTests : IDisposable
     /// mismatch, retrying" line), copies other.db again, and sets <see cref="CheckoutService.Mode"/> to read-only and
     /// <see cref="CheckoutService.WorkingPath"/> to D''.</description></item>
     /// </list>
-    /// The CORRECT behaviour asserted here: a demotion belongs to the session it was started for, so the new session
-    /// stays a writer on its own working copy. Today the new session ends read-only while it holds other.db's lock, so
-    /// the test is skipped until F16 is fixed.
+    /// The CORRECT behaviour asserted here (close/switch design, steps 1-3): the switch's release WAITS for the running
+    /// demotion (so it has not finished while the demotion is held), the demotion then finishes normally on its own
+    /// database, and the new session is a writer on its own working copy.
     /// </summary>
-    [Fact(Skip = "F16: a lost-lock demotion still copying D'' when the user switches database lands on the new session " +
-                 "(read-only while it holds the new lock). See data-persistence-review-2026-10.md, section 3, F16.")]
+    [Fact]
     public async Task F16_ADemotionStillRunningWhenTheUserSwitches_DoesNotTouchTheNewSession()
     {
         var (svc, lockSvc) = CreateService();
@@ -3566,16 +3957,22 @@ public sealed class CheckoutServiceTests : IDisposable
             var demotion = Task.Run(() => svc.DemoteToReadOnlyAsync());
             Assert.True(copyReached.Wait(TimeSpan.FromSeconds(30)), "the demotion never reached its D'' copy");
 
-            // The switch, to completion, while the demotion is held.
-            await svc.ReleaseAsync(saveFirst: true);
-            lockSvc.PendingRelease?.Wait(TimeSpan.FromSeconds(10));
-            Assert.Equal(CheckoutOutcome.WriteAccess, await svc.CheckoutAsync(other));
-            Assert.Equal(CheckoutMode.WriteAccess, svc.Mode);
-            Assert.True(lockSvc.IsWriter);
+            // The switch starts while the demotion is held: its release must WAIT for the demotion, not overtake it.
+            var release = Task.Run(() => svc.ReleaseAsync(saveFirst: true));
+            await Task.Delay(300);
+            Assert.False(release.IsCompleted, "the release must wait for the running demotion");
+            Assert.False(svc.IsEnding, "the session is not marked ending until the demotion has finished");
 
-            // Let the old demotion finish.
+            // Let the demotion finish (normally): the release then completes, the session ends, the switch goes on.
             letCopyGo.Set();
             await demotion.WaitAsync(TimeSpan.FromSeconds(30));
+            await release.WaitAsync(TimeSpan.FromSeconds(30));
+            Assert.True(svc.IsEnding);
+            lockSvc.PendingRelease?.Wait(TimeSpan.FromSeconds(10));
+            Assert.Equal(CheckoutOutcome.WriteAccess, await svc.CheckoutAsync(other));
+            Assert.False(svc.IsEnding, "a new checkout starts a new session");
+            Assert.Equal(CheckoutMode.WriteAccess, svc.Mode);
+            Assert.True(lockSvc.IsWriter);
 
             // The new session is still a writer on its own working copy.
             Assert.Equal(other, svc.SourcePath);
@@ -3589,6 +3986,185 @@ public sealed class CheckoutServiceTests : IDisposable
             letCopyGo.Set();
             NetworkFaults.Decide = null;
         }
+    }
+
+    /// <summary>
+    /// F16, the long-demotion route: a demotion that outlasts the release's bounded wait (shortened here to 300 ms; 60 s
+    /// in production) is stopped by its own session check. The switch goes on without it, and when the held copy is
+    /// finally let go the demotion changes nothing: the new session stays a writer on its own working copy.
+    /// </summary>
+    [Fact]
+    public async Task F16_ADemotionThatOutlastsTheReleaseWait_StopsItself_AndTheNewSessionIsUntouched()
+    {
+        var (svc, lockSvc) = CreateService();
+        svc.DemotionWaitLimit = TimeSpan.FromMilliseconds(300);
+        var dept  = DbPath("dept");
+        var other = DbPath("other");
+        CreateSqliteDb(dept);
+        CreateSqliteDb(other);
+        Assert.Equal(CheckoutOutcome.WriteAccess, await svc.CheckoutAsync(dept));
+        WriteExternalFreshLock(dept);
+
+        using var copyReached = new ManualResetEventSlim(false);
+        using var letCopyGo   = new ManualResetEventSlim(false);
+        var held = 0;
+        NetworkFaults.Decide = request =>
+        {
+            if (request.Label == "CopyFile"
+                && string.Equals(request.Path, dept, StringComparison.OrdinalIgnoreCase)
+                && request.DestinationPath is { } destination && destination.Contains("_ro")
+                && Interlocked.Exchange(ref held, 1) == 0)
+            {
+                copyReached.Set();
+                letCopyGo.Wait(TimeSpan.FromSeconds(30));
+            }
+            return NetworkFaultDecision.None;
+        };
+
+        try
+        {
+            var demotion = Task.Run(() => svc.DemoteToReadOnlyAsync());
+            Assert.True(copyReached.Wait(TimeSpan.FromSeconds(30)), "the demotion never reached its D'' copy");
+
+            await svc.ReleaseAsync(saveFirst: true);   // gives up waiting after 300 ms
+            lockSvc.PendingRelease?.Wait(TimeSpan.FromSeconds(10));
+            Assert.Equal(CheckoutOutcome.WriteAccess, await svc.CheckoutAsync(other));
+
+            letCopyGo.Set();
+            Assert.False(await demotion.WaitAsync(TimeSpan.FromSeconds(30)), "a demotion whose session ended reports failure");
+
+            Assert.Equal(other, svc.SourcePath);
+            Assert.True(lockSvc.IsWriter, "the new session still holds other.db's lock");
+            Assert.Equal(CheckoutMode.WriteAccess, svc.Mode);
+            Assert.False(svc.IsReadOnlyMode, "a writer must not be marked read-only");
+            Assert.DoesNotContain("_ro", Path.GetFileName(svc.WorkingPath));
+        }
+        finally
+        {
+            letCopyGo.Set();
+            NetworkFaults.Decide = null;
+        }
+    }
+
+    /// <summary>
+    /// F16, the posted-but-not-yet-run route: the lock loss of the OLD session is posted to the window, and the user
+    /// switches before the post is delivered. Delivered late, it must be dropped (so no demotion is started for the new
+    /// database) and the new session stays a writer. The post is held in a queue and delivered by hand.
+    /// </summary>
+    [Fact]
+    public async Task F16_ALockLossPostedBeforeTheSwitch_ButDeliveredAfter_IsDropped()
+    {
+        var posted  = new System.Collections.Concurrent.ConcurrentQueue<Action>();
+        var clock   = new FakeTimeProvider();
+        var lockSvc = new WriteLockService(clock, null, startTimers: false);
+        var svc     = new CheckoutService(lockSvc, new NullLogger(), posted.Enqueue, _workingDir, startTimers: false);
+        var dept  = DbPath("dept");
+        var other = DbPath("other");
+        CreateSqliteDb(dept);
+        CreateSqliteDb(other);
+        Assert.Equal(CheckoutOutcome.WriteAccess, await svc.CheckoutAsync(dept));
+        var lockLossDelivered = 0;
+        svc.WriteLockLost += _ => lockLossDelivered++;
+
+        WriteExternalFreshLock(dept);                 // Alice took over while Bob's laptop slept
+        clock.Advance(TimeSpan.FromMinutes(5));
+        lockSvc.TickWakeCheck();                      // the wake check finds it and POSTS the lock loss
+        await svc.WhenBackgroundChecksDoneAsync();
+        Assert.False(posted.IsEmpty, "the lock loss must have been posted");
+
+        // Bob switches before the post runs.
+        await svc.ReleaseAsync(saveFirst: false);
+        lockSvc.PendingRelease?.Wait(TimeSpan.FromSeconds(10));
+        Assert.Equal(CheckoutOutcome.WriteAccess, await svc.CheckoutAsync(other));
+
+        while (posted.TryDequeue(out var action)) action();   // the window finally runs what was posted
+
+        Assert.Equal(0, lockLossDelivered);
+        Assert.Equal(CheckoutMode.WriteAccess, svc.Mode);
+        Assert.True(lockSvc.IsWriter);
+    }
+
+    /// <summary>
+    /// F17 / session-bound posts: a <see cref="CheckoutService.SaveFailed"/> raised by a save in a LIVE session is
+    /// delivered; the same failure raised by the final save inside <see cref="CheckoutService.ReleaseAsync"/> is not (it
+    /// is reported through the returned outcome only, so the caller shows one message).
+    /// </summary>
+    [Fact]
+    public async Task SaveFailed_IsDeliveredInALiveSession_ButNotFromTheEndingsFinalSave()
+    {
+        var (svc, _) = CreateService();
+        var db = DbPath();
+        CreateSqliteDb(db);
+        await svc.CheckoutAsync(db);
+
+        var delivered = 0;
+        svc.SaveFailed += (_, _) => delivered++;
+        var lockPath = Path.ChangeExtension(db, ".lock");
+
+        // The same contended-lock-file fault as above makes a save fail with a CopyError and a SaveFailed banner.
+        using (new FileStream(lockPath, FileMode.Open, FileAccess.Read, FileShare.None))
+        {
+            Assert.Equal(SaveOutcome.CopyError, await svc.SaveAsync());
+            Assert.Equal(1, delivered);                 // live session: delivered
+
+            Assert.Equal(SaveOutcome.CopyError, await svc.ReleaseAsync(saveFirst: true));
+        }
+
+        Assert.Equal(1, delivered);                     // the ending's final save: nothing more reached the window
+        Assert.True(svc.IsEnding);
+    }
+
+    /// <summary>
+    /// F17: a save conflict found by the ending's final save is not posted to the window (the caller reports it), while
+    /// the same conflict in a live session is.
+    /// </summary>
+    [Fact]
+    public async Task SaveConflict_FromTheEndingsFinalSave_IsNotPosted()
+    {
+        var (svc, _) = CreateService();
+        var db = DbPath();
+        CreateFile(db, "original");
+        await svc.CheckoutAsync(db);
+
+        var conflicts = 0;
+        svc.SaveConflictDetected += () => conflicts++;
+        File.WriteAllText(db, "externally-changed");
+
+        Assert.Equal(SaveOutcome.SourceModified, await svc.ReleaseAsync(saveFirst: true));
+        Assert.Equal(0, conflicts);
+    }
+
+    /// <summary>
+    /// Summary item 4.2 (pinned after F17 fixed it): Bob has unsaved changes and closes TermPoint, but Alice has taken
+    /// the lock over. The exit save is refused with <see cref="SaveOutcome.LockLost"/>. It must NOT start a lock-loss
+    /// demotion (which used to run while the window was torn down and hit disposed services), and Bob's changes must
+    /// stay kept: the working copy and its dirty marker survive for Restore at the next open. Posts go to a queue
+    /// drained by hand, the way the window would run them late.
+    /// </summary>
+    [Fact]
+    public async Task ExitSave_FindsTheLockTakenOver_StartsNoDemotion_AndKeepsTheChanges()
+    {
+        var posted  = new System.Collections.Concurrent.ConcurrentQueue<Action>();
+        var lockSvc = new WriteLockService(new FakeTimeProvider(), null, startTimers: false);
+        var svc     = new CheckoutService(lockSvc, new NullLogger(), posted.Enqueue, _workingDir, startTimers: false);
+        var db = DbPath();
+        CreateSqliteDb(db);
+        Assert.Equal(CheckoutOutcome.WriteAccess, await svc.CheckoutAsync(db));
+        InsertTestValue(svc.WorkingPath, "bobs-unsaved-edit");
+        svc.MarkDirty();
+
+        var lockLossDelivered = 0;
+        svc.WriteLockLost += _ => lockLossDelivered++;
+
+        WriteExternalFreshLock(db);                          // Alice took over
+
+        var outcome = await svc.ReleaseAsync(saveFirst: true);
+        while (posted.TryDequeue(out var action)) action();  // anything posted reaches the window late
+
+        Assert.Equal(SaveOutcome.LockLost, outcome);         // the caller shows "Changes Not Saved"
+        Assert.Equal(0, lockLossDelivered);                  // no demotion during teardown
+        Assert.True(svc.HasDirtyMarker, "Bob's changes must stay marked for Restore at the next open");
+        Assert.True(File.Exists(svc.WorkingPath), "the working copy holds Bob's only copy of his changes");
     }
 
     /// <summary>
@@ -5028,12 +5604,12 @@ public sealed class CheckoutServiceTests : IDisposable
     }
 
     /// <summary>
-    /// A D.tmp that is still there when a save runs (the cleanup was skipped or failed) is simply
-    /// overwritten: the save streams its snapshot to D.tmp with <c>FileMode.Create</c> and renames it
-    /// over D, so it succeeds, D gets the edit, and no D.tmp remains.
+    /// A D.tmp that is still there when a save runs (the cleanup was skipped or failed) is not this save's
+    /// business: the save uploads to a temporary name of its own (1.2.4 item 4.1), so it succeeds, D gets the
+    /// edit, the save's own temporary file is gone, and the leftover is untouched (the next sweep removes it).
     /// </summary>
     [Fact]
-    public async Task SaveAsync_WithLeftoverTmp_OverwritesItAndSucceeds()
+    public async Task SaveAsync_WithLeftoverTmp_SucceedsAndLeavesItAlone()
     {
         var (svc, _) = CreateService();
         var db = DbPath();
@@ -5046,7 +5622,8 @@ public sealed class CheckoutServiceTests : IDisposable
 
         Assert.Equal(SaveOutcome.Success, outcome);
         Assert.Equal("edited-content", ReadTestValue(db));
-        Assert.False(File.Exists(tmp), "The rename consumed D.tmp.");
+        AssertTmpUntouched(tmp);
+        Assert.Equal(new[] { tmp }, ShareTemp.Leftovers(db));   // nothing but the planted file: the save's own was consumed
     }
 
     // ═════════════════════════════════════════════════════════════════════════
@@ -5057,7 +5634,7 @@ public sealed class CheckoutServiceTests : IDisposable
     // exit save reached OnClosing by an unplanned path. Now every one returns SaveOutcome.CopyError with
     // the normal transient banner, D untouched and D' + its dirty marker intact — so ReleaseAsync at exit
     // takes its deliberate CopyError branch (lock parked via Suspend, D' + marker kept). A final safety
-    // net in SaveAsync does the same for any exception nobody anticipated. And BackupSqliteDatabase
+    // net in SaveAsync does the same for any exception nobody anticipated. And SnapshotWorkingCopy
     // opens D' with Mode=ReadWrite, so a deleted working copy is never re-created EMPTY and pushed over D.
     //
     // FileShare.None is only OS-enforced on Windows, hence FactWindowsOnly for those tests.
@@ -5122,7 +5699,7 @@ public sealed class CheckoutServiceTests : IDisposable
         Assert.Equal(SaveOutcome.CopyError, outcome);
         Assert.Equal((SavePrompt.ForTransientFailure(SavePrompt.InUseMessage, isAutoSave: false), false), Assert.Single(banners));
         Assert.Equal(before, DbFileTestHelpers.HashOf(db));
-        Assert.False(File.Exists(db + ".tmp"), "Nothing may be written to the share when D cannot be read.");
+        ShareTemp.AssertNone(db, "Nothing may be written to the share when D cannot be read.");
         AssertSessionKept(svc, lockSvc);
 
         Assert.Equal(SaveOutcome.Success, await svc.SaveAsync());
@@ -5149,27 +5726,60 @@ public sealed class CheckoutServiceTests : IDisposable
     }
 
     /// <summary>
-    /// D.tmp held exclusively by another program while the snapshot is streamed to it: the copy's open
-    /// fails with a sharing violation. CopyError plus the in-use banner, no exception, D unchanged, the
-    /// other program's file left as it was, D' + marker kept; the next save (after release) succeeds.
+    /// The field case (1.2.4 item 4.1): another program (a frozen writer's server-side handle) holds D.tmp open
+    /// exclusively. The save uploads to a temporary name of its own, so it is not blocked: it succeeds at once,
+    /// with no banner, D gets the edit, and the other program's file is left exactly as it was.
     /// </summary>
     [FactWindowsOnly]
-    public async Task SaveAsync_TmpHeldExclusivelyDuringCopy_ReturnsCopyError_AndDIsUnchanged()
+    public async Task SaveAsync_AnotherProgramHoldsTheOldSharedTmp_StillSucceedsAtOnce()
     {
         var db = DbPath();
-        var (svc, lockSvc) = await CheckoutWithUnsavedEditAsync(db);   // checkout's own D.tmp cleanup is already done
+        var (svc, _) = await CheckoutWithUnsavedEditAsync(db);   // checkout's own sweep is already done
         var banners = CaptureSaveBanners(svc);
-        var before = DbFileTestHelpers.HashOf(db);
         var tmp = PlantTmp(db);
 
         SaveOutcome outcome;
         using (DbFileTestHelpers.LockExclusively(tmp))
             outcome = await svc.SaveAsync();
 
-        Assert.Equal(SaveOutcome.CopyError, outcome);
-        Assert.Equal((SavePrompt.ForTransientFailure(SavePrompt.InUseMessage, isAutoSave: false), false), Assert.Single(banners));
-        Assert.Equal(before, DbFileTestHelpers.HashOf(db));
+        Assert.Equal(SaveOutcome.Success, outcome);
+        Assert.Empty(banners);
+        Assert.Equal("unsaved-edit", ReadTestValue(db));
         AssertTmpUntouched(tmp);
+        Assert.Equal(new[] { tmp }, ShareTemp.Leftovers(db));
+    }
+
+    /// <summary>
+    /// The copy of the snapshot to the share fails with a sharing violation on THIS save's own temporary file
+    /// (injected through the network-fault seam, since its name is not predictable): CopyError plus the in-use
+    /// banner, no exception, D unchanged, no temporary file left of the save's own, D' + marker kept; the next
+    /// save succeeds.
+    /// </summary>
+    [Fact]
+    public async Task SaveAsync_OwnTmpRefusedDuringCopy_ReturnsCopyError_LeavesNoTmp_AndDIsUnchanged()
+    {
+        var db = DbPath();
+        var (svc, lockSvc) = await CheckoutWithUnsavedEditAsync(db);
+        var banners = CaptureSaveBanners(svc);
+        var before = DbFileTestHelpers.HashOf(db);
+
+        SaveOutcome outcome;
+        try
+        {
+            NetworkFaults.Decide = r => r.Label == "CopyFile" && r.DestinationPath is { } d && ShareTempFile.IsLeftoverOf(db, d)
+                ? NetworkFaultDecision.Throwing(new IOException("The process cannot access the file because it is being used by another process."))
+                : NetworkFaultDecision.None;
+            outcome = await svc.SaveAsync();
+        }
+        finally
+        {
+            NetworkFaults.Decide = null;
+        }
+
+        Assert.Equal(SaveOutcome.CopyError, outcome);
+        Assert.Single(banners);
+        Assert.Equal(before, DbFileTestHelpers.HashOf(db));
+        ShareTemp.AssertNone(db);
         AssertSessionKept(svc, lockSvc);
 
         Assert.Equal(SaveOutcome.Success, await svc.SaveAsync());
@@ -5196,7 +5806,7 @@ public sealed class CheckoutServiceTests : IDisposable
         Assert.Equal(SaveOutcome.CopyError, outcome);
         Assert.Equal((SavePrompt.ForTransientFailure(SavePrompt.InUseMessage, isAutoSave: false), false), Assert.Single(banners));
         Assert.Equal(before, DbFileTestHelpers.HashOf(db));
-        Assert.False(File.Exists(db + ".tmp"));
+        ShareTemp.AssertNone(db);
         AssertSessionKept(svc, lockSvc);
 
         svc.BeforeTmpVerifyAsync = null;
@@ -5207,8 +5817,9 @@ public sealed class CheckoutServiceTests : IDisposable
     /// <summary>
     /// D.tmp becomes unreadable at the verify (another program grabs it exclusively right after the
     /// copy): sharing violation on the step-4 hash. CopyError plus the in-use banner, no rename, D
-    /// unchanged. The best-effort delete of D.tmp cannot succeed while the other program holds it, which
-    /// is harmless — the next save overwrites it, and that save succeeds once the hold is released.
+    /// unchanged. The best-effort delete of the save's temporary file cannot succeed while the other program
+    /// holds it, which is harmless — the next save uses a name of its own and succeeds, and the sweep removes
+    /// the leftover later.
     /// </summary>
     [FactWindowsOnly]
     public async Task SaveAsync_TmpHeldExclusivelyAtVerify_ReturnsCopyError_AndDIsUnchanged()
@@ -5238,7 +5849,11 @@ public sealed class CheckoutServiceTests : IDisposable
         svc.BeforeTmpVerifyAsync = null;
         Assert.Equal(SaveOutcome.Success, await svc.SaveAsync());
         Assert.Equal("unsaved-edit", ReadTestValue(db));
-        Assert.False(File.Exists(db + ".tmp"), "The successful save consumed D.tmp.");
+        // The first attempt could not delete its file while the other program held it: that one leftover stays
+        // (the second save used a name of its own) until the sweep at the next write-access open removes it.
+        Assert.Single(ShareTemp.Leftovers(db));
+        await svc.CleanupOrphanedTmpAsync(db);
+        ShareTemp.AssertNone(db, "The sweep removes the leftover once it is released.");
     }
 
     /// <summary>
@@ -5265,7 +5880,7 @@ public sealed class CheckoutServiceTests : IDisposable
         Assert.Equal((SavePrompt.SessionFileMissingMessage, false), Assert.Single(banners));
         Assert.False(File.Exists(workingCopy), "A missing working copy must never be re-created (empty) by the save.");
         Assert.False(File.Exists(workingCopy + ".savetmp"));
-        Assert.False(File.Exists(db + ".tmp"));
+        ShareTemp.AssertNone(db);
         Assert.Equal(before, DbFileTestHelpers.HashOf(db));
     }
 
@@ -5656,8 +6271,10 @@ public sealed class CheckoutServiceTests : IDisposable
     {
         var db = DbPath();
         var (svc, lockSvc) = await CheckoutWriterWithValueAsync(db);
+        // An edit that is in D' only, but WITHOUT a dirty marker: the real restore saves first (clearing the marker),
+        // and RestoreFromBackupAsync refuses while a marker exists (spec item 3.2), so this models what is left after
+        // that save, which is what this test is about (a stale working copy must never overwrite the restore).
         InsertTestValue(svc.WorkingPath, "unsaved-edit");
-        svc.MarkDirty();
         var hashAtCheckout = svc.HashAtCheckout;
         var oldBytes = File.ReadAllBytes(db);
         var backup = CreateBackupWithMarker("from-backup");
@@ -5675,7 +6292,7 @@ public sealed class CheckoutServiceTests : IDisposable
         Assert.Matches(@"^test \(before restore \d{4}-\d{2}-\d{2} \d{2}-\d{2}\)\.db$", Path.GetFileName(result.PreRestoreCopyPath)!);
         Assert.Equal(oldBytes, File.ReadAllBytes(result.PreRestoreCopyPath!));
         Assert.Equal("old-d", ReadTestValue(result.PreRestoreCopyPath!));
-        Assert.False(File.Exists(db + ".tmp"));
+        ShareTemp.AssertNone(db);
 
         // The session is stale but intact: the hash is untouched on purpose, the lock still ours, D' still holds the edit.
         Assert.Equal(hashAtCheckout, svc.HashAtCheckout);
@@ -5827,7 +6444,7 @@ public sealed class CheckoutServiceTests : IDisposable
         Assert.Equal(RestoreOutcome.RenameUnconfirmed, result.Outcome);
         Assert.False(result.TargetUnchanged);
         Assert.Equal(oldBytes, File.ReadAllBytes(result.PreRestoreCopyPath!));
-        Assert.Equal(result.RestoredHash, DbFileTestHelpers.HashOf(db + ".tmp"));
+        Assert.Equal(result.RestoredHash, DbFileTestHelpers.HashOf(ShareTemp.Single(db)));
     }
 
     // ═════════════════════════════════════════════════════════════════════════
@@ -6594,9 +7211,8 @@ public sealed class CheckoutServiceTests : IDisposable
     /// <summary>
     /// F12, the lock: another user takes over the lock while the save is uploading. The final check before the
     /// rename finds a foreign lock and refuses with LockLost, so the rename never happens. D is byte-for-byte what it
-    /// was, and D' and its dirty marker stay: the user's edit is not lost. The D.tmp is NOT deleted: without the lock
-    /// this save must not write to the share (rule 2), and D.tmp's one shared name may by now be the new holder's save
-    /// in progress. The new holder's checkout or save deals with a leftover one.
+    /// was, and D' and its dirty marker stay: the user's edit is not lost. The save's temporary file IS deleted even
+    /// without the lock (1.2.4 item 4.1): it has a name of its own, so it is nobody else's and deleting it needs no lock.
     /// </summary>
     [Fact]
     public async Task SaveAsync_LockTakenOverWhileUploading_IsRefusedAtTheFinalCheck_AndDIsUntouched()
@@ -6609,7 +7225,7 @@ public sealed class CheckoutServiceTests : IDisposable
 
         Assert.Equal(SaveOutcome.LockLost, outcome);
         Assert.Equal(before, DbFileTestHelpers.HashOf(db));
-        Assert.True(File.Exists(db + ".tmp"), "Without the lock the save must leave D.tmp alone (it may be the new holder's).");
+        ShareTemp.AssertNone(db, "A refused save deletes its own temporary file, lock or no lock.");
         Assert.True(File.Exists(svc.WorkingPath), "D' must survive the refusal.");
         Assert.True(File.Exists(svc.WorkingPath + ".dirty"), "The dirty marker must survive the refusal.");
     }
@@ -6639,7 +7255,7 @@ public sealed class CheckoutServiceTests : IDisposable
         Assert.True(svc.HasSaveConflict);
         Assert.Equal(1, conflictsRaised);
         Assert.Equal("other-writers-save", ReadTestValue(db));   // D keeps the other writer's content
-        Assert.False(File.Exists(db + ".tmp"), "The D.tmp of a refused save must be deleted.");
+        ShareTemp.AssertNone(db, "The temporary file of a refused save must be deleted.");
         Assert.True(File.Exists(svc.WorkingPath));
         Assert.True(File.Exists(svc.WorkingPath + ".dirty"));
     }
@@ -6703,7 +7319,7 @@ public sealed class CheckoutServiceTests : IDisposable
         Assert.Equal(SaveOutcome.CopyError, outcome);
         Assert.Equal((SavePrompt.OutageNotice(hasUnsavedChanges: true, autoSaveEnabled: false), false), Assert.Single(banners));   // the one sticky outage notice (spec item 28)
         Assert.Equal(before, DbFileTestHelpers.HashOf(db));
-        Assert.False(File.Exists(db + ".tmp"));
+        ShareTemp.AssertNone(db);
         AssertSessionKept(svc, lockSvc);
     }
 
@@ -6725,7 +7341,7 @@ public sealed class CheckoutServiceTests : IDisposable
         Assert.Equal(SaveOutcome.CopyError, outcome);
         Assert.Equal((SavePrompt.ForTransientFailure(SavePrompt.InUseMessage, isAutoSave: false), false), Assert.Single(banners));
         Assert.Equal(before, DbFileTestHelpers.HashOf(db));
-        Assert.False(File.Exists(db + ".tmp"));
+        ShareTemp.AssertNone(db);
         AssertSessionKept(svc, lockSvc);
     }
 
@@ -7098,11 +7714,11 @@ public sealed class CheckoutServiceTests : IDisposable
     /// <summary>
     /// Change (d), the new behaviour: the final check cannot reach the lock file (the share stopped answering during
     /// the upload), so it can NOT tell whose lock it is. The save is a CopyError with the outage notice, D is
-    /// byte-identical, D' and its marker stay, and D.tmp is LEFT in place (it may be another computer's save in
-    /// progress); the log says why. The leftover is harmless: the next save overwrites it and succeeds.
+    /// byte-identical, D' and its marker stay, and the save's own temporary file is deleted (1.2.4 item 4.1: it has
+    /// a name of its own, so no lock is needed to delete it); the log names the refusal.
     /// </summary>
     [Fact]
-    public async Task SaveAsync_LockCannotBeCheckedAtTheFinalCheck_LeavesD_tmpInPlace_AsACopyError()
+    public async Task SaveAsync_LockCannotBeCheckedAtTheFinalCheck_DeletesItsOwnTmp_AsACopyError()
     {
         var db = DbPath();
         var logger = new RecordingAppLogger();
@@ -7120,23 +7736,23 @@ public sealed class CheckoutServiceTests : IDisposable
         Assert.Equal(SaveOutcome.CopyError, outcome);
         Assert.Equal((SavePrompt.OutageNotice(hasUnsavedChanges: true, autoSaveEnabled: false), false), Assert.Single(banners));
         Assert.Equal(before, DbFileTestHelpers.HashOf(db));
-        Assert.True(File.Exists(db + ".tmp"), "Without a confirmed lock the save must leave D.tmp alone.");
-        Assert.EndsWith("the lock could not be checked, D.tmp left in place.", FinalCheckRefusalLine(logger));
+        ShareTemp.AssertNone(db, "Even without a confirmed lock the save deletes its own temporary file.");
+        Assert.EndsWith("this save's temporary file discarded.", FinalCheckRefusalLine(logger));
         AssertSessionKept(svc, lockSvc);
 
-        // The leftover D.tmp does no harm: the next save overwrites it, saves, and consumes it.
+        // The next save works as usual.
         Assert.Equal(SaveOutcome.Success, await svc.SaveAsync());
         Assert.Equal("unsaved-edit", ReadTestValue(db));
-        Assert.False(File.Exists(db + ".tmp"));
+        ShareTemp.AssertNone(db);
     }
 
     /// <summary>
     /// Change (d) with change (a), Story 3: another session's name in the lock at the final check is LockLost
-    /// after reading the lock file ONCE; D is untouched, D' and its marker stay, D.tmp is left for the new
-    /// holder's cleanup, and the log says exactly that.
+    /// after reading the lock file ONCE; D is untouched, D' and its marker stay, and the save's own temporary file
+    /// is deleted (it has a name of its own, so it cannot be the new holder's).
     /// </summary>
     [Fact]
-    public async Task SaveAsync_LockLostAtTheFinalCheck_ReadsTheLockOnce_AndLeavesD_tmpForTheNewHolder()
+    public async Task SaveAsync_LockLostAtTheFinalCheck_ReadsTheLockOnce_AndDeletesItsOwnTmp()
     {
         var db = DbPath();
         var logger = new RecordingAppLogger();
@@ -7155,17 +7771,18 @@ public sealed class CheckoutServiceTests : IDisposable
         Assert.Equal(1, counter.Count("File.Exists"));
         Assert.Equal(1, counter.Count("File.ReadAllText"));
         Assert.Equal(before, DbFileTestHelpers.HashOf(db));
-        Assert.True(File.Exists(db + ".tmp"));
+        ShareTemp.AssertNone(db);
         Assert.True(File.Exists(svc.WorkingPath));
         Assert.True(File.Exists(svc.WorkingPath + ".dirty"));
-        Assert.EndsWith("lock lost, D.tmp left for the new holder's cleanup.", FinalCheckRefusalLine(logger));
+        Assert.Contains("(LockLost)", FinalCheckRefusalLine(logger));
+        Assert.EndsWith("this save's temporary file discarded.", FinalCheckRefusalLine(logger));
     }
 
     /// <summary>
     /// Spec item 32, design risk 3, at the checkout service: the EXIT save (<c>ReleaseAsync(saveFirst: true)</c>) is
     /// refused at the final check because Alice took the lock over while Bob's upload was finishing. ReleaseAsync
     /// returns LockLost and raises WriteLockLost once; D is byte-identical; D' and its dirty marker are kept (the edit
-    /// is still in D'); D.tmp is left (the save must not touch the share without the lock); and the lock file still
+    /// is still in D'); the save's own temporary file is deleted (a file of its own name needs no lock); and the lock file still
     /// names Alice, because the release re-reads the lock and skips the delete when it is not ours. Bob is no longer
     /// a writer, and the service is read-only.
     /// </summary>
@@ -7192,12 +7809,14 @@ public sealed class CheckoutServiceTests : IDisposable
         lockSvc.PendingRelease?.Wait(TimeSpan.FromSeconds(10));   // let the release's background lock-file handling finish
 
         Assert.Equal(SaveOutcome.LockLost, outcome);
-        Assert.Equal(1, lockLostCount);
+        // F17 (close/switch design, step 4): the ending's final save reports only to its caller, so no lock loss is
+        // raised (it would only start a demotion during teardown).
+        Assert.Equal(0, lockLostCount);
         Assert.Equal(before, DbFileTestHelpers.HashOf(db));
         Assert.True(File.Exists(svc.WorkingPath), "D' must be kept");
         Assert.True(File.Exists(svc.WorkingPath + ".dirty"), "the dirty marker must be kept");
         Assert.Equal("unsaved-edit", ReadTestValue(svc.WorkingPath));
-        Assert.True(File.Exists(db + ".tmp"), "without the lock the exit save must leave D.tmp alone");
+        ShareTemp.AssertNone(db, "the refused exit save deletes its own temporary file");
         Assert.Equal(alices, File.ReadAllBytes(lockPath));       // the release did not delete the other session's lock
         Assert.False(lockSvc.IsWriter);
         Assert.Equal(CheckoutMode.ReadOnly, svc.Mode);
@@ -7221,8 +7840,8 @@ public sealed class CheckoutServiceTests : IDisposable
         });
 
         Assert.Equal(SaveOutcome.SourceModified, outcome);
-        Assert.False(File.Exists(db + ".tmp"), "The lock was confirmed ours, so the refused save discards its D.tmp.");
-        Assert.EndsWith("D.tmp discarded.", FinalCheckRefusalLine(logger));
+        ShareTemp.AssertNone(db, "The refused save discards its temporary file.");
+        Assert.EndsWith("this save's temporary file discarded.", FinalCheckRefusalLine(logger));
         Assert.True(File.Exists(svc.WorkingPath + ".dirty"));
     }
 
@@ -7247,8 +7866,8 @@ public sealed class CheckoutServiceTests : IDisposable
         });
 
         Assert.Equal(SaveOutcome.SourceModified, outcome);
-        Assert.False(File.Exists(db + ".tmp"));
-        Assert.EndsWith("D.tmp discarded.", FinalCheckRefusalLine(logger));
+        ShareTemp.AssertNone(db);
+        Assert.EndsWith("this save's temporary file discarded.", FinalCheckRefusalLine(logger));
         Assert.True(File.Exists(lockPath), "The check must have put the removed lock file back.");
         Assert.Equal(lockSvc.SessionGuid, JsonSerializer.Deserialize<TermPoint.Models.LockFileData>(File.ReadAllText(lockPath))!.SessionGuid);
         Assert.True(lockSvc.IsWriter);

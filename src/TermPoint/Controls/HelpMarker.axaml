@@ -1,0 +1,79 @@
+<UserControl
+	x:Class="TermPoint.Controls.HelpMarker"
+	xmlns="https://github.com/avaloniaui"
+	xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+	x:Name="Root"
+	VerticalAlignment="Top">
+
+	<!--
+		A small, light "?" badge that opens a Help article when clicked: a blue question mark inside a thin blue circle,
+		on white. Meant to sit just after a heading, top-aligned like an exponent, so it reads as
+		a badge on the heading rather than as punctuation ("Filters?"). Set Article to the file name in the Help folder
+		and ToolTip.Tip to a few words saying what it opens.
+
+		The blue is the app's link colour (WorkflowLinkText); the white is the app's pure white (FlyoutBackground).
+		The size is below. The raise comes only from top alignment: lifting it further (a render transform or a negative
+		margin) pushes its top outside the heading, and the group box header cuts it off there.
+	-->
+	<UserControl.Resources>
+		<x:Double x:Key="HelpMarkerSize">11</x:Double>
+		<!--  Width of the circle's outline.  -->
+		<x:Double x:Key="HelpMarkerRingThickness">1</x:Double>
+		<!--
+			The question mark is TEXT, not a drawn shape: at this size a stroked shape blurs into an unreadable smudge,
+			while the font's own "?" is designed to stay crisp when small. It is plain ASCII, so it renders on every
+			platform (the no-symbol-characters rule is about glyphs like a tick that the web build's font lacks).
+			Kept beside the size it must fit inside, rather than in App.axaml: it only makes sense with HelpMarkerSize.
+		-->
+		<x:Double x:Key="HelpMarkerGlyphSize">9</x:Double>
+		<!--
+			The font's "?" sits a little left of the centre of its own text box (its hook leans left), so centring the
+			box leaves it looking off-centre. This nudges it right, by a fraction of a pixel, to look centred.
+		-->
+		<TranslateTransform x:Key="HelpMarkerGlyphNudge" X="0.5" />
+	</UserControl.Resources>
+
+	<UserControl.Styles>
+		<!--  No button chrome: the circle is the whole control. Hover dims it slightly, like a link.  -->
+		<Style Selector="Button.HelpMarkerButton">
+			<Setter Property="Background" Value="Transparent" />
+			<Setter Property="BorderThickness" Value="0" />
+			<Setter Property="Padding" Value="0" />
+			<Setter Property="MinHeight" Value="0" />
+			<Setter Property="MinWidth" Value="0" />
+			<Setter Property="Cursor" Value="Hand" />
+		</Style>
+		<Style Selector="Button.HelpMarkerButton:pointerover /template/ ContentPresenter">
+			<Setter Property="Background" Value="Transparent" />
+		</Style>
+		<Style Selector="Button.HelpMarkerButton:pressed /template/ ContentPresenter">
+			<Setter Property="Background" Value="Transparent" />
+		</Style>
+		<Style Selector="Button.HelpMarkerButton:pointerover Panel#Badge">
+			<Setter Property="Opacity" Value="0.8" />
+		</Style>
+	</UserControl.Styles>
+
+	<Button
+		Classes="HelpMarkerButton"
+		Command="{Binding #Root.OpenCommand}">
+		<Panel
+			x:Name="Badge"
+			Width="{StaticResource HelpMarkerSize}"
+			Height="{StaticResource HelpMarkerSize}">
+			<Ellipse
+				Fill="{StaticResource FlyoutBackground}"
+				Stroke="{StaticResource WorkflowLinkText}"
+				StrokeThickness="{StaticResource HelpMarkerRingThickness}" />
+			<TextBlock
+				HorizontalAlignment="Center"
+				VerticalAlignment="Center"
+				FontSize="{StaticResource HelpMarkerGlyphSize}"
+				FontWeight="Bold"
+				Foreground="{StaticResource WorkflowLinkText}"
+				RenderTransform="{StaticResource HelpMarkerGlyphNudge}"
+				Text="?" />
+		</Panel>
+	</Button>
+
+</UserControl>

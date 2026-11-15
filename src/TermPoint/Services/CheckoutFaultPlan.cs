@@ -2,7 +2,7 @@ namespace TermPoint.Services;
 
 /// <summary>
 /// The failure a <see cref="CheckoutFaultPlan"/> injects. Each value names the real-world failure it
-/// stands in for, so a developer can hand-test the unhappy paths (spec item 4d) that cannot be
+/// stands in for, so a developer can hand-test the unhappy paths that cannot be
 /// reached otherwise — the database chooser that follows a failed switch, and the "Couldn't Open the
 /// Database" prompt, which only a copy that fails AFTER validation can reach.
 /// </summary>
@@ -31,7 +31,7 @@ public enum InjectedCheckoutFault
 /// <summary>
 /// A DEBUG-ONLY plan for making checkouts fail on purpose, driven by the
 /// <c>TERMPOINT_DEBUG_FAIL_CHECKOUT</c> environment variable. It exists so the failed-switch
-/// recovery (spec item 4d) and the "Couldn't Open the Database" dialog can be exercised by hand:
+/// recovery and the "Couldn't Open the Database" dialog can be exercised by hand:
 /// every open runs the validator first, so a locked or missing file is refused before checkout is
 /// ever reached and these paths are otherwise unreachable.
 ///

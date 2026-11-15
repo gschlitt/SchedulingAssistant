@@ -105,7 +105,8 @@ public sealed class RoomConflictMultiSemesterTests : IDisposable
             _legalStartTimeRepo, _semesterRepo, _blockPatternRepo, _codePatternRepo,
             _semesterContext, _sectionStore, _propertyRepo, _campusRepo, _meetingRepo,
             _dialog, _lock,
-            FocusTestSupport.AllFocus(_semesterContext, _sectionStore));
+            FocusTestSupport.AllFocus(_semesterContext, _sectionStore),
+            FocusTestSupport.NoColours(_courseRepo, _subjectRepo, _sectionStore));
 
     /// <summary>
     /// Inserts one academic year plus two semesters under it, returning their IDs.

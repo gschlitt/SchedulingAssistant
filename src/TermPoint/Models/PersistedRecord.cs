@@ -9,7 +9,7 @@ namespace TermPoint.Models;
 /// record nested inside one (<see cref="SectionDaySchedule"/>, <see cref="InstructorAssignment"/>,
 /// <see cref="SectionReserve"/>). Its only job is to carry <see cref="ExtensionData"/>.
 ///
-/// <para><b>Why this exists (spec_version_1.2.3.md, item 3).</b> Records are stored as JSON, and
+/// <para><b>Why this exists.</b> Records are stored as JSON, and
 /// System.Text.Json silently discards any JSON field that the running class does not declare. Two
 /// versions of the app often work on one shared database: Microsoft Store updates install whenever
 /// Windows gets round to it, so an older client can be editing the same file as a newer one. If a

@@ -8,7 +8,7 @@ namespace TermPoint.Behaviors;
 /// <summary>
 /// Attached behavior that switches a <see cref="ListBox"/> between a <b>virtualizing</b> panel and a
 /// <b>classic</b> panel at run time, and keeps scroll anchoring in step with the choice. It is the
-/// single place that decides what the section list's panel looks like (spec_version_1.2.3.md, item 23).
+/// single place that decides what the section list's panel looks like.
 /// <list type="bullet">
 ///   <item><b>Virtualized</b> (<c>true</c>): a <see cref="VirtualizingStackPanel"/> builds only the
 ///         cards on screen, and <see cref="ListScrollAnchorBehavior"/> is enabled to compensate for

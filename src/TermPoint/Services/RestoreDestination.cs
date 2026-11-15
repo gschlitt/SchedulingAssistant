@@ -1,7 +1,7 @@
 namespace TermPoint.Services;
 
 /// <summary>
-/// Where the database chooser offers to restore a backup to (spec item 5c). Pure path logic with no I/O, so it is
+/// Where the database chooser offers to restore a backup to. Pure path logic with no I/O, so it is
 /// unit-tested without touching a disk; the chooser probes the answer separately.
 ///
 /// <para><b>Why the rules are what they are.</b> The old chooser restored into the BACKUP's folder under the last

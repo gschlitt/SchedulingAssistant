@@ -39,10 +39,17 @@ public partial class ScheduleGridViewModel : ViewModelBase
     private readonly SharedScheduleService _sharedScheduleService;
 
     /// <summary>
-    /// The subject focus (spec item 20). Pass 1 asks it whether a section is in focus; overlays, meetings, shared
+    /// The subject focus. Pass 1 asks it whether a section is in focus; overlays, meetings, shared
     /// schedules and ghosts never do (see <see cref="BuildFilteredBlocks"/> and <see cref="BuildOverlayBlocks"/>).
     /// </summary>
     private readonly FocusService _focus;
+
+    /// <summary>
+    /// Subject colours (colour by subject). Every section block is stamped
+    /// with <see cref="SubjectColorPresenter.ColorFor"/>, and the grid reloads once on
+    /// <see cref="SubjectColorPresenter.Changed"/>.
+    /// </summary>
+    private readonly SubjectColorPresenter _subjectColors;
 
     /// <summary>
     /// Tracks the set of semester IDs from the last reload so <see cref="ReloadCore"/>
@@ -58,6 +65,13 @@ public partial class ScheduleGridViewModel : ViewModelBase
     private List<GhostBlock>? _ghostBlocks;
 
     [ObservableProperty] private GridData _gridData = GridData.Empty;
+
+    /// <summary>
+    /// The day-grid caption depends on <see cref="GridData"/> (which days are shown), so it changes whenever the
+    /// grid is replaced (collapse days, task 3).
+    /// </summary>
+    /// <param name="value">The new grid (unused).</param>
+    partial void OnGridDataChanged(GridData value) => OnPropertyChanged(nameof(FoldedDaysCaption));
     [ObservableProperty] private IReadOnlySet<string> _selectedSectionIds = new HashSet<string>();
     [ObservableProperty] private string? _lastErrorMessage;
 
@@ -80,8 +94,6 @@ public partial class ScheduleGridViewModel : ViewModelBase
     /// <summary>Selected subject filter names, e.g. "History · Mathematics". Empty when no subject filter active.</summary>
     [ObservableProperty] private string _subjectFilterSummary = string.Empty;
 
-    /// <summary>e.g. "12 sections · 28 meetings shown"</summary>
-    [ObservableProperty] private string _statsLine = string.Empty;
 
     /// <summary>Academic Unit name, e.g. "College of Arts & Sciences"</summary>
     [ObservableProperty] private string _academicUnitName = string.Empty;
@@ -100,6 +112,9 @@ public partial class ScheduleGridViewModel : ViewModelBase
 
     /// <summary>State for the right-click context menu on section tiles.</summary>
     public SectionContextMenuViewModel ContextMenu { get; }
+
+    /// <summary>State for the right-click menu on a day header or a folded day's strip (collapse days).</summary>
+    public DayHeaderMenuViewModel DayHeaderMenu { get; }
 
     /// <summary>
     /// True when the write lock is held by this instance and write-capable UI
@@ -134,6 +149,8 @@ public partial class ScheduleGridViewModel : ViewModelBase
                 => $"Licensed to: {licensee}",
             Licensing.AccessReason.Licensed
                 => "Licensed",
+            Licensing.AccessReason.Trial when status.DaysRemaining == 1
+                => "Trial: 1 day remaining",
             Licensing.AccessReason.Trial when status.DaysRemaining.HasValue
                 => $"Trial: {status.DaysRemaining} days remaining",
             Licensing.AccessReason.Trial
@@ -168,7 +185,9 @@ public partial class ScheduleGridViewModel : ViewModelBase
         WriteLockService lockService,
         SharedScheduleService sharedScheduleService,
         AccessPanelViewModel accessPanelViewModel,
-        FocusService focus)
+        FocusService focus,
+        SubjectColorPresenter subjectColors,
+        IBlockPatternRepository blockPatternRepo)
     {
         _sectionRepo = sectionRepo;
         _courseRepo = courseRepo;
@@ -188,6 +207,7 @@ public partial class ScheduleGridViewModel : ViewModelBase
         _lockService = lockService;
         _sharedScheduleService = sharedScheduleService;
         _focus = focus;
+        _subjectColors = subjectColors;
         Access = accessPanelViewModel;
         SharedScheduleStrip = new SharedScheduleStripViewModel(sharedScheduleService);
 
@@ -198,6 +218,10 @@ public partial class ScheduleGridViewModel : ViewModelBase
             var semIds = _semesterContext.SelectedSemesters.Select(s => s.Semester.Id);
             _sectionStore.Reload(_sectionRepo, semIds);
         }, lockService);
+
+        // The day-header menu reads the block patterns each time it opens (so Settings edits show) and calls this
+        // view model's fold commands.
+        DayHeaderMenu = new DayHeaderMenuViewModel(this, blockPatternRepo);
 
         LoadAcademicUnitName();
 
@@ -219,9 +243,16 @@ public partial class ScheduleGridViewModel : ViewModelBase
         // Reload grid when shared schedules are imported or dismissed.
         _sharedScheduleService.Changed += Reload;
 
-        // The grid follows the subject focus: a focus change redraws it. FocusService is a constructor dependency,
-        // so DI built it first and its own SectionsChanged handler (which drops its caches) runs before our Reload.
-        _focus.FocusChanged += Reload;
+        // The grid follows the subject focus: a focus change clears any folded days (Q2a), then redraws. FocusService
+        // is a constructor dependency, so DI built it first and its own SectionsChanged handler (which drops its
+        // caches) runs before our OnFocusChanged -> Reload. (This view model is never unsubscribed; it lives as long
+        // as the services of one database open.)
+        _focus.FocusChanged += OnFocusChanged;
+
+        // Subject colours changed (a colour, the display mode, or colours turning on or off): redraw the markers with
+        // one full reload (P5-5). The presenter is a constructor dependency, so it subscribed to SectionsChanged and
+        // FocusChanged before this view model did and answers ColorFor from fresh caches in those reloads too.
+        _subjectColors.Changed += Reload;
 
         // Keep SelectedSectionIds in sync with the store's single source of truth.
         _sectionStore.SelectionChanged += ids => SelectedSectionIds = ids;
@@ -274,7 +305,7 @@ public partial class ScheduleGridViewModel : ViewModelBase
         var section = _sectionRepo.GetById(sectionId);
         if (section is null) return;
 
-        // Same grouping as the section editor's instructor chooser (spec item 20): in-focus instructors first, the
+        // Same grouping as the section editor's instructor chooser: in-focus instructors first, the
         // rest dimmed under "Other instructors". Nobody is dropped.
         var order       = _focus.OrderInstructorsForChooser(_instructorRepo.GetAll());
         var rooms       = _roomRepo.GetAll();
@@ -310,10 +341,190 @@ public partial class ScheduleGridViewModel : ViewModelBase
         catch (Exception ex)
         {
             App.Logger.LogError(ex, "ScheduleGridViewModel.Reload");
+            _gridInputs = null;
             GridData = GridData.Empty;
-            StatsLine = string.Empty;
             LastErrorMessage = "An error occurred loading the schedule grid. See logs for details.";
         }
+    }
+
+    // ── Collapse days ─────────────────────────
+    //
+    // Folding is a VIEW choice (Q9): it never changes sections, filters, selection or the database. The folded set
+    // lives only here, in memory, for this view model's life (Q2: never stored). Opening a database rebuilds the
+    // services (App.InitializeServices), so a new view model starts with nothing folded (P5-1).
+    //
+    // Threading: Reload/ReloadCore and every command below run synchronously on the UI thread (every trigger is a
+    // plain event handler; nothing here is debounced or awaited), so a fold can never interleave with a reload in
+    // flight. The cache a fold rebuilds from is written at the end of each ReloadCore and dropped whenever the grid
+    // is blanked (no semesters, or a failed reload), so a fold never draws from stale or missing inputs.
+
+    /// <summary>The folded day numbers (1 = Monday ... 7 = Sunday). Replaced, never mutated, on each change.</summary>
+    private IReadOnlySet<int> _foldedDays = new HashSet<int>();
+
+    /// <summary>The inputs of the last successful reload, so a fold can rebuild without the database.</summary>
+    private (IReadOnlyList<SemesterDisplay> Semesters, IReadOnlyList<GridBlock> Blocks,
+             IReadOnlyList<ProgramConflict> Conflicts)? _gridInputs;
+
+    /// <summary>Short day names for <see cref="FoldedDaysCaption"/>, by day number.</summary>
+    private static readonly string[] ShortDayNames = ["", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
+
+    /// <summary>
+    /// The days the user has folded (1 = Monday ... 7 = Sunday); empty means the full week. Only shown days are
+    /// ever in it. Never stored anywhere.
+    /// </summary>
+    public IReadOnlySet<int> FoldedDays => _foldedDays;
+
+    /// <summary>
+    /// Text for the PNG title banner: the OPEN days in week order, e.g. "Mon, Wed, Fri only"; empty when nothing is
+    /// folded. Appended to the PNG export's title banner (see <see cref="ComposeExportTitle"/>).
+    /// </summary>
+    public string FoldedDaysCaption
+    {
+        get
+        {
+            if (_foldedDays.Count == 0) return string.Empty;
+            var open = ShownDays().Where(d => !_foldedDays.Contains(d)).Select(d => ShortDayNames[d]);
+            return string.Join(", ", open) + " only";
+        }
+    }
+
+    /// <summary>
+    /// Builds the title banner text of the PNG export: the academic unit's name, the semester line and, when days are
+    /// folded, which days are open, joined with " — " (e.g. "UFV Biology — 2025-2026 — Fall — Mon, Wed, Fri only").
+    /// Parts that are null, empty or whitespace are left out, with no stray separators.
+    /// </summary>
+    /// <param name="unitName">The academic unit's name; may be null or empty.</param>
+    /// <param name="semesterLine">The semester line; may be null or empty.</param>
+    /// <param name="foldedDaysCaption">See <see cref="FoldedDaysCaption"/>; empty when nothing is folded.</param>
+    /// <returns>The title, or an empty string when every part is empty (the export then draws no banner).</returns>
+    public static string ComposeExportTitle(string? unitName, string? semesterLine, string? foldedDaysCaption) =>
+        string.Join(" — ", new[] { unitName, semesterLine, foldedDaysCaption }
+            .Where(part => !string.IsNullOrWhiteSpace(part)));
+
+    /// <summary>The day numbers the current grid shows, in week order (the day-header menu reads this).</summary>
+    public IReadOnlyList<int> ShownDayNumbers => ShownDays();
+
+    /// <summary>The distinct day numbers the current <see cref="GridData"/> shows, in week order.</summary>
+    /// <returns>The shown days; empty while the grid is blank.</returns>
+    private List<int> ShownDays() => GridData.DayColumns.Select(c => c.DayNumber).Distinct().ToList();
+
+    /// <summary>
+    /// Replaces the folded set and raises <see cref="FoldedDays"/> when it actually changed.
+    /// </summary>
+    /// <param name="days">The new folded days.</param>
+    private void SetFoldedDays(HashSet<int> days)
+    {
+        if (_foldedDays.SetEquals(days)) return;
+        _foldedDays = days;
+        OnPropertyChanged(nameof(FoldedDays));
+        OnPropertyChanged(nameof(FoldedDaysCaption));
+    }
+
+    /// <summary>
+    /// Whether the UI may offer to fold a day: true only for a shown, currently open day while at least one other
+    /// shown day is open (P2-5: the last open day can't be folded). False for a day that is not shown and for a day
+    /// that is already folded (it can be opened, not folded).
+    /// </summary>
+    /// <param name="day">Day number, 1 = Monday ... 7 = Sunday.</param>
+    /// <returns>True when <see cref="ToggleDay"/> would fold this day.</returns>
+    public bool CanFold(int day)
+    {
+        var shown = ShownDays();
+        return shown.Contains(day) && !_foldedDays.Contains(day) && shown.Count(d => !_foldedDays.Contains(d)) > 1;
+    }
+
+    /// <summary>
+    /// Folds an open day, or opens a folded one. Does nothing for a day that isn't shown, and refuses to fold the
+    /// last open day (P2-5).
+    /// </summary>
+    /// <param name="day">Day number, 1 = Monday ... 7 = Sunday.</param>
+    public void ToggleDay(int day)
+    {
+        if (!ShownDays().Contains(day)) return;
+        var next = new HashSet<int>(_foldedDays);
+        if (!next.Remove(day))
+        {
+            if (!CanFold(day)) return;
+            next.Add(day);
+        }
+        ApplyFoldedDays(next);
+    }
+
+    /// <summary>
+    /// "Show only this day": that day open, every other shown day folded. Does nothing if the day isn't shown.
+    /// </summary>
+    /// <param name="day">Day number, 1 = Monday ... 7 = Sunday.</param>
+    public void ShowOnlyDay(int day) => ShowPattern([day]);
+
+    /// <summary>
+    /// "Show MWF" (P3-5): exactly the pattern's shown days open, every other shown day folded. Pattern days that
+    /// aren't shown (a Saturday pattern with Saturday off) are ignored; if none of them is shown nothing happens
+    /// (never folds everything).
+    /// </summary>
+    /// <param name="days">The pattern's day numbers.</param>
+    public void ShowPattern(IReadOnlyCollection<int> days)
+    {
+        var shown = ShownDays();
+        var open = shown.Where(days.Contains).ToHashSet();
+        if (open.Count == 0) return;
+        ApplyFoldedDays(shown.Where(d => !open.Contains(d)).ToHashSet());
+    }
+
+    /// <summary>"Show all days": opens every folded day.</summary>
+    public void ShowAllDays() => ApplyFoldedDays([]);
+
+    /// <summary>
+    /// Sets the folded days and, when they changed, redraws <see cref="GridData"/> from the cached inputs of the
+    /// last reload. Never touches the database.
+    /// </summary>
+    /// <param name="days">The new folded set (already validated by the caller).</param>
+    private void ApplyFoldedDays(HashSet<int> days)
+    {
+        if (_foldedDays.SetEquals(days) || _gridInputs is not { } inputs) return;
+        SetFoldedDays(days);
+        UpdateDisplayProperties(inputs.Semesters, inputs.Blocks, inputs.Conflicts);
+    }
+
+    /// <summary>
+    /// Subject-focus change: a different slice of the timetable, so the days open up again (Q2a), then the usual
+    /// reload. The clear comes first so the reload draws the full week.
+    /// </summary>
+    private void OnFocusChanged()
+    {
+        SetFoldedDays([]);
+        Reload();
+    }
+
+    /// <summary>
+    /// Builds a folded day's strip summary (P2-1) from every block on that day across all shown semesters.
+    /// </summary>
+    /// <param name="allBlocks">All blocks on the grid.</param>
+    /// <param name="dayNum">Day number, 1 = Monday ... 7 = Sunday.</param>
+    /// <returns>The summary for that day.</returns>
+    internal static FoldedDaySummary SummarizeDay(IReadOnlyList<GridBlock> allBlocks, int dayNum)
+    {
+        var day = allBlocks.Where(b => b.Day == dayNum).ToList();
+        var meetings = day.OfType<SectionMeetingBlock>().Where(b => !b.IsOverlay).ToList();
+        // Everything else the grid draws on the day, with its kind, for the strip's bars (R1-3). Ghosts are not
+        // "other things" here (they become marks in task 5), so they have no kind and are skipped.
+        var others = new List<FoldedOtherSpan>();
+        foreach (var b in day)
+        {
+            FoldedOtherKind? kind = b switch
+            {
+                SectionMeetingBlock { IsOverlay: true } => FoldedOtherKind.OverlaySection,
+                MeetingBlock => FoldedOtherKind.Meeting,
+                CommitmentBlock => FoldedOtherKind.Commitment,
+                SharedScheduleBlock => FoldedOtherKind.SharedSchedule,
+                _ => null,
+            };
+            if (kind is { } k) others.Add(new FoldedOtherSpan(k, b.StartMinutes, b.EndMinutes));
+        }
+        return new FoldedDaySummary(
+            meetings.Select(b => b.SectionId).Distinct().Count(),
+            day.Count > meetings.Count,
+            meetings.Select(b => new FoldedSectionMeeting(b.SectionId, b.StartMinutes, b.EndMinutes, b.Label)).ToList(),
+            others);
     }
 
     /// <summary>
@@ -352,7 +563,7 @@ public partial class ScheduleGridViewModel : ViewModelBase
     ///                     Room overlays are resolved per-meeting inside Pass 1 instead.
     ///   6. BuildFilteredBlocks (Pass 1) — iterate sections and emit one
     ///                     <see cref="SectionMeetingBlock"/> per meeting that passes the
-    ///                     subject focus (spec item 20) and all active filter predicates.
+    ///                     subject focus and all active filter predicates.
     ///   7. BuildOverlayBlocks (Pass 2) — add any overlay-matched meetings that were
     ///                     excluded by the filters in Pass 1, so overlays always show up
     ///                     regardless of other active filters and of the subject focus.
@@ -382,6 +593,9 @@ public partial class ScheduleGridViewModel : ViewModelBase
             Filter.FilterChanged += Reload;
             _lastSemesterKey = semesterKey;
 
+            // A different timetable opens with the full week (Q2a), like the cleared filters.
+            SetFoldedDays([]);
+
             // Keep the meeting cache in sync when the semester selection changes.
             // MeetingsChanged will fire, but this ReloadCore call is already in flight;
             // the event subscription is suppressed during it so there is no double-load.
@@ -400,7 +614,7 @@ public partial class ScheduleGridViewModel : ViewModelBase
         var snap = TakeFilterSnapshot();
 
         var (filtered, overlayOnly, overlayMatchedIds) =
-            BuildSectionBlocks(lookups.Sections, snap, lookups, FocusPredicate());
+            BuildSectionBlocks(lookups.Sections, snap, lookups, FocusPredicate(), _subjectColors.ColorFor);
 
         // Push filtered section IDs to SectionStore so the section list can highlight matching cards.
         // Only publish when a real (non-overlay) filter is active; null signals "no highlighting".
@@ -435,7 +649,7 @@ public partial class ScheduleGridViewModel : ViewModelBase
         if (enabledWatches.Count > 0)
         {
             // Program access watches scan only the sections on the grid: Pass 1, which applies the chosen subjects
-            // and then the ordinary filter (spec item 20, decided 2026-10-23). Scanning out-of-subject sections
+            // and then the ordinary filter. Scanning out-of-subject sections
             // reported clashes with sections the user couldn't see, each one a puzzle to track down. The trade-off,
             // accepted: a clash with a section in an unchosen subject goes unreported until that subject is chosen.
             var visibleSectionIds = filtered.OfType<SectionMeetingBlock>()
@@ -463,6 +677,7 @@ public partial class ScheduleGridViewModel : ViewModelBase
         }
         Access.UpdateConflictCounts(programConflicts, sectionLabels);
 
+        _gridInputs = (semesters, allBlocks, programConflicts);
         UpdateDisplayProperties(semesters, allBlocks, programConflicts);
     }
 
@@ -486,6 +701,10 @@ public partial class ScheduleGridViewModel : ViewModelBase
     /// <param name="snap">Snapshot of the current filter and overlay state.</param>
     /// <param name="lookups">Entity lookup dictionaries.</param>
     /// <param name="isInFocus">The subject-focus test for Pass 1; null when every section is in focus.</param>
+    /// <param name="subjectColorFor">
+    /// A section's subject marker colour (normally <see cref="SubjectColorPresenter.ColorFor"/>), stamped on every block
+    /// of both passes; null means no colours.
+    /// </param>
     /// <returns>
     /// The Pass 1 blocks, the Pass 2 overlay-only blocks, and the set of sections matching a section-level overlay.
     /// </returns>
@@ -494,11 +713,12 @@ public partial class ScheduleGridViewModel : ViewModelBase
             IReadOnlyList<Section> sections,
             FilterSnapshot snap,
             GridLookups lookups,
-            Func<Section, bool>? isInFocus)
+            Func<Section, bool>? isInFocus,
+            Func<Section, string>? subjectColorFor = null)
     {
         var overlayMatchedIds = ComputeOverlayMatchedSectionIds(sections, snap);
-        var filtered    = BuildFilteredBlocks(sections, snap, lookups, overlayMatchedIds, isInFocus);
-        var overlayOnly = BuildOverlayBlocks(sections, snap, lookups, filtered, overlayMatchedIds);
+        var filtered    = BuildFilteredBlocks(sections, snap, lookups, overlayMatchedIds, isInFocus, subjectColorFor);
+        var overlayOnly = BuildOverlayBlocks(sections, snap, lookups, filtered, overlayMatchedIds, subjectColorFor);
         return (filtered, overlayOnly, overlayMatchedIds);
     }
 
@@ -518,11 +738,12 @@ public partial class ScheduleGridViewModel : ViewModelBase
     /// </summary>
     private void ClearDisplay()
     {
+        _gridInputs          = null;
+        SetFoldedDays([]);   // nothing is shown, so nothing stays folded
         GridData             = GridData.Empty;
         SemesterLine         = string.Empty;
         SemesterLineSegments = [];
         SubjectFilterSummary = string.Empty;
-        StatsLine            = string.Empty;
         SharedScheduleBadge  = string.Empty;
     }
 
@@ -588,7 +809,7 @@ public partial class ScheduleGridViewModel : ViewModelBase
     }
 
     /// <summary>
-    /// Narrows the lookups that feed the filter option lists to the subject focus (spec item 20, step 20.4): the
+    /// Narrows the lookups that feed the filter option lists to the subject focus: the
     /// Subjects list keeps only focused subjects, the Courses list (the active courses) only courses of focused
     /// subjects, and the Instructors list (the active instructors, which the overlay instructor list mirrors) only
     /// instructors <see cref="FocusService.IsInFocus"/> accepts. Under None all three are empty. Under All the
@@ -689,27 +910,50 @@ public partial class ScheduleGridViewModel : ViewModelBase
     }
 
     /// <summary>
-    /// Builds the display label and instructor initials string for a section tile.
-    ///
-    /// Label format: "[CalendarCode] [SectionCode]" when a matching course is found
-    /// (e.g. "HIST101 A"). Falls back to "[SectionCode]" alone if the section has no
-    /// course or the course ID cannot be resolved from the lookup.
-    ///
-    /// Initials format: space-joined initials of all assigned instructors in the order
-    /// they appear in <see cref="Section.InstructorIds"/> (e.g. "JRS MKL"). Returns
-    /// an empty string when no instructor assignments exist or none resolve in the lookup.
-    ///
-    /// This method exists to eliminate the repetition of the same three-line label-
-    /// building block that appeared in Pass 1 (filtered sections), Pass 2 instructor/tag
-    /// overlay, and Pass 2 room overlay in the original monolithic ReloadCore().
+    /// How many instructors' initials a section tile shows before the "+N" count.
+    /// One keeps long team-taught lists from widening the whole Schedule view column.
     /// </summary>
-    /// <param name="section">The section whose display text should be built.</param>
-    /// <param name="courses">Course lookup keyed by course ID.</param>
+    internal const int SectionInitialsShown = 1;
+
+    /// <summary>How many attendees' initials a meeting tile shows before the "+N" count.</summary>
+    internal const int MeetingInitialsShown = 5;
+
+    /// <summary>
+    /// Builds the instructor text for one tile line: the initials shown on the line and the full names for hover.
+    /// Shared by section tiles and meeting tiles so both shorten long lists the same way.
+    /// </summary>
+    /// <param name="instructorIds">Instructor IDs in their stored order. IDs not found in
+    /// <paramref name="instructors"/> are skipped and not counted.</param>
     /// <param name="instructors">Instructor lookup keyed by instructor ID.</param>
+    /// <param name="maxShown">How many initials to show before the rest become "+N". Must be at least 1.</param>
     /// <returns>
-    /// A tuple <c>(Label, Initials)</c> where Label is the tile heading line and
-    /// Initials is the instructor text appended after it on the same line.
+    /// <c>Initials</c>: the first <paramref name="maxShown"/> initials, space-joined, followed by " +N" when more
+    /// instructors are hidden (e.g. "GH +4"); empty when no instructor resolves.
+    /// <c>FullNames</c>: every resolved instructor as "First Last", comma-separated; empty when none resolve.
+    /// <c>IsShortened</c>: true when some initials were replaced by the "+N" count.
     /// </returns>
+    /// <exception cref="ArgumentOutOfRangeException"><paramref name="maxShown"/> is less than 1.</exception>
+    internal static (string Initials, string FullNames, bool IsShortened) BuildInstructorText(
+        IEnumerable<string> instructorIds,
+        IReadOnlyDictionary<string, Instructor> instructors,
+        int maxShown)
+    {
+        ArgumentOutOfRangeException.ThrowIfLessThan(maxShown, 1);
+
+        var resolved = instructorIds
+            .Where(instructors.ContainsKey)
+            .Select(id => instructors[id])
+            .ToList();
+
+        bool isShortened = resolved.Count > maxShown;
+        var initials = string.Join(" ", resolved.Take(maxShown).Select(i => i.Initials));
+        if (isShortened)
+            initials += $" +{resolved.Count - maxShown}";
+
+        var fullNames = string.Join(", ", resolved.Select(i => $"{i.FirstName} {i.LastName}"));
+        return (initials, fullNames, isShortened);
+    }
+
     /// <summary>
     /// Builds the tooltip data for a grid tile.
     /// The first line is always the time range (e.g. "1015-1145").
@@ -748,7 +992,30 @@ public partial class ScheduleGridViewModel : ViewModelBase
         return new TileTooltip(lines);
     }
 
-    internal static (string Label, string Initials) BuildSectionLabel(
+    /// <summary>
+    /// Builds the display label and instructor text for a section tile.
+    ///
+    /// Label format: "[CalendarCode] [SectionCode]" when a matching course is found
+    /// (e.g. "HIST101 A"). Falls back to "[SectionCode]" alone if the section has no
+    /// course or the course ID cannot be resolved from the lookup.
+    ///
+    /// Initials format: the first <see cref="SectionInitialsShown"/> instructor's initials, in the order they
+    /// appear in <see cref="Section.InstructorIds"/>, then " +N" for the rest (e.g. "JRS +2").
+    /// There is no lead instructor: the first shown is simply the first stored. Returns an empty string when no
+    /// instructor assignments exist or none resolve in the lookup.
+    ///
+    /// This method exists to eliminate the repetition of the same label-building block used by
+    /// Pass 1 (filtered sections), the Pass 2 instructor/tag overlay, and the Pass 2 room overlay.
+    /// </summary>
+    /// <param name="section">The section whose display text should be built.</param>
+    /// <param name="courses">Course lookup keyed by course ID.</param>
+    /// <param name="instructors">Instructor lookup keyed by instructor ID.</param>
+    /// <returns>
+    /// A tuple <c>(Label, Initials, InstructorNames)</c>: Label is the tile heading text, Initials is the
+    /// instructor text appended after it on the same line, and InstructorNames is every instructor's full name
+    /// for the hover tooltip — set only when Initials was shortened, empty otherwise (no tooltip needed).
+    /// </returns>
+    internal static (string Label, string Initials, string InstructorNames) BuildSectionLabel(
         Section section,
         IReadOnlyDictionary<string, Course> courses,
         IReadOnlyDictionary<string, Instructor> instructors)
@@ -756,15 +1023,14 @@ public partial class ScheduleGridViewModel : ViewModelBase
         var calCode = section.CourseId is not null && courses.TryGetValue(section.CourseId, out var course)
             ? course.CalendarCode : null;
 
-        var initials = string.Join(" ", section.InstructorIds
-            .Where(id => instructors.ContainsKey(id))
-            .Select(id => instructors[id].Initials));
+        var (initials, fullNames, isShortened) =
+            BuildInstructorText(section.InstructorIds, instructors, SectionInitialsShown);
 
         var label = calCode is not null
             ? $"{calCode} {section.SectionCode}"
             : section.SectionCode;
 
-        return (label, initials);
+        return (label, initials, isShortened ? fullNames : string.Empty);
     }
 
     /// <summary>
@@ -833,7 +1099,7 @@ public partial class ScheduleGridViewModel : ViewModelBase
     ///   </item>
     /// </list>
     ///
-    /// <b>Subject focus (spec item 20):</b> a section outside the focus emits nothing here, and this test comes
+    /// <b>Subject focus:</b> a section outside the focus emits nothing here, and this test comes
     /// before every ordinary filter (focus is the outer layer; the filter narrows within it). A section hidden by the
     /// focus is still picked up by <see cref="BuildOverlayBlocks"/> when it matches the overlay, because overlays
     /// ignore the focus.
@@ -855,6 +1121,10 @@ public partial class ScheduleGridViewModel : ViewModelBase
     /// Tells whether a section is inside the subject focus (normally <see cref="FocusService.Matches"/>). Null means
     /// "no focus", every section is considered; that is what the focus-All case and the existing pipeline tests pass.
     /// </param>
+    /// <param name="subjectColorFor">
+    /// A section's subject marker colour (normally <see cref="SubjectColorPresenter.ColorFor"/>), copied onto each of
+    /// its blocks as <see cref="SectionMeetingBlock.SubjectColor"/>. Null means no colours.
+    /// </param>
     /// <returns>
     /// All <see cref="SectionMeetingBlock"/> objects for meetings that survived the focus and all
     /// filter predicates. Not yet deduplicated.
@@ -864,7 +1134,8 @@ public partial class ScheduleGridViewModel : ViewModelBase
         FilterSnapshot snap,
         GridLookups lookups,
         HashSet<string> overlayMatchedIds,
-        Func<Section, bool>? isInFocus = null)
+        Func<Section, bool>? isInFocus = null,
+        Func<Section, string>? subjectColorFor = null)
     {
         var blocks = new List<GridBlock>();
 
@@ -915,17 +1186,19 @@ public partial class ScheduleGridViewModel : ViewModelBase
             if (snap.FilterSectionType && !snap.SectionTypeIds.Contains(section.SectionTypeId ?? string.Empty))
                 continue;
 
-            // Tags: by default the section must carry ALL selected tags; with "any" (spec item 31) one is enough.
+            // Tags: by default the section must carry ALL selected tags; with "any" one is enough.
             if (!snap.PassesTagFilter(section.TagIds))
                 continue;
 
             // ── Build display label (DRY helper used by all three passes) ──────────
-            var (label, initials) = BuildSectionLabel(section, lookups.Courses, lookups.Instructors);
+            var (label, initials, instructorNames) = BuildSectionLabel(section, lookups.Courses, lookups.Instructors);
             bool sectionIsOverlay  = overlayMatchedIds.Contains(section.Id);
             // "Emphasize Unstaffed" mode: staffed sections are de-emphasised with a
             // strikethrough in the grid; unstaffed sections are highlighted.
             bool isDeemphasized    = snap.EmphasizeUnstaffedSelected && section.InstructorIds.Any();
             bool isEmphasized      = snap.EmphasizeUnstaffedSelected && !section.InstructorIds.Any();
+            // Subject marker colour (colour by subject); empty when colours are off or the subject has none.
+            var subjectColor       = subjectColorFor?.Invoke(section) ?? string.Empty;
 
             // ── Meeting-level filters and block emission ───────────────────────────
             foreach (var slot in section.Schedule)
@@ -957,7 +1230,9 @@ public partial class ScheduleGridViewModel : ViewModelBase
                     SectionDaySchedule.FormatFrequency(slot.Frequency),
                     Flag: section.Flag,
                     IsDeemphasized: isDeemphasized,
-                    IsEmphasized: isEmphasized));
+                    IsEmphasized: isEmphasized,
+                    SubjectColor: subjectColor,
+                    InstructorNames: instructorNames));
             }
         }
 
@@ -988,7 +1263,7 @@ public partial class ScheduleGridViewModel : ViewModelBase
     /// All blocks emitted here carry <c>IsOverlay=true</c>. Returns an empty list when
     /// no overlay is active.
     ///
-    /// <b>Overlays ignore the subject focus (spec item 20).</b> This pass takes no focus test on purpose:
+    /// <b>Overlays ignore the subject focus.</b> This pass takes no focus test on purpose:
     /// <paramref name="overlayMatchedIds"/> and the room scan are built from every section, so an out-of-focus
     /// section that Pass 1 skipped is added here just as a filter-excluded one is. An instructor overlay that hid
     /// the instructor's out-of-focus sections would make them look free when they are busy.
@@ -1004,6 +1279,10 @@ public partial class ScheduleGridViewModel : ViewModelBase
     /// Pre-computed set of section IDs that match the section-level overlay.
     /// Only used for Instructor and Tag overlay types.
     /// </param>
+    /// <param name="subjectColorFor">
+    /// A section's subject marker colour, as for <see cref="BuildFilteredBlocks"/>; null means no colours. Overlay
+    /// blocks get the marker too; the red overlay styling of the text and border is unchanged.
+    /// </param>
     /// <returns>
     /// A list of <see cref="SectionMeetingBlock"/> objects that are in the overlay but
     /// were absent from <paramref name="filteredBlocks"/>. Not yet deduplicated.
@@ -1013,7 +1292,8 @@ public partial class ScheduleGridViewModel : ViewModelBase
         FilterSnapshot snap,
         GridLookups lookups,
         IReadOnlyList<GridBlock> filteredBlocks,
-        HashSet<string> overlayMatchedIds)
+        HashSet<string> overlayMatchedIds,
+        Func<Section, string>? subjectColorFor = null)
     {
         var blocks = new List<GridBlock>();
         if (!snap.HasOverlay) return blocks;
@@ -1035,9 +1315,10 @@ public partial class ScheduleGridViewModel : ViewModelBase
                 var section = sections.FirstOrDefault(s => s.Id == sectionId);
                 if (section is null) continue;
 
-                var (label, initials) = BuildSectionLabel(section, lookups.Courses, lookups.Instructors);
+                var (label, initials, instructorNames) = BuildSectionLabel(section, lookups.Courses, lookups.Instructors);
                 var semName = lookups.SemesterIdToName.TryGetValue(section.SemesterId, out var n) ? n : string.Empty;
                 var semColor = lookups.SemesterIdToColor.TryGetValue(section.SemesterId, out var c) ? c : string.Empty;
+                var subjectColor = subjectColorFor?.Invoke(section) ?? string.Empty;
 
                 foreach (var slot in section.Schedule)
                 {
@@ -1045,7 +1326,9 @@ public partial class ScheduleGridViewModel : ViewModelBase
                         slot.Day, slot.StartMinutes, slot.EndMinutes,
                         true, label, initials, section.Id, section.SemesterId, semName, semColor,
                         SectionDaySchedule.FormatFrequency(slot.Frequency),
-                        Flag: section.Flag));
+                        Flag: section.Flag,
+                        SubjectColor: subjectColor,
+                        InstructorNames: instructorNames));
                 }
             }
         }
@@ -1062,9 +1345,10 @@ public partial class ScheduleGridViewModel : ViewModelBase
 
             foreach (var section in sections)
             {
-                var (label, initials) = BuildSectionLabel(section, lookups.Courses, lookups.Instructors);
+                var (label, initials, instructorNames) = BuildSectionLabel(section, lookups.Courses, lookups.Instructors);
                 var semName = lookups.SemesterIdToName.TryGetValue(section.SemesterId, out var n) ? n : string.Empty;
                 var semColor = lookups.SemesterIdToColor.TryGetValue(section.SemesterId, out var c) ? c : string.Empty;
+                var subjectColor = subjectColorFor?.Invoke(section) ?? string.Empty;
 
                 foreach (var slot in section.Schedule)
                 {
@@ -1075,7 +1359,9 @@ public partial class ScheduleGridViewModel : ViewModelBase
                         slot.Day, slot.StartMinutes, slot.EndMinutes,
                         true, label, initials, section.Id, section.SemesterId, semName, semColor,
                         SectionDaySchedule.FormatFrequency(slot.Frequency),
-                        Flag: section.Flag));
+                        Flag: section.Flag,
+                        SubjectColor: subjectColor,
+                        InstructorNames: instructorNames));
                 }
             }
         }
@@ -1146,20 +1432,10 @@ public partial class ScheduleGridViewModel : ViewModelBase
 
         foreach (var meeting in _meetingStore.Meetings)
         {
-            // Build initials list; truncate to 5 + "+N" when there are more.
-            const int maxInitials = 5;
-            var allInitials = meeting.InstructorIds
-                .Where(id => instructors.ContainsKey(id))
-                .Select(id => instructors[id].Initials)
-                .ToList();
-            var attendees = allInitials.Count <= maxInitials
-                ? string.Join(" ", allInitials)
-                : string.Join(" ", allInitials.Take(maxInitials)) + $" +{allInitials.Count - maxInitials}";
-
-            // Full name list for the hover tooltip (empty when no attendees).
-            var attendeeList = string.Join(", ", meeting.InstructorIds
-                .Where(id => instructors.ContainsKey(id))
-                .Select(id => $"{instructors[id].FirstName} {instructors[id].LastName}"));
+            // Initials shortened to MeetingInitialsShown + "+N"; the full name list always feeds the hover
+            // tooltip (empty when no attendees).
+            var (attendees, attendeeList, _) =
+                BuildInstructorText(meeting.InstructorIds, instructors, MeetingInitialsShown);
 
             semIdToName.TryGetValue(meeting.SemesterId,  out var semName);
             semIdToColor.TryGetValue(meeting.SemesterId, out var semColor);
@@ -1275,11 +1551,6 @@ public partial class ScheduleGridViewModel : ViewModelBase
     ///     Updates <see cref="SubjectFilterSummary"/> (e.g. "History · Mathematics" when
     ///     subject filters are active).
     ///   </item>
-    ///   <item>
-    ///     Updates <see cref="StatsLine"/> (e.g. "12 sections · 28 meetings shown").
-    ///     Only <see cref="SectionMeetingBlock"/> objects are counted; commitment blocks
-    ///     are excluded because including them would make the counts misleading.
-    ///   </item>
     /// </list>
     /// </summary>
     /// <param name="semesters">The selected semesters; used for column headers and line building.</param>
@@ -1301,6 +1572,13 @@ public partial class ScheduleGridViewModel : ViewModelBase
         var dayNumbers = new List<int> { 1, 2, 3, 4, 5 };
         if (settings.IncludeSaturday) dayNumbers.Add(6);
         if (settings.IncludeSunday)   dayNumbers.Add(7);
+
+        // Folded days must be shown days (Saturday/Sunday turned off drops out, rule 3); if that leaves no open
+        // shown day, the week opens up again (P2-5).
+        var stillFolded = _foldedDays.Where(dayNumbers.Contains).ToHashSet();
+        if (dayNumbers.All(stillFolded.Contains)) stillFolded.Clear();
+        SetFoldedDays(stillFolded);
+
         var dayNames = new Dictionary<int, string>
         {
             [1] = "Monday", [2] = "Tuesday",  [3] = "Wednesday",
@@ -1316,8 +1594,21 @@ public partial class ScheduleGridViewModel : ViewModelBase
 
         foreach (var dayNum in dayNumbers)
         {
+            bool folded = _foldedDays.Contains(dayNum);
+            var summary = folded ? SummarizeDay(allBlocks, dayNum) : null;
+            bool firstSubColumn = true;
+
             foreach (var sd in semesters)
             {
+                // A folded day carries no tiles (nothing to measure); its first sub-column carries the summary.
+                if (folded)
+                {
+                    dayColumns.Add(new GridDayColumn(dayNames[dayNum], dayNum, [], sd.Semester.Name,
+                        sd.Semester.Color ?? string.Empty, IsFolded: true, Folded: firstSubColumn ? summary : null));
+                    firstSubColumn = false;
+                    continue;
+                }
+
                 // In multi-semester mode, each sub-column contains only that semester's blocks.
                 // In single-semester mode, SemesterId filtering is omitted for robustness
                 // (all blocks should share the single semester ID, but we don't depend on it).
@@ -1331,7 +1622,7 @@ public partial class ScheduleGridViewModel : ViewModelBase
                         .OrderBy(b => b.StartMinutes).ThenBy(b => b.EndMinutes)
                         .ToList();
 
-                dayColumns.Add(new GridDayColumn(dayNames[dayNum], ComputeTiles(dayBlocks, sd.Semester.Name, sd.Semester.Color ?? string.Empty), sd.Semester.Name, sd.Semester.Color ?? string.Empty));
+                dayColumns.Add(new GridDayColumn(dayNames[dayNum], dayNum, ComputeTiles(dayBlocks, sd.Semester.Name, sd.Semester.Color ?? string.Empty), sd.Semester.Name, sd.Semester.Color ?? string.Empty));
             }
         }
 
@@ -1359,29 +1650,6 @@ public partial class ScheduleGridViewModel : ViewModelBase
         SubjectFilterSummary = selectedSubjectNames.Count > 0
             ? string.Join(" · ", selectedSubjectNames)
             : string.Empty;
-
-        // ── Stats line ─────────────────────────────────────────────────────────
-        // Counts distinct section IDs (not commitment blocks), total meeting slots,
-        // and event (MeetingBlock) count when events are visible.
-        var sectionBlocks = allBlocks.OfType<SectionMeetingBlock>().ToList();
-        int sectionCount  = sectionBlocks.Select(b => b.SectionId).Distinct().Count();
-        int meetingCount  = sectionBlocks.Count;
-        int eventCount    = allBlocks.OfType<MeetingBlock>().Count();
-
-        if (sectionCount == 0)
-        {
-            StatsLine = "No sections shown";
-        }
-        else
-        {
-            var sb = new System.Text.StringBuilder();
-            sb.Append($"{sectionCount} {(sectionCount == 1 ? "section" : "sections")} · ");
-            sb.Append($"{meetingCount} {(meetingCount == 1 ? "meeting" : "meetings")}");
-            if (eventCount > 0)
-                sb.Append($" · {eventCount} {(eventCount == 1 ? "event" : "events")}");
-            sb.Append(" shown");
-            StatsLine = sb.ToString();
-        }
 
         // Update shared schedule header badge
         if (_sharedScheduleService.HasAny)
@@ -1414,7 +1682,7 @@ public partial class ScheduleGridViewModel : ViewModelBase
     /// </summary>
     private static TileEntry ToEntry(GridBlock block) => block switch
     {
-        SectionMeetingBlock s => new TileEntry(s.Label, s.Initials, s.SectionId, s.IsOverlay, false, s.FrequencyAnnotation, s.IsDeemphasized, IsEmphasized: s.IsEmphasized, Flag: s.Flag),
+        SectionMeetingBlock s => new TileEntry(s.Label, s.Initials, s.SectionId, s.IsOverlay, false, s.FrequencyAnnotation, s.IsDeemphasized, IsEmphasized: s.IsEmphasized, Flag: s.Flag, SubjectColor: s.SubjectColor, InstructorNames: s.InstructorNames),
         CommitmentBlock c     => new TileEntry(c.Name,  string.Empty, string.Empty, true,  IsCommitment: true),
         // Meeting blocks: carry the MeetingId so double-click can route to the editor.
         // IsCommitment=true is kept so the right-click context menu (section-only) is

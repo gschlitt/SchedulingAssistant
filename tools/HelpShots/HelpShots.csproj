@@ -1,0 +1,25 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!--
+    Renders the pictures used in the Help articles from the REAL views (see README.md), filled with made-up data so no
+    real database is ever involved. NOT part of TermPoint.sln and NOT built by CI: run it by hand after the filter bar
+    changes, and commit the regenerated PNGs.
+  -->
+
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <TargetFramework>net10.0</TargetFramework>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <AvaloniaUseCompiledBindingsByDefault>false</AvaloniaUseCompiledBindingsByDefault>
+    <!-- The app is a WinExe; its Program.Main must not be picked as this exe's entry point. -->
+    <StartupObject>HelpShots.Program</StartupObject>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\..\src\TermPoint\TermPoint.csproj" />
+    <!-- Needed to load the app's App.axaml resources and styles at run time (AvaloniaRuntimeXamlLoader). -->
+    <PackageReference Include="Avalonia.Markup.Xaml.Loader" Version="12.1.3" />
+  </ItemGroup>
+
+</Project>

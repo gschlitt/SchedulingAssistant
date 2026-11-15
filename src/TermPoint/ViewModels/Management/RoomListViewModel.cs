@@ -13,7 +13,7 @@ namespace TermPoint.ViewModels.Management;
 /// ViewModel for the Rooms management panel. Provides a list of rooms with
 /// inline Add/Edit/Delete and manual ordering support.
 /// </summary>
-public partial class RoomListViewModel : ViewModelBase, IDismissableEditor, IDisposable
+public partial class RoomListViewModel : ViewModelBase, IDismissableEditor, IUnappliedChangesHost, IDisposable
 {
     private readonly IRoomRepository _repo;
     private readonly ICampusRepository _campusRepo;
@@ -35,6 +35,9 @@ public partial class RoomListViewModel : ViewModelBase, IDismissableEditor, IDis
     [ObservableProperty] private ObservableCollection<RoomRow> _rooms = new();
     [ObservableProperty] private RoomRow? _selectedRow;
     [ObservableProperty] private RoomEditViewModel? _editVm;
+
+    /// <inheritdoc/>
+    public IUnappliedChanges? FindUnappliedChanges() => UnappliedChangesFinder.First(EditVm);
 
     /// <inheritdoc/>
     public bool DismissActiveEditor()
@@ -203,7 +206,7 @@ public partial class RoomListViewModel : ViewModelBase, IDismissableEditor, IDis
             CampusId   = s.CampusId,
             RoomTypeId = s.RoomTypeId,
             SortOrder  = s.SortOrder,
-        }.WithExtensionDataFrom(s); // Save writes the whole copy back: keep unknown JSON fields (spec item 3).
+        }.WithExtensionDataFrom(s); // Save writes the whole copy back: keep unknown JSON fields.
         EditVm = new RoomEditViewModel(copy, isNew: false,
             campusOptions: BuildCampusOptions(),
             roomTypeOptions: BuildRoomTypeOptions(),
@@ -229,7 +232,7 @@ public partial class RoomListViewModel : ViewModelBase, IDismissableEditor, IDis
 
         // Desktop builds wrap this in a DB transaction for atomicity; the WASM demo
         // uses in-memory repositories with no real connection, so tx is null there.
-        DbTransaction? tx = _db.SupportsTransactions ? _db.Connection.BeginTransaction() : null;
+        DbTransaction? tx = _db.BeginWriteTransaction();
         try
         {
             var sections = _sectionRepo.GetAll();

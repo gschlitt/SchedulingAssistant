@@ -1,3 +1,4 @@
+using System.Globalization;
 using System.Text.Json;
 
 namespace TermPoint.Licensing;
@@ -19,6 +20,7 @@ public class TrialService : ITrialService
 
     private readonly string _trialFilePath;
     private readonly IClock _clock;
+    private readonly Action<string>? _log;
 
     /// <summary>
     /// Creates a new trial service.
@@ -27,25 +29,37 @@ public class TrialService : ITrialService
     /// Directory where <c>trial.json</c> is stored (e.g. <c>%APPDATA%\TermPoint</c>).
     /// </param>
     /// <param name="clock">Clock for date math. Use <see cref="SystemClock"/> in production.</param>
-    public TrialService(string appDataDirectory, IClock clock)
+    /// <param name="log">Optional sink for diagnostic lines (reset start dates, failed writes). Null = silent.</param>
+    public TrialService(string appDataDirectory, IClock clock, Action<string>? log = null)
     {
         _trialFilePath = Path.Combine(appDataDirectory, TrialFileName);
         _clock = clock;
+        _log = log;
     }
 
     /// <inheritdoc />
     public TrialResult GetTrialStatus()
     {
+        var now = _clock.UtcNow;
         var startDate = ReadTrialStart();
 
         if (startDate == null)
         {
-            startDate = _clock.UtcNow;
-            WriteTrialStart(startDate.Value);
+            // First launch (or unreadable file): the trial starts now.
+            startDate = now;
+            TryWriteTrialStart(startDate.Value);
+        }
+        else if (startDate.Value > now)
+        {
+            // A start date in the future means the clock was wrong when the file was written.
+            // Restart from today so the user gets 30 days, never more.
+            _log?.Invoke($"[Licensing] Trial start {startDate.Value:o} is in the future; resetting it to now");
+            startDate = now;
+            TryWriteTrialStart(startDate.Value);
         }
 
-        var elapsed = (_clock.UtcNow - startDate.Value).TotalDays;
-        var elapsedDays = (int)Math.Floor(elapsed);
+        var endsUtc = startDate.Value.AddDays(TrialDays);
+        var elapsedDays = (int)Math.Floor((now - startDate.Value).TotalDays);
 
         if (elapsedDays >= TrialDays)
         {
@@ -53,15 +67,17 @@ public class TrialService : ITrialService
             {
                 IsInTrial = false,
                 DaysRemaining = 0,
-                TrialExpired = true
+                TrialExpired = true,
+                TrialEndsUtc = endsUtc
             };
         }
 
         return new TrialResult
         {
             IsInTrial = true,
-            DaysRemaining = TrialDays - elapsedDays,
-            TrialExpired = false
+            DaysRemaining = Math.Min(TrialDays, TrialDays - elapsedDays),
+            TrialExpired = false,
+            TrialEndsUtc = endsUtc
         };
     }
 
@@ -84,7 +100,8 @@ public class TrialService : ITrialService
             if (data?.TrialStartedUtc == null)
                 return null;
 
-            if (DateTime.TryParse(data.TrialStartedUtc, out var parsed))
+            if (DateTime.TryParse(data.TrialStartedUtc, CultureInfo.InvariantCulture,
+                    DateTimeStyles.RoundtripKind, out var parsed))
                 return parsed.ToUniversalTime();
 
             return null;
@@ -96,18 +113,27 @@ public class TrialService : ITrialService
     }
 
     /// <summary>
-    /// Writes the trial start timestamp to <c>trial.json</c>.
+    /// Writes the trial start timestamp to <c>trial.json</c>. A failed write is logged and swallowed: the
+    /// caller still reports the trial as started now, so opening a database never fails because of it.
     /// </summary>
-    private void WriteTrialStart(DateTime startUtc)
+    /// <param name="startUtc">The trial start to save.</param>
+    private void TryWriteTrialStart(DateTime startUtc)
     {
-        var data = new TrialData
+        try
         {
-            TrialStartedUtc = startUtc.ToString("o"),
-            Version = 1
-        };
+            var data = new TrialData
+            {
+                TrialStartedUtc = startUtc.ToString("o", CultureInfo.InvariantCulture),
+                Version = 1
+            };
 
-        Directory.CreateDirectory(Path.GetDirectoryName(_trialFilePath)!);
-        File.WriteAllText(_trialFilePath, JsonSerializer.Serialize(data, JsonOptions));
+            Directory.CreateDirectory(Path.GetDirectoryName(_trialFilePath)!);
+            File.WriteAllText(_trialFilePath, JsonSerializer.Serialize(data, JsonOptions));
+        }
+        catch (Exception ex)
+        {
+            _log?.Invoke($"[Licensing] Could not save trial.json ({ex.GetType().Name}: {ex.Message}); trial treated as starting now");
+        }
     }
 
     /// <summary>

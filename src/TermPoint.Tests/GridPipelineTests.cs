@@ -133,7 +133,7 @@ public class GridPipelineTests
         var courses     = new Dictionary<string, Course>     { ["c1"] = new() { Id = "c1", CalendarCode = "HIST101" } };
         var instructors = new Dictionary<string, Instructor> { ["i1"] = new() { Id = "i1", Initials = "JRS" } };
 
-        var (label, initials) = ScheduleGridViewModel.BuildSectionLabel(section, courses, instructors);
+        var (label, initials, _) = ScheduleGridViewModel.BuildSectionLabel(section, courses, instructors);
 
         Assert.Equal("HIST101 A", label);
         Assert.Equal("JRS", initials);
@@ -144,7 +144,7 @@ public class GridPipelineTests
     {
         var section = Sec(courseId: null, sectionCode: "B");
 
-        var (label, initials) = ScheduleGridViewModel.BuildSectionLabel(
+        var (label, initials, _) = ScheduleGridViewModel.BuildSectionLabel(
             section, new Dictionary<string, Course>(), new Dictionary<string, Instructor>());
 
         Assert.Equal("B", label);
@@ -157,7 +157,7 @@ public class GridPipelineTests
         // CourseId is set but does not resolve in the lookup.
         var section = Sec(courseId: "missing", sectionCode: "C");
 
-        var (label, _) = ScheduleGridViewModel.BuildSectionLabel(
+        var (label, _, _) = ScheduleGridViewModel.BuildSectionLabel(
             section, new Dictionary<string, Course>(), new Dictionary<string, Instructor>());
 
         Assert.Equal("C", label);
@@ -168,30 +168,49 @@ public class GridPipelineTests
     {
         var section = Sec(courseId: null, instructorIds: []);
 
-        var (_, initials) = ScheduleGridViewModel.BuildSectionLabel(
+        var (_, initials, _) = ScheduleGridViewModel.BuildSectionLabel(
             section, new Dictionary<string, Course>(), new Dictionary<string, Instructor>());
 
         Assert.Equal(string.Empty, initials);
     }
 
     [Fact]
-    public void BuildSectionLabel_MultipleInstructors_JoinsInitialsWithSpace()
+    public void BuildSectionLabel_MultipleInstructors_ShowsFirstPlusCount()
     {
+        // Spec 1.2.4 item 2.5: one instructor's initials, then "+N" for the rest.
         var section = Sec(courseId: null, instructorIds: ["i1", "i2"]);
         var instructors = new Dictionary<string, Instructor>
         {
-            ["i1"] = new() { Initials = "JRS" },
-            ["i2"] = new() { Initials = "MKL" }
+            ["i1"] = new() { Initials = "JRS", FirstName = "Jane", LastName = "Smith" },
+            ["i2"] = new() { Initials = "MKL", FirstName = "Mark", LastName = "Lee" }
         };
 
-        var (_, initials) = ScheduleGridViewModel.BuildSectionLabel(
+        var (_, initials, names) = ScheduleGridViewModel.BuildSectionLabel(
             section, new Dictionary<string, Course>(), instructors);
 
-        Assert.Equal("JRS MKL", initials);
+        Assert.Equal("JRS +1", initials);
+        Assert.Equal("Jane Smith, Mark Lee", names);
     }
 
     [Fact]
-    public void BuildSectionLabel_InstructorIdNotInLookup_SkipsIt()
+    public void BuildSectionLabel_SingleInstructor_HasNoTooltipNames()
+    {
+        // A line that wasn't shortened gets no tooltip, so no names are carried.
+        var section = Sec(courseId: null, instructorIds: ["i1"]);
+        var instructors = new Dictionary<string, Instructor>
+        {
+            ["i1"] = new() { Initials = "JRS", FirstName = "Jane", LastName = "Smith" }
+        };
+
+        var (_, initials, names) = ScheduleGridViewModel.BuildSectionLabel(
+            section, new Dictionary<string, Course>(), instructors);
+
+        Assert.Equal("JRS", initials);
+        Assert.Equal(string.Empty, names);
+    }
+
+    [Fact]
+    public void BuildSectionLabel_InstructorIdNotInLookup_SkipsItAndDoesNotCountIt()
     {
         // Three instructor IDs; the middle one has no entry in the lookup.
         var section = Sec(courseId: null, instructorIds: ["i1", "missing", "i3"]);
@@ -201,11 +220,53 @@ public class GridPipelineTests
             ["i3"] = new() { Initials = "ABC" }
         };
 
-        var (_, initials) = ScheduleGridViewModel.BuildSectionLabel(
+        var (_, initials, _) = ScheduleGridViewModel.BuildSectionLabel(
             section, new Dictionary<string, Course>(), instructors);
 
-        // "missing" is silently skipped; remaining initials are joined normally.
-        Assert.Equal("JRS ABC", initials);
+        // "missing" is silently skipped and not counted: two resolved instructors → "+1".
+        Assert.Equal("JRS +1", initials);
+    }
+
+    // ═════════════════════════════════════════════════════════════════════════
+    // BuildInstructorText (shared by section and meeting tiles)
+    // ═════════════════════════════════════════════════════════════════════════
+
+    /// <summary>Five instructors keyed i1..i5, initials A1..A5, names "F1 L1".."F5 L5".</summary>
+    private static Dictionary<string, Instructor> FiveInstructors() =>
+        Enumerable.Range(1, 5).ToDictionary(
+            n => $"i{n}",
+            n => new Instructor { Id = $"i{n}", Initials = $"A{n}", FirstName = $"F{n}", LastName = $"L{n}" });
+
+    [Theory]
+    [InlineData(0, 1, "",          false)]
+    [InlineData(1, 1, "A1",        false)]
+    [InlineData(5, 1, "A1 +4",     true)]
+    [InlineData(5, 2, "A1 A2 +3",  true)]
+    [InlineData(5, 5, "A1 A2 A3 A4 A5", false)]
+    public void BuildInstructorText_ShortensPastMaxShown(int count, int maxShown, string expected, bool shortened)
+    {
+        var ids = Enumerable.Range(1, count).Select(n => $"i{n}");
+
+        var (initials, _, isShortened) = ScheduleGridViewModel.BuildInstructorText(ids, FiveInstructors(), maxShown);
+
+        Assert.Equal(expected, initials);
+        Assert.Equal(shortened, isShortened);
+    }
+
+    [Fact]
+    public void BuildInstructorText_FullNamesListEveryoneInStoredOrder()
+    {
+        var (_, fullNames, _) = ScheduleGridViewModel.BuildInstructorText(
+            ["i3", "i1", "i2"], FiveInstructors(), maxShown: 1);
+
+        Assert.Equal("F3 L3, F1 L1, F2 L2", fullNames);
+    }
+
+    [Fact]
+    public void BuildInstructorText_MaxShownBelowOne_Throws()
+    {
+        Assert.Throws<ArgumentOutOfRangeException>(() =>
+            ScheduleGridViewModel.BuildInstructorText(["i1"], FiveInstructors(), maxShown: 0));
     }
 
     // ═════════════════════════════════════════════════════════════════════════

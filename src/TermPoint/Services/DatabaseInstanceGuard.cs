@@ -29,7 +29,7 @@ public enum InstanceGuardResult
 }
 
 /// <summary>
-/// A per-database, per-user single-instance guard (spec item 4b): at most one live TermPoint process of a
+/// A per-database, per-user single-instance guard: at most one live TermPoint process of a
 /// given Windows/macOS user may work on a given database (D) at a time.
 ///
 /// <para><b>Why it exists.</b> Everything TermPoint does before it takes the write lock — sweeping stale

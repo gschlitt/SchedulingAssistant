@@ -114,7 +114,7 @@
 					<ScrollViewer VerticalScrollBarVisibility="Auto">
 						<ItemsControl ItemsSource="{Binding InstructorItems}">
 							<!--
-								Out-of-focus instructors (spec item 20) show lighter, below an "Other instructors" heading,
+								Out-of-focus instructors show lighter, below an "Other instructors" heading,
 								as in the section editor's instructor list. The class sits on the TextBlocks (not the
 								CheckBox) so the CheckBox's own states cannot repaint them.
 							-->

@@ -42,15 +42,14 @@ public enum RecoveryReason
     Unreadable,
 
     /// <summary>
-    /// A database switch failed after the previously open database had already been closed (spec
-    /// item 4d), so no database is open. Not a statement about the saved path — which stays in the
+    /// A database switch failed after the previously open database had already been closed, so no database is open. Not a statement about the saved path — which stays in the
     /// recent list, since a retry will often succeed — only that the user must now choose one.
     /// </summary>
     SwitchFailed,
 
     /// <summary>
     /// Another live TermPoint process of this user already has the chosen database open on this
-    /// computer (spec item 4b, <see cref="DatabaseInstanceGuard"/>), so this one was refused before it
+    /// computer (<see cref="DatabaseInstanceGuard"/>), so this one was refused before it
     /// touched anything. Not damage, and not a problem with the path — which stays in the recent list.
     /// The user picks a different database or exits; picking the same one again is refused again.
     /// </summary>
@@ -84,7 +83,7 @@ public enum ChooserOption
 }
 
 /// <summary>
-/// What the chooser knows about the restore destination, from its deadline-bounded probe (spec item 5c). Decides
+/// What the chooser knows about the restore destination, from its deadline-bounded probe. Decides
 /// the Step 2 status text and whether Continue is enabled.
 /// </summary>
 public enum RestoreDestinationState
@@ -170,7 +169,7 @@ public partial class DatabaseChooserViewModel : ObservableObject
     /// setting. <see cref="DatabaseValidationResult.Unreadable"/> maps to its own reason — it is
     /// never folded into Corrupt or NotFound.
     /// </summary>
-    /// <param name="validation">A non-Ok result of <c>DatabaseValidator.ValidateAsync</c>.</param>
+    /// <param name="validation">A non-Ok result of <c>DatabaseValidator.ValidateSharedAtOpenAsync</c>.</param>
     /// <returns>
     /// Corrupt, Unreachable and Unreadable map to the reason of the same name; everything else
     /// (Missing) maps to <see cref="RecoveryReason.NotFound"/>.
@@ -187,7 +186,7 @@ public partial class DatabaseChooserViewModel : ObservableObject
     /// The inline message shown when a recent database fails validation (double-click open and
     /// the Continue button share it, so they cannot drift apart).
     /// </summary>
-    /// <param name="validation">A non-Ok result of <c>DatabaseValidator.ValidateAsync</c>.</param>
+    /// <param name="validation">A non-Ok result of <c>DatabaseValidator.ValidateSharedAtOpenAsync</c>.</param>
     /// <returns>The user-facing message for that result.</returns>
     private static string DescribeRecentOpenFailure(DatabaseValidationResult validation) => validation switch
     {
@@ -353,7 +352,7 @@ public partial class DatabaseChooserViewModel : ObservableObject
         if (item is null) return;
 
         RecentError = null;
-        var validation = await DatabaseValidator.ValidateAsync(item.Path);
+        var validation = await DatabaseValidator.ValidateSharedAtOpenAsync(item.Path);
         if (validation != DatabaseValidationResult.Ok)
         {
             RecentError = DescribeRecentOpenFailure(validation);
@@ -458,7 +457,7 @@ public partial class DatabaseChooserViewModel : ObservableObject
         var path = await PickDatabaseFileAsync();
         if (path is null) return;
 
-        var result = await DatabaseValidator.ValidateAsync(path);
+        var result = await DatabaseValidator.ValidateSharedAtOpenAsync(path);
         if (result == DatabaseValidationResult.Ok)
         {
             BrowsedPath = path;
@@ -477,7 +476,7 @@ public partial class DatabaseChooserViewModel : ObservableObject
         }
     }
 
-    // ── Restore from backup (spec item 5, step 5c) ───────────────────────
+    // ── Restore from backup ──────────────────────────────────────────────
 
     /// <summary>
     /// The raw database path the chooser was opened about (the constructor's argument, null when none), as opposed
@@ -618,7 +617,7 @@ public partial class DatabaseChooserViewModel : ObservableObject
         var path = await PickBackupFileAsync();
         if (path is null) return;
 
-        // A damaged BACKUP is reported as such (spec item 5, step 5e), not as a damaged shared database.
+        // A damaged BACKUP is reported as such, not as a damaged shared database.
         var backupValidation = await DatabaseValidator.ValidateAsync(path, DamagedFileKind.BackupBeingRestored);
         if (backupValidation == DatabaseValidationResult.Unreachable)
         {
@@ -890,7 +889,7 @@ public partial class DatabaseChooserViewModel : ObservableObject
         if (SelectedRecentDatabase is not null)
         {
             RecentError = null;
-            var validation = await DatabaseValidator.ValidateAsync(SelectedRecentDatabase.Path);
+            var validation = await DatabaseValidator.ValidateSharedAtOpenAsync(SelectedRecentDatabase.Path);
             if (validation != DatabaseValidationResult.Ok)
             {
                 RecentError = DescribeRecentOpenFailure(validation);

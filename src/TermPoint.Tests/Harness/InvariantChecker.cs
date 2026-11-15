@@ -132,6 +132,8 @@ internal sealed class InvariantChecker
                         Key = $"I2:lost:{edit}", Computer = computer.Name, Edit = edit,
                         Reason = $"{edit} ({computer.DisplayName}'s) is no longer anywhere that survives a crash",
                         EditAppliedDuringHeldSave = world.WasEditAppliedDuringHeldSave(edit),
+                        EditAppliedDuringHeldRestore = world.WasEditAppliedDuringHeldRestore(edit),
+                        OtherProgramInvolved = world.OtherProgramHasBeenUsed,
                         ComputerPrompts = world.StepPrompts(computer)
                     });
                 }
@@ -143,7 +145,7 @@ internal sealed class InvariantChecker
 
     /// <summary>
     /// <b>I6 clause (a), nobody holds a lock they cannot use:</b> a session whose checkout is read-only (<c>Mode == ReadOnly</c>;
-    /// <c>IsReadOnlyMode</c> is set with it, but production never clears it, so it is not read alone) must not hold its database's lock:
+    /// <c>IsReadOnlyMode</c> is not read: a demoted writer is read-only before its snapshot exists) must not hold its database's lock:
     /// neither the computer's lock service may say it is the writer, nor may the lock file of the checkout's <c>SourcePath</c> name the
     /// session. Such a session cannot save, so the lock keeps everyone else out of a database nobody can write to (finding F16: a
     /// demotion that lands on the session that replaced the one it was started for). Only computers whose process runs with a database
@@ -173,7 +175,7 @@ internal sealed class InvariantChecker
             found.Add(new Violation
             {
                 Step = step, Invariant = "I6", Kind = ViolationKind.ReadOnlySessionHoldsLock,
-                Key = $"I6a:{step}:{computer.Name}:{database}", Computer = computer.Name,
+                Key = $"I6a:{step}:{computer.Name}:{database}", Computer = computer.Name, OtherProgramInvolved = world.OtherProgramHasBeenUsed,
                 Reason = $"{computer.DisplayName}'s session on {database} is read-only to the checkout service (it cannot save) yet " +
                          string.Join(" and ", holds) + ": it holds a lock it cannot use"
             });

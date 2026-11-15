@@ -1,0 +1,179 @@
+# 1.2.4 testing readiness: what's left of section 8
+
+Tracks the rest of section 8 ("Testing") of [`spec_version_1.2.4_summary.md`](spec_version_1.2.4_summary.md).
+Read this at every handoff. Started 2026-11-07.
+
+## Why section 8 exists
+
+1. **Near term:** enough testing in place to carry out the other sections of the summary quickly. The full
+   automation isn't needed for that: 8.7 (test timings) cuts the waiting, and 8.11 hands some hand tests to the
+   harness.
+2. **Medium term:** as much automation as possible, so regression testing is easy and therefore actually done.
+
+## Status by item (as of 2026-11-07)
+
+| Item | State | Left |
+|---|---|---|
+| 8.1–8.7 harness work, test timings | Done | 8.1's summary entry has no Done note (HANDOFF lists it as done); add one. |
+| 8.8 scripted setup and checks (`tools/FieldTest`) | Done | Its note still says "VM parts not yet run"; they now are (2026-11-06). Update the note. Dialog-only outcomes are still checked by eye. |
+| 8.9 VMs as test computers | TPVM1 works; paused VM = sleep; M5 passed | TPVM2 when a scenario needs a third computer; one real Surface sleep per release. |
+| 8.10 automated two-machine rig | Not started | Goal 2; see below. |
+| 8.11 trim the hand-test tier | Not started | Step 3 below. |
+| 8.12 flaky tests | Partly done | Step 2 below. |
+
+## Goal 1: the three steps left, in order
+
+### Step 1: prove a 1.2.4 test-timings build on the rig (one session)
+
+8.7 is built but has never run end to end. TPVM1 runs the 1.2.3.4 sideload, which is why the M5 run on 2026-11-06
+took about 11 minutes of lock-timer waiting.
+
+**Done 2026-11-08.** Every item below is checked; details in the Log.
+
+- [x] Build a 1.2.4 sideload MSIX.
+- [x] `Install-TermPoint` on TPVM1 and on GregDeskTop. A lower version can't install over a higher one; uninstall
+      first if needed (that deletes logs and kept changes).
+- [x] Set 8.7's environment variable so launches by `Start-TermPoint` (through explorer.exe in the VM's desktop
+      session) inherit it.
+- [x] Check: "Test timings" in the title bar, the scale recorded in the lock file (`Get-TestDatabaseState` shows
+      it), and the 8.7 guards (a ×3 computer and a normal one never misjudge each other's lock).
+- [x] Re-run M5 at ×3 and compare with the 1.2.3 run (summary 8.9 note).
+- [x] Retake TPVM1's `Ready` checkpoint (`-Replace`) with the 1.2.4 build installed.
+
+Until this works, every field check of a 1.2.4 fix (F20, F17, F18, F23, 6.12) runs at full lock timings.
+
+### Step 2: 8.12, the flaky tests
+
+A full harness run takes about 38 minutes; a random red result costs a re-run and doubt about every real failure.
+
+**Done 2026-11-08** (summary 8.12's Done note has the causes).
+
+- [x] The pause-proof test that fails 2–7% of the time (its wake-check settle waits 5 × 8 ms of real time).
+- [x] The fault-seam test that caught a background task from an earlier test.
+- [x] `WizardExistingDbJoinTests.Step1a_JoinExistingDb_DoesNotOpenOrChangeD` (`readerMode: True`), failed once on
+      2026-11-05 (two temp paths instead of one).
+- [x] Found on the way: `SubjectPaletteTests` failed in every run built with `-o E:/...`.
+
+### Step 3: 8.11, written as the 1.2.4 release test list (about half a session)
+
+**Done 2026-11-08:** [docs/testing/release-tests-1.2.4.md](../docs/testing/release-tests-1.2.4.md).
+
+- [x] One short document: the hand tests that stay, and the ones the harness now covers (per summary item T5, M1 B,
+      M2, M3, M9, M10, M12, S1 and S6 found nothing new in 1.2.3).
+- [x] Keep by hand only what can't be simulated: real SMB behaviour, on-screen messages, Avalonia and process
+      shutdown, MSIX install and upgrade, a real 1.2.2 alongside, one real sleep, macOS, Store flights.
+
+### Housekeeping
+
+- [x] Done note on 8.1; update 8.8's note (2026-11-08).
+
+### Not needed for goal 1
+
+- 8.10 (goal 2).
+- TPVM2, until a scenario needs a third computer.
+- Scenario files written in advance: write each with the fix it checks (F20's with the F20 fix, and so on).
+
+**Windows 11** is covered by TPVM1: S8 (the AutoCompleteBox crash test) can run there now, attended. A VM can't
+stand in for touch or Modern Standby; hence one real Surface sleep per release.
+
+## Goal 2: unattended regression runs (later)
+
+What the rig can and can't do today: it controls everything around TermPoint (processes, VM freezes, lock files, a
+colleague's edit, logs, database copies), but nothing inside TermPoint's window (add a section, Save, accept a
+takeover, answer "Restore?").
+
+**Count (2026-11-07), of M1–M11 and S1–S11 in `docs/testing/network-field-tests-1.2.3.md`:**
+
+| | Scenarios | Count |
+|---|---|---|
+| Unsupervised today | M2 (C3, kill an idle writer), M9 (a colleague joins read-only) | 2 |
+| Unsupervised with UI driving | M1, M2, M3, M4, M5, M6, M7, M9, M10, S1, S2, S3, S4, and M8 (TPVM2 kept on 1.2.2) | 14 |
+| Partly (pickers and the wizard are brittle to drive) | M11, S6, S8 | 3 |
+| Stay with Greg | S5 (not built), S7 (judging the UNC picker), S9 (cloud-sync account), S10 (visual), S11 (macOS) | 5 |
+
+**Two routes; the 8.10 decision is which, or both:**
+- **The spec's 8.10:** TermPoint's real checkout and lock services run as headless agents under `tools/NetworkProbe`,
+  coordinated by a step file on the share. Fast and deterministic, but tests the services, not the app (no messages,
+  no shutdown).
+- **UI Automation of the real app** from the FieldTest console, in the VM's desktop session. No product behaviour
+  change (at most `AutomationProperties.Name` on a few controls, an `.axaml` change). It can also read dialog text,
+  which closes the "checked by eye" gaps. Network faults from the host: `Disconnect-VMNetworkAdapter` (black hole),
+  bandwidth caps (slow); clumsy's command-line options are unconfirmed.
+
+**Plan for the UI route, in steps with a stop rule:**
+1. One session: a minimal UI-driving layer plus M5 unattended, compared with the attended M5. If Avalonia's UI
+   Automation proves flaky, stop; the attended rig is unaffected.
+2. Then one scenario at a time, in value order: M7, M6, M1, M4 (the lock and save paths where real bugs were found).
+3. The rest stay attended or are retired (8.11).
+
+**Guards against a pass that proves nothing:**
+- Every run ends with `Get-TestSections`: the data outcome is checked, not just the logs.
+- Each automated scenario is proved once against a known answer: beside an attended run, and once where it must fail.
+- If a control or dialog can't be found, the result is "couldn't run", never PASS.
+
+## Log
+
+- 2026-11-06: TPVM1 `Ready` checkpoint; paused/saved VM clock steps at once (wake fires); FieldTest smoke test passed;
+  M5 passed on 1.2.3 (commits `ad1143b`, `8b0a141`, `e02fa31`).
+- 2026-11-07: this document.
+- 2026-11-07, Step 1 in progress. csproj bumped to **1.2.4** (MSIX 1.2.4.0) so the sideload installs over 1.2.3.4;
+  installed on TPVM1 and GregDeskTop. New `Set-TestTimings` command. ×3 works: title "(Test timings ×3)", lock file
+  `timing scale 3`. **Guard: a normal-speed GregDeskTop judged TPVM1's ×3 lock at ×3 speed** (stale at 60 s).
+  - M5 at ×3, run 1 (19:24–19:31): PASS, but TPVM1 had saved its "unsaved" edit 0.5 s before the freeze, and its
+    **wake check answered "lock confirmed" in 11 ms**, 3.5 min after GregDeskTop had taken the lock; the heartbeat
+    renewal it then started failed only because the share connection was still down. Had it succeeded, TPVM1 would
+    have rewritten GregDeskTop's lock (invariant I9, rule 2).
+  - Probe (19:39–19:42), no TermPoint: warm read in TPVM1, freeze, change the lock, resume, read. The first read
+    waited 19.4 s, then returned the **new** lock. A paused VM does not simply serve stale cached contents.
+  - M5 at ×3, run 2 (20:43–20:51), nothing saved near the freeze: PASS and clean. Wake check timed out
+    ("network unreachable, keeping current state") as on 1.2.3; demoted 10 s later keeping ZZZTW3; D has ZZZTR3.
+  - **Open (candidate finding):** a stale "lock confirmed" at the wake when the freeze comes right after a save.
+  - **Reproduced 3/3 (20:58–21:20)** with `tools/FieldTest/probes/Probe-SaveThenFreeze.ps1` (click Save; the VM
+    freezes 129–191 ms after "Save completed"; Alice takes over while frozen; 240 s): each wake check answered
+    "lock confirmed" 4–115 ms after the wake; the heartbeat renewal timed out (share reconnect ~20 s); demoted 20–30 s
+    later; the lock always stayed Alice's (no relock). Summary lines in `D:\fieldtest\probe-save-then-freeze.txt`.
+  - The earlier no-TermPoint probe does not rule caching out: its read after the resume came from a new PowerShell
+    Direct session (a separate sign-in), which cannot use the first session's cached file.
+  - Likely mechanism: the save's last lock check leaves the SMB client a cached copy under a lease; the server
+    revokes the lease while the VM is frozen; on resume the client serves the cache until it reconnects. What limits
+    harm today: the heartbeat re-checks before its move if more than 2 s passed (F19), and the save's checks run after
+    its writes, i.e. after the reconnect.
+  - **Process freeze, 2/2 CORRECT (21:28–21:40)**, `-Mode Process` (only TermPoint frozen, Windows awake): the wake
+    check ran and answered "lock is no longer ours" within ~0.1 s of the wake; one message (the second report was
+    "already being handled"). So the stale answer needs Windows itself frozen with TermPoint.
+  - **Next:** one real Surface sleep right after a save, by hand (the real-world answer); if it does not reproduce,
+    note that a VM frozen right after a save over-reports this case. If real sleep reproduces it:
+    a 1.2.4 finding against rule 2 (fix shape, to be risk-reviewed: after a wake, "ours" counts only once a write to
+    the share has succeeded).
+  - Still to do in Step 1: the reverse guard (a ×3 computer must not judge a normal computer's lock stale early);
+    retake TPVM1's `Ready` on 1.2.4 with ×3 set (restore `Ready`, install, `Set-TestTimings`, one clean start and
+    close, `Checkpoint-TestComputer -Replace`).
+  - Seen in passing: when TPVM1 froze, GregDeskTop's next lock-file read timed out once (5 s), handled as designed.
+    Store and sideload TermPoint on one computer write the same log; `Test-TermPointLog` flags it as two versions.
+- 2026-11-08, **real sleep after a save on GregSurface (1.2.4.0 sideload, normal timings): the stale "lock confirmed"
+  did not reproduce.** The candidate finding is closed: a VM frozen right after a save over-reports this case.
+  - Run 1, lid close (Modern Standby; Kernel-Power 506 confirmed it entered standby): save 11:31:15.8, takeover
+    (`Set-TestLock -Kind Takeover`) 11:31:43. TermPoint **kept running**: its heartbeat at 11:32:28.7 found another
+    session's lock, verified NotOurs and demoted; one report; lock file not deleted. No wake check ran, so the wake
+    path was not tested. On Modern Standby laptops the heartbeat catches a takeover during "sleep".
+  - Run 2, Hibernate (freezes Windows with TermPoint, as the VM did): save 11:53:56.0, takeover while hibernated,
+    wake at 11:59:40 (gap 358 s). The wake check timed out ("network unreachable, keeping current state"), as in M5
+    run 2. The next heartbeat (12:00:39.9, 60 s after the wake) found the lock NotOurs and demoted; one report;
+    lock file not deleted. The banner showed about a minute after the wake.
+  - Still true in both: TermPoint thinks it is the writer for up to one heartbeat (~60 s) after a wake whose check
+    timed out; the save and heartbeat re-check the lock before writing, so rule 2 holds.
+- 2026-11-08, **Step 1 finished.**
+  - TPVM1 `Ready` retaken on 1.2.4.0 with ×3 (`Restore-TestComputer`, `Install-TermPoint`, `Set-TestTimings 3`,
+    one clean start and close at 12:09, `Checkpoint-TestComputer -Name Ready -Replace`). Restoring `Ready` now gives
+    1.2.4 at ×3; the log's first line says "Test timings x3: heartbeat every 20 s, a lock is stale after 60 s".
+  - **Reverse guard: PASS.** GregDeskTop (normal timings) took the lock, then was hard-killed (last heartbeat
+    12:12:16). TPVM1 (×3) opened read-only at 12:12:34 and offered write access only at 12:15:34 ("heartbeat
+    unchanged for 180s"), not after 60 s. The ×3 computer counts from when it first saw the lock, so the offer came
+    198 s after the last heartbeat; that errs on the safe side.
+  - Seen in passing: closing TermPoint always runs a save, even with no edits (`ReleaseAsync` calls `SaveAsync`
+    unconditionally), so D's hash changes after a start-and-close. Existing behaviour, not new in 1.2.4.
+- 2026-11-08, **Step 2 finished** (test code only; causes in summary 8.12's Done note). Checks: the fixed wizard
+  and fault-seam classes 30 runs in a row, clean; the 29 pause-proof tests 20 runs in a row with the harness, clean;
+  full suite with the harness (`E:/sa-812.trx`, 12:40-13:13): 4431 passed, 0 failed, 3 skipped. Next: Step 3.
+- 2026-11-08, **Step 3 finished:** `docs/testing/release-tests-1.2.4.md`. Goal 1 is met apart from
+  Housekeeping (Done note on 8.1, 8.8's note).

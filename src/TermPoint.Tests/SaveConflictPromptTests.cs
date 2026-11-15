@@ -17,7 +17,7 @@ public sealed class SaveConflictPromptTests
         Assert.Equal(
             "TermPoint can't save your changes: the database was changed elsewhere since you opened it. " +
             "Save your version as a separate file, or discard your changes, " +
-            "and TermPoint will reopen the current database.",
+            "and TermPoint will reopen the database.",
             SaveConflictPrompt.BannerMessage);
         Assert.Equal("Save a Copy…", SaveConflictPrompt.SaveCopyButton);
         Assert.Equal("Discard Changes", SaveConflictPrompt.DiscardChangesButton);

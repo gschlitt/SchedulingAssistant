@@ -5,7 +5,7 @@ using System.Collections.ObjectModel;
 
 namespace TermPoint.ViewModels.Management;
 
-public partial class BlockPatternEditViewModel : ViewModelBase
+public partial class BlockPatternEditViewModel : UnappliedChangesEditor
 {
     [ObservableProperty] private string _name = string.Empty;
     [ObservableProperty] private string? _validationError;
@@ -20,7 +20,7 @@ public partial class BlockPatternEditViewModel : ViewModelBase
     /// The stored pattern being edited, or null when this slot is empty and a new pattern is being
     /// created. <see cref="Save"/> builds a brand-new <see cref="BlockPattern"/> rather than mutating
     /// this one, so it uses it to carry across the original's unknown JSON fields
-    /// (<see cref="PersistedRecord.ExtensionData"/>, spec item 3); otherwise saving from an older
+    /// (<see cref="PersistedRecord.ExtensionData"/>); otherwise saving from an older
     /// app version would delete fields a newer version stored on the pattern.
     /// </summary>
     private readonly BlockPattern? _existing;
@@ -54,7 +54,19 @@ public partial class BlockPatternEditViewModel : ViewModelBase
             dayList.Add(new(7, "Sun", existing?.Days.Contains(7) ?? false));
 
         Days = new ObservableCollection<DayCheckViewModel>(dayList);
+
+        TakeSnapshot();
     }
+
+    /// <inheritdoc/>
+    protected override string CaptureState() =>
+        UnappliedChangesKey.Of(Name.Trim(), Days.Where(d => d.IsChecked).Select(d => d.Day));
+
+    /// <inheritdoc/>
+    protected override System.Windows.Input.ICommand ApplyCommand => SaveCommand;
+
+    /// <inheritdoc/>
+    protected override System.Windows.Input.ICommand CancelCommandForDiscard => CancelCommand;
 
     [RelayCommand]
     private void Save()
@@ -75,6 +87,7 @@ public partial class BlockPatternEditViewModel : ViewModelBase
 
         ValidationError = null;
         _onSave(new BlockPattern { Name = trimmedName, Days = selectedDays }.WithExtensionDataFrom(_existing));
+        MarkApplied();
     }
 
     [RelayCommand]

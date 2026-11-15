@@ -116,13 +116,7 @@ public sealed partial class HelpViewModel : ViewModelBase
     private void OpenArticle()
     {
         if (_selectedTopic?.HtmlFileName is not string fileName) return;
-#if BROWSER
-        // WASM: Help files are deployed as web assets; open via relative URL
-        PlatformProcess.OpenLocalFile("Help/" + fileName);
-#else
-        var path = Path.Combine(HelpDirectory, fileName);
-        PlatformProcess.OpenLocalFile(path);
-#endif
+        HelpArticles.Open(fileName);
     }
 
     /// <summary>
@@ -140,8 +134,7 @@ public sealed partial class HelpViewModel : ViewModelBase
     /// <summary>
     /// Absolute path to the Help output folder that contains the HTML files.
     /// </summary>
-    private static string HelpDirectory =>
-        Path.Combine(AppContext.BaseDirectory, "Help");
+    private static string HelpDirectory => HelpArticles.Directory;
 
     /// <summary>
     /// Launches a URL in the platform's default browser.
@@ -181,6 +174,13 @@ public sealed partial class HelpViewModel : ViewModelBase
 
         
         
+
+        new()
+        {
+            Title        = "Filters and Overlays",
+            Description  = "How the filter choices combine, with worked examples",
+            HtmlFileName = "schedule-grid-filters.html",
+        },
 
         new()
         {

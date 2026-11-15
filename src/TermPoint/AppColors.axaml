@@ -114,10 +114,13 @@
 	<SolidColorBrush x:Key="OverlayActiveHeader" Color="{StaticResource OverlayColor}" />
 	<SolidColorBrush x:Key="OverlayInactiveHeader" Color="#2D3748" />
 
-	<!--  ── "Filtered by" text in panel header  ──────────────────────────  -->
-	<!--  The color of the text in the overlay/filter bar labeling the active filter  -->
+	<!--
+		── Panel header statements  ──────────────────────────
+		FilterColor: the filter bar's active filter headings (FilterActiveHeader above). The Schedule View header's
+		"Filtered by:" statement uses the standard text colour (TextPrimary); overlays and shared
+		schedules keep their own colours there.
+	-->
 	<Color x:Key="FilterColor">#4A6FA5</Color>
-	<SolidColorBrush x:Key="FilterBadgeText" Color="{StaticResource FilterColor}" />
 	<!--  Overlay:  -->
 	<SolidColorBrush x:Key="OverlayBadgeText" Color="{StaticResource OverlayColor}" />
 
@@ -286,17 +289,68 @@
 	<SolidColorBrush x:Key="WorkflowPillSuccessBackground" Color="#D1FAE5" />
 	<SolidColorBrush x:Key="WorkflowPillSuccessText" Color="#1E5A3A" />
 
-	<!--  ── Subject focus (spec item 20)  ──────────────────────────────────  -->
 	<!--
-		The prominent "Focus: BIOL, CHEM" statement in the Section View and Schedule View headers. Teal, so it reads
-		as its own layer and is never mistaken for the filter (blue FilterBadgeText), an overlay (purple) or a shared
-		schedule (orange).
+		── Subject focus  ──────────────────────────────────
+		The Schedule View header's "Subjects:" statement and its "Show all" link use the standard text colour
+		(TextPrimary): a colour of their own only raised the question of what it meant.
 	-->
-	<Color x:Key="FocusColor">#0E7C6B</Color>
-	<SolidColorBrush x:Key="FocusBadgeText" Color="{StaticResource FocusColor}" />
-	<!--  The "Show all" link beside the focus statement  -->
-	<SolidColorBrush x:Key="FocusLinkText" Color="{StaticResource FocusColor}" />
 	<!--  Out-of-focus instructors in the section editor's instructor list: lighter than normal text, still legible  -->
 	<SolidColorBrush x:Key="TextOutOfFocus" Color="#8A94A3" />
+
+	<!--
+		Subject colour suggestion palette. Read IN ORDER (01, 02, ...) at startup
+		by App.ReadSubjectPalette and handed to SubjectColorStore; "Suggest colours" takes them in this order, each as
+		different as possible from the ones before it. The colour fills only the small subject marker before the section
+		code (text never sits on it), so these are strong mid-tone colours and blues are allowed. Red is left out: the
+		conflict glow and the flags are red. SubjectPaletteTests checks this file (eleven, distinct, far enough apart).
+		Opaque #RRGGBB only (no transparency, P2-4). To add a colour, add SubjectPalette12. Draft; tuned by eye in task 5.
+	-->
+	<Color x:Key="SubjectPalette01">#2F6FC4</Color> <!-- blue -->
+	<Color x:Key="SubjectPalette02">#F08A24</Color> <!-- orange -->
+	<Color x:Key="SubjectPalette03">#3A9A3A</Color> <!-- green -->
+	<Color x:Key="SubjectPalette04">#8E4FC2</Color> <!-- purple -->
+	<Color x:Key="SubjectPalette05">#1A9E9A</Color> <!-- teal -->
+	<Color x:Key="SubjectPalette06">#D0459C</Color> <!-- magenta -->
+	<Color x:Key="SubjectPalette07">#8C5A2E</Color> <!-- brown -->
+	<Color x:Key="SubjectPalette08">#9A9A1E</Color> <!-- olive -->
+	<Color x:Key="SubjectPalette09">#2A3F7A</Color> <!-- navy -->
+	<Color x:Key="SubjectPalette10">#6E6E6E</Color> <!-- grey -->
+	<Color x:Key="SubjectPalette11">#E3B51C</Color> <!-- gold -->
+
+	<!--  Thin translucent dark outline round every subject marker, so pale user-picked colours stay visible on the
+	      tile fill and the card background  -->
+	<SolidColorBrush x:Key="SubjectMarkerOutline" Color="#59000000" />
+
+	<!--  ── Folded day strips and day headers (collapse days)  ──────────────────  -->
+	<!--
+		The strip is a sheet folded almost shut down its middle. Flat fills only (no gradients): a light
+		left face, a shadowed right face and a crease line between them. Each hidden section time is a band in the tile
+		blue on both faces (lighter on the left, shadowed on the right); every band looks the same, however many
+		sections share it.
+	-->
+	<SolidColorBrush x:Key="FoldedDayFaceLight" Color="#F4F4F6" />
+	<SolidColorBrush x:Key="FoldedDayFaceShadow" Color="#DCDEE3" />
+	<SolidColorBrush x:Key="FoldedDayCrease" Color="#9A9EA8" />
+	<SolidColorBrush x:Key="FoldedDayBandLight" Color="#AFCFE8" />
+	<SolidColorBrush x:Key="FoldedDayBandShadow" Color="#8FAAC2" />
+	<!--  The section count on a strip  -->
+	<SolidColorBrush x:Key="FoldedDayStripText" Color="#1e2938" />
+	<!--
+		Attention marks on a folded strip (task 5): bars at the time of what the user pointed at. One brush per
+		MarkKind (see FoldedDayMarks.Kinds); the Slot Browser adds its own here.
+		Selection = the selected-section border colour; Proposal = the Room Browser ghost outline colour (opaque);
+		Conflict = the program-conflict colour.
+	-->
+	<SolidColorBrush x:Key="FoldedDayMarkSelection" Color="#3c647f" />
+	<SolidColorBrush x:Key="FoldedDayMarkProposal" Color="#4CAF50" />
+	<SolidColorBrush x:Key="FoldedDayMarkConflict" Color="{StaticResource ProgramConflictColor}" />
+	<!--  A meeting's lane on a folded strip: stronger than the pale MeetingTile fill, which was barely visible there  -->
+	<SolidColorBrush x:Key="FoldedDayMeetingBar" Color="#7B5EB8" />
+	<!--  The colour a strip's faces pulse toward when something new is marked on it (translucent amber, so the strip stays readable)  -->
+	<SolidColorBrush x:Key="FoldedDayFlashBrush" Color="#CCFFB300" />
+	<!--  Fill of an OPEN day's header while the pointer is over it (translucent: the day name stays readable)  -->
+	<SolidColorBrush x:Key="GridHeaderHoverFill" Color="#26000000" />
+	<!--  The fold icon on a hovered day header  -->
+	<SolidColorBrush x:Key="FoldDayIconBrush" Color="#1e2938" />
 
 </ResourceDictionary>

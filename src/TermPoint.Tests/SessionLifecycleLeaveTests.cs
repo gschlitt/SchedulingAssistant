@@ -41,7 +41,7 @@ public sealed class SessionLifecycleLeaveTests : SessionLifecycleTestBase
     private const string ChangesNotSavedAtClose =
         "Your latest changes couldn't be saved to the database. They're kept on this computer. " +
         "TermPoint will offer to add them to the database the next time you open it for editing. " +
-        "If someone else changes the database first, they can't be added, but you'll be able to save them as a separate copy.";
+        "If someone else changes the database first, the changes can't be added, but you'll be able to save them as a separate copy.";
 
     /// <summary>The context the teardown logs an unexpected exception under.</summary>
     private const string ShutdownErrorContext = "Error during shutdown — some changes may not have been saved";
@@ -183,6 +183,8 @@ public sealed class SessionLifecycleLeaveTests : SessionLifecycleTestBase
         Assert.False(File.Exists(LockOf(db)));
         Assert.False(_guard.IsHeld(db));
         Assert.Equal(CheckoutMode.ReadOnly, _checkout.Mode);
+        Assert.Equal(1, _host.BackstopArmCount);       // every close arms the backstop at the end (item 4.3)
+        Assert.Null(_host.LastRelaunchPath);
         Assert.Contains(CheckpointLine, _logger.Infos);
         Assert.Empty(_logger.Errors);
         AssertScriptConsumed();
@@ -224,6 +226,8 @@ public sealed class SessionLifecycleLeaveTests : SessionLifecycleTestBase
         Assert.True(File.Exists(MarkerOf(working)));
         Assert.Equal("edit-at-close", NewestValue(working));
         Assert.True(File.Exists(LockOf(db)), "the lock is parked, not released, after a failed final save");
+        Assert.Equal(1, _host.BackstopArmCount);       // armed only after the message: the kept changes are already in place
+        AssertInOrder(_trace, "prompt:Message:Changes Not Saved", "host:ArmShutdownBackstop");
         Assert.False(_guard.IsHeld(db));
         Assert.Contains(CheckpointLine, _logger.Infos);
         AssertScriptConsumed();
@@ -284,10 +288,13 @@ public sealed class SessionLifecycleLeaveTests : SessionLifecycleTestBase
             "host:CloseSecondaryWindows",
             "host:DisposeServices(built=True, connection=True)",
             "host:RelaunchApplication",
-            "state:atRelaunch:guardHeld=False");
+            "state:atRelaunch:guardHeld=False",
+            "host:ArmShutdownBackstop");
         Assert.DoesNotContain("checkout:SaveCompleted", _trace);
         Assert.Equal("from-backup", NewestValue(db));
         Assert.Equal("edit-before-restore", NewestValue(preRestore));     // saved first, so it is in the pre-restore copy
+        Assert.Equal(db, _host.LastRelaunchPath);                         // the new copy reopens the restored database (item 4.3)
+        Assert.Equal(1, _host.BackstopArmCount);                          // armed once the teardown is complete (item 4.3)
         Assert.False(File.Exists(working));
         Assert.False(File.Exists(MarkerOf(working)));
         Assert.False(File.Exists(LockOf(db)));
@@ -450,7 +457,10 @@ public sealed class SessionLifecycleLeaveTests : SessionLifecycleTestBase
         await Task.WhenAll(demotions);
         SettleLocks();
 
-        Assert.Equal(new[] { WriteLockLostReason.TakenOver }, reasons);
+        // F17 (close/switch design, step 4): the exit save reports only to the close, so no lost-lock event is raised
+        // (the handler loop above is kept to prove nothing runs it) and the user sees the one message.
+        Assert.Empty(reasons);
+        Assert.Empty(demotions);
         AssertPrompts("Message:Changes Not Saved");
         AssertScriptConsumed();
         AssertInOrder(_trace,
@@ -463,7 +473,7 @@ public sealed class SessionLifecycleLeaveTests : SessionLifecycleTestBase
         Assert.True(File.Exists(working), "D' must be kept");
         Assert.True(File.Exists(MarkerOf(working)), "the dirty marker must be kept");
         Assert.Equal("edit-at-close", NewestValue(working));
-        Assert.True(File.Exists(db + ".tmp"), "without the lock the exit save must leave D.tmp alone");
+        ShareTemp.AssertNone(db, "the refused exit save deletes its own temporary file");
         Assert.Equal(foreignLock, File.ReadAllText(LockOf(db)));
         Assert.False(_guard.IsHeld(db));
         Assert.Contains(CheckpointLine, _logger.Infos);
@@ -502,7 +512,8 @@ public sealed class SessionLifecycleLeaveTests : SessionLifecycleTestBase
         await Task.WhenAll(started);   // the demotion must finish without throwing
         SettleLocks();
 
-        Assert.Single(started);
+        // F17 (close/switch design, step 4): the exit save raises no lost-lock event, so no demotion starts at all.
+        Assert.Empty(started);
         Assert.Empty(_prompts.Violations);
         Assert.True(_prompts.Calls.Count <= 1, "at most the one 'Changes Not Saved' message");
         Assert.All(_prompts.Calls, call => Assert.Equal("Changes Not Saved", call.Title));
@@ -510,7 +521,7 @@ public sealed class SessionLifecycleLeaveTests : SessionLifecycleTestBase
         Assert.True(File.Exists(working), "D' must be kept");
         Assert.True(File.Exists(MarkerOf(working)), "the dirty marker must be kept");
         Assert.Equal("edit-at-close", NewestValue(working));
-        Assert.True(File.Exists(db + ".tmp"));
+        ShareTemp.AssertNone(db);
         Assert.Equal(foreignLock, File.ReadAllText(LockOf(db)));
         Assert.False(_guard.IsHeld(db));
         Assert.Contains(CheckpointLine, _logger.Infos);
@@ -584,6 +595,41 @@ public sealed class SessionLifecycleLeaveTests : SessionLifecycleTestBase
         AssertScriptConsumed();
     }
 
+    /// <summary>
+    /// An edit arrives during the save that precedes the restore (spec item 3.2): the save keeps the marker, the shared
+    /// helper saves once more, and an edit arriving during THAT save too leaves the marker kept. The restore is then never
+    /// started, so the confirmed restore cannot end the session and delete the working copy and marker that hold the
+    /// edit: the user sees "Restore Not Started" with the edit-during-save message (not the save-failed one: nothing
+    /// failed), and D', the marker and D are untouched
+    /// (D is not replaced, no pre-restore copy exists, the window stays open).
+    /// </summary>
+    [Fact]
+    public async Task Restore_AnEditDuringTheSaveBeforeIt_RestoreNotStarted_TheEditIsKept()
+    {
+        var db = NewDb();
+        await OpenCleanAsync(db);
+        var working = _checkout.WorkingPath;
+        _host.Edit("edit-before-restore");
+        var backup = NewBackup("from-backup");
+        AppSettings.Current.AutoSaveEnabled = false;
+        _checkout.BeforeTmpVerifyAsync = _ => { _host.Edit("edit-during-save"); return Task.CompletedTask; };
+        ResetRecords();
+        _prompts.ExpectWait(RestorePrompt.WaitTitle, RestorePrompt.WaitMessage)
+                .ExpectMessage(RestorePrompt.NotStartedTitle, RestorePrompt.EditDuringSaveMessage);
+
+        await _lifecycle.RestoreFromBackupAsync(backup);
+        MakeSavesWork();
+
+        AssertPrompts("Wait:Restoring the Backup", "Message:Restore Not Started");
+        Assert.DoesNotContain("host:CloseWindow", _trace);
+        Assert.True(File.Exists(working));
+        Assert.True(File.Exists(MarkerOf(working)), "the edit made during the save is still marked");
+        Assert.NotEqual("from-backup", NewestValue(db));
+        Assert.Empty(Directory.GetFiles(_shareDir, "dept (before restore *"));
+        Assert.Equal(CheckoutMode.WriteAccess, _checkout.Mode);
+        AssertScriptConsumed();
+    }
+
     /// <summary>The same refusal with autosave switched off: it is NOT started again.</summary>
     [Fact]
     public async Task Restore_TheSaveBeforeItFails_AutoSaveSwitchedOff_AutoSaveStaysStopped()
@@ -633,7 +679,7 @@ public sealed class SessionLifecycleLeaveTests : SessionLifecycleTestBase
         Assert.DoesNotContain("host:CloseWindow", _trace);
         Assert.Equal("edit-before-restore", NewestValue(db));            // saved first; the restore did not touch it
         Assert.Empty(Directory.GetFiles(_shareDir, "dept (before restore *"));
-        Assert.False(File.Exists(db + ".tmp"));
+        ShareTemp.AssertNone(db);
         Assert.True(File.Exists(working));
         Assert.Equal(CheckoutMode.WriteAccess, _checkout.Mode);
         Assert.True(_lockSvc.IsWriter);
@@ -1074,10 +1120,10 @@ public sealed class SessionLifecycleLeaveTests : SessionLifecycleTestBase
         Assert.NotEqual(working, snapshot);
         var banner = Assert.Single(_host.LockLossSurface.SaveErrors);
         Assert.Equal(
-            "other_user on OTHER-PC has taken over editing this database, so it's read-only for you now. " +
+            "other_user on OTHER-PC has taken over editing this database, so it has been made read-only for you now. " +
             "Your changes since your last save are kept on this computer. " +
             "TermPoint will offer to add them to the database the next time you open it for editing. " +
-            "If someone else changes the database first, they can't be added, but you'll be able to save them as a separate copy. " +
+            "If someone else changes the database first, the changes can't be added, but you'll be able to save them as a separate copy. " +
             "To edit again once they've finished, close TermPoint and open it again.",
             banner);
         AssertInOrder(_trace,
@@ -1222,7 +1268,7 @@ public sealed class SessionLifecycleLeaveTests : SessionLifecycleTestBase
         var snapshot = _checkout.WorkingPath;
         Assert.Equal(
             "Another program removed or changed the file TermPoint uses to mark this database as in use " +
-            "(antivirus or cloud-sync software can do this), so it's read-only for you now. " +
+            "(antivirus or cloud-sync software can do this), so it has been made read-only for you now. " +
             "There were no unsaved changes at the time. " +
             "To edit again, close TermPoint and open it again.",
             Assert.Single(_host.LockLossSurface.SaveErrors));

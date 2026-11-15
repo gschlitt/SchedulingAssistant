@@ -45,6 +45,13 @@ internal static class ReportWriter
             ConsoleOut.Line($"  {c.Name,-15} {c.Why}");
         ConsoleOut.Line();
         ConsoleOut.Line("Run only some with --only <name,name,...>. 'runs' for CM cases is --repeat (default 3).");
+        ConsoleOut.Line();
+        ConsoleOut.Line($"Late-landing experiment (--late-landing, runs ONLY these after the two controls; each case once per hold x --repeat, default {ProbeOptions.DefaultLateRepeat}; --holds default {string.Join(",", ProbeOptions.DefaultHolds)} s):");
+        foreach (var c in LateLandingCatalog.All)
+        {
+            ConsoleOut.Line($"  {c.Name,-15} {c.CallText}");
+            ConsoleOut.Line($"  {"",-15} {c.Why}");
+        }
     }
 
     // ── progress and summary ───────────────────────────────────────────────────────────────────────────────
@@ -81,6 +88,8 @@ internal static class ReportWriter
                 ConsoleOut.Line($"  [{c.OutcomeText}] {c.Name}: {c.Detail}");
             ConsoleOut.Line();
         }
+
+        LateLandingReport.PrintSummary(report);
 
         if (report.Results.Count > 0)
         {
@@ -163,7 +172,9 @@ internal static class ReportWriter
             new[] { "clumsy", report.ClumsyPath ?? "-" },
             new[] { "clumsy pids started", report.ClumsyPids.Count == 0 ? "-" : string.Join(", ", report.ClumsyPids) },
             new[] { "probe folder", report.ProbeFolder ?? "-" },
-            new[] { "options", $"hold {o.HoldSeconds} s, big file {o.BigMb} MB, lag {o.LagMs} ms, repeat {o.Repeat}, settle {o.SettleSeconds} s, deadline under test {NetworkFileOps.TimeoutMs} ms" },
+            new[] { "options", o.LateLanding
+                ? $"late-landing: holds {string.Join(", ", o.Holds)} s, repeat {o.LateRepeat}, settle {o.SettleSeconds} s, deadline under test {NetworkFileOps.TimeoutMs} ms"
+                : $"hold {o.HoldSeconds} s, big file {o.BigMb} MB, lag {o.LagMs} ms, repeat {o.Repeat}, settle {o.SettleSeconds} s, deadline under test {NetworkFileOps.TimeoutMs} ms" },
             new[] { "log redirect / BugSnag", LoggerRigText(report.LoggerRig) }
         };
         sb.AppendLine(TextFormat.MarkdownTable(new[] { "item", "value" }, details));
@@ -178,6 +189,8 @@ internal static class ReportWriter
                 report.Controls.Select(c => (IReadOnlyList<string>)new[] { c.Name, c.Expectation, c.OutcomeText, c.Detail }).ToList()));
             sb.AppendLine();
         }
+
+        LateLandingReport.AppendMarkdown(sb, report);
 
         if (report.Results.Count > 0)
         {

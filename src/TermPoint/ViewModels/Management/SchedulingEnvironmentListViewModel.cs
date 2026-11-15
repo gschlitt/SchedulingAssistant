@@ -9,7 +9,7 @@ using System.Data.Common;
 
 namespace TermPoint.ViewModels.Management;
 
-public partial class SchedulingEnvironmentListViewModel : ViewModelBase, IDismissableEditor, IDisposable
+public partial class SchedulingEnvironmentListViewModel : ViewModelBase, IDismissableEditor, IUnappliedChangesHost, IDisposable
 {
     private readonly ISchedulingEnvironmentRepository _repo;
     private readonly ISectionRepository _sectionRepo;
@@ -45,6 +45,9 @@ public partial class SchedulingEnvironmentListViewModel : ViewModelBase, IDismis
     [ObservableProperty] private ObservableCollection<SchedulingEnvironmentValue> _items = new();
     [ObservableProperty] private SchedulingEnvironmentValue? _selectedItem;
     [ObservableProperty] private SchedulingEnvironmentEditViewModel? _editVm;
+
+    /// <inheritdoc/>
+    public IUnappliedChanges? FindUnappliedChanges() => UnappliedChangesFinder.First(EditVm);
 
     /// <inheritdoc/>
     public bool DismissActiveEditor()
@@ -182,7 +185,7 @@ public partial class SchedulingEnvironmentListViewModel : ViewModelBase, IDismis
             Name = SelectedItem.Name,
             SectionCodeAbbreviation = SelectedItem.SectionCodeAbbreviation,
             SortOrder = SelectedItem.SortOrder,
-        }.WithExtensionDataFrom(SelectedItem); // Save writes the whole copy back: keep unknown JSON fields (spec item 3).
+        }.WithExtensionDataFrom(SelectedItem); // Save writes the whole copy back: keep unknown JSON fields.
         EditVm = new SchedulingEnvironmentEditViewModel(copy, isNew: false,
             onSave: v => { _repo.Update(v); Load(); SelectedItem = Items.FirstOrDefault(x => x.Id == v.Id); EditVm = null; _sectionListVm.Reload(); },
             onCancel: () => EditVm = null,
@@ -211,7 +214,7 @@ public partial class SchedulingEnvironmentListViewModel : ViewModelBase, IDismis
 
         // Desktop builds wrap this in a DB transaction for atomicity; the WASM demo
         // uses in-memory repositories with no real connection, so tx is null there.
-        DbTransaction? tx = _db.SupportsTransactions ? _db.Connection.BeginTransaction() : null;
+        DbTransaction? tx = _db.BeginWriteTransaction();
         try
         {
             var sections = _sectionRepo.GetAll();

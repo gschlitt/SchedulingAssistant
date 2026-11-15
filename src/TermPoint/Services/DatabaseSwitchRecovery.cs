@@ -1,6 +1,6 @@
 namespace TermPoint.Services;
 
-/// <summary>How far a database switch had got when it stopped (spec item 4d).</summary>
+/// <summary>How far a database switch had got when it stopped.</summary>
 public enum SwitchPhase
 {
     /// <summary>
@@ -38,16 +38,14 @@ public enum SwitchResult
 
 /// <summary>
 /// The rules for what happens when a database switch does not end with the requested database open
-/// (spec item 4d), kept free of any UI so they can be unit-tested:
+///, kept free of any UI so they can be unit-tested:
 /// <list type="bullet">
 /// <item><description><see cref="Decide"/> — stay on the open database, or go to the chooser.</description></item>
 /// <item><description><see cref="RunChooserLoopAsync"/> — keep offering the chooser until a database opens or the user leaves.</description></item>
 /// </list>
 ///
-/// <para><b>Background:</b> a switch used to close the old database's services before checking the new
-/// one out. If the checkout then failed (unreachable, file gone, "Couldn't Open the Database" answered
-/// Close, …) <c>MainWindow.SwitchDatabaseAsync</c> just returned, leaving a window bound to a database that
-/// was no longer connected. The decided behaviour (user, 2026-10-12) is the same clean "no database
+/// <para><b>Background:</b> if a switch's checkout of the new database fails (unreachable, file gone, "Couldn't Open the Database" answered
+/// Close, …) the window must not stay bound to a database that is no longer connected. Instead it returns to the same clean "no database
 /// open" state as at startup: the window is covered and the startup chooser is shown, in recovery mode
 /// with <c>RecoveryReason.SwitchFailed</c>.</para>
 /// </summary>

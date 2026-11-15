@@ -26,7 +26,7 @@ public sealed class SavePromptTests
             SavePrompt.WriteFailedMessage);
         Assert.Equal(
             "TermPoint couldn't save because the file it wrote to the database location didn't pass its check. " +
-            "The database wasn't changed, and your changes are kept.",
+            "The database wasn't changed, and your changes are kept on this computer.",
             SavePrompt.VerifyFailedMessage);
         Assert.Equal(
             "TermPoint couldn't save because of an unexpected problem. Your changes are kept.",
@@ -116,7 +116,8 @@ public sealed class SavePromptTests
     public void EveryTransientText_SaysTheChangesAreKept()
     {
         foreach (var text in TransientTexts)
-            Assert.Contains("your changes are kept.", text, StringComparison.OrdinalIgnoreCase);
+            // The phrase alone, so "your changes are kept on this computer." (the verify text, 1.2.4 wording pass) counts.
+            Assert.Contains("your changes are kept", text, StringComparison.OrdinalIgnoreCase);
     }
 
     /// <summary>

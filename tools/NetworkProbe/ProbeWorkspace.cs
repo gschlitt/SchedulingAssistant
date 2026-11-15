@@ -110,7 +110,8 @@ internal sealed class ProbeWorkspace
             BigLocalFile: BigLocalPath,
             SmallDb: Path.Combine(dir, "small.db"),
             CopyDest: Path.Combine(dir, "copy.bin"),
-            MissingFile: Path.Combine(dir, "no-such-file"));
+            MissingFile: Path.Combine(dir, "no-such-file"),
+            LocalCopyDest: Path.Combine(LocalRoot, $"{caseId}-copy.bin"));
 
         if (def.Needs.HasFlag(Fixtures.SmallFile))
             RigIo.Run(() => File.WriteAllText(files.SmallFile, SmallText), RigIo.Short, "writing the small test file");
@@ -128,7 +129,36 @@ internal sealed class ProbeWorkspace
             RigIo.Run(() => File.Copy(SmallDbLocalPath, files.SmallDb, overwrite: true), RigIo.Short, "copying the small database");
         }
 
+        if (def.Needs.HasFlag(Fixtures.BackupSet))
+        {
+            // See Fixtures.BackupSet: two backups rotation deletes (with CSVs), two it keeps.
+            foreach (var name in new[]
+            {
+                "BIOL_2020-01-01_09-00-00.db", "BIOL_2020-01-01_09-00-00_2019-2020_sections.csv",
+                "BIOL_2020-01-01_12-00-00.db", "BIOL_2020-01-01_12-00-00_2019-2020_sections.csv",
+                "BIOL_2020-01-01_18-00-00.db", "BIOL_2020-01-02_09-00-00.db",
+            })
+                RigIo.Run(() => File.WriteAllText(Path.Combine(dir, name), SmallText), RigIo.Short, "writing a test backup file");
+        }
+
         return files;
+    }
+
+    /// <summary>
+    /// Creates a folder of its own on the share holding small text files with exact contents (the late-landing cases
+    /// need to tell "BEFORE" from nothing, and "OLD" from "NEW"). Runs while the network is normal.
+    /// </summary>
+    /// <param name="caseId">A unique folder name for this cycle, for example <c>late-delete-h10-1</c>.</param>
+    /// <param name="files">The files to create: a file name and the exact text it holds.</param>
+    /// <returns>The path of the new folder.</returns>
+    /// <exception cref="TimeoutException">The share stopped answering during set-up.</exception>
+    public string BuildTextFolder(string caseId, IReadOnlyList<(string Name, string Text)> files)
+    {
+        var dir = Path.Combine(ShareRoot, caseId);
+        RigIo.Run(() => Directory.CreateDirectory(dir), RigIo.Short, $"creating the folder for {caseId}");
+        foreach (var (name, text) in files)
+            RigIo.Run(() => File.WriteAllText(Path.Combine(dir, name), text), RigIo.Short, $"writing {name}");
+        return dir;
     }
 
     /// <summary>
@@ -137,7 +167,12 @@ internal sealed class ProbeWorkspace
     /// </summary>
     /// <param name="files">The case's paths.</param>
     /// <returns>True when the folder is gone.</returns>
-    public bool DeleteCase(CaseFiles files) => DeleteFolderOnce(files.Dir);
+    public bool DeleteCase(CaseFiles files)
+    {
+        // The reader-copy cases leave a local copy too; drop it now so a long run doesn't pile up large files.
+        RigIo.TryRun(() => { if (File.Exists(files.LocalCopyDest)) File.Delete(files.LocalCopyDest); }, RigIo.Short);
+        return DeleteFolderOnce(files.Dir);
+    }
 
     /// <summary>
     /// Deletes one folder on the share, once, without ever hanging. Best effort.

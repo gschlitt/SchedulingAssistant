@@ -10,7 +10,7 @@ using System.ComponentModel;
 
 namespace TermPoint.ViewModels.Management;
 
-public partial class SectionEditViewModel : ViewModelBase
+public partial class SectionEditViewModel : UnappliedChangesEditor
 {
     [ObservableProperty] private string? _selectedCourseId;
     [ObservableProperty] private string _sectionCode = string.Empty;
@@ -61,7 +61,11 @@ public partial class SectionEditViewModel : ViewModelBase
     [RelayCommand]
     private void DismissCapacityWarning() => CapacityWarning = null;
 
-    partial void OnCapacityTextChanged(string value) => CheckRoomCapacities();
+    partial void OnCapacityTextChanged(string value)
+    {
+        CheckRoomCapacities();
+        RefreshRoomBrowser();
+    }
 
     /// <summary>
     /// Scans every meeting's selected room and flags any whose known capacity is below the
@@ -139,6 +143,17 @@ public partial class SectionEditViewModel : ViewModelBase
     /// True when course is selected, section code is non-empty, and the code has been
     /// validated as unique (by CommitSectionCode on LostFocus or at construction).
     /// Purely derived from the validated course+code snapshot.
+    /// <para>
+    /// Second step of the editor's step-gate: course first (<see cref="IsSectionCodeEnabled"/>),
+    /// then a validated section code unlocks every other field. Keep this computed — do not
+    /// replace it with a mutable "validated" flag. Avalonia re-fires <c>SelectedValue</c> setters
+    /// after a ComboBox's <c>ItemsSource</c> loads; with a flag those re-fires could leave it wrong,
+    /// whereas here they only re-evaluate against an unchanged snapshot. Any real change to course
+    /// or code no longer matches the snapshot, so the gate closes without anyone resetting state.
+    /// The snapshot (<see cref="_validatedCourseId"/>, <see cref="_validatedSectionCode"/>) is set
+    /// only by a successful <c>CommitSectionCode</c>, or by the constructor when the section
+    /// already has both a course and a code (existing sections, and Copy with a derived code).
+    /// </para>
     /// </summary>
     public bool AreOtherFieldsEnabled =>
         !string.IsNullOrEmpty(SelectedCourseId)
@@ -394,6 +409,7 @@ public partial class SectionEditViewModel : ViewModelBase
     {
         foreach (var meeting in Meetings)
             meeting.SetSectionCampus(value);
+        RefreshRoomBrowser();
     }
 
     /// <summary>
@@ -494,7 +510,7 @@ public partial class SectionEditViewModel : ViewModelBase
     /// <param name="blockPatternRepository">Repository used to load saved block patterns.</param>
     /// <param name="roomTypes">Room type scheduling environment values for the room type dropdown.</param>
     /// <param name="outOfFocusInstructorIds">
-    /// Ids of instructors outside the subject focus (spec item 20): shown dimmed, with an "Other instructors"
+    /// Ids of instructors outside the subject focus: shown dimmed, with an "Other instructors"
     /// heading above the first of them when an in-focus instructor precedes it. Null or empty means no grouping.
     /// The caller must already have ordered <paramref name="instructors"/> so these come last.
     /// </param>
@@ -628,6 +644,15 @@ public partial class SectionEditViewModel : ViewModelBase
             }).ToList());
         WireSelectionSummary(InstructorSelections, nameof(InstructorSummary));
 
+        // Ticking or unticking an instructor can make or clear an instructor conflict (live conflict notice).
+        // The rows are fixed for the editor's lifetime, so per-row subscriptions are enough.
+        foreach (var row in InstructorSelections)
+            row.PropertyChanged += (_, e) =>
+            {
+                if (e.PropertyName == nameof(InstructorSelectionViewModel.IsSelected))
+                    RefreshConflictWarning();
+            };
+
         // Build single-select lists with a leading "(none)" sentinel
         SectionTypes = BuildSentinelList(sectionTypes);
 
@@ -673,7 +698,31 @@ public partial class SectionEditViewModel : ViewModelBase
         // adds missing ones.
         if (isNew && !string.IsNullOrEmpty(SelectedCourseId))
             MergeCourseTags(SelectedCourseId);
+
+        // Last of all, so "as opened" includes the merged tags and every other value set above.
+        TakeSnapshot();
     }
+
+    /// <summary>
+    /// The values this editor would save, as comparable text, for the unapplied-changes check.
+    /// Compared against the values at open, so a setter Avalonia re-fires with the same value changes nothing.
+    /// Unselected instructor and reserve rows are left out (their text is not saved).
+    /// </summary>
+    /// <returns>Comparable text; equal for equal values.</returns>
+    protected override string CaptureState() => UnappliedChangesKey.Of(
+        SelectedCourseId ?? "", SectionCode.Trim(), Notes.Trim(), SelectedFlag, CapacityText.Trim(),
+        SelectedSectionTypeId ?? "", SelectedCampusId ?? "",
+        InstructorSelections.Where(i => i.IsSelected).Select(i => UnappliedChangesKey.Of(i.Value.Id, i.ParsedWorkload ?? (object)i.WorkloadText.Trim())),
+        TagSelections.Where(t => t.IsSelected).Select(t => t.Value.Id),
+        ResourceSelections.Where(r => r.IsSelected).Select(r => r.Value.Id),
+        ReserveSelections.Where(r => r.IsSelected).Select(r => UnappliedChangesKey.Of(r.Value.Id, r.CodeText?.Trim())),
+        Meetings.Select(m => m.StateKey()));
+
+    /// <inheritdoc/>
+    protected override System.Windows.Input.ICommand ApplyCommand => SaveCommand;
+
+    /// <inheritdoc/>
+    protected override System.Windows.Input.ICommand CancelCommandForDiscard => CancelCommand;
 
     /// <summary>
     /// Wires up collection + per-item PropertyChanged so that the named summary property
@@ -728,8 +777,9 @@ public partial class SectionEditViewModel : ViewModelBase
     }
 
     /// <summary>
-    /// Subscribes to <see cref="Meetings"/> collection changes and each meeting's
-    /// <c>SelectedBlockLength</c> so the Room Browser command re-evaluates CanExecute.
+    /// Subscribes to <see cref="Meetings"/> collection changes and each meeting's property
+    /// changes so the Room Browser command re-evaluates CanExecute, and an open Room Browser
+    /// re-runs its search when a meeting is added, removed or changed.
     /// </summary>
     private void WireMeetingDurationWatch()
     {
@@ -738,19 +788,36 @@ public partial class SectionEditViewModel : ViewModelBase
 
         Meetings.CollectionChanged += (_, e) =>
         {
+            // Unsubscribe removed rows before subscribing added ones, so a Move (same row in
+            // both lists) stays subscribed.
+            if (e.OldItems is not null)
+                foreach (SectionMeetingViewModel m in e.OldItems)
+                    m.PropertyChanged -= OnMeetingBlockLengthChanged;
             if (e.NewItems is not null)
                 foreach (SectionMeetingViewModel m in e.NewItems)
                     m.PropertyChanged += OnMeetingBlockLengthChanged;
             OpenRoomBrowserCommand.NotifyCanExecuteChanged();
+            RefreshRoomBrowser();
+            RefreshConflictWarning();
         };
     }
 
+    /// <summary>
+    /// Handles a property change on any meeting row: re-evaluates the Room Browser command,
+    /// re-checks room capacities, and re-runs an open Room Browser. The re-run is cheap to
+    /// request on every change: it only recomputes when the search criteria actually differ.
+    /// </summary>
     private void OnMeetingBlockLengthChanged(object? sender, PropertyChangedEventArgs e)
     {
         if (e.PropertyName == nameof(SectionMeetingViewModel.SelectedBlockLength))
             OpenRoomBrowserCommand.NotifyCanExecuteChanged();
         else if (e.PropertyName == nameof(SectionMeetingViewModel.SelectedRoomId))
             CheckRoomCapacities();
+        RefreshRoomBrowser();
+
+        // Any change to a meeting (day, start, length, frequency, room) can make or clear a conflict. Changes
+        // that can't (meeting type, say) re-check too: the check is cheap and a same result changes nothing.
+        RefreshConflictWarning();
     }
 
     private static ObservableCollection<SchedulingEnvironmentValue> BuildSentinelList(
@@ -820,16 +887,11 @@ public partial class SectionEditViewModel : ViewModelBase
     {
         if (CreateRoomBrowser == null) return;
 
-        var specs = Meetings
-            .Select((m, i) => m.ToMeetingSpec(i))
-            .Where(s => s != null)
-            .Cast<MeetingSpec>()
-            .Where(s => !s.IsRemote)
-            .ToList();
+        var specs = SectionMeetingViewModel.ToBrowserSpecs(Meetings);
 
         if (specs.Count == 0)
         {
-            LastErrorMessage = "Every meeting must have a duration before browsing. Remote meetings are excluded.";
+            LastErrorMessage = RemoteOnlyBrowseMessage;
             return;
         }
 
@@ -850,12 +912,42 @@ public partial class SectionEditViewModel : ViewModelBase
         OnPropertyChanged(nameof(IsRoomBrowserOpen));
     }
 
+    /// <summary>Shown when every meeting is remote, so the Room Browser has nothing to search.</summary>
+    private const string RemoteOnlyBrowseMessage =
+        "Remote meetings don't need a room, so there is nothing to browse.";
+
+    /// <summary>
+    /// Re-runs an open Room Browser with the editor's current criteria (meeting rows,
+    /// capacity, campus). Does nothing when the browser is closed, or while a meeting has no
+    /// length yet (the search resumes once it has one). If every meeting has become remote,
+    /// the browser closes with the same message the Room Browser button gives.
+    /// </summary>
+    private void RefreshRoomBrowser()
+    {
+        if (RoomBrowserVm is null || !CanOpenRoomBrowser()) return;
+
+        var specs = SectionMeetingViewModel.ToBrowserSpecs(Meetings);
+        if (specs.Count == 0)
+        {
+            CloseRoomBrowser();
+            LastErrorMessage = RemoteOnlyBrowseMessage;
+            return;
+        }
+
+        RoomBrowserVm.UpdateCriteria(specs, CurrentSectionCapacity, CurrentSectionCampusId);
+    }
+
     /// <summary>
     /// Accepts a browser solution by filling in blank fields on existing meeting rows
     /// rather than creating new rows.
     /// </summary>
     private void AcceptBrowserSolution(IReadOnlyList<SpecSolution> solutions)
     {
+        // Close the browser first: filling in the meeting rows below would otherwise re-run it
+        // and push new ghost blocks onto the grid after Accept has cleared them.
+        RoomBrowserVm = null;
+        OnPropertyChanged(nameof(IsRoomBrowserOpen));
+
         // Disconnect pattern coupling so per-day solutions don't fight the propagation handler.
         TearDownPatternCoupling();
 
@@ -878,9 +970,6 @@ public partial class SectionEditViewModel : ViewModelBase
             if (string.IsNullOrEmpty(meeting.SelectedRoomId))
                 meeting.SelectedRoomId = sol.RoomId;
         }
-
-        RoomBrowserVm = null;
-        OnPropertyChanged(nameof(IsRoomBrowserOpen));
     }
 
     [RelayCommand]
@@ -1088,22 +1177,10 @@ public partial class SectionEditViewModel : ViewModelBase
         var originalAssignments = _section.InstructorAssignments;
         var originalReserves    = _section.Reserves;
 
-        // Meetings: each row remembers the schedule entry it was created from and carries its
-        // unknown fields in ToSchedule(). Rows added in this session have no original; rows
-        // removed here simply drop theirs.
-        _section.Schedule = Meetings
-            .Select(m => m.ToSchedule())
-            .Where(s => s is not null)
-            .Cast<SectionDaySchedule>()
-            .ToList();
-
-        // Multi-select instructors with workload. Rows map back to their original assignment by
-        // instructor id; a newly ticked instructor has no original, so FirstOrDefault gives null.
-        _section.InstructorAssignments = InstructorSelections
-            .Where(i => i.IsSelected)
-            .Select(i => new InstructorAssignment { InstructorId = i.Value.Id, Workload = i.ParsedWorkload }
-                .WithExtensionDataFrom(originalAssignments.FirstOrDefault(a => a.InstructorId == i.Value.Id)))
-            .ToList();
+        // Meetings and instructors are built by the same methods the live conflict check uses,
+        // so the check always sees exactly what a save stores.
+        _section.Schedule = BuildScheduleFromRows();
+        _section.InstructorAssignments = BuildAssignmentsFromRows(originalAssignments);
 
         // Single-select properties (treat empty string sentinel as null)
         _section.SectionTypeId = string.IsNullOrEmpty(SelectedSectionTypeId) ? null : SelectedSectionTypeId;
@@ -1128,7 +1205,91 @@ public partial class SectionEditViewModel : ViewModelBase
             .ToList();
 
         await _onSave(_section);
+        MarkApplied();
         RequestClose?.Invoke();
+    }
+
+    /// <summary>
+    /// Builds the section's schedule from the meeting rows. Used by <see cref="Save"/> and by the live conflict
+    /// check, so the check sees exactly what a save would store. Each row remembers the schedule entry it was
+    /// created from and carries that entry's unknown JSON fields in <see cref="SectionMeetingViewModel.ToSchedule"/>.
+    /// Rows added in this session have no original; rows removed here simply drop theirs. Rows without a start
+    /// time or a length are left out.
+    /// </summary>
+    /// <returns>A new list of new schedule entries; nothing in <c>_section</c> is changed.</returns>
+    private List<SectionDaySchedule> BuildScheduleFromRows() =>
+        Meetings
+            .Select(m => m.ToSchedule())
+            .Where(s => s is not null)
+            .Cast<SectionDaySchedule>()
+            .ToList();
+
+    /// <summary>
+    /// Builds the section's instructor assignments from the ticked instructor rows. Used by <see cref="Save"/> and
+    /// by the live conflict check. Rows map back to their original assignment by instructor ID, so each rebuilt
+    /// assignment keeps its original's unknown JSON fields; a newly ticked instructor has no original.
+    /// </summary>
+    /// <param name="originalAssignments">The assignments the section was loaded with.</param>
+    /// <returns>A new list of new assignments; nothing in <c>_section</c> is changed.</returns>
+    private List<InstructorAssignment> BuildAssignmentsFromRows(IReadOnlyList<InstructorAssignment> originalAssignments) =>
+        InstructorSelections
+            .Where(i => i.IsSelected)
+            .Select(i => new InstructorAssignment { InstructorId = i.Value.Id, Workload = i.ParsedWorkload }
+                .WithExtensionDataFrom(originalAssignments.FirstOrDefault(a => a.InstructorId == i.Value.Id)))
+            .ToList();
+
+    // ── Live conflict notice ─────────────
+
+    /// <summary>
+    /// Returns the room and instructor conflicts a draft of this section would have, one description each
+    /// (empty when none). Set by the parent VM after construction, like <see cref="CreateRoomBrowser"/>; while
+    /// null (tests, or no parent) no conflict notice is shown. Setting it runs a first check at once, so an
+    /// existing section that already has a conflict shows it as soon as the editor opens.
+    /// </summary>
+    public Func<Section, IReadOnlyList<string>>? CheckConflicts
+    {
+        get => _checkConflicts;
+        set
+        {
+            _checkConflicts = value;
+            RefreshConflictWarning();
+        }
+    }
+    private Func<Section, IReadOnlyList<string>>? _checkConflicts;
+
+    /// <summary>
+    /// Advisory listing the room and instructor conflicts this section would have if saved now, one per line,
+    /// or null when there are none. Non-blocking: Save still works, since some conflicts are intended.
+    /// Deliberately has no Dismiss: hiding it here would suggest the conflict had been muted, and it still shows
+    /// on the card after saving (muting is not yet available).
+    /// </summary>
+    [ObservableProperty] private string? _conflictWarning;
+
+    /// <summary>
+    /// Re-checks the unsaved edits for room and instructor conflicts and updates <see cref="ConflictWarning"/>.
+    /// Called when an instructor is ticked or unticked, and when a
+    /// meeting is added, removed or changed. The check reads a throwaway draft section built from the editor's
+    /// rows: <c>_section</c> is never touched, so Cancel still discards everything. Cheap (well under a
+    /// millisecond for a semester of a few hundred sections), so no debouncing is needed.
+    /// </summary>
+    private void RefreshConflictWarning()
+    {
+        if (_checkConflicts is null) return;
+
+        // Only the fields the detectors read are filled in. The draft is never saved, so it needs none of the
+        // other fields and no WithExtensionDataFrom: nothing of the original can be lost through it.
+        var draft = new Section
+        {
+            Id = _section.Id,
+            SemesterId = _section.SemesterId,
+            CourseId = SelectedCourseId,
+            SectionCode = SectionCode.Trim(),
+            Schedule = BuildScheduleFromRows(),
+            InstructorAssignments = BuildAssignmentsFromRows(_section.InstructorAssignments),
+        };
+
+        var lines = _checkConflicts(draft);
+        ConflictWarning = lines.Count == 0 ? null : string.Join("\n", lines);
     }
 
     [RelayCommand]

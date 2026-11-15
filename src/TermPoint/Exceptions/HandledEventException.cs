@@ -1,7 +1,7 @@
 namespace TermPoint.Exceptions;
 
 /// <summary>
-/// The kinds of handled event TermPoint reports to the developers (spec item 7): problems the application dealt with,
+/// The kinds of handled event TermPoint reports to the developers: problems the application dealt with,
 /// and that the user has already been told about or needs no message for, but whose frequency in the field matters.
 /// Each kind is reported at most once per run (<see cref="Services.HandledEventReporter"/>).
 /// </summary>
@@ -48,10 +48,22 @@ public enum HandledEvent
 
     /// <summary>The previous TermPoint session on this computer ended without exiting normally (crash, force-quit, power loss).</summary>
     PreviousSessionEndedUnexpectedly,
+
+    /// <summary>A save's rename onto the database was refused: the file was in use or access was denied (after the rename's own retries).</summary>
+    SaveRenameBlocked,
+
+    /// <summary>The process was still alive well after its exit teardown had finished, so the shutdown backstop ended it.</summary>
+    ShutdownBackstopFired,
+
+    /// <summary>A save worked after one or more failed saves in a row (informational, up to 3 per run).</summary>
+    SaveRecovered,
+
+    /// <summary>A reader's Refresh worked after one or more failed Refreshes in a row (informational, up to 3 per run).</summary>
+    RefreshRecovered,
 }
 
 /// <summary>
-/// The named exception of a HANDLED-EVENT REPORT (spec item 7): never thrown to anyone (the event has been dealt
+/// The named exception of a HANDLED-EVENT REPORT: never thrown to anyone (the event has been dealt
 /// with); it exists so BugSnag receives an error that has a name, groups sensibly and carries a stack trace of where
 /// the event was found. <see cref="Services.HandledEventReporter"/> creates it and hands it to
 /// <see cref="Services.IAppLogger.ReportHandled"/>. Modelled on <see cref="SaveFailedException"/>.
@@ -87,6 +99,10 @@ public sealed class HandledEventException : Exception
         HandledEvent.RefreshNotResponding               => "Refresh failed: the database location did not respond",
         HandledEvent.RefreshConnectionLost              => "Refresh failed and lost the connection to the database",
         HandledEvent.PreviousSessionEndedUnexpectedly   => "The previous session ended without exiting normally",
+        HandledEvent.SaveRenameBlocked                  => "Save rename refused: the file was in use or access was denied",
+        HandledEvent.ShutdownBackstopFired              => "Exit: the main loop did not end after the teardown; the process was ended",
+        HandledEvent.SaveRecovered                      => "Save recovered after failing",
+        HandledEvent.RefreshRecovered                   => "Refresh recovered after failing",
         _                                               => "Handled event: " + kind,
     };
 }

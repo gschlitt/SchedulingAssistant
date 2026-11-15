@@ -1,7 +1,7 @@
 namespace TermPoint.Services;
 
 /// <summary>
-/// Every user-facing text of "Restore from backup" (spec item 5, steps 5b and 5c): the confirmations, the wait
+/// Every user-facing text of "Restore from backup": the confirmations, the wait
 /// dialog, the panel's description and read-only note, the database chooser's destination status lines, and one
 /// message for each <see cref="RestoreOutcome"/> in each place the user can meet it (<see cref="RestoreContext"/>).
 /// Kept out of <c>MainWindow</c> and the view models so the wording — including the rule that a message names the
@@ -52,7 +52,16 @@ public static class RestorePrompt
     public const string SaveFailedMessage =
         "Your latest changes couldn't be saved, so the restore wasn't started. Your database is unchanged.";
 
-    // ── Fixed texts: the database chooser (step 5c) ───────────────────────────
+    /// <summary>
+    /// Body shown when the save before the restore worked but an edit arrived while it ran, twice in a row:
+    /// that edit is not in the database yet, and a restore would delete it, so the restore was not started.
+    /// Nothing failed and the edit is safe (its marker is kept and autosave saves it), so this is not the save-failed text.
+    /// </summary>
+    public const string EditDuringSaveMessage =
+        "You made a change while TermPoint was saving before the restore, so the restore wasn't started. " +
+        "Your change is kept and will be saved as usual. Start the restore again when you're ready.";
+
+    // ── Fixed texts: the database chooser ───────────────────────────
 
     /// <summary>Title of the chooser's confirmation, shown only when the restore would replace an existing database.</summary>
     public const string ChooserConfirmTitle = "Restore from Backup";
@@ -154,7 +163,7 @@ public static class RestorePrompt
     /// produced) is treated as <see cref="RestoreOutcome.Failed"/>, so the user always gets a sentence that is
     /// true — nothing changed.
     ///
-    /// <para>The Save &amp; Backup wording (the default context) is the approved text of step 5b and must not
+    /// <para>The Save &amp; Backup wording (the default context) is the approved text and must not
     /// change. The chooser differs where the situation does: nobody is restarting (the database opens), a
     /// refusal can name the person editing, and on the create path an unchanged destination reads "Nothing was
     /// created." because there was no database there to leave alone.</para>

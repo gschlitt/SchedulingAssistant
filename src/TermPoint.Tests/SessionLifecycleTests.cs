@@ -322,11 +322,10 @@ public sealed class SessionLifecycleTests : SessionLifecycleTestBase
         Assert.False(File.Exists(MarkerOf(kept)));                               // kept files deleted only after the copy landed
         Assert.Equal(ColleagueValue, NewestValue(_host.OpenCalls.Single().WorkingPath));   // normal open: a fresh copy of the changed D
 
-        // Quirk, pinned as it is today: `recoverUnsaved` stays true after the user chose Restore even though the
-        // conflict made the checkout run again as a normal one, so the "make restored changes durable" save still
-        // runs after the window is wired up. It copies the fresh D' (identical to D) back over D: needless but
-        // harmless, and D still holds the colleague's change.
-        AssertInOrder(_trace, "host:SetupWindow", "checkout:SaveCompleted");
+        // F23 fixed: the user chose Restore, but the conflict made the checkout run again as a normal one, so nothing was
+        // restored and the "make restored changes durable" save must NOT run (a failing one would claim the changes are kept).
+        AssertInOrder(_trace, "host:SetupWindow");
+        Assert.DoesNotContain("checkout:SaveCompleted", _trace);
         Assert.Equal(ColleagueValue, NewestValue(db));
         Assert.True(_lockSvc.IsWriter);
         AssertScriptConsumed();
@@ -360,6 +359,94 @@ public sealed class SessionLifecycleTests : SessionLifecycleTestBase
         AssertScriptConsumed();
     }
 
+    /// <summary>The "Recovery:" lines the keep-or-discard questions wrote to the log so far, in order (field reporting, 1.2.4 item 7.4).</summary>
+    private List<string> RecoveryLines()
+    {
+        lock (_logger.Infos) return _logger.Infos.Where(l => l.StartsWith("Recovery:", StringComparison.Ordinal)).ToList();
+    }
+
+    /// <summary>Restore on "Restore Unsaved Changes?" writes exactly one line.</summary>
+    [Fact]
+    public async Task Open_KeptChanges_Restore_LogsTheAnswer()
+    {
+        var db = NewDb();
+        await LeaveKeptChangesAsync(db, colleagueChangedD: false);
+        _prompts.ExpectChoice("Restore Unsaved Changes?", true);
+
+        await StartupAsync(db);
+
+        Assert.Equal(new[] { "Recovery: \"Restore Unsaved Changes?\" answered Restore." }, RecoveryLines());
+    }
+
+    /// <summary>
+    /// Every path of the "Restore Unsaved Changes?" loop writes its line, in order: the window's X, Discard, Go Back
+    /// (by button), Discard again, the confirmation's own X (folded into Go Back), then Discard and the confirmed discard.
+    /// </summary>
+    [Fact]
+    public async Task Open_KeptChanges_EveryAnswerPath_LogsExactlyTheListedLinesInOrder()
+    {
+        var db = NewDb();
+        await LeaveKeptChangesAsync(db, colleagueChangedD: false);
+        _prompts.ExpectChoice("Restore Unsaved Changes?", ChoiceAnswer.ClosedWithX)
+                .ExpectChoice("Restore Unsaved Changes?", false)
+                .ExpectChoice("Discard Unsaved Changes?", false /* Go Back */)
+                .ExpectChoice("Restore Unsaved Changes?", false)
+                .ExpectChoice("Discard Unsaved Changes?", ChoiceAnswer.ClosedWithX)
+                .ExpectChoice("Restore Unsaved Changes?", false)
+                .ExpectChoice("Discard Unsaved Changes?", true);
+
+        await StartupAsync(db);
+
+        const string ask = "Recovery: \"Restore Unsaved Changes?\"";
+        const string confirm = "Recovery: \"Discard Unsaved Changes?\"";
+        Assert.Equal(new[]
+        {
+            ask + " closed with the window's X; asking again.",
+            ask + " answered Discard; asking to confirm.",
+            confirm + " answered Go Back; asking again.",
+            ask + " answered Discard; asking to confirm.",
+            confirm + " answered Go Back; asking again.",
+            ask + " answered Discard; asking to confirm.",
+            confirm + " answered Discard; the kept changes will be discarded.",
+        }, RecoveryLines());
+        AssertScriptConsumed();
+    }
+
+    /// <summary>"Can't Restore Unsaved Changes" logs the same shapes with its own title and labels (Save a Copy… / Discard).</summary>
+    [Fact]
+    public async Task Open_CantRestore_Answers_LogWithTheirOwnTitleAndLabels()
+    {
+        var db = NewDb();
+        await LeaveKeptChangesAsync(db, colleagueChangedD: true);
+        _prompts.ExpectChoice("Restore Unsaved Changes?", true)
+                .ExpectChoice("Can't Restore Unsaved Changes", false)
+                .ExpectChoice("Discard Unsaved Changes?", true);
+
+        await StartupAsync(db);
+
+        Assert.Equal(new[]
+        {
+            "Recovery: \"Restore Unsaved Changes?\" answered Restore.",
+            "Recovery: \"Can't Restore Unsaved Changes\" answered Discard; asking to confirm.",
+            "Recovery: \"Discard Unsaved Changes?\" answered Discard; the kept changes will be discarded.",
+        }, RecoveryLines());
+    }
+
+    /// <summary>The keep button of "Can't Restore Unsaved Changes" logs its own label, "Save a Copy…" as written.</summary>
+    [Fact]
+    public async Task Open_CantRestore_SaveACopy_LogsTheButtonLabelAsWritten()
+    {
+        var db = NewDb();
+        await LeaveKeptChangesAsync(db, colleagueChangedD: true);
+        _prompts.ExpectChoice("Restore Unsaved Changes?", true)
+                .ExpectChoice("Can't Restore Unsaved Changes", true)
+                .ExpectPick("Save Recovered Copy", Path.Combine(_shareDir, "recovered-log.db"));
+
+        await StartupAsync(db);
+
+        Assert.Equal("Recovery: \"Can't Restore Unsaved Changes\" answered Save a Copy….", RecoveryLines()[1]);
+    }
+
     /// <summary>
     /// Discard, then Discard, on "Can't Restore Unsaved Changes": "Discard Unsaved Changes?" follows with the extra line that
     /// points back to Save a Copy…, and only its [Discard] deletes the kept changes — with no export. The database opens normally.
@@ -385,6 +472,29 @@ public sealed class SessionLifecycleTests : SessionLifecycleTestBase
         Assert.False(File.Exists(MarkerOf(kept)));
         Assert.Equal(ColleagueValue, NewestValue(_host.OpenCalls.Single().WorkingPath));
         Assert.Empty(Directory.GetFiles(_shareDir, "*.db").Where(f => f != db));    // nothing was exported
+        Assert.DoesNotContain("checkout:SaveCompleted", _trace);                    // F23: nothing restored, so no post-open save
+        AssertScriptConsumed();
+    }
+
+    /// <summary>
+    /// F23, the harness route: the recovery conflicts and the person discards the kept changes. No post-open save may START at
+    /// all: it is the one that, with the database in use by another program, fails with a banner saying "your changes are kept".
+    /// (Counting started saves proves it without needing a failing share.)
+    /// </summary>
+    [Fact]
+    public async Task Open_CantRestore_Discard_StartsNoPostOpenSave_F23Fixed()
+    {
+        var db = NewDb();
+        await LeaveKeptChangesAsync(db, colleagueChangedD: true);
+        _prompts.ExpectChoice("Restore Unsaved Changes?", true)
+                .ExpectChoice("Can't Restore Unsaved Changes", false)
+                .ExpectChoice("Discard Unsaved Changes?", true);
+        var savesStarted = 0;
+        _checkout.SaveStarted += () => savesStarted++;
+
+        await StartupAsync(db);
+
+        Assert.Equal(0, savesStarted);
         AssertScriptConsumed();
     }
 
@@ -544,7 +654,7 @@ public sealed class SessionLifecycleTests : SessionLifecycleTestBase
                     "Someone else is editing this database right now, so your unsaved changes from last time can't be added yet. " +
                     "They're kept on this computer. " +
                     "TermPoint will offer to add them to the database the next time you open it for editing. " +
-                    "If someone else changes the database first, they can't be added, but you'll be able to save them as a separate copy.");
+                    "If someone else changes the database first, the changes can't be added, but you'll be able to save them as a separate copy.");
 
         var next = await StartupAsync(db);
 
@@ -646,7 +756,7 @@ public sealed class SessionLifecycleTests : SessionLifecycleTestBase
         var db = NewDb();
         _checkout.FaultPlan = CheckoutFaultPlan.Parse("unreachable");
         _prompts.ExpectMessage(
-            "Network Unreachable", "Cannot reach the database — check your network connection and try again.");
+            "Network Unreachable", "Cannot reach the database or server — check your network connection and try again.");
 
         var next = await StartupAsync(db);
 
@@ -982,7 +1092,7 @@ public sealed class SessionLifecycleTests : SessionLifecycleTestBase
             "Changes Not Saved",
             "Your latest changes to \"a\" couldn't be saved. They're kept on this computer. " +
             "TermPoint will offer to add them to \"a\" the next time you open it for editing. " +
-            "If someone else changes it first, they can't be added, but you'll be able to save them as a separate copy.");
+            "If someone else changes it first, the changes can't be added, but you'll be able to save them as a separate copy.");
 
         var opened = await _lifecycle.SwitchDatabaseAsync(b);
         _checkout.BeforeTmpVerifyAsync = null;
@@ -999,6 +1109,89 @@ public sealed class SessionLifecycleTests : SessionLifecycleTestBase
         Assert.Equal(b, _checkout.SourcePath);
         Assert.True(_host.IsDatabaseOpen);
         Assert.False(_guard.IsHeld(a));
+        AssertScriptConsumed();
+    }
+
+    /// <summary>
+    /// Asserts that no save started or completed after the last "host:SetupWindow" in the trace: the post-open save of restored changes
+    /// (F23). Saves BEFORE it (a switch saves the database it leaves) are legitimate and ignored.
+    /// </summary>
+    private void AssertNoSaveAfterTheWindowWasWired()
+    {
+        var wired = _trace.LastIndexOf("host:SetupWindow");
+        Assert.True(wired >= 0, "the window was never wired");
+        Assert.DoesNotContain(_trace.Skip(wired + 1), t => t == "test:SaveStarted" || t == "checkout:SaveCompleted");
+    }
+
+    /// <summary>
+    /// F23 on the switch route: B has kept changes that conflict (a colleague changed B) and the person chooses Discard (confirmed).
+    /// The switch opens B normally and no post-open save starts, because nothing was restored.
+    /// </summary>
+    [Fact]
+    public async Task Switch_KeptChangesConflict_Discard_StartsNoPostOpenSave_F23Fixed()
+    {
+        var a = NewDb("a.db");
+        var b = NewDb("b.db");
+        await LeaveKeptChangesAsync(b, colleagueChangedD: true);
+        await OpenCleanAsync(a);
+        _prompts.ExpectChoice("Restore Unsaved Changes?", true)
+                .ExpectChoice("Can't Restore Unsaved Changes", false)
+                .ExpectChoice("Discard Unsaved Changes?", true);
+        _checkout.SaveStarted += () => _trace.Add("test:SaveStarted");
+
+        var opened = await _lifecycle.SwitchDatabaseAsync(b);
+
+        Assert.True(opened);
+        Assert.Equal(b, _checkout.SourcePath);
+        AssertNoSaveAfterTheWindowWasWired();
+        Assert.Equal(ColleagueValue, NewestValue(b));
+        AssertScriptConsumed();
+    }
+
+    /// <summary>
+    /// F23 on the switch route, the other answer: Save a Copy… of the conflicting kept changes, then the switch opens B normally
+    /// and again no post-open save starts.
+    /// </summary>
+    [Fact]
+    public async Task Switch_KeptChangesConflict_SaveACopy_StartsNoPostOpenSave_F23Fixed()
+    {
+        var a = NewDb("a.db");
+        var b = NewDb("b.db");
+        await LeaveKeptChangesAsync(b, colleagueChangedD: true);
+        await OpenCleanAsync(a);
+        var export = Path.Combine(_shareDir, "recovered.db");
+        _prompts.ExpectChoice("Restore Unsaved Changes?", true)
+                .ExpectChoice("Can't Restore Unsaved Changes", true)
+                .ExpectPick("Save Recovered Copy", export);
+        _checkout.SaveStarted += () => _trace.Add("test:SaveStarted");
+
+        var opened = await _lifecycle.SwitchDatabaseAsync(b);
+
+        Assert.True(opened);
+        AssertNoSaveAfterTheWindowWasWired();
+        Assert.Equal(UnsavedValue, NewestValue(export));
+        Assert.Equal(ColleagueValue, NewestValue(b));
+        AssertScriptConsumed();
+    }
+
+    /// <summary>
+    /// F23 must not break the real thing: a switch to a database with restorable kept changes (nobody changed it) restores them and
+    /// the post-open save makes them durable in the shared database at once.
+    /// </summary>
+    [Fact]
+    public async Task Switch_KeptChanges_Restore_RunsThePostOpenSave()
+    {
+        var a = NewDb("a.db");
+        var b = NewDb("b.db");
+        await LeaveKeptChangesAsync(b, colleagueChangedD: false);
+        await OpenCleanAsync(a);
+        _prompts.ExpectChoice("Restore Unsaved Changes?", true);
+
+        var opened = await _lifecycle.SwitchDatabaseAsync(b);
+
+        Assert.True(opened);
+        AssertInOrder(_trace, "host:SetupWindow", "checkout:SaveCompleted");
+        Assert.Equal(UnsavedValue, NewestValue(b));
         AssertScriptConsumed();
     }
 
@@ -1019,7 +1212,7 @@ public sealed class SessionLifecycleTests : SessionLifecycleTestBase
         var c = NewDb("c.db");
         await OpenCleanAsync(a);
         _checkout.FaultPlan = CheckoutFaultPlan.Parse("unreachable:1");
-        _prompts.ExpectMessage("Network Unreachable", "Cannot reach the database — check your network connection and try again.")
+        _prompts.ExpectMessage("Network Unreachable", "Cannot reach the database or server — check your network connection and try again.")
                 .ExpectChooser(c, $"Recovery|SwitchFailed|{b}");
 
         var opened = await _lifecycle.SwitchDatabaseAsync(b);
@@ -1173,6 +1366,90 @@ public sealed class SessionLifecycleTests : SessionLifecycleTestBase
         AssertPrompts("Choice:Restore Unsaved Changes?");
         Assert.Equal("kept-edit", NewestValue(_host.OpenCalls.Single().WorkingPath));
         Assert.Equal("kept-edit", NewestValue(a));                   // saved right after the reopen
+        AssertScriptConsumed();
+    }
+
+    // ── 4.7 D1: kept changes another program holds are never archived or deleted ──
+
+    /// <summary>
+    /// 1.2.4 item 4.7, D1: the kept D' is held by another program (FileShare.None). The user is shown the "in use,
+    /// your changes are kept" prompt, chooses Close, and the open is given up BEFORE any checkout: no lock file, no
+    /// services, the window closed, and D' with its marker untouched and no archive made. The next open can ask again.
+    /// </summary>
+    [Fact]
+    public async Task Open_KeptChanges_HeldByAnotherProgram_Close_GivesUpBeforeAnyCheckout()
+    {
+        var db = NewDb();
+        var kept = await LeaveKeptChangesAsync(db, colleagueChangedD: false);
+        SqliteConnection.ClearAllPools();
+        _checkout.GateRetryDelay = _ => Task.CompletedTask;
+        _prompts.ExpectChoice(
+            LocalCopyCheckPrompt.CouldntOpenTitle, false, LocalCopyCheckPrompt.InUseWithKeptChangesMessage);
+
+        using (new FileStream(kept, FileMode.Open, FileAccess.ReadWrite, FileShare.None))
+        {
+            var next = await StartupAsync(db);
+            Assert.Null(next);
+        }
+
+        AssertPrompts("Choice:Couldn't Open the Database");
+        Assert.Equal("Try again|Close", _prompts.Calls.Single().Buttons);
+        Assert.Empty(_host.OpenCalls);
+        Assert.False(File.Exists(LockOf(db)), "no checkout, so no lock file");
+        Assert.False(_lockSvc.IsWriter);
+        Assert.Contains("host:CloseWindow", _trace);
+        Assert.True(File.Exists(kept), "the kept changes must be untouched");
+        Assert.True(File.Exists(MarkerOf(kept)), "the marker must be untouched");
+        Assert.Empty(Directory.GetFiles(_workingDir, "*corrupt*"));
+        Assert.Equal("original", NewestValue(db));
+        AssertScriptConsumed();
+    }
+
+    /// <summary>
+    /// D' is held when the first question is asked; the user presses Try again after the other program let go. The
+    /// inspection runs again, now finds D' readable, and the ordinary "Restore Unsaved Changes?" follows; Restore works.
+    /// </summary>
+    [Fact]
+    public async Task Open_KeptChanges_HeldThenReleased_TryAgain_AsksRestoreQuestion()
+    {
+        var db = NewDb();
+        var kept = await LeaveKeptChangesAsync(db, colleagueChangedD: false);
+        SqliteConnection.ClearAllPools();
+        _checkout.GateRetryDelay = _ => Task.CompletedTask;
+        var holder = new FileStream(kept, FileMode.Open, FileAccess.ReadWrite, FileShare.None);
+        _prompts.ExpectChoice(
+                    LocalCopyCheckPrompt.CouldntOpenTitle, true, LocalCopyCheckPrompt.InUseWithKeptChangesMessage,
+                    before: () => holder.Dispose())            // the other program lets go before Try again
+                .ExpectChoice("Restore Unsaved Changes?", true);
+
+        try { await StartupAsync(db); }
+        finally { holder.Dispose(); }
+
+        AssertPrompts("Choice:Couldn't Open the Database", "Choice:Restore Unsaved Changes?");
+        Assert.Equal(kept, _checkout.WorkingPath);
+        Assert.Equal(UnsavedValue, NewestValue(db));               // restored, then saved
+        Assert.Empty(Directory.GetFiles(_workingDir, "*corrupt*"));
+        AssertScriptConsumed();
+    }
+
+    /// <summary>
+    /// A truly damaged D' (garbage over it) behaves exactly as before: archived, "Unsaved Changes Lost" shown, and the
+    /// database then opens normally from a fresh copy of D.
+    /// </summary>
+    [Fact]
+    public async Task Open_KeptChanges_Damaged_IsArchivedAsBefore()
+    {
+        var db = NewDb();
+        var kept = await LeaveKeptChangesAsync(db, colleagueChangedD: false);
+        SqliteConnection.ClearAllPools();
+        File.WriteAllText(kept, "garbage-not-a-database-garbage-not-a-database");
+        _prompts.ExpectMessage(LocalCopyCheckPrompt.UnsavedChangesLostTitle, LocalCopyCheckPrompt.UnsavedChangesLostMessage);
+
+        await StartupAsync(db);
+
+        AssertPrompts("Message:Unsaved Changes Lost");
+        Assert.Single(Directory.GetFiles(_workingDir, "*corrupt*").Where(f => !f.EndsWith(".dirty")));
+        Assert.Equal("original", NewestValue(_host.OpenCalls.Single().WorkingPath));
         AssertScriptConsumed();
     }
 }

@@ -23,7 +23,7 @@ namespace TermPoint.Services.SectionImport;
 /// </summary>
 public sealed class ImportFileReader
 {
-    // ── Limits (design decision E4) ───────────────────────────────────────────
+    // ── Limits ────────────────────────────────────────────────────────────────
 
     /// <summary>The largest file, in bytes, that will be read (10 MB).</summary>
     internal const int MaxFileBytes = 10 * 1024 * 1024;

@@ -12,8 +12,7 @@ namespace TermPoint.Services;
 /// <param name="Result">The verdict; meaningless unless <paramref name="Completed"/>.</param>
 /// <param name="Summary">SQLite's short account of why the copy did not pass; null when it passed.</param>
 /// <param name="Evidence">
-/// What lay behind a Damaged verdict (<see cref="DamageEvidence"/>); decides whether the damage is reported (spec item
-/// 5, step 5e). <see cref="DamageEvidence.None"/> for every other verdict.
+/// What lay behind a Damaged verdict (<see cref="DamageEvidence"/>); decides whether the damage is reported. <see cref="DamageEvidence.None"/> for every other verdict.
 /// </param>
 /// <param name="Injected">
 /// True when the verdict was made up by the DEBUG fault plan (<see cref="IntegrityFaultPlan"/>). Fake damage is acted
@@ -28,21 +27,21 @@ public readonly record struct LocalCopyCheck(
 
 /// <summary>
 /// The open-time integrity check of the local copy — D' for a writer, D'' for a reader — and the re-check of the
-/// shared database that follows a failure (spec item 5, step 5d). Pulled out of <c>App.InitializeServices</c> so
+/// shared database that follows a failure. Pulled out of <c>App.InitializeServices</c> so
 /// the three-way verdict and its retry count can be unit-tested without building a DI container.
 ///
 /// <para><b>Three-way.</b> A copy that another program holds open (antivirus checking a file that was just copied)
-/// used to count as damaged, because the check was a yes/no. It is now Ok / Locked / Damaged
+/// does not count as damaged: the check is Ok / Locked / Damaged
 /// (<see cref="IntegrityCheckResult"/>): a locked copy is retried quietly (<see cref="MaxAttempts"/> attempts in
 /// all, <see cref="RetryDelay"/> apart) and, if it stays locked, reported as <c>DatabaseInUseException</c>; only
 /// positive evidence of damage is <c>DatabaseCorruptException</c>.</para>
 /// </summary>
 public static class LocalCopyIntegrity
 {
-    /// <summary>How many times the check is attempted, in all, before a copy that stays unreadable is reported as in use (decision, 2026-10-14).</summary>
+    /// <summary>How many times the check is attempted, in all, before a copy that stays unreadable is reported as in use</summary>
     public const int MaxAttempts = 3;
 
-    /// <summary>How long to wait between two attempts (decision, 2026-10-14).</summary>
+    /// <summary>How long to wait between two attempts</summary>
     public static readonly TimeSpan RetryDelay = TimeSpan.FromSeconds(1);
 
     /// <summary>
@@ -148,7 +147,7 @@ public static class LocalCopyIntegrity
 
                 case IntegrityCheckResult.Damaged:
                     logger.LogInfo($"LocalCopyIntegrity: the local copy failed its integrity check ({run.Summary}).");
-                    // Spec item 5, step 5e: positive evidence of damage inside the copy goes to the developers (once per
+                    // Positive evidence of damage inside the copy goes to the developers (once per
                     // run). A fault injected by the DEBUG plan never does. Never throws, and no path is sent.
                     DatabaseDamageReporter.ReportIfDamaged(
                         DamagedFileKind.LocalCopy, run.Evidence, run.Summary, logger, injected: run.Injected);
@@ -187,7 +186,7 @@ public static class LocalCopyIntegrity
             return DatabaseValidationResult.Corrupt;
         }
 
-        // The real check: the front-door validator reports positive evidence of damage as SharedDatabase (step 5e).
+        // The real check: the front-door validator reports positive evidence of damage as SharedDatabase.
         return await DatabaseValidator.ValidateAsync(sharedPath, logger: logger);
     }
 

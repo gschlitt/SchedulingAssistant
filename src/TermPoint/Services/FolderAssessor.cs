@@ -250,52 +250,66 @@ public class FolderAssessor
     /// <summary>
     /// Assesses a single candidate path and returns a <see cref="FolderSuggestion"/>
     /// if it passes all checks, or null if it should be skipped.
+    ///
+    /// <para>A local candidate is assessed inline (local disks answer at once). A network candidate runs its WHOLE
+    /// assessment (the <see cref="Assess"/> call, both <c>Directory.Exists</c> calls, the ancestor walk and the
+    /// writability probe) inside one <see cref="RunWithTimeout{T}"/> bounded by <see cref="DriveProbeTimeoutMs"/>:
+    /// each of those is a raw filesystem call that can block for the full SMB timeout on a mapped drive that has
+    /// stopped answering. A time-out means "no suggestion for that drive", the same as a
+    /// drive that failed its readiness check.</para>
     /// </summary>
-    private async Task<FolderSuggestion?> AssessCandidateAsync(
+    /// <param name="candidatePath">The folder to assess.</param>
+    /// <param name="description">Short label shown with the suggestion.</param>
+    /// <param name="isNetwork">True when the candidate is on a mapped network drive (the whole assessment gets a deadline).</param>
+    /// <returns>The suggestion, or null when the candidate is unsuitable or the network drive did not answer in time.</returns>
+    internal async Task<FolderSuggestion?> AssessCandidateAsync(
         string candidatePath, string description, bool isNetwork)
     {
         try
         {
-            var assessment = Assess(candidatePath);
+            if (!isNetwork)
+                return AssessCandidate(candidatePath, description);
 
-            if (assessment.Warnings.Any(w => w.Kind != WarningKind.NotWritable))
-                return null;
-
-            bool writable;
-            if (Directory.Exists(candidatePath))
-            {
-                writable = assessment.IsWritable;
-            }
-            else
-            {
-                var testDir = FindExistingAncestor(candidatePath);
-                if (testDir == null) return null;
-
-                if (isNetwork)
-                {
-                    var (completed, result) = await RunWithTimeout(
-                        () => {
-                            var p = _writabilityProbe ?? WriteAccessProbe.CanCreateFileIn;
-                            return p(testDir);
-                        }, DriveProbeTimeoutMs);
-                    writable = completed && result;
-                }
-                else
-                {
-                    var probe = _writabilityProbe ?? WriteAccessProbe.CanCreateFileIn;
-                    writable = probe(testDir);
-                }
-            }
-
-            if (!writable) return null;
-
-            return new FolderSuggestion(
-                candidatePath, description, Directory.Exists(candidatePath));
+            var (completed, suggestion) = await RunWithTimeout(
+                () => AssessCandidate(candidatePath, description), DriveProbeTimeoutMs);
+            return completed ? suggestion : null;
         }
         catch
         {
             return null;
         }
+    }
+
+    /// <summary>
+    /// The synchronous body of <see cref="AssessCandidateAsync"/>: every filesystem call a candidate assessment makes.
+    /// Runs inline for a local candidate and on a thread-pool thread under a deadline for a network one.
+    /// </summary>
+    /// <param name="candidatePath">The folder to assess.</param>
+    /// <param name="description">Short label shown with the suggestion.</param>
+    /// <returns>The suggestion, or null when the candidate is unsuitable.</returns>
+    private FolderSuggestion? AssessCandidate(string candidatePath, string description)
+    {
+        var assessment = Assess(candidatePath);
+
+        if (assessment.Warnings.Any(w => w.Kind != WarningKind.NotWritable))
+            return null;
+
+        bool writable;
+        var exists = Directory.Exists(candidatePath);
+        if (exists)
+        {
+            writable = assessment.IsWritable;
+        }
+        else
+        {
+            var testDir = FindExistingAncestor(candidatePath);
+            if (testDir == null) return null;
+
+            var probe = _writabilityProbe ?? WriteAccessProbe.CanCreateFileIn;
+            writable = probe(testDir);
+        }
+
+        return writable ? new FolderSuggestion(candidatePath, description, exists) : null;
     }
 
     /// <summary>
@@ -369,7 +383,7 @@ public class FolderAssessor
             }
         }
 
-        // SharePoint and Teams libraries synced through OneDrive (spec item 13). OneDrive puts them in a folder named
+        // SharePoint and Teams libraries synced through OneDrive. OneDrive puts them in a folder named
         // after the organisation (C:\Users\<you>\<Organisation>\<Site> - Documents), outside the OneDrive folder the
         // environment variables name, so only OneDrive's own registry entries reveal them. Windows only, best effort.
         if (OperatingSystem.IsWindows())
@@ -418,14 +432,13 @@ public class FolderAssessor
     }
 
     /// <summary>
-    /// The provider name the cloud-folder warning uses for a SharePoint or Teams library that OneDrive syncs (spec item
-    /// 13; wording approved by Greg 2026-10-26). It fills the approved sentence: "This folder is kept in sync by OneDrive
+    /// The provider name the cloud-folder warning uses for a SharePoint or Teams library that OneDrive syncs. It fills the approved sentence: "This folder is kept in sync by OneDrive
     /// (a SharePoint or Teams library)."
     /// </summary>
     internal const string SharePointLibraryProvider = "OneDrive (a SharePoint or Teams library)";
 
     /// <summary>
-    /// Turns the folders OneDrive's registry entries name into cloud sync roots (spec item 13). Pure: no file system or
+    /// Turns the folders OneDrive's registry entries name into cloud sync roots. Pure: no file system or
     /// registry access, so the labelling rules can be tested with made-up input.
     /// <list type="bullet">
     ///   <item>A folder that is the user's own OneDrive becomes a plain "OneDrive" root.</item>
@@ -493,7 +506,7 @@ public class FolderAssessor
     }
 
     /// <summary>
-    /// Reads, from the current user's registry, the local folders the OneDrive client syncs (spec item 13). The layout is
+    /// Reads, from the current user's registry, the local folders the OneDrive client syncs. The layout is
     /// OneDrive's own and undocumented, so two places are read and each is best effort (a missing key or any error just
     /// adds nothing):
     /// <list type="bullet">
@@ -684,7 +697,7 @@ public record FolderWarning(WarningKind Kind, string Message, string? Detail = n
             "Ransomware protection → Allow an app through Controlled folder access.");
 
     /// <summary>
-    /// The folder is inside a cloud-synced directory. The user-facing text (spec item 28, from item 13) says what
+    /// The folder is inside a cloud-synced directory. The user-facing text says what
     /// really happens, in plain words: a sync service does not respect the way TermPoint marks a database as in use,
     /// so two people could edit at once and one person's changes could be lost. It names no database engine and does
     /// not say "corrupt": the database is not damaged, a person's changes are.
@@ -731,7 +744,7 @@ public enum WarningKind
 public record CloudSyncRoot(string Provider, string RootPath);
 
 /// <summary>
-/// One local folder the OneDrive client syncs, as its registry entries describe it (spec item 13; see
+/// One local folder the OneDrive client syncs, as its registry entries describe it (see
 /// <see cref="FolderAssessor.OneDriveRegistryRoots"/>).
 /// </summary>
 /// <param name="Path">The local folder, exactly as the registry gives it.</param>

@@ -133,7 +133,8 @@ public sealed class SectionListFocusTests : IDisposable
     private SectionListViewModel NewList(FocusService focus, IDialogService? dialog = null) =>
         new(_sectionRepo, _courseRepo, _subjectRepo, _instructorRepo, _roomRepo, _legalRepo, _semesterRepo,
             _blockPatternRepo, _codePatternRepo, _semesterContext, _sectionStore, _envRepo, _campusRepo,
-            _meetingRepo, dialog ?? new NullDialog(), _fx.Lock, focus);
+            _meetingRepo, dialog ?? new NullDialog(), _fx.Lock, focus,
+            FocusTestSupport.NoColours(_courseRepo, _subjectRepo, _sectionStore));
 
     /// <summary>Inserts a section of the course into the semester and returns it.</summary>
     private Section AddSection(Course course, string semesterId, string code)

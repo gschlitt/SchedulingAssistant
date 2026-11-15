@@ -5,7 +5,7 @@ using System.Collections.ObjectModel;
 
 namespace TermPoint.ViewModels.Management;
 
-public partial class InstructorEditViewModel : ViewModelBase
+public partial class InstructorEditViewModel : UnappliedChangesEditor
 {
     [ObservableProperty] private string _firstName = string.Empty;
     [ObservableProperty] private string _lastName = string.Empty;
@@ -73,7 +73,20 @@ public partial class InstructorEditViewModel : ViewModelBase
         Notes = instructor.Notes;
         IsActive = instructor.IsActive;
         SelectedStaffTypeId = instructor.StaffTypeId ?? "";
+
+        TakeSnapshot();
     }
+
+    /// <inheritdoc/>
+    protected override string CaptureState() => UnappliedChangesKey.Of(
+        FirstName.Trim(), LastName.Trim(), Initials.Trim(), Email.Trim(), Notes.Trim(),
+        IsActive, SelectedStaffTypeId ?? "");
+
+    /// <inheritdoc/>
+    protected override System.Windows.Input.ICommand ApplyCommand => SaveCommand;
+
+    /// <inheritdoc/>
+    protected override System.Windows.Input.ICommand CancelCommandForDiscard => CancelCommand;
 
     partial void OnFirstNameChanged(string value) => AutoInitials();
     partial void OnLastNameChanged(string value)
@@ -99,6 +112,7 @@ public partial class InstructorEditViewModel : ViewModelBase
         _instructor.IsActive = IsActive;
         _instructor.StaffTypeId = string.IsNullOrEmpty(SelectedStaffTypeId) ? null : SelectedStaffTypeId;
         _onSave(_instructor);
+        MarkApplied();
     }
 
     [RelayCommand]

@@ -20,7 +20,7 @@ public sealed class KeptChangesPromptTests
         Assert.Equal("Your changes since your last save are kept on this computer.", KeptChangesPrompt.ChangesSinceLastSaveKept);
         Assert.Equal(
             "TermPoint will offer to add them to the database the next time you open it for editing. " +
-            "If someone else changes the database first, they can't be added, but you'll be able to save them as a separate copy.",
+            "If someone else changes the database first, the changes can't be added, but you'll be able to save them as a separate copy.",
             KeptChangesPrompt.OfferToAdd);
     }
 
@@ -30,7 +30,7 @@ public sealed class KeptChangesPromptTests
     {
         Assert.Equal(
             "TermPoint will offer to add them to \"BIOL-TT\" the next time you open it for editing. " +
-            "If someone else changes it first, they can't be added, but you'll be able to save them as a separate copy.",
+            "If someone else changes it first, the changes can't be added, but you'll be able to save them as a separate copy.",
             KeptChangesPrompt.OfferToAddTo("BIOL-TT"));
     }
 
@@ -43,7 +43,7 @@ public sealed class KeptChangesPromptTests
             "Someone else is editing this database right now, so your unsaved changes from last time can't be added yet. " +
             "They're kept on this computer. " +
             "TermPoint will offer to add them to the database the next time you open it for editing. " +
-            "If someone else changes the database first, they can't be added, but you'll be able to save them as a separate copy.",
+            "If someone else changes the database first, the changes can't be added, but you'll be able to save them as a separate copy.",
             KeptChangesPrompt.UnsavedChangesKeptMessage);
     }
 
@@ -55,7 +55,7 @@ public sealed class KeptChangesPromptTests
         Assert.Equal(
             "Your latest changes to \"BIOL-TT\" couldn't be saved. They're kept on this computer. " +
             "TermPoint will offer to add them to \"BIOL-TT\" the next time you open it for editing. " +
-            "If someone else changes it first, they can't be added, but you'll be able to save them as a separate copy.",
+            "If someone else changes it first, the changes can't be added, but you'll be able to save them as a separate copy.",
             KeptChangesPrompt.ChangesNotSavedOnSwitch("BIOL-TT"));
     }
 
@@ -65,7 +65,7 @@ public sealed class KeptChangesPromptTests
         => Assert.Equal(
             "Your latest changes couldn't be saved to the database. They're kept on this computer. " +
             "TermPoint will offer to add them to the database the next time you open it for editing. " +
-            "If someone else changes the database first, they can't be added, but you'll be able to save them as a separate copy.",
+            "If someone else changes the database first, the changes can't be added, but you'll be able to save them as a separate copy.",
             KeptChangesPrompt.ChangesNotSavedOnClose);
 
     /// <summary>

@@ -468,7 +468,7 @@ public partial class StartupWizardViewModel : ViewModelBase
     /// exception text. All other failures fall back to the original "Could not {verb} the database"
     /// message.
     ///
-    /// <para><b>Why this is async (spec item 16, step 16b).</b> Deciding whether the folder is a write
+    /// <para><b>Why this is async.</b> Deciding whether the folder is a write
     /// block means creating and deleting a test file in it (<see cref="WriteAccessProbe.CanCreateFileIn"/>).
     /// This method runs only on failure paths, which is exactly when the chosen folder may be on a dead
     /// network share — a synchronous probe on the UI thread would freeze the wizard for the SMB timeout
@@ -523,7 +523,7 @@ public partial class StartupWizardViewModel : ViewModelBase
             // Create path: the throw happened before DatabaseContext (e.g. the wizard's own
             // Directory.CreateDirectory). The probe is the gate — only treat it as a write block
             // when the folder genuinely cannot accept a new file. It runs off the UI thread under
-            // the NetworkFileOps deadline (step 16b); the await resumes on the UI thread.
+            // the NetworkFileOps deadline; the await resumes on the UI thread.
             var probe = writeProbe ?? ProbeFolderWritableAsync;
             var (completed, canCreate) = await probe(folder);
 

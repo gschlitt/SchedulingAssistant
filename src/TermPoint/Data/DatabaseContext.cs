@@ -18,7 +18,6 @@ public class DatabaseContext : IDatabaseContext
     /// skipping all per-column proxy checks. Increment this constant whenever a new
     /// <c>AddColumnIfMissing</c> call or any other migration step is added to
     /// <see cref="Migrate"/> — that is the only update required to make the check robust.
-    /// (F6, data-integrity-agenda 2026-05-04.)
     /// </summary>
     internal const int CurrentSchemaVersion = 1;
     // Stored as SqliteConnection so internal helpers (SeedData, schema migrations) can use it
@@ -29,6 +28,13 @@ public class DatabaseContext : IDatabaseContext
     // Fires at most once per session when the first user-initiated write occurs.
     private readonly Action? _onFirstWrite;
     private int _dirtyFired; // 0 = not yet fired; 1 = fired. Interlocked for thread safety.
+
+    /// <summary>
+    /// Called on EVERY user write, after the read-only check and before the first-write compare-and-swap, so the
+    /// checkout service can count edits (<c>CheckoutService.NoteEdit</c>). A save compares that count before and after
+    /// its snapshot to learn that an edit arrived while it ran. Null in tests and demo contexts.
+    /// </summary>
+    private readonly Action? _onEveryWrite;
 
     private string _dbPath;
 
@@ -54,6 +60,16 @@ public class DatabaseContext : IDatabaseContext
     public bool SupportsTransactions => true;
 
     /// <summary>
+    /// Starts a write transaction. A writer gets the usual <c>BEGIN IMMEDIATE</c> (unchanged). A read-only session gets
+    /// a deferred <c>BEGIN</c>, which SQLite's <c>query_only</c> switch allows, so the first repository write inside it
+    /// reaches <see cref="MarkDirty"/> and is refused with the plain <see cref="WriteAccessLostException"/>. (<c>BEGIN IMMEDIATE</c> would fail at once with SQLITE_READONLY, usually outside the caller's
+    /// try block.)
+    /// </summary>
+    /// <returns>The open transaction (never null for this context).</returns>
+    public DbTransaction? BeginWriteTransaction()
+        => _readOnly ? _conn.BeginTransaction(deferred: true) : _conn.BeginTransaction();
+
+    /// <summary>
     /// Called by every repository write BEFORE it touches the database. In a read-only session it refuses the
     /// write: the change would only land in the throw-away read-only copy and silently disappear, so the user is
     /// told instead (see <see cref="WriteAccessLostException"/>). A writer session behaves as before.
@@ -63,6 +79,10 @@ public class DatabaseContext : IDatabaseContext
     {
         if (_readOnly)
             throw new WriteAccessLostException();
+
+        // Count the edit BEFORE anything touches the database: a save that reads the counter, snapshots, and reads
+        // it again must never miss a write that started after its first reading.
+        _onEveryWrite?.Invoke();
 
         if (Interlocked.CompareExchange(ref _dirtyFired, 1, 0) == 0)
             _onFirstWrite?.Invoke();
@@ -75,7 +95,36 @@ public class DatabaseContext : IDatabaseContext
     /// it would hit a closed connection instead of getting the plain message. Deliberately NOT done in
     /// <see cref="CloseConnection"/>, which a switch or restore also uses and which must not report a lost lock.
     /// </summary>
+    /// <remarks>
+    /// Deliberately does NOT turn on SQLite's <c>query_only</c> switch (see <see cref="ApplyReadOnly"/>): this can run
+    /// off the UI thread while the UI is using the connection, and the demotion reopens the connection with the switch
+    /// on seconds later. <see cref="MarkDirty"/> covers the gap.
+    /// </remarks>
     public void MarkReadOnly() => _readOnly = true;
+
+    /// <summary>
+    /// Records the session's mode on the freshly opened connection. Sets <c>_readOnly</c> (the
+    /// <see cref="MarkDirty"/> refusal) and, for a read-only session, also turns on SQLite's own
+    /// <c>PRAGMA query_only</c> on <see cref="_conn"/> as a second, database-level guard: a write that ever slips past <see cref="MarkDirty"/> then
+    /// fails at SQLite (SQLITE_READONLY) instead of landing silently in a throw-away copy.
+    /// <para>Must be called only after the open's schema setup, migrations and seeding (they legitimately write to a
+    /// snapshot of an older database) and after <see cref="ConfigureConnection"/>. The switch belongs to this one
+    /// connection, and background connections (backup, the save's snapshot) never see it. <see cref="ConfigureConnection"/>
+    /// turns it OFF at the start of every open, so a pooled connection a reader left with the switch on can never make
+    /// a writer (or the open's own setup) fail.</para>
+    /// </summary>
+    /// <param name="readOnly">True when this session may not write.</param>
+    /// <exception cref="SqliteException">The pragma could not be run on the open connection.</exception>
+    private void ApplyReadOnly(bool readOnly)
+    {
+        if (readOnly)
+        {
+            using var cmd = _conn.CreateCommand();
+            cmd.CommandText = "PRAGMA query_only=ON";
+            cmd.ExecuteNonQuery();
+        }
+        _readOnly = readOnly;
+    }
 
     /// <inheritdoc/>
     public void ResetDirty() => Interlocked.Exchange(ref _dirtyFired, 0);
@@ -93,9 +142,17 @@ public class DatabaseContext : IDatabaseContext
     /// the constructor, after the schema, migrations and seed data have run, so a snapshot of an older database
     /// still gets the tables and columns the readers need. Defaults to false (a writer session).
     /// </param>
-    public DatabaseContext(string dbPath, Action? onFirstWrite = null, bool readOnly = false)
+    /// <param name="onEveryWrite">
+    /// Optional callback invoked on every user-initiated write, before the database is touched (after the
+    /// read-only check, before the first-write callback). <see cref="Services.CheckoutService"/> counts edits with
+    /// it (<c>NoteEdit</c>) so a save can tell that an edit arrived while it ran. Last parameter so positional callers
+    /// of the earlier overload keep compiling. Kept for the context's lifetime, including across
+    /// <see cref="ReinitializeConnection"/>. Pass <c>null</c> in tests and demo contexts.
+    /// </param>
+    public DatabaseContext(string dbPath, Action? onFirstWrite = null, bool readOnly = false, Action? onEveryWrite = null)
     {
         _onFirstWrite = onFirstWrite;
+        _onEveryWrite = onEveryWrite;
         _dbPath       = dbPath;
 
         // Constructing the connection does not touch the filesystem; the folder is created and the
@@ -115,7 +172,7 @@ public class DatabaseContext : IDatabaseContext
             SeedData.EnsureSeeded(_conn);
 
             // Last of all: the init above legitimately writes to a snapshot of an older database.
-            _readOnly = readOnly;
+            ApplyReadOnly(readOnly);
         }
         catch (Exception ex)
         {
@@ -154,17 +211,23 @@ public class DatabaseContext : IDatabaseContext
     /// concurrently, eliminating that contention class. The working copy is always on a
     /// local disk, so WAL's no-network-filesystem caveat does not apply; files written back
     /// to the network are normalized to rollback mode by
-    /// <c>CheckoutService.BackupSqliteDatabase</c>.</para>
+    /// <c>CheckoutService.SnapshotWorkingCopy</c>.</para>
     ///
     /// <para><b>5-second busy timeout:</b> repository calls run synchronously on the UI
     /// thread. Should a lock ever be contended despite WAL, fail after 5&#160;s with a clean
     /// <see cref="SqliteException"/> instead of the driver default of 30&#160;s of frozen UI.</para>
+    ///
+    /// <para><b>query_only off:</b> a pooled connection keeps its pragmas, so one a read-only session left with SQLite's
+    /// <c>query_only</c> switch on (see <see cref="ApplyReadOnly"/>) is reset here, before the schema setup and before
+    /// the WAL pragma. <see cref="ApplyReadOnly"/> turns it back on, last, for a read-only session.</para>
     /// </summary>
     /// <param name="conn">The open connection to configure.</param>
     private static void ConfigureConnection(SqliteConnection conn)
     {
         conn.DefaultTimeout = 5;
         using var cmd = conn.CreateCommand();
+        cmd.CommandText = "PRAGMA query_only=OFF";
+        cmd.ExecuteNonQuery();
         cmd.CommandText = "PRAGMA journal_mode=WAL";
         cmd.ExecuteScalar();
     }
@@ -368,7 +431,6 @@ public class DatabaseContext : IDatabaseContext
                 // would silently destroy real data. This indicates a partially-failed migration
                 // where the rename completed on a previous run but SectionPropertyValues was
                 // not cleaned up, or some other unexpected state. Abort rather than data-loss.
-                // (F7, data-integrity-agenda 2026-05-04.)
                 cmd.CommandText = "SELECT COUNT(*) FROM sqlite_master WHERE type='table' AND name='SchedulingEnvironmentValues'";
                 var newTableAlreadyExists = Convert.ToInt32(cmd.ExecuteScalar()) > 0;
                 if (newTableAlreadyExists)
@@ -424,7 +486,6 @@ public class DatabaseContext : IDatabaseContext
             // the next startup, without re-running every proxy check. This is the last write
             // inside the migration transaction — if anything above fails and we rollback,
             // the stamp is also rolled back, so the DB correctly shows as un-migrated.
-            // (F6, data-integrity-agenda 2026-05-04.)
             cmd.CommandText = $"PRAGMA user_version = {CurrentSchemaVersion}";
             cmd.ExecuteNonQuery();
 
@@ -442,7 +503,7 @@ public class DatabaseContext : IDatabaseContext
     /// Returns false when the database is fully up-to-date, avoiding unnecessary
     /// pre-migration backups on every startup.
     ///
-    /// <para><b>Fast path (F6):</b> when <c>PRAGMA user_version</c> equals
+    /// <para><b>Fast path:</b> when <c>PRAGMA user_version</c> equals
     /// <see cref="CurrentSchemaVersion"/>, migration has already run and this method
     /// returns <c>false</c> immediately without inspecting individual tables or columns.
     /// <see cref="Migrate"/> writes the stamp at the end of its transaction, so the fast
@@ -466,7 +527,7 @@ public class DatabaseContext : IDatabaseContext
 
         // Legacy proxy: check for the last AddColumnIfMissing column added before the
         // version stamp was introduced. This check is superseded by user_version for any
-        // database migrated after the F6 fix; kept for databases migrated earlier.
+        // database migrated with the stamp; kept for databases migrated earlier.
         cmd.CommandText = "PRAGMA table_info(InstructorCommitments)";
         var hasInstructorName = false;
         using (var r = cmd.ExecuteReader())
@@ -651,7 +712,7 @@ public class DatabaseContext : IDatabaseContext
         // Open a new connection to the (possibly replaced) database file. Mode=ReadWrite: the file
         // must already exist. The default (ReadWriteCreate) would silently create an EMPTY, schema-less
         // database if the working copy had vanished (e.g. deleted while the app runs on macOS) — the
-        // session would then show and save nothing. Missing must fail loudly instead (spec item 4c).
+        // session would then show and save nothing. Missing must fail loudly instead.
         _dbPath = newDbPath;
         _conn   = new SqliteConnection($"Data Source={newDbPath};Mode=ReadWrite");
         try
@@ -660,7 +721,7 @@ public class DatabaseContext : IDatabaseContext
             ConfigureConnection(_conn);
             // No need to call InitializeSchema or Migrate — the new file already has the schema
             // (it was a copy of the old D'', which was a consistent snapshot).
-            _readOnly = readOnly;
+            ApplyReadOnly(readOnly);
         }
         catch (Exception ex)
         {

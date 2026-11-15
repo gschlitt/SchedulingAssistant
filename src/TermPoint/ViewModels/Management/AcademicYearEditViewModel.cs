@@ -5,7 +5,7 @@ using System.Text.RegularExpressions;
 
 namespace TermPoint.ViewModels.Management;
 
-public partial class AcademicYearEditViewModel : ViewModelBase
+public partial class AcademicYearEditViewModel : UnappliedChangesEditor
 {
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(ValidationError))]
@@ -78,7 +78,18 @@ public partial class AcademicYearEditViewModel : ViewModelBase
         _nameExists = nameExists ?? (_ => false);
 
         Name = academicYear.Name;
+
+        TakeSnapshot();
     }
+
+    /// <inheritdoc/>
+    protected override string CaptureState() => UnappliedChangesKey.Of(ExpandName(Name));
+
+    /// <inheritdoc/>
+    protected override System.Windows.Input.ICommand ApplyCommand => SaveCommand;
+
+    /// <inheritdoc/>
+    protected override System.Windows.Input.ICommand CancelCommandForDiscard => CancelCommand;
 
     [RelayCommand(CanExecute = nameof(CanSave))]
     private async Task Save()
@@ -92,6 +103,7 @@ public partial class AcademicYearEditViewModel : ViewModelBase
         {
             _onSave(_academicYear);
         }
+        MarkApplied();
     }
 
     [RelayCommand]

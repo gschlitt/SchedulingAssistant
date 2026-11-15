@@ -12,6 +12,9 @@ internal enum PromptKind
     /// <summary>A two-button choice (<see cref="ILifecyclePrompts.ShowChoiceAsync"/>).</summary>
     Choice,
 
+    /// <summary>A three-button choice (<see cref="ILifecyclePrompts.ShowThreeChoiceAsync"/>); answered with a <see cref="ThreeChoiceResult"/>.</summary>
+    ThreeChoice,
+
     /// <summary>Work run under a wait dialog (<see cref="ILifecyclePrompts.RunWithWaitAsync{T}"/>).</summary>
     Wait,
 
@@ -183,6 +186,18 @@ internal sealed class ScriptedPrompts : ILifecyclePrompts
         return this;
     }
 
+    /// <summary>Expects a three-button choice (the unapplied-changes question) and answers it.</summary>
+    /// <param name="title">The exact title.</param>
+    /// <param name="answer">Which button the "user" presses (<see cref="ThreeChoiceResult.Third"/> is also the window's X).</param>
+    /// <param name="text">The exact body text, or null to accept any.</param>
+    /// <param name="before">Optional action run when the question is shown, before the answer is given.</param>
+    /// <returns>This instance, for chaining.</returns>
+    public ScriptedPrompts ExpectThreeChoice(string title, ThreeChoiceResult answer, string? text = null, Action? before = null)
+    {
+        _script.Enqueue(new Step(PromptKind.ThreeChoice, title, text, answer, before));
+        return this;
+    }
+
     /// <summary>Expects work run under a wait dialog; the work then runs, and its result is returned to the caller.</summary>
     /// <param name="title">The exact dialog title.</param>
     /// <param name="text">The exact body text, or null to accept any.</param>
@@ -259,6 +274,13 @@ internal sealed class ScriptedPrompts : ILifecyclePrompts
             ChoiceAnswer.Negative    => ChoiceResult.Negative,
             _                        => ChoiceResult.Closed
         });
+    }
+
+    /// <inheritdoc/>
+    public Task<ThreeChoiceResult> ShowThreeChoiceAsync(string title, string message, string first, string second, string third)
+    {
+        var step = Take(new PromptCall(PromptKind.ThreeChoice, title, message, first + "|" + second + "|" + third));
+        return Task.FromResult((ThreeChoiceResult)step.Answer!);
     }
 
     /// <inheritdoc/>

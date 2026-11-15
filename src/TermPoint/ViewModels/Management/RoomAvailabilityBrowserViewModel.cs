@@ -15,7 +15,7 @@ namespace TermPoint.ViewModels.Management;
 public partial class RoomAvailabilityBrowserViewModel : ViewModelBase
 {
     private readonly RoomAvailabilityService _service = new();
-    private readonly IReadOnlyList<MeetingSpec> _specs;
+    private IReadOnlyList<MeetingSpec> _specs;
     private readonly IReadOnlyList<Room> _allRooms;
 
     /// <summary>
@@ -23,13 +23,13 @@ public partial class RoomAvailabilityBrowserViewModel : ViewModelBase
     /// has none. Rooms whose KNOWN capacity is below this are excluded; rooms with no capacity
     /// set are kept (unknown gets the benefit of the doubt).
     /// </summary>
-    private readonly int? _minCapacity;
+    private int? _minCapacity;
 
     /// <summary>
     /// Campus the edited section/meeting is assigned to, or null if none. When set, the browser
-    /// considers only rooms on this campus (hard exclude). Null means no campus restriction.
+    /// drops rooms on any other campus; rooms with no campus are kept. Null means no restriction.
     /// </summary>
-    private readonly string? _campusId;
+    private string? _campusId;
     private readonly IReadOnlyList<LegalStartTime> _legalStartTimes;
     private readonly IReadOnlyList<BlockPattern> _blockPatterns;
     private readonly string _semesterId;
@@ -157,13 +157,39 @@ public partial class RoomAvailabilityBrowserViewModel : ViewModelBase
         _onCancel();
     }
 
+    // ── Re-running with new criteria ─────────────────────────────────────────
+
+    /// <summary>
+    /// Re-runs the search after the editor's criteria changed while the browser is open
+    /// (a meeting's length, day, start time, room type, room or frequency, a meeting added or
+    /// removed, or the section's capacity or campus). The occupancy index and the
+    /// "Show Alternatives" toggle are kept; the solution list restarts at the first solution.
+    /// Does nothing when the criteria are the same as the current ones, so unrelated edits
+    /// (notes, instructors, a half-typed start time) do not reset the user's place.
+    /// </summary>
+    /// <param name="specs">The editor's current non-remote meeting specs.</param>
+    /// <param name="minCapacity">The section's current capacity, or null for no capacity filter.</param>
+    /// <param name="campusId">The current campus, or null for no campus filter.</param>
+    /// <returns>True if the search was re-run; false if nothing relevant changed.</returns>
+    public bool UpdateCriteria(IReadOnlyList<MeetingSpec> specs, int? minCapacity, string? campusId)
+    {
+        if (specs.SequenceEqual(_specs) && minCapacity == _minCapacity && campusId == _campusId)
+            return false;
+
+        _specs = specs;
+        _minCapacity = minCapacity;
+        _campusId = campusId;
+        Recompute();
+        return true;
+    }
+
     // ── Internal logic ───────────────────────────────────────────────────────
 
     private void Recompute()
     {
         // Filter candidate rooms by campus and capacity via the shared helper.
-        //  • Campus: when the section/meeting has a campus, only rooms on that campus qualify
-        //    (hard exclude — note this also drops rooms with no campus set, unlike capacity).
+        //  • Campus: when the section/meeting has a campus, rooms on another campus are dropped.
+        //    Rooms with no campus set are kept, like the editor's room picker.
         //  • Capacity: drop rooms whose known capacity is below the section's; unknown capacity
         //    gets the benefit of the doubt. Both filters are no-ops when their value is null.
         var rooms = RoomAvailabilityService.ApplyFilter(

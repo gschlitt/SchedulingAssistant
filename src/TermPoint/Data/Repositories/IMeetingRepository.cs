@@ -27,8 +27,8 @@ public interface IMeetingRepository
     /// <summary>Deletes all meetings belonging to the given semester.</summary>
     /// <param name="semesterId">The semester whose meetings are deleted.</param>
     /// <param name="tx">
-    /// Optional transaction to enlist this delete in a larger atomic operation (Empty Semester,
-    /// spec item 8). Pass <c>null</c> (the default) for a standalone delete.
+    /// Optional transaction to enlist this delete in a larger atomic operation (Empty Semester).
+    /// Pass <c>null</c> (the default) for a standalone delete.
     /// </param>
     void DeleteBySemesterId(string semesterId, DbTransaction? tx = null);
 

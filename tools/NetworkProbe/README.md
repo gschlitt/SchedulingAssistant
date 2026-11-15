@@ -64,9 +64,10 @@ tools\NetworkProbe\bin\Release\net10.0\win-x64\NetworkProbe.exe --share \\mekler
 NetworkProbe.exe --share \\mekler\Users\gregs\temp\handtest --only exists,copy-cm --repeat 1 --hold 20
 ```
 
-A full run is about 25 to 40 minutes: 13 cut-before-call cycles (11 cases plus the optional boolean integrity
-variant plus the first control) at roughly 70 s each (11 s cache settle, the cut, the hold, SMB reconnecting), the
-known-bad control, and 6 mid-operation cycles. Lower `--hold` to 20 to shorten it.
+A full run is about 35 to 50 minutes: 17 cut-before-call cycles (the 11 original cases, the optional boolean
+integrity variant, the three 1.2.4 item 4.10 cases, the reader copy `copy-hash-cb`, and the first control) at roughly
+70 s each (11 s cache settle, the cut, the hold, SMB reconnecting), the known-bad control, and 9 mid-operation cycles
+(`copy-cm`, `hash-cm` and the reader copy `copy-hash-cm`, 3 each). Lower `--hold` to 20 to shorten it.
 
 ### Options
 
@@ -88,6 +89,87 @@ known-bad control, and 6 mid-operation cycles. Lower `--hold` to 20 to shorten i
 Exit codes: 0 clean (or a dry run that worked); 1 at least one case FAILED; 2 the rig did not work or the run stopped
 early; 3 refused to start; 64 command-line error.
 
+## Late-landing mode (`--late-landing`, experiment E1 of 1.2.4 items 4.12/4.14)
+
+A different question from the 5 s deadline: when `NetworkFileOps` gives up on a delete or a rename-over-existing
+and abandons it, can the abandoned operation still take effect on the server after the network returns, and how
+late? (If it can land minutes later, a lock release or heartbeat could act on a lock that changed hands meanwhile.)
+
+```
+E:\netprobe-build\NetworkProbe.exe --late-landing --share \\mekler\Users\gregs\temp\handtest
+```
+
+Same refusals, controls and clean-up as the normal mode. Then two cases, `late-delete` (`DeleteAsync`, as the lock
+release) and `late-move` (`MoveAsync(source, target, overwrite: true)`, as the heartbeat), each for every
+`--holds` (default `10,30,60,90,180` s) × `--repeat` (default 2 here). One cycle: create the files, settle, cut,
+issue the real call, hold the cut H s from the call, restore, then look at the folder once a second (plain file
+opens, not `NetworkFileOps`) for up to 120 s. About an hour at the defaults.
+
+| Outcome | Meaning |
+|---|---|
+| **LANDED LATE** | The folder changed after the network came back: the abandoned operation took effect. "First seen changed" is an upper bound, from the call. |
+| **DIED** | Nothing changed, and `NetworkFileOps` logged that the abandoned operation ended with an error (its time is when Windows gave up). |
+| **STILL PENDING** | Nothing changed and no such line: the operation may still be blocked. (A successful late finish is never logged; it shows only as a change.) |
+| **NOT TESTED** | The cut was not confirmed, the folder was not as created before the cut, the share did not come back, or the call succeeded without the network. |
+
+The folder's server-side "last written" time is shown as a cross-check only (SMB may serve it up to ~10 s stale;
+the server clock differs from this computer's). A result holds for this client, server and kind of share only: a
+late landing proves the route exists; none proves only "not here".
+
+## Share-semantics mode (`--share-semantics`, experiments E1 and E2 of 1.2.4 item 5.8)
+
+Questions from `designs/network-experiments-5.8.md`: **E1** does our own `CreateNew` clear our cached "not found",
+and does `CreateNew` always reach the server; **E2** does a reader's open file block the writer's save
+(`File.Move(tmp, dest, overwrite: true)`), and does a deleted-but-still-open lock file block the next `CreateNew`.
+No clumsy, no elevation, no TermPoint code: ordinary file calls in the probe's own `netprobe-semantics-<time>` folder
+on the share. Two computers, two roles in the same exe, joined by a small TCP control channel; the runner times
+everything on its own stopwatch, so no clock needs syncing.
+
+**Partner** (TPVM1). Publish single-file self-contained and copy only `NetworkProbe.exe` (~90 MB):
+`dotnet publish tools/NetworkProbe -c Release -r win-x64 --self-contained -p:PublishSingleFile=true -o E:/netprobe-partner`.
+It needs an inbound TCP allow rule for its port
+(`netsh advfirewall firewall add rule name="NetworkProbe partner" dir=in action=allow protocol=TCP localport=5870 profile=any`;
+remove it afterwards with `netsh advfirewall firewall delete rule name="NetworkProbe partner"`).
+
+    NetworkProbe.exe --share-semantics --role partner --listen 5870 --root \\mekler\Users\gregs\temp\handtest
+
+It only touches files inside `--root` (paths in commands are relative to it; anything else is refused), logs every
+command, serves one connection at a time and closes everything it holds when the runner disconnects. Ctrl+C stops it.
+`--root` must be the same folder as the runner's `--share` (the runner checks this at the start).
+
+**Runner** (GregDeskTop):
+
+    NetworkProbe.exe --share-semantics --role runner --share \\mekler\Users\gregs\temp\handtest --partner <TPVM1-ip>:5870
+
+| Option | Default | Meaning |
+|---|---|---|
+| `--only <a,b,...>` | all | `E1a`, `E1b`, `E2` (or `E1b-create`, `E1b-stale`, `E2-1` ... `E2-5`). |
+| `--runs <n>` | 20 for E1, 5 for E2 | Runs per table. E1 alternates prime variants P1 (File.Exists) / P2 (failed open), so 20 runs = 10 each. |
+| `--settle <s>` | 11 (0 in a dry run) | Seconds between E1 runs so SMB's caches expire. |
+| `--big-mb <n>` | 8 | Size of the E2 database file. |
+| `--report-dir <dir>` | `<repo>\tmp\netprobe` | Where the report goes: `netprobe-<time>-share-semantics.md`. |
+| `--dry-run <local folder>` | | Plumbing check with the partner started inside this process on 127.0.0.1; everything runs on a local folder and is marked SIMULATED. `--list` prints the tables. |
+
+Tables: **E1a** (runner only) prime "not found", `CreateNew`, check again at once with File.Exists and open+read.
+**E1b-create** the partner creates the file, the runner tries `CreateNew` at once (must fail with "already exists";
+if it ever succeeds the report's first line is CRITICAL and the exit code is 1). **E1b-stale** how long File.Exists
+and an open keep saying "not found" after the partner's create (polled every 50 ms up to 15 s). **E2-1** the partner
+holds the file as TermPoint does (share ReadWrite): rename refused? for how long (retry every 100 ms up to 10 s),
+and when it goes through after the partner closes. **E2-2** share ReadWrite|Delete: does the rename go through?
+**E2-3** as 2, with the partner reading during the rename: does its handle then give old, new, a mix or an error
+(hashes). **E2-4** the same for a 2 KB lock file. **E2-5** the partner holds the lock file ReadWrite|Delete, the
+runner deletes it and tries `CreateNew` at once and every 100 ms for 5 s: blocked, and for how long.
+
+The report has the machines, share, control-channel round trip (min/median), both computers'
+`Get-SmbClientConfiguration`, one table per case (per-run rows plus a summary row), and "Reading the result", which
+says which row of the design's result tables applies, or that none fits cleanly or the result is not conclusive. It
+never goes beyond those tables. A result holds for this client, server and kind of share only. A full run takes about
+13 minutes (E1 ~11, E2 ~2).
+Exit codes: 0 done; 1 CRITICAL (CreateNew succeeded over an existing file); 2 stopped early; 3 refused to start.
+
+On local NTFS (the dry run), E2-2's rename is refused even with `ReadWrite|Delete` sharing, while a delete goes
+through: a hint, not a result, that the share may behave the same.
+
 ## What a run does
 
 1. Refuses unless safe (elevated, TermPoint closed, no clumsy, a UNC share on another computer that exists).
@@ -103,7 +185,7 @@ early; 3 refused to start; 64 command-line error.
 4. Runs each case as its own cycle: wait until the share answers, create the files, cut, **confirm the cut** (a fresh
    TCP connect to port 445 fails on every server address), call, measure for `--hold` seconds, stop clumsy, wait for
    the share to answer again (recording how long), record, clean up.
-5. For the mid-operation cases (`copy-cm`, `hash-cm`) it starts clumsy with **lag only**, starts the operation, waits
+5. For the mid-operation cases (`copy-cm`, `hash-cm`, `copy-hash-cm`) it starts clumsy with **lag only**, starts the operation, waits
    until it is demonstrably in progress (at least 1.5 s, not finished, and for the copy the destination already
    larger than 0), swaps lag for the drop (one restart, about 1 s with no impairment), and confirms the cut. A call
    that finished before the cut is **NOT TESTED**, never a pass; it is retried once with the large file doubled, and

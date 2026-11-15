@@ -1,4 +1,5 @@
 using System.Text.Json;
+using System.Text.Json.Serialization;
 using TermPoint.Models;
 
 namespace TermPoint.Services;
@@ -36,7 +37,7 @@ public class AppSettings
     /// Guards <see cref="_instance"/> initialization and all <see cref="Save"/> /
     /// <see cref="AddRecentDatabase"/> mutations so that concurrent callers (e.g. the
     /// autosave timer and the UI thread) cannot interleave writes to <see cref="RecentDatabases"/>
-    /// or produce partially-written settings files. (F15, F12 — data-integrity-agenda 2026-05-04.)
+    /// or produce partially-written settings files.
     /// </summary>
     private static readonly object _settingsLock = new object();
 
@@ -50,7 +51,7 @@ public class AppSettings
     /// <summary>
     /// Returns the cached <see cref="AppSettings"/> instance, loading from disk on first access.
     /// This is the preferred accessor — it reads the file at most once per app session.
-    /// Uses double-checked locking so the common (already-loaded) path is lock-free. (F15.)
+    /// Uses double-checked locking so the common (already-loaded) path is lock-free.
     /// </summary>
     public static AppSettings Current
     {
@@ -144,7 +145,7 @@ public class AppSettings
     public bool OpenWithAllSectionsCollapsed { get; set; } = false;
 
     /// <summary>
-    /// Opt-in (spec_version_1.2.3.md, item 23): when true, the Section List builds only the cards
+    /// Opt-in: when true, the Section List builds only the cards
     /// that are on screen (a virtualizing panel plus scroll anchoring), which cuts memory sharply on
     /// large semesters. When false, every card is built (the classic panel, no anchoring).
     /// The value actually in force is this setting AND
@@ -157,7 +158,7 @@ public class AppSettings
     public bool VirtualizeSectionList { get; set; } = false;
 
     /// <summary>
-    /// Spec item 20 (load by subject / focus): the user's remembered subject focus, one per database, including
+    /// Load by subject / focus: the user's remembered subject focus, one per database, including
     /// All and None. Nothing about a focus is ever written to the database itself.
     /// <para>
     /// <b>The key is the SHARED database's path (D)</b>, normalised with
@@ -197,7 +198,7 @@ public class AppSettings
     public FilterPassBehavior FilterPassBehavior { get; set; } = FilterPassBehavior.Highlight;
 
     /// <summary>
-    /// How section cards show room and instructor conflicts (spec item 25): in full, one line per conflict, or as one
+    /// How section cards show room and instructor conflicts: in full, one line per conflict, or as one
     /// compact flag per kind with the details on hover. A display choice only: conflicts are detected either way, and
     /// nothing is written to the database. Takes effect immediately (the cards redraw) via <see cref="SettingChanged"/>.
     /// A settings file written before this property existed deserializes to the default, and an older TermPoint
@@ -205,7 +206,33 @@ public class AppSettings
     /// </summary>
     public Models.ConflictDisplayMode SectionConflictDisplay { get; set; } = Models.ConflictDisplayMode.Full;
 
-/// <summary>Last path used for PNG schedule export.</summary>
+    /// <summary>
+    /// Subject colours (colour-by-subject feature): subject abbreviation to <c>"#RRGGBB"</c>. Keys are written trimmed
+    /// and upper-case, by <see cref="SubjectColorStore"/> only; nothing else reads or writes this dictionary. An entry
+    /// whose value does not parse is ignored when read and left untouched in the file. A settings file written before
+    /// this property existed deserializes to an empty dictionary (no colours), and an older TermPoint ignores the
+    /// unknown key, so no migration is needed either way.
+    /// </summary>
+    public Dictionary<string, string> SubjectColors { get; set; } = new();
+
+    /// <summary>
+    /// When subject colours are shown (see <see cref="Models.SubjectColorDisplay"/>). A settings file written before
+    /// this property existed deserializes to the default, and an older TermPoint ignores the unknown key, so no
+    /// migration is needed either way. A stored number that is not a defined value is read as the default by
+    /// <see cref="SubjectColorStore"/>. Default: <see cref="Models.SubjectColorDisplay.OnlyWhenSeveral"/>.
+    /// </summary>
+    public SubjectColorDisplay SubjectColorDisplay { get; set; } = SubjectColorDisplay.OnlyWhenSeveral;
+
+    /// <summary>
+    /// Settings keys found in <c>settings.json</c> that this version of TermPoint does not declare, kept so that
+    /// saving does not delete them: a later version's settings survive a load and save by this one (spec
+    /// subject-colours P4-4). Same mechanism as <see cref="PersistedRecord.ExtensionData"/>. Null when there are none
+    /// (the normal case), in which case nothing extra is written. Entries are written back verbatim as sibling keys.
+    /// </summary>
+    [JsonExtensionData]
+    public Dictionary<string, JsonElement>? ExtensionData { get; set; }
+
+    /// <summary>Last path used for PNG schedule export.</summary>
     public string? LastExportPath { get; set; }
 
     /// <summary>Last path used for workload report CSV export.</summary>
@@ -249,8 +276,10 @@ public class AppSettings
     public int BackupIntervalMinutes { get; set; } = 30;
 
     /// <summary>
-    /// Maximum number of backup files to retain per database.
-    /// When exceeded, the oldest backup pair (.db + _sections.csv) is deleted.
+    /// How many of the newest backups to keep per database regardless of date ("Recent backups to keep").
+    /// On top of these, the last backup of each of the 7 days and 4 weeks before this one that have backups is
+    /// also kept (<c>BackupService.SelectBackupsToDelete</c>); every other backup pair
+    /// (.db + _sections.csv) is deleted. The setting's name is kept so existing settings files still load.
     /// Default: 5.
     /// </summary>
     public int MaxBackupCount { get; set; } = 5;
@@ -350,7 +379,7 @@ public class AppSettings
     /// Persists this instance to disk using an atomic write-to-temp-then-rename pattern.
     /// Writes to <c>settings.json.tmp</c> first, then renames to <c>settings.json</c>.
     /// If the process crashes between the write and the rename, the original file is intact.
-    /// Thread-safe: serialises concurrent callers via <see cref="_settingsLock"/>. (F12, F15.)
+    /// Thread-safe: serialises concurrent callers via <see cref="_settingsLock"/>.
     /// Returns false and logs if the write fails; the in-memory state remains correct.
     /// </summary>
     public bool Save()
@@ -381,7 +410,6 @@ public class AppSettings
     /// dark it would block the UI thread for the full SMB redirector timeout). Thread-safe:
     /// serialises list mutation and the subsequent <see cref="Save"/> call via
     /// <see cref="_settingsLock"/> so concurrent callers cannot interleave list writes.
-    /// (F15, data-integrity-agenda 2026-05-04.)
     /// </summary>
     public void AddRecentDatabase(string databasePath)
     {

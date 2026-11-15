@@ -1,5 +1,6 @@
 using Microsoft.Data.Sqlite;
 using TermPoint.Services;
+using TermPoint.ViewModels;
 
 namespace TermPoint.Tests;
 
@@ -112,6 +113,15 @@ internal sealed class FakeSessionHost : ISessionHost, IDisposable
     /// <inheritdoc/>
     public bool IsInlineEditorOpen => InlineEditorOpen;
 
+    /// <summary>
+    /// What <see cref="FindUnappliedChanges"/> reports; null (no editor with unapplied changes) by default. A 3.1
+    /// test sets it to a fake editor to model "an open editor holds changes the user has not applied".
+    /// </summary>
+    public IUnappliedChanges? UnappliedEditor { get; set; }
+
+    /// <inheritdoc/>
+    public IUnappliedChanges? FindUnappliedChanges() => UnappliedEditor;
+
     /// <summary>Runs inside <see cref="ReleaseServices"/>, before it closes the connection (lets a test observe the world at that moment); null for none.</summary>
     public Action? OnReleaseServices { get; set; }
 
@@ -129,6 +139,19 @@ internal sealed class FakeSessionHost : ISessionHost, IDisposable
     /// the test host); this hook only lets a test record the world at the moment the lifecycle asked for a relaunch.
     /// </summary>
     public Action? OnRelaunch { get; set; }
+
+    /// <summary>The database path the lifecycle passed to the last <see cref="RelaunchApplication"/>, or null if none.</summary>
+    public string? LastRelaunchPath { get; private set; }
+
+    /// <summary>How many times the lifecycle armed the shutdown backstop (the fake never ends anything).</summary>
+    public int BackstopArmCount { get; private set; }
+
+    /// <inheritdoc/>
+    public void ArmShutdownBackstop()
+    {
+        BackstopArmCount++;
+        _trace("host:ArmShutdownBackstop");
+    }
 
     /// <summary>
     /// The surface <see cref="CaptureLockLossSurface"/> hands out. One instance per host, so a test configures it
@@ -244,8 +267,9 @@ internal sealed class FakeSessionHost : ISessionHost, IDisposable
     }
 
     /// <inheritdoc/>
-    public void RelaunchApplication()
+    public void RelaunchApplication(string reopenPath)
     {
+        LastRelaunchPath = reopenPath;
         _trace("host:RelaunchApplication");
         OnRelaunch?.Invoke();
     }
@@ -265,6 +289,7 @@ internal sealed class FakeSessionHost : ISessionHost, IDisposable
     /// <exception cref="InvalidOperationException">No connection is open.</exception>
     public void Edit(string value)
     {
+        _checkout.NoteEdit();   // like DatabaseContext's onEveryWrite: counted BEFORE the database is touched
         Exec($"INSERT INTO _test VALUES('{value}')");
         _checkout.MarkDirty();
     }
@@ -278,6 +303,7 @@ internal sealed class FakeSessionHost : ISessionHost, IDisposable
     /// <exception cref="InvalidOperationException">No connection is open.</exception>
     public void EditWith(string sql)
     {
+        _checkout.NoteEdit();   // like DatabaseContext's onEveryWrite: counted BEFORE the database is touched
         Exec(sql);
         _checkout.MarkDirty();
     }

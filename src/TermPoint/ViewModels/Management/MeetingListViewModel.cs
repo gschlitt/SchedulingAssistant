@@ -25,7 +25,7 @@ namespace TermPoint.ViewModels.Management;
 /// after a save) or when <see cref="SemesterContext.SelectedSemestersChanged"/> fires.
 /// </para>
 /// </summary>
-public partial class MeetingListViewModel : ViewModelBase, IDisposable
+public partial class MeetingListViewModel : ViewModelBase, IUnappliedChangesHost, IDisposable
 {
     private readonly IMeetingRepository _meetingRepo;
     private readonly IInstructorRepository _instructorRepo;
@@ -71,6 +71,9 @@ public partial class MeetingListViewModel : ViewModelBase, IDisposable
     /// Only one edit form can be open at a time.
     /// </summary>
     [ObservableProperty] private MeetingEditViewModel? _editVm;
+
+    /// <inheritdoc/>
+    public IUnappliedChanges? FindUnappliedChanges() => UnappliedChangesFinder.First(EditVm);
 
     /// <summary>Whether the "Add to which semester?" inline prompt is visible.</summary>
     [ObservableProperty] private bool _isAddSemesterPromptVisible;

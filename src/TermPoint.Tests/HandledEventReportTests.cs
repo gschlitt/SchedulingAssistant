@@ -149,7 +149,7 @@ public sealed class HandledEventReportTests : IDisposable
     {
         var log = new RecordingAppLogger();
         var svc = await CheckoutWithEditAsync(log);
-        NetworkFaults.Decide = r => r.Label == "CopyFile" && r.DestinationPath == DbPath + ".tmp"
+        NetworkFaults.Decide = r => r.Label == "CopyFile" && r.DestinationPath is { } d && ShareTempFile.IsLeftoverOf(DbPath, d)
             ? NetworkFaultDecision.TimeOut
             : NetworkFaultDecision.None;
 

@@ -27,7 +27,7 @@ public sealed class CrashSweepTests
 
     /// <summary>
     /// Every case of the sweep ends without a breach that no known finding explains. Fails with each new breach's
-    /// shrunk story; the known ones (F5, F6, F7, ...) are counted and reported. F1 and F8 are fixed, so a breach of their kinds is new.
+    /// shrunk story; the known ones (F7, F20, F22, ...) are counted and reported. F1, F5, F6 and F8 are fixed, so a breach of their kinds is new.
     /// </summary>
     [HarnessFact]
     public async Task CrashSweep_NoNewViolations()

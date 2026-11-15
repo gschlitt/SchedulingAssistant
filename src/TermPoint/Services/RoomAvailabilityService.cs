@@ -199,6 +199,15 @@ public class RoomAvailabilityService
     /// <summary>
     /// Applies room filters to the full room list.
     /// </summary>
+    /// <param name="allRooms">Every room in the database.</param>
+    /// <param name="campusId">
+    /// When set, rooms on a different campus are dropped. Rooms with no campus are kept, matching
+    /// the section editor's room picker (a room nobody has placed on a campus could be anywhere).
+    /// </param>
+    /// <param name="building">When set, only rooms in this building (case-insensitive).</param>
+    /// <param name="roomTypeId">When set, only rooms of this type.</param>
+    /// <param name="minCapacity">When set, rooms with a KNOWN capacity below this are dropped.</param>
+    /// <returns>The matching rooms, in sort order, then building, then room number.</returns>
     public static List<Room> ApplyFilter(
         IReadOnlyList<Room> allRooms,
         string? campusId,
@@ -207,7 +216,7 @@ public class RoomAvailabilityService
         int? minCapacity)
     {
         return allRooms
-            .Where(r => campusId == null || r.CampusId == campusId)
+            .Where(r => campusId == null || string.IsNullOrEmpty(r.CampusId) || r.CampusId == campusId)
             .Where(r => building == null || string.Equals(r.Building, building, StringComparison.OrdinalIgnoreCase))
             .Where(r => roomTypeId == null || r.RoomTypeId == roomTypeId)
             // Unknown (null) room capacity is given the benefit of the doubt — only a room with a

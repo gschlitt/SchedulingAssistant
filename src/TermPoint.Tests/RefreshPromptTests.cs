@@ -70,8 +70,8 @@ public sealed class RefreshPromptTests
     [Fact]
     public void FailureLine_WhenTheRefreshWorked_IsNull()
     {
-        Assert.Null(RefreshPrompt.FailureLine(RefreshOutcome.Updated, connectionLost: false, threw: false, null));
-        Assert.Null(RefreshPrompt.FailureLine(RefreshOutcome.Updated, connectionLost: false, threw: false, TwoFourteenPm));
+        Assert.Null(RefreshPrompt.FailureLine(RefreshOutcome.Updated, threw: false, null));
+        Assert.Null(RefreshPrompt.FailureLine(RefreshOutcome.Updated, threw: false, TwoFourteenPm));
     }
 
     /// <summary>Outcome SourceUnavailable: "the database location isn't responding", with the last good time or "when you opened the database".</summary>
@@ -79,40 +79,47 @@ public sealed class RefreshPromptTests
     public void FailureLine_SourceUnavailable_SaysTheLocationIsNotResponding()
     {
         Assert.Equal(RefreshPrompt.NotResponding(null),
-            RefreshPrompt.FailureLine(RefreshOutcome.SourceUnavailable, false, false, null));
+            RefreshPrompt.FailureLine(RefreshOutcome.SourceUnavailable, false, null));
         Assert.Equal(RefreshPrompt.NotResponding(TwoFourteenPm),
-            RefreshPrompt.FailureLine(RefreshOutcome.SourceUnavailable, false, false, TwoFourteenPm));
+            RefreshPrompt.FailureLine(RefreshOutcome.SourceUnavailable, false, TwoFourteenPm));
     }
 
     /// <summary>
-    /// Connection lost (the close ran, the reopen did not complete): the restart line, whatever the outcome says and
-    /// whether or not an exception was thrown, and whatever time is known.
+    /// Outcome ConnectionLost (three reopen attempts failed, or the session ended): the restart line, whatever time is known.
     /// </summary>
-    [Theory]
-    [InlineData(RefreshOutcome.SourceUnavailable, false)]
-    [InlineData(RefreshOutcome.SourceUnavailable, true)]
-    [InlineData(null, true)]
-    public void FailureLine_ConnectionLost_AlwaysSaysCloseAndReopen(RefreshOutcome? outcome, bool threw)
+    [Fact]
+    public void FailureLine_ConnectionLost_SaysCloseAndReopen()
     {
-        Assert.Equal(RefreshPrompt.ConnectionLost, RefreshPrompt.FailureLine(outcome, connectionLost: true, threw, null));
-        Assert.Equal(RefreshPrompt.ConnectionLost, RefreshPrompt.FailureLine(outcome, connectionLost: true, threw, TwoFourteenPm));
+        Assert.Equal(RefreshPrompt.ConnectionLost, RefreshPrompt.FailureLine(RefreshOutcome.ConnectionLost, false, null));
+        Assert.Equal(RefreshPrompt.ConnectionLost, RefreshPrompt.FailureLine(RefreshOutcome.ConnectionLost, false, TwoFourteenPm));
     }
 
-    /// <summary>An exception (the connection not known to be lost): "Couldn't refresh just now… Try again in a moment."</summary>
+    /// <summary>
+    /// Outcome ReplaceFailed (the swap failed, the connection is open on the previous data): "Couldn't refresh just
+    /// now… Try again in a moment." naming the last good time.
+    /// </summary>
+    [Fact]
+    public void FailureLine_ReplaceFailed_SaysTryAgainInAMoment()
+    {
+        Assert.Equal(RefreshPrompt.OtherFailure(null), RefreshPrompt.FailureLine(RefreshOutcome.ReplaceFailed, false, null));
+        Assert.Equal(RefreshPrompt.OtherFailure(TwoFourteenPm), RefreshPrompt.FailureLine(RefreshOutcome.ReplaceFailed, false, TwoFourteenPm));
+    }
+
+    /// <summary>An exception: "Couldn't refresh just now… Try again in a moment."</summary>
     [Fact]
     public void FailureLine_AnException_SaysTryAgainInAMoment()
     {
-        Assert.Equal(RefreshPrompt.OtherFailure(null), RefreshPrompt.FailureLine(null, false, threw: true, null));
-        Assert.Equal(RefreshPrompt.OtherFailure(TwoFourteenPm), RefreshPrompt.FailureLine(null, false, threw: true, TwoFourteenPm));
+        Assert.Equal(RefreshPrompt.OtherFailure(null), RefreshPrompt.FailureLine(null, threw: true, null));
+        Assert.Equal(RefreshPrompt.OtherFailure(TwoFourteenPm), RefreshPrompt.FailureLine(null, threw: true, TwoFourteenPm));
         // An exception wins over an outcome that was somehow also recorded.
         Assert.Equal(RefreshPrompt.OtherFailure(null),
-            RefreshPrompt.FailureLine(RefreshOutcome.SourceUnavailable, false, threw: true, null));
+            RefreshPrompt.FailureLine(RefreshOutcome.SourceUnavailable, threw: true, null));
     }
 
     /// <summary>No outcome and no exception (the refresh produced nothing): the "just now" line, never a success.</summary>
     [Fact]
     public void FailureLine_NoOutcomeAndNoException_IsTheGenericFailure()
-        => Assert.Equal(RefreshPrompt.OtherFailure(TwoFourteenPm), RefreshPrompt.FailureLine(null, false, false, TwoFourteenPm));
+        => Assert.Equal(RefreshPrompt.OtherFailure(TwoFourteenPm), RefreshPrompt.FailureLine(null, false, TwoFourteenPm));
 
     /// <summary>
     /// A failure's line names the time of the last refresh that WORKED, so the time the view model passes must be the
@@ -122,9 +129,26 @@ public sealed class RefreshPromptTests
     public void FailureLine_NamesTheLastGoodTime_NotTheCurrentOne()
         => UnderEnUs(() =>
         {
-            Assert.Contains("2:14 PM", RefreshPrompt.FailureLine(RefreshOutcome.SourceUnavailable, false, false, TwoFourteenPm));
-            Assert.Contains("9:05 AM", RefreshPrompt.FailureLine(RefreshOutcome.SourceUnavailable, false, false, new DateTime(2026, 10, 26, 9, 5, 0)));
+            Assert.Contains("2:14 PM", RefreshPrompt.FailureLine(RefreshOutcome.SourceUnavailable, false, TwoFourteenPm));
+            Assert.Contains("9:05 AM", RefreshPrompt.FailureLine(RefreshOutcome.SourceUnavailable, false, new DateTime(2026, 10, 26, 9, 5, 0)));
         });
+
+    /// <summary>The DEBUG fault plan text: <c>replace</c> and <c>reopen[:count[:skip]]</c> parse, anything else is ignored.</summary>
+    [Fact]
+    public void RefreshFaultPlan_ParsesReplaceAndReopen_IgnoresGarbage()
+    {
+        Assert.Equal(InjectedRefreshFault.Replace, RefreshFaultPlan.Parse("replace")!.Fault);
+        Assert.Equal(InjectedRefreshFault.Reopen, RefreshFaultPlan.Parse("REOPEN:2")!.Fault);
+        Assert.Null(RefreshFaultPlan.Parse("unreachable"));
+        Assert.Null(RefreshFaultPlan.Parse(null));
+
+        var plan = RefreshFaultPlan.Parse("reopen:2:1")!;
+        Assert.False(plan.TryConsume(InjectedRefreshFault.Replace));   // another stage: neither fires nor spends
+        Assert.False(plan.TryConsume(InjectedRefreshFault.Reopen));    // skipped
+        Assert.True(plan.TryConsume(InjectedRefreshFault.Reopen));
+        Assert.True(plan.TryConsume(InjectedRefreshFault.Reopen));
+        Assert.False(plan.TryConsume(InjectedRefreshFault.Reopen));    // budget spent
+    }
 
     /// <summary>
     /// The rules for every text: no "SQLite", "snapshot", "write access", "D'", path, raw exception or log text, no

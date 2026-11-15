@@ -3,9 +3,9 @@ using TermPoint.ViewModels;
 namespace TermPoint.Services;
 
 /// <summary>
-/// Every user-facing text of the handler for a failed open-time check of the local copy (spec item 5, step 5d):
+/// Every user-facing text of the handler for a failed open-time check of the local copy:
 /// the "in use" prompt, the "damaged" message, the "keeps failing" message, and the front-door messages shown when
-/// the shared database cannot be used either. The wording is the user-approved wording of the 5d plan, kept out of
+/// the shared database cannot be used either. The wording is the user-approved wording, kept out of
 /// <c>MainWindow</c> so it can be pinned by unit tests. Modelled on <see cref="StaleLockPrompt"/> and
 /// <see cref="RestorePrompt"/>.
 ///
@@ -31,6 +31,14 @@ public static class LocalCopyCheckPrompt
         "TermPoint couldn't finish opening the database because another program on this computer is using its " +
         "files, often antivirus or backup software checking a file that was just copied. This usually clears in " +
         "a few seconds.";
+
+    /// <summary>
+    /// Body of the "in use" prompt when the file another program is using holds the user's kept unsaved changes
+    /// (crash recovery): <see cref="InUseMessage"/> plus a sentence saying the changes are safe.
+    /// Shown under <see cref="CouldntOpenTitle"/> with <see cref="TryAgainButton"/> / <see cref="CloseButton"/>.
+    /// </summary>
+    public const string InUseWithKeptChangesMessage =
+        InUseMessage + " Your unsaved changes from last time are kept.";
 
     /// <summary>
     /// Body of the prompt shown when TermPoint could not prepare a read-only view of a database at all (the

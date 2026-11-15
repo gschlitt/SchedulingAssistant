@@ -31,14 +31,14 @@ public enum CardPropertyKind
 
     /// <summary>
     /// A compact flag saying the section has room conflicts, used instead of <see cref="RoomConflict"/> when
-    /// conflicts are shown as flags (spec item 25). Rendered as the room icon and the line's text in the warning look,
+    /// conflicts are shown as flags. Rendered as the room icon and the line's text in the warning look,
     /// on one line with any other flag; <see cref="CardPropertyLine.Detail"/> (the full list) is shown on hover.
     /// </summary>
     RoomConflictFlag,
 
     /// <summary>
     /// A compact flag saying an instructor of the section is double-booked, used instead of
-    /// <see cref="InstructorConflict"/> when conflicts are shown as flags (spec item 25). Rendered like
+    /// <see cref="InstructorConflict"/> when conflicts are shown as flags. Rendered like
     /// <see cref="RoomConflictFlag"/>, with the instructor icon.
     /// </summary>
     InstructorConflictFlag

@@ -32,7 +32,14 @@ internal enum Fixtures
     BigLocal = 8,
 
     /// <summary>A small valid SQLite database on the share (the integrity case checks it there).</summary>
-    SmallDb = 16
+    SmallDb = 16,
+
+    /// <summary>
+    /// A set of old backups on the share (1.2.4 item 4.10): <c>BIOL_2020-01-01_09-00-00.db</c>, <c>_12-00-00.db</c> and
+    /// <c>_18-00-00.db</c> plus <c>BIOL_2020-01-02_09-00-00.db</c>, each of the first two with its sections CSV. With
+    /// "keep 1 recent" and "now" = 3 January 2020 the 09:00 and 12:00 backups (and their CSVs) are the ones rotation deletes.
+    /// </summary>
+    BackupSet = 32
 }
 
 /// <summary>
@@ -58,6 +65,10 @@ internal sealed record OpResult(bool GaveUp, string Text);
 /// <param name="SmallDb">The small SQLite database's name on the share, in <paramref name="Dir"/>.</param>
 /// <param name="CopyDest">Where a copy case writes on the share, in <paramref name="Dir"/>.</param>
 /// <param name="MissingFile">A name in <paramref name="Dir"/> that never exists.</param>
+/// <param name="LocalCopyDest">
+/// Where a reader-copy case writes on the LOCAL disk (in the probe's local temp folder, one name per case run), the
+/// way a reader copies D down to its snapshot D''.
+/// </param>
 internal sealed record CaseFiles(
     string Dir,
     string SmallFile,
@@ -66,7 +77,8 @@ internal sealed record CaseFiles(
     string BigLocalFile,
     string SmallDb,
     string CopyDest,
-    string MissingFile);
+    string MissingFile,
+    string LocalCopyDest);
 
 /// <summary>
 /// One row of the case matrix (spec section 6): a name, when the network is cut, which real
@@ -221,6 +233,46 @@ internal static class CaseCatalog
                 return new OpResult(!completed, completed ? $"Completed=True, Passed={passed}" : "Completed=False");
             }),
 
+        // ── 1.2.4 item 4.10: the calls added for backups, exports and the .tpconfig ────────────────────────────
+
+        new("write-bytes", CutPoint.BeforeCall,
+            "WriteAllBytesAsync(file, bytes)",
+            "1.2.4 item 4.10: the byte write behind the backup's sections CSV, the .tpconfig and every export.",
+            Fixtures.SmallFile,
+            async f => FromBool(await NetworkFileOps.WriteAllBytesAsync(f.SmallFile, ExportFileWriter.EncodeUtf8("a,b\r\n", withBom: true)).ConfigureAwait(false))),
+
+        new("export-write", CutPoint.BeforeCall,
+            "ExportFileWriter.WriteAsync(file, bytes)",
+            "1.2.4 item 4.10: an export to a picked file (workload report, course history, shared schedule, PNG). Must come back TimedOut with the agreed message.",
+            Fixtures.SmallFile,
+            async f =>
+            {
+                var result = await ExportFileWriter.WriteAsync(f.SmallFile, ExportFileWriter.EncodeUtf8("a,b\r\n", withBom: true)).ConfigureAwait(false);
+                return new OpResult(result.Outcome == ExportWriteOutcome.TimedOut, $"{result.Outcome}: {result.Message ?? "(no message)"}");
+            }),
+
+        new("rotate", CutPoint.BeforeCall,
+            "BackupService.RotateBackupsAsync(share folder, \"BIOL\", 1)",
+            "1.2.4 item 4.10: backup rotation (one guarded listing, guarded deletes). With the share cut the listing must time out and nothing may be deleted.",
+            Fixtures.BackupSet,
+            async f =>
+            {
+                var log = TermPoint.App.Logger as RecordingProbeLogger;
+                var mark = log?.Mark() ?? 0;
+                await BackupService.RotateBackupsAsync(f.Dir, "BIOL", 1, new DateTime(2020, 1, 3), TermPoint.App.Logger).ConfigureAwait(false);
+                var lines = log?.Since(mark) ?? Array.Empty<LogLine>();
+                var gaveUp = lines.Any(l => l.Text.Contains("did not respond") || l.Text.Contains("stopped early"));
+                return new OpResult(gaveUp, gaveUp ? "rotation gave up (logged that the folder did not respond)" : "rotation ran to the end");
+            }),
+
+        // ── 1.2.4 items 5.3/5.5: the reader's one read of D (copy down and hash in the same pass) ───────────────
+
+        new("copy-hash-cb", CutPoint.BeforeCall,
+            "CopyAndHashAsync(big file on share, local copy)",
+            "1.2.4 items 5.3/5.5: a reader copies D down to its snapshot and hashes it in one pass, cut before it starts.",
+            Fixtures.BigOnShare,
+            async f => FromHash(await NetworkFileOps.CopyAndHashAsync(f.BigShareFile, f.LocalCopyDest).ConfigureAwait(false))),
+
         // ── Cut MID-operation (CM), each --repeat times ─────────────────────────────────────────────────────
         new("copy-cm", CutPoint.MidOperation,
             "CopyAsync(local big file, share\\copy.bin)",
@@ -235,7 +287,15 @@ internal static class CaseCatalog
             Fixtures.BigOnShare,
             async f => FromHash(await NetworkFileOps.ComputeHashAsync(f.BigShareFile).ConfigureAwait(false)),
             WatchProcessReads: true,
-            RequiredLanding: "ComputeHash (read)")
+            RequiredLanding: "ComputeHash (read)"),
+
+        new("copy-hash-cm", CutPoint.MidOperation,
+            "CopyAndHashAsync(big file on share, local copy)",
+            "1.2.4 items 5.3/5.5: the reader's copy of D, cut part-way through reading the share: only after the probe has provably read 1 MB, and only a stall caught in 'CopyFile (read)' counts (the local write cannot stall).",
+            Fixtures.BigOnShare,
+            async f => FromHash(await NetworkFileOps.CopyAndHashAsync(f.BigShareFile, f.LocalCopyDest).ConfigureAwait(false)),
+            WatchProcessReads: true,
+            RequiredLanding: "CopyFile (read)")
     };
 
     /// <summary>
@@ -263,7 +323,7 @@ internal static class CaseCatalog
     /// <summary>Boils a plain success bool (false means the timeout was reported) down to an <see cref="OpResult"/>.</summary>
     /// <param name="ok">What the method returned.</param>
     /// <returns>Gave up when <paramref name="ok"/> is false.</returns>
-    private static OpResult FromBool(bool ok) => new(!ok, $"returned {ok}");
+    internal static OpResult FromBool(bool ok) => new(!ok, $"returned {ok}");
 
     /// <summary>Boils a <c>(Completed, Hash)</c> answer down to an <see cref="OpResult"/>.</summary>
     /// <param name="answer">What <c>ComputeHashAsync</c> returned.</param>

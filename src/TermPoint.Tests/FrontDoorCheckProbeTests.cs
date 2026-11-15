@@ -14,8 +14,8 @@ namespace TermPoint.Tests;
 /// matches the one taken at checkout, so any such change would make an editor's saves fail with no other writer
 /// involved.
 ///
-/// <para>The front-door check (<see cref="DatabaseValidator.ValidateAsync"/>) is the one place that opens D with SQLite
-/// itself (read-only, <c>PRAGMA integrity_check</c>). The reader's own work only copies D. Both are exercised on a D
+/// <para>The front-door check (<see cref="DatabaseValidator.ValidateSharedAtOpenAsync"/>, header-only since 1.2.4 item 4.7 D2; it once opened D with SQLite
+/// itself, read-only, for <c>PRAGMA integrity_check</c>) must still leave D alone. The reader's own work only copies D. Both are exercised on a D
 /// shaped exactly as a real save leaves it: D′ in WAL mode with its connection open during the save, as
 /// <c>DatabaseContext</c> keeps it in production.</para>
 /// </summary>
@@ -57,7 +57,7 @@ public sealed class FrontDoorCheckProbeTests : IDisposable
         RecordJournalHeader(db, "D after a real save");
         var before = DbFileTestHelpers.HashOf(db);
 
-        var result = await DatabaseValidator.ValidateAsync(db, logger: new RecordingAppLogger());
+        var result = await DatabaseValidator.ValidateSharedAtOpenAsync(db);
 
         Assert.Equal(DatabaseValidationResult.Ok, result);
         AssertUntouched(db, before);
@@ -76,7 +76,7 @@ public sealed class FrontDoorCheckProbeTests : IDisposable
         var before = DbFileTestHelpers.HashOf(db);
 
         var reader = new CheckoutService(new WriteLockService(), new RecordingAppLogger(), a => a(), _workingDir);
-        Assert.Equal(DatabaseValidationResult.Ok, await DatabaseValidator.ValidateAsync(db, logger: new RecordingAppLogger()));
+        Assert.Equal(DatabaseValidationResult.Ok, await DatabaseValidator.ValidateSharedAtOpenAsync(db));
         Assert.Equal(CheckoutOutcome.ReadOnly, await reader.CheckoutAsync(db));
         Assert.Equal(RefreshOutcome.Updated, await reader.RefreshReadOnlySnapshotAsync());
         SqliteConnection.ClearAllPools();

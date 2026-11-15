@@ -174,7 +174,7 @@
 				SelectedItem="{Binding SelectedRow}"
 				Sorting="DataGrid_Sorting">
 					<!--
-					  Under a Subjects focus (spec item 20) the rows are the in-focus instructors first, then an
+					  Under a Subjects focus the rows are the in-focus instructors first, then an
 					  "Other instructors" heading, then the rest in the lighter out-of-focus colour; nobody is hidden.
 					  The text columns are template columns (rather than DataGridTextColumn) so each cell can follow
 					  its row's IsOutOfFocus, as the section editor's instructor list does. The class sits on the

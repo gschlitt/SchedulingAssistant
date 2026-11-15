@@ -9,7 +9,7 @@ using System.Collections.ObjectModel;
 
 namespace TermPoint.ViewModels.Management;
 
-public partial class AcademicYearListViewModel : ViewModelBase, IDismissableEditor, IDisposable
+public partial class AcademicYearListViewModel : ViewModelBase, IDismissableEditor, IUnappliedChangesHost, IDisposable
 {
     private readonly IAcademicYearRepository _ayRepo;
     private readonly ISemesterRepository _semRepo;
@@ -42,6 +42,9 @@ public partial class AcademicYearListViewModel : ViewModelBase, IDismissableEdit
     /// Rebuilt whenever <see cref="SelectedAcademicYear"/> changes.
     /// </summary>
     [ObservableProperty] private SemesterManagerViewModel? _semesterManager;
+
+    /// <inheritdoc/>
+    public IUnappliedChanges? FindUnappliedChanges() => UnappliedChangesFinder.First(EditVm, SemesterManager);
 
     /// <summary>
     /// Set by the view. Called when adding a new academic year to ask if the user

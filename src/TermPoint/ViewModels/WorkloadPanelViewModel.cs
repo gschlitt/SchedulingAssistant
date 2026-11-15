@@ -9,7 +9,7 @@ namespace TermPoint.ViewModels;
 
 /// <summary>
 /// The Workload View (bottom-left panel): one row per instructor, listing that instructor's whole load for the
-/// selected semester(s). Under a subject focus (spec item 20, step 20.6) only the in-focus instructors get a row
+/// selected semester(s). Under a subject focus only the in-focus instructors get a row
 /// (decided by <see cref="FocusService.IsInFocus"/>, never re-implemented here); each row still lists and totals
 /// the instructor's WHOLE load, with sections outside the chosen subjects flagged
 /// <see cref="WorkloadItemViewModel.IsOutOfFocus"/> so the view can dim them.

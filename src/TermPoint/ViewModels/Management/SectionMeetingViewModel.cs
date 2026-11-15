@@ -478,7 +478,7 @@ public partial class SectionMeetingViewModel : ViewModelBase
     /// Deliberately does <b>not</b> rebuild <see cref="AvailableBlockLengthStrings"/>: that list
     /// is rebuilt only when the Length dropdown opens (see <see cref="RefreshBlockLengths"/>),
     /// because rebuilding a sibling AutoCompleteBox's list mid-commit blanks its text under
-    /// Avalonia 12.1 and can crash it (spec item 22). The legal lengths needed here are computed
+    /// Avalonia 12.1 and can crash it. The legal lengths needed here are computed
     /// directly with <see cref="ComputeBlockLengthSuggestions"/>, which mutates nothing.
     /// </para>
     /// </summary>
@@ -522,11 +522,11 @@ public partial class SectionMeetingViewModel : ViewModelBase
             {
                 // BACKING FIELDS deliberately used instead of the property setter.
                 //
-                // Committing a start time no longer rebuilds either suggestion list, so
-                // OnSelectedBlockLengthChanged is no longer dangerous to re-enter (it used to
-                // call RefreshStartTimes(), which cleared the Start list while the Start
+                // Committing a start time does not rebuild either suggestion list, so
+                // OnSelectedBlockLengthChanged is safe to re-enter (calling RefreshStartTimes()
+                // here would clear the Start list while the Start
                 // AutoCompleteBox was still processing the text change that started this chain
-                // and threw ArgumentOutOfRangeException — spec item 22). The backing-field
+                // and throw ArgumentOutOfRangeException). The backing-field
                 // write is retained anyway because it does everything that handler would do
                 // here — sync the text and clear the error — without re-entering a second
                 // property-changed handler in the middle of this one. CommunityToolkit invokes
@@ -549,7 +549,7 @@ public partial class SectionMeetingViewModel : ViewModelBase
     /// Deliberately does <b>not</b> rebuild <see cref="AvailableStartTimeStrings"/>: that list is
     /// rebuilt only when the Start dropdown opens (see <see cref="RefreshStartTimes"/>), because
     /// rebuilding a sibling AutoCompleteBox's list mid-commit blanks its text under Avalonia 12.1
-    /// and can crash it (spec item 22).
+    /// and can crash it.
     /// </para>
     /// </summary>
     partial void OnSelectedBlockLengthChanged(double? value)
@@ -728,7 +728,7 @@ public partial class SectionMeetingViewModel : ViewModelBase
     // AutoCompleteBox is bound to makes the box rebuild its internal view; under Avalonia 12.1
     // that raises "lost selection" and the box falls back to its last typed text (empty after a
     // mouse pick), which the two-way Text binding then writes back — blanking the field. Rebuilding
-    // a list mid-pick also caused the ArgumentOutOfRangeException of spec item 22.
+    // a list mid-pick also causes ArgumentOutOfRangeException.
     //
     // The Compute* helpers are pure so that the commit handlers (OnSelectedStartTimeChanged) can ask
     // "what would the list contain?" without touching the observable collections.
@@ -797,7 +797,7 @@ public partial class SectionMeetingViewModel : ViewModelBase
     /// <para>
     /// Runs when the Length dropdown is about to open (bound as <c>RefreshBlockLengthsCommand</c>
     /// through <c>DropDownOpeningCommandBehavior</c>) and once from the constructor — never as part
-    /// of committing a start time or length (spec item 22). When the computed list already equals
+    /// of committing a start time or length. When the computed list already equals
     /// the collection's contents the collection is left untouched, so no change notification
     /// reaches the AutoCompleteBox.
     /// </para>
@@ -815,7 +815,7 @@ public partial class SectionMeetingViewModel : ViewModelBase
     /// <para>
     /// Runs when the Start dropdown is about to open (bound as <c>RefreshStartTimesCommand</c>
     /// through <c>DropDownOpeningCommandBehavior</c>) and once from the constructor — never as part
-    /// of committing a start time or length (spec item 22). When the computed list already equals
+    /// of committing a start time or length. When the computed list already equals
     /// the collection's contents the collection is left untouched, so no change notification
     /// reaches the AutoCompleteBox.
     /// </para>
@@ -909,6 +909,19 @@ public partial class SectionMeetingViewModel : ViewModelBase
     }
 
     /// <summary>
+    /// Builds the Room Browser's search criteria from an editor's meeting rows: one spec per
+    /// row that has a length, skipping remote meetings (they need no room). Shared by the
+    /// section and meeting editors, both when the browser opens and when it re-runs.
+    /// </summary>
+    /// <param name="rows">The editor's meeting rows, in display order (the order sets each spec's index).</param>
+    /// <returns>The non-remote specs; empty when every meeting with a length is remote.</returns>
+    public static List<MeetingSpec> ToBrowserSpecs(IEnumerable<SectionMeetingViewModel> rows) =>
+        rows.Select((m, i) => m.ToMeetingSpec(i))
+            .Where(s => s != null && !s.IsRemote)
+            .Cast<MeetingSpec>()
+            .ToList();
+
+    /// <summary>
     /// Converts the form state back to a <see cref="SectionDaySchedule"/> model.
     /// Returns null if the start time or block length have not been committed yet.
     /// <para>
@@ -932,6 +945,16 @@ public partial class SectionMeetingViewModel : ViewModelBase
             Frequency       = BuildStoredFrequency(),
         }.WithExtensionDataFrom(_original);
     }
+
+    /// <summary>
+    /// The values of this row the user can edit, as comparable text, for an editor's unapplied-changes snapshot.
+    /// Unlike <see cref="ToSchedule"/> it also covers a half-filled row (a day chosen but no
+    /// start time yet), because typing into such a row is a change the user would lose.
+    /// </summary>
+    /// <returns>Comparable text; equal for equal values.</returns>
+    public string StateKey() => UnappliedChangesKey.Of(
+        SelectedDay, SelectedStartTime, SelectedBlockLength, SelectedMeetingTypeId ?? "",
+        SelectedRoomId ?? "", SelectedRoomType?.Id, SelectedFrequencyOption, BuildStoredFrequency());
 }
 
 public record DayOption(int Day, string Name);

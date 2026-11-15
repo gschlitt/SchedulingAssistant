@@ -18,7 +18,7 @@ namespace TermPoint.Behaviors;
 /// <c>ScrollIntoView</c>, <c>BringIntoView</c>): anchoring will undo it.</b>
 /// <see cref="ScrollItemIntoView"/> works with or without anchoring, virtualized or not.
 ///
-/// <b>Why it exists</b> (spec_version_1.2.3.md, items 21 and 23). A
+/// <b>Why it exists</b>. A
 /// <see cref="VirtualizingStackPanel"/> builds only the cards on screen (800 sections: heap 475 MB
 /// down to 160 MB) but estimates the rest from the average height of the cards it has built.
 /// Whenever a built card changes height (selection thickens its border, a card expands, the inline
@@ -54,7 +54,7 @@ namespace TermPoint.Behaviors;
 ///         fixed and offset changes since our last write are not scrolls (the ScrollViewer coerces its
 ///         offset when the panel's extent estimate shrinks, and treating that as a scroll abandoned
 ///         the chase). Cost: a deliberate scroll that arrives together with a re-estimation is undone.</item>
-///   <item><b>Virtualized away</b> (spec_version_1.2.3.md, item 27): the pinned (pressed or selected)
+///   <item><b>Virtualized away</b>: the pinned (pressed or selected)
 ///         card has no container at all in a pass. A big growth, such as a meeting row added to the open
 ///         editor, makes the panel re-estimate the cards it has not built, which moves the card's estimated
 ///         position outside the realized range, and the panel recycles it in that same pass. There is
@@ -368,7 +368,7 @@ public static class ListScrollAnchorBehavior
     /// page scroll is corrected straight back (probe E6a). Home, End, Up and Down are selection
     /// navigation: the ListBox moves <c>SelectedItem</c> (its own bring-into-view is suppressed) and the
     /// view scrolls through <see cref="ScrollItemIntoView"/>, so nothing needs protecting. A hint only
-    /// matters when the offset moves, so adding them would be harmless in the simple case (probe E6b), but
+    /// matters when the offset moves, so adding them would be harmless in the simple case, but
     /// it could make a ScrollViewer offset coercion during a chase look like a user scroll and abandon
     /// the chase.
     /// </summary>
@@ -878,7 +878,7 @@ public static class ListScrollAnchorBehavior
         }
 
         /// <summary>
-        /// Handles "the pinned card was virtualized away by a re-estimate" (spec item 27): the baseline's
+        /// Handles "the pinned card was virtualized away by a re-estimate": the baseline's
         /// anchor is the pressed or selected card, the card is still in the list, but the panel has no
         /// container for it. This happens when the card grows a lot (a meeting row added to the open
         /// editor): the panel re-estimates the cards it has not built from an average that now includes

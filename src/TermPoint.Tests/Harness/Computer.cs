@@ -49,8 +49,14 @@ internal sealed class Computer : IDisposable
     /// <summary>How many saves of the current process are running (0 or 1: the checkout service refuses a second one).</summary>
     private int _savesInFlight;
 
-    /// <summary>How many background tasks have been added to <see cref="_pending"/> (a sign that lock-loss work is still being started).</summary>
-    private int _pendingAdded;
+    /// <summary>How many times <see cref="CheckoutService.WriteLockLost"/> has been raised on this computer (and acted on) across its launches.</summary>
+    private int _lockLostRaised;
+
+    /// <summary>
+    /// How many times <see cref="CheckoutService.WriteLockLost"/> reached this computer's window across its launches: one per lost write
+    /// session. A proof test reads it to show that a wake check and a heartbeat that find the same loss raise it once (field bug A12).
+    /// </summary>
+    public int LockLostRaised => Volatile.Read(ref _lockLostRaised);
 
     /// <summary>Creates the computer, its folders and its first running process.</summary>
     /// <param name="world">The world it lives in.</param>
@@ -58,6 +64,7 @@ internal sealed class Computer : IDisposable
     public Computer(World world, string name)
     {
         _world    = world;
+        Clock     = new SkewedTimeProvider(world.Clock);
         Name      = name;
         LocalDir  = Path.Combine(world.RootDir, "computers", name);
         WorkDir   = Path.Combine(LocalDir, "work");
@@ -66,6 +73,12 @@ internal sealed class Computer : IDisposable
         Directory.CreateDirectory(GuardDir);
         Launch();
     }
+
+    /// <summary>
+    /// This computer's own clock (spec item 8.4): the world's shared fake time plus <see cref="SkewedTimeProvider.Offset"/>. Every service
+    /// of every process on this computer reads it; the offset survives a relaunch, as a real machine's clock does.
+    /// </summary>
+    public SkewedTimeProvider Clock { get; }
 
     // ── Identity and state ───────────────────────────────────────────────────
 
@@ -114,15 +127,20 @@ internal sealed class Computer : IDisposable
         => HasOpenSession && string.Equals(
             Path.GetFullPath(Checkout.SourcePath ?? ""), Path.GetFullPath(_world.DatabasePath), StringComparison.OrdinalIgnoreCase);
 
-    /// <summary>
-    /// A number that grows whenever this computer's process logs anything or starts lock-loss work. A caller waiting for
-    /// background work to finish watches it (together with <see cref="World.Activity"/>) stand still.
-    /// </summary>
-    public int LogActivity
-        => Logger is null ? 0 : Logger.Infos.Count + Logger.Warnings.Count + Logger.Errors.Count + Logger.Handled.Count + Volatile.Read(ref _pendingAdded);
-
     /// <summary>True while this computer's connection to the share is cut (see <see cref="World.NetworkDown"/>).</summary>
     public bool NetworkIsDown { get; internal set; }
+
+    /// <summary>
+    /// True while this computer's network HANGS (see <see cref="World.NetworkHang"/>): every call on the share blocks instead of failing, until the
+    /// network returns. Never true together with <see cref="NetworkIsDown"/> by the catalogue's events (a hang is one way for the network to go bad).
+    /// </summary>
+    public bool NetworkHangs { get; internal set; }
+
+    /// <summary>True while the network is down or hanging: the one thing that restores it is <see cref="World.NetworkUp"/>.</summary>
+    public bool NetworkIsFaulty => NetworkIsDown || NetworkHangs;
+
+    /// <summary>The gate of the current hang (the calls held on it), or null when the network is not hanging. Set by <see cref="World.NetworkHang"/>.</summary>
+    internal NetworkHangGate? HangGate { get; set; }
 
     /// <summary>
     /// True once a save was refused because the shared database changed elsewhere (the conflict banner of
@@ -183,7 +201,7 @@ internal sealed class Computer : IDisposable
 
         Trace         = new List<string>();
         Logger        = new RecordingAppLogger();
-        Locks         = new WriteLockService(_world.Clock, _identity, startTimers: false);
+        Locks         = new WriteLockService(Clock, _identity, startTimers: false);
         Checkout      = new CheckoutService(Locks, Logger, action => action(), WorkDir, startTimers: false);
         Guard         = new DatabaseInstanceGuard(GuardDir, Logger);
         Prompts       = new ScriptedPrompts(Trace.Add);
@@ -197,8 +215,9 @@ internal sealed class Computer : IDisposable
         Checkout.WriteLockLost        += reason =>
         {
             if (life.PowerIsOut) return;
+            Interlocked.Increment(ref _lockLostRaised);
             var task = Lifecycle.HandleWriteLockLostAsync(reason);
-            lock (_pending) { _pending.Add(task); _pendingAdded++; }
+            lock (_pending) _pending.Add(task);
         };
         Checkout.SaveConflictDetected += () => { if (!life.PowerIsOut) ConflictBannerShown = true; };
 
@@ -329,22 +348,17 @@ internal sealed class Computer : IDisposable
     /// Runs one lock-heartbeat tick now (what the 60-second heartbeat timer does). When the tick raises
     /// <see cref="WriteLockService.HeartbeatFailed"/> (since spec item 32, change (c), it does so at once when the lock
     /// file names another session), the checkout service's ownership check, and any lock-loss demotion it starts, run in
-    /// the background, fire-and-forget, exactly like the wake check's; this waits for them the same way
-    /// (<see cref="SettleBackgroundWorkAsync"/>), so every crash point they hit falls inside this step.
+    /// the background, fire-and-forget, exactly like the wake check's; this waits for the check's task
+    /// (<see cref="SettleBackgroundWorkAsync"/>), so every crash point it hits falls inside this step.
     /// </summary>
     /// <returns>A task that completes when the heartbeat write, or its failure, and any ownership check it started are done.</returns>
     public Task HeartbeatTickAsync()
         => _world.DoAsync(this, $"{DisplayName}'s heartbeat ticked",
             () => ActAsync(async () =>
             {
-                var verifies = Checkout.Mode == CheckoutMode.WriteAccess;
-                var outcomesBefore = CountHeartbeatVerifyOutcomes();
-                var raised = false;
-                void OnRaised() => raised = true;
-                Locks.HeartbeatFailed += OnRaised;
-                try { await Locks.TickHeartbeatAsync(); }
-                finally { Locks.HeartbeatFailed -= OnRaised; }
-                if (raised && verifies) await SettleBackgroundWorkAsync(CountHeartbeatVerifyOutcomes, outcomesBefore);
+                var checksBefore = Checkout.BackgroundChecksStarted;
+                await Locks.TickHeartbeatAsync();
+                await SettleBackgroundWorkAsync(checksBefore);
                 return 0;
             }));
 
@@ -358,18 +372,17 @@ internal sealed class Computer : IDisposable
     /// The computer has just woken from sleep: runs one wake-detection tick (<see cref="WriteLockService.TickWakeCheck"/>),
     /// which, when it finds a long gap since the previous tick, re-checks the lock in the background, and waits for that
     /// background work to finish (including any lock-loss demotion it starts, which is awaited like every other
-    /// action's). The wake handler is fire-and-forget in production, so its end is detected from its log lines and
-    /// from its work on the share standing still (see <see cref="SettleBackgroundWorkAsync"/>).
+    /// action's). The wake handler is fire-and-forget in production, so its end is detected by awaiting the task the
+    /// checkout service records for it (see <see cref="SettleBackgroundWorkAsync"/>).
     /// </summary>
     /// <returns>A task that completes when the wake check and everything it started are done.</returns>
     public Task WakeCheckAsync()
         => _world.DoAsync(this, $"{DisplayName}'s computer woke up and TermPoint checked the lock",
             () => ActAsync(async () =>
             {
-                var verifies = Checkout.Mode == CheckoutMode.WriteAccess;
-                var outcomesBefore = CountWakeOutcomes();
+                var checksBefore = Checkout.BackgroundChecksStarted;
                 Locks.TickWakeCheck();
-                if (verifies) await SettleBackgroundWorkAsync(CountWakeOutcomes, outcomesBefore);
+                await SettleBackgroundWorkAsync(checksBefore);
                 return 0;
             }));
 
@@ -590,67 +603,28 @@ internal sealed class Computer : IDisposable
 
     // ── Internals ────────────────────────────────────────────────────────────
 
-    /// <summary>How many of this process's log lines are the wake handler's outcome lines (or its failure).</summary>
-    private int CountWakeOutcomes()
-    {
-        try
-        {
-            var infos = Logger.Infos.Count(line => line.Contains("wake check", StringComparison.OrdinalIgnoreCase));
-            var failures = Logger.Errors.Count(e => (e.Context ?? "").Contains("wake-check", StringComparison.OrdinalIgnoreCase));
-            return infos + failures;
-        }
-        catch (InvalidOperationException)
-        {
-            return 0;   // the list changed under the count; the caller counts again on its next look
-        }
-    }
-
     /// <summary>
-    /// How many of this process's log lines are the heartbeat ownership check's outcome lines (its "heartbeat verify — …"
-    /// lines, its "already in flight" skip, or its failure): the end markers of the background work a heartbeat tick
-    /// starts when it raises <see cref="WriteLockService.HeartbeatFailed"/>.
+    /// Waits for the fire-and-forget ownership checks the production class started since <paramref name="checksBefore"/> (the
+    /// wake handler's and the heartbeat-failed handler's), by awaiting the tasks themselves
+    /// (<see cref="CheckoutService.WhenBackgroundChecksDoneAsync"/>), not by watching the log or the share for quiet. The check
+    /// raises the lost-lock event on its own thread, inside the task, so the demotion it starts is already in
+    /// <see cref="_pending"/> when the task ends and <see cref="ActAsync{T}"/> awaits it next: the order is fixed, not timed.
+    /// Only the checks started after the mark are waited for, so a check of this computer that a pause is holding does not
+    /// stall an action that runs meanwhile (a heartbeat tick while the wake check is held, and the reverse).
+    /// <para>The only real time left is a ten-second safety bound against a bug in the harness or the code. Hitting it is
+    /// loud, never silent: it throws, which ends the step as an exception of the run.</para>
     /// </summary>
-    private int CountHeartbeatVerifyOutcomes()
+    /// <param name="checksBefore">The value of <see cref="CheckoutService.BackgroundChecksStarted"/> before the tick.</param>
+    /// <exception cref="TimeoutException">A check had not finished after ten seconds.</exception>
+    private async Task SettleBackgroundWorkAsync(long checksBefore)
     {
-        try
-        {
-            var infos = Logger.Infos.Count(line =>
-                line.Contains("heartbeat verify", StringComparison.OrdinalIgnoreCase)
-                || line.Contains("verification already in flight", StringComparison.OrdinalIgnoreCase));
-            var failures = Logger.Errors.Count(e => (e.Context ?? "").Contains("heartbeat-verify", StringComparison.OrdinalIgnoreCase));
-            return infos + failures;
-        }
-        catch (InvalidOperationException)
-        {
-            return 0;   // the list changed under the count; the caller counts again on its next look
-        }
-    }
-
-    /// <summary>
-    /// Waits for the fire-and-forget work a wake check or a heartbeat ownership check started: first for it to log its
-    /// outcome, then for the activity counters (<see cref="World.Activity"/>) to stand still for a short quiet period,
-    /// because the handler still has work to do after the line is logged (a lock re-acquire, the demotion, a heartbeat
-    /// renewal). Bounded to ten seconds. This is the harness's only wait on real time; the production class gives no
-    /// task to await.
-    /// </summary>
-    /// <param name="countOutcomes">Counts the handler's outcome lines (<see cref="CountWakeOutcomes"/> or <see cref="CountHeartbeatVerifyOutcomes"/>).</param>
-    /// <param name="outcomesBefore">The number of outcome lines logged before the tick.</param>
-    private async Task SettleBackgroundWorkAsync(Func<int> countOutcomes, int outcomesBefore)
-    {
-        var deadline = DateTime.UtcNow + TimeSpan.FromSeconds(10);
-
-        while (countOutcomes() <= outcomesBefore && DateTime.UtcNow < deadline)
-            await Task.Delay(2);
-
-        var last = _world.Activity;
-        var quiet = 0;
-        while (quiet < 5 && DateTime.UtcNow < deadline)
-        {
-            await Task.Delay(8);
-            var now = _world.Activity;
-            if (now == last) quiet++;
-            else { quiet = 0; last = now; }
-        }
+        var settled = Checkout.WhenBackgroundChecksDoneAsync(checksBefore);
+        using var cancel = new CancellationTokenSource();
+        var first = await Task.WhenAny(settled, Task.Delay(TimeSpan.FromSeconds(10), cancel.Token));
+        if (first != settled)
+            throw new TimeoutException(
+                $"{DisplayName}'s background lock check (wake check or heartbeat verify) had not finished after 10 seconds of real time.");
+        cancel.Cancel();
     }
 
     /// <summary>

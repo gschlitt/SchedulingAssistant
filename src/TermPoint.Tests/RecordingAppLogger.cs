@@ -9,12 +9,14 @@ namespace TermPoint.Tests;
 /// <param name="Metadata">The metadata, or null.</param>
 /// <param name="MetadataTab">The tab that holds the metadata.</param>
 /// <param name="GroupingKey">The grouping key, or null.</param>
+/// <param name="Informational">True when the report was sent as informational (BugSnag severity Info).</param>
 internal sealed record HandledReport(
     Exception Exception,
     string Context,
     IReadOnlyDictionary<string, string>? Metadata,
     string MetadataTab,
-    string? GroupingKey);
+    string? GroupingKey,
+    bool Informational = false);
 
 /// <summary>
 /// A test <see cref="IAppLogger"/> that remembers everything it is told: information and warning lines, errors,
@@ -35,6 +37,9 @@ internal sealed class RecordingAppLogger : IAppLogger
 
     /// <summary>Every <see cref="ReportHandled"/> call, in order.</summary>
     public List<HandledReport> Handled { get; } = new();
+
+    /// <summary>Every <see cref="LogBreadcrumb"/> call (message and a copy of its metadata, or null), in order.</summary>
+    public List<(string Message, Dictionary<string, string>? Metadata)> Breadcrumbs { get; } = new();
 
     /// <summary>Every <see cref="NotifyUser"/> message, in order.</summary>
     public List<string> UserNotices { get; } = new();
@@ -62,7 +67,10 @@ internal sealed class RecordingAppLogger : IAppLogger
     public void LogInfo(string message, string? context = null) { lock (Infos) Infos.Add(message); }
 
     /// <inheritdoc/>
-    public void LogBreadcrumb(string message, Dictionary<string, string>? metadata = null) { }
+    public void LogBreadcrumb(string message, Dictionary<string, string>? metadata = null)
+    {
+        lock (Breadcrumbs) Breadcrumbs.Add((message, metadata is null ? null : new Dictionary<string, string>(metadata)));
+    }
 
     /// <inheritdoc/>
     public void ReportHandled(
@@ -70,12 +78,13 @@ internal sealed class RecordingAppLogger : IAppLogger
         string context,
         IReadOnlyDictionary<string, string>? metadata = null,
         string metadataTab = "details",
-        string? groupingKey = null)
+        string? groupingKey = null,
+        bool informational = false)
     {
         if (ThrowFromReportHandled)
             throw new InvalidOperationException("the logger is failing");
 
-        lock (Handled) Handled.Add(new HandledReport(ex, context, metadata, metadataTab, groupingKey));
+        lock (Handled) Handled.Add(new HandledReport(ex, context, metadata, metadataTab, groupingKey, informational));
     }
 
     /// <inheritdoc/>

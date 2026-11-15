@@ -1,17 +1,15 @@
 namespace TermPoint.Services;
 
 /// <summary>
-/// Every user-facing text about the file TermPoint uses to mark a database as in use (the lock file) being lost or put
-/// back while a session is open (spec item 28; data-persistence review findings F6 and F13):
-/// <list type="bullet">
-/// <item><description><b>The lock-lost banner</b> (<see cref="Banner"/>): shown, sticky, when a mid-session check finds
-/// the session no longer owns the lock and the session is made read-only. Says who or what took the lock, whether there
-/// were unsaved changes and where they are, what happens to them next (<see cref="KeptChangesPrompt.OfferToAdd"/>), and
-/// how to edit again.</description></item>
-/// <item><description><b>The lock-put-back notice</b> (<see cref="LockFilePutBack"/>): the informational,
-/// auto-dismissing banner shown when another program removed the file and TermPoint re-created it, so nothing was
-/// lost.</description></item>
-/// </list>
+/// Every user-facing text about the file TermPoint uses to mark a database as in use (the lock file) being lost while a
+/// session is open: <b>the lock-lost banner</b>
+/// (<see cref="Banner"/>), shown, sticky, when a mid-session check finds the session no longer owns the lock and the
+/// session is made read-only. Says who or what took the lock, whether there were unsaved changes and where they are, what
+/// happens to them next (<see cref="KeptChangesPrompt.OfferToAdd"/>), and how to edit again.
+///
+/// <para>A missing lock file that TermPoint puts back shows <b>no</b> message: the user has nothing
+/// to do, and a notice such as "Another program removed the file…" would name a wrong cause when another TermPoint had taken
+/// over and closed. See <c>CheckoutService.TryRecoverRemovedLockAsync</c>.</para>
 /// Kept out of <c>SessionLifecycle</c> and <c>CheckoutService</c> so the wording can be pinned by unit tests. Modelled on
 /// <see cref="SavePrompt"/> and <see cref="KeptChangesPrompt"/>.
 ///
@@ -32,20 +30,20 @@ public static class LockLossPrompt
     /// <param name="who">The new holder as <c>"Username on Machine"</c>, or just <c>"Username"</c> when the machine is unknown.</param>
     /// <returns>The sentence.</returns>
     public static string TakenOverBy(string who)
-        => $"{who} has taken over editing this database, so it's read-only for you now.";
+        => $"{who} has taken over editing this database, so it has been made read-only for you now.";
 
     /// <summary>First sentence of the banner when the lock was taken over and the new holder cannot be named.</summary>
     public const string TakenOverByUnknown =
-        "Someone else has taken over editing this database, so it's read-only for you now.";
+        "Someone else has taken over editing this database, so it has been made read-only for you now.";
 
     /// <summary>
     /// First sentence of the banner for every reason other than a takeover: the lock file was deleted <b>or is
-    /// unreadable</b> (finding F13: a damaged file is not "removed"). Antivirus and cloud-sync software are the usual
+    /// unreadable</b> (a damaged file is not "removed"). Antivirus and cloud-sync software are the usual
     /// cause, so the sentence says so.
     /// </summary>
     public const string FileRemovedOrChanged =
         "Another program removed or changed the file TermPoint uses to mark this database as in use " +
-        "(antivirus or cloud-sync software can do this), so it's read-only for you now.";
+        "(antivirus or cloud-sync software can do this), so it has been made read-only for you now.";
 
     // ── The lock-lost banner, middle (the user's changes) ─────────────────────
 
@@ -59,6 +57,13 @@ public static class LockLossPrompt
 
     /// <summary>The banner's second part when there were NO unsaved changes. Starts with a space.</summary>
     public const string WithoutUnsavedChanges = " There were no unsaved changes at the time.";
+
+    /// <summary>
+    /// The extra sentence when an editor was open with changes the user had not applied: with the
+    /// lock gone nothing can be applied, and the reload closes the editor. Starts with a space.
+    /// </summary>
+    public const string UnappliedEditorChangesLost =
+        " Changes you hadn't applied in the open editor couldn't be saved.";
 
     // ── The lock-lost banner, last sentence (how to edit again) ───────────────
 
@@ -80,8 +85,10 @@ public static class LockLossPrompt
     /// <param name="holderUsername">The new holder's user name, or null or blank when unknown. Read only when <paramref name="takenOver"/>.</param>
     /// <param name="holderMachine">The new holder's machine name, or null or blank when unknown. Read only when <paramref name="takenOver"/> and the user name is known.</param>
     /// <param name="hadUnsavedChanges">True when the session had unsaved changes (its dirty marker existed) when the lock was lost.</param>
+    /// <param name="hadUnappliedEditorChanges">True when an open editor held changes the user had not applied when the lock was lost; adds <see cref="UnappliedEditorChangesLost"/> after the changes part.</param>
     /// <returns>The banner text.</returns>
-    public static string Banner(bool takenOver, string? holderUsername, string? holderMachine, bool hadUnsavedChanges)
+    public static string Banner(bool takenOver, string? holderUsername, string? holderMachine, bool hadUnsavedChanges,
+        bool hadUnappliedEditorChanges = false)
     {
         string first;
         if (!takenOver)
@@ -101,16 +108,7 @@ public static class LockLossPrompt
 
         return first
                + (hadUnsavedChanges ? WithUnsavedChanges : WithoutUnsavedChanges)
+               + (hadUnappliedEditorChanges ? UnappliedEditorChangesLost : "")
                + (takenOver ? EditAgainAfterTakeover : EditAgainOtherwise);
     }
-
-    // ── The lock file put back ────────────────────────────────────────────────
-
-    /// <summary>
-    /// The informational banner shown (auto-dismissing) after another program removed the lock file and TermPoint
-    /// re-created it atomically. The session carries on, so nothing needs doing.
-    /// </summary>
-    public const string LockFilePutBack =
-        "Another program removed the file TermPoint uses to mark this database as in use " +
-        "(antivirus or cloud-sync software can do this). TermPoint has put it back, and you can carry on as normal.";
 }

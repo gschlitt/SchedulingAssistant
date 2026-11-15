@@ -186,6 +186,26 @@ public sealed class StaleLockPromptTests
         Assert.EndsWith(expected, message);
     }
 
+    /// <summary>
+    /// From 90 seconds the wait is stated in minutes, rounded up ("up to 3 minutes" for the 170 s production confirmation); a minute
+    /// count of one is singular; 89 seconds and below keep the seconds text exactly.
+    /// </summary>
+    [Theory]
+    [InlineData(89,    "(up to 89 seconds)")]
+    [InlineData(89.2,  "(up to 2 minutes)")]    // rounded up to 90 s first, which is "90 or more": minutes
+    [InlineData(90,    "(up to 2 minutes)")]
+    [InlineData(120,   "(up to 2 minutes)")]
+    [InlineData(120.5, "(up to 3 minutes)")]
+    [InlineData(170,   "(up to 3 minutes)")]
+    [InlineData(180,   "(up to 3 minutes)")]
+    [InlineData(181,   "(up to 4 minutes)")]
+    public void WaitMessage_FromNinetySeconds_SaysMinutesRoundedUp(double seconds, string expected)
+    {
+        var message = StaleLockPrompt.BuildWaitMessage(Holder("jsmith", "LAPTOP-42"), TimeSpan.FromSeconds(seconds));
+
+        Assert.Equal($"Checking that jsmith isn't still active in this database… {expected}", message);
+    }
+
     /// <summary>With no usable name (unknown holder, unreadable lock) it says "the other user".</summary>
     [Theory]
     [InlineData(null)]

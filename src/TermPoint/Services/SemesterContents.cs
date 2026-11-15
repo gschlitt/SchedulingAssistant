@@ -1,7 +1,7 @@
 namespace TermPoint.Services;
 
 /// <summary>
-/// Per-kind counts of everything a semester has attached to it (spec item 8). The six kinds are
+/// Per-kind counts of everything a semester has attached to it. The six kinds are
 /// exactly the six tables tied to a semester by <c>semester_id</c>: sections, meetings, releases,
 /// instructor commitments, scheduling notes and program watches. A semester is "empty" only when
 /// all six counts are zero. Produced by <see cref="SemesterContentsService.CountContents"/>.

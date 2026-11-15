@@ -11,7 +11,7 @@ namespace TermPoint.ViewModels.Management;
 /// Manages CRUD for releases for a specific instructor in a specific semester.
 /// Fires ReleasesChanged event when releases are modified so parent can refresh workload display.
 /// </summary>
-public partial class ReleaseManagementViewModel : ViewModelBase
+public partial class ReleaseManagementViewModel : ViewModelBase, IUnappliedChangesHost
 {
     private readonly IReleaseRepository _releaseRepo;
     private readonly WriteLockService _lockService;
@@ -21,6 +21,9 @@ public partial class ReleaseManagementViewModel : ViewModelBase
     [ObservableProperty] private ObservableCollection<ReleaseWorkload> _releases = new();
     [ObservableProperty] private ReleaseWorkload? _selectedRelease;
     [ObservableProperty] private ReleaseEditViewModel? _editVm;
+
+    /// <inheritdoc/>
+    public IUnappliedChanges? FindUnappliedChanges() => UnappliedChangesFinder.First(EditVm);
     /// <summary>Fired when releases are added/edited/deleted to notify parent to refresh workload display.</summary>
     public event Action? ReleasesChanged;
 

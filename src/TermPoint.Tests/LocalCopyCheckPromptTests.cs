@@ -25,6 +25,19 @@ public sealed class LocalCopyCheckPromptTests
         Assert.Equal("Close", LocalCopyCheckPrompt.CloseButton);
     }
 
+    /// <summary>
+    /// 1.2.4 item 4.7 (D1): the "in use" prompt for kept unsaved changes is the existing in-use text followed by the
+    /// approved sentence (W1), verbatim.
+    /// </summary>
+    [Fact]
+    public void InUseWithKeptChangesMessage_IsInUseMessagePlusTheApprovedSentence()
+    {
+        Assert.Equal(
+            LocalCopyCheckPrompt.InUseMessage + " Your unsaved changes from last time are kept.",
+            LocalCopyCheckPrompt.InUseWithKeptChangesMessage);
+        Assert.EndsWith(" Your unsaved changes from last time are kept.", LocalCopyCheckPrompt.InUseWithKeptChangesMessage);
+    }
+
     /// <summary>The read-only open failure message (spec item 12) is the approved wording, verbatim.</summary>
     [Fact]
     public void CouldntMakeCopyMessage_IsTheApprovedWording()
@@ -76,6 +89,7 @@ public sealed class LocalCopyCheckPromptTests
         var texts = new[]
         {
             LocalCopyCheckPrompt.CouldntOpenTitle, LocalCopyCheckPrompt.InUseMessage,
+            LocalCopyCheckPrompt.InUseWithKeptChangesMessage,
             LocalCopyCheckPrompt.TryAgainButton, LocalCopyCheckPrompt.CloseButton,
             LocalCopyCheckPrompt.UnsavedChangesLostTitle, LocalCopyCheckPrompt.UnsavedChangesLostMessage,
             LocalCopyCheckPrompt.DamagedSharedTitle, LocalCopyCheckPrompt.DamagedSharedMessage,
