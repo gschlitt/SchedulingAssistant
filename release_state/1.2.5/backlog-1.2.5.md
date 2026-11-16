@@ -79,7 +79,6 @@ it and need 1.6 (in-app Store updates) first.
 | 9.5 | A section picked while the section list is hidden isn't scrolled into view | |
 | 9.6 | Room Browser: test that every option is valid and none is missed | |
 | 9.7 | Review Avalonia 12.1.4's release notes | |
-| 9.8 | File an Avalonia bug for the list "jump" | |
 
 ## From the 2026-11-12 reviews (harness review, lock-scenario review, RC2 field tests)
 
