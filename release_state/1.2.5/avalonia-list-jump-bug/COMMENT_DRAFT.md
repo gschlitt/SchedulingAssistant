@@ -1,6 +1,6 @@
 # Draft comment for AvaloniaUI/Avalonia#17635 (for Greg to review; not approved wording yet)
 
-The repro link works once `tools/VspGrowDriftRepro` is pushed to master.
+
 
 ---
 

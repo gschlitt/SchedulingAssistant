@@ -77,7 +77,9 @@ We use the **Release Ledger development pattern**: the state of all work lives i
 - Header: release goal, the `MinimumVersionToWrite` answer (or "not asked yet"), updated date.
 - **Work**, then **Closed**. Each entry is one `<details>` block whose summary line is the title, the state and, for
   exactly one entry, **ACTIVE**. The collapsed list IS the overview; there is no separate summary list.
-- States: Not started · In progress · Waiting on Greg · Needs testing · Done · Deferred · Dropped.
+- States: Not started · In progress · Waiting on Greg · Waiting on others · Needs testing · Done · Deferred · Dropped.
+  **Waiting on others** means it can only go on once something outside our control arrives (another project's fix or
+  release, a reply, a date); its State says what, and how and when to check for it.
 - Expanded: **Goal** (what "done" means) · **State** (at most 3 lines) · **Steps (N left)** (collapsed; one line
   each, in order, concrete enough to start) · **Open questions** (one line each; what "Waiting on Greg" waits for) ·
   link to the item notes, and to the design doc if any.

@@ -13,7 +13,9 @@ Update the release ledger from this session. The rules are in CLAUDE.md, "Releas
    - **State:** where it stands now, at most 3 lines.
    - **Steps (N left):** remove finished steps, add new ones, keep them in order and one line each.
    - **Open questions:** one line each. If work can't go on without Greg's answer, set the state to
-     **Waiting on Greg**. Set other state changes too (In progress, Needs testing, Done).
+     **Waiting on Greg**. If it can only go on once something outside our control arrives (another project's fix or
+     release, a reply, a date), set **Waiting on others** and say in **State** what it waits for and how and when to
+     check. Set other state changes too (In progress, Needs testing, Done).
    - **Done:** move the entry to **Closed**, collapsed to goal + one outcome line (date, commit). Before marking it
      Done, ask the `MinimumVersionToWrite` question if it touches what gets saved.
 

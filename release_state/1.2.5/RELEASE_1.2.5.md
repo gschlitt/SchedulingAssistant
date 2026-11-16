@@ -33,28 +33,6 @@ Notes: [late-lock-acquire/NOTES.md](late-lock-acquire/NOTES.md)
 </details>
 
 <details>
-<summary><b>Avalonia bug post: section list "jump" under virtualization</b> · In progress · **ACTIVE**</summary>
-
-**Goal:** a well-written, reproducible Avalonia bug post (a tiny stand-alone repro plus the issue text), ready for Greg to file. Filing and any later switch to a virtualized section list are separate; this entry ends when the post is ready.
-
-**State:** Repro built and the bug reproduced stand-alone, unchanged on the latest Avalonia (12.1.6) and on today's nightly from main. An open Avalonia issue looks like the same bug. Greg chose a short comment on that issue; the comment is drafted and waits for his review.
-
-<details>
-<summary>Steps (2 left)</summary>
-
-1. Commit and push the repro to master so the comment's link works.
-2. Greg posts it; link it back here and in the notes.
-
-</details>
-
-**Open questions:**
-- After the bug is filed, does virtualizing the section list wait on a fix, or keep the workaround? (A separate entry if so.)
-
-Notes: [avalonia-list-jump-bug/NOTES.md](avalonia-list-jump-bug/NOTES.md). Source: former backlog item 9.8.
-
-</details>
-
-<details>
 <summary><b>Notices lost behind licence banners (WN1 and related)</b> · Not started</summary>
 
 **Goal:** no notice can be lost for good, or hidden indefinitely, because a licence or trial banner is occupying the one banner slot. The "What's new" banner must be shown (or dismissed) before it counts as seen, and an undismissable licence notice must not block errors and warnings behind it.
@@ -141,4 +119,11 @@ Notes: [click-drag-meetings/NOTES.md](click-drag-meetings/NOTES.md). Design: to 
 
 ## Closed
 
-_None._
+<details>
+<summary><b>Avalonia bug post: section list "jump" under virtualization</b> · Done</summary>
+
+**Goal:** a well-written, reproducible Avalonia bug post (a tiny stand-alone repro plus the text), ready for Greg to file.
+
+**Outcome:** 2026-11-16 (ce663d6): stand-alone repro in the tools folder, bug confirmed on 12.1.6 and on main's nightly; a short comment for the matching open Avalonia issue is ready for Greg to post. Retiring the workaround once Avalonia fixes it is a backlog line. Notes: [avalonia-list-jump-bug/NOTES.md](avalonia-list-jump-bug/NOTES.md).
+
+</details>

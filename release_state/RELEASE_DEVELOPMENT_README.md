@@ -23,6 +23,8 @@ flowchart TD
     HO --> S
     E -- "needs a decision" --> G["<b>Waiting on Greg</b><br/>the open question shows in the ledger"]
     G -- "Greg answers" --> S
+    E -- "needs something from outside" --> WO["<b>Waiting on others</b><br/>State says what, and how and when to check"]
+    WO -- "it arrives" --> S
     E -- "code and tests done" --> NT["<b>Needs testing</b><br/>field test; MinimumVersionToWrite question"]
     NT -- "passes" --> DN["<b>Done</b> → moves to Closed<br/>one outcome line; NOTES.md stays"]
     NT -- "fails" --> S
@@ -37,6 +39,7 @@ flowchart TD
 flowchart LR
     NS[Not started] --> IP[In progress]
     IP <--> WG[Waiting on Greg]
+    IP <--> WO[Waiting on others]
     IP --> NT[Needs testing]
     NT --> DN[Done]
     NT -- test fails --> IP
