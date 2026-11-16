@@ -130,6 +130,28 @@ public partial class ScheduleGridView : UserControl
     private static IBrush TileInternalBorder    => Res("TileInternalBorder");
     private static IBrush SectionMeetingTextSelected    => Res("SectionMeetingTextSelected");
     private static IBrush UserSelectedBorder    => Res("UserSelectedSectionBorderColor");
+
+    /// <summary>Frame colour of a marked section's lines (<c>MarkedSectionBorder</c>, AppColors.axaml). Transparent if the resource is missing.</summary>
+    private static IBrush MarkedSectionBorder   => Res("MarkedSectionBorder");
+
+    /// <summary>
+    /// The one decision of how a section line's row is framed, used by both the tile build and
+    /// <see cref="UpdateSelectionHighlight"/>. A marked line shows the mark frame, even when it is also selected (the
+    /// selection still shows through the label's bold weight and text colour). A selected, unmarked line shows the
+    /// selection frame. Both frames have the same thickness, so a framed line is the same size either way and the
+    /// tile height accounting only needs to know whether a line is framed.
+    /// </summary>
+    /// <param name="isSelected">Whether the line's section is selected.</param>
+    /// <param name="isMarked">Whether the line's section is marked.</param>
+    /// <param name="selectedBrush">The selection frame brush.</param>
+    /// <param name="markedBrush">The mark frame brush.</param>
+    /// <param name="thickness">The frame thickness (<c>TileSelectionBorderThickness</c>).</param>
+    /// <returns>The border brush and thickness for the row; transparent and 0 when neither applies.</returns>
+    private static (IBrush Brush, double Thickness) EntryRowFrame(
+        bool isSelected, bool isMarked, IBrush selectedBrush, IBrush markedBrush, double thickness) =>
+        isMarked   ? (markedBrush, thickness)
+        : isSelected ? (selectedBrush, thickness)
+        : (Brushes.Transparent, 0);
     private static IBrush OverlayFrameBorder    => Res("OverlayFrameBorder");
     private static IBrush TileDeemphasizedText  => Res("TileDeemphasizedText");
     private static IBrush TileEntryHoverOverlay => Res("CardHoverOverlay");
@@ -304,12 +326,18 @@ public partial class ScheduleGridView : UserControl
     private void OnDataContextChanged(object? sender, EventArgs e)
     {
         if (_vm is not null)
+        {
             _vm.PropertyChanged -= OnVmPropertyChanged;
+            _vm.Marks.Changed   -= Render;
+        }
 
         _vm = DataContext as ScheduleGridViewModel;
 
         if (_vm is not null)
+        {
             _vm.PropertyChanged += OnVmPropertyChanged;
+            _vm.Marks.Changed   += Render;   // marks change rarely: a full render keeps tile heights right
+        }
 
         Render();
     }
@@ -324,6 +352,7 @@ public partial class ScheduleGridView : UserControl
         if (_vm is not null)
         {
             _vm.PropertyChanged -= OnVmPropertyChanged;
+            _vm.Marks.Changed   -= Render;
             _vm = null;
         }
         _resizeDebounce?.Stop();
@@ -358,14 +387,19 @@ public partial class ScheduleGridView : UserControl
     private void UpdateSelectionHighlight()
     {
         var selectedIds = _vm?.SelectedSectionIds ?? new HashSet<string>();
+        var marks       = _vm?.Marks;
+        IBrush selectedBorder = UserSelectedBorder, markedBorder = MarkedSectionBorder;
+        double frameThickness = TileSelectionBorderThickness;
 
         foreach (var info in _entryRowRegistry)
         {
             bool isSelected = selectedIds.Contains(info.SectionId);
+            var (frameBrush, thickness) = EntryRowFrame(isSelected, marks?.IsMarked(info.SectionId) == true,
+                                                        selectedBorder, markedBorder, frameThickness);
 
             info.Row.Background      = info.BaseBg;
-            info.Row.BorderBrush     = isSelected ? UserSelectedBorder : Brushes.Transparent;
-            info.Row.BorderThickness = new Thickness(isSelected ? TileSelectionBorderThickness : 0);
+            info.Row.BorderBrush     = frameBrush;
+            info.Row.BorderThickness = new Thickness(thickness);
             info.Label.FontWeight    = isSelected ? FontWeight.Bold : FontWeight.SemiBold;
             info.Label.Foreground = isSelected         ? SectionMeetingTextSelected
                                   : info.IsOverlay      ? OverlayFrameBorder
@@ -429,6 +463,7 @@ public partial class ScheduleGridView : UserControl
         IBrush TileInternalBorder      = ScheduleGridView.TileInternalBorder;
         IBrush SectionMeetingTextSelected = ScheduleGridView.SectionMeetingTextSelected;
         IBrush UserSelectedBorder      = ScheduleGridView.UserSelectedBorder;
+        IBrush MarkedBorder            = ScheduleGridView.MarkedSectionBorder;
         IBrush OverlayFrameBorder      = ScheduleGridView.OverlayFrameBorder;
         IBrush TileDeemphasizedText    = ScheduleGridView.TileDeemphasizedText;
         IBrush TileEntryHoverOverlay   = ScheduleGridView.TileEntryHoverOverlay;
@@ -472,7 +507,8 @@ public partial class ScheduleGridView : UserControl
         // tile at each (start, end) pair is kept — hence the Max comparison at insert.
         var tileHeightMap     = new Dictionary<(int, int), (double timeBasedHeight, double actualHeight)>();
         var selectedIds       = _vm?.SelectedSectionIds ?? new HashSet<string>();
-        var entryCursor       = new Avalonia.Input.Cursor(Avalonia.Input.StandardCursorType.Hand);
+        var markedIds         = _vm?.Marks.Ids ?? new HashSet<string>();
+        var entryCursor      = new Avalonia.Input.Cursor(Avalonia.Input.StandardCursorType.Hand);
 
         // Collect all tiles; used later for gridline expansion calculation.
         var allTiles = new List<(int day, GridTile tile, double timeBasedHeight)>();
@@ -501,7 +537,8 @@ public partial class ScheduleGridView : UserControl
                 // Compute natural tile height arithmetically rather than by building a
                 // throwaway visual tree. Components, matching the Phase 4 layout exactly:
                 //   • per entry        : its line (entryLineH, or the flag icon if taller) + row padding top/bottom
-                //   • per selected row : 2 × TileSelectionBorderThickness (top + bottom border)
+                //   • per framed row   : 2 × TileSelectionBorderThickness (top + bottom border); a row is framed when
+                //                        it is selected OR marked (the same thickness either way, see EntryRowFrame)
                 //   • between entries  : EntrySeparatorH
                 //   • the tile's own   : borders + content padding, top and bottom (TileChrome.ChromeHeight)
                 //   • WASM compensation: TileHeightMarginPerEntry × entry count
@@ -512,7 +549,8 @@ public partial class ScheduleGridView : UserControl
                 double entriesH    = 0;
                 for (int ei = 0; ei < entryCount; ei++)
                 {
-                    if (selectedIds.Contains(tile.Entries[ei].SectionId)) selectedCount++;
+                    var rowSectionId = tile.Entries[ei].SectionId;
+                    if (selectedIds.Contains(rowSectionId) || markedIds.Contains(rowSectionId)) selectedCount++;
                     entriesH += chrome.EntryHeight(entryLineH, tile.Entries[ei].Flag != SectionFlag.None);
                 }
 
@@ -1132,11 +1170,13 @@ public partial class ScheduleGridView : UserControl
                               },
                           }
                         : Brushes.Transparent;
+                    var (frameBrush, frameThickness) = EntryRowFrame(entrySelected, markedIds.Contains(entry.SectionId),
+                                                                     UserSelectedBorder, MarkedBorder, chrome.SelectionBorder);
                     var entryRow = new Border
                     {
                         Background      = isConflict ? conflictGlow : entryRowBg,
-                        BorderBrush     = entrySelected ? UserSelectedBorder : Brushes.Transparent,
-                        BorderThickness = new Thickness(entrySelected ? chrome.SelectionBorder : 0),
+                        BorderBrush     = frameBrush,
+                        BorderThickness = new Thickness(frameThickness),
                         CornerRadius    = new CornerRadius(2),
                         Padding         = chrome.EntryRowPadding,
                         // Commitment tiles are display-only — no hand cursor.
@@ -1180,8 +1220,9 @@ public partial class ScheduleGridView : UserControl
 
                         if (e.GetCurrentPoint(null).Properties.IsRightButtonPressed)
                         {
-                            // Right-click context menu is section-only; suppress for meetings.
-                            if (!entry.IsMeeting && _vm is not null && _vm.IsWriteEnabled)
+                            // Right-click context menu is section-only; suppress for meetings. Readers get it too, to
+                            // mark sections; its edit items are disabled for them (SectionContextMenuViewModel.CanShowSubPanel).
+                            if (!entry.IsMeeting && _vm is not null)
                             {
                                 var ctx = (TileClickContext)((Border)sender!).Tag!;
                                 _vm.PrepareContextMenu(ctx.SectionId, ctx.Day, ctx.StartMinutes, ctx.MeetingIndex);

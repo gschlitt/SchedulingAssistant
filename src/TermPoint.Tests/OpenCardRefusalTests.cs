@@ -75,7 +75,7 @@ public sealed class OpenCardRefusalTests : IDisposable
     /// <summary>Builds a menu over <paramref name="state"/>, counting saves, and loads it for <paramref name="section"/>.</summary>
     private SectionContextMenuViewModel LoadMenu(Section section, FakeSectionCardState state, Action onSaved)
     {
-        var menu = new SectionContextMenuViewModel(_sectionRepo, onSaved, _fx.Lock, state);
+        var menu = new SectionContextMenuViewModel(_sectionRepo, onSaved, _fx.Lock, state, new SectionMarks());
         menu.Load(section, 1, 510, new List<Instructor>(), new List<Room>(), new List<SchedulingEnvironmentValue>());
         return menu;
     }

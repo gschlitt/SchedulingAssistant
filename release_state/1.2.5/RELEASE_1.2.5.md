@@ -92,17 +92,16 @@ Notes: [access-analyzer/NOTES.md](access-analyzer/NOTES.md). Design: [designs/1.
 
 **Goal:** on a busy schedule, an administrator can rearrange existing meetings by mouse in Schedule View, in the way people expect from other click-and-drag tools, smoothly and reliably. Sections are still created and fully edited in the Section List; the grid only moves meetings (the common quick edits, like today's right-click ones). Done means the feature is in the app and field-tested.
 
-**State:** Design approved (2026-11-16). On branch 1.2.5 (committed by the 2026-11-16 handoff, tests pass): the open-card guard, which fixes today's right-click bug (Greg's hand check pending), and the move groundwork (meeting index on tiles, pure tested move logic). Nothing is broken or half-finished. Next: marks.
+**State:** Design approved (2026-11-16). On branch 1.2.5: the open-card guard, the move groundwork and marks are committed and tests pass (Greg's hand checks of the guard and marks pending). Nothing is broken or half-finished. Next: the single-meeting drag.
 
 <details>
-<summary>Steps (6 left)</summary>
+<summary>Steps (5 left)</summary>
 
-1. Greg hand-checks the open-card guard (three checks in the notes' build log).
-2. Marks: Mark and Clear marks in the right-click menu, frames on every tile of a marked section, never saved.
-3. Single-meeting drag: lift past a threshold, ghost and time label, snapping (Shift free), Esc and drop-outside cancel, refusals, save and select; the open-card refusal in the grid's message bar.
-4. Group drag: ghosts on every moving day, time only, Alt/Option to move one; amend CLAUDE.md's drag-and-drop line.
-5. Compile checks (desktop and browser), full suite; hand check on a busy real schedule, with folded days and several semesters shown.
-6. Field test; answer the `MinimumVersionToWrite` question (expected No: same fields as the section editor).
+1. Greg hand-checks the open-card guard and marks (checks in the notes' build log).
+2. Single-meeting drag: lift past a threshold, ghost and time label, snapping (Shift free), Esc and drop-outside cancel, refusals, save and select; the open-card refusal in the grid's message bar.
+3. Group drag: ghosts on every moving day, time only, Alt/Option to move one; amend CLAUDE.md's drag-and-drop line.
+4. Compile checks (desktop and browser), full suite; hand check on a busy real schedule, with folded days and several semesters shown.
+5. Field test; answer the `MinimumVersionToWrite` question (expected No: same fields as the section editor).
 
 </details>
 

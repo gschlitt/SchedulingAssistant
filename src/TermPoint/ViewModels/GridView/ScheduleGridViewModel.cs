@@ -110,6 +110,12 @@ public partial class ScheduleGridViewModel : ViewModelBase
     /// <summary>Header badge text, e.g. "Shared: Chemistry (12) · Biology (8)". Empty when none loaded.</summary>
     [ObservableProperty] private string _sharedScheduleBadge = string.Empty;
 
+    /// <summary>
+    /// The sections marked with a bright frame (never saved). Owned here because this view model is a singleton
+    /// rebuilt with the service container whenever another database is opened, so marks vanish exactly then.
+    /// </summary>
+    public SectionMarks Marks { get; } = new();
+
     /// <summary>State for the right-click context menu on section tiles.</summary>
     public SectionContextMenuViewModel ContextMenu { get; }
 
@@ -218,7 +224,7 @@ public partial class ScheduleGridViewModel : ViewModelBase
         {
             var semIds = _semesterContext.SelectedSemesters.Select(s => s.Semester.Id);
             _sectionStore.Reload(_sectionRepo, semIds);
-        }, lockService, cardState);
+        }, lockService, cardState, Marks);
 
         // The day-header menu reads the block patterns each time it opens (so Settings edits show) and calls this
         // view model's fold commands.

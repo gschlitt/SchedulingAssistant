@@ -48,6 +48,9 @@
 	<!--  Border when user selects a section or section meeting in Section View, Schedule View or Workload View  -->
 	<SolidColorBrush x:Key="UserSelectedSectionBorderColor" Color="#3c647f" />
 
+	<!--  Frame on a marked section's lines in Schedule View (right-click, Mark Section): bright, like circling it on paper. Wins over the selection frame.  -->
+	<SolidColorBrush x:Key="MarkedSectionBorder" Color="#FF8C00" />
+
 	<SolidColorBrush x:Key="SectionMeetingTextSelected" Color="Black" />
 
 	<!--  Section card background when section matches the active Schedule Grid filter  -->

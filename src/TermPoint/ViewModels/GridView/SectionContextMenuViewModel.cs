@@ -38,8 +38,11 @@ public partial class SectionContextMenuViewModel : ObservableObject
     [NotifyCanExecuteChangedFor(nameof(ShowFlagCommand))]
     private string? _refusalMessage;
 
-    /// <summary>CanExecute predicate for the Show* commands; false while a section card is open.</summary>
-    private bool CanShowSubPanel() => RefusalMessage is null;
+    /// <summary>
+    /// CanExecute predicate for the Show* commands: false while a section card is open, and false in read-only mode.
+    /// Readers do get the menu (so they can mark sections, which saves nothing), but its edit items stay disabled.
+    /// </summary>
+    private bool CanShowSubPanel() => RefusalMessage is null && _lockService.IsWriter;
 
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(HasSubPanel))]
@@ -67,9 +70,36 @@ public partial class SectionContextMenuViewModel : ObservableObject
     /// <summary>The flag option currently selected in the Flag sub-panel; committed on Confirm.</summary>
     [ObservableProperty] private FlagOptionVm? _selectedFlag;
 
+    private readonly SectionMarks _marks;
+
+    /// <summary>
+    /// Text of the mark button: "Mark Section" when the right-clicked section is not marked, "Unmark Section" when it
+    /// is. Set on <see cref="Load"/>. Approved wording (Greg, 2026-11-16).
+    /// </summary>
+    [ObservableProperty] private string _markItemText = MarkText;
+
+    /// <summary>
+    /// True while any section is marked; the "Clear All Marks" button is shown only then. Set on <see cref="Load"/>
+    /// and after each mark command. Approved wording of the button (Greg, 2026-11-16): "Clear All Marks".
+    /// </summary>
+    [ObservableProperty] private bool _hasAnyMarks;
+
+    private const string MarkText   = "Mark Section";
+    private const string UnmarkText = "Unmark Section";
+
+    /// <summary>Creates the menu view model.</summary>
+    /// <param name="sectionRepo">Repository the menu's edits are saved through.</param>
+    /// <param name="onSaved">Called after a successful save.</param>
+    /// <param name="lockService">The write lock; reader mode refuses edits (<see cref="CanConfirm"/>).</param>
+    /// <param name="cardState">Whether a section card is open (refuses edits, see <see cref="RefusalMessage"/>).</param>
+    /// <param name="marks">
+    /// The grid's marked sections. Marking is deliberately not gated by <paramref name="lockService"/> or
+    /// <paramref name="cardState"/>: it changes nothing saved.
+    /// </param>
     public SectionContextMenuViewModel(ISectionRepository sectionRepo, Action onSaved, WriteLockService lockService,
-        ISectionCardState cardState)
+        ISectionCardState cardState, SectionMarks marks)
     {
+        _marks = marks;
         _cardState = cardState;
         _sectionRepo = sectionRepo;
         _onSaved = onSaved;
@@ -134,6 +164,12 @@ public partial class SectionContextMenuViewModel : ObservableObject
         _meetingStart = meetingStart;
         ActiveSubPanel = TileSubPanel.None;
         RefusalMessage = OpenCardMessages.WhyRefused(_cardState);
+        // The write lock may have changed since the last Load, and RefusalMessage only re-raises when its value changes.
+        ShowInstructorsCommand.NotifyCanExecuteChanged();
+        ShowRoomCommand.NotifyCanExecuteChanged();
+        ShowTagsCommand.NotifyCanExecuteChanged();
+        ShowFlagCommand.NotifyCanExecuteChanged();
+        RefreshMarkState();
 
         // Instructors — multi-select: active instructors, plus any inactive instructor the section already has.
         // Confirm rebuilds the assignments from the ticked rows, so an assigned instructor missing from the list
@@ -259,4 +295,34 @@ public partial class SectionContextMenuViewModel : ObservableObject
 
     [RelayCommand]
     private void Cancel() => IsOpen = false;
+
+    /// <summary>Refreshes <see cref="MarkItemText"/> and <see cref="HasAnyMarks"/> from the marks and the loaded section.</summary>
+    private void RefreshMarkState()
+    {
+        MarkItemText = _section is not null && _marks.IsMarked(_section.Id) ? UnmarkText : MarkText;
+        HasAnyMarks  = _marks.HasAny;
+    }
+
+    /// <summary>
+    /// Marks the loaded section, or unmarks it if it is marked, then closes the menu. Never gated by the write lock or
+    /// an open card (marks are not saved). Does nothing when no section is loaded.
+    /// </summary>
+    [RelayCommand]
+    private void ToggleMark()
+    {
+        if (_section is null) return;
+        _marks.Toggle(_section.Id);
+        RefreshMarkState();
+        IsOpen = false;
+    }
+
+    /// <summary>Unmarks every section, then closes the menu. Does nothing when no section is loaded.</summary>
+    [RelayCommand]
+    private void ClearMarks()
+    {
+        if (_section is null) return;
+        _marks.Clear();
+        RefreshMarkState();
+        IsOpen = false;
+    }
 }

@@ -57,6 +57,10 @@ Ledger: [RELEASE_1.2.5.md](../RELEASE_1.2.5.md). Design doc: [designs/1.2.5/clic
 - Greg's hand check of piece 1, still to do: open a card, right-click a grid tile (edits greyed, line shows); open the menu first, then a card, then Confirm (nothing saved, line shows); Courses → Apply tags to all with a card open.
 - 2026-11-16, piece 2 (groundwork), committed by the handoff: `MeetingIndex` on `SectionMeetingBlock`/`TileEntry`/`TileClickContext`; the right-click menu finds its meeting through one helper (index if it still matches day and start, else first match), which fixes the odd/even twin case. `SectionDaySchedule.Clone()` is now the one meeting copy (`CloneSection` uses it). `Services/MeetingMover` holds the pure move logic: `MovingIndices`, `CanChangeDay`, `Snap` (Shift = 5-minute steps), `Move` (refusals NoChange, OutOfDay, OverlapsOwnMeeting with the conflicting meeting), and the approved `TimeLabel`/`OverlapLabel`. Tests: `MeetingMoverTests` (20). Both compile checks and the full suite (4651 passed, 0 failed) clean.
 - For the drag piece: a group can mix lengths (Tue 1.5 h, Thu 3 h at the same start); snapping and the time label use the dragged meeting's length.
+- 2026-11-16, piece 3 (marks), committed by the second handoff: `SectionMarks` (an id set owned by `ScheduleGridViewModel.Marks`, so marks survive reloads and semester switches and vanish with the DI rebuild on a database switch); menu items "Mark Section"/"Unmark Section" and "Clear All Marks" (only while any mark exists); a marked line's row gets the `MarkedSectionBorder` frame (orange, AppColors) at the selection thickness, chosen by one helper `EntryRowFrame` in the grid code-behind; height accounting counts framed rows; a mark change calls `Render()`. Readers now get the right-click menu (to mark); its edit items are disabled for them via `CanShowSubPanel`. Tests: `SectionMarksTests` (9).
+- Marks decisions (Greg, 2026-11-16): menu words "Mark Section"/"Unmark Section"/"Clear All Marks"; the tile menu is enough (no empty-grid menu); a marked and selected line shows the mark frame (the label still shows selection).
+- Known, existing: a selection change repaints frames without re-measuring, so a row selected after a render grows by the frame inside its tile; marks avoid it by re-rendering.
+- Greg's hand check of piece 3, still to do: mark two sections (orange frame on every day, also when selected); Unmark one; Clear All Marks appears only while something is marked; marks survive a filter change and a semester switch; as a reader, the menu opens with edits greyed and marking works.
 
 </details>
 
@@ -79,7 +83,7 @@ None yet.
 - After a drop, select the section in the list via `SelectedItem` so the card shows the new time; never scroll the list's ScrollViewer directly.
 - Accidental drags: movement threshold before a drag starts, Escape to cancel, live time label; check whether there is any undo.
 - A swap (A into B's slot, B elsewhere) happens as two separate drops; a mark just keeps both in front of the user.
-- Marks: the design says "Clear marks" from any tile or from empty grid, but only tiles and day headers have a right-click menu today. Check for an empty-grid right-click handler before adding one; if none, ask Greg whether the tile menu alone is enough.
+- Marks: Greg settled the tile menu alone for Clear All Marks (2026-11-16); no empty-grid menu.
 - Drag refusal while a card is open: `OpenCardMessages.FinishFirstToDrag` into `ScheduleGridViewModel.LastErrorMessage`; clear it when the card closes (`SectionListViewModel.IsEditing` change).
 
 </details>

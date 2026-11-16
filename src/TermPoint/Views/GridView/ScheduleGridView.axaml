@@ -311,6 +311,22 @@
 										Text="▶" />
 								</StackPanel>
 							</Button>
+
+						<!--  Marks: a bright frame on a section's lines, never saved. Enabled for readers and while a section
+						      card is open, since they change nothing saved. Approved wording (Greg, 2026-11-16).  -->
+						<Border
+							Height="1"
+							Margin="6,2"
+							Background="{StaticResource FilterExpanderBorder}" />
+						<Button
+							Classes="CtxMenuItem"
+							Command="{Binding ContextMenu.ToggleMarkCommand}"
+							Content="{Binding ContextMenu.MarkItemText}" />
+						<Button
+							Classes="CtxMenuItem"
+							Command="{Binding ContextMenu.ClearMarksCommand}"
+							Content="Clear All Marks"
+							IsVisible="{Binding ContextMenu.HasAnyMarks}" />
 					</StackPanel>
 
 					<!--  Sub-panel: appears when a menu item is chosen  -->

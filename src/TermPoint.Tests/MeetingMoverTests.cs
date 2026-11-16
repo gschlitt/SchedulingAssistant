@@ -305,7 +305,7 @@ public sealed class MeetingMoverTests : IDisposable
     public void ContextMenu_UsesMeetingIndex_ForTwins()
     {
         var (repo, section) = StoreTwins();
-        var menu = new SectionContextMenuViewModel(repo, () => { }, _fx.Lock, new FakeSectionCardState());
+        var menu = new SectionContextMenuViewModel(repo, () => { }, _fx.Lock, new FakeSectionCardState(), new SectionMarks());
 
         PickRoomB(menu, section, 2, 600, meetingIndex: 1);
 
@@ -322,7 +322,7 @@ public sealed class MeetingMoverTests : IDisposable
         section.Schedule.Add(M(4, 780, room: "room-a"));   // index 2 is Thu 13:00, not Tue 10:00
         repo.Update(section);
         section = repo.GetById(section.Id)!;
-        var menu = new SectionContextMenuViewModel(repo, () => { }, _fx.Lock, new FakeSectionCardState());
+        var menu = new SectionContextMenuViewModel(repo, () => { }, _fx.Lock, new FakeSectionCardState(), new SectionMarks());
 
         PickRoomB(menu, section, 2, 600, meetingIndex: 2);
 

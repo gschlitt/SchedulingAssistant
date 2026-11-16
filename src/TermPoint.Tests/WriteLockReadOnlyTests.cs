@@ -288,7 +288,7 @@ public sealed class WriteLockReadOnlyTests : IDisposable
     [Fact]
     public void SectionContextMenu_ConfirmCommand_CanExecuteIsFalseInReaderMode()
     {
-        var vm = new SectionContextMenuViewModel(_sectionRepo, () => { }, _lock, new FakeSectionCardState());
+        var vm = new SectionContextMenuViewModel(_sectionRepo, () => { }, _lock, new FakeSectionCardState(), new SectionMarks());
         Assert.False(vm.ConfirmCommand.CanExecute(null));
     }
 
