@@ -58,6 +58,32 @@ Notes: [avalonia-list-jump-bug/NOTES.md](avalonia-list-jump-bug/NOTES.md). Sourc
 
 </details>
 
+<details>
+<summary><b>Notices lost behind licence banners (WN1 and related)</b> · Not started</summary>
+
+**Goal:** no notice can be lost for good, or hidden indefinitely, because a licence or trial banner is occupying the one banner slot. The "What's new" banner must be shown (or dismissed) before it counts as seen, and an undismissable licence notice must not block errors and warnings behind it.
+
+**State:** Not started. WN1 was seen on a Store flight (2026-11-13): the announcements are marked seen when queued, so a notice ahead of them can hide them for good. Related danger, from reading the code (not yet reproduced): the expired and trial-ended notices cannot be dismissed, so they may hold the slot and queue every later normal notice behind them.
+
+<details>
+<summary>Steps (5 left)</summary>
+
+1. Reproduce both: a trial countdown ahead of the announcement (WN1), and an undismissable notice ahead of an error or warning.
+2. Decide the behaviour: what outranks what, and whether a licence notice can share the banner or sit in its own place. Wording for Greg if any text changes.
+3. Fix WN1: advance `LastAcknowledgedVersion` only once an announcement has been displayed or dismissed.
+4. Fix the slot problem as decided; unit tests for the queue order and for the undismissable case.
+5. Compile checks, full suite, hand check on a trial, an expired and a licensed database; answer the `MinimumVersionToWrite` question.
+
+</details>
+
+**Open questions:**
+- Should errors and warnings ever jump ahead of an undismissable licence notice, or should the licence notice move out of the banner?
+- Do the trial countdown and expiring-licence notices dismiss, or only expired and trial-ended? (Read the code first.)
+
+Notes: [lost-notices/NOTES.md](lost-notices/NOTES.md). Source: backlog WN1, plus Greg's concern about the trial advisory banner.
+
+</details>
+
 ## Closed
 
 _None._
