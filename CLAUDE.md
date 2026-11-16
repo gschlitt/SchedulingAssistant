@@ -54,11 +54,67 @@ When asked to commit (or push) while on the default branch, do NOT branch first.
 
 @docs/dev/working-agreements.md
 
+# Release Ledger (how work is tracked)
+
+We use the **Release Ledger development pattern**: the state of all work lives in tracked docs under
+`release_state/`, summarised at the top and detailed only further down. Diagrams for Greg:
+`release_state/RELEASE_DEVELOPMENT_README.md`.
+
+## Where things live
+
+| Place | Holds | Never holds |
+|---|---|---|
+| `designs/<release>/` | Specs for new features and substantial redesigns (what to build) | Progress, bug fixes, maintenance |
+| `release_state/README.md` | One line: the current release | Anything else |
+| `release_state/<release>/RELEASE_<release>.md` | **The ledger**: the release's single source of truth, one collapsed entry per piece of work | Detail of any kind |
+| `release_state/<release>/<item-slug>/NOTES.md` | **Item notes**: decisions and why, dead ends, files to read first, technical issues (plus logs or probes the item needs) | Copies of the spec |
+| `release_state/backlog.md` | Work not assigned to a release, one line each | |
+| `CLAUDE.md`, `docs/dev/` | Knowledge that outlives any piece of work | Progress |
+| Claude's memory | How Greg likes to work | Which release or entry is active, or any other state |
+
+## The ledger
+
+- Header: release goal, the `MinimumVersionToWrite` answer (or "not asked yet"), updated date.
+- **Work**, then **Closed**. Each entry is one `<details>` block whose summary line is the title, the state and, for
+  exactly one entry, **ACTIVE**. The collapsed list IS the overview; there is no separate summary list.
+- States: Not started · In progress · Waiting on Greg · Needs testing · Done · Deferred · Dropped.
+- Expanded: **Goal** (what "done" means) · **State** (at most 3 lines) · **Steps (N left)** (collapsed; one line
+  each, in order, concrete enough to start) · **Open questions** (one line each; what "Waiting on Greg" waits for) ·
+  link to the item notes, and to the design doc if any.
+- Closed entries collapse to goal + one outcome line (date, commit). Deferred entries say where they went.
+- **No detail in the ledger:** no code, paths, log text or reasoning. Anything longer goes to the item notes. Each level
+  only summarises the one below and links to it; detail never moves up.
+
+## Rules
+
+1. **ACTIVE changes only with Greg's OK.** When it moves, the previous entry gets a state (In progress, Waiting on
+   Greg, Deferred).
+2. **Pull first, push after.** Every ledger skill runs `git pull` before reading and pushes after committing, so two
+   machines never edit stale copies. On master, push only with Greg's OK (a master push redeploys the WASM demo).
+3. **`/handoff` commits the code and the state docs** from the session, on the current branch, with "unfinished:" in
+   the message when it is. Invoking it is Greg's request to commit. No branches unless Greg asks.
+4. **Done entries' folders stay** in the release folder; the release folder becomes the release's record.
+5. **`/update-work` runs at milestones** (cause found, decision made, tests pass, state change) as well as from
+   `/handoff`. Mid-session updates are not committed until `/handoff`.
+6. Changing a design's target release moves its entry and folder too; `/update-work` checks the links.
+
+## Skills
+
+- **`/start-work`:** interviews Greg, adds a Not started entry and its folder. Asks before making it ACTIVE.
+- **`/update-work`:** rewrites the ACTIVE entry and its item notes from the session.
+- **`/handoff`:** `/update-work`, commit, push, then propose a new session to continue the ACTIVE entry.
+
+## Session start
+
+Read `release_state/README.md` → the ledger → the ACTIVE entry → its item notes, "Files to read first". Ask nothing
+the docs answer. If `release_state/README.md` doesn't exist yet, no release ledger is set up: say so and work from
+Greg's request.
+
 # Reference Notes (read when pertinent)
 
 - `docs/dev/field-testing.md`: before a hand test or field test on the network share. Covers the test database and its reset, reading real logs (Claude's shell sees a virtualized `%APPDATA%`), faking sleeps and bad networks, MSIX installs.
 - `docs/dev/dev-machines.md`: when a build, test run or script misbehaves, or before writing large output. Covers the full C: drive, `py -3.11`, helper scripts, process-kill rule.
-- `HANDOFF.md`: the current state of work in progress, for picking up between sessions and machines.
+- `release_state/RELEASE_DEVELOPMENT_README.md`: Greg's quick reference to the Release Ledger pattern, with diagrams.
 - `WORKAROUNDS.md` (local, gitignored): Avalonia workarounds referenced from code comments.
 
 # Debugging Practice
