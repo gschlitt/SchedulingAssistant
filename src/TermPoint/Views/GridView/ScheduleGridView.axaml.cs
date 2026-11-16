@@ -4,6 +4,7 @@ using Avalonia.Controls;
 using Avalonia.Controls.Primitives;
 using Avalonia.Controls.Shapes;
 using Avalonia.Input;
+using Avalonia.Interactivity;
 using Avalonia.Layout;
 using Avalonia.Markup.Xaml;
 using Avalonia.Media;
@@ -27,7 +28,12 @@ public partial class ScheduleGridView : UserControl
     /// Used by <see cref="UpdateSelectionHighlight"/> to repaint selection state without
     /// triggering a full layout pass. A line's subject marker needs no restyle: selection changes only the text.
     /// </summary>
-    private record EntryRowInfo(Border Row, TextBlock Label, string SectionId, bool IsOverlay, bool IsDeemphasized, IBrush BaseBg);
+    /// <param name="SelectionRing">
+    /// The outer ring around a marked line's row (see <see cref="SelectionRingBrush"/>); null for unmarked lines,
+    /// whose own frame shows the selection.
+    /// </param>
+    private record EntryRowInfo(Border Row, TextBlock Label, string SectionId, bool IsOverlay, bool IsDeemphasized, IBrush BaseBg,
+                                Border? SelectionRing = null);
     private readonly List<EntryRowInfo> _entryRowRegistry = new();
 
     /// <summary>
@@ -136,10 +142,11 @@ public partial class ScheduleGridView : UserControl
 
     /// <summary>
     /// The one decision of how a section line's row is framed, used by both the tile build and
-    /// <see cref="UpdateSelectionHighlight"/>. A marked line shows the mark frame, even when it is also selected (the
-    /// selection still shows through the label's bold weight and text colour). A selected, unmarked line shows the
-    /// selection frame. Both frames have the same thickness, so a framed line is the same size either way and the
-    /// tile height accounting only needs to know whether a line is framed.
+    /// <see cref="UpdateSelectionHighlight"/>. A marked line's row shows the mark frame; when it is also selected, the
+    /// selection shows as a second ring around it (<see cref="SelectionRingBrush"/>; Greg, 2026-11-16). A selected,
+    /// unmarked line shows the selection frame on its row. Both frames have the same thickness. A marked line always
+    /// reserves room for both rings (the outer one transparent while unselected), so selecting it never changes its
+    /// size; the tile measuring counts two frames for a marked line and one for a selected, unmarked line.
     /// </summary>
     /// <param name="isSelected">Whether the line's section is selected.</param>
     /// <param name="isMarked">Whether the line's section is marked.</param>
@@ -152,6 +159,26 @@ public partial class ScheduleGridView : UserControl
         isMarked   ? (markedBrush, thickness)
         : isSelected ? (selectedBrush, thickness)
         : (Brushes.Transparent, 0);
+
+    /// <summary>
+    /// The brush of the outer ring a marked line's row sits in: the selection colour while the section is selected,
+    /// transparent otherwise (the ring keeps its thickness either way, see <see cref="EntryRowFrame"/>).
+    /// </summary>
+    /// <param name="isSelected">Whether the line's section is selected.</param>
+    /// <param name="selectedBrush">The selection frame brush.</param>
+    /// <returns>The ring's border brush.</returns>
+    private static IBrush SelectionRingBrush(bool isSelected, IBrush selectedBrush) =>
+        isSelected ? selectedBrush : Brushes.Transparent;
+
+    /// <summary>
+    /// How many frames of <c>TileSelectionBorderThickness</c> a section line's row is drawn with on each side: two for
+    /// a marked line (mark frame plus the selection ring, always reserved), one for a selected, unmarked line, else 0.
+    /// Used by the tile height and width measuring so it matches what <see cref="EntryRowFrame"/> draws.
+    /// </summary>
+    /// <param name="isSelected">Whether the line's section is selected.</param>
+    /// <param name="isMarked">Whether the line's section is marked.</param>
+    /// <returns>The frame count, 0 to 2.</returns>
+    private static int EntryRowFrameCount(bool isSelected, bool isMarked) => isMarked ? 2 : isSelected ? 1 : 0;
     private static IBrush OverlayFrameBorder    => Res("OverlayFrameBorder");
     private static IBrush TileDeemphasizedText  => Res("TileDeemphasizedText");
     private static IBrush TileEntryHoverOverlay => Res("CardHoverOverlay");
@@ -240,6 +267,16 @@ public partial class ScheduleGridView : UserControl
         var slider = this.FindControl<Slider>("ZoomSlider");
         _zoomContainer = this.FindControl<Border>("ZoomContainer");
         _tileContextPopup = this.FindControl<Popup>("TileContextPopup");
+
+        // Meeting drags (press on a tile line, see BeginMeetingDragTracking): the canvas holds pointer capture for the
+        // whole gesture, so these three events are all that is needed. Wired once; Render() rebuilds only the children.
+        _canvas = this.FindControl<Canvas>("GridCanvas");
+        if (_canvas is not null)
+        {
+            _canvas.PointerMoved       += OnCanvasPointerMoved;
+            _canvas.PointerReleased    += OnCanvasPointerReleased;
+            _canvas.PointerCaptureLost += (_, _) => EndDrag();
+        }
 
         if (slider is not null)
         {
@@ -349,6 +386,7 @@ public partial class ScheduleGridView : UserControl
     /// </summary>
     private void OnDetachedFromVisualTree(object? sender, VisualTreeAttachmentEventArgs e)
     {
+        EndDrag();
         if (_vm is not null)
         {
             _vm.PropertyChanged -= OnVmPropertyChanged;
@@ -400,7 +438,8 @@ public partial class ScheduleGridView : UserControl
             info.Row.Background      = info.BaseBg;
             info.Row.BorderBrush     = frameBrush;
             info.Row.BorderThickness = new Thickness(thickness);
-            info.Label.FontWeight    = isSelected ? FontWeight.Bold : FontWeight.SemiBold;
+            if (info.SelectionRing is { } ring) ring.BorderBrush = SelectionRingBrush(isSelected, selectedBorder);
+            info.Label.FontWeight   = isSelected ? FontWeight.Bold : FontWeight.SemiBold;
             info.Label.Foreground = isSelected         ? SectionMeetingTextSelected
                                   : info.IsOverlay      ? OverlayFrameBorder
                                   : info.IsDeemphasized ? TileDeemphasizedText
@@ -416,6 +455,7 @@ public partial class ScheduleGridView : UserControl
         _canvas ??= this.FindControl<Canvas>("GridCanvas");
         if (_canvas is null) return;
 
+        EndDrag();   // a re-render mid-drag cancels the drag: the tiles it was lifted from are gone
         _canvas.Children.Clear();
         _entryRowRegistry.Clear();
         _stripVisuals.Clear();
@@ -537,25 +577,25 @@ public partial class ScheduleGridView : UserControl
                 // Compute natural tile height arithmetically rather than by building a
                 // throwaway visual tree. Components, matching the Phase 4 layout exactly:
                 //   • per entry        : its line (entryLineH, or the flag icon if taller) + row padding top/bottom
-                //   • per framed row   : 2 × TileSelectionBorderThickness (top + bottom border); a row is framed when
-                //                        it is selected OR marked (the same thickness either way, see EntryRowFrame)
+                //   • per frame        : 2 × TileSelectionBorderThickness (top + bottom border); a marked row has two
+                //                        frames, a selected unmarked row one (EntryRowFrameCount)
                 //   • between entries  : EntrySeparatorH
                 //   • the tile's own   : borders + content padding, top and bottom (TileChrome.ChromeHeight)
                 //   • WASM compensation: TileHeightMarginPerEntry × entry count
                 // This is the tile's drawn (outer) height; the tileHeightMap key spans semester sub-columns, so each
                 // tile's value is computed here first and only then maxed into the map below.
                 int entryCount     = tile.Entries.Count;
-                int selectedCount  = 0;
+                int frameCount  = 0;
                 double entriesH    = 0;
                 for (int ei = 0; ei < entryCount; ei++)
                 {
                     var rowSectionId = tile.Entries[ei].SectionId;
-                    if (selectedIds.Contains(rowSectionId) || markedIds.Contains(rowSectionId)) selectedCount++;
+                    frameCount += EntryRowFrameCount(selectedIds.Contains(rowSectionId), markedIds.Contains(rowSectionId));
                     entriesH += chrome.EntryHeight(entryLineH, tile.Entries[ei].Flag != SectionFlag.None);
                 }
 
                 double actualH = entriesH
-                               + selectedCount * 2 * chrome.SelectionBorder
+                               + frameCount * 2 * chrome.SelectionBorder
                                + Math.Max(0, entryCount - 1) * EntrySeparatorH
                                + chrome.ChromeHeight(tile.Entries.Any(e => e.IsOverlay),
                                                      data.IsMultiSemester && !string.IsNullOrEmpty(tile.SemesterName))
@@ -571,9 +611,11 @@ public partial class ScheduleGridView : UserControl
                     string lbl = BuildTileLabel(e.Label, e.Initials, e.FrequencyAnnotation);
                     // A subject marker adds its side and the gap after it to the line (colour by subject).
                     double markerW = SubjectMarkerBrush(e.SubjectColor) is null ? 0 : SubjectMarkerSide + SubjectMarkerGap;
+                    // A marked line's selection ring is one frame more than TileOverhead allows for.
+                    double ringW = markedIds.Contains(e.SectionId) ? 2 * chrome.SelectionBorder : 0;
                     tileTextW = Math.Max(tileTextW, chrome.EntryWidth(
                         MeasureTextWidth(drawnFont, lbl, _vm!.TileFontSize, FontWeight.Bold), markerW,
-                        e.Flag != SectionFlag.None));
+                        e.Flag != SectionFlag.None) + ringW);
                 }
                 tileMaxTextWidths[(d, tile.StartMinutes, tile.EndMinutes)] = tileTextW;
 
@@ -1206,9 +1248,22 @@ public partial class ScheduleGridView : UserControl
                         entryRow.PointerExited  += (s, _) => ((Border)s!).Background = baseBg;
                     }
 
+                    // A marked line's row sits in an outer ring that shows the selection around the mark frame
+                    // (EntryRowFrame). Only marked lines get it, so unmarked lines pay nothing.
+                    Border? selectionRing = markedIds.Contains(entry.SectionId)
+                        ? new Border
+                          {
+                              BorderBrush     = SelectionRingBrush(entrySelected, UserSelectedBorder),
+                              BorderThickness = new Thickness(chrome.SelectionBorder),
+                              CornerRadius    = new CornerRadius(2),
+                              Child           = entryRow,
+                          }
+                        : null;
+
                     // Register for lightweight selection repainting (avoids full Render() on selection change).
                     if (!entry.IsCommitment)
-                        _entryRowRegistry.Add(new EntryRowInfo(entryRow, entryLabel, entryId, entry.IsOverlay, entry.IsDeemphasized, isConflict ? conflictGlow : entryRowBg));
+                        _entryRowRegistry.Add(new EntryRowInfo(entryRow, entryLabel, entryId, entry.IsOverlay, entry.IsDeemphasized, isConflict ? conflictGlow : entryRowBg,
+                                                               selectionRing));
 
                     entryRow.PointerPressed += (sender, e) =>
                     {
@@ -1248,11 +1303,19 @@ public partial class ScheduleGridView : UserControl
                                     _vm?.ToggleSection(entryId);
                                 else
                                     _vm?.SelectSection(entryId);
+
+                                // A plain left press on a section line may become a drag of that one meeting; it only
+                                // lifts after the pointer has moved a few pixels (OnCanvasPointerMoved).
+                                if (!ctrl
+                                    && e.GetCurrentPoint(null).Properties.IsLeftButtonPressed
+                                    && _vm?.IsWriteEnabled == true
+                                    && !entry.IsCommitment && !entry.IsSharedSchedule && entry.MeetingIndex >= 0)
+                                    BeginMeetingDragTracking(e, (Border)sender!, clickCtx, adjustedTileY, subIdx, labelText);
                             }
                         }
                         e.Handled = true;
                     };
-                    stack.Children.Add(entryRow);
+                    stack.Children.Add((Control?)selectionRing ?? entryRow);
                 }
 
                 bool tileHasOverlay = tile.Entries.Any(e => e.IsOverlay);
@@ -1835,6 +1898,304 @@ public partial class ScheduleGridView : UserControl
         };
     }
 
+    // ── Dragging a meeting ──────────────────────────────────────────────────────
+    //
+    // One gesture: press on a section line (BeginMeetingDragTracking, from the entry row's PointerPressed), move past
+    // a threshold (the tile "lifts": OnCanvasPointerMoved asks the view model for a MeetingDragSession), keep moving
+    // (UpdateDrag redraws the ghost and label from session.Preview), release (drop) or Esc / release outside the grid
+    // (cancel). The canvas holds pointer capture throughout, so a release anywhere reaches it. All rules live in
+    // MeetingDragSession/MeetingMover/GridGeometry; this code only converts pixels to numbers and draws the answer.
+
+    /// <summary>The state of one press-to-release gesture. Created on press; <see cref="Lifted"/> once the threshold is passed.</summary>
+    private sealed class MeetingDragState(TileClickContext context, Point pressPoint, double grabOffsetY,
+        int subColumn, Border sourceRow, string labelText, IPointer pointer)
+    {
+        /// <summary>The section, meeting index and original day of the pressed line.</summary>
+        public TileClickContext Context { get; } = context;
+        /// <summary>Where the pointer went down, in canvas coordinates.</summary>
+        public Point PressPoint { get; } = pressPoint;
+        /// <summary>Pointer Y minus the tile's top at press time; keeps the tile under the pointer where it was grabbed.</summary>
+        public double GrabOffsetY { get; } = grabOffsetY;
+        /// <summary>The semester sub-column the tile is in (a meeting never changes semester).</summary>
+        public int SubColumn { get; } = subColumn;
+        /// <summary>The pressed line, dimmed while its meeting is lifted.</summary>
+        public Border SourceRow { get; } = sourceRow;
+        /// <summary>The line's text, repeated in the ghost.</summary>
+        public string LabelText { get; } = labelText;
+        /// <summary>The pointer whose capture the canvas holds.</summary>
+        public IPointer Pointer { get; } = pointer;
+        /// <summary>True once the pointer has moved past the threshold and the session started.</summary>
+        public bool Lifted { get; set; }
+        /// <summary>The source row's opacity before it was dimmed.</summary>
+        public double SourceOpacity { get; set; } = 1;
+        /// <summary>The drag rules; set on lift.</summary>
+        public MeetingDragSession? Session { get; set; }
+        /// <summary>What a drop at the last position would do.</summary>
+        public MeetingDragPreview? Preview { get; set; }
+        /// <summary>The last pointer position (canvas coordinates), so a Shift change can redraw in place.</summary>
+        public Point LastPoint { get; set; }
+        /// <summary>The last day under the pointer; kept when the pointer is over no unfolded day.</summary>
+        public int? LastDay { get; set; }
+    }
+
+    /// <summary>Z-order of the drag ghosts: above every tile, flag and strip on the canvas (the label sits one above).</summary>
+    private const int DragZIndex = 1000;
+
+    private MeetingDragState? _drag;
+    /// <summary>The ghost and label controls currently on the canvas; removed and re-added by every <see cref="DrawDragVisuals"/>.</summary>
+    private readonly List<Control> _dragControls = new();
+    /// <summary>The window whose keys (Esc, Shift) are watched while a meeting is lifted.</summary>
+    private TopLevel? _dragTopLevel;
+
+    /// <summary>
+    /// Starts tracking a press on a section line; nothing lifts until the pointer has moved past the threshold.
+    /// Takes pointer capture on the canvas.
+    /// </summary>
+    /// <param name="e">The press.</param>
+    /// <param name="row">The pressed entry row.</param>
+    /// <param name="context">Section, meeting index and original day of the line.</param>
+    /// <param name="tileTop">The tile's top edge on the canvas.</param>
+    /// <param name="subColumn">The semester sub-column of the tile.</param>
+    /// <param name="labelText">The line's text.</param>
+    private void BeginMeetingDragTracking(PointerPressedEventArgs e, Border row, TileClickContext context,
+        double tileTop, int subColumn, string labelText)
+    {
+        if (_canvas is null) return;
+        EndDrag();
+        var press = e.GetPosition(_canvas);
+        _drag = new MeetingDragState(context, press, press.Y - tileTop, subColumn, row, labelText, e.Pointer)
+            { LastPoint = press };
+        e.Pointer.Capture(_canvas);
+    }
+
+    /// <summary>
+    /// Pointer moved while a press is tracked: lifts the meeting once past the threshold (the view model may refuse,
+    /// which ends the gesture), then follows the pointer.
+    /// </summary>
+    /// <param name="sender">The canvas.</param>
+    /// <param name="e">The move.</param>
+    private void OnCanvasPointerMoved(object? sender, PointerEventArgs e)
+    {
+        if (_drag is not { } drag || _vm is null) return;
+        var pos = e.GetPosition(_canvas);
+
+        if (!drag.Lifted)
+        {
+            double threshold = Resource<double>("MeetingDragThreshold", 5);
+            double dx = pos.X - drag.PressPoint.X, dy = pos.Y - drag.PressPoint.Y;
+            if (dx * dx + dy * dy < threshold * threshold) return;
+
+            var session = _vm.TryBeginMeetingDrag(drag.Context.SectionId, drag.Context.MeetingIndex);
+            if (session is null) { EndDrag(); return; }
+
+            drag.Session = session;
+            drag.Lifted = true;
+            drag.SourceOpacity = drag.SourceRow.Opacity;
+            drag.SourceRow.Opacity = Resource<double>("MeetingDragSourceOpacity", 0.4);
+            if (TopLevel.GetTopLevel(this) is { } top)
+            {
+                _dragTopLevel = top;
+                top.AddHandler(InputElement.KeyDownEvent, OnDragKeyDown, RoutingStrategies.Tunnel);
+                top.AddHandler(InputElement.KeyUpEvent, OnDragKeyUp, RoutingStrategies.Tunnel);
+            }
+        }
+
+        UpdateDrag(drag, pos, e.KeyModifiers.HasFlag(KeyModifiers.Shift));
+    }
+
+    /// <summary>
+    /// Button released: a press that never lifted just ends; a lifted meeting is dropped when the pointer is inside
+    /// the grid's viewport (and saved if the drop changes something), otherwise cancelled.
+    /// </summary>
+    /// <param name="sender">The canvas.</param>
+    /// <param name="e">The release.</param>
+    private void OnCanvasPointerReleased(object? sender, PointerReleasedEventArgs e)
+    {
+        if (_drag is not { } drag) return;
+        if (!drag.Lifted) { EndDrag(); return; }
+
+        var viewport = _zoomContainer?.FindAncestorOfType<ScrollViewer>();
+        var inView = viewport is not null && e.GetPosition(viewport) is var p
+                  && p.X >= 0 && p.Y >= 0 && p.X <= viewport.Bounds.Width && p.Y <= viewport.Bounds.Height;
+        if (!inView) { EndDrag(); return; }
+
+        UpdateDrag(drag, e.GetPosition(_canvas), e.KeyModifiers.HasFlag(KeyModifiers.Shift));
+        var session = drag.Session;
+        var preview = drag.Preview;
+
+        // End first: the commit reloads the grid, which re-renders (and would cancel) it anyway.
+        EndDrag();
+        if (session is not null && preview is { CanDrop: true })
+            _vm?.CommitMeetingDrag(session, preview);
+    }
+
+    /// <summary>Key pressed while a meeting is lifted: Esc cancels, Shift switches to free 5-minute steps.</summary>
+    /// <param name="sender">The window.</param>
+    /// <param name="e">The key.</param>
+    private void OnDragKeyDown(object? sender, KeyEventArgs e)
+    {
+        if (_drag is not { Lifted: true } drag) return;
+        if (e.Key == Key.Escape)
+        {
+            EndDrag();
+            e.Handled = true;
+        }
+        else if (e.Key is Key.LeftShift or Key.RightShift)
+            UpdateDrag(drag, drag.LastPoint, true);
+    }
+
+    /// <summary>Key released while a meeting is lifted: letting go of Shift snaps again.</summary>
+    /// <param name="sender">The window.</param>
+    /// <param name="e">The key.</param>
+    private void OnDragKeyUp(object? sender, KeyEventArgs e)
+    {
+        if (_drag is not { Lifted: true } drag) return;
+        if (e.Key is Key.LeftShift or Key.RightShift)
+            UpdateDrag(drag, drag.LastPoint, false);
+    }
+
+    /// <summary>
+    /// Works out what a drop at <paramref name="pos"/> would do and redraws the ghost and label.
+    /// The new start comes from the ghost's top edge, not the pointer (a tile can be taller than its time span).
+    /// </summary>
+    /// <param name="drag">The lifted drag.</param>
+    /// <param name="pos">The pointer, in canvas coordinates.</param>
+    /// <param name="shiftHeld">True for free 5-minute steps.</param>
+    private void UpdateDrag(MeetingDragState drag, Point pos, bool shiftHeld)
+    {
+        if (_vm is null || drag.Session is not { } session
+            || _cachedDayXOffsets is null || _cachedDayColWidths is null || _cachedGridlineYOffsets is null) return;
+
+        var data = _vm.GridData;
+        drag.LastPoint = pos;
+
+        double ghostTop = pos.Y - drag.GrabOffsetY;
+        int rawStart = GridGeometry.MinutesAtY(ghostTop - TilePaddingV - _cachedEffectiveHeaderHeight,
+            data.FirstRowMinutes, data.LastRowMinutes, _cachedGridlineYOffsets, HalfHourHeight);
+        int day = GridGeometry.NearestUnfoldedDay(pos.X, data, _cachedDayXOffsets, _cachedDayColWidths)
+                  ?? drag.LastDay ?? session.OriginalDay;
+        drag.LastDay = day;
+
+        drag.Preview = session.Preview(day, rawStart, shiftHeld, moveAlone: true, data.FirstRowMinutes, data.LastRowMinutes);
+        DrawDragVisuals(drag, pos);
+    }
+
+    /// <summary>
+    /// Redraws the ghosts (on shown, unfolded days only) and the time label beside the pointer. Ghosts and label
+    /// use the refused colours while the drop would be refused. Nothing here takes pointer input.
+    /// </summary>
+    /// <param name="drag">The lifted drag, with its latest preview.</param>
+    /// <param name="pos">The pointer, in canvas coordinates.</param>
+    private void DrawDragVisuals(MeetingDragState drag, Point pos)
+    {
+        ClearDragVisuals();
+        if (_canvas is null || _vm is null || drag.Preview is not { } preview
+            || _cachedDayXOffsets is null || _cachedDayColWidths is null || _cachedGridlineYOffsets is null) return;
+
+        var data = _vm.GridData;
+        bool refused = preview.IsRefused;
+        double padV = TilePaddingV;
+        double fontSize = _vm.TileFontSize;
+        var chrome = ReadTileChrome();
+
+        foreach (var ghost in preview.Ghosts)
+        {
+            if (data.FirstColumnOfDay(ghost.Day) is not int firstCol || data.DayColumns[firstCol].IsFolded) continue;
+            int flatCol = firstCol + drag.SubColumn;
+            if (flatCol >= data.DayColumns.Count || data.DayOfColumn(flatCol) != ghost.Day) continue;
+
+            var (x, w) = GetDayGroupContentBounds(flatCol, _cachedSemesterCount, _cachedDayXOffsets, _cachedDayColWidths);
+            double startY = _cachedEffectiveHeaderHeight
+                          + GridGeometry.YOfMinutes(ghost.StartMinutes, data.FirstRowMinutes, _cachedGridlineYOffsets, HalfHourHeight);
+            double endY   = _cachedEffectiveHeaderHeight
+                          + GridGeometry.YOfMinutes(ghost.EndMinutes, data.FirstRowMinutes, _cachedGridlineYOffsets, HalfHourHeight);
+
+            var tile = new Border
+            {
+                Width            = w,
+                Height           = Math.Max(endY - startY - padV * 2, 18),
+                Background       = TileFill,
+                BorderBrush      = Res(refused ? "DragGhostRefusedBorder" : "DragGhostBorder"),
+                BorderThickness  = new Thickness(Resource<double>("MeetingDragGhostBorderThickness", 2)),
+                CornerRadius     = new CornerRadius(3),
+                Opacity          = Resource<double>("MeetingDragGhostOpacity", 0.8),
+                Padding          = chrome.ContentPadding,
+                IsHitTestVisible = false,
+                ZIndex           = DragZIndex,
+                Child = new TextBlock
+                {
+                    Text         = drag.LabelText,
+                    FontSize     = fontSize,
+                    FontWeight   = FontWeight.SemiBold,
+                    Foreground   = TileText,
+                    TextTrimming = TextTrimming.CharacterEllipsis,
+                },
+            };
+            Canvas.SetLeft(tile, x);
+            Canvas.SetTop(tile, startY + padV);
+            _canvas.Children.Add(tile);
+            _dragControls.Add(tile);
+        }
+
+        double offset = Resource<double>("MeetingDragLabelOffset", 14);
+        var label = new Border
+        {
+            Background       = Res("DragLabelBackground"),
+            BorderBrush      = Res("DragLabelBorder"),
+            BorderThickness  = new Thickness(1),
+            CornerRadius     = new CornerRadius(3),
+            Padding          = Resource<Thickness>("MeetingDragLabelPadding", new Thickness(4, 1)),
+            IsHitTestVisible = false,
+            ZIndex           = DragZIndex + 1,
+            Child = new TextBlock
+            {
+                Text       = preview.Label,
+                FontSize   = fontSize,
+                Foreground = Res(refused ? "DragLabelRefusedText" : "DragLabelText"),
+            },
+        };
+        label.Measure(Size.Infinity);
+        double labelX = pos.X + offset;
+        if (!double.IsNaN(_canvas.Width) && labelX + label.DesiredSize.Width > _canvas.Width)
+            labelX = pos.X - offset - label.DesiredSize.Width;   // flip to the pointer's left at the grid's right edge
+        Canvas.SetLeft(label, Math.Max(0, labelX));
+        Canvas.SetTop(label, pos.Y + offset);
+        _canvas.Children.Add(label);
+        _dragControls.Add(label);
+    }
+
+    /// <summary>Removes the ghosts and label from the canvas.</summary>
+    private void ClearDragVisuals()
+    {
+        if (_canvas is not null)
+            foreach (var c in _dragControls) _canvas.Children.Remove(c);
+        _dragControls.Clear();
+    }
+
+    /// <summary>
+    /// Ends the gesture, however it ended: drops tracking, removes the ghost and label, restores the dimmed source
+    /// line, stops watching keys and releases pointer capture. Safe to call when nothing is being dragged.
+    /// <para>
+    /// The tracking field is cleared first: releasing capture raises PointerCaptureLost, which calls this again.
+    /// </para>
+    /// </summary>
+    private void EndDrag()
+    {
+        var drag = _drag;
+        _drag = null;
+        ClearDragVisuals();
+        if (_dragTopLevel is { } top)
+        {
+            top.RemoveHandler(InputElement.KeyDownEvent, OnDragKeyDown);
+            top.RemoveHandler(InputElement.KeyUpEvent, OnDragKeyUp);
+            _dragTopLevel = null;
+        }
+        if (drag is null) return;
+
+        if (drag.Lifted) drag.SourceRow.Opacity = drag.SourceOpacity;
+        if (ReferenceEquals(drag.Pointer.Captured, _canvas)) drag.Pointer.Capture(null);
+    }
+
     private static double TimeToY(int minutes, int firstRowMinutes) =>
         (minutes - firstRowMinutes) / 30.0 * HalfHourHeight;
 
@@ -1867,17 +2228,8 @@ public partial class ScheduleGridView : UserControl
     /// <param name="offsets">The gridlineYOffsets dictionary built during Phase 3.</param>
     /// <param name="minutes">The time value in minutes from midnight to look up.</param>
     /// <returns>Cumulative Y expansion offset in pixels.</returns>
-    private static double GetGridlineOffset(Dictionary<int, double> offsets, int minutes)
-    {
-        if (offsets.TryGetValue(minutes, out var exact)) return exact;
-
-        // Interpolate between the two nearest 30-minute gridlines.
-        var lower = (minutes / 30) * 30;
-        var upper = lower + 30;
-        var lo    = offsets.TryGetValue(lower, out var loVal) ? loVal : 0;
-        var hi    = offsets.TryGetValue(upper, out var hiVal) ? hiVal : lo;
-        return lo + (hi - lo) * ((minutes - lower) / 30.0);
-    }
+    private static double GetGridlineOffset(Dictionary<int, double> offsets, int minutes) =>
+        GridGeometry.GridlineOffset(offsets, minutes);
 
     /// <summary>
     /// Measures the natural (unconstrained) pixel width of a text string

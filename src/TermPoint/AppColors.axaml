@@ -268,6 +268,18 @@
 	<!--  Transparent body fill — raise alpha for a light tint (e.g. #184CAF50)  -->
 	<SolidColorBrush x:Key="GhostBodyFill" Color="#184CAF50" />
 
+	<!--  ── Meeting drag (Schedule View: dragging a meeting to a new day or time)  ──  -->
+	<!--  Frame of the ghost that follows the pointer (the selection colour)  -->
+	<SolidColorBrush x:Key="DragGhostBorder" Color="#3c647f" />
+	<!--  Frame of the ghost while the drop is refused (it would overlap another meeting of the same section)  -->
+	<SolidColorBrush x:Key="DragGhostRefusedBorder" Color="#C53030" />
+	<!--  The time label beside the pointer, e.g. "Tue, Thu 11:30-13:00"  -->
+	<SolidColorBrush x:Key="DragLabelBackground" Color="#F2F6FF" />
+	<SolidColorBrush x:Key="DragLabelBorder" Color="#9ABED8" />
+	<SolidColorBrush x:Key="DragLabelText" Color="Black" />
+	<!--  Label text while the drop is refused, e.g. "Overlaps its Wed 10:00 meeting"  -->
+	<SolidColorBrush x:Key="DragLabelRefusedText" Color="#C53030" />
+
 	<!--  ── Help tooltips  ──────────────────────────────────────────────────  -->
 	<!--  Light indigo-white fill — distinct from the cooler TileFill (#E2EDF8)  -->
 	<SolidColorBrush x:Key="HelpTipBackground" Color="#F2F6FF" />

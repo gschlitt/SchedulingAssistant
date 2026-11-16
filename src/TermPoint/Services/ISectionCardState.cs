@@ -13,4 +13,10 @@ public interface ISectionCardState
     /// one; <c>null</c> when no card is open.
     /// </summary>
     string? OpenCardHeading { get; }
+
+    /// <summary>
+    /// Raised when a card opens or closes. Listeners re-read <see cref="OpenCardHeading"/> (for example the grid
+    /// clears its "finish editing first" message once the card is gone).
+    /// </summary>
+    event Action? OpenCardChanged;
 }

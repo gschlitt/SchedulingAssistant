@@ -761,6 +761,8 @@ public partial class App : Application
         // Shared by every indicator and the Focus picker; exposed as MainWindowViewModel.FocusVm.
         services.AddSingleton<FocusViewModel>();
         services.AddSingleton<MainWindowViewModel>();
+        // Marked sections (never saved): framed in Schedule View and in the Section List, so both share one set.
+        services.AddSingleton<SectionMarks>();
         services.AddSingleton<SectionListViewModel>();
         services.AddSingleton<ISectionCardState>(sp => sp.GetRequiredService<SectionListViewModel>());
         services.AddSingleton<MeetingListViewModel>();
@@ -789,7 +791,10 @@ public partial class App : Application
             // Read each time the day-header menu opens (both ConfigureServices and ConfigureDemoServices register it).
             sp.GetRequiredService<IBlockPatternRepository>(),
             // The right-click menu refuses edits while a section card is open (see SectionContextMenuViewModel).
-            sp.GetRequiredService<ISectionCardState>()));
+            sp.GetRequiredService<ISectionCardState>(),
+            // The legal start times a dragged meeting snaps to (registered by both the desktop and the demo setup).
+            sp.GetRequiredService<ILegalStartTimeRepository>(),
+            sp.GetRequiredService<SectionMarks>()));
         services.AddSingleton<WorkloadPanelViewModel>(sp => new WorkloadPanelViewModel(
             sp.GetRequiredService<IInstructorRepository>(),
             sp.GetRequiredService<ISectionRepository>(),

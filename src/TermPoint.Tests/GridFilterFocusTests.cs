@@ -58,6 +58,9 @@ public sealed class GridFilterFocusTests : IDisposable
     private readonly SectionListViewModel _list;
     private readonly ScheduleGridViewModel _grid;
 
+    /// <summary>The marked sections, shared by the list and the grid as the dependency container shares them.</summary>
+    private readonly SectionMarks _marks = new();
+
     /// <summary>
     /// Seeds three subjects with a course each, three instructors who each teach one subject in year 1 (Adams also
     /// teaches Biology in year 2), a room, and builds the focus service, the section list and the grid.
@@ -115,14 +118,14 @@ public sealed class GridFilterFocusTests : IDisposable
             _semesterRepo, new BlockPatternRepository(db), new SectionCodePatternRepository(db), _semesterContext,
             _sectionStore, envRepo, campusRepo, meetingRepo, new NullDialog(), _fx.Lock, _focus,
             new SubjectColorPresenter(new SubjectColorStore([], () => new AppSettings()), _focus, _sectionStore,
-                _courseRepo, _subjectRepo));
+                _courseRepo, _subjectRepo), _marks);
 
         _grid = new ScheduleGridViewModel(
             _sectionRepo, _courseRepo, _instructorRepo, _roomRepo, _subjectRepo, envRepo, campusRepo,
             _semesterContext, new AcademicUnitService(new AcademicUnitRepository(db)), _sectionStore, new MeetingStore(),
             meetingRepo, notifier, new InstructorCommitmentRepository(db), _fx.Lock, new SharedScheduleService(),
             new AccessPanelViewModel(new ProgramWatchRepository(db), _semesterContext, notifier, envRepo, _courseRepo, () => true),
-            _focus, FocusTestSupport.NoColours(_courseRepo, _subjectRepo, _sectionStore), new BlockPatternRepository(db), new FakeSectionCardState());
+            _focus, FocusTestSupport.NoColours(_courseRepo, _subjectRepo, _sectionStore), new BlockPatternRepository(db), new FakeSectionCardState(), new LegalStartTimeRepository(db), _marks);
 
         // Viewing year 1's fall semester, as the user would after opening the database.
         _semesterContext.Reload(_ayRepo, _semesterRepo, _year1Id, new HashSet<string> { _fall1 });
@@ -356,5 +359,32 @@ public sealed class GridFilterFocusTests : IDisposable
             new Dictionary<string, string>(), new Dictionary<string, string>());
 
         Assert.Same(lookups, ScheduleGridViewModel.NarrowFilterLookups(lookups, _focus));
+    }
+
+    // ── Marks ──────────────────────────────────────────────────────────────────
+
+    /// <summary>
+    /// A section marked in Schedule View is marked on its Section List card too; unmarking clears it, and cards built
+    /// by a later reload read the marks when they are created.
+    /// </summary>
+    [Fact]
+    public void Marks_ReachTheSectionListCards()
+    {
+        var cards = _list.SectionItems.OfType<SectionListItemViewModel>().ToList();
+        Assert.NotEmpty(cards);
+        var marked = cards[0];
+        Assert.False(marked.IsMarked);
+
+        _grid.Marks.Toggle(marked.Section.Id);
+        Assert.True(marked.IsMarked);
+        Assert.All(cards.Skip(1), c => Assert.False(c.IsMarked));
+
+        _sectionStore.Reload(_sectionRepo, _semesterContext.SelectedSemesters.Select(s => s.Semester.Id));
+        var rebuilt = _list.SectionItems.OfType<SectionListItemViewModel>().Single(c => c.Section.Id == marked.Section.Id);
+        Assert.NotSame(marked, rebuilt);
+        Assert.True(rebuilt.IsMarked);
+
+        _grid.Marks.Clear();
+        Assert.False(rebuilt.IsMarked);
     }
 }

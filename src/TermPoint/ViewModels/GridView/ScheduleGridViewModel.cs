@@ -37,6 +37,15 @@ public partial class ScheduleGridViewModel : ViewModelBase
     private readonly IInstructorCommitmentRepository _commitmentRepo;
     private readonly WriteLockService _lockService;
     private readonly SharedScheduleService _sharedScheduleService;
+    private readonly ISectionCardState _cardState;
+    private readonly ILegalStartTimeRepository _legalStartTimeRepo;
+
+    /// <summary>
+    /// The text of the "finish editing first" message a refused drag put in <see cref="LastErrorMessage"/>, so
+    /// <see cref="OnOpenCardChanged"/> clears exactly that message and never a different error that replaced it.
+    /// Null when no such message is showing.
+    /// </summary>
+    private string? _dragRefusalMessage;
 
     /// <summary>
     /// The subject focus. Pass 1 asks it whether a section is in focus; overlays, meetings, shared
@@ -111,10 +120,11 @@ public partial class ScheduleGridViewModel : ViewModelBase
     [ObservableProperty] private string _sharedScheduleBadge = string.Empty;
 
     /// <summary>
-    /// The sections marked with a bright frame (never saved). Owned here because this view model is a singleton
-    /// rebuilt with the service container whenever another database is opened, so marks vanish exactly then.
+    /// The sections marked with a bright frame (never saved). A singleton shared with the Section List (which frames
+    /// the marked cards); it is rebuilt with the service container whenever another database is opened, so marks
+    /// vanish exactly then.
     /// </summary>
-    public SectionMarks Marks { get; } = new();
+    public SectionMarks Marks { get; }
 
     /// <summary>State for the right-click context menu on section tiles.</summary>
     public SectionContextMenuViewModel ContextMenu { get; }
@@ -194,8 +204,13 @@ public partial class ScheduleGridViewModel : ViewModelBase
         FocusService focus,
         SubjectColorPresenter subjectColors,
         IBlockPatternRepository blockPatternRepo,
-        ISectionCardState cardState)
+        ISectionCardState cardState,
+        ILegalStartTimeRepository legalStartTimeRepo,
+        SectionMarks marks)
     {
+        Marks = marks;
+        _cardState = cardState;
+        _legalStartTimeRepo = legalStartTimeRepo;
         _sectionRepo = sectionRepo;
         _courseRepo = courseRepo;
         _instructorRepo = instructorRepo;
@@ -220,11 +235,10 @@ public partial class ScheduleGridViewModel : ViewModelBase
 
         // After a context-menu save, refresh the shared section cache so all views
         // (including this one via SectionsChanged below) reload in one shot.
-        ContextMenu = new SectionContextMenuViewModel(sectionRepo, () =>
-        {
-            var semIds = _semesterContext.SelectedSemesters.Select(s => s.Semester.Id);
-            _sectionStore.Reload(_sectionRepo, semIds);
-        }, lockService, cardState, Marks);
+        ContextMenu = new SectionContextMenuViewModel(sectionRepo, ReloadSectionStore, lockService, cardState, Marks);
+
+        // The "finish editing first" message a refused drag shows goes away when the card closes.
+        _cardState.OpenCardChanged += OnOpenCardChanged;
 
         // The day-header menu reads the block patterns each time it opens (so Settings edits show) and calls this
         // view model's fold commands.
@@ -327,6 +341,97 @@ public partial class ScheduleGridViewModel : ViewModelBase
 
     [RelayCommand]
     public void DismissError() => LastErrorMessage = null;
+
+    /// <summary>
+    /// Refreshes the shared section cache for the selected semesters after a save made from the grid (the context
+    /// menu or a drag), so every view, this one included through <c>SectionsChanged</c>, reloads in one shot.
+    /// Closes an open section card, so callers check <see cref="OpenCardMessages.WhyRefused"/> first.
+    /// </summary>
+    private void ReloadSectionStore()
+    {
+        var semIds = _semesterContext.SelectedSemesters.Select(s => s.Semester.Id);
+        _sectionStore.Reload(_sectionRepo, semIds);
+    }
+
+    /// <summary>
+    /// A section card opened or closed. Once none is open, clears the drag-refusal message if it is still the one
+    /// showing (a different error that replaced it stays).
+    /// </summary>
+    private void OnOpenCardChanged()
+    {
+        if (_cardState.OpenCardHeading is not null || _dragRefusalMessage is null) return;
+        if (LastErrorMessage == _dragRefusalMessage) LastErrorMessage = null;
+        _dragRefusalMessage = null;
+    }
+
+    /// <summary>
+    /// Shows the "finish editing first" message for a drag that was refused because a card is open.
+    /// </summary>
+    /// <param name="heading">Heading of the open card.</param>
+    private void ShowDragRefusal(string heading)
+    {
+        _dragRefusalMessage = OpenCardMessages.FinishFirstToDrag(heading);
+        LastErrorMessage = _dragRefusalMessage;
+    }
+
+    /// <summary>
+    /// Starts dragging one meeting of a section tile. Refused (null) in read-only mode, while a section card is open
+    /// (the grid's message bar then says to finish editing first) and when the section or meeting no longer exists.
+    /// </summary>
+    /// <param name="sectionId">The section the tile belongs to.</param>
+    /// <param name="meetingIndex">Index of the dragged meeting in the section's schedule (carried on the tile).</param>
+    /// <returns>The drag session, or null when the tile must not lift.</returns>
+    public MeetingDragSession? TryBeginMeetingDrag(string sectionId, int meetingIndex)
+    {
+        if (!IsWriteEnabled) return null;
+
+        if (_cardState.OpenCardHeading is { } heading)
+        {
+            ShowDragRefusal(heading);
+            return null;
+        }
+
+        var section = _sectionRepo.GetById(sectionId);
+        if (section is null || meetingIndex < 0 || meetingIndex >= section.Schedule.Count) return null;
+
+        var ayId = _semesterContext.SelectedAcademicYear?.Id;
+        IReadOnlyList<LegalStartTime> legal = string.IsNullOrEmpty(ayId) ? [] : _legalStartTimeRepo.GetAll(ayId);
+        return new MeetingDragSession(sectionId, meetingIndex, section.Schedule, legal);
+    }
+
+    /// <summary>
+    /// Saves a drop. Does nothing (false) unless the drop would change the schedule, we hold the write lock, no
+    /// section card is open (re-checked here: one may have opened since the lift) and the section's stored meetings
+    /// still equal the ones the drag started from. The section is edited in place and saved through the repository,
+    /// exactly as the right-click menu does, then the store is reloaded and the section selected.
+    /// </summary>
+    /// <param name="session">The drag that is ending.</param>
+    /// <param name="preview">The preview at the drop position.</param>
+    /// <returns>True when the section was saved.</returns>
+    public bool CommitMeetingDrag(MeetingDragSession session, MeetingDragPreview preview)
+    {
+        if (!preview.CanDrop || !IsWriteEnabled) return false;
+
+        if (_cardState.OpenCardHeading is { } heading)
+        {
+            ShowDragRefusal(heading);
+            return false;
+        }
+
+        var section = _sectionRepo.GetById(session.SectionId);
+        if (section is null || !session.MatchesSnapshot(section.Schedule))
+        {
+            App.Logger.LogWarning(
+                $"Meeting drag dropped without saving: section {session.SectionId} changed (or vanished) after the meeting was lifted.");
+            return false;
+        }
+
+        section.Schedule = preview.Result.Schedule!;
+        _sectionRepo.Update(section);
+        ReloadSectionStore();
+        SelectSection(section.Id);
+        return true;
+    }
 
 #if DEBUG
     /// <summary>

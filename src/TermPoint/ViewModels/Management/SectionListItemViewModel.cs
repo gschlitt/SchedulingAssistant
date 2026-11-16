@@ -103,6 +103,14 @@ public partial class SectionListItemViewModel : ObservableObject, ISectionListEn
     private bool _isSelected;
 
     /// <summary>
+    /// True when this section is marked in Schedule View (right-click, Mark Section; never saved). Drives the mark
+    /// frame (<c>MarkedSectionBorder</c>), which sits inside the selection frame when both apply, as on the grid's
+    /// tiles. Set by <see cref="SectionListViewModel"/> when the card is built and whenever the marks change.
+    /// </summary>
+    [ObservableProperty]
+    private bool _isMarked;
+
+    /// <summary>
     /// True when at least one meeting in this section has a non-default (non-weekly) frequency.
     /// Drives visibility of the Freq column header in the expanded section card; the column itself
     /// collapses automatically via SharedSizeGroup when no content is visible.

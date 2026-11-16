@@ -1267,14 +1267,21 @@
                                 has actively selected this section (cross-view).
                                 Card background (CardBackgroundBrush): tinted when this section passes
                                 the active Schedule Grid filter
+                                Middle border (MarkedSectionBorder): visible when the section is marked in
+                                Schedule View; sits inside the selection border, as on the grid's tiles.
                             -->
                             <Border
                                 Margin="0,2,0,2"
                                 HorizontalAlignment="Left"
-                                MinWidth="400"                                
+                                MinWidth="400"
                                 BorderBrush="{StaticResource UserSelectedSectionBorderColor}"
                                 BorderThickness="{Binding IsSelected, Converter={StaticResource FilterBorderThicknessConverter}}"
                                 CornerRadius="5">
+                                <!--  Mark frame (right-click, Mark Section in Schedule View). The card inside is not re-indented.  -->
+                                <Border
+                                    BorderBrush="{StaticResource MarkedSectionBorder}"
+                                    BorderThickness="{Binding IsMarked, Converter={StaticResource FilterBorderThicknessConverter}}"
+                                    CornerRadius="5">
                                 <!--Dynamic thickness allows for Multi-semester border on the left-->
                                 <Border
                                     Background="{Binding IsFilterHighlighted, Converter={StaticResource FilterHighlightBackgroundConverter}}"
@@ -1550,6 +1557,7 @@
                                         IsHitTestVisible="False"
                                         IsVisible="{Binding IsExpanded, Converter={StaticResource NotConverter}}" />
                                     </Grid>
+                                </Border>
                                 </Border>
                             </Border>
                         </DataTemplate>

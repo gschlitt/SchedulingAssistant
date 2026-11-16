@@ -96,4 +96,18 @@
     <!--  Space between the fold icon and the right edge of the day header  -->
     <x:Double x:Key="FoldDayIconRightMargin">2</x:Double>
 
+    <!--  ── Meeting drag (Schedule View: dragging a meeting to a new day or time)  ──  -->
+    <!--  Pixels the pointer must move with the button down before a tile lifts; smaller moves stay clicks  -->
+    <x:Double x:Key="MeetingDragThreshold">5</x:Double>
+    <!--  Opacity of the ghost that follows the pointer  -->
+    <x:Double x:Key="MeetingDragGhostOpacity">0.8</x:Double>
+    <!--  Opacity of the dragged line in its original tile while the drag lasts  -->
+    <x:Double x:Key="MeetingDragSourceOpacity">0.4</x:Double>
+    <!--  Thickness of the ghost's frame  -->
+    <x:Double x:Key="MeetingDragGhostBorderThickness">2</x:Double>
+    <!--  Gap between the pointer and the time label (to the right and below)  -->
+    <x:Double x:Key="MeetingDragLabelOffset">14</x:Double>
+    <!--  Padding inside the time label (left/right, top/bottom)  -->
+    <Thickness x:Key="MeetingDragLabelPadding">4,1</Thickness>
+
 </ResourceDictionary>

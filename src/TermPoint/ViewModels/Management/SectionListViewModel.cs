@@ -46,6 +46,12 @@ public partial class SectionListViewModel : ViewModelBase, IUnappliedChangesHost
     private readonly SubjectColorPresenter _subjectColors;
 
     /// <summary>
+    /// The sections marked in Schedule View (right-click, Mark Section). Their cards get the mark frame inside the
+    /// selection frame (<see cref="SectionListItemViewModel.IsMarked"/>).
+    /// </summary>
+    private readonly SectionMarks _marks;
+
+    /// <summary>
     /// True only while <see cref="OnStoreSelectionChanged"/> clears <see cref="SelectedItem"/> because the section
     /// the store selected has no card (it is outside the focus). Stops <see cref="OnSelectedItemChanged"/> from
     /// pushing that null back into the store.
@@ -252,7 +258,11 @@ public partial class SectionListViewModel : ViewModelBase, IUnappliedChangesHost
     {
         OnPropertyChanged(nameof(IsEditing));
         _focus.SetEditorOpen(value is not null);
+        OpenCardChanged?.Invoke();
     }
+
+    /// <inheritdoc />
+    public event Action? OpenCardChanged;
 
     /// <summary>
     /// True when the section list is empty because of the focus, not because the semester is empty: at least one
@@ -337,10 +347,13 @@ public partial class SectionListViewModel : ViewModelBase, IUnappliedChangesHost
         IDialogService dialog,
         WriteLockService lockService,
         FocusService focus,
-        SubjectColorPresenter subjectColors)
+        SubjectColorPresenter subjectColors,
+        SectionMarks marks)
     {
         _focus = focus;
         _subjectColors = subjectColors;
+        _marks = marks;
+        _marks.Changed += ApplyMarks;
         _sectionRepo = sectionRepo;
         _courseRepo = courseRepo;
         _subjectRepo = subjectRepo;
@@ -656,7 +669,10 @@ public partial class SectionListViewModel : ViewModelBase, IUnappliedChangesHost
         Section s, ItemLookups lk, string semesterName, string semesterColor) =>
         new(s, lk.Courses, lk.Instructors, lk.Rooms, lk.SectionTypes, lk.Campuses,
             lk.Tags, lk.Resources, lk.Reserves, lk.MeetingTypes, semesterName, semesterColor,
-            _subjectColors.ColorFor);
+            _subjectColors.ColorFor)
+        {
+            IsMarked = _marks.IsMarked(s.Id),
+        };
 
     /// <summary>
     /// Fast path for refreshing the list after editing a single existing section: replaces just
@@ -945,6 +961,16 @@ public partial class SectionListViewModel : ViewModelBase, IUnappliedChangesHost
     {
         foreach (var item in SectionItems.OfType<SectionListItemViewModel>())
             item.IsSelected = selectedIds.Contains(item.Section.Id);
+    }
+
+    /// <summary>
+    /// Updates <see cref="SectionListItemViewModel.IsMarked"/> on every section card after a mark was set or cleared
+    /// in Schedule View. Cards built later read the marks when they are created (<see cref="CreateSectionItem"/>).
+    /// </summary>
+    private void ApplyMarks()
+    {
+        foreach (var item in SectionItems.OfType<SectionListItemViewModel>())
+            item.IsMarked = _marks.IsMarked(item.Section.Id);
     }
 
     // ── Sorting ────────────────────────────────────────────────────────────────
@@ -1679,6 +1705,7 @@ public partial class SectionListViewModel : ViewModelBase, IUnappliedChangesHost
         AppSettings.SettingChanged -= OnAppSettingChanged;
         _focus.FocusChanged -= Reload;
         _subjectColors.Changed -= RefreshSubjectChips;
+        _marks.Changed -= ApplyMarks;
     }
 
     // ── Debug / Dev ────────────────────────────────────────────────────────────

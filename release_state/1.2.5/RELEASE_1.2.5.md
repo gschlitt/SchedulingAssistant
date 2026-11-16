@@ -92,20 +92,21 @@ Notes: [access-analyzer/NOTES.md](access-analyzer/NOTES.md). Design: [designs/1.
 
 **Goal:** on a busy schedule, an administrator can rearrange existing meetings by mouse in Schedule View, in the way people expect from other click-and-drag tools, smoothly and reliably. Sections are still created and fully edited in the Section List; the grid only moves meetings (the common quick edits, like today's right-click ones). Done means the feature is in the app and field-tested.
 
-**State:** Design approved (2026-11-16). On branch 1.2.5: the open-card guard, the move groundwork and marks are committed and hand-checked by Greg; marks on folded days are committed too (Greg's hand check pending). Nothing is broken or half-finished; tests pass. Next: the single-meeting drag.
+**State:** On branch 1.2.5, committed: guard, groundwork and marks (hand-checked), marks on folded days, the single-meeting drag, a selected marked line showing both frames, and marks shown on Section List cards (Greg's requests). All tests pass; the last four not yet hand-checked. Next: Greg's hand checks, then the group drag.
 
 <details>
 <summary>Steps (5 left)</summary>
 
-1. Greg hand-checks marks on folded days (check in the notes' build log).
-2. Single-meeting drag: lift past a threshold, ghost and time label, snapping (Shift free), Esc and drop-outside cancel, refusals, save and select; the open-card refusal in the grid's message bar.
+1. Greg hand-checks marks: folded days, both frames on a selected marked line, and marked cards in the Section List (checks in the notes' build log).
+2. Greg hand-checks the single-meeting drag (checklist in the notes' build log).
 3. Group drag: ghosts on every moving day, time only, Alt/Option to move one; amend CLAUDE.md's drag-and-drop line.
 4. Compile checks (desktop and browser), full suite; hand check on a busy real schedule, with folded days and several semesters shown.
 5. Field test; answer the `MinimumVersionToWrite` question (expected No: same fields as the section editor).
 
 </details>
 
-**Open questions:** none.
+**Open questions:**
+- Undo for grid edits (last 5, in memory): add it to this entry after the group drag, or as a 1.2.6 backlog line? The design says no undo; costs are in the notes.
 
 Notes: [click-drag-meetings/NOTES.md](click-drag-meetings/NOTES.md). Design: [designs/1.2.5/click-drag-meetings.md](../../designs/1.2.5/click-drag-meetings.md).
 

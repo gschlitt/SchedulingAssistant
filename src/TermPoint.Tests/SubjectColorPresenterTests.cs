@@ -176,7 +176,7 @@ public sealed class SubjectColorPresenterTests : IDisposable
             new LegalStartTimeRepository(db), _semesterRepo, new BlockPatternRepository(db),
             new SectionCodePatternRepository(db), _semesterContext, _sectionStore,
             new SchedulingEnvironmentRepository(db), new CampusRepository(db), new MeetingRepository(db),
-            new NullDialog(), _fx.Lock, _focus, _presenter);
+            new NullDialog(), _fx.Lock, _focus, _presenter, new TermPoint.ViewModels.GridView.SectionMarks());
         _lists.Add(list);
         _semesterContext.Reload(_ayRepo, _semesterRepo, _yearId, new HashSet<string> { _fall });
         return list;

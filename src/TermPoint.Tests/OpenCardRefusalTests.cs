@@ -205,7 +205,7 @@ public sealed class OpenCardRefusalTests : IDisposable
             new SchedulingEnvironmentRepository(db), new CampusRepository(db), new MeetingRepository(db),
             new NullDialog(), _fx.Lock,
             FocusTestSupport.AllFocus(semesterContext, sectionStore),
-            FocusTestSupport.NoColours(courseRepo, subjectRepo, sectionStore));
+            FocusTestSupport.NoColours(courseRepo, subjectRepo, sectionStore), new SectionMarks());
 
         ISectionCardState state = list;
         Assert.Null(state.OpenCardHeading);

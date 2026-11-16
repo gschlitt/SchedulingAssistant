@@ -166,7 +166,7 @@ public sealed class WriteLockReadOnlyTests : IDisposable
             _semesterContext, _sectionStore, _propertyRepo, _campusRepo, _meetingRepo,
             _dialog, _lock,
             FocusTestSupport.AllFocus(_semesterContext, _sectionStore),
-            FocusTestSupport.NoColours(_courseRepo, _subjectRepo, _sectionStore));
+            FocusTestSupport.NoColours(_courseRepo, _subjectRepo, _sectionStore), new TermPoint.ViewModels.GridView.SectionMarks());
 
     /// <summary>Creates the service that owns the empty/delete-semester rules, over the fixture's repositories.</summary>
     private SemesterContentsService CreateContentsService() =>
