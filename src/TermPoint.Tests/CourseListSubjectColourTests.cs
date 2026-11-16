@@ -77,7 +77,8 @@ public sealed class CourseListSubjectColourTests : IDisposable
     private CourseListViewModel NewVm(WriteLockService? lockService = null) =>
         new(_courseRepo, _subjectRepo, _envRepo, _dialog, _sectionRepo, _semesterRepo, _ayRepo,
             _instructorRepo, lockService ?? _fx.Lock, new SectionStore(), _store,
-            FocusTestSupport.NoColours(_courseRepo, _subjectRepo));
+            FocusTestSupport.NoColours(_courseRepo, _subjectRepo),
+            new FakeSectionCardState());
 
     /// <summary>A lock service that never acquired the lock, so IsWriter is false (read-only user).</summary>
     private static WriteLockService ReadOnlyLock() => new();

@@ -254,6 +254,19 @@
 
 					<!--  Primary: 3 menu items  -->
 					<StackPanel MinWidth="210">
+						<!--  Shown while a section card is open in the Section List: the edits below are disabled,
+						      because saving would reload the list and discard the open card (SectionContextMenuViewModel.RefusalMessage).  -->
+						<Border
+							MaxWidth="210"
+							Padding="10,5"
+							Background="{StaticResource NotificationWarningBackground}"
+							IsVisible="{Binding ContextMenu.RefusalMessage, Converter={x:Static StringConverters.IsNotNullOrEmpty}}">
+							<TextBlock
+								FontSize="{StaticResource FontSizeFilterPopup}"
+								Foreground="{StaticResource NotificationWarningText}"
+								Text="{Binding ContextMenu.RefusalMessage}"
+								TextWrapping="Wrap" />
+						</Border>
 						<Button Classes="CtxMenuItem" Command="{Binding ContextMenu.ShowInstructorsCommand}">
 							<StackPanel Orientation="Horizontal" Spacing="6">
 								<TextBlock VerticalAlignment="Center" Text="Assign Instructor to Section" />

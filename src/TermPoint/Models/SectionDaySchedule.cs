@@ -48,6 +48,28 @@ public class SectionDaySchedule : PersistedRecord
     public string? Frequency { get; set; }
 
     /// <summary>
+    /// Returns an independent copy of this meeting: every persisted property plus the unknown JSON fields
+    /// (via <see cref="PersistedRecordExtensions.WithExtensionDataFrom{T}"/>), so a rebuilt schedule never wipes
+    /// data written by a newer app version. Every code path that copies a meeting must use this, so a newly
+    /// added property is copied in one place only.
+    /// <para>
+    /// RoomTypeId in particular must be copied: the editor seeds each meeting's Room Type dropdown from it and
+    /// Save writes it back, so omitting it silently wipes every meeting's room type (including "Remote") on Apply.
+    /// </para>
+    /// </summary>
+    /// <returns>A new <see cref="SectionDaySchedule"/> equal to this one.</returns>
+    public SectionDaySchedule Clone() => new SectionDaySchedule
+    {
+        Day             = Day,
+        StartMinutes    = StartMinutes,
+        DurationMinutes = DurationMinutes,
+        MeetingTypeId   = MeetingTypeId,
+        RoomId          = RoomId,
+        RoomTypeId      = RoomTypeId,
+        Frequency       = Frequency,
+    }.WithExtensionDataFrom(this);
+
+    /// <summary>
     /// Returns a parenthesised display annotation for the meeting frequency,
     /// e.g. "(odd)", "(even)", "(1,6,7)". Returns an empty string when the meeting
     /// occurs every week (Frequency is null or empty).

@@ -188,7 +188,8 @@ public sealed class WriteLockReadOnlyTests : IDisposable
         new(_courseRepo, _subjectRepo, _propertyRepo, _dialog, _sectionRepo,
             _semesterRepo, _ayRepo, _instructorRepo, _lock, _sectionStore,
             new SubjectColorStore(new[] { "#B7E79D" }, () => new AppSettings()),
-            FocusTestSupport.NoColours(_courseRepo, _subjectRepo, _sectionStore));
+            FocusTestSupport.NoColours(_courseRepo, _subjectRepo, _sectionStore),
+            new FakeSectionCardState());
 
     /// <summary>Creates a fully-wired <see cref="InstructorListViewModel"/> in reader mode.</summary>
     private InstructorListViewModel CreateInstructorListVm() =>
@@ -287,7 +288,7 @@ public sealed class WriteLockReadOnlyTests : IDisposable
     [Fact]
     public void SectionContextMenu_ConfirmCommand_CanExecuteIsFalseInReaderMode()
     {
-        var vm = new SectionContextMenuViewModel(_sectionRepo, () => { }, _lock);
+        var vm = new SectionContextMenuViewModel(_sectionRepo, () => { }, _lock, new FakeSectionCardState());
         Assert.False(vm.ConfirmCommand.CanExecute(null));
     }
 

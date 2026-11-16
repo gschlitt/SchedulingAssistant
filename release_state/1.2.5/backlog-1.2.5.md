@@ -23,6 +23,7 @@ it and need 1.6 (in-app Store updates) first.
 | 3.11 | A fresh assessment once the redesign is in | After 3.5 |
 | 3.13 | An edit made during Restore from Backup is deleted | Data risk; retires harness finding F24. Refuse edits while a restore runs |
 | 4.13 | Remainder: a lock left behind by a switch (F20) | Accepted for 1.2.4. Idea: retry the release's checked delete every ~30 s while the lock file still names this session |
+| — | Switching semesters with a section card open probably throws away what was typed in it | Found 2026-11-16 by the click-and-drag entry (not hand-checked): the semester switch reloads the section list, which closes the card without saving or saying so. Refusing the switch means putting the semester picker back. Check by hand first |
 
 ## Messages (rule 4)
 

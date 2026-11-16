@@ -92,7 +92,7 @@ public sealed class GridFoldDaysTests : IDisposable
             _fx.Lock, new SharedScheduleService(),
             new AccessPanelViewModel(new ProgramWatchRepository(db), _semesterContext, notifier, envRepo, _courseRepo,
                 () => true),
-            _focus, _presenter, _patternRepo = new BlockPatternRepository(db));
+            _focus, _presenter, _patternRepo = new BlockPatternRepository(db), new FakeSectionCardState());
     }
 
     /// <summary>Restores settings, releases the presenter, the focus service, the database and the settings guard.</summary>

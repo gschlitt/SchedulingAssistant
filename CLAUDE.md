@@ -23,10 +23,12 @@ No hardcoded dimensions in ViewModels: pixel widths/heights and other view conce
 - **Section list scrolling:** to show a section, set `SelectedItem` or call `ListScrollAnchorBehavior.ScrollItemIntoView(list, item)`. Never scroll the section ListBox's ScrollViewer directly (`Offset`, `ScrollIntoView`, `BringIntoView`) — scroll anchoring undoes it.
 - **Class-conditioned styles are not free:** a style like `Run.warning` attaches a StyleInstance + activators to EVERY element of that type in the view, matching or not. Never use them for elements repeated on every section card — set values directly.
 - **Dependency upgrades:** after Avalonia, run `dotnet run --project tools/ScrollAnchorProbe`; after Microsoft.Data.Sqlite / SQLitePCLRaw, run `dotnet test src/TermPoint.Tests/TermPoint.Tests.csproj --filter "FullyQualifiedName~CheckoutServiceUnchangedSaveTests|FullyQualifiedName~SqliteContentHashTests"`. (Why: comments beside those package references in `TermPoint.csproj`.)
+- **Saving sections from outside the section card** (grid, other panels): check `OpenCardMessages.WhyRefused(ISectionCardState)` first and refuse with its message. The save reloads `SectionStore`, which closes an open card and silently throws away what was typed.
 
 # Persisted records
 - Every class serialized into a `data` column (and every class nested inside one) must derive from `PersistedRecord`, so JSON fields written by newer app versions survive a round trip.
 - Code that builds a fresh object to replace an existing record (editing copies, editor rebuilds of nested lists, clones) must call `WithExtensionDataFrom(original)` and copy every persisted field. Omitting either silently wipes data on save (this happened with section Flag/RoomTypeId and course Capacity/Level). `SectionCloneTests` and the `ExtensionData*Tests` enforce this.
+- A meeting (`SectionDaySchedule`) is copied only through `SectionDaySchedule.Clone()`, so a new field is added in one place.
 - **`MinimumVersionToWrite`** is the oldest TermPoint allowed to edit a database (older versions open it read-only); it only ever goes up. For EVERY release ask: *"Could the new version save anything the old version wouldn't have?"* If Yes, set `ThisReleaseRequires`/`ThisReleaseReason` in `Services/MinimumVersionToWrite.cs`, update the test that pins them, and mark the Store submission mandatory. Never reset or lower them later. Full procedure: `UPDATE_NUMBERING_README.md`.
 
 # Build & Test

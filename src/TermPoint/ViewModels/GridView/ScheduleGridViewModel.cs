@@ -187,7 +187,8 @@ public partial class ScheduleGridViewModel : ViewModelBase
         AccessPanelViewModel accessPanelViewModel,
         FocusService focus,
         SubjectColorPresenter subjectColors,
-        IBlockPatternRepository blockPatternRepo)
+        IBlockPatternRepository blockPatternRepo,
+        ISectionCardState cardState)
     {
         _sectionRepo = sectionRepo;
         _courseRepo = courseRepo;
@@ -217,7 +218,7 @@ public partial class ScheduleGridViewModel : ViewModelBase
         {
             var semIds = _semesterContext.SelectedSemesters.Select(s => s.Semester.Id);
             _sectionStore.Reload(_sectionRepo, semIds);
-        }, lockService);
+        }, lockService, cardState);
 
         // The day-header menu reads the block patterns each time it opens (so Settings edits show) and calls this
         // view model's fold commands.
@@ -300,7 +301,11 @@ public partial class ScheduleGridViewModel : ViewModelBase
     /// Loads context menu data for the right-clicked tile entry.
     /// Called from the view's PointerPressed handler before opening the popup.
     /// </summary>
-    public void PrepareContextMenu(string sectionId, int day, int startMinutes)
+    /// <param name="sectionId">The section the tile belongs to.</param>
+    /// <param name="day">Day of the clicked meeting.</param>
+    /// <param name="startMinutes">Start of the clicked meeting, in minutes from midnight.</param>
+    /// <param name="meetingIndex">Index of the clicked meeting in the section's schedule, or -1 when unknown.</param>
+    public void PrepareContextMenu(string sectionId, int day, int startMinutes, int meetingIndex = -1)
     {
         var section = _sectionRepo.GetById(sectionId);
         if (section is null) return;
@@ -311,7 +316,7 @@ public partial class ScheduleGridViewModel : ViewModelBase
         var rooms       = _roomRepo.GetAll();
         var tags        = _propertyRepo.GetAll(SchedulingEnvironmentTypes.Tag);
 
-        ContextMenu.Load(section, day, startMinutes, order.Ordered, rooms, tags, order.OutOfFocusIds);
+        ContextMenu.Load(section, day, startMinutes, order.Ordered, rooms, tags, order.OutOfFocusIds, meetingIndex);
     }
 
     [RelayCommand]
@@ -1201,8 +1206,9 @@ public partial class ScheduleGridViewModel : ViewModelBase
             var subjectColor       = subjectColorFor?.Invoke(section) ?? string.Empty;
 
             // ── Meeting-level filters and block emission ───────────────────────────
-            foreach (var slot in section.Schedule)
+            for (int meetingIndex = 0; meetingIndex < section.Schedule.Count; meetingIndex++)
             {
+                var slot = section.Schedule[meetingIndex];
                 if (snap.FilterRoom)
                 {
                     // OR within the room dimension: "Unroomed" sentinel → meeting has
@@ -1232,7 +1238,8 @@ public partial class ScheduleGridViewModel : ViewModelBase
                     IsDeemphasized: isDeemphasized,
                     IsEmphasized: isEmphasized,
                     SubjectColor: subjectColor,
-                    InstructorNames: instructorNames));
+                    InstructorNames: instructorNames,
+                    MeetingIndex: meetingIndex));
             }
         }
 
@@ -1320,15 +1327,17 @@ public partial class ScheduleGridViewModel : ViewModelBase
                 var semColor = lookups.SemesterIdToColor.TryGetValue(section.SemesterId, out var c) ? c : string.Empty;
                 var subjectColor = subjectColorFor?.Invoke(section) ?? string.Empty;
 
-                foreach (var slot in section.Schedule)
+                for (int meetingIndex = 0; meetingIndex < section.Schedule.Count; meetingIndex++)
                 {
+                    var slot = section.Schedule[meetingIndex];
                     blocks.Add(new SectionMeetingBlock(
                         slot.Day, slot.StartMinutes, slot.EndMinutes,
                         true, label, initials, section.Id, section.SemesterId, semName, semColor,
                         SectionDaySchedule.FormatFrequency(slot.Frequency),
                         Flag: section.Flag,
                         SubjectColor: subjectColor,
-                        InstructorNames: instructorNames));
+                        InstructorNames: instructorNames,
+                    MeetingIndex: meetingIndex));
                 }
             }
         }
@@ -1350,8 +1359,9 @@ public partial class ScheduleGridViewModel : ViewModelBase
                 var semColor = lookups.SemesterIdToColor.TryGetValue(section.SemesterId, out var c) ? c : string.Empty;
                 var subjectColor = subjectColorFor?.Invoke(section) ?? string.Empty;
 
-                foreach (var slot in section.Schedule)
+                for (int meetingIndex = 0; meetingIndex < section.Schedule.Count; meetingIndex++)
                 {
+                    var slot = section.Schedule[meetingIndex];
                     if (slot.RoomId != overlayRoomId) continue;
                     if (alreadyAdded.Contains((section.Id, slot.Day, slot.StartMinutes, slot.EndMinutes))) continue;
 
@@ -1361,7 +1371,8 @@ public partial class ScheduleGridViewModel : ViewModelBase
                         SectionDaySchedule.FormatFrequency(slot.Frequency),
                         Flag: section.Flag,
                         SubjectColor: subjectColor,
-                        InstructorNames: instructorNames));
+                        InstructorNames: instructorNames,
+                    MeetingIndex: meetingIndex));
                 }
             }
         }
@@ -1682,7 +1693,7 @@ public partial class ScheduleGridViewModel : ViewModelBase
     /// </summary>
     private static TileEntry ToEntry(GridBlock block) => block switch
     {
-        SectionMeetingBlock s => new TileEntry(s.Label, s.Initials, s.SectionId, s.IsOverlay, false, s.FrequencyAnnotation, s.IsDeemphasized, IsEmphasized: s.IsEmphasized, Flag: s.Flag, SubjectColor: s.SubjectColor, InstructorNames: s.InstructorNames),
+        SectionMeetingBlock s => new TileEntry(s.Label, s.Initials, s.SectionId, s.IsOverlay, false, s.FrequencyAnnotation, s.IsDeemphasized, IsEmphasized: s.IsEmphasized, Flag: s.Flag, SubjectColor: s.SubjectColor, InstructorNames: s.InstructorNames, MeetingIndex: s.MeetingIndex),
         CommitmentBlock c     => new TileEntry(c.Name,  string.Empty, string.Empty, true,  IsCommitment: true),
         // Meeting blocks: carry the MeetingId so double-click can route to the editor.
         // IsCommitment=true is kept so the right-click context menu (section-only) is

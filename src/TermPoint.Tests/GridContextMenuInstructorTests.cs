@@ -64,7 +64,7 @@ public sealed class GridContextMenuInstructorTests : IDisposable
     private SectionContextMenuViewModel LoadMenu(
         Section section, IReadOnlyList<Instructor> ordered, IReadOnlySet<string>? outOfFocus)
     {
-        var menu = new SectionContextMenuViewModel(_sectionRepo, () => { }, _fx.Lock);
+        var menu = new SectionContextMenuViewModel(_sectionRepo, () => { }, _fx.Lock, new FakeSectionCardState());
         menu.Load(section, 1, 510, ordered, new List<Room>(), new List<SchedulingEnvironmentValue>(), outOfFocus);
         return menu;
     }

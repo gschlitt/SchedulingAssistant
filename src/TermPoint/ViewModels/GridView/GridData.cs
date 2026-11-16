@@ -57,6 +57,8 @@ public abstract record GridBlock(int Day, int StartMinutes, int EndMinutes, bool
 ///                       off or the subject has none (the line is then drawn exactly as without the feature).
 /// InstructorNames     = every instructor's full name, comma-separated, for the line's hover tooltip. Set only when
 ///                       Initials was shortened to "+N"; empty otherwise, meaning no tooltip.
+/// MeetingIndex        = index of this meeting in <c>section.Schedule</c>, so two meetings of one section on the same
+///                       day and start (odd/even weeks) can be told apart; -1 = not a section meeting.
 /// </summary>
 public record SectionMeetingBlock(
     int Day, int StartMinutes, int EndMinutes, bool IsOverlay,
@@ -67,7 +69,8 @@ public record SectionMeetingBlock(
     bool IsEmphasized = false,
     SectionFlag Flag = SectionFlag.None,
     string SubjectColor = "",
-    string InstructorNames = ""
+    string InstructorNames = "",
+    int MeetingIndex = -1
 ) : GridBlock(Day, StartMinutes, EndMinutes, IsOverlay, SemesterId, SemesterName, SemesterColor);
 
 /// <summary>
@@ -191,7 +194,13 @@ public record TileEntry(
     /// <see cref="SectionMeetingBlock.InstructorNames"/>. Non-empty only when the line's initials were shortened
     /// to "+N"; empty = no tooltip on the line.
     /// </summary>
-    string InstructorNames = "");
+    string InstructorNames = "",
+    /// <summary>
+    /// Index of this entry's meeting in <c>section.Schedule</c>, carried from <see cref="SectionMeetingBlock.MeetingIndex"/>
+    /// so a click or drag identifies the exact meeting rather than the first one at its day and start.
+    /// -1 = not a section meeting.
+    /// </summary>
+    int MeetingIndex = -1);
 
 /// <summary>
 /// A single tile drawn on the grid, potentially containing multiple co-scheduled sections

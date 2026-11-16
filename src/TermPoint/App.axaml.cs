@@ -762,6 +762,7 @@ public partial class App : Application
         services.AddSingleton<FocusViewModel>();
         services.AddSingleton<MainWindowViewModel>();
         services.AddSingleton<SectionListViewModel>();
+        services.AddSingleton<ISectionCardState>(sp => sp.GetRequiredService<SectionListViewModel>());
         services.AddSingleton<MeetingListViewModel>();
         services.AddSingleton<ScheduleGridViewModel>(sp => new ScheduleGridViewModel(
             sp.GetRequiredService<ISectionRepository>(),
@@ -786,7 +787,9 @@ public partial class App : Application
             // Likewise, so the presenter drops its caches on SectionsChanged/FocusChanged before the grid reloads.
             sp.GetRequiredService<SubjectColorPresenter>(),
             // Read each time the day-header menu opens (both ConfigureServices and ConfigureDemoServices register it).
-            sp.GetRequiredService<IBlockPatternRepository>()));
+            sp.GetRequiredService<IBlockPatternRepository>(),
+            // The right-click menu refuses edits while a section card is open (see SectionContextMenuViewModel).
+            sp.GetRequiredService<ISectionCardState>()));
         services.AddSingleton<WorkloadPanelViewModel>(sp => new WorkloadPanelViewModel(
             sp.GetRequiredService<IInstructorRepository>(),
             sp.GetRequiredService<ISectionRepository>(),

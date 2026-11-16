@@ -10,7 +10,7 @@ using System.Threading.Tasks;
 
 namespace TermPoint.ViewModels.Management;
 
-public partial class SectionListViewModel : ViewModelBase, IUnappliedChangesHost, IDisposable
+public partial class SectionListViewModel : ViewModelBase, IUnappliedChangesHost, ISectionCardState, IDisposable
 {
     private readonly ISectionRepository _sectionRepo;
     private readonly ICourseRepository _courseRepo;
@@ -140,6 +140,21 @@ public partial class SectionListViewModel : ViewModelBase, IUnappliedChangesHost
 
     /// <summary>True when an inline editor is open (Add or Edit mode).</summary>
     public bool IsEditing => EditVm is not null;
+
+    /// <summary>
+    /// The heading of the section whose card is open, or "a new section" for an unsaved new one; <c>null</c> when no
+    /// card is open. Read by other features (via <see cref="ISectionCardState"/>) that must refuse to save while a
+    /// card is open, because a save reloads the list and discards the open card.
+    /// </summary>
+    public string? OpenCardHeading
+    {
+        get
+        {
+            if (!IsEditing) return null;
+            var heading = ExpandedItem?.Heading;
+            return string.IsNullOrEmpty(heading) ? "a new section" : heading;
+        }
+    }
 
     /// <summary>
     /// True when the list should virtualize its cards (build only those on screen, with scroll
@@ -1639,9 +1654,8 @@ public partial class SectionListViewModel : ViewModelBase, IUnappliedChangesHost
     /// </summary>
     private async Task<bool> IsEditorBusy()
     {
-        if (!IsEditing) return false;
-        var heading = ExpandedItem?.Heading;
-        var subject = string.IsNullOrEmpty(heading) ? "a new section" : heading;
+        var subject = OpenCardHeading;
+        if (subject is null) return false;
         LastErrorMessage =
             $"You are currently editing {subject}. " +
             "Please save or close the section editor before editing another section. " +
@@ -1721,18 +1735,7 @@ public partial class SectionListViewModel : ViewModelBase, IUnappliedChangesHost
         // The editor works on this clone, so the flag must be carried over: the editor's Flag
         // dropdown is seeded from it, and Save writes the whole clone back to the database.
         Flag            = s.Flag,
-        Schedule        = s.Schedule.Select(d => new SectionDaySchedule
-        {
-            Day             = d.Day,
-            StartMinutes    = d.StartMinutes,
-            DurationMinutes = d.DurationMinutes,
-            MeetingTypeId   = d.MeetingTypeId,
-            RoomId          = d.RoomId,
-            // The editor seeds each meeting's Room Type dropdown from this and Save writes it back,
-            // so omitting it silently wipes every meeting's room type (including "Remote") on Apply.
-            RoomTypeId      = d.RoomTypeId,
-            Frequency       = d.Frequency,
-        }.WithExtensionDataFrom(d)).ToList(),
+        Schedule        = s.Schedule.Select(d => d.Clone()).ToList(),
         SectionTypeId   = s.SectionTypeId,
         CampusId        = s.CampusId,
         TagIds          = new List<string>(s.TagIds),

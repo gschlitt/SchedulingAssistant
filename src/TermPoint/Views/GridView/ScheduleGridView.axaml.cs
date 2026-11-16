@@ -20,7 +20,7 @@ namespace TermPoint.Views.GridView;
 
 public partial class ScheduleGridView : UserControl
 {
-    private record TileClickContext(string SectionId, int Day, int StartMinutes);
+    private record TileClickContext(string SectionId, int Day, int StartMinutes, int MeetingIndex);
 
     /// <summary>
     /// Snapshot of every entry row rendered during the last full <see cref="Render"/> call.
@@ -1060,7 +1060,7 @@ public partial class ScheduleGridView : UserControl
                     // The real day comes from the column's DayNumber, never its position: the shown
                     // days can have gaps (e.g. Sunday on, Saturday off). Also keys the conflict lookups.
                     int clickDay = data.DayOfColumn(d);
-                    var clickCtx = new TileClickContext(entryId, clickDay, tile.StartMinutes);
+                    var clickCtx = new TileClickContext(entryId, clickDay, tile.StartMinutes, entry.MeetingIndex);
                     var entryLabel = new TextBlock
                     {
                         Text            = labelText,
@@ -1184,7 +1184,7 @@ public partial class ScheduleGridView : UserControl
                             if (!entry.IsMeeting && _vm is not null && _vm.IsWriteEnabled)
                             {
                                 var ctx = (TileClickContext)((Border)sender!).Tag!;
-                                _vm.PrepareContextMenu(ctx.SectionId, ctx.Day, ctx.StartMinutes);
+                                _vm.PrepareContextMenu(ctx.SectionId, ctx.Day, ctx.StartMinutes, ctx.MeetingIndex);
                                 _vm.ContextMenu.IsOpen = true;
                             }
                             e.Handled = true;

@@ -118,7 +118,8 @@ public sealed class ExtensionDataSavePathTests : IDisposable
         var vm = new CourseListViewModel(_courseRepo, _subjectRepo, _envRepo, _dialog, _sectionRepo,
             _semesterRepo, _ayRepo, _instructorRepo, _fx.Lock, _sectionStore,
             new SubjectColorStore(new[] { "#B7E79D" }, () => new AppSettings()),
-            FocusTestSupport.NoColours(_courseRepo, _subjectRepo, _sectionStore));
+            FocusTestSupport.NoColours(_courseRepo, _subjectRepo, _sectionStore),
+            new FakeSectionCardState());
         vm.SelectedCourse = vm.Courses.Single();
         vm.EditCommand.Execute(null);
         vm.EditVm!.CourseTitle = "Intro to History";
@@ -142,7 +143,8 @@ public sealed class ExtensionDataSavePathTests : IDisposable
         var vm = new CourseListViewModel(_courseRepo, _subjectRepo, _envRepo, _dialog, _sectionRepo,
             _semesterRepo, _ayRepo, _instructorRepo, _fx.Lock, _sectionStore,
             new SubjectColorStore(new[] { "#B7E79D" }, () => new AppSettings()),
-            FocusTestSupport.NoColours(_courseRepo, _subjectRepo, _sectionStore));
+            FocusTestSupport.NoColours(_courseRepo, _subjectRepo, _sectionStore),
+            new FakeSectionCardState());
         vm.SelectedSubject = vm.Subjects.Single();
         vm.EditSubjectCommand.Execute(null);
         vm.SubjectEditVm!.Name = "World History";
@@ -472,7 +474,7 @@ public sealed class ExtensionDataSavePathTests : IDisposable
             new() { Id = "inst-2", LastName = "Two", FirstName = "B" },
             new() { Id = "inst-3", LastName = "Three", FirstName = "C" },
         };
-        var menu = new SectionContextMenuViewModel(_sectionRepo, () => { }, _fx.Lock);
+        var menu = new SectionContextMenuViewModel(_sectionRepo, () => { }, _fx.Lock, new FakeSectionCardState());
         menu.Load(loaded, meetingDay: 1, meetingStart: 510, instructors, new List<Room>(), new List<SchedulingEnvironmentValue>());
 
         menu.ShowInstructorsCommand.Execute(null);
@@ -514,7 +516,7 @@ public sealed class ExtensionDataSavePathTests : IDisposable
         var loaded = _sectionRepo.GetById(section.Id)!;
         var rooms = new List<Room> { new() { Id = "room-1", Building = "B", RoomNumber = "1" } };
         var tags = new List<SchedulingEnvironmentValue> { new() { Id = "tag-1", Name = "T" } };
-        var menu = new SectionContextMenuViewModel(_sectionRepo, () => { }, _fx.Lock);
+        var menu = new SectionContextMenuViewModel(_sectionRepo, () => { }, _fx.Lock, new FakeSectionCardState());
         menu.Load(loaded, 1, 510, new List<Instructor>(), rooms, tags);
 
         menu.ShowRoomCommand.Execute(null);

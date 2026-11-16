@@ -531,7 +531,8 @@ public sealed class OrphanTolerantQueryTests : IDisposable
         new(_courseRepo, _subjectRepo, _envRepo, new FakeDialog(), _sectionRepo,
             _semesterRepo, _ayRepo, _instructorRepo, _fx.Lock, _sectionStore,
             new SubjectColorStore(new[] { "#B7E79D" }, () => new AppSettings()),
-            FocusTestSupport.NoColours(_courseRepo, _subjectRepo, _sectionStore));
+            FocusTestSupport.NoColours(_courseRepo, _subjectRepo, _sectionStore),
+            new FakeSectionCardState());
 
     /// <summary>Builds the Instructors list over the fixture database.</summary>
     /// <param name="dialog">The dialog service answering the delete confirmation.</param>

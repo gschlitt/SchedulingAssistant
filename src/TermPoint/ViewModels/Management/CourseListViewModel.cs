@@ -56,6 +56,9 @@ public partial class CourseListViewModel : ViewModelBase, IDismissableEditor, IU
     /// </summary>
     [ObservableProperty] private bool _showOnlyActive = true;
 
+    /// <summary>Tells whether a section card is open, so "Apply tags to all sections" can be refused.</summary>
+    private readonly ISectionCardState _cardState;
+
     public CourseListViewModel(
         ICourseRepository courseRepo,
         ISubjectRepository subjectRepo,
@@ -68,8 +71,10 @@ public partial class CourseListViewModel : ViewModelBase, IDismissableEditor, IU
         WriteLockService lockService,
         SectionStore sectionStore,
         SubjectColorStore colorStore,
-        SubjectColorPresenter subjectColors)
+        SubjectColorPresenter subjectColors,
+        ISectionCardState cardState)
     {
+        _cardState = cardState;
         _courseRepo = courseRepo;
         _sectionRepo = sectionRepo;
         _subjectRepo = subjectRepo;
@@ -340,7 +345,9 @@ public partial class CourseListViewModel : ViewModelBase, IDismissableEditor, IU
             subjects: Subjects,
             applyTagsToAll: tagIds => Task.FromResult(ApplyTagsToAllSections(clone.Id, tagIds)),
             // Lock subject + course number once sections exist — same rule that forbids deletion.
-            identityLocked: _courseRepo.HasSections(SelectedCourse.Id));
+            identityLocked: _courseRepo.HasSections(SelectedCourse.Id),
+            // Applying tags reloads the section list, which would discard an open section card.
+            whyApplyTagsRefused: () => OpenCardMessages.WhyRefused(_cardState));
     }
 
     [RelayCommand(CanExecute = nameof(CanWrite))]

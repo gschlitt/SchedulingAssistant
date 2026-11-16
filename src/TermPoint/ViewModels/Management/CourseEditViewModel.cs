@@ -88,6 +88,7 @@ public partial class CourseEditViewModel : UnappliedChangesEditor
     private readonly Action _onCancel;
     private readonly Func<string, bool> _codeExists;
     private readonly Func<List<string>, Task<int>>? _applyTagsToAll;
+    private readonly Func<string?>? _whyApplyTagsRefused;
 
     public string? ValidationError
     {
@@ -136,6 +137,7 @@ public partial class CourseEditViewModel : UnappliedChangesEditor
     /// <param name="subjects">All subjects, used to populate the Subject dropdown.</param>
     /// <param name="applyTagsToAll">Optional callback that applies the given tag IDs to all sections of this course. Returns the number of sections updated.</param>
     /// <param name="identityLocked">When true (and not a new course), the subject and course-number fields are locked because the course already has sections scheduled.</param>
+    /// <param name="whyApplyTagsRefused">Optional check run before "Apply tags to all sections": returns the message to show when it must be refused (an open section card would be discarded by the reload), or null to proceed.</param>
     public CourseEditViewModel(
         Course course,
         bool isNew,
@@ -145,7 +147,8 @@ public partial class CourseEditViewModel : UnappliedChangesEditor
         Func<string, bool> codeExists,
         ObservableCollection<Subject> subjects,
         Func<List<string>, Task<int>>? applyTagsToAll = null,
-        bool identityLocked = false)
+        bool identityLocked = false,
+        Func<string?>? whyApplyTagsRefused = null)
     {
         _course = course;
         IsNew = isNew;
@@ -154,6 +157,7 @@ public partial class CourseEditViewModel : UnappliedChangesEditor
         _onCancel = onCancel;
         _codeExists = codeExists;
         _applyTagsToAll = applyTagsToAll;
+        _whyApplyTagsRefused = whyApplyTagsRefused;
         Subjects = subjects;
 
         // Initialize from existing course if editing
@@ -234,6 +238,11 @@ public partial class CourseEditViewModel : UnappliedChangesEditor
     private async Task ApplyTagsToAllSections()
     {
         if (_applyTagsToAll is null) return;
+        if (_whyApplyTagsRefused?.Invoke() is { } refusal)
+        {
+            ApplyTagsResult = refusal;
+            return;
+        }
         var selectedTagIds = TagSelections
             .Where(t => t.IsSelected)
             .Select(t => t.Value.Id)

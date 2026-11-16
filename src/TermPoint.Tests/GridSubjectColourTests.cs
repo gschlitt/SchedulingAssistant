@@ -125,7 +125,7 @@ public sealed class GridSubjectColourTests : IDisposable
             _fx.Lock, new SharedScheduleService(),
             new AccessPanelViewModel(new ProgramWatchRepository(db), _semesterContext, notifier, _envRepo, _courseRepo,
                 () => true),
-            _focus, _presenter, new BlockPatternRepository(db));
+            _focus, _presenter, new BlockPatternRepository(db), new FakeSectionCardState());
 
         // Open the Fall semester and load its sections, as the section list does in the app.
         _semesterContext.Reload(_ayRepo, _semesterRepo, year.Id, new HashSet<string> { fall.Id });
@@ -295,7 +295,8 @@ public sealed class GridSubjectColourTests : IDisposable
         Assert.Equal(string.Empty, EntryFor(_chemSectionId).SubjectColor);
 
         var courses = new CourseListViewModel(_courseRepo, _subjectRepo, _envRepo, new NullDialog(), _sectionRepo,
-            _semesterRepo, _ayRepo, _instructorRepo, _fx.Lock, _sectionStore, _colors, _presenter);
+            _semesterRepo, _ayRepo, _instructorRepo, _fx.Lock, _sectionStore, _colors, _presenter,
+            new FakeSectionCardState());
         courses.SelectedSubject = courses.Subjects.Single(s => s.Id == _chem.Id);
         courses.EditSubjectCommand.Execute(null);
         courses.SubjectEditVm!.CalendarAbbreviation = "CHMX";
