@@ -1,0 +1,24 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!--
+    Stand-alone repro for an Avalonia bug report: a VirtualizingStackPanel drifts when an item that is
+    on screen grows. Uses no TermPoint code, so it can be copied into its own repository for the issue.
+    NOT part of TermPoint.sln and NOT built by CI. See README.md.
+  -->
+
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <TargetFramework>net10.0</TargetFramework>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <!-- Override on the command line to try another version: -p:AvaloniaVersion=12.1.6 -->
+    <AvaloniaVersion Condition="'$(AvaloniaVersion)' == ''">12.1.3</AvaloniaVersion>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Avalonia" Version="$(AvaloniaVersion)" />
+    <PackageReference Include="Avalonia.Desktop" Version="$(AvaloniaVersion)" />
+    <PackageReference Include="Avalonia.Themes.Fluent" Version="$(AvaloniaVersion)" />
+  </ItemGroup>
+
+</Project>

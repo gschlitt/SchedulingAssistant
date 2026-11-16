@@ -33,26 +33,22 @@ Notes: [late-lock-acquire/NOTES.md](late-lock-acquire/NOTES.md)
 </details>
 
 <details>
-<summary><b>Avalonia bug post: section list "jump" under virtualization</b> · Not started</summary>
+<summary><b>Avalonia bug post: section list "jump" under virtualization</b> · In progress · **ACTIVE**</summary>
 
 **Goal:** a well-written, reproducible Avalonia bug post (a tiny stand-alone repro plus the issue text), ready for Greg to file. Filing and any later switch to a virtualized section list are separate; this entry ends when the post is ready.
 
-**State:** Not started. Virtualizing the section list cut an 800-section heap from 475 MB to 160 MB but is blocked by a scroll jump when an on-screen item grows (the inline editor expanding). Greg wants the repro so TermPoint can manage memory better and with less fragility than scroll anchoring.
+**State:** Repro built and the bug reproduced stand-alone, unchanged on the latest Avalonia (12.1.6) and on today's nightly from main. An open Avalonia issue looks like the same bug. Greg chose a short comment on that issue; the comment is drafted and waits for his review.
 
 <details>
-<summary>Steps (5 left)</summary>
+<summary>Steps (2 left)</summary>
 
-1. Read the scroll-anchor probe and the section list's anchoring code to see what the jump needs (item growing in view, virtualizing panel).
-2. Build a minimal Avalonia app (no TermPoint code) that shows the jump with a virtualized list and an item that grows; pin the Avalonia version.
-3. Check it against the latest Avalonia release and search existing issues for a duplicate.
-4. Write the issue: steps, expected vs actual, versions, screen recording or numbers.
-5. Greg reviews and files it; link the issue back here and in the notes.
+1. Commit and push the repro to master so the comment's link works.
+2. Greg posts it; link it back here and in the notes.
 
 </details>
 
 **Open questions:**
-- Where should the repro live (a `tools/` folder, or its own public repo for the issue)?
-- After the bug is filed, does virtualizing the section list wait on a fix, or on a workaround? (A separate entry if so.)
+- After the bug is filed, does virtualizing the section list wait on a fix, or keep the workaround? (A separate entry if so.)
 
 Notes: [avalonia-list-jump-bug/NOTES.md](avalonia-list-jump-bug/NOTES.md). Source: former backlog item 9.8.
 
