@@ -28,7 +28,7 @@ Add a new entry to the release ledger. The rules are in CLAUDE.md, "Release Ledg
 5. **Ask before making it ACTIVE** (rule 1). If Greg says yes, ask what state the current ACTIVE entry gets, and move
    the tag.
 
-6. **Commit only the files this skill touched**, then push (rule 2: on master, ask first). Reply with the entry title,
+6. **Commit only the files this skill touched**, then push unless on master (rule 2: on master don't push or ask; remind Greg of the unpushed commits). Reply with the entry title,
    its state, and the commit hash.
 
 Extra notes from Greg, if any: $ARGUMENTS

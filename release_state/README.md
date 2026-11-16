@@ -1,0 +1,1 @@
+Current release: 1.2.5

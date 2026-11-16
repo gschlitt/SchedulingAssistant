@@ -89,8 +89,10 @@ We use the **Release Ledger development pattern**: the state of all work lives i
 
 1. **ACTIVE changes only with Greg's OK.** When it moves, the previous entry gets a state (In progress, Waiting on
    Greg, Deferred).
-2. **Pull first, push after.** Every ledger skill runs `git pull` before reading and pushes after committing, so two
-   machines never edit stale copies. On master, push only with Greg's OK (a master push redeploys the WASM demo).
+2. **Pull first; remind about unpushed commits.** Every ledger skill runs `git pull` before reading, so two machines
+   never edit stale copies. On a branch other than master the skill pushes after committing. On master it does not
+   push and does not ask (a master push redeploys the WASM demo): it ends its reply with a reminder naming the
+   commits not yet pushed, and Greg says when.
 3. **`/handoff` commits the code and the state docs** from the session, on the current branch, with "unfinished:" in
    the message when it is. Invoking it is Greg's request to commit. No branches unless Greg asks.
 4. **Done entries' folders stay** in the release folder; the release folder becomes the release's record.

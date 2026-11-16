@@ -29,7 +29,7 @@ flowchart TD
     DN --> D
 ```
 
-\* Pull before every skill, push after. On master, push only with Greg's OK (redeploys the WASM demo).
+\* Pull before every skill. Off master, push after; on master the skill doesn't push or ask (a push redeploys the WASM demo) but reminds Greg of unpushed commits.
 
 ## 2. The states
 

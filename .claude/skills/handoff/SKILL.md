@@ -16,7 +16,7 @@ Prepare to hand this work off to a new session. The rules are in CLAUDE.md, "Rel
 3. **Commit** the session's code and state docs on the current branch (no new branch). If something is unfinished,
    start the message with "unfinished:".
 
-4. **Push** (rule 2). On master, ask Greg first: a master push redeploys the WASM demo.
+4. **Push** (rule 2). On master, don't push and don't ask (a master push redeploys the WASM demo): end the reply with a reminder naming the unpushed commits.
 
 5. **Propose a new session** titled with the ACTIVE entry's title, briefed only: "Read release_state/README.md;
    continue the ACTIVE entry."
