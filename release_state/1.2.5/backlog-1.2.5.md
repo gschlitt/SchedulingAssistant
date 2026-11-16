@@ -99,5 +99,5 @@ each needs a design and risk review against the four rules.
 
 ## Also open elsewhere
 
-- `designs/slot-browser.md` (Phase 1 awaiting Greg's lock) and `designs/access-analyzer.md` (Phase 3 wireframes).
+- `designs/1.2.5/slot-browser.md` (Phase 1 awaiting Greg's lock). The Access Analyzer is now a ledger entry.
 - Microsoft support case for 1.1 (Greg), and N4 (Store update link) if not checked during the 1.2.4 release.
