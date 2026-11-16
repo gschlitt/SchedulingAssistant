@@ -113,6 +113,36 @@ Notes: [access-analyzer/NOTES.md](access-analyzer/NOTES.md). Design: [designs/1.
 
 </details>
 
+<details>
+<summary><b>Click-and-drag moving of meetings in Schedule View</b> · Not started</summary>
+
+**Goal:** on a busy schedule, an administrator can rearrange existing meetings by mouse in Schedule View, in the way people expect from other click-and-drag tools, smoothly and reliably. Sections are still created and fully edited in the Section List; the grid only moves meetings (the common quick edits, like today's right-click ones). Done means the feature is in the app and field-tested.
+
+**State:** Not started. An earlier investigation says the code is open enough (the right-click Room edit is the precedent; a drag writes the same fields). The spec still has to be written. Greg's vision adds a temporary "mark" (right-click two sections, brightly framed, never saved) so a swap such as A into B's slot, then B elsewhere, needs no hunting in the list.
+
+<details>
+<summary>Steps (6 left)</summary>
+
+1. Check first: does a right-click edit in the grid silently close an open, half-typed section card in the list? (Rule 4; decides how drops must behave.)
+2. Write the design as Alice-and-Bob stories (`designs/1.2.5/click-drag-meetings.md`): drag one meeting, group drag, mark and swap, snapping, the preview, cancel, undo; amend CLAUDE.md's "No drag-and-drop scheduling" line deliberately.
+3. Greg approves the design and any user-facing wording; wireframe or mock the marks and ghost tiles if useful.
+4. Build in pieces: marks, single-meeting drag, group drag, with a unit-tested move method and the pointer-to-day/minute inverses.
+5. Compile checks (desktop and browser) and tests; hand check on a busy real schedule, with folded days and several semesters shown.
+6. Field test; answer the `MinimumVersionToWrite` question (expected No: same fields as the section editor).
+
+</details>
+
+**Open questions:**
+- Marks: how are they shown and cleared (frame style, how many at once, what ends them)?
+- Group rule proposed earlier: dragging a meeting moves every meeting of that section with the same start; group drags change time only; hold Alt (Option on macOS) to move one alone. Agreed?
+- Snap to the academic year's legal start times, or a fixed step? What happens on a drop onto a day the section already uses, or a clash?
+- Deliberately out of scope: resizing by the bottom edge, dragging in an empty slot to create. What should trying them do?
+- Undo after a drop?
+
+Notes: [click-drag-meetings/NOTES.md](click-drag-meetings/NOTES.md). Design: to be written.
+
+</details>
+
 ## Closed
 
 _None._
