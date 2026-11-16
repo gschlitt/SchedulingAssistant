@@ -9,6 +9,11 @@ namespace TermPoint.ViewModels.GridView;
 /// </summary>
 public enum MarkKind
 {
+    /// <summary>
+    /// A marked section's meeting (right-click, Mark Section: a temporary frame, never saved). Outranks
+    /// <see cref="Selection"/>, as the mark frame outranks the selection frame on tiles.
+    /// </summary>
+    Marked,
     /// <summary>A selected section's meeting (single or multi selection).</summary>
     Selection,
     /// <summary>A proposed placement: the Room Browser's ghost slot (later the Slot Browser's).</summary>
@@ -34,13 +39,15 @@ public sealed record AttentionMark(MarkKind Kind, int Start, int End, string? Se
 /// <param name="SelectedSectionIds">Ids of the selected sections (the section store's selection).</param>
 /// <param name="Ghosts">Ghost blocks currently shown (Room Browser, later Slot Browser).</param>
 /// <param name="Conflicts">The Access-watch conflicts currently detected.</param>
+/// <param name="MarkedSectionIds">Ids of the marked sections (<c>ScheduleGridViewModel.Marks</c>).</param>
 public sealed record MarkInputs(
     IReadOnlyCollection<string> SelectedSectionIds,
     IReadOnlyList<GhostBlock> Ghosts,
-    IReadOnlyList<ProgramConflict> Conflicts)
+    IReadOnlyList<ProgramConflict> Conflicts,
+    IReadOnlyCollection<string> MarkedSectionIds)
 {
-    /// <summary>No selection, no ghosts, no conflicts.</summary>
-    public static MarkInputs None { get; } = new([], [], []);
+    /// <summary>No selection, no ghosts, no conflicts, no marked sections.</summary>
+    public static MarkInputs None { get; } = new([], [], [], []);
 }
 
 /// <summary>One row of the kind table: how one <see cref="MarkKind"/> is ranked, coloured and worded.</summary>
@@ -58,10 +65,12 @@ public static class FoldedDayMarks
 {
     /// <summary>
     /// THE kind table, in priority order: when marks overlap in time the one earliest in this list is shown
-    /// (selection, then a proposal, then a conflict). Add a row here to add a kind.
+    /// (a marked section, then selection, then a proposal, then a conflict). Add a row here to add a kind.
+    /// The Marked lines are approved wording (Greg, 2026-11-16), mirroring the Selection lines.
     /// </summary>
     public static IReadOnlyList<MarkKindInfo> Kinds { get; } =
     [
+        new(MarkKind.Marked,    "FoldedDayMarkMarked",    "{0} marked at {1}",        "{2} sections marked, first at {1}"),
         new(MarkKind.Selection, "FoldedDayMarkSelection", "{0} selected at {1}",      "{2} sections selected, first at {1}"),
         new(MarkKind.Proposal,  "FoldedDayMarkProposal",  "Room Browser slot at {1}", "{2} Room Browser slots, first at {1}"),
         new(MarkKind.Conflict,  "FoldedDayMarkConflict",  "Access conflict at {1}",   "{2} access conflicts, first at {1}"),
@@ -87,7 +96,7 @@ public static class FoldedDayMarks
     }
 
     /// <summary>
-    /// Works out the marks of one folded day: its selected section meetings, the ghosts on that day and the ends of
+    /// Works out the marks of one folded day: its marked and selected section meetings, the ghosts on that day and the ends of
     /// conflicts on that day, with overlapping marks resolved to the most important one (<see cref="Resolve"/>).
     /// A selected section that is not on this day (or is hidden by a filter, so not in the summary) gives nothing.
     /// </summary>
@@ -99,6 +108,12 @@ public static class FoldedDayMarks
     {
         var raw = new List<AttentionMark>();
         var meetings = summary?.SectionMeetings ?? [];
+
+        // Marked sections: each meeting of a marked section on this day.
+        if (inputs.MarkedSectionIds.Count > 0)
+            foreach (var m in meetings.Where(m => inputs.MarkedSectionIds.Contains(m.SectionId)))
+                raw.Add(new AttentionMark(MarkKind.Marked, m.StartMinutes, m.EndMinutes, m.SectionId,
+                                          m.Label.Length > 0 ? m.Label : "A section"));
 
         // Selection: each meeting of a selected section on this day.
         if (inputs.SelectedSectionIds.Count > 0)

@@ -19,8 +19,9 @@ public sealed class FoldedDayMarksTests
         new(meetings.Select(m => m.Id).Distinct().Count(), false,
             meetings.Select(m => new FoldedSectionMeeting(m.Id, m.Start, m.End, $"LBL-{m.Id}")).ToList(), []);
 
-    private static MarkInputs Inputs(string[]? selected = null, GhostBlock[]? ghosts = null, ProgramConflict[]? conflicts = null) =>
-        new(selected ?? [], ghosts ?? [], conflicts ?? []);
+    private static MarkInputs Inputs(string[]? selected = null, GhostBlock[]? ghosts = null, ProgramConflict[]? conflicts = null,
+                                     string[]? marked = null) =>
+        new(selected ?? [], ghosts ?? [], conflicts ?? [], marked ?? []);
 
     private static ConflictMeeting CM(string id, int day, int start, int end) => new(id, null, day, start, end, null);
 
@@ -161,10 +162,39 @@ public sealed class FoldedDayMarksTests
         Assert.Equal(2, marks.Count);
     }
 
-    /// <summary>The priority order is selection, proposal, conflict, and every kind has a brush key.</summary>
+    /// <summary>A marked section on the folded day is a Marked mark at each of its meetings there, with its label.</summary>
+    [Fact]
+    public void Marked_MarksEveryMeetingOfTheMarkedSection()
+    {
+        var marks = FoldedDayMarks.Build(Day, Summary(("a", 600, 660), ("a", 840, 900), ("b", 700, 760)), Inputs(marked: ["a"]));
+        Assert.Equal(
+            [new AttentionMark(MarkKind.Marked, 600, 660, "a", "LBL-a"), new AttentionMark(MarkKind.Marked, 840, 900, "a", "LBL-a")],
+            marks);
+    }
+
+    /// <summary>A section both marked and selected shows the mark (as the mark frame wins on tiles).</summary>
+    [Fact]
+    public void MarkedAndSelected_TheMarkWins()
+    {
+        var marks = FoldedDayMarks.Build(Day, Summary(("a", 600, 660)), Inputs(selected: ["a"], marked: ["a"]));
+        Assert.Equal(MarkKind.Marked, Assert.Single(marks).Kind);
+    }
+
+    /// <summary>The Marked tooltip lines mirror the Selection ones (approved wording).</summary>
+    [Fact]
+    public void TooltipLines_Marked()
+    {
+        Assert.Equal(["MECH361 001 marked at 14:00"],
+            FoldedDayMarks.TooltipLines([new AttentionMark(MarkKind.Marked, 840, 900, "a", "MECH361 001")]));
+        Assert.Equal(["2 sections marked, first at 09:00"],
+            FoldedDayMarks.TooltipLines([new AttentionMark(MarkKind.Marked, 540, 600, "a"), new AttentionMark(MarkKind.Marked, 840, 900, "b")]));
+    }
+
+    /// <summary>The priority order is marked, selection, proposal, conflict, and every kind has a brush key.</summary>
     [Fact]
     public void KindTable_PriorityAndBrushes()
     {
+        Assert.True(FoldedDayMarks.Priority(MarkKind.Marked) < FoldedDayMarks.Priority(MarkKind.Selection));
         Assert.True(FoldedDayMarks.Priority(MarkKind.Selection) < FoldedDayMarks.Priority(MarkKind.Proposal));
         Assert.True(FoldedDayMarks.Priority(MarkKind.Proposal) < FoldedDayMarks.Priority(MarkKind.Conflict));
         foreach (MarkKind k in System.Enum.GetValues<MarkKind>())

@@ -1511,7 +1511,8 @@ public partial class ScheduleGridView : UserControl
 
         var data = _vm?.GridData ?? GridData.Empty;
         var inputs = new MarkInputs(_vm?.SelectedSectionIds ?? new HashSet<string>(),
-                                    _vm?.GhostBlocks ?? [], data.ProgramConflicts);
+                                    _vm?.GhostBlocks ?? [], data.ProgramConflicts,
+                                    _vm?.Marks.Ids ?? new HashSet<string>());
         var marksByDay = new Dictionary<int, IReadOnlyList<AttentionMark>>();
         foreach (var (day, strip) in _stripVisuals)
             marksByDay[day] = FoldedDayMarks.Build(day, strip.Summary, inputs);
