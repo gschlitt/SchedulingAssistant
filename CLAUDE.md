@@ -20,6 +20,7 @@ No hardcoded dimensions in ViewModels: pixel widths/heights and other view conce
 # Avalonia Gotchas (cross-cutting)
 
 - Collapsed controls (`IsVisible=false`) have zero size — `OnSizeChanged` never fires and `Bounds` is zero. If a control must track size while hidden, seed the size from the parent when it becomes visible.
+- **Tunnel handlers on one element run last-added first** (checked on 12.1.3). A handler added to a TopLevel's tunnelling key events runs before Avalonia's own access-key handler, so it can mark Alt handled to stop Alt from showing menu underlines and opening the main menu (used by the meeting drag; rationale in `ScheduleGridView.OnDragKeyDown`).
 - **Section list scrolling:** to show a section, set `SelectedItem` or call `ListScrollAnchorBehavior.ScrollItemIntoView(list, item)`. Never scroll the section ListBox's ScrollViewer directly (`Offset`, `ScrollIntoView`, `BringIntoView`) — scroll anchoring undoes it.
 - **Class-conditioned styles are not free:** a style like `Run.warning` attaches a StyleInstance + activators to EVERY element of that type in the view, matching or not. Never use them for elements repeated on every section card — set values directly.
 - **Dependency upgrades:** after Avalonia, run `dotnet run --project tools/ScrollAnchorProbe`; after Microsoft.Data.Sqlite / SQLitePCLRaw, run `dotnet test src/TermPoint.Tests/TermPoint.Tests.csproj --filter "FullyQualifiedName~CheckoutServiceUnchangedSaveTests|FullyQualifiedName~SqliteContentHashTests"`. (Why: comments beside those package references in `TermPoint.csproj`.)

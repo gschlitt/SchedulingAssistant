@@ -11,7 +11,8 @@ Ledger: [RELEASE_1.2.5.md](../RELEASE_1.2.5.md). Design doc: [designs/1.2.5/clic
 - `ViewModels/GridView/SectionContextMenuViewModel.cs`: the right-click edits, the precedent for saving (`_sectionRepo.Update`, then the onSaved reload built in `ScheduleGridViewModel`); `RefusalMessage`; `FindMeeting`.
 - `Views/GridView/ScheduleGridView.axaml.cs`: `TileClickContext` (now with `MeetingIndex`), `PointerPressed`, the cached layout (`_cachedDayXOffsets`, `_cachedGridlineYOffsets`, `_cachedFirstRowMinutes`), the Room Browser ghost-tile code. The right-click menu popup is in `ScheduleGridView.axaml`.
 - `ScheduleGridViewModel.LastErrorMessage`: the grid's message bar, for the drag refusal.
-- The drag (piece 4): `ViewModels/GridView/MeetingDragSession.cs` and `GridGeometry.cs`; `ScheduleGridViewModel.TryBeginMeetingDrag` / `CommitMeetingDrag`; in `ScheduleGridView.axaml.cs` the "Dragging a meeting" region (`MeetingDragState`, `UpdateDrag`, `DrawDragVisuals`, `EndDrag`). For the group drag: pass `moveAlone` from Alt in `UpdateDrag` and watch Alt in the key handlers.
+- The drag: `ViewModels/GridView/MeetingDragSession.cs` and `GridGeometry.cs` (incl. `AutoScrollSpeed`); `ScheduleGridViewModel.TryBeginMeetingDrag` / `CommitMeetingDrag`; in `ScheduleGridView.axaml.cs` the "Dragging a meeting" region (`MeetingDragState` with `Free`/`MoveGroup`, `UpdateDrag`, the Alt/Shift key handlers, `OnAutoScrollTick`, `DrawDragVisuals`/`SamePicture`, `EndDrag`). Resources: AppLayout `MeetingDrag*`, AppColors `DragGhost*`/`DragLabel*`.
+- For the field test: the "Field test plan" section below and `docs/dev/field-testing.md`.
 - Line numbers drift; search by name.
 - Source conversation: "Click-and-drag meeting scheduling" (session local_f0e97166, 2026-11-14).
 
