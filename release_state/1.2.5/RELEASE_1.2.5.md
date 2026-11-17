@@ -59,7 +59,7 @@ Notes: [lost-notices/NOTES.md](lost-notices/NOTES.md). Source: backlog WN1, plus
 </details>
 
 <details>
-<summary><b>Access Analyzer and easy access watches</b> · Waiting on Greg</summary>
+<summary><b>Access Analyzer and easy access watches</b> · Waiting on Greg · **ACTIVE**</summary>
 
 **Goal:** administrators see at a glance whether students can still take every course of a watched set (a full "slate" of one section per part), get notices when a change breaks it, and create watches easily. Done means the feature in the app, field-tested.
 
@@ -128,30 +128,16 @@ Notes: [grid-right-click-details/NOTES.md](grid-right-click-details/NOTES.md)
 
 </details>
 
-<details>
-<summary><b>Mark sections that carry more than one of the shown tags</b> · Needs testing · **ACTIVE**</summary>
-
-**Goal:** when the Tags filter shows "any of the checked tags" with two or more ticked, a Schedule View section line carrying two or more of them gets a small mark at its right edge; hovering the mark says which tags. The line's full-instructor-names hover goes (the right-click menu has the names). Done means it is in the app and hand-checked by Greg.
-
-**State:** Built and committed on branch 1.2.5 (2026-11-17): two upright deep-orange tags (Greg's pick "U2"), approved hover wording, instructor-names hover removed; a "Clear all tags" button added to the Tags popup. Both compile checks and the filter and tile tests pass; the full suite last ran before the icon and button changes. Not yet seen running in the app.
-
-<details>
-<summary>Steps (2 left)</summary>
-
-1. Run the full test suite.
-2. Greg's hand check (restart the app): the mark and its hover in "any" mode, none in "all" mode, tile widths, flagged lines, no hover while dragging a meeting, and "Clear all tags" (greyed out with none ticked, keeps all/any).
-
-</details>
-
-**Open questions:**
-- Should Section View cards get the mark too? (Proposed: later, if at all.)
-- `MinimumVersionToWrite`: No expected (nothing saved); confirm at release.
-
-Notes: [multi-tag-mark/NOTES.md](multi-tag-mark/NOTES.md)
-
-</details>
-
 ## Closed
+
+<details>
+<summary><b>Mark sections that carry more than one of the shown tags</b> · Done</summary>
+
+**Goal:** when the Tags filter shows "any of the checked tags" with two or more ticked, a Schedule View section line carrying two or more of them gets a mark at its right edge, with a hover naming the tags; the line's instructor-names hover goes.
+
+**Outcome:** 2026-11-17 (8478980 and the closing commit): two upright orange tags with the approved hover, plus a "Clear all tags" button in the Tags popup. Full suite passes, Greg's hand check passed. `MinimumVersionToWrite`: No (nothing saved). Section View cards were left without the mark (later, if at all). Notes: [multi-tag-mark/NOTES.md](multi-tag-mark/NOTES.md).
+
+</details>
 
 <details>
 <summary><b>Avalonia bug post: section list "jump" under virtualization</b> · Done</summary>

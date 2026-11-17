@@ -38,7 +38,8 @@ AppColors/AppLayout; open it in a browser (the page draws the tiles with a small
 - "Clear all tags" lives in `GridFilterViewModel.ClearTags` (CanExecute `AnyTagTicked`, refreshed when a tag's
   tick changes and after `PopulateOptions`); it shares `UncheckQuietly` with Clear so the grid re-runs once. Test:
   `GridTagLogicTests.ClearTags_*`.
-- Drag: the canvas holds pointer capture during a drag, so other elements' hovers shouldn't open; confirm in the hand check.
+- Drag: the canvas holds pointer capture during a drag, so other elements' hovers don't open (confirmed in Greg's hand check).
+- Closed 2026-11-17: full suite passed (4727), Greg's hand check passed.
 
 </details>
 
