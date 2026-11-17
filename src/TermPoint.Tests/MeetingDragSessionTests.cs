@@ -134,6 +134,40 @@ public sealed class MeetingDragSessionTests
         Assert.True(p.CanDrop);
     }
 
+    /// <summary>
+    /// Alt pressed and released mid-drag: the same session switches live between the group (own days) and the one
+    /// meeting (the pointer's day), and the result always matches the ghosts shown (design story 3).
+    /// </summary>
+    [Fact]
+    public void Preview_AltSwitchesLive_BetweenGroupAndOne()
+    {
+        var s = new MeetingDragSession("s", 1, TueThu(), Legal);
+
+        var group = s.Preview(5, 780, free: false, moveAlone: false, Earliest, LatestEnd);
+        Assert.Equal([new DragGhost(2, 780, 870), new DragGhost(4, 780, 870)], group.Ghosts);
+        Assert.Equal([(2, 780), (4, 780)], group.Result.Schedule!.Select(m => (m.Day, m.StartMinutes)));
+
+        var alone = s.Preview(5, 780, free: false, moveAlone: true, Earliest, LatestEnd);
+        Assert.Equal([new DragGhost(5, 780, 870)], alone.Ghosts);
+        Assert.Equal("Fri 13:00-14:30", alone.Label);
+        Assert.Equal([(2, 600), (5, 780)], alone.Result.Schedule!.Select(m => (m.Day, m.StartMinutes)));
+
+        var groupAgain = s.Preview(5, 780, free: false, moveAlone: false, Earliest, LatestEnd);
+        Assert.Equal(group.Ghosts, groupAgain.Ghosts);
+    }
+
+    /// <summary>A group with mixed lengths: each ghost keeps its own meeting's length; the label uses the dragged one's.</summary>
+    [Fact]
+    public void Preview_Group_MixedLengths_EachGhostKeepsItsLength()
+    {
+        var schedule = new List<SectionDaySchedule> { Meeting(2, 600), Meeting(4, 600, duration: 180) };
+        var s = new MeetingDragSession("s", 0, schedule, Legal);
+        var p = s.Preview(2, 690, free: false, moveAlone: false, Earliest, LatestEnd);
+        Assert.Equal([new DragGhost(2, 690, 780), new DragGhost(4, 690, 870)], p.Ghosts);
+        Assert.Equal("Tue, Thu 11:30-13:00", p.Label);
+        Assert.True(p.CanDrop);
+    }
+
     /// <summary>The session exposes the dragged meeting's original place.</summary>
     [Fact]
     public void Properties_DescribeTheDraggedMeeting()

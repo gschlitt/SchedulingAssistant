@@ -1,7 +1,8 @@
 # Click-and-drag moving of meetings in Schedule View
 
 **Status:** approved by Greg 2026-11-16 (wording, group rule, marks; Shift for free snapping; no undo; guard the other
-reloads; the semester switch goes to the backlog). Nothing built. Ledger entry: "Click-and-drag moving of
+reloads; the semester switch goes to the backlog). **Revised by Greg 2026-11-16 after trying it:** Alt is inverted;
+a drag moves one meeting, and Alt brings along the section's other meetings at the same start (stories 2 and 3). Ledger entry: "Click-and-drag moving of
 meetings in Schedule View" in [RELEASE_1.2.5.md](../../release_state/1.2.5/RELEASE_1.2.5.md); notes in
 [click-drag-meetings/NOTES.md](../../release_state/1.2.5/click-drag-meetings/NOTES.md).
 
@@ -36,27 +37,26 @@ its tile in the grid, picks Room, chooses B204 and confirms.
 CHEM 101 B meets Tuesday and Thursday at 10:00 for 1.5 hours. Alice wants it at 11:30.
 
 - **Today:** she opens the card, changes both meetings' start times, and applies.
-- **With the feature:** she presses on the Tuesday tile and drags down. Once the pointer has moved a few pixels the
-  tile lifts: a faint ghost of it follows on Tuesday **and** on Thursday (every meeting of the section that starts at
-  the same time moves with it), snapping to the year's legal start times for a 1.5-hour block. A small label beside
+- **With the feature:** she holds **Alt** (Option on macOS), presses on the Tuesday tile and drags down. Once the
+  pointer has moved a few pixels the tile lifts: a faint ghost of it follows on Tuesday **and** on Thursday (with Alt,
+  every meeting of the section that starts at the same time moves with it), snapping to the year's legal start times for a 1.5-hour block. A small label beside
   the pointer says "Tue, Thu 11:30-13:00". She lets go: both meetings move, the section is selected in the list and its
   card summary shows the new times. One save, exactly as if she had edited the card.
 - Holding **Shift** turns snapping off: the ghost moves in 5-minute steps, for the odd section that doesn't sit on a
   legal start time. Releasing Shift mid-drag snaps again.
-- A group drag changes the time only; the ghost stays on its own days even if the pointer wanders sideways. (Moving one
-  of two meetings to another day could silently turn two days into one, so that takes a deliberate key; story 3.)
+- A group drag changes the time only; the ghosts stay on their own days even if the pointer wanders sideways.
+- Pressing or releasing Alt mid-drag switches the ghosts live, so what she sees is always what will move. A held key,
+  not a toggle, so there is no hidden mode left on.
 - If Thursday is folded or scrolled out of sight, the label still names it, so she knows it moves too.
 
 ### 3. Moving just one meeting
 
 Alice wants CHEM 101 B's Thursday meeting on Friday at 13:00 instead, leaving Tuesday alone.
 
-- She holds **Alt** (Option on macOS) while dragging the Thursday tile. Only one ghost shows; it can move to any shown
-  day and time; the label says "Fri 13:00-14:30". She lets go: only that meeting moves.
-- Pressing or releasing Alt mid-drag switches the ghosts live, so what she sees is always what will move. A held key,
-  not a toggle, so there is no hidden mode left on.
-- A section whose meetings all start at different times, or that has only one meeting, moves one meeting by default
-  and can change day without Alt.
+- She drags the Thursday tile, no key held. Only one ghost shows; it can move to any shown day and time; the label
+  says "Fri 13:00-14:30". She lets go: only that meeting moves.
+- (First design: the group moved by default and Alt moved one alone. Greg inverted it after trying it, 2026-11-16:
+  dragging what you grab is what people expect.)
 
 ### 4. Swapping two sections, with marks
 
@@ -76,7 +76,7 @@ nothing is saved. Letting go exactly where it started saves nothing either.
 
 ### 6. A drop that can't happen
 
-Alice drags PHYS 101 A's Monday meeting (Alt held) onto Wednesday at 10:00, where PHYS 101 A already meets.
+Alice drags PHYS 101 A's Monday meeting onto Wednesday at 10:00, where PHYS 101 A already meets.
 
 - While the ghost overlaps another meeting **of the same section**, it shows in the warning colour and the label says
   "Overlaps its Wed 10:00 meeting". Letting go there does nothing.

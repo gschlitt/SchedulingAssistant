@@ -92,16 +92,14 @@ Notes: [access-analyzer/NOTES.md](access-analyzer/NOTES.md). Design: [designs/1.
 
 **Goal:** on a busy schedule, an administrator can rearrange existing meetings by mouse in Schedule View, in the way people expect from other click-and-drag tools, smoothly and reliably. Sections are still created and fully edited in the Section List; the grid only moves meetings (the common quick edits, like today's right-click ones). Done means the feature is in the app and field-tested.
 
-**State:** On branch 1.2.5, committed: guard, groundwork and marks (hand-checked), marks on folded days, the single-meeting drag, a selected marked line showing both frames, and marks shown on Section List cards (Greg's requests). All tests pass; the last four not yet hand-checked. Next: Greg's hand checks, then the group drag.
+**State:** Everything built so far is hand-checked by Greg. Then, at his request, Alt was inverted: a drag moves one meeting, Alt brings the same-start ones along. The group drag, the inversion and the CLAUDE.md amendment are not yet committed. Next: Greg's quick check of the inverted Alt.
 
 <details>
-<summary>Steps (5 left)</summary>
+<summary>Steps (3 left)</summary>
 
-1. Greg hand-checks marks: folded days, both frames on a selected marked line, and marked cards in the Section List (checks in the notes' build log).
-2. Greg hand-checks the single-meeting drag (checklist in the notes' build log).
-3. Group drag: ghosts on every moving day, time only, Alt/Option to move one; amend CLAUDE.md's drag-and-drop line.
-4. Compile checks (desktop and browser), full suite; hand check on a busy real schedule, with folded days and several semesters shown.
-5. Field test; answer the `MinimumVersionToWrite` question (expected No: same fields as the section editor).
+1. Greg checks the inverted Alt (one ghost without Alt; with Alt, every same-start meeting).
+2. Compile checks (desktop and browser), full suite; hand check on a busy real schedule, with folded days and several semesters shown.
+3. Field test; answer the `MinimumVersionToWrite` question (expected No: same fields as the section editor).
 
 </details>
 

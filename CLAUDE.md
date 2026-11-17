@@ -164,4 +164,4 @@ Avalonia UI (C# / .NET), Windows and macOS, self-contained executable (no runtim
 ## UI Design Principles
 - **Conserve real estate.** Schedule grid tiles pack course code, section code and instructor initials on one line (e.g. "HIST101 A  JRS"); never a separate line for initials if avoidable. Co-scheduled sections (same start and duration) share one tile, stacked with a thin rule; overlapping sections sit side by side.
 - **Section list is narrow and tall:** minimize padding, margins and font sizes. Editing expands the card inline (one open at a time, summary row stays visible); editor controls are compact (FontSize 10–11, tight padding).
-- Manual data entry via forms only — no drag-and-drop scheduling.
+- Sections are created and edited through forms. In Schedule View, existing meetings can be moved by dragging (day and start time only); there is no drag-to-create and no resizing.

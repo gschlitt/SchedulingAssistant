@@ -1304,8 +1304,9 @@ public partial class ScheduleGridView : UserControl
                                 else
                                     _vm?.SelectSection(entryId);
 
-                                // A plain left press on a section line may become a drag of that one meeting; it only
-                                // lifts after the pointer has moved a few pixels (OnCanvasPointerMoved).
+                                // A left press on a section line (Alt and Shift allowed, Ctrl toggles selection instead)
+                                // may become a drag of its meeting (with Alt, also those starting at the same time); it
+                                // only lifts after the pointer has moved a few pixels (OnCanvasPointerMoved).
                                 if (!ctrl
                                     && e.GetCurrentPoint(null).Properties.IsLeftButtonPressed
                                     && _vm?.IsWriteEnabled == true
@@ -1932,8 +1933,16 @@ public partial class ScheduleGridView : UserControl
         public MeetingDragSession? Session { get; set; }
         /// <summary>What a drop at the last position would do.</summary>
         public MeetingDragPreview? Preview { get; set; }
-        /// <summary>The last pointer position (canvas coordinates), so a Shift change can redraw in place.</summary>
+        /// <summary>The last pointer position (canvas coordinates), so a Shift or Alt change can redraw in place.</summary>
         public Point LastPoint { get; set; }
+        /// <summary>True while Shift is held: free 5-minute steps instead of legal start times.</summary>
+        public bool Free { get; set; }
+        /// <summary>
+        /// True while Alt (Option on macOS) is held: every meeting of the section starting at the same time moves with
+        /// the dragged one, time only. Otherwise only the dragged meeting moves, and it may change day (Greg,
+        /// 2026-11-16, inverting the design's first rule after trying it).
+        /// </summary>
+        public bool MoveGroup { get; set; }
         /// <summary>The last day under the pointer; kept when the pointer is over no unfolded day.</summary>
         public int? LastDay { get; set; }
     }
@@ -1944,7 +1953,7 @@ public partial class ScheduleGridView : UserControl
     private MeetingDragState? _drag;
     /// <summary>The ghost and label controls currently on the canvas; removed and re-added by every <see cref="DrawDragVisuals"/>.</summary>
     private readonly List<Control> _dragControls = new();
-    /// <summary>The window whose keys (Esc, Shift) are watched while a meeting is lifted.</summary>
+    /// <summary>The window whose keys (Esc, Shift, Alt) are watched while a meeting is lifted.</summary>
     private TopLevel? _dragTopLevel;
 
     /// <summary>
@@ -2000,7 +2009,17 @@ public partial class ScheduleGridView : UserControl
             }
         }
 
-        UpdateDrag(drag, pos, e.KeyModifiers.HasFlag(KeyModifiers.Shift));
+        ReadDragModifiers(drag, e.KeyModifiers);
+        UpdateDrag(drag, pos);
+    }
+
+    /// <summary>Copies the held Shift and Alt (Option) keys into the drag state.</summary>
+    /// <param name="drag">The drag.</param>
+    /// <param name="modifiers">The modifiers reported with a pointer event.</param>
+    private static void ReadDragModifiers(MeetingDragState drag, KeyModifiers modifiers)
+    {
+        drag.Free = modifiers.HasFlag(KeyModifiers.Shift);
+        drag.MoveGroup = modifiers.HasFlag(KeyModifiers.Alt);
     }
 
     /// <summary>
@@ -2019,7 +2038,8 @@ public partial class ScheduleGridView : UserControl
                   && p.X >= 0 && p.Y >= 0 && p.X <= viewport.Bounds.Width && p.Y <= viewport.Bounds.Height;
         if (!inView) { EndDrag(); return; }
 
-        UpdateDrag(drag, e.GetPosition(_canvas), e.KeyModifiers.HasFlag(KeyModifiers.Shift));
+        ReadDragModifiers(drag, e.KeyModifiers);
+        UpdateDrag(drag, e.GetPosition(_canvas));
         var session = drag.Session;
         var preview = drag.Preview;
 
@@ -2029,7 +2049,17 @@ public partial class ScheduleGridView : UserControl
             _vm?.CommitMeetingDrag(session, preview);
     }
 
-    /// <summary>Key pressed while a meeting is lifted: Esc cancels, Shift switches to free 5-minute steps.</summary>
+    /// <summary>
+    /// Key pressed while a meeting is lifted: Esc cancels, Shift switches to free 5-minute steps, Alt (Option) to
+    /// moving every meeting of the section that starts at the same time. Pressing or releasing either key redraws the ghosts at once, so what shows is
+    /// always what would move (design story 3).
+    /// <para>
+    /// Alt is marked handled, press and release: otherwise Avalonia's access-key handler shows the menu underlines
+    /// and opens the main menu when Alt is let go. It also listens to the window's tunnelling key events, but tunnel
+    /// handlers on one element run last-added first (checked on Avalonia 12.1.3), so this handler, added at lift,
+    /// runs before it.
+    /// </para>
+    /// </summary>
     /// <param name="sender">The window.</param>
     /// <param name="e">The key.</param>
     private void OnDragKeyDown(object? sender, KeyEventArgs e)
@@ -2041,27 +2071,49 @@ public partial class ScheduleGridView : UserControl
             e.Handled = true;
         }
         else if (e.Key is Key.LeftShift or Key.RightShift)
-            UpdateDrag(drag, drag.LastPoint, true);
+        {
+            drag.Free = true;
+            UpdateDrag(drag, drag.LastPoint);
+        }
+        else if (e.Key is Key.LeftAlt or Key.RightAlt)
+        {
+            drag.MoveGroup = true;
+            UpdateDrag(drag, drag.LastPoint);
+            e.Handled = true;
+        }
     }
 
-    /// <summary>Key released while a meeting is lifted: letting go of Shift snaps again.</summary>
+    /// <summary>
+    /// Key released while a meeting is lifted: letting go of Shift snaps again; letting go of Alt (Option) moves the
+    /// dragged meeting alone again. Alt is marked handled (see <see cref="OnDragKeyDown"/>).
+    /// </summary>
     /// <param name="sender">The window.</param>
     /// <param name="e">The key.</param>
     private void OnDragKeyUp(object? sender, KeyEventArgs e)
     {
         if (_drag is not { Lifted: true } drag) return;
         if (e.Key is Key.LeftShift or Key.RightShift)
-            UpdateDrag(drag, drag.LastPoint, false);
+        {
+            drag.Free = false;
+            UpdateDrag(drag, drag.LastPoint);
+        }
+        else if (e.Key is Key.LeftAlt or Key.RightAlt)
+        {
+            drag.MoveGroup = false;
+            UpdateDrag(drag, drag.LastPoint);
+            e.Handled = true;
+        }
     }
 
     /// <summary>
-    /// Works out what a drop at <paramref name="pos"/> would do and redraws the ghost and label.
-    /// The new start comes from the ghost's top edge, not the pointer (a tile can be taller than its time span).
+    /// Works out what a drop at <paramref name="pos"/> would do, with the drag's current Shift and Alt state, and
+    /// redraws the ghosts and label. The new start comes from the ghost's top edge, not the pointer (a tile can be
+    /// taller than its time span). A group drag (Alt held) keeps every meeting on its own day; the day under the
+    /// pointer is still remembered, so releasing Alt moves the lone ghost there at once.
     /// </summary>
     /// <param name="drag">The lifted drag.</param>
     /// <param name="pos">The pointer, in canvas coordinates.</param>
-    /// <param name="shiftHeld">True for free 5-minute steps.</param>
-    private void UpdateDrag(MeetingDragState drag, Point pos, bool shiftHeld)
+    private void UpdateDrag(MeetingDragState drag, Point pos)
     {
         if (_vm is null || drag.Session is not { } session
             || _cachedDayXOffsets is null || _cachedDayColWidths is null || _cachedGridlineYOffsets is null) return;
@@ -2076,7 +2128,7 @@ public partial class ScheduleGridView : UserControl
                   ?? drag.LastDay ?? session.OriginalDay;
         drag.LastDay = day;
 
-        drag.Preview = session.Preview(day, rawStart, shiftHeld, moveAlone: true, data.FirstRowMinutes, data.LastRowMinutes);
+        drag.Preview = session.Preview(day, rawStart, drag.Free, moveAlone: !drag.MoveGroup, data.FirstRowMinutes, data.LastRowMinutes);
         DrawDragVisuals(drag, pos);
     }
 
