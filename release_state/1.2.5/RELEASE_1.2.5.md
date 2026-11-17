@@ -108,25 +108,20 @@ Notes: [click-drag-meetings/NOTES.md](click-drag-meetings/NOTES.md). Design: [de
 </details>
 
 <details>
-<summary><b>Section details in Schedule View's right-click menu</b> · Not started · **ACTIVE**</summary>
+<summary><b>Section details in Schedule View's right-click menu</b> · Done · **ACTIVE**</summary>
 
 **Goal:** right-clicking a section line in Schedule View shows its instructors' full names (always, even for one instructor), its section type and its tags. The tile keeps its shortened initials. Done means it is in the app and hand-checked by Greg.
 
-**State:** Not started. Today only a hover shows full names, and only when the initials were shortened to "+N". Greg's request, 2026-11-16; no design doc (small enhancement).
+**State:** Done 2026-11-16: built to Greg's approved mock-up, full suite passes, Greg's hand check passed. Also fixed: the menu jumped when its instructor list scrolled (bug since 1.2.4). `MinimumVersionToWrite`: No (nothing saved).
 
 <details>
-<summary>Steps (4 left)</summary>
+<summary>Steps (0 left)</summary>
 
-1. Read the right-click menu and the hover tooltip code; sketch the details block (names, section type, tags) as a text mock-up.
-2. Greg approves the layout and wording, and settles the open questions.
-3. Build it: the menu's view model supplies the details, the menu shows them above the edit items; unit tests.
-4. Both compile checks, the grid tests and full suite, Greg's hand check; answer the `MinimumVersionToWrite` question (likely No: nothing saved).
+None.
 
 </details>
 
 **Open questions:**
-- Keep the hover tooltip for shortened initials too, or does the right-click replace it?
-- Do read-only users see the details? (They already get the menu, for marks.)
 - Setting filters from the right-click (Greg's first idea): skipped for now; later in this entry, or its own entry?
 
 Notes: [grid-right-click-details/NOTES.md](grid-right-click-details/NOTES.md)

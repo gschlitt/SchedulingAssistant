@@ -335,8 +335,12 @@ public partial class ScheduleGridViewModel : ViewModelBase
         var order       = _focus.OrderInstructorsForChooser(_instructorRepo.GetAll());
         var rooms       = _roomRepo.GetAll();
         var tags        = _propertyRepo.GetAll(SchedulingEnvironmentTypes.Tag);
+        var types       = _propertyRepo.GetAll(SchedulingEnvironmentTypes.SectionType);
+        var calCode     = section.CourseId is null ? null : _courseRepo.GetById(section.CourseId)?.CalendarCode;
+        var heading     = calCode is null ? section.SectionCode : $"{calCode} {section.SectionCode}";
 
-        ContextMenu.Load(section, day, startMinutes, order.Ordered, rooms, tags, order.OutOfFocusIds, meetingIndex);
+        ContextMenu.Load(section, day, startMinutes, order.Ordered, rooms, tags, order.OutOfFocusIds, meetingIndex,
+            heading, types);
     }
 
     [RelayCommand]

@@ -237,13 +237,18 @@
 			</Grid>
 		</Border>
 
-		<!--  Tile right-click context menu popup  -->
+		<!--  Tile right-click context menu popup. Anchored at the right-click point, which the code-behind sets in
+		      PlacementRect (see AnchorTileMenuAt), not Placement="Pointer": Pointer re-places the popup at the CURRENT
+		      pointer whenever it resizes, so the whole menu jumped to the mouse when a long name scrolled into the
+		      instructor list.  -->
 		<Popup
 			x:Name="TileContextPopup"
 			Grid.RowSpan="4"
 			IsLightDismissEnabled="True"
 			IsOpen="{Binding ContextMenu.IsOpen, Mode=TwoWay}"
-			Placement="Pointer">
+			Placement="AnchorAndGravity"
+			PlacementAnchor="TopLeft"
+			PlacementGravity="BottomRight">
 			<Border
 				Background="{StaticResource AppBackground}"
 				BorderBrush="{StaticResource FilterExpanderBorder}"
@@ -254,6 +259,68 @@
 
 					<!--  Primary: 3 menu items  -->
 					<StackPanel MinWidth="210">
+						<!--  Details of the right-clicked section, shown to readers too (SectionContextMenuViewModel.FillDetails;
+						      approved wording, Greg 2026-11-16).  -->
+						<Grid
+							MaxWidth="260"
+							Margin="10,6,10,4"
+							ColumnDefinitions="Auto,*"
+							RowDefinitions="Auto,Auto,Auto,Auto">
+							<TextBlock
+								Grid.ColumnSpan="2"
+								Margin="0,0,0,2"
+								FontSize="{StaticResource FontSizeFilterPopup}"
+								FontWeight="{StaticResource SectionHeadingFontWeight}"
+								Foreground="{StaticResource TextPrimary}"
+								Text="{Binding ContextMenu.DetailHeading}" />
+							<TextBlock
+								Grid.Row="1"
+								Margin="0,0,4,0"
+								FontSize="{StaticResource FontSizeFilterPopup}"
+								Foreground="{StaticResource TextSecondary}"
+								Text="{Binding ContextMenu.DetailInstructorLabel}" />
+							<TextBlock
+								Grid.Row="1"
+								Grid.Column="1"
+								FontSize="{StaticResource FontSizeFilterPopup}"
+								Foreground="{StaticResource TextPrimary}"
+								Text="{Binding ContextMenu.DetailInstructorNames}"
+								TextWrapping="Wrap" />
+							<TextBlock
+								Grid.Row="2"
+								Margin="0,0,4,0"
+								FontSize="{StaticResource FontSizeFilterPopup}"
+								Foreground="{StaticResource TextSecondary}"
+								IsVisible="{Binding ContextMenu.DetailSectionType, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"
+								Text="Type:" />
+							<TextBlock
+								Grid.Row="2"
+								Grid.Column="1"
+								FontSize="{StaticResource FontSizeFilterPopup}"
+								Foreground="{StaticResource TextPrimary}"
+								IsVisible="{Binding ContextMenu.DetailSectionType, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"
+								Text="{Binding ContextMenu.DetailSectionType}"
+								TextWrapping="Wrap" />
+							<TextBlock
+								Grid.Row="3"
+								Margin="0,0,4,0"
+								FontSize="{StaticResource FontSizeFilterPopup}"
+								Foreground="{StaticResource TextSecondary}"
+								IsVisible="{Binding ContextMenu.DetailTags, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"
+								Text="Tags:" />
+							<TextBlock
+								Grid.Row="3"
+								Grid.Column="1"
+								FontSize="{StaticResource FontSizeFilterPopup}"
+								Foreground="{StaticResource TextPrimary}"
+								IsVisible="{Binding ContextMenu.DetailTags, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"
+								Text="{Binding ContextMenu.DetailTags}"
+								TextWrapping="Wrap" />
+						</Grid>
+						<Border
+							Height="1"
+							Margin="6,0,6,2"
+							Background="{StaticResource FilterExpanderBorder}" />
 						<!--  Shown while a section card is open in the Section List: the edits below are disabled,
 						      because saving would reload the list and discard the open card (SectionContextMenuViewModel.RefusalMessage).  -->
 						<Border

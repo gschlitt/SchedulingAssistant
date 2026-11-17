@@ -1281,6 +1281,7 @@ public partial class ScheduleGridView : UserControl
                             {
                                 var ctx = (TileClickContext)((Border)sender!).Tag!;
                                 _vm.PrepareContextMenu(ctx.SectionId, ctx.Day, ctx.StartMinutes, ctx.MeetingIndex);
+                                AnchorTileMenuAt(e);
                                 _vm.ContextMenu.IsOpen = true;
                             }
                             e.Handled = true;
@@ -1849,6 +1850,23 @@ public partial class ScheduleGridView : UserControl
             _useExportPalette = false;
             Render();
         }
+    }
+
+    /// <summary>
+    /// Pins the tile right-click menu's top-left corner to the point that was right-clicked, before it opens.
+    /// <para>
+    /// Why not <c>Placement="Pointer"</c>: Avalonia places a Pointer popup at the pointer's latest position, and
+    /// places it again whenever the popup resizes. The menu resizes while open (a sub-panel opens; its virtualized
+    /// instructor list widens when a long name scrolls into view), so the whole menu jumped to wherever the mouse
+    /// was. A fixed anchor keeps it still; the popup positioner still flips or slides it at a screen edge.
+    /// </para>
+    /// </summary>
+    /// <param name="e">The right-button press that opens the menu.</param>
+    private void AnchorTileMenuAt(PointerPressedEventArgs e)
+    {
+        if (_tileContextPopup is null) return;
+        _tileContextPopup.PlacementTarget = this;
+        _tileContextPopup.PlacementRect = new Rect(e.GetPosition(this), new Size(1, 1));
     }
 
     /// <summary>

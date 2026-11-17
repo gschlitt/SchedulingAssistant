@@ -87,6 +87,30 @@ public partial class SectionContextMenuViewModel : ObservableObject
     private const string MarkText   = "Mark Section";
     private const string UnmarkText = "Unmark Section";
 
+    // ── Details block at the top of the menu ────────────────────────────────────────────────
+    // Approved wording (Greg, 2026-11-16): a bold heading, "Instructor:"/"Instructors:" with one full name per line
+    // ("none" when there are none), "Type:" and "Tags:" lines left out when empty. Shown to readers too. The tile's
+    // hover tooltip for shortened "+N" initials stays: the details give every section's full names, the hover is quicker.
+
+    /// <summary>Bold heading of the details block: the course code and section code (e.g. "HIST 101 A"). Set on <see cref="Load"/>.</summary>
+    [ObservableProperty] private string _detailHeading = string.Empty;
+
+    /// <summary>"Instructor:" for none or one instructor, "Instructors:" for several. Set on <see cref="Load"/>.</summary>
+    [ObservableProperty] private string _detailInstructorLabel = InstructorLabelOne;
+
+    /// <summary>Every instructor's full name in stored order, one per line; "none" when the section has none. Set on <see cref="Load"/>.</summary>
+    [ObservableProperty] private string _detailInstructorNames = NoInstructors;
+
+    /// <summary>The section type's name, or null when the section has none (the line is then hidden). Set on <see cref="Load"/>.</summary>
+    [ObservableProperty] private string? _detailSectionType;
+
+    /// <summary>The section's tag names, comma-separated in the configured tag order, or null when it has none. Set on <see cref="Load"/>.</summary>
+    [ObservableProperty] private string? _detailTags;
+
+    private const string InstructorLabelOne  = "Instructor:";
+    private const string InstructorLabelMany = "Instructors:";
+    private const string NoInstructors       = "none";
+
     /// <summary>Creates the menu view model.</summary>
     /// <param name="sectionRepo">Repository the menu's edits are saved through.</param>
     /// <param name="onSaved">Called after a successful save.</param>
@@ -148,6 +172,10 @@ public partial class SectionContextMenuViewModel : ObservableObject
     /// Index of the clicked meeting in <c>section.Schedule</c>, carried on the tile; -1 when unknown. See
     /// <see cref="FindMeeting"/> for how it is combined with the day and start.
     /// </param>
+    /// <param name="detailsHeading">
+    /// Heading of the details block (course code and section code); empty falls back to the section code.
+    /// </param>
+    /// <param name="sectionTypes">Every section type, to name the section's type in the details; null names none.</param>
     public void Load(
         Section section,
         int meetingDay,
@@ -156,8 +184,12 @@ public partial class SectionContextMenuViewModel : ObservableObject
         IEnumerable<Room> rooms,
         IEnumerable<SchedulingEnvironmentValue> tags,
         IReadOnlySet<string>? outOfFocusInstructorIds = null,
-        int meetingIndex = -1)
+        int meetingIndex = -1,
+        string detailsHeading = "",
+        IEnumerable<SchedulingEnvironmentValue>? sectionTypes = null)
     {
+        var instructorList = instructors.ToList();
+        var tagList = tags.ToList();
         _section      = section;
         _meetingIndex = meetingIndex;
         _meetingDay   = meetingDay;
@@ -170,6 +202,7 @@ public partial class SectionContextMenuViewModel : ObservableObject
         ShowTagsCommand.NotifyCanExecuteChanged();
         ShowFlagCommand.NotifyCanExecuteChanged();
         RefreshMarkState();
+        FillDetails(section, detailsHeading, instructorList, tagList, sectionTypes);
 
         // Instructors — multi-select: active instructors, plus any inactive instructor the section already has.
         // Confirm rebuilds the assignments from the ticked rows, so an assigned instructor missing from the list
@@ -180,7 +213,7 @@ public partial class SectionContextMenuViewModel : ObservableObject
         var assignedIds = section.InstructorIds.ToHashSet();
         var anyInFocusYet = false;
         var headingShown = false;
-        foreach (var inst in instructors.Where(i => i.IsActive || assignedIds.Contains(i.Id)))
+        foreach (var inst in instructorList.Where(i => i.IsActive || assignedIds.Contains(i.Id)))
         {
             var outOfFocus = outOfFocusInstructorIds?.Contains(inst.Id) == true;
             var heading = outOfFocus && anyInFocusYet && !headingShown;
@@ -215,11 +248,42 @@ public partial class SectionContextMenuViewModel : ObservableObject
         // Tags — multi-select
         Tags.Clear();
         var assignedTagIds = section.TagIds.ToHashSet();
-        foreach (var tag in tags)
+        foreach (var tag in tagList)
             Tags.Add(new ContextMenuItemVm(tag.Id, tag.Name, assignedTagIds.Contains(tag.Id)));
 
         // Flag — single-select; seed from the section's current flag.
         SelectedFlag = Flags.FirstOrDefault(f => f.Value == section.Flag) ?? Flags[0];
+    }
+
+    /// <summary>
+    /// Sets the details block (<see cref="DetailHeading"/>, the instructor label and names, <see cref="DetailSectionType"/>,
+    /// <see cref="DetailTags"/>) for the right-clicked section. Ids that no longer resolve are left out, as on the tile.
+    /// </summary>
+    /// <param name="section">The right-clicked section.</param>
+    /// <param name="heading">Course code and section code; empty falls back to the section code.</param>
+    /// <param name="instructors">Every instructor (any order); the section's are listed in its stored order.</param>
+    /// <param name="tags">Every tag, in the configured order, which the tag line keeps.</param>
+    /// <param name="sectionTypes">Every section type, or null when none are known.</param>
+    private void FillDetails(Section section, string heading, IReadOnlyList<Instructor> instructors,
+        IReadOnlyList<SchedulingEnvironmentValue> tags, IEnumerable<SchedulingEnvironmentValue>? sectionTypes)
+    {
+        DetailHeading = string.IsNullOrWhiteSpace(heading) ? section.SectionCode : heading;
+
+        var byId = instructors.GroupBy(i => i.Id).ToDictionary(g => g.Key, g => g.First());
+        var names = section.InstructorIds
+            .Where(byId.ContainsKey)
+            .Select(id => $"{byId[id].FirstName} {byId[id].LastName}")
+            .ToList();
+        DetailInstructorLabel = names.Count > 1 ? InstructorLabelMany : InstructorLabelOne;
+        DetailInstructorNames = names.Count == 0 ? NoInstructors : string.Join(Environment.NewLine, names);
+
+        DetailSectionType = section.SectionTypeId is null
+            ? null
+            : sectionTypes?.FirstOrDefault(t => t.Id == section.SectionTypeId)?.Name;
+
+        var tagIds = section.TagIds.ToHashSet();
+        var tagNames = tags.Where(t => tagIds.Contains(t.Id)).Select(t => t.Name).ToList();
+        DetailTags = tagNames.Count == 0 ? null : string.Join(", ", tagNames);
     }
 
     [RelayCommand(CanExecute = nameof(CanShowSubPanel))]
