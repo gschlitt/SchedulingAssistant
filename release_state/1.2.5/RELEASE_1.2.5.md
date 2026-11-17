@@ -2,7 +2,7 @@
 
 **Goal:** to be set by Greg (the unassigned candidate work is in [backlog-1.2.5.md](backlog-1.2.5.md)).
 **MinimumVersionToWrite:** not asked yet.
-**Updated:** 2026-11-16
+**Updated:** 2026-11-17
 
 ## Work
 
@@ -108,7 +108,7 @@ Notes: [click-drag-meetings/NOTES.md](click-drag-meetings/NOTES.md). Design: [de
 </details>
 
 <details>
-<summary><b>Section details in Schedule View's right-click menu</b> · Done · **ACTIVE**</summary>
+<summary><b>Section details in Schedule View's right-click menu</b> · Done</summary>
 
 **Goal:** right-clicking a section line in Schedule View shows its instructors' full names (always, even for one instructor), its section type and its tags. The tile keeps its shortened initials. Done means it is in the app and hand-checked by Greg.
 
@@ -125,6 +125,33 @@ None.
 - Setting filters from the right-click (Greg's first idea): skipped for now; later in this entry, or its own entry?
 
 Notes: [grid-right-click-details/NOTES.md](grid-right-click-details/NOTES.md)
+
+</details>
+
+<details>
+<summary><b>Mark sections that carry more than one of the shown tags</b> · Not started · **ACTIVE**</summary>
+
+**Goal:** when the Tags filter shows "any of the checked tags" with two or more ticked, a Schedule View section line carrying two or more of them gets a small mark at its right edge; hovering the mark says which tags. The line's full-instructor-names hover goes (the right-click menu has the names). Done means it is in the app and hand-checked by Greg.
+
+**State:** Not started. Agreed with Greg 2026-11-17: a neutral mark that invites a hover (not a tag icon, not green); the hover is on the mark only.
+
+<details>
+<summary>Steps (6 left)</summary>
+
+1. Mock-up on realistic tiles (Venn rings vs a hollow ring, beside subject markers and a flag), the mark's colour and the hover wording, for Greg's approval.
+2. Remove the section line's full-instructor-names hover.
+3. Build the mark and its hover (a hover target bigger than the mark; no hover mid-drag).
+4. Tests for when the mark shows (any vs all mode, how many tags ticked, unticked tags ignored).
+5. Both compile checks and the full suite; `MinimumVersionToWrite`: No expected (nothing saved).
+6. Greg's hand check.
+
+</details>
+
+**Open questions:**
+- Venn rings or a hollow ring, and which theme colour (mock-up).
+- Should Section View cards get the mark too? (Proposed: later, if at all.)
+
+Notes: [multi-tag-mark/NOTES.md](multi-tag-mark/NOTES.md)
 
 </details>
 
