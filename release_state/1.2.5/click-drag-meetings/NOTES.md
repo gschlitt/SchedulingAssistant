@@ -83,14 +83,16 @@ Ledger: [RELEASE_1.2.5.md](../RELEASE_1.2.5.md). Design doc: [designs/1.2.5/clic
 </details>
 
 <details>
-<summary>Undo: costing (advice to Greg, 2026-11-16; not decided)</summary>
+<summary>Undo: costing (advice to Greg, 2026-11-16; backlogged)</summary>
+
+- **Decided (Greg, 2026-11-16): backlogged, not in this entry.** A one-step "Moved X to ... · Undo" notice after a drop (Claude's proposal: reads as part of the drag, not an app feature) was judged short of really useful; the useful form is multi-step undo across section changes, which belongs in its own entry. Line in `release_state/backlog.md`.
 
 - Greg, trying the drag, saw that users will want an undo. The design says no undo (his earlier decision); where it goes is an open question in the ledger.
 - Cheap (about one build session): undo for grid edits only (drags and right-click edits), last 5, in memory, never saved (`MinimumVersionToWrite` stays No). Before each grid save keep the section before and after; undo writes "before" back through the same save path, with the open-card guard.
 - The one real risk: overwriting later edits. Undo only when the section still equals its "after" copy; otherwise refuse with a message (wording for Greg) and drop the older steps. Clear the history on a database switch and on any reload from the shared copy (lock lost and retaken). The restored copy must keep extension data (the existing section clone does).
 - The interface is the cost: Ctrl+Z belongs to text boxes, so prefer a short "Moved X to ... · Undo" notice after a drop plus an Undo button naming what it undoes.
 - Moderate (+half a session): also undo a section card's Apply (it saves a whole section too). Leave out creates, deletes and multi-section actions (re-inserting a deleted section with its id is where bugs hide). App-wide undo: weeks and real data risk; not recommended.
-- The design doc's "Technical detail" ends with a stray fragment ("...section's stored meetings still equal 'after'; otherwise it is silently dropped"), apparently left from an earlier undo idea; tidy it when the undo question is settled.
+- The design doc's stray undo fragment at the end of "Technical detail" was removed when the question was settled (2026-11-16).
 
 </details>
 

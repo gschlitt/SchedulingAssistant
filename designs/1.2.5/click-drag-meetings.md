@@ -104,7 +104,8 @@ Alice has HIST 101 A's card open and, in the Courses panel, edits HIST 101 and c
 - **Creating by dragging** in an empty slot: nothing happens. New sections start in the list.
 - **Moving between semesters:** a meeting stays in its own semester's sub-column.
 - **Touch:** mouse and trackpad only in this release.
-- **Undo:** none (Greg, 2026-11-16); the app has no undo anywhere today. Esc before letting go is the way out, and a
+- **Undo:** none (Greg, 2026-11-16; confirmed after trying the drag, with multi-step undo across section changes
+  put on the backlog); the app has no undo anywhere today. Esc before letting go is the way out, and a
   wrong drop is fixed by dragging it back.
 
 ## Technical detail (compact)
@@ -132,7 +133,6 @@ Alice has HIST 101 A's card open and, in the Courses panel, edits HIST 101 and c
 - **After a drop:** select the section via `SelectedItem` (never scroll the list's ScrollViewer directly).
 - **Marks:** an in-memory set of section IDs on the grid's view model, drawn as a frame when tiles are built. Never
   persisted. The tile frame is set directly on each tile (no class-conditioned style; CLAUDE.md, Avalonia gotchas).
-  section's stored meetings still equal "after"; otherwise it is silently dropped.
 
 ## Checked against the four rules
 

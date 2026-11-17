@@ -101,8 +101,7 @@ Notes: [access-analyzer/NOTES.md](access-analyzer/NOTES.md). Design: [designs/1.
 
 </details>
 
-**Open questions:**
-- Undo for grid edits (last 5, in memory): add it to this entry after the group drag, or as a 1.2.6 backlog line? The design says no undo; costs are in the notes.
+**Open questions:** none. (Undo: backlogged by Greg, 2026-11-16.)
 
 Notes: [click-drag-meetings/NOTES.md](click-drag-meetings/NOTES.md). Design: [designs/1.2.5/click-drag-meetings.md](../../designs/1.2.5/click-drag-meetings.md).
 
