@@ -83,6 +83,25 @@ Ledger: [RELEASE_1.2.5.md](../RELEASE_1.2.5.md). Design doc: [designs/1.2.5/clic
 </details>
 
 <details>
+<summary>Field test plan (2026-11-16)</summary>
+
+Why a field test at all: a drop is an ordinary local edit (same repository call as the section card), so the shared-database paths are unchanged; the field test checks that drops behave like any other edit around saves, readers, takeovers and lock loss, on the real share. Setup per `docs/dev/field-testing.md`: reset the test database; build 1.2.5 at f6eebf3 or later on both computers. Alice = GregDesktop, Bob = GregSurface.
+
+1. **Ordinary use on the share.** Alice opens the test database (writer) and makes a mix of edits: plain drags (one meeting, day change), Alt drags of a Tue/Thu section, a Shift drag to an odd time, an auto-scrolled drag, two right-click edits, marks. Save. Expect: no warnings in her log; every moved meeting shows its new time in its card.
+2. **A reader sees the drops.** Bob opens the same database (read-only). Expect: Alice's saved moves are there; Bob's tiles don't lift; he can mark (marks are his alone); his edit items are greyed. Alice drags once more and saves; Bob's view picks it up on its next poll.
+3. **Drop during a save.** Alice starts a save with clumsy on ("degraded"), so it takes a while, and drops a meeting while "Saving…" shows. Expect: the save finishes; the drop is kept and goes out with the next save (check from Bob after it). Same with a drop right as the 10-minute autosave fires, if it can be timed.
+4. **Exit and reopen.** Alice drops a meeting and closes TermPoint (exit save). Reopen: the move is there, marks are gone (never saved). Close with a meeting lifted (Alt+F4 while holding the button, if Windows allows): no save of the half-done drag, no error.
+5. **Takeover.** Alice exits; Bob takes the database and drags; Alice reopens read-only and sees Bob's moves after his save.
+6. **Lock lost.** Suspend Alice's TermPoint (Resource Monitor) long enough for Bob to take over, then resume. Expect: Alice gets the usual lost-lock message; afterwards nothing lifts in her grid; nothing she dragged after the takeover reaches the share. (A drop exactly at the moment of loss is refused by the re-check at drop; covered by `MeetingDragCommitTests`, not reproducible by hand.)
+7. **Detached Schedule View** on a second monitor: drag, Alt, auto-scroll, open-card refusal message.
+8. **macOS, if a Mac is handy** (build from a v* tag): Option for the group drag (and that Option release doesn't open a menu), trackpad drag, auto-scroll.
+9. **Afterwards:** copy the shared database to the scratchpad (never query it in place) and check a few moved sections' meetings against what was done; read both computers' logs for "Meeting drag dropped without saving" or errors.
+
+**`MinimumVersionToWrite`:** proposed answer No: a drop changes only the day and start of existing meetings, fields every version writes, and marks are never saved. Greg confirms at the field test.
+
+</details>
+
+<details>
 <summary>Undo: costing (advice to Greg, 2026-11-16; backlogged)</summary>
 
 - **Decided (Greg, 2026-11-16): backlogged, not in this entry.** A one-step "Moved X to ... · Undo" notice after a drop (Claude's proposal: reads as part of the drag, not an app feature) was judged short of really useful; the useful form is multi-step undo across section changes, which belongs in its own entry. Line in `release_state/backlog.md`.

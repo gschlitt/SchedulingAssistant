@@ -92,12 +92,12 @@ Notes: [access-analyzer/NOTES.md](access-analyzer/NOTES.md). Design: [designs/1.
 
 **Goal:** on a busy schedule, an administrator can rearrange existing meetings by mouse in Schedule View, in the way people expect from other click-and-drag tools, smoothly and reliably. Sections are still created and fully edited in the Section List; the grid only moves meetings (the common quick edits, like today's right-click ones). Done means the feature is in the app and field-tested.
 
-**State:** Built, committed and pushed, including the inverted Alt (a drag moves one meeting; Alt brings the same-start ones along). Greg hand-checked all of it, also on a busy real schedule. Auto-scroll during a drag added at Greg's request, hand-checked and committed. Next: the field test.
+**State:** Built, committed and pushed, including the inverted Alt (a drag moves one meeting; Alt brings the same-start ones along). Greg hand-checked all of it, also on a busy real schedule. Auto-scroll during a drag added at Greg's request, hand-checked and committed. Field test planned (notes) but postponed by Greg on 2026-11-16 while other work goes first; resume with it.
 
 <details>
 <summary>Steps (1 left)</summary>
 
-1. Field test; answer the `MinimumVersionToWrite` question (expected No: same fields as the section editor).
+1. Field test (plan in the notes: drops around saves, readers, takeover, lock loss; detached view; macOS if handy); Greg confirms the `MinimumVersionToWrite` answer (proposed No: same fields as the section editor).
 
 </details>
 
