@@ -20,12 +20,15 @@ public class TileChromeTests
 
     /// <summary>
     /// The parts as <c>AppLayout.axaml</c> ships them: gap 4, borders 1 / 3 / outer 4, content padding 3,2,
-    /// row padding 1,0, selection border 3, flag 12 with margin 3,2,0,0, measuring margin 1.
+    /// row padding 1,0, selection border 3, flag 12 with margin 3,2,0,0, measuring margin 1, multi-tag mark 13 x 9
+    /// with margin 1,0,0,0 and hit padding 2,1.
     /// </summary>
     private static TileChrome Shipping() => new(
         Gap: 4, BorderThin: 1, BorderThick: 3, OverlayOuterBorder: 4,
         ContentPadding: new Thickness(3, 2), EntryRowPadding: new Thickness(1, 0),
-        SelectionBorder: 3, FlagIconSize: 12, FlagIconMargin: new Thickness(3, 2, 0, 0), MeasuringMargin: 1);
+        SelectionBorder: 3, FlagIconSize: 12, FlagIconMargin: new Thickness(3, 2, 0, 0), MeasuringMargin: 1,
+        MultiTagMarkWidth: 12.5, MultiTagMarkHeight: 9, MultiTagMarkMargin: new Thickness(1, 0, 0, 0),
+        MultiTagHitPadding: new Thickness(2, 1));
 
     /// <summary>One semester shown, no overlay: gap 4 + borders 2 + padding 6 + row padding 2 + selection 6 + margin 1.</summary>
     [Fact]
@@ -104,11 +107,11 @@ public class TileChromeTests
     public void EntryHeight_TextFlagAndRowPadding()
     {
         var chrome = Shipping();
-        Assert.Equal(14, chrome.EntryHeight(14, flagged: false), Eps);
-        Assert.Equal(14, chrome.EntryHeight(14, flagged: true), Eps);   // flag 12 + margin 2 = 14
-        Assert.Equal(14, chrome.EntryHeight(10, flagged: true), Eps);   // small text: the flag is taller
-        Assert.Equal(10, chrome.EntryHeight(10, flagged: false), Eps);
-        Assert.Equal(14 + 3, (chrome with { EntryRowPadding = new Thickness(1, 1.5) }).EntryHeight(14, false), Eps);
+        Assert.Equal(14, chrome.EntryHeight(14, flagged: false, multiTag: false), Eps);
+        Assert.Equal(14, chrome.EntryHeight(14, flagged: true, multiTag: false), Eps);   // flag 12 + margin 2 = 14
+        Assert.Equal(14, chrome.EntryHeight(10, flagged: true, multiTag: false), Eps);   // small text: the flag is taller
+        Assert.Equal(10, chrome.EntryHeight(10, flagged: false, multiTag: false), Eps);
+        Assert.Equal(14 + 3, (chrome with { EntryRowPadding = new Thickness(1, 1.5) }).EntryHeight(14, false, multiTag: false), Eps);
     }
 
     /// <summary>A flagged line needs the flag's size plus its left and right margin on top of its text.</summary>
@@ -117,15 +120,31 @@ public class TileChromeTests
     {
         var chrome = Shipping();
         Assert.Equal(15, chrome.FlagWidth, Eps);
-        Assert.Equal(100, chrome.EntryWidth(100, markerWidth: 0, flagged: false), Eps);
-        Assert.Equal(115, chrome.EntryWidth(100, markerWidth: 0, flagged: true), Eps);
+        Assert.Equal(100, chrome.EntryWidth(100, markerWidth: 0, flagged: false, multiTag: false), Eps);
+        Assert.Equal(115, chrome.EntryWidth(100, markerWidth: 0, flagged: true, multiTag: false), Eps);
     }
 
     /// <summary>A line with a subject marker and a flag counts both, in full, beside its text.</summary>
     [Fact]
     public void EntryWidth_CountsMarkerAndFlagTogether()
     {
-        Assert.Equal(100 + 13 + 15, Shipping().EntryWidth(100, markerWidth: 13, flagged: true), Eps);
+        Assert.Equal(100 + 13 + 15, Shipping().EntryWidth(100, markerWidth: 13, flagged: true, multiTag: false), Eps);
+    }
+
+    /// <summary>
+    /// The multi-tag mark counts its hover target in full: mark 12.5 + margin 1 + hit padding 2 each side = 17.5 wide;
+    /// 9 + hit padding 1 each side = 11 tall. A line with marker, mark and flag counts all three.
+    /// </summary>
+    [Fact]
+    public void MultiTagMark_CountsItsHoverTargetInWidthAndHeight()
+    {
+        var chrome = Shipping();
+        Assert.Equal(17.5, chrome.MultiTagWidth, Eps);
+        Assert.Equal(11, chrome.MultiTagHeight, Eps);
+        Assert.Equal(100 + 17.5, chrome.EntryWidth(100, markerWidth: 0, flagged: false, multiTag: true), Eps);
+        Assert.Equal(100 + 13 + 15 + 17.5, chrome.EntryWidth(100, markerWidth: 13, flagged: true, multiTag: true), Eps);
+        Assert.Equal(14, chrome.EntryHeight(14, flagged: false, multiTag: true), Eps);  // text is taller
+        Assert.Equal(11, chrome.EntryHeight(8, flagged: false, multiTag: true), Eps);   // small text: the mark is taller
     }
 
     /// <summary>The flag width follows its margin on BOTH sides, not just the left.</summary>
@@ -187,7 +206,9 @@ public class TileChromeTests
             Gap: D("TilePaddingHorizontal"), BorderThin: D("TileBorderThickness"), BorderThick: D("TileThickBorderThickness"),
             OverlayOuterBorder: D("TileOverlayOuterBorderThickness"), ContentPadding: T("TileContentPadding"),
             EntryRowPadding: T("TileEntryRowPadding"), SelectionBorder: D("TileSelectionBorderThickness"),
-            FlagIconSize: D("TileFlagIconSize"), FlagIconMargin: T("TileFlagIconMargin"), MeasuringMargin: D("TileMeasuringMargin"));
+            FlagIconSize: D("TileFlagIconSize"), FlagIconMargin: T("TileFlagIconMargin"), MeasuringMargin: D("TileMeasuringMargin"),
+            MultiTagMarkWidth: D("TileMultiTagMarkWidth"), MultiTagMarkHeight: D("TileMultiTagMarkHeight"),
+            MultiTagMarkMargin: T("TileMultiTagMarkMargin"), MultiTagHitPadding: T("TileMultiTagHitPadding"));
         Assert.Equal(Shipping(), fromFile);
         // The gap between days (spec collapse-days.md, task 1: Greg kept 16 px, as in 1.2.3).
         Assert.Equal(16, D("DayEdgeGap"));

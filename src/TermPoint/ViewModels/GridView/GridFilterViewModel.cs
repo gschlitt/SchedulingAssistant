@@ -76,6 +76,11 @@ public partial class GridFilterViewModel : ViewModelBase
     public HashSet<string> SelectedCampusIds      => SelectedIds(Campuses);
     public HashSet<string> SelectedSectionTypeIds => SelectedIds(SectionTypes);
     public HashSet<string> SelectedTagIds         => SelectedIds(Tags);
+
+    /// <summary>The ticked tags as (ID, name), in the order the filter lists them (for the multi-tag mark's hover).</summary>
+    public IReadOnlyList<(string Id, string Name)> TickedTagsInOrder =>
+        Tags.Where(t => t.IsSelected).Select(t => (t.Id, t.Name)).ToList();
+
     public HashSet<string> SelectedMeetingTypeIds => SelectedIds(MeetingTypes);
     public HashSet<string> SelectedLevelIds       => SelectedIds(Levels);
     public HashSet<string> SelectedCourseIds      => SelectedIds(Courses);
@@ -385,6 +390,7 @@ public partial class GridFilterViewModel : ViewModelBase
         RefreshDerived();
         RefreshOverlaySummary();
         RefreshOverlayActiveStates();  // Restore IsOverlayActive flags after collection rebuild
+        ClearTagsCommand.NotifyCanExecuteChanged();  // a tag that left the list may have been the only ticked one
         HeadersChanged?.Invoke();      // Notify view to redraw all filter and overlay headers
     }
 
@@ -576,20 +582,7 @@ public partial class GridFilterViewModel : ViewModelBase
     /// <param name="clearOverlay">When true, also clears the active overlay.</param>
     private void ClearFiltersAndOverlay(bool clearOverlay)
     {
-        var handler = FilterChanged;
-        FilterChanged = null;
-        try
-        {
-            foreach (var col in AllCollections())
-                foreach (var item in col.ToList())   // ToList() snapshots so iteration is safe
-                    item.IsSelected = false;
-            if (clearOverlay)
-                ClearOverlayCore();
-        }
-        finally
-        {
-            FilterChanged = handler;
-        }
+        UncheckQuietly(AllCollections().SelectMany(c => c), clearOverlay ? ClearOverlayCore : null);
 
         // A clean slate includes the tag logic: back to "all of the checked tags".
         if (_tagsMatchAny)
@@ -608,6 +601,45 @@ public partial class GridFilterViewModel : ViewModelBase
         HeadersChanged?.Invoke();
     }
 
+    /// <summary>
+    /// Unticks every tag in the Tags filter, then re-runs the grid once. Bound to "Clear all tags" in the Tags popup.
+    /// Keeps the all/any choice: someone clearing the tags to pick a new set usually wants the same logic.
+    /// </summary>
+    [RelayCommand(CanExecute = nameof(AnyTagTicked))]
+    public void ClearTags()
+    {
+        UncheckQuietly(Tags, also: null);
+        RefreshDerived();
+        FilterChanged?.Invoke();
+        HeadersChanged?.Invoke();
+    }
+
+    /// <summary>True when at least one tag is ticked; enables "Clear all tags".</summary>
+    public bool AnyTagTicked => Tags.Any(t => t.IsSelected);
+
+    /// <summary>
+    /// Unticks <paramref name="items"/> with <see cref="FilterChanged"/> suppressed, so each change does not trigger
+    /// Reload() → PopulateOptions() → RebuildList(), which would replace the collections while they are being iterated.
+    /// The caller raises FilterChanged once afterwards.
+    /// </summary>
+    /// <param name="items">The filter items to untick; snapshotted before iterating.</param>
+    /// <param name="also">Optional extra work to do while FilterChanged is suppressed (clearing the overlay), or null.</param>
+    private void UncheckQuietly(IEnumerable<FilterItemViewModel> items, Action? also)
+    {
+        var handler = FilterChanged;
+        FilterChanged = null;
+        try
+        {
+            foreach (var item in items.ToList())
+                item.IsSelected = false;
+            also?.Invoke();
+        }
+        finally
+        {
+            FilterChanged = handler;
+        }
+    }
+
     // ── Change tracking ───────────────────────────────────────────────────────
 
     private void OnItemPropertyChanged(object? sender, PropertyChangedEventArgs e)
@@ -619,6 +651,7 @@ public partial class GridFilterViewModel : ViewModelBase
         RefreshInstructorMutualExclusion();
         RefreshRoomMutualExclusion();
         RefreshDerived();
+        ClearTagsCommand.NotifyCanExecuteChanged();
         FilterChanged?.Invoke();
         HeadersChanged?.Invoke();
     }

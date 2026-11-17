@@ -258,6 +258,10 @@
 	<SolidColorBrush x:Key="FlagGreen" Color="#388E3C" />
 	<SolidColorBrush x:Key="FlagMuted" Color="#C0C0C0" />
 
+	<!--  Multi-tag mark: the two rings after a Schedule View line whose section carries more than one of the ticked tags
+	      (Tags filter, "any" mode). Meant to draw the eye on the blue tile;   -->
+	<SolidColorBrush x:Key="MultiTagMark" Color="#003de6" />
+
 	<!--  ── Ghost tiles (Room Availability Browser candidate slots)  ────────  -->
 	<!--  Border outline around the full ghost block  -->
 	<SolidColorBrush x:Key="GhostOutline" Color="#C84CAF50" />

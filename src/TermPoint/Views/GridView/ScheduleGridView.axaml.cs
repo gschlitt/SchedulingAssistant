@@ -73,7 +73,11 @@ public partial class ScheduleGridView : UserControl
         SelectionBorder:    Layout("TileSelectionBorderThickness"),
         FlagIconSize:       Layout("TileFlagIconSize"),
         FlagIconMargin:     Resource<Thickness>("TileFlagIconMargin", default),
-        MeasuringMargin:    Layout("TileMeasuringMargin"));
+        MeasuringMargin:    Layout("TileMeasuringMargin"),
+        MultiTagMarkWidth:  Layout("TileMultiTagMarkWidth"),
+        MultiTagMarkHeight: Layout("TileMultiTagMarkHeight"),
+        MultiTagMarkMargin: Resource<Thickness>("TileMultiTagMarkMargin", default),
+        MultiTagHitPadding: Resource<Thickness>("TileMultiTagHitPadding", default));
 
     /// <summary>
     /// The font family the tiles are actually drawn in, which the width and height measuring must use too.
@@ -213,6 +217,11 @@ public partial class ScheduleGridView : UserControl
     // Section attention-flag geometry (resolved once; brush is per-flag via FlagVisuals).
     private static Geometry? FlagGeometry =>
         Application.Current!.Resources.TryGetResource("FlagIcon", null, out var v) && v is Geometry g ? g : null;
+
+    // Multi-tag mark geometry (two overlapping rings, drawn as a stroke) and its colour.
+    private static Geometry? MultiTagGeometry =>
+        Application.Current!.Resources.TryGetResource("MultiTagIcon", null, out var v) && v is Geometry g ? g : null;
+    private static IBrush MultiTagMarkBrush => Res("MultiTagMark");
 
     /// <summary>The fold icon shown on a hovered day header (<c>FoldDayIcon</c>, Icons.axaml); null if the resource is missing.</summary>
     private static Geometry? FoldDayGeometry =>
@@ -591,7 +600,8 @@ public partial class ScheduleGridView : UserControl
                 {
                     var rowSectionId = tile.Entries[ei].SectionId;
                     frameCount += EntryRowFrameCount(selectedIds.Contains(rowSectionId), markedIds.Contains(rowSectionId));
-                    entriesH += chrome.EntryHeight(entryLineH, tile.Entries[ei].Flag != SectionFlag.None);
+                    entriesH += chrome.EntryHeight(entryLineH, tile.Entries[ei].Flag != SectionFlag.None,
+                                                   !string.IsNullOrEmpty(tile.Entries[ei].MultiTagNames));
                 }
 
                 double actualH = entriesH
@@ -603,8 +613,8 @@ public partial class ScheduleGridView : UserControl
 
                 // Measure the widest entry label in this tile using Bold (the heavier weight
                 // applied when selected), guaranteeing the column fits in both render states.
-                // The measuring uses the font the tiles are drawn in (drawnFont); a marker and a flag icon
-                // add their own fixed widths to a line (TileChrome.EntryWidth).
+                // The measuring uses the font the tiles are drawn in (drawnFont); a marker, a flag icon and a
+                // multi-tag mark add their own fixed widths to a line (TileChrome.EntryWidth).
                 double tileTextW = 0;
                 foreach (var e in tile.Entries)
                 {
@@ -615,7 +625,7 @@ public partial class ScheduleGridView : UserControl
                     double ringW = markedIds.Contains(e.SectionId) ? 2 * chrome.SelectionBorder : 0;
                     tileTextW = Math.Max(tileTextW, chrome.EntryWidth(
                         MeasureTextWidth(drawnFont, lbl, _vm!.TileFontSize, FontWeight.Bold), markerW,
-                        e.Flag != SectionFlag.None) + ringW);
+                        e.Flag != SectionFlag.None, !string.IsNullOrEmpty(e.MultiTagNames)) + ringW);
                 }
                 tileMaxTextWidths[(d, tile.StartMinutes, tile.EndMinutes)] = tileTextW;
 
@@ -1174,14 +1184,16 @@ public partial class ScheduleGridView : UserControl
                                       : Brushes.Transparent;
 
                     // When the section carries an attention flag, draw a small colored flag icon
-                    // at the trailing edge of the line (after the initials). A DockPanel lets the
-                    // label keep its ellipsis trimming while the flag stays pinned and visible.
+                    // at the trailing edge of the line (after the initials); a section carrying more than one of
+                    // the ticked tags gets the multi-tag mark just before it. A DockPanel lets the label keep its
+                    // ellipsis trimming while the flag and mark stay pinned and visible.
                     Control entryContent = entryText;
+                    Control? flagIcon = null;
                     if (entry.Flag != SectionFlag.None
                         && FlagVisuals.ResolveBrush(entry.Flag) is { } flagBrush
                         && FlagGeometry is { } flagGeo)
                     {
-                        var flagIcon = new Avalonia.Controls.Shapes.Path
+                        flagIcon = new Avalonia.Controls.Shapes.Path
                         {
                             Data              = flagGeo,
                             Fill              = flagBrush,
@@ -1191,9 +1203,19 @@ public partial class ScheduleGridView : UserControl
                             VerticalAlignment = VerticalAlignment.Top,
                             Margin            = chrome.FlagIconMargin,
                         };
-                        DockPanel.SetDock(flagIcon, Dock.Right);
+                    }
+                    Control? multiTagMark = string.IsNullOrEmpty(entry.MultiTagNames)
+                        ? null : NewMultiTagMark(entry.MultiTagNames, chrome);
+                    if (flagIcon is not null || multiTagMark is not null)
+                    {
                         var dock = new DockPanel();
-                        dock.Children.Add(flagIcon);   // docked right (added first so it reserves space)
+                        // Right-docked children are added first so they reserve their space; the first is outermost.
+                        foreach (var icon in new[] { flagIcon, multiTagMark })
+                        {
+                            if (icon is null) continue;
+                            DockPanel.SetDock(icon, Dock.Right);
+                            dock.Children.Add(icon);
+                        }
                         dock.Children.Add(entryText);  // fills remaining width, trims with ellipsis
                         entryContent = dock;
                     }
@@ -1228,12 +1250,6 @@ public partial class ScheduleGridView : UserControl
                         Tag          = clickCtx,
                         Child        = entryContent,
                     };
-                    // A line whose instructor initials were shortened to "+N" shows every instructor's full name
-                    // on hover. Lines that weren't shortened carry no names and get no tooltip,
-                    // so most section lines pay nothing. Set directly on the row, never via a style class.
-                    if (!string.IsNullOrEmpty(entry.InstructorNames))
-                        ToolTip.SetTip(entryRow, BuildTileTooltipContent(new TileTooltip([], entry.InstructorNames)));
-
                     if (isConflict)
                         conflictEntryRows[(entry.SectionId, clickDay, tile.StartMinutes, tile.EndMinutes)] =
                             (ei, tileX, adjustedTileY, tileW - TilePaddingH);
@@ -1892,8 +1908,7 @@ public partial class ScheduleGridView : UserControl
                 panel.Children.Add(new TextBlock { Text = line });
 
             // Full attendee list: wrap at 300 px so it forms a readable box rather than a
-            // single long line. Separated from the time range (when there is one) by a small top margin;
-            // a names-only tooltip (shortened section line) has no lines above it, so no margin.
+            // single long line. Separated from the time range (when there is one) by a small top margin.
             if (hasAttendeeList)
                 panel.Children.Add(new TextBlock
                 {
@@ -2478,6 +2493,39 @@ public partial class ScheduleGridView : UserControl
             VerticalAlignment = VerticalAlignment.Center,
             Margin            = new Thickness(0, 0, SubjectMarkerGap, 0),
         };
+    }
+
+    /// <summary>
+    /// Builds the multi-tag mark for a section line: two upright tags filled in <c>MultiTagMark</c> (AppColors.axaml),
+    /// inside a transparent border whose padding (<c>TileMultiTagHitPadding</c>) widens the hover target, since a
+    /// shape is hit only where it is painted (not the gap between the tags or their holes). Its hover names the tags;
+    /// it is the line's only hover. Sizes come
+    /// from <paramref name="chrome"/>, the same values <see cref="TileChrome.EntryWidth"/> counts. Set directly on
+    /// the control, never through a style class (such styles cost every section line).
+    /// </summary>
+    /// <param name="multiTagNames">The tags the hover names, from <see cref="TileEntry.MultiTagNames"/>.</param>
+    /// <param name="chrome">The tile chrome for this render.</param>
+    /// <returns>The mark, ready to dock at the right of the line.</returns>
+    private static Border NewMultiTagMark(string multiTagNames, TileChrome chrome)
+    {
+        var mark = new Border
+        {
+            Background        = Brushes.Transparent,   // makes the padding part of the hover target
+            Padding           = chrome.MultiTagHitPadding,
+            Margin            = chrome.MultiTagMarkMargin,
+            VerticalAlignment = VerticalAlignment.Center,
+            Child = new Avalonia.Controls.Shapes.Path
+            {
+                Data            = MultiTagGeometry,
+                Fill            = MultiTagMarkBrush,
+                Width           = chrome.MultiTagMarkWidth,
+                Height          = chrome.MultiTagMarkHeight,
+                Stretch         = Stretch.Uniform,
+            },
+        };
+        ToolTip.SetTip(mark, BuildTileTooltipContent(
+            new TileTooltip([ScheduleGridViewModel.MultiTagHoverText(multiTagNames)])));
+        return mark;
     }
 
     /// <summary>

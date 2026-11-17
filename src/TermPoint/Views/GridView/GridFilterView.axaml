@@ -468,6 +468,15 @@
 											Content="any of the checked tags"
 											GroupName="TagsMatch"
 											IsChecked="{Binding TagsMatchAny}" />
+										<!--  Unticks every tag, keeping the all/any choice; greyed out while none is ticked.  -->
+										<Button
+											Margin="0,3,0,0"
+											Padding="6,2"
+											MinHeight="0"
+											HorizontalAlignment="Left"
+											Command="{Binding ClearTagsCommand}"
+											Content="Clear all tags"
+											FontSize="{StaticResource FontSizeFilterPopup}" />
 										<Border
 											Height="1"
 											Margin="0,3,0,0"

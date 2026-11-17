@@ -24,6 +24,10 @@ No hardcoded dimensions in ViewModels: pixel widths/heights and other view conce
 - **Section list scrolling:** to show a section, set `SelectedItem` or call `ListScrollAnchorBehavior.ScrollItemIntoView(list, item)`. Never scroll the section ListBox's ScrollViewer directly (`Offset`, `ScrollIntoView`, `BringIntoView`) — scroll anchoring undoes it.
 - **Class-conditioned styles are not free:** a style like `Run.warning` attaches a StyleInstance + activators to EVERY element of that type in the view, matching or not. Never use them for elements repeated on every section card — set values directly.
 - **Dependency upgrades:** after Avalonia, run `dotnet run --project tools/ScrollAnchorProbe`; after Microsoft.Data.Sqlite / SQLitePCLRaw, run `dotnet test src/TermPoint.Tests/TermPoint.Tests.csproj --filter "FullyQualifiedName~CheckoutServiceUnchangedSaveTests|FullyQualifiedName~SqliteContentHashTests"`. (Why: comments beside those package references in `TermPoint.csproj`.)
+- **Hot reload (HotAvalonia, Debug only):** saving a view's `.axaml` updates the running app. Saving an app-wide
+  resource file (`AppColors.axaml`, `AppLayout.axaml`, `Icons.axaml`) rebuilds `MainWindow`'s contents: the loading
+  curtain returns and the startup wiring is lost, so restart instead. HotAvalonia 3.1.0 failed on Avalonia 12.1
+  (3.1.5 works): after an Avalonia upgrade, check that a view edit still hot-reloads.
 - **Saving sections from outside the section card** (grid, other panels): check `OpenCardMessages.WhyRefused(ISectionCardState)` first and refuse with its message. The save reloads `SectionStore`, which closes an open card and silently throws away what was typed.
 
 # Persisted records

@@ -133,7 +133,7 @@ public class GridPipelineTests
         var courses     = new Dictionary<string, Course>     { ["c1"] = new() { Id = "c1", CalendarCode = "HIST101" } };
         var instructors = new Dictionary<string, Instructor> { ["i1"] = new() { Id = "i1", Initials = "JRS" } };
 
-        var (label, initials, _) = ScheduleGridViewModel.BuildSectionLabel(section, courses, instructors);
+        var (label, initials) = ScheduleGridViewModel.BuildSectionLabel(section, courses, instructors);
 
         Assert.Equal("HIST101 A", label);
         Assert.Equal("JRS", initials);
@@ -144,7 +144,7 @@ public class GridPipelineTests
     {
         var section = Sec(courseId: null, sectionCode: "B");
 
-        var (label, initials, _) = ScheduleGridViewModel.BuildSectionLabel(
+        var (label, initials) = ScheduleGridViewModel.BuildSectionLabel(
             section, new Dictionary<string, Course>(), new Dictionary<string, Instructor>());
 
         Assert.Equal("B", label);
@@ -157,7 +157,7 @@ public class GridPipelineTests
         // CourseId is set but does not resolve in the lookup.
         var section = Sec(courseId: "missing", sectionCode: "C");
 
-        var (label, _, _) = ScheduleGridViewModel.BuildSectionLabel(
+        var (label, _) = ScheduleGridViewModel.BuildSectionLabel(
             section, new Dictionary<string, Course>(), new Dictionary<string, Instructor>());
 
         Assert.Equal("C", label);
@@ -168,7 +168,7 @@ public class GridPipelineTests
     {
         var section = Sec(courseId: null, instructorIds: []);
 
-        var (_, initials, _) = ScheduleGridViewModel.BuildSectionLabel(
+        var (_, initials) = ScheduleGridViewModel.BuildSectionLabel(
             section, new Dictionary<string, Course>(), new Dictionary<string, Instructor>());
 
         Assert.Equal(string.Empty, initials);
@@ -185,28 +185,10 @@ public class GridPipelineTests
             ["i2"] = new() { Initials = "MKL", FirstName = "Mark", LastName = "Lee" }
         };
 
-        var (_, initials, names) = ScheduleGridViewModel.BuildSectionLabel(
+        var (_, initials) = ScheduleGridViewModel.BuildSectionLabel(
             section, new Dictionary<string, Course>(), instructors);
 
         Assert.Equal("JRS +1", initials);
-        Assert.Equal("Jane Smith, Mark Lee", names);
-    }
-
-    [Fact]
-    public void BuildSectionLabel_SingleInstructor_HasNoTooltipNames()
-    {
-        // A line that wasn't shortened gets no tooltip, so no names are carried.
-        var section = Sec(courseId: null, instructorIds: ["i1"]);
-        var instructors = new Dictionary<string, Instructor>
-        {
-            ["i1"] = new() { Initials = "JRS", FirstName = "Jane", LastName = "Smith" }
-        };
-
-        var (_, initials, names) = ScheduleGridViewModel.BuildSectionLabel(
-            section, new Dictionary<string, Course>(), instructors);
-
-        Assert.Equal("JRS", initials);
-        Assert.Equal(string.Empty, names);
     }
 
     [Fact]
@@ -220,7 +202,7 @@ public class GridPipelineTests
             ["i3"] = new() { Initials = "ABC" }
         };
 
-        var (_, initials, _) = ScheduleGridViewModel.BuildSectionLabel(
+        var (_, initials) = ScheduleGridViewModel.BuildSectionLabel(
             section, new Dictionary<string, Course>(), instructors);
 
         // "missing" is silently skipped and not counted: two resolved instructors → "+1".
@@ -359,6 +341,46 @@ public class GridPipelineTests
 
         Assert.Single(result);
         Assert.Equal("s1", ((SectionMeetingBlock)result[0]).SectionId);
+    }
+
+    /// <summary>
+    /// Multi-tag mark: in "any" mode with two tags ticked, every meeting of a section carrying both gets the tag names
+    /// (in the filter's order); a section carrying one, or a ticked tag plus an unticked one, gets none.
+    /// </summary>
+    [Fact]
+    public void BuildFilteredBlocks_AnyMode_MarksOnlySectionsWithTwoTickedTags()
+    {
+        var both    = Sec("s1", tagIds: ["chem", "bio"],  schedule: [Slot(1, 540), Slot(3, 540)]);
+        var one     = Sec("s2", tagIds: ["bio"],          schedule: [Slot(1, 600)]);
+        var unticked = Sec("s3", tagIds: ["bio", "env"],  schedule: [Slot(1, 660)]);
+        var snap = Snap(tags: ["bio", "chem"]) with
+        {
+            TagsMatchAny = true,
+            TickedTagsInOrder = [("bio", "BIOY3"), ("chem", "CHEMY3")],
+        };
+
+        var result = ScheduleGridViewModel.BuildFilteredBlocks([both, one, unticked], snap, Lookups(), [])
+            .Cast<SectionMeetingBlock>().ToList();
+
+        Assert.All(result.Where(b => b.SectionId == "s1"), b => Assert.Equal("BIOY3, CHEMY3", b.MultiTagNames));
+        Assert.Equal(2, result.Count(b => b.SectionId == "s1"));
+        Assert.All(result.Where(b => b.SectionId != "s1"), b => Assert.Equal(string.Empty, b.MultiTagNames));
+    }
+
+    /// <summary>A section shown only by an overlay gets the multi-tag mark by the same rule.</summary>
+    [Fact]
+    public void BuildOverlayBlocks_AnyMode_MarksOverlayOnlySection()
+    {
+        var section = Sec("s1", tagIds: ["bio", "chem"], schedule: [Slot(1, 540)]);
+        var snap = Snap(tags: ["bio", "chem"], hasOverlay: true, overlayType: "Tag", overlayId: "bio") with
+        {
+            TagsMatchAny = true,
+            TickedTagsInOrder = [("bio", "BIOY3"), ("chem", "CHEMY3")],
+        };
+
+        var result = ScheduleGridViewModel.BuildOverlayBlocks([section], snap, Lookups(), [], ["s1"]);
+
+        Assert.Equal("BIOY3, CHEMY3", Assert.IsType<SectionMeetingBlock>(Assert.Single(result)).MultiTagNames);
     }
 
     [Fact]

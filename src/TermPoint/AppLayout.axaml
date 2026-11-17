@@ -43,6 +43,15 @@
     <x:Double x:Key="TileFlagIconSize">12</x:Double>
     <!--  Margin around that flag icon (left, top, right, bottom)  -->
     <Thickness x:Key="TileFlagIconMargin">3,2,0,0</Thickness>
+    <!--  Multi-tag mark (two upright tags, before the flag): its size, its margin, and the transparent padding around
+          it that also answers its hover (so the gap between the tags and the holes count too). Keep the height plus
+          the hit padding at or under a text line's height, or marked lines grow taller. Keep width:height equal to
+          the icon's own shape (12.5:9): it is stretched to fit and drawn from the top, so a box taller than it needs
+          leaves it sitting high on the line (Greg saw this with the earlier rings).  -->
+    <x:Double x:Key="TileMultiTagMarkWidth">12.5</x:Double>
+    <x:Double x:Key="TileMultiTagMarkHeight">9</x:Double>
+    <Thickness x:Key="TileMultiTagMarkMargin">1,0,0,0</Thickness>
+    <Thickness x:Key="TileMultiTagHitPadding">2,1</Thickness>
     <!--  Small allowance, in pixels, added to every tile's width for rounding in text measurement  -->
     <x:Double x:Key="TileMeasuringMargin">1</x:Double>
 

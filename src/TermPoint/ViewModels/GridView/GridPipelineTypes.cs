@@ -201,8 +201,32 @@ internal record FilterSnapshot(
     /// How the selected <see cref="TagIds"/> combine: false (the default) = the section must carry all of
     /// them; true = carrying any one of them is enough. Mirrors <see cref="GridFilterViewModel.TagsMatchAny"/>.
     /// </summary>
-    bool TagsMatchAny = false)
+    bool TagsMatchAny = false,
+
+    /// <summary>
+    /// The ticked tags as (ID, name), in the order the filter lists them, so the multi-tag mark's hover names them in
+    /// that order. Null (the default) or empty = no section gets the mark. Same tags as <see cref="TagIds"/>.
+    /// </summary>
+    IReadOnlyList<(string Id, string Name)>? TickedTagsInOrder = null)
 {
+    /// <summary>
+    /// The names of the ticked tags a section carries, ", "-joined in the filter's order, when the Tags filter is in
+    /// "any" mode and the section carries two or more of them; otherwise empty. A non-empty result puts the multi-tag
+    /// mark on the section's lines: in "any" mode a section shown for one group may also belong to another, which the
+    /// grid would not otherwise say. In "all" mode every shown section carries them all, so no mark. Tags the section
+    /// carries that are not ticked are ignored.
+    /// </summary>
+    /// <param name="sectionTagIds">The section's own tag IDs.</param>
+    /// <returns>For example "BIOY3, CHEMY3"; empty when the section gets no mark.</returns>
+    public string MultiTagNames(IReadOnlyCollection<string> sectionTagIds)
+    {
+        if (!TagsMatchAny || TickedTagsInOrder is not { Count: >= 2 } ticked || sectionTagIds.Count < 2)
+            return string.Empty;
+
+        var carried = ticked.Where(t => sectionTagIds.Contains(t.Id)).Select(t => t.Name).ToList();
+        return carried.Count >= 2 ? string.Join(", ", carried) : string.Empty;
+    }
+
     /// <summary>
     /// Whether a section with the given tags passes the Tags filter: always when no tag is selected;
     /// otherwise it must carry every selected tag, or, with <see cref="TagsMatchAny"/>, at least one of them.

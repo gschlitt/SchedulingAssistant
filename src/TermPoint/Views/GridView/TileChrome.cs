@@ -19,6 +19,13 @@ namespace TermPoint.Views.GridView;
 /// <param name="FlagIconSize">Width of a flag icon (<c>TileFlagIconSize</c>).</param>
 /// <param name="FlagIconMargin">Margin around a flag icon (<c>TileFlagIconMargin</c>); only Left and Right count here.</param>
 /// <param name="MeasuringMargin">Small allowance for rounding in text measurement (<c>TileMeasuringMargin</c>).</param>
+/// <param name="MultiTagMarkWidth">Width of the multi-tag mark (<c>TileMultiTagMarkWidth</c>).</param>
+/// <param name="MultiTagMarkHeight">Height of the multi-tag mark (<c>TileMultiTagMarkHeight</c>).</param>
+/// <param name="MultiTagMarkMargin">Margin around the mark's hover target (<c>TileMultiTagMarkMargin</c>).</param>
+/// <param name="MultiTagHitPadding">
+/// Transparent padding around the mark that also answers the hover (<c>TileMultiTagHitPadding</c>): a shape is hit
+/// only where it is painted, so the target is made a little bigger than the mark.
+/// </param>
 internal readonly record struct TileChrome(
     double Gap,
     double BorderThin,
@@ -29,7 +36,11 @@ internal readonly record struct TileChrome(
     double SelectionBorder,
     double FlagIconSize,
     Thickness FlagIconMargin,
-    double MeasuringMargin)
+    double MeasuringMargin,
+    double MultiTagMarkWidth,
+    double MultiTagMarkHeight,
+    Thickness MultiTagMarkMargin,
+    Thickness MultiTagHitPadding)
 {
     /// <summary>
     /// Horizontal space a tile takes on BOTH sides between its edges and its lines: the border (or borders) plus the
@@ -67,15 +78,28 @@ internal readonly record struct TileChrome(
     /// <summary>Height of a flag icon on a line: its size plus its top and bottom margin.</summary>
     public double FlagHeight => FlagIconSize + FlagIconMargin.Top + FlagIconMargin.Bottom;
 
+    /// <summary>Height of the multi-tag mark's hover target: the mark plus its hit padding and margin, top and bottom.</summary>
+    public double MultiTagHeight =>
+        MultiTagMarkHeight + MultiTagHitPadding.Top + MultiTagHitPadding.Bottom
+        + MultiTagMarkMargin.Top + MultiTagMarkMargin.Bottom;
+
+    /// <summary>Width of the multi-tag mark's hover target: the mark plus its hit padding and margin, left and right.</summary>
+    public double MultiTagWidth =>
+        MultiTagMarkWidth + MultiTagHitPadding.Left + MultiTagHitPadding.Right
+        + MultiTagMarkMargin.Left + MultiTagMarkMargin.Right;
+
     /// <summary>
-    /// The height one line occupies: the taller of its text line and (when flagged) its flag icon, plus the row's top
-    /// and bottom padding. A selected line's border is added separately by the caller (it depends on selection).
+    /// The height one line occupies: the tallest of its text line, its flag icon (when flagged) and its multi-tag mark
+    /// (when it has one), plus the row's top and bottom padding. A selected line's border is added separately by the
+    /// caller (it depends on selection).
     /// </summary>
     /// <param name="textLineHeight">Height of one text line in the drawn font.</param>
     /// <param name="flagged">True when the line shows a flag icon.</param>
+    /// <param name="multiTag">True when the line shows the multi-tag mark.</param>
     /// <returns>Pixels the line's row needs, before any selection border.</returns>
-    public double EntryHeight(double textLineHeight, bool flagged) =>
-        Math.Max(textLineHeight, flagged ? FlagHeight : 0) + EntryRowPadding.Top + EntryRowPadding.Bottom;
+    public double EntryHeight(double textLineHeight, bool flagged, bool multiTag) =>
+        Math.Max(textLineHeight, Math.Max(flagged ? FlagHeight : 0, multiTag ? MultiTagHeight : 0))
+        + EntryRowPadding.Top + EntryRowPadding.Bottom;
 
     /// <summary>
     /// Everything a tile adds to the width of its widest line: the gap to its neighbour, both sides' borders and
@@ -96,15 +120,17 @@ internal readonly record struct TileChrome(
     public double FlagWidth => FlagIconSize + FlagIconMargin.Left + FlagIconMargin.Right;
 
     /// <summary>
-    /// The width one line needs: its measured (Bold) text, plus its subject marker if it has one, plus its flag icon
-    /// if it is flagged. The icon and marker don't shrink, so they are counted in full (the text is what gets trimmed).
+    /// The width one line needs: its measured (Bold) text, plus its subject marker if it has one, plus its multi-tag
+    /// mark if it has one, plus its flag icon if it is flagged. The icons and marker don't shrink, so they are counted
+    /// in full (the text is what gets trimmed).
     /// </summary>
     /// <param name="textWidth">Measured width of the line's label in its heaviest weight.</param>
     /// <param name="markerWidth">Width of the subject marker and its gap, or 0 when the line has none.</param>
     /// <param name="flagged">True when the line shows a flag icon.</param>
+    /// <param name="multiTag">True when the line shows the multi-tag mark.</param>
     /// <returns>Pixels the line needs inside its row.</returns>
-    public double EntryWidth(double textWidth, double markerWidth, bool flagged) =>
-        textWidth + markerWidth + (flagged ? FlagWidth : 0);
+    public double EntryWidth(double textWidth, double markerWidth, bool flagged, bool multiTag) =>
+        textWidth + markerWidth + (flagged ? FlagWidth : 0) + (multiTag ? MultiTagWidth : 0);
 
     /// <summary>
     /// The horizontal insets of a day column's TILE SLOTS (where tiles are laid out), for one flat sub-column.

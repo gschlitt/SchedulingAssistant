@@ -1026,7 +1026,8 @@ public partial class ScheduleGridViewModel : ViewModelBase
             HasOverlay:         Filter.HasOverlay,
             OverlayType:        Filter.OverlayType,
             SelectedOverlayId:  Filter.SelectedOverlayId,
-            TagsMatchAny:       Filter.TagsMatchAny);
+            TagsMatchAny:       Filter.TagsMatchAny,
+            TickedTagsInOrder:  Filter.TickedTagsInOrder);
     }
 
     /// <summary>
@@ -1073,6 +1074,15 @@ public partial class ScheduleGridViewModel : ViewModelBase
         var fullNames = string.Join(", ", resolved.Select(i => $"{i.FirstName} {i.LastName}"));
         return (initials, fullNames, isShortened);
     }
+
+    /// <summary>
+    /// The hover text of a section line's multi-tag mark. Approved wording (Greg, 2026-11-17); do not change it
+    /// without his OK.
+    /// </summary>
+    /// <param name="multiTagNames">The tags, from <see cref="TileEntry.MultiTagNames"/>, e.g. "BIOY3, CHEMY3".</param>
+    /// <returns>For example "Tagged with more than one of the tags shown: BIOY3, CHEMY3."</returns>
+    internal static string MultiTagHoverText(string multiTagNames) =>
+        $"Tagged with more than one of the tags shown: {multiTagNames}.";
 
     /// <summary>
     /// Builds the tooltip data for a grid tile.
@@ -1131,11 +1141,10 @@ public partial class ScheduleGridViewModel : ViewModelBase
     /// <param name="courses">Course lookup keyed by course ID.</param>
     /// <param name="instructors">Instructor lookup keyed by instructor ID.</param>
     /// <returns>
-    /// A tuple <c>(Label, Initials, InstructorNames)</c>: Label is the tile heading text, Initials is the
-    /// instructor text appended after it on the same line, and InstructorNames is every instructor's full name
-    /// for the hover tooltip — set only when Initials was shortened, empty otherwise (no tooltip needed).
+    /// A tuple <c>(Label, Initials)</c>: Label is the tile heading text and Initials is the instructor text
+    /// appended after it on the same line. Full names, when shortened to "+N", are in the right-click menu.
     /// </returns>
-    internal static (string Label, string Initials, string InstructorNames) BuildSectionLabel(
+    internal static (string Label, string Initials) BuildSectionLabel(
         Section section,
         IReadOnlyDictionary<string, Course> courses,
         IReadOnlyDictionary<string, Instructor> instructors)
@@ -1143,14 +1152,13 @@ public partial class ScheduleGridViewModel : ViewModelBase
         var calCode = section.CourseId is not null && courses.TryGetValue(section.CourseId, out var course)
             ? course.CalendarCode : null;
 
-        var (initials, fullNames, isShortened) =
-            BuildInstructorText(section.InstructorIds, instructors, SectionInitialsShown);
+        var (initials, _, _) = BuildInstructorText(section.InstructorIds, instructors, SectionInitialsShown);
 
         var label = calCode is not null
             ? $"{calCode} {section.SectionCode}"
             : section.SectionCode;
 
-        return (label, initials, isShortened ? fullNames : string.Empty);
+        return (label, initials);
     }
 
     /// <summary>
@@ -1311,7 +1319,7 @@ public partial class ScheduleGridViewModel : ViewModelBase
                 continue;
 
             // ── Build display label (DRY helper used by all three passes) ──────────
-            var (label, initials, instructorNames) = BuildSectionLabel(section, lookups.Courses, lookups.Instructors);
+            var (label, initials) = BuildSectionLabel(section, lookups.Courses, lookups.Instructors);
             bool sectionIsOverlay  = overlayMatchedIds.Contains(section.Id);
             // "Emphasize Unstaffed" mode: staffed sections are de-emphasised with a
             // strikethrough in the grid; unstaffed sections are highlighted.
@@ -1319,6 +1327,8 @@ public partial class ScheduleGridViewModel : ViewModelBase
             bool isEmphasized      = snap.EmphasizeUnstaffedSelected && !section.InstructorIds.Any();
             // Subject marker colour (colour by subject); empty when colours are off or the subject has none.
             var subjectColor       = subjectColorFor?.Invoke(section) ?? string.Empty;
+            // The ticked tags it carries when it carries more than one in "any" mode (the multi-tag mark); else empty.
+            var multiTagNames      = snap.MultiTagNames(section.TagIds);
 
             // ── Meeting-level filters and block emission ───────────────────────────
             for (int meetingIndex = 0; meetingIndex < section.Schedule.Count; meetingIndex++)
@@ -1353,7 +1363,7 @@ public partial class ScheduleGridViewModel : ViewModelBase
                     IsDeemphasized: isDeemphasized,
                     IsEmphasized: isEmphasized,
                     SubjectColor: subjectColor,
-                    InstructorNames: instructorNames,
+                    MultiTagNames: multiTagNames,
                     MeetingIndex: meetingIndex));
             }
         }
@@ -1437,10 +1447,11 @@ public partial class ScheduleGridViewModel : ViewModelBase
                 var section = sections.FirstOrDefault(s => s.Id == sectionId);
                 if (section is null) continue;
 
-                var (label, initials, instructorNames) = BuildSectionLabel(section, lookups.Courses, lookups.Instructors);
+                var (label, initials) = BuildSectionLabel(section, lookups.Courses, lookups.Instructors);
                 var semName = lookups.SemesterIdToName.TryGetValue(section.SemesterId, out var n) ? n : string.Empty;
                 var semColor = lookups.SemesterIdToColor.TryGetValue(section.SemesterId, out var c) ? c : string.Empty;
                 var subjectColor = subjectColorFor?.Invoke(section) ?? string.Empty;
+                var multiTagNames = snap.MultiTagNames(section.TagIds);
 
                 for (int meetingIndex = 0; meetingIndex < section.Schedule.Count; meetingIndex++)
                 {
@@ -1451,7 +1462,7 @@ public partial class ScheduleGridViewModel : ViewModelBase
                         SectionDaySchedule.FormatFrequency(slot.Frequency),
                         Flag: section.Flag,
                         SubjectColor: subjectColor,
-                        InstructorNames: instructorNames,
+                        MultiTagNames: multiTagNames,
                     MeetingIndex: meetingIndex));
                 }
             }
@@ -1469,10 +1480,11 @@ public partial class ScheduleGridViewModel : ViewModelBase
 
             foreach (var section in sections)
             {
-                var (label, initials, instructorNames) = BuildSectionLabel(section, lookups.Courses, lookups.Instructors);
+                var (label, initials) = BuildSectionLabel(section, lookups.Courses, lookups.Instructors);
                 var semName = lookups.SemesterIdToName.TryGetValue(section.SemesterId, out var n) ? n : string.Empty;
                 var semColor = lookups.SemesterIdToColor.TryGetValue(section.SemesterId, out var c) ? c : string.Empty;
                 var subjectColor = subjectColorFor?.Invoke(section) ?? string.Empty;
+                var multiTagNames = snap.MultiTagNames(section.TagIds);
 
                 for (int meetingIndex = 0; meetingIndex < section.Schedule.Count; meetingIndex++)
                 {
@@ -1486,7 +1498,7 @@ public partial class ScheduleGridViewModel : ViewModelBase
                         SectionDaySchedule.FormatFrequency(slot.Frequency),
                         Flag: section.Flag,
                         SubjectColor: subjectColor,
-                        InstructorNames: instructorNames,
+                        MultiTagNames: multiTagNames,
                     MeetingIndex: meetingIndex));
                 }
             }
@@ -1808,7 +1820,7 @@ public partial class ScheduleGridViewModel : ViewModelBase
     /// </summary>
     private static TileEntry ToEntry(GridBlock block) => block switch
     {
-        SectionMeetingBlock s => new TileEntry(s.Label, s.Initials, s.SectionId, s.IsOverlay, false, s.FrequencyAnnotation, s.IsDeemphasized, IsEmphasized: s.IsEmphasized, Flag: s.Flag, SubjectColor: s.SubjectColor, InstructorNames: s.InstructorNames, MeetingIndex: s.MeetingIndex),
+        SectionMeetingBlock s => new TileEntry(s.Label, s.Initials, s.SectionId, s.IsOverlay, false, s.FrequencyAnnotation, s.IsDeemphasized, IsEmphasized: s.IsEmphasized, Flag: s.Flag, SubjectColor: s.SubjectColor, MultiTagNames: s.MultiTagNames, MeetingIndex: s.MeetingIndex),
         CommitmentBlock c     => new TileEntry(c.Name,  string.Empty, string.Empty, true,  IsCommitment: true),
         // Meeting blocks: carry the MeetingId so double-click can route to the editor.
         // IsCommitment=true is kept so the right-click context menu (section-only) is

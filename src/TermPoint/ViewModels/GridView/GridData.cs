@@ -55,8 +55,9 @@ public abstract record GridBlock(int Day, int StartMinutes, int EndMinutes, bool
 /// SubjectColor        = the section's subject marker colour (<c>#RRGGBB</c>) from
 ///                       <see cref="TermPoint.Services.SubjectColorPresenter.ColorFor"/>; empty string when colours are
 ///                       off or the subject has none (the line is then drawn exactly as without the feature).
-/// InstructorNames     = every instructor's full name, comma-separated, for the line's hover tooltip. Set only when
-///                       Initials was shortened to "+N"; empty otherwise, meaning no tooltip.
+/// MultiTagNames       = the ticked tags this section carries, ", "-joined in the filter's order, when the Tags filter
+///                       is in "any" mode and it carries two or more of them (see
+///                       <see cref="FilterSnapshot.MultiTagNames"/>); empty otherwise, meaning no multi-tag mark.
 /// MeetingIndex        = index of this meeting in <c>section.Schedule</c>, so two meetings of one section on the same
 ///                       day and start (odd/even weeks) can be told apart; -1 = not a section meeting.
 /// </summary>
@@ -69,7 +70,7 @@ public record SectionMeetingBlock(
     bool IsEmphasized = false,
     SectionFlag Flag = SectionFlag.None,
     string SubjectColor = "",
-    string InstructorNames = "",
+    string MultiTagNames = "",
     int MeetingIndex = -1
 ) : GridBlock(Day, StartMinutes, EndMinutes, IsOverlay, SemesterId, SemesterName, SemesterColor);
 
@@ -190,11 +191,11 @@ public record TileEntry(
     /// </summary>
     string SubjectColor = "",
     /// <summary>
-    /// Full instructor names for this line's own hover tooltip, carried from
-    /// <see cref="SectionMeetingBlock.InstructorNames"/>. Non-empty only when the line's initials were shortened
-    /// to "+N"; empty = no tooltip on the line.
+    /// The ticked tags this section carries when it carries more than one of them in "any" mode, carried from
+    /// <see cref="SectionMeetingBlock.MultiTagNames"/>. Non-empty = the line shows the multi-tag mark, whose hover
+    /// names these tags; empty = no mark.
     /// </summary>
-    string InstructorNames = "",
+    string MultiTagNames = "",
     /// <summary>
     /// Index of this entry's meeting in <c>section.Schedule</c>, carried from <see cref="SectionMeetingBlock.MeetingIndex"/>
     /// so a click or drag identifies the exact meeting rather than the first one at its day and start.

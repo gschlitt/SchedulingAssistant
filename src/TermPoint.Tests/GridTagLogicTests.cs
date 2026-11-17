@@ -56,6 +56,66 @@ public class GridTagLogicTests
         Assert.True(snapshot.PassesTagFilter(new[] { "h", "l" }));
     }
 
+    // ── The multi-tag mark ───────────────────────────────────────────────────────
+
+    /// <summary>A snapshot with tags h (Honours), l (Lab), o (Online) ticked in that order.</summary>
+    /// <param name="any">True for "any of the checked tags".</param>
+    /// <param name="ticked">Which of h, l, o are ticked, in the filter's order.</param>
+    private static FilterSnapshot MarkSnapshot(bool any, string ticked)
+    {
+        var names = new Dictionary<string, string> { ["h"] = "Honours", ["l"] = "Lab", ["o"] = "Online" };
+        var ids = ticked.Length == 0 ? Array.Empty<string>() : ticked.Split(',');
+        return Snapshot(ids, any) with { TickedTagsInOrder = ids.Select(id => (id, names[id])).ToList() };
+    }
+
+    /// <summary>
+    /// The mark (the tag names) shows only in "any" mode, with two or more tags ticked, on a section carrying two or
+    /// more of the ticked ones; unticked tags don't count; names follow the filter's order, not the section's.
+    /// </summary>
+    [Theory]
+    // any,   ticked,  section's tags, expected names
+    [InlineData(true,  "h,l",   "h,l",   "Honours, Lab")]
+    [InlineData(true,  "h,l",   "l,h",   "Honours, Lab")]      // filter order, not the section's
+    [InlineData(true,  "h,l",   "h",     "")]                  // only one of them
+    [InlineData(true,  "h,l",   "h,o",   "")]                  // o carried but not ticked
+    [InlineData(true,  "h,l,o", "h,l,o", "Honours, Lab, Online")]
+    [InlineData(true,  "h,l,o", "l,o",   "Lab, Online")]
+    [InlineData(true,  "h",     "h,l",   "")]                  // one tag ticked: nothing to overlap
+    [InlineData(true,  "",      "h,l",   "")]                  // no tag filter
+    [InlineData(false, "h,l",   "h,l",   "")]                  // "all" mode: every shown section has them all
+    public void MultiTagNames_AnyModeTwoTickedTagsCarried(bool any, string ticked, string sectionTags, string expected)
+    {
+        var tags = sectionTags.Length == 0 ? Array.Empty<string>() : sectionTags.Split(',');
+
+        Assert.Equal(expected, MarkSnapshot(any, ticked).MultiTagNames(tags));
+    }
+
+    /// <summary>A snapshot built without the ticked-tag list (older callers) never marks a section.</summary>
+    [Fact]
+    public void MultiTagNames_WithoutTheTickedList_IsEmpty()
+    {
+        Assert.Equal(string.Empty, Snapshot(["h", "l"], any: true).MultiTagNames(["h", "l"]));
+    }
+
+    /// <summary>The filter view model lists the ticked tags in its own order, ids with names.</summary>
+    [Fact]
+    public void FilterViewModel_TickedTagsInOrder_FollowsTheFilterList()
+    {
+        var vm = FilterWithTwoTags();
+        vm.Tags[1].IsSelected = true;
+        vm.Tags[0].IsSelected = true;
+
+        Assert.Equal([(vm.Tags[0].Id, vm.Tags[0].Name), (vm.Tags[1].Id, vm.Tags[1].Name)], vm.TickedTagsInOrder);
+    }
+
+    /// <summary>The hover wording, approved by Greg on 2026-11-17.</summary>
+    [Fact]
+    public void MultiTagHoverText_IsTheApprovedWording()
+    {
+        Assert.Equal("Tagged with more than one of the tags shown: BIOY3, CHEMY3.",
+            ScheduleGridViewModel.MultiTagHoverText("BIOY3, CHEMY3"));
+    }
+
     // ── The filter view model ──────────────────────────────────────────────────
 
     /// <summary>A filter view model offering two tags, "Honours" (h) and "Lab" (l).</summary>
@@ -102,6 +162,31 @@ public class GridTagLogicTests
         Assert.Contains(nameof(GridFilterViewModel.TagsMatchAny), properties);
         Assert.Contains(nameof(GridFilterViewModel.TagsMatchAll), properties);
         Assert.Contains("Tags (any): ", vm.ActiveSummary);
+    }
+
+    /// <summary>
+    /// "Clear all tags" is enabled only while a tag is ticked; it unticks every tag, re-runs the grid once and keeps
+    /// the all/any choice.
+    /// </summary>
+    [Fact]
+    public void ClearTags_UnticksEveryTag_RerunsTheGridOnce_KeepsTheLogic()
+    {
+        var vm = FilterWithTwoTags();
+        Assert.False(vm.ClearTagsCommand.CanExecute(null));
+
+        vm.Tags[0].IsSelected = true;
+        vm.Tags[1].IsSelected = true;
+        vm.TagsMatchAny = true;
+        Assert.True(vm.ClearTagsCommand.CanExecute(null));
+
+        var filterChanges = 0;
+        vm.FilterChanged += () => filterChanges++;
+        vm.ClearTagsCommand.Execute(null);
+
+        Assert.DoesNotContain(vm.Tags, t => t.IsSelected);
+        Assert.Equal(1, filterChanges);
+        Assert.True(vm.TagsMatchAny);
+        Assert.False(vm.ClearTagsCommand.CanExecute(null));
     }
 
     /// <summary>With "all" (the default) the summary reads as before.</summary>
