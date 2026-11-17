@@ -88,7 +88,7 @@ Notes: [access-analyzer/NOTES.md](access-analyzer/NOTES.md). Design: [designs/1.
 </details>
 
 <details>
-<summary><b>Click-and-drag moving of meetings in Schedule View</b> · In progress · **ACTIVE**</summary>
+<summary><b>Click-and-drag moving of meetings in Schedule View</b> · In progress</summary>
 
 **Goal:** on a busy schedule, an administrator can rearrange existing meetings by mouse in Schedule View, in the way people expect from other click-and-drag tools, smoothly and reliably. Sections are still created and fully edited in the Section List; the grid only moves meetings (the common quick edits, like today's right-click ones). Done means the feature is in the app and field-tested.
 
@@ -104,6 +104,32 @@ Notes: [access-analyzer/NOTES.md](access-analyzer/NOTES.md). Design: [designs/1.
 **Open questions:** none. (Undo: backlogged by Greg, 2026-11-16.)
 
 Notes: [click-drag-meetings/NOTES.md](click-drag-meetings/NOTES.md). Design: [designs/1.2.5/click-drag-meetings.md](../../designs/1.2.5/click-drag-meetings.md).
+
+</details>
+
+<details>
+<summary><b>Section details in Schedule View's right-click menu</b> · Not started · **ACTIVE**</summary>
+
+**Goal:** right-clicking a section line in Schedule View shows its instructors' full names (always, even for one instructor), its section type and its tags. The tile keeps its shortened initials. Done means it is in the app and hand-checked by Greg.
+
+**State:** Not started. Today only a hover shows full names, and only when the initials were shortened to "+N". Greg's request, 2026-11-16; no design doc (small enhancement).
+
+<details>
+<summary>Steps (4 left)</summary>
+
+1. Read the right-click menu and the hover tooltip code; sketch the details block (names, section type, tags) as a text mock-up.
+2. Greg approves the layout and wording, and settles the open questions.
+3. Build it: the menu's view model supplies the details, the menu shows them above the edit items; unit tests.
+4. Both compile checks, the grid tests and full suite, Greg's hand check; answer the `MinimumVersionToWrite` question (likely No: nothing saved).
+
+</details>
+
+**Open questions:**
+- Keep the hover tooltip for shortened initials too, or does the right-click replace it?
+- Do read-only users see the details? (They already get the menu, for marks.)
+- Setting filters from the right-click (Greg's first idea): skipped for now; later in this entry, or its own entry?
+
+Notes: [grid-right-click-details/NOTES.md](grid-right-click-details/NOTES.md)
 
 </details>
 
