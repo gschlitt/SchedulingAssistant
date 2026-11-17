@@ -109,5 +109,9 @@
     <x:Double x:Key="MeetingDragLabelOffset">14</x:Double>
     <!--  Padding inside the time label (left/right, top/bottom)  -->
     <Thickness x:Key="MeetingDragLabelPadding">4,1</Thickness>
+    <!--  Width of the band along each edge of the grid where a drag scrolls it (slow at the inner side, fastest at the edge)  -->
+    <x:Double x:Key="MeetingDragAutoScrollBand">32</x:Double>
+    <!--  Auto-scroll speed at and past the grid's edge, in pixels per second  -->
+    <x:Double x:Key="MeetingDragAutoScrollSpeed">1200</x:Double>
 
 </ResourceDictionary>

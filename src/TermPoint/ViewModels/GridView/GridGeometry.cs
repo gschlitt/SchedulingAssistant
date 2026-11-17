@@ -100,4 +100,28 @@ public static class GridGeometry
         }
         return best;
     }
+
+    /// <summary>
+    /// The auto-scroll speed along one axis while a meeting is dragged near (or past) an edge of the grid's viewport.
+    /// Zero in the middle; inside the band along an edge the speed grows linearly from 0 at the band's inner side to
+    /// <paramref name="maxSpeed"/> at the edge, and stays at <paramref name="maxSpeed"/> past it (the canvas holds
+    /// pointer capture, so the pointer can leave the viewport).
+    /// </summary>
+    /// <param name="position">The pointer along this axis, relative to the viewport's start edge (may be negative or beyond <paramref name="viewportLength"/>).</param>
+    /// <param name="viewportLength">The viewport's length along this axis.</param>
+    /// <param name="band">Width of the band along each edge that scrolls; 0 or less disables auto-scroll.</param>
+    /// <param name="maxSpeed">Speed at and past the edge, in viewport pixels per second.</param>
+    /// <returns>Negative to scroll toward the start (up/left), positive toward the end (down/right), 0 for none. When the viewport is narrower than two bands, the nearer edge wins.</returns>
+    public static double AutoScrollSpeed(double position, double viewportLength, double band, double maxSpeed)
+    {
+        if (band <= 0 || viewportLength <= 0) return 0;
+        double effectiveBand = Math.Min(band, viewportLength / 2);
+        double fromStart = position;
+        double fromEnd = viewportLength - position;
+        if (fromStart < effectiveBand && fromStart <= fromEnd)
+            return -maxSpeed * Math.Clamp((effectiveBand - fromStart) / effectiveBand, 0, 1);
+        if (fromEnd < effectiveBand)
+            return maxSpeed * Math.Clamp((effectiveBand - fromEnd) / effectiveBand, 0, 1);
+        return 0;
+    }
 }

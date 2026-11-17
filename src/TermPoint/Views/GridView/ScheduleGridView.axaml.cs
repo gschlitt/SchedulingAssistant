@@ -1945,14 +1945,32 @@ public partial class ScheduleGridView : UserControl
         public bool MoveGroup { get; set; }
         /// <summary>The last day under the pointer; kept when the pointer is over no unfolded day.</summary>
         public int? LastDay { get; set; }
+        /// <summary>
+        /// The last pointer position relative to the grid's ScrollViewer (may lie outside it), so auto-scroll can keep
+        /// the ghost under a pointer that is not moving while the grid scrolls beneath it.
+        /// </summary>
+        public Point? LastViewportPoint { get; set; }
     }
 
     /// <summary>Z-order of the drag ghosts: above every tile, flag and strip on the canvas (the label sits one above).</summary>
     private const int DragZIndex = 1000;
 
+    /// <summary>Longest time step one auto-scroll tick may apply, so a stalled UI thread does not make the grid jump.</summary>
+    private static readonly TimeSpan MaxAutoScrollStep = TimeSpan.FromMilliseconds(100);
+    /// <summary>How often auto-scroll ticks (about once per frame); the scroll distance follows elapsed time, not this.</summary>
+    private static readonly TimeSpan AutoScrollTickInterval = TimeSpan.FromMilliseconds(16);
+
     private MeetingDragState? _drag;
-    /// <summary>The ghost and label controls currently on the canvas; removed and re-added by every <see cref="DrawDragVisuals"/>.</summary>
+    /// <summary>The ghost and label controls currently on the canvas (the label last).</summary>
     private readonly List<Control> _dragControls = new();
+    /// <summary>The time label on the canvas, moved with the pointer without being rebuilt.</summary>
+    private Border? _dragLabel;
+    /// <summary>The preview the ghosts and label were last built for; an equal preview only moves the label.</summary>
+    private MeetingDragPreview? _drawnPreview;
+    /// <summary>Ticks while a meeting is lifted, scrolling the grid when the pointer is near or past its edge.</summary>
+    private DispatcherTimer? _autoScrollTimer;
+    /// <summary>When the previous auto-scroll tick ran (<see cref="System.Diagnostics.Stopwatch.GetTimestamp"/>).</summary>
+    private long _autoScrollLastTimestamp;
     /// <summary>The window whose keys (Esc, Shift, Alt) are watched while a meeting is lifted.</summary>
     private TopLevel? _dragTopLevel;
 
@@ -2007,10 +2025,67 @@ public partial class ScheduleGridView : UserControl
                 top.AddHandler(InputElement.KeyDownEvent, OnDragKeyDown, RoutingStrategies.Tunnel);
                 top.AddHandler(InputElement.KeyUpEvent, OnDragKeyUp, RoutingStrategies.Tunnel);
             }
+            StartAutoScroll();
         }
 
+        if (GridViewport() is { } viewport)
+            drag.LastViewportPoint = e.GetPosition(viewport);
         ReadDragModifiers(drag, e.KeyModifiers);
         UpdateDrag(drag, pos);
+    }
+
+    /// <summary>The grid's ScrollViewer (the viewport the canvas scrolls in), or null before the view is built.</summary>
+    /// <returns>The ScrollViewer around the zoom container.</returns>
+    private ScrollViewer? GridViewport() => _zoomContainer?.FindAncestorOfType<ScrollViewer>();
+
+    /// <summary>Starts the auto-scroll timer for a lifted meeting (stopped by <see cref="EndDrag"/>).</summary>
+    private void StartAutoScroll()
+    {
+        StopAutoScroll();
+        _autoScrollLastTimestamp = System.Diagnostics.Stopwatch.GetTimestamp();
+        _autoScrollTimer = new DispatcherTimer(AutoScrollTickInterval, DispatcherPriority.Normal, OnAutoScrollTick);
+    }
+
+    /// <summary>Stops the auto-scroll timer, if running.</summary>
+    private void StopAutoScroll()
+    {
+        _autoScrollTimer?.Stop();
+        _autoScrollTimer = null;
+    }
+
+    /// <summary>
+    /// One auto-scroll tick while a meeting is lifted. First the ghost follows the scroll applied by the previous tick
+    /// (the pointer may be still while the grid moves beneath it; layout has run since, so the conversion from
+    /// viewport to canvas coordinates is current). Then, if the pointer is within the edge band of the grid's
+    /// viewport or past its edge, the grid scrolls by speed times elapsed time (<see cref="GridGeometry.AutoScrollSpeed"/>),
+    /// so the pace is the same at any timer rate. Scrolling only moves the viewport: nothing re-renders the grid on
+    /// scroll, so the drag is not cancelled.
+    /// </summary>
+    /// <param name="sender">The timer.</param>
+    /// <param name="e">Unused.</param>
+    private void OnAutoScrollTick(object? sender, EventArgs e)
+    {
+        long now = System.Diagnostics.Stopwatch.GetTimestamp();
+        var elapsed = System.Diagnostics.Stopwatch.GetElapsedTime(_autoScrollLastTimestamp, now);
+        _autoScrollLastTimestamp = now;
+        if (_drag is not { Lifted: true, LastViewportPoint: { } vp } drag || _canvas is null
+            || GridViewport() is not { } viewport) return;
+
+        if (viewport.TranslatePoint(vp, _canvas) is { } canvasPoint && canvasPoint != drag.LastPoint)
+            UpdateDrag(drag, canvasPoint);
+
+        double band = Resource<double>("MeetingDragAutoScrollBand", 32);
+        double maxSpeed = Resource<double>("MeetingDragAutoScrollSpeed", 1200);
+        double vx = GridGeometry.AutoScrollSpeed(vp.X, viewport.Viewport.Width, band, maxSpeed);
+        double vy = GridGeometry.AutoScrollSpeed(vp.Y, viewport.Viewport.Height, band, maxSpeed);
+        if (vx == 0 && vy == 0) return;
+
+        double seconds = Math.Min(elapsed.TotalSeconds, MaxAutoScrollStep.TotalSeconds);
+        double maxX = Math.Max(0, viewport.Extent.Width - viewport.Viewport.Width);
+        double maxY = Math.Max(0, viewport.Extent.Height - viewport.Viewport.Height);
+        var next = new Vector(Math.Clamp(viewport.Offset.X + vx * seconds, 0, maxX),
+                              Math.Clamp(viewport.Offset.Y + vy * seconds, 0, maxY));
+        if (next != viewport.Offset) viewport.Offset = next;
     }
 
     /// <summary>Copies the held Shift and Alt (Option) keys into the drag state.</summary>
@@ -2033,7 +2108,7 @@ public partial class ScheduleGridView : UserControl
         if (_drag is not { } drag) return;
         if (!drag.Lifted) { EndDrag(); return; }
 
-        var viewport = _zoomContainer?.FindAncestorOfType<ScrollViewer>();
+        var viewport = GridViewport();
         var inView = viewport is not null && e.GetPosition(viewport) is var p
                   && p.X >= 0 && p.Y >= 0 && p.X <= viewport.Bounds.Width && p.Y <= viewport.Bounds.Height;
         if (!inView) { EndDrag(); return; }
@@ -2133,16 +2208,29 @@ public partial class ScheduleGridView : UserControl
     }
 
     /// <summary>
-    /// Redraws the ghosts (on shown, unfolded days only) and the time label beside the pointer. Ghosts and label
-    /// use the refused colours while the drop would be refused. Nothing here takes pointer input.
+    /// Shows the ghosts (on shown, unfolded days only) and the time label beside the pointer. Ghosts and label use
+    /// the refused colours while the drop would be refused. Nothing here takes pointer input.
+    /// <para>
+    /// The controls are rebuilt only when the preview shows something different (<see cref="SamePicture"/>);
+    /// otherwise only the label moves. Most pointer moves and auto-scroll ticks change nothing but the pointer
+    /// position, and rebuilding controls at that rate is slow in the WASM build.
+    /// </para>
     /// </summary>
     /// <param name="drag">The lifted drag, with its latest preview.</param>
     /// <param name="pos">The pointer, in canvas coordinates.</param>
     private void DrawDragVisuals(MeetingDragState drag, Point pos)
     {
+        if (drag.Preview is { } current && _drawnPreview is { } drawn && _dragLabel is not null
+            && SamePicture(drawn, current))
+        {
+            PlaceDragLabel(pos);
+            return;
+        }
+
         ClearDragVisuals();
         if (_canvas is null || _vm is null || drag.Preview is not { } preview
             || _cachedDayXOffsets is null || _cachedDayColWidths is null || _cachedGridlineYOffsets is null) return;
+        _drawnPreview = preview;
 
         var data = _vm.GridData;
         bool refused = preview.IsRefused;
@@ -2189,7 +2277,6 @@ public partial class ScheduleGridView : UserControl
             _dragControls.Add(tile);
         }
 
-        double offset = Resource<double>("MeetingDragLabelOffset", 14);
         var label = new Border
         {
             Background       = Res("DragLabelBackground"),
@@ -2207,21 +2294,43 @@ public partial class ScheduleGridView : UserControl
             },
         };
         label.Measure(Size.Infinity);
-        double labelX = pos.X + offset;
-        if (!double.IsNaN(_canvas.Width) && labelX + label.DesiredSize.Width > _canvas.Width)
-            labelX = pos.X - offset - label.DesiredSize.Width;   // flip to the pointer's left at the grid's right edge
-        Canvas.SetLeft(label, Math.Max(0, labelX));
-        Canvas.SetTop(label, pos.Y + offset);
         _canvas.Children.Add(label);
         _dragControls.Add(label);
+        _dragLabel = label;
+        PlaceDragLabel(pos);
     }
 
-    /// <summary>Removes the ghosts and label from the canvas.</summary>
+    /// <summary>
+    /// Whether two previews draw the same: the same ghosts, label text and refusal state. (The ghost text, font
+    /// and grid layout cannot change during a drag: a re-render cancels it.)
+    /// </summary>
+    /// <param name="a">One preview.</param>
+    /// <param name="b">The other.</param>
+    /// <returns>True when redrawing would produce identical ghosts and label.</returns>
+    private static bool SamePicture(MeetingDragPreview a, MeetingDragPreview b) =>
+        a.IsRefused == b.IsRefused && a.Label == b.Label && a.Ghosts.SequenceEqual(b.Ghosts);
+
+    /// <summary>Puts the time label below and to the right of the pointer, flipped to its left at the grid's right edge.</summary>
+    /// <param name="pos">The pointer, in canvas coordinates.</param>
+    private void PlaceDragLabel(Point pos)
+    {
+        if (_canvas is null || _dragLabel is not { } label) return;
+        double offset = Resource<double>("MeetingDragLabelOffset", 14);
+        double labelX = pos.X + offset;
+        if (!double.IsNaN(_canvas.Width) && labelX + label.DesiredSize.Width > _canvas.Width)
+            labelX = pos.X - offset - label.DesiredSize.Width;
+        Canvas.SetLeft(label, Math.Max(0, labelX));
+        Canvas.SetTop(label, pos.Y + offset);
+    }
+
+    /// <summary>Removes the ghosts and label from the canvas and forgets what was drawn.</summary>
     private void ClearDragVisuals()
     {
         if (_canvas is not null)
             foreach (var c in _dragControls) _canvas.Children.Remove(c);
         _dragControls.Clear();
+        _dragLabel = null;
+        _drawnPreview = null;
     }
 
     /// <summary>
@@ -2235,6 +2344,7 @@ public partial class ScheduleGridView : UserControl
     {
         var drag = _drag;
         _drag = null;
+        StopAutoScroll();
         ClearDragVisuals();
         if (_dragTopLevel is { } top)
         {

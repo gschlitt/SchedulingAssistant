@@ -126,4 +126,31 @@ public sealed class GridGeometryTests
         Assert.Null(GridGeometry.NearestUnfoldedDay(100, g, Xs(2, 100), new[] { 100.0, 100 }));
         Assert.Null(GridGeometry.NearestUnfoldedDay(100, GridData.Empty, [], []));
     }
+
+    /// <summary>Auto-scroll: none in the middle, a linear ramp inside each edge band, full speed at and past the edge.</summary>
+    [Fact]
+    public void AutoScrollSpeed_RampsInsideTheBands()
+    {
+        const double len = 400, band = 40, max = 1000;
+        Assert.Equal(0, GridGeometry.AutoScrollSpeed(200, len, band, max));
+        Assert.Equal(0, GridGeometry.AutoScrollSpeed(40, len, band, max));
+        Assert.Equal(0, GridGeometry.AutoScrollSpeed(360, len, band, max));
+        Assert.Equal(-500, GridGeometry.AutoScrollSpeed(20, len, band, max), 6);
+        Assert.Equal(500, GridGeometry.AutoScrollSpeed(380, len, band, max), 6);
+        Assert.Equal(-1000, GridGeometry.AutoScrollSpeed(0, len, band, max), 6);
+        Assert.Equal(1000, GridGeometry.AutoScrollSpeed(400, len, band, max), 6);
+        Assert.Equal(-1000, GridGeometry.AutoScrollSpeed(-50, len, band, max), 6);
+        Assert.Equal(1000, GridGeometry.AutoScrollSpeed(900, len, band, max), 6);
+    }
+
+    /// <summary>Auto-scroll: a viewport narrower than two bands shrinks them so the middle stays still; no band or no viewport means no scrolling.</summary>
+    [Fact]
+    public void AutoScrollSpeed_SmallViewportAndDisabled()
+    {
+        Assert.Equal(0, GridGeometry.AutoScrollSpeed(30, 60, 40, 1000));
+        Assert.True(GridGeometry.AutoScrollSpeed(10, 60, 40, 1000) < 0);
+        Assert.True(GridGeometry.AutoScrollSpeed(50, 60, 40, 1000) > 0);
+        Assert.Equal(0, GridGeometry.AutoScrollSpeed(0, 400, 0, 1000));
+        Assert.Equal(0, GridGeometry.AutoScrollSpeed(0, 0, 40, 1000));
+    }
 }
