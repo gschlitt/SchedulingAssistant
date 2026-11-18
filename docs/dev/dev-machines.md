@@ -11,6 +11,11 @@ oddly, or before writing large output to disk.
 - **Controlled Folder Access** blocks test runners from writing into `Documents`.
 - `src/TermPoint/Properties/launchSettings.json` is local. `grep.exe.stackdump` in the repo root is untracked junk:
   never commit it.
+- **HTML wireframes (`designs/wireframes/`) in Claude's browser pane:** the pane shows a local file as a `data:`
+  snapshot that sometimes doesn't run the page's script (blank mock), can't be reloaded (`location.reload()` fails),
+  and is replaced after every edit. Before driving it from JavaScript, wait about a second and check the mock has
+  rendered; never run the page's script a second time by hand, because doubled click handlers make every toggle fire
+  twice. Greg reviews them in a real browser.
 
 ## GregDeskTop (the main dev computer)
 

@@ -1,14 +1,12 @@
 # Access Analyzer and Easy Access Watches — Progressive Design Spec
 
 ## Status
-Current phase: **3 — UX Sketch, in wireframe rounds** (round 1 settled 2026-11-10; D17 agreed; the rest of the
+Current phase: **3 — UX Sketch, in wireframe rounds** (rounds 1–5 settled; D17, D25, D26 agreed; the rest of the
 draft is ideas to try). Phase 2 locked 2026-11-10
 (Q18's extra part names and Q28 left open, not blocking); Phase 1 locked 2026-11-06.
-Last session: 2026-11-10
-Next step: Greg's review of wireframe round 4 (presets and Watch at the filter bar, watching a tag, Add a
-watch by picking or pasting courses). Rounds 1–3 settled.
-filter preset you choose to watch; round 4 moves to the filter bar
-Release: not scheduled. Probably not 1.2.4; the spec continues ahead of coding and the release is decided later
+Last session: 2026-11-18
+Next step: choose round 6 (see the rounds table). State of the work: the 1.2.5 release ledger.
+Release: 1.2.5 (added 2026-11-16); whether the whole feature or only the first piece ships in it is still open
 
 ---
 
@@ -561,8 +559,9 @@ shows; the sections below are ideas to try until a round confirms them.
 | 1 | The Access tab's watch list, the filter-bar summary, popping tabs out (`access-panel-r1.html`) | **Settled 2026-11-10** |
 | 2 | Opening a watch: what its line and detail say, and the grid picture (`access-panel-r2.html`; numbers computed from a mock semester by a miniature slate search) | Reviewed 2026-11-10; revision 2b built (folded detail, health-line hovers, "any 1 of 3 sections" wording, per-line marks, grey-out-or-keep toggle for other grid marks); 2b reviewed; 2c built (fewer hovers, help icon, other courses hidden while a watch is open). **Settled 2026-11-10** |
 | 3 | Stepping through slates, pins, ticking a subset, stranded and yellow cautions, clickable names (`access-panel-r3.html`) | **Settled 2026-11-13** (after 3b revisions, points 1–8 below) |
-| 4 | Saving a filter preset and watching it, at the filter bar (D25); ticking Watch on a tag (D26); picking several courses easily (`access-panel-r4.html`) | Built 2026-11-13, awaiting Greg |
-| later | Courses (parts), Copy Semester, Check all courses | — |
+| 4 | Saving a filter preset and watching it, at the filter bar (D25); ticking Watch on a tag (D26); picking several courses easily (`access-panel-r4.html`) | **Settled 2026-11-18** (after 4b revisions, points 1–7 below) |
+| 5 | Finishing presets: rename and delete, shared presets, deleting a tag a preset uses, the Access watch column in Scheduling Environment → Tags, the open watch's eye (`access-panel-r5.html`) | **Settled 2026-11-18** (points 1–5 below) |
+| later | The editor pointer and teal boxes, Courses (parts), Copy Semester, Check all courses | — |
 
 **Round 1, settled by Greg (2026-11-10).** Judged at the level of the list, not the wording of each health line or
 the opened watch (round 2).
@@ -649,31 +648,81 @@ the opened watch (round 2).
    their own colour (indigo in the mock: purple is shared overlays, blue is selection); to settle with the theme.
    The legend bar wraps to a second row when it's full.
 
-**Round 4 as built (2026-11-13, awaiting Greg).**
-**Round 4, Greg's review so far (2026-11-13).**
+**Round 4, Greg's review (2026-11-13 and 2026-11-17/18). Settled 2026-11-18.**
 1. **+ Add a watch has no flow of its own;** it opens Presets (below).
 2. **"Presets" is the right word; it stays in the Filters group,** at least for now.
+3. **The eye in the Tags popup reads fine as "watch this tag" (2026-11-17). Presets use the same eye,** not a Watch
+   tick box (4b, built).
+4. **No course count on preset rows (2026-11-17):** a preset can be any Filter Set (all lectures on one campus), so a
+   count is beside the point and can mislead. The one sentence shown when watching starts keeps its count ("all 5 of
+   these courses"), since that is how a pool reveals itself.
+5. **The eye column in both Presets and Tags is headed "Access watch" (2026-11-17)**, on the popup's title row
+   ("Presets" / "Tags") at the title's size and weight, in the watched eye's green, led by the green eye, with the superscript circled ? that
+   opens the Access help page. Hover on the words (approved wording): "An access watch
+   monitors a selection of courses for student access."
+6. **+ Add a watch opening Presets is enough** for a department that never uses tags (2026-11-18).
+7. **Opening a watch puts its filters on the bar, and changing a filter closes it:** natural (2026-11-18).
+
+**Round 4 as settled:**
 
 - **Presets** is the first button in the Filters group (bookmark icon). Its label names the preset the bar's filters
   match, or "Enviro Y2 (changed)" after a change; the popup then offers **Update Enviro Y2**. Clicking a preset's name
   applies it. **Save current filters as a preset** (name + Save) is at the bottom; with no filters it says to choose
   some first.
-- Each preset row: name, course count (this semester's result), **Watch** tick, ⋯ (rename, delete: stubs). Ticking
-  Watch shows once: "Watching Enviro Y2. TermPoint will check that students can take all 5 of these courses in one
-  term. Open it". Unticking: "Stopped watching. The preset stays."
+- Each preset row: name, **Watch** eye (as on tags), ⋯ (rename, delete: stubs). Watching
+  shows once: "Watching Enviro Y2. TermPoint will check that students can take all 5 of these courses in one
+  term. Open it". Clicking the eye again: "Stopped watching. The preset stays." Both popups head the eye column
+  "Access watch" (point 5).
 - **Tags popup:** an eye beside each tag watches it (D26), with the same one sentence. Tag-made watches never appear
   among presets.
 - **Course popup:** a box at the top narrows the list as you type; pasting several codes ("biol201, CHEM-213; STAT
   104") ticks every one found and names any not found.
 - **+ Add a watch** (Access tab) has **no flow of its own** (Greg, round 4 review: a watch is exactly a watched
   Filter Set, made and edited that way; a second way would confuse). It opens Presets with one line at the top: "A
-  watch is a preset you tick Watch on. Set the filters on the bar (in Course you can paste course codes), save them
-  here as a preset, then tick Watch."
+  watch is a preset you watch. Set the filters on the bar (in Course you can paste course codes), save them here as
+  a preset, then click its eye."
 - **An open watch** shows its source ("Watching the preset Enviro Y2: Course: …" or "Watching the tag …"), **Edit
   filters** (presets only: leaves its filters on the bar and points to Update in Presets) and a **Watch** tick
   (untick = stop watching; the preset or tag stays). Edit / On / Delete are gone.
 - **Opening a watch puts its Filter Set on the bar; closing it puts the user's own filters back.** Changing a filter
   while a watch is open closes the watch, and the bar reads "Enviro Y2 (changed)".
+
+**Round 5 as settled (2026-11-18). Wording approved for building; Greg expects to fine-tune it once the feature runs.**
+- **⋯ beside a preset:** *Rename…* and *Delete…*, both in the row. Rename: a box in the row, Enter saves, Esc
+  cancels; names are unique ignoring case ("A preset already has that name.", also on Save); a watched preset's watch
+  takes the new name (one thing). Delete asks in the row: "Delete Enviro Y2? It is an access watch, so TermPoint will
+  stop checking it. Your filters on the bar stay as they are." Then "Deleted Enviro Y2. TermPoint no longer checks it."
+- **Shared:** all presets live in the database; none are personal. A faint line at the bottom of Presets: "Presets
+  are shared: everyone using this database sees them." Read-only: "Read-only: you can use presets, but not save or
+  change them."; eyes and ⋯ disabled, applying still works.
+- **Watching something with no sections this term:** "Watching Co-op. No sections show for it this term, so there is
+  nothing to check yet." (D25: no "not offered").
+- **Scheduling Environment → Tags** gains an *Access watch* column (eye, same heading as the popups), D26's second
+  place.
+- **Deleting a tag a preset names (rule proposed):** the preset drops the tag, unless that would widen it (it was the
+  preset's only tag, or "all of the checked tags" is on); then the preset no longer means what it did and is deleted
+  too. A watched tag stops being watched. Today's confirmation keeps its two lines and gains one per kind: "The preset
+  Writing 100 (an access watch) depends on this tag, so it will be deleted too." / "The preset Science or writing will
+  no longer include it." / "This tag is an access watch, so TermPoint will stop checking it."
+- **Afterwards, only when a watch ended,** the Access tab says once (other computers on their next reload): "The tag
+  Writing intensive was deleted, and with it the preset Writing 100, which was an access watch." / "…The tag was an
+  access watch, so TermPoint no longer checks it."
+- **The same rule for anything else a preset names** (instructor, room, campus, section type, meeting type): drop
+  it, or delete the preset if dropping would widen it, said in that delete's confirmation. Courses and subjects can't
+  be deleted while they have sections, so they seldom matter.
+- **Open watch:** a green *Watching* eye replaces the Watch tick box; clicking it stops watching (the preset or tag
+  stays).
+- *Questions on the page:* Delete in the row or a dialog; shared only; the widen rule vs. always delete or always
+  drop; the wording; the Watching eye.
+
+**Round 5, Greg's review (2026-11-18). Settled.**
+1. **Deleting a tag: keep it as built.** The tag's Delete confirmation advises on each preset (dropped from it, or
+   deleted with it by the widen rule); nothing more is needed.
+2. **Deleting a preset asks in the row,** not in a dialog: fine.
+3. **All presets shared, none personal:** enough for now.
+4. **The wording as built is approved for coding;** Greg will fine-tune it once the feature runs and he can
+   judge it whole.
+5. **The open watch's Watching eye** is clear enough as a stop-watching control.
 
 **Keep the interfaces open for other departments' data (Greg, 2026-11-10).** Proper sharing with other departments
 is coming: their courses will be filterable like the department's own, and the analyzer must handle that data. Not

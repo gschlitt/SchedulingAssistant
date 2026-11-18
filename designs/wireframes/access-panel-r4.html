@@ -255,15 +255,22 @@ button:focus-visible, select:focus-visible, input:focus-visible { outline: 2px s
 .eye:hover { background: var(--app-hover); }
 .tagmode { display: flex; flex-direction: column; gap: 1px; padding: 0 3px 4px; border-bottom: 1px solid var(--app-split); margin-bottom: 3px; }
 .tagmode label { display: flex; gap: 4px; align-items: center; }
-.tagcols { display: flex; justify-content: space-between; font-size: 10px; color: var(--app-faint); padding: 0 3px; }
 .cpaste { width: 100%; font: inherit; font-size: 12px; padding: 3px 5px; border: 1px solid var(--app-line); border-radius: 3px; margin-bottom: 4px; }
 .pmsg { font-size: 11px; color: var(--app-faint); padding: 0 3px 4px; }
-.prow { display: grid; grid-template-columns: minmax(0, 1fr) max-content max-content max-content; gap: 8px; align-items: center; padding: 2px 3px; border-radius: 3px; }
+.prow { display: grid; grid-template-columns: minmax(0, 1fr) max-content max-content; gap: 8px; align-items: center; padding: 2px 3px; border-radius: 3px; }
+/* The popup's title row: its name, and "Access watch" over the eye column at the same size (round 4 review) */
+.fpop .prow.phead, .fpop .fopt.phead { padding: 1px 3px 4px; }
+.fpop .phead:hover { background: none; }
+.pwhdr { color: var(--app-watch); font-weight: 700; cursor: help; white-space: nowrap; }
+/* One fixed-width column for the heading and the eyes, so each row's eye centres under it */
+.wcol { width: 116px; display: flex; justify-content: center; flex: none; }
+.pweye svg { width: 15px; height: 15px; vertical-align: -3px; margin-right: 3px; }
+.pmore-gap { width: 20px; }
+.help.sup { width: 11px; height: 11px; font-size: 7px; line-height: 9px; vertical-align: 5px; margin-left: 1px; border-color: var(--app-watch); color: var(--app-watch); }
 .prow.cur { background: var(--app-select-bg); }
 .prow:hover { background: var(--app-hover); }
 .pname { border: 0; background: none; font: inherit; text-align: left; cursor: pointer; padding: 0; color: inherit; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .pname:hover { text-decoration: underline; }
-.pcount { font-size: 11px; color: var(--app-faint); }
 .pw { display: flex; gap: 3px; align-items: center; font-size: 11px; }
 .pmore { border: 0; background: none; cursor: pointer; color: var(--app-faint); font: inherit; padding: 0 4px; }
 .pnote { font-size: 11px; line-height: 1.4; background: var(--app-watch-bg); border-radius: 3px; padding: 3px 6px; margin: 2px 0 3px; }
@@ -303,7 +310,7 @@ button:focus-visible, select:focus-visible, input:focus-visible { outline: 2px s
 <h1>Access panel, round 4: saving a filter preset and watching it</h1>
 <p class="lede">A watch is now a filter preset you tick <strong>Watch</strong> on (D25), or a tag you watch (D26). Try
 the <strong>Presets</strong> button at the start of the Filters group, the eye beside each tag in <strong>Tags</strong>,
-and <strong>+ Add a watch</strong> in the Access tab (pick or paste courses, name it, save). Opening a watch puts its
+and <strong>+ Add a watch</strong> in the Access tab (it opens Presets). Opening a watch puts its
 filters on the bar; closing it puts yours back.</p>
 
 <div class="toolbar" role="group" aria-label="Review controls">
@@ -329,7 +336,8 @@ filters on the bar; closing it puts yours back.</p>
       <li><strong>Presets</strong> (first button in Filters). Its label names the preset your filters match ("Enviro
         Y2"), or says "Enviro Y2 (changed)" once you change them, with <em>Update</em> and <em>Save as new</em> in
         the popup. Click a preset's name to apply it. <em>Save current filters as a preset</em> is at the bottom.</li>
-      <li><strong>Watch</strong> beside each preset. Ticking it says, once, what will be checked: "TermPoint will check
+      <li><strong>Watch</strong> eye beside each preset, the same as on tags (round 4 review; no course count on the
+        row, since a preset can be any set of filters). Clicking it says, once, what will be checked: "TermPoint will check
         that students can take all 5 of these courses in one term." Try it on <em>Science 100–200</em>: "all 9"
         shows at once that it's a pool, not a watch.</li>
       <li><strong>Tags:</strong> an eye beside each tag in the Tags popup watches that tag (D26). "1st yr Science" is
@@ -337,8 +345,8 @@ filters on the bar; closing it puts yours back.</p>
       <li><strong>Course</strong> popup: a box at the top filters the list as you type, and pasting several codes
         ("BIOL 201, CHEM 213, STAT 104") ticks them all, naming any it didn't find.</li>
       <li><strong>+ Add a watch</strong> (Access tab) has no flow of its own (round 4 review: a second way would
-        confuse). It opens Presets with one line: "A watch is a preset you tick Watch on. Set the filters on the bar
-        (in Course you can paste course codes), save them here as a preset, then tick Watch."</li>
+        confuse). It opens Presets with one line: "A watch is a preset you watch. Set the filters on the bar (in
+        Course you can paste course codes), save them here as a preset, then click its eye."</li>
       <li>In an open watch: <em>Edit filters</em> leaves the watch's filters on the bar to change (then Update in
         Presets); unticking <em>Watch</em> stops watching, and the preset stays.</li>
     </ul>
@@ -1048,6 +1056,8 @@ filters on the bar; closing it puts yours back.</p>
     `${d}${d === "Tags" && f.tagsAny ? " (any)" : ""}: ${f.sel[d].join(", ")}`).join(" · ") || "no filters";
   const BOOKMARK = '<svg class="bm" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" aria-hidden="true"><path d="M4 2h8v12l-4-3-4 3z"/></svg>';
   const EYE = '<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true"><path d="M1 8s2.6-5 7-5 7 5 7 5-2.6 5-7 5-7-5-7-5z"/><circle cx="8" cy="8" r="2"/></svg>';
+  /** "Access watch" over the eye column of Presets and Tags: green eye in front, the title's size, help as a superscript (approved wording). */
+  const WATCH_HEAD = `<span class="wcol"><span class="pwhdr"><span class="pweye">${EYE}</span><span title="An access watch monitors a selection of courses for student access.">Access watch</span>${HELP.replace('class="help"', 'class="help sup"')}</span></span>`;
 
   /** The Filters group: Presets, Clear, then the nine choices labelled as the app labels them ("Course (5)"). */
   function filterBar(secs) {
@@ -1067,15 +1077,14 @@ filters on the bar; closing it puts yours back.</p>
     const ro = state.readOnly ? " disabled" : "";
     if (d === "Presets") {
       const mp = matchedPreset();
-      let h = `<div class="phead">Presets</div>`;
+      let h = `<div class="prow phead"><span>Presets</span>${WATCH_HEAD}<span class="pmore-gap"></span></div>`;
       if (state.note && state.note.hint) h += `<div class="pnote">${state.note.html}</div>`;
       if (!mp && state.appliedPreset && fActive(state.filter)) h += `<div class="pchg">Filters changed from <b>${esc(state.appliedPreset)}</b>.
         <button class="abtn" data-pupdate="1"${ro}>Update ${esc(state.appliedPreset)}</button></div>`;
+      // No course count on a row (round 4 review): a preset can be any Filter Set, so a count can mislead
       h += state.presets.map((p) => {
-        const n = coursesOf(p.f, secs).length;
         let row = `<div class="prow ${mp === p ? "cur" : ""}"><button class="pname" data-papply="${esc(p.name)}" title="${esc(describeF(p.f))}">${esc(p.name)}</button>
-          <span class="pcount">${n} ${n === 1 ? "course" : "courses"}</span>
-          <label class="pw" title="Watch: TermPoint checks access for it"><input type="checkbox" data-pwatch="${esc(p.name)}" ${p.watch ? "checked" : ""}${ro}> Watch</label>
+          <span class="wcol"><button class="eye ${p.watch ? "on" : ""}" data-pwatch="${esc(p.name)}" title="${p.watch ? "Watched: click to stop watching" : "Watch this preset"}" aria-pressed="${p.watch}"${ro}>${EYE}</button></span>
           <button class="pmore" data-pmore="${esc(p.name)}" title="Rename or delete"${ro}>⋯</button></div>`;
         if (state.note && state.note.preset === p.name) row += `<div class="pnote">${state.note.html}</div>`;
         return row;
@@ -1088,12 +1097,12 @@ filters on the bar; closing it puts yours back.</p>
     }
     const opts = optionsFor(d, secs), sel = state.filter.sel[d] || [];
     let h = "";
-    if (d === "Tags") h += `<div class="tagmode">Show sections with:<label><input type="radio" name="tm" data-tagsany="0" ${state.filter.tagsAny ? "" : "checked"}> all of the checked tags</label>
-      <label><input type="radio" name="tm" data-tagsany="1" ${state.filter.tagsAny ? "checked" : ""}> any of the checked tags</label></div><div class="tagcols"><span></span><span>Watch</span></div>`;
+    if (d === "Tags") h += `<div class="fopt phead"><span>Tags</span>${WATCH_HEAD}</div><div class="tagmode">Show sections with:<label><input type="radio" name="tm" data-tagsany="0" ${state.filter.tagsAny ? "" : "checked"}> all of the checked tags</label>
+      <label><input type="radio" name="tm" data-tagsany="1" ${state.filter.tagsAny ? "checked" : ""}> any of the checked tags</label></div>`;
     if (d === "Course") h += `<input id="coursePaste" class="cpaste" placeholder="Type or paste course codes" aria-label="Type or paste course codes">
       ${state.pasteMsg ? `<div class="pmsg">${esc(state.pasteMsg)}</div>` : ""}`;
     h += `<div class="flist">` + opts.map((v) => `<div class="fopt" data-fval="${esc(v)}"><label><input type="checkbox" data-fdim="${esc(d)}" data-fv="${esc(v)}" ${sel.includes(v) ? "checked" : ""}> ${esc(v)}</label>${
-      d === "Tags" ? `<button class="eye ${state.tagWatch.has(v) ? "on" : ""}" data-tagwatch="${esc(v)}" title="${state.tagWatch.has(v) ? "Watched: click to stop watching" : "Watch this tag"}" aria-pressed="${state.tagWatch.has(v)}"${ro}>${EYE}</button>` : ""}</div>`).join("") + `</div>`;
+      d === "Tags" ? `<span class="wcol"><button class="eye ${state.tagWatch.has(v) ? "on" : ""}" data-tagwatch="${esc(v)}" title="${state.tagWatch.has(v) ? "Watched: click to stop watching" : "Watch this tag"}" aria-pressed="${state.tagWatch.has(v)}"${ro}>${EYE}</button></span>` : ""}</div>`).join("") + `</div>`;
     if (d === "Tags" && state.note && state.note.tag) h += `<div class="pnote">${state.note.html}</div>`;
     return h;
   }
@@ -1139,16 +1148,10 @@ filters on the bar; closing it puts yours back.</p>
       state.filter.sel[d.fdim] = [...cur]; state.note = null;
     }
     else if (d.tagsany !== undefined) { filtersChanged(); state.filter.tagsAny = d.tagsany === "1"; }
-    else if (d.pwatch) {
-      const p = state.presets.find((x) => x.name === d.pwatch);
-      p.watch = e.target.checked;
-      state.note = { preset: p.name, html: p.watch ? watchSentence(p.name, coursesOf(p.f, sections(state.variant)).length) : `Stopped watching <b>${esc(p.name)}</b>. The preset stays.` };
-      if (!p.watch && state.open === p.name) closeWatch();
-    }
     else if (d.stopwatch) {
       const n = d.stopwatch, p = state.presets.find((x) => x.name === n);
       if (p) p.watch = false; else state.tagWatch.delete(n);
-      closeWatch(); state.stub = `Stopped watching ${n}. The ${p ? "preset" : "tag"} stays; tick Watch on it to watch it again.`;
+      closeWatch(); state.stub = `Stopped watching ${n}. The ${p ? "preset" : "tag"} stays; click its eye to watch it again.`;
     }
     else if (d.tick) {
       const all = offeredOf(state.open);
@@ -1201,7 +1204,7 @@ filters on the bar; closing it puts yours back.</p>
   document.addEventListener("click", (e) => {
     if (state.pop && !e.target.closest("#fpop, [data-ftog]")) { state.pop = null; state.note = null; state.pasteMsg = ""; render(); if (!e.target.closest("button, input, .ent")) return; }
     if (state.ctx && !e.target.closest(".ctx")) { state.ctx = null; render(); if (!e.target.closest("button, input")) return; }
-    const fb = e.target.closest("[data-ftog], [data-fclear], [data-papply], [data-psave], [data-pupdate], [data-pmore], [data-tagwatch], [data-addwatch], [data-openwatch], [data-editfilters]");
+    const fb = e.target.closest("[data-ftog], [data-fclear], [data-papply], [data-psave], [data-pupdate], [data-pmore], [data-pwatch], [data-tagwatch], [data-addwatch], [data-openwatch], [data-editfilters]");
     if (fb) {
       const d = fb.dataset;
       if (d.ftog) { state.pop = state.pop === d.ftog ? null : d.ftog; state.note = null; state.pasteMsg = ""; }
@@ -1212,9 +1215,16 @@ filters on the bar; closing it puts yours back.</p>
         const name = document.getElementById("presetName").value.trim();
         if (!name) { document.getElementById("presetName").focus(); return; }
         state.presets.push({ name, watch: false, f: cloneF(state.filter) }); state.appliedPreset = name;
-        state.note = { saved: true, html: `Saved <b>${esc(name)}</b>. Tick Watch to have TermPoint check access for it.` };
+        state.note = { saved: true, html: `Saved <b>${esc(name)}</b>. Click its eye to have TermPoint check access for it.` };
       }
       else if (d.pmore) { state.note = { preset: d.pmore, html: "Rename and Delete go here (deleting a watched preset asks first and stops the watch)." }; }
+      else if (d.pwatch) {
+        // Same eye as on tags (round 4 review), not a tick box
+        const p = state.presets.find((x) => x.name === d.pwatch);
+        p.watch = !p.watch;
+        state.note = { preset: p.name, html: p.watch ? watchSentence(p.name, coursesOf(p.f, sections(state.variant)).length) : `Stopped watching <b>${esc(p.name)}</b>. The preset stays.` };
+        if (!p.watch && state.open === p.name) closeWatch();
+      }
       else if (d.tagwatch) {
         const t = d.tagwatch;
         if (state.tagWatch.has(t)) { state.tagWatch.delete(t); state.note = { tag: true, html: `Stopped watching <b>${esc(t)}</b>. The tag stays.` }; }
@@ -1224,7 +1234,7 @@ filters on the bar; closing it puts yours back.</p>
         // No second way to make a watch (round 4 review): this opens Presets and says how
         if (state.open) closeWatch();
         state.pop = "Presets";
-        state.note = { hint: true, html: `A watch is a preset you tick <b>Watch</b> on. Set the filters on the bar (in <b>Course</b> you can paste course codes), save them here as a preset, then tick Watch.` };
+        state.note = { hint: true, html: `A watch is a preset you watch. Set the filters on the bar (in <b>Course</b> you can paste course codes), save them here as a preset, then click its eye.` };
       }
       else if (d.openwatch) openWatch(d.openwatch);
       else if (d.editfilters) { const name = state.open; state.open = null; state.savedFilter = null; resetWatchState(); state.appliedPreset = name; state.pop = "Presets";

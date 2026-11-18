@@ -2,7 +2,7 @@
 
 **Goal:** to be set by Greg (the unassigned candidate work is in [backlog-1.2.5.md](backlog-1.2.5.md)).
 **MinimumVersionToWrite:** not asked yet.
-**Updated:** 2026-11-17
+**Updated:** 2026-11-18
 
 ## Work
 
@@ -63,23 +63,22 @@ Notes: [lost-notices/NOTES.md](lost-notices/NOTES.md). Source: backlog WN1, plus
 
 **Goal:** administrators see at a glance whether students can still take every course of a watched set (a full "slate" of one section per part), get notices when a change breaks it, and create watches easily. Done means the feature in the app, field-tested.
 
-**State:** Design in progress (progressive spec). Phases 1 and 2 locked; Phase 3 (UX) in wireframe rounds 1-3 settled, round 4 built and waiting for Greg's review. Phases 4-6 and all code still to come. Greg added it to 1.2.5 on 2026-11-16.
+**State:** Design in progress (progressive spec). Phases 1 and 2 locked; Phase 3 (UX) wireframe rounds 1-5 settled (4 and 5 on 2026-11-18; wording approved for coding, to fine-tune later). Round 6's scope waits on Greg (recommended: teal boxes with delivery type, the first piece to ship). Phases 4-6 and all code still to come; nothing broken on branch 1.2.5.
 
 <details>
-<summary>Steps (7 left)</summary>
+<summary>Steps (6 left)</summary>
 
-1. Greg reviews wireframe round 4 (presets and Watch at the filter bar, watching a tag, adding a watch by picking or pasting courses).
-2. Further wireframe rounds until the rest of Phase 3 is settled; Greg locks Phase 3.
-3. Phase 4: data design (ask Greg which readable columns any new table needs; check against `MinimumVersionToWrite`).
-4. Phase 5: architecture (including whether `DetachablePanel` can do tabs).
-5. Phase 6: implementation plan, in the delivery order (delivery type first, easy watches, then the analyzer).
-6. Build in pieces, each with tests and compile checks.
-7. Full suite, field test, answer the `MinimumVersionToWrite` question.
+1. Further wireframe rounds (round 6 next) until the rest of Phase 3 is settled; Greg locks Phase 3.
+2. Phase 4: data design (ask Greg which readable columns any new table needs; check against `MinimumVersionToWrite`).
+3. Phase 5: architecture (including whether `DetachablePanel` can do tabs).
+4. Phase 6: implementation plan, in the delivery order (delivery type first, easy watches, then the analyzer).
+5. Build in pieces, each with tests and compile checks.
+6. Full suite, field test, answer the `MinimumVersionToWrite` question.
 
 </details>
 
 **Open questions:**
-- Round 4 review (what the entry waits for).
+- Round 6's scope (what the entry waits for): teal boxes and delivery type, or the editor pointer; later parts in Courses, Check all courses, Copy Semester.
 - Phase 3 questions Q29-Q34, and the left-open Phase 2 items (Q18 extra part names, Q28).
 - Does the whole feature fit 1.2.5, or does only the first piece (delivery type, easy watches) ship now?
 
