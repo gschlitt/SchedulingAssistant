@@ -1,0 +1,2181 @@
+<title>Conflict Marks Wireframe</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap">
+<style>
+/* Layout: review toolbar, then TermPoint's main window at real size (1280 x 760), then this round's questions.
+   The page around the mock follows the viewer's theme; the mock is always the app's light look (TermPoint ships
+   light only). Round 3 adds, inside an open watch: ticking some courses, pins (right-click a section on the grid),
+   stepping through slates, and the "any 3 of these" line. Every number is computed from the mock semester by a
+   small slate search, so the list, detail and grid agree. Nothing ticked, pinned or stepped is ever saved. */
+:root {
+  --page-bg: #eef1f5; --page-fg: #1c2430; --page-muted: #5b6676; --page-card: #ffffff; --page-line: #d3dae3;
+  --page-accent: #2f6db5;
+  --font: "Inter", "Segoe UI", system-ui, sans-serif;
+
+  /* The mock app (always light) */
+  --app-bg: #f3f4f7;          /* AppBackgroundColor */
+  --app-panel: #ffffff;
+  --app-line: #c8d5e4;        /* FilterGroupBorder */
+  --app-split: #e0e8f0;       /* GridSplitterColor */
+  --app-text: #000000;        /* TextPrimary */
+  --app-faint: #475569;       /* TextFaint */
+  --app-ghost: #9aa5b4;
+  --app-attn: #c03030;        /* ProgramConflictColor */
+  --app-tile: #dfe4ea;
+  --app-tile-line: #b8c2ce;
+  --app-hover: #e8eef6;
+  --app-tab-on: #ffffff;
+  --app-tab-off: #e4e9ef;
+  --app-essential: #1f3a5c;   /* heavy outline: every slate uses it */
+  --app-caution: #9a7400;     /* yellow cautions: hard to reach, heavy load */
+  --app-select: #2f6db5;      /* section selection (same everywhere) */
+  --app-select-bg: #dce8f7;
+  --app-pin: #3f37a3;         /* pins: indigo (purple is shared overlays, blue is selection); colour to settle */
+  --app-pin-bg: #ebeaf8;
+  --app-filter-on: #1f4f8f;   /* an active filter choice (ActiveFilterHeaderBrush) */
+  --app-watch: #1f6f4a;       /* a watched tag's eye */
+  --app-watch-bg: #e7f3ec;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --page-bg: #151a21; --page-fg: #e3e8ef; --page-muted: #9aa6b6; --page-card: #1e252e; --page-line: #2f3945;
+    --page-accent: #7fb0ea; color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --page-bg: #151a21; --page-fg: #e3e8ef; --page-muted: #9aa6b6; --page-card: #1e252e; --page-line: #2f3945;
+  --page-accent: #7fb0ea; color-scheme: dark;
+}
+* { box-sizing: border-box; }
+body {
+  background: var(--page-bg); color: var(--page-fg); font-family: var(--font); font-size: 14px;
+  padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px));
+  padding-block: 20px 40px;
+}
+h1 { font-size: 20px; margin: 0 0 4px; text-wrap: balance; }
+.lede { color: var(--page-muted); margin: 0 0 14px; max-width: 75ch; line-height: 1.45; }
+
+.toolbar { display: flex; flex-wrap: wrap; gap: 10px 18px; align-items: center; background: var(--page-card);
+  border: 1px solid var(--page-line); border-radius: 6px; padding: 10px 12px; margin-bottom: 12px; }
+.toolbar label { display: flex; gap: 6px; align-items: center; font-size: 13px; color: var(--page-muted); }
+.pagebtn { font: inherit; font-size: 12px; padding: 3px 9px; border: 1px solid var(--page-line); border-radius: 4px; background: var(--page-bg); color: var(--page-fg); cursor: pointer; }
+.toolbar select { font: inherit; font-size: 13px; padding: 3px 6px; color: var(--page-fg); background: var(--page-bg);
+  border: 1px solid var(--page-line); border-radius: 4px; max-width: 100%; }
+.seg { display: inline-flex; border: 1px solid var(--page-line); border-radius: 4px; overflow: hidden; flex-wrap: wrap; }
+.seg button { font: inherit; font-size: 12px; padding: 4px 9px; border: 0; background: transparent; color: var(--page-fg); cursor: pointer; }
+.seg button + button { border-left: 1px solid var(--page-line); }
+.seg button[aria-pressed="true"] { background: var(--page-accent); color: var(--page-card); }
+button:focus-visible, select:focus-visible, input:focus-visible { outline: 2px solid var(--page-accent); outline-offset: 1px; }
+
+.stage { overflow: auto; border: 1px solid var(--page-line); border-radius: 6px; background: var(--page-card); }
+.stage-inner { width: 1280px; height: 760px; transform-origin: 0 0; position: relative; }
+.stage.fit { overflow: hidden; }
+
+/* ---------- The mock app window ---------- */
+.app { position: absolute; inset: 0; background: var(--app-bg); color: var(--app-text); font-family: var(--font);
+  font-size: 12px; display: grid; grid-template-rows: 34px 1fr; user-select: none; }
+.menubar { display: flex; align-items: center; gap: 18px; padding: 0 12px; background: var(--app-panel);
+  border-bottom: 1px solid var(--app-line); font-size: 13px; color: var(--app-faint); }
+.menubar b { color: var(--app-text); font-weight: 600; margin-right: 8px; }
+.body3 { display: grid; grid-template-columns: 440px 4px 1fr; min-height: 0; }
+.leftcol { display: flex; flex-direction: column; min-height: 0; }
+.vsplit { background: var(--app-split); }
+.hsplit { height: 4px; background: var(--app-split); cursor: row-resize; flex: none; }
+.hsplit:hover { background: var(--app-line); }
+.panel { background: var(--app-panel); display: flex; flex-direction: column; min-height: 0; border: 1px solid var(--app-line); }
+.panel-head { display: flex; align-items: stretch; height: 26px; flex: none; background: var(--app-tab-off);
+  border-bottom: 1px solid var(--app-line); font-size: 13px; }
+.panel-head .title { padding: 4px 8px; font-weight: 600; display: flex; align-items: center; gap: 8px; }
+.panel-head .spacer { flex: 1; }
+.iconbtn { border: 0; background: transparent; padding: 0 7px; cursor: pointer; color: var(--app-faint); font: inherit; display: flex; align-items: center; }
+.iconbtn:hover { background: var(--app-hover); }
+.iconbtn svg { width: 13px; height: 13px; }
+.tab { border: 0; border-right: 1px solid var(--app-line); background: var(--app-tab-off); padding: 0 12px; font: inherit;
+  font-size: 13px; cursor: pointer; color: var(--app-faint); display: flex; align-items: center; gap: 6px; }
+.tab[aria-selected="true"] { background: var(--app-tab-on); color: var(--app-text); font-weight: 600; margin-bottom: -1px; }
+.tab .dot { width: 7px; height: 7px; border-radius: 50%; background: var(--app-attn); }
+.panel-body { flex: 1; min-height: 0; overflow: auto; }
+
+.cards { padding: 6px; display: flex; flex-direction: column; gap: 4px; }
+.card { border: 1px solid var(--app-line); border-radius: 3px; padding: 3px 6px; }
+.card .h { font-weight: 600; font-size: 12px; }
+.card .s { color: var(--app-faint); font-size: 11px; }
+.wl { width: 100%; border-collapse: collapse; font-size: 11px; font-variant-numeric: tabular-nums; }
+.wl th { text-align: left; font-weight: 600; color: var(--app-faint); padding: 3px 8px; border-bottom: 1px solid var(--app-line); }
+.wl td { padding: 2px 8px; border-bottom: 1px solid var(--app-split); }
+
+.filterbar { display: flex; gap: 8px; padding: 6px 8px 4px; flex: none; flex-wrap: wrap; }
+.fgroup { border: 2px solid var(--app-line); border-radius: 4px; padding: 0 6px 2px; position: relative; margin-top: 7px;
+  display: flex; align-items: center; min-height: 26px; }
+.fgroup .legend { position: absolute; top: -9px; left: 6px; background: var(--app-bg); padding: 0 3px; font-size: 11px; color: var(--app-faint); }
+.fbtn { border: 0; background: transparent; font: inherit; font-size: 13px; padding: 3px 4px; cursor: pointer; color: var(--app-text); border-radius: 3px; }
+.fbtn:hover { background: var(--app-hover); }
+.fbtn .attn { color: var(--app-attn); }
+
+/* The grid picture's one-line legend, shown only while a watch is open */
+.picbar { display: flex; flex-wrap: wrap; row-gap: 3px; align-items: center; gap: 14px; margin: 0 8px; padding: 3px 8px; background: var(--app-panel);
+  border: 1px solid var(--app-line); border-bottom: 0; font-size: 11px; color: var(--app-faint); flex: none; }
+.picbar b { color: var(--app-text); }
+.picbar .sw { display: inline-block; width: 18px; height: 11px; vertical-align: -1px; margin-right: 4px; border-radius: 2px;
+  background: var(--app-tile); border: 1px solid var(--app-tile-line); }
+.picbar .sw.str { background-image: repeating-linear-gradient(135deg, transparent 0 3px, rgba(110, 125, 145, .45) 3px 4px); }
+.picbar .k { font-weight: 700; color: var(--app-essential); }
+.picbar .k.cf { color: var(--app-attn); }
+.picbar .oth { margin-left: auto; display: flex; gap: 4px; align-items: center; color: var(--app-text); }
+.picbar .x { border: 0; background: transparent; cursor: pointer; font: inherit; color: var(--app-faint); }
+
+.gridarea { flex: 1; position: relative; margin: 0 8px 8px; border: 1px solid var(--app-line); background: var(--app-panel); min-height: 0; overflow: auto; }
+.gridarea.nopic { margin-top: 2px; }
+.gday { position: absolute; top: 0; height: 20px; font-size: 11px; color: var(--app-faint); text-align: center; border-bottom: 1px solid var(--app-line); line-height: 20px; }
+.ghour { position: absolute; left: 0; width: 40px; font-size: 10px; color: var(--app-ghost); text-align: right; padding-right: 4px; }
+.gline { position: absolute; left: 40px; border-top: 1px solid var(--app-split); }
+/* A tile holds one or more section lines (co-scheduled sections share a tile). Access marks go on each LINE,
+   never on the tile, because the tile's fill and border already carry subject and semester colours. */
+.gtile { position: absolute; background: var(--app-tile); border: 1px solid var(--sem-border, var(--app-tile-line)); border-radius: 2px;
+  overflow: hidden; color: #222; display: flex; flex-direction: column; }
+.gtile.shared { border: 2px solid #8a4fc0; background: #f3ecfa; }      /* shared-schedule overlay (purple outline) */
+.quiet .gtile:not(.shared) { border-color: var(--app-tile-line); }
+.quiet .gtile.shared { opacity: .3; border-color: var(--app-ghost); background: var(--app-tile); }
+.ent { display: flex; align-items: center; gap: 3px; padding: 0 3px; font-size: 10px; line-height: 14px; white-space: nowrap; overflow: hidden; flex: none; }
+.ent + .ent { border-top: 1px solid var(--app-tile-line); }
+.ent .smk { width: 7px; height: 7px; border-radius: 2px; flex: none; }             /* subject colour marker */
+.quiet .ent .smk { background: var(--app-ghost) !important; opacity: .5; }
+.ent .flg { color: #e08a00; font-size: 9px; }                                        /* section flag */
+.quiet .ent .flg { color: var(--app-ghost); }
+.ent .amk { font-size: 9px; }
+.ent.faded { opacity: .3; }
+.ent.stranded { color: #6b7685; background-image: repeating-linear-gradient(135deg, transparent 0 3px, rgba(110, 125, 145, .45) 3px 4px); }
+.ent.essential { font-weight: 700; }
+.ent.essential .amk { color: var(--app-essential); }
+.ent.cantfit { color: var(--app-attn); font-weight: 600; }
+.ent.cantfit .amk { color: var(--app-attn); }
+.ent.caution .amk, .picbar .k.cu, .flag.caution { color: var(--app-caution); }
+.help { width: 14px; height: 14px; border-radius: 50%; border: 1px solid var(--app-faint); background: transparent; color: var(--app-faint);
+  font: inherit; font-size: 9px; font-weight: 700; line-height: 12px; padding: 0; cursor: pointer; vertical-align: 2px; margin-left: 2px; }
+.help:hover { background: var(--app-hover); }
+/* Health-line phrases that have hover help */
+.hseg[data-tip] { text-decoration: underline dotted; text-underline-offset: 2px; cursor: help; }
+
+/* ---------- Access tab ---------- */
+.acc { display: flex; flex-direction: column; min-height: 100%; font-size: 12px; }
+.acc-head { display: flex; align-items: center; gap: 6px; padding: 5px 8px 4px; flex: none; }
+.acc-head .sem { font-weight: 600; flex: 1; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.abtn { font: inherit; font-size: 11px; padding: 2px 7px; border: 1px solid var(--app-line); background: var(--app-panel);
+  border-radius: 3px; cursor: pointer; color: var(--app-text); white-space: nowrap; }
+.abtn:hover:not(:disabled) { background: var(--app-hover); }
+.abtn:disabled { color: var(--app-ghost); cursor: not-allowed; }
+.rows { display: flex; flex-direction: column; padding: 0 4px; }
+.row { display: grid; grid-template-columns: 14px minmax(0, 140px) minmax(0, 1fr); align-items: baseline; gap: 4px;
+  padding: 2px 4px; border-radius: 3px; cursor: pointer; border: 0; background: transparent; font: inherit; text-align: left; color: var(--app-text); width: 100%; }
+.row:hover { background: var(--app-hover); }
+.row .mk { font-size: 10px; text-align: center; }
+.row .nm { font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.row .hl { font-size: 11px; color: var(--app-faint); white-space: normal; }
+.row.nomarks { grid-template-columns: minmax(0, 140px) minmax(0, 1fr); }
+.row.attn .hl { color: var(--app-attn); }
+.row.off .nm, .row.off .hl { color: var(--app-ghost); font-weight: 400; }
+.mk.attn { color: var(--app-attn); }
+.mk.ok { color: var(--app-ghost); }
+.acc-foot { margin-top: auto; padding: 4px 8px 5px; font-size: 10px; color: var(--app-faint); display: flex; gap: 8px; align-items: center; justify-content: space-between; }
+.markall { display: inline-flex; gap: 4px; align-items: center; font-size: 11px; color: var(--app-text); white-space: nowrap; }
+.picbar .oth2 { display: flex; gap: 4px; align-items: center; color: var(--app-text); }
+
+/* A watch's detail */
+.det { display: flex; flex-direction: column; gap: 5px; padding: 4px 8px 8px; font-size: 12px; }
+.det-head { display: flex; align-items: center; gap: 6px; }
+.det-head .back { border: 0; background: transparent; font: inherit; font-size: 11px; color: var(--app-faint); cursor: pointer; padding: 1px 2px; }
+.det-head .back:hover { color: var(--app-text); text-decoration: underline; }
+.det-head .nm { font-weight: 700; font-size: 13px; flex: 1; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.det-head label { display: flex; gap: 3px; align-items: center; font-size: 11px; }
+.health { font-weight: 600; font-size: 12px; }
+.health.attn { color: var(--app-attn); }
+.flag { color: var(--app-attn); font-size: 11px; line-height: 1.35; display: flex; gap: 6px; align-items: flex-start; }
+.flag .t { flex: 1; min-width: 0; }
+.flag .abtn { color: var(--app-text); flex: none; }
+.clist { display: grid; grid-template-columns: max-content minmax(0, 1fr) max-content; gap: 1px 10px; align-items: baseline;
+  font-size: 11px; border-top: 1px solid var(--app-split); padding-top: 4px; }
+.clist .cc { font-weight: 600; font-size: 12px; }
+.clist .pp { color: var(--app-text); }
+.clist .pp .g { color: var(--app-ghost); }
+.clist .pp.no { color: var(--app-attn); }
+.lnk { border: 0; background: transparent; font: inherit; font-size: 11px; color: var(--app-faint); text-decoration: underline; cursor: pointer; padding: 0; }
+.lnk:disabled { color: var(--app-ghost); text-decoration: none; cursor: not-allowed; }
+.confirm { display: flex; gap: 8px; align-items: center; font-size: 11px; color: var(--app-faint); }
+.facts { border-top: 1px solid var(--app-split); padding-top: 4px; display: flex; flex-direction: column; gap: 2px; font-size: 11px; color: var(--app-faint); line-height: 1.35; }
+.foldbtn { border: 0; background: transparent; font: inherit; font-size: 11px; color: var(--app-faint); cursor: pointer; padding: 0; text-align: left; }
+.later { font-size: 10px; color: var(--app-ghost); font-style: italic; }
+.stub { margin: 4px 8px; padding: 6px 8px; background: var(--app-hover); border-radius: 3px; font-size: 11px; color: var(--app-faint); }
+
+/* Round 3: ticks, pins, stepping, any-k */
+.clist { grid-template-columns: max-content max-content minmax(0, 1fr) max-content; }
+.clist input { margin: 0; }
+.clist .off { color: var(--app-ghost); }
+/* Round 6c: candidate phrases; "4 of 8 labs ▸" opens a line under its course */
+.clist .pp .no { color: var(--app-attn); }
+.clist .pp .cand { color: var(--app-text); text-decoration: none; border-bottom: 1px dotted var(--app-faint); }
+.clist .cmore { grid-column: 3 / 5; color: var(--app-text); padding-left: 10px; }
+.clist .cmore .g { color: var(--app-ghost); }
+.pins { display: flex; flex-wrap: wrap; gap: 4px 8px; align-items: center; font-size: 11px; color: var(--app-faint); }
+.chip { display: inline-flex; align-items: center; gap: 3px; border: 1px solid var(--app-line); border-radius: 3px; padding: 0 2px 0 5px; color: var(--app-text); }
+.chip button { border: 0; background: transparent; cursor: pointer; font: inherit; font-size: 10px; color: var(--app-faint); padding: 0 3px; }
+.pinsvg { width: 9px; height: 9px; flex: none; color: #4a5a70; }
+.stepper { display: flex; flex-direction: column; gap: 3px; border-top: 1px solid var(--app-split); padding-top: 5px; }
+.stepper .row1 { display: flex; align-items: center; gap: 6px; }
+.stepper .pos { font-weight: 600; min-width: 92px; text-align: center; font-variant-numeric: tabular-nums; }
+.stepbar { display: flex; align-items: center; gap: 6px; min-width: 0; flex: 1 1 380px; }
+.stepbar .pos { font-weight: 600; color: var(--app-text); white-space: nowrap; font-variant-numeric: tabular-nums; }
+.stepbar .slate { color: var(--app-text); min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.picbar .abtn { padding: 0 7px; font-size: 11px; }
+.stepper .hint { font-size: 10px; color: var(--app-ghost); }
+.ent.ghost { background: rgba(58, 154, 91, .22); outline: 1.5px dashed #2e8b57; outline-offset: -1.5px; font-weight: 600; }
+.picbar .sw.gh { background: rgba(58, 154, 91, .22); border: 1.5px dashed #2e8b57; }
+.sref { border: 0; background: none; padding: 0; margin: 0; font: inherit; color: inherit; cursor: pointer; }
+.sref:hover { text-decoration: underline; text-underline-offset: 2px; }
+.ent.sel { box-shadow: inset 0 0 0 2px var(--app-select); }
+.card.sel { background: var(--app-select-bg); border-color: var(--app-select); }
+.pinbanner { display: flex; align-items: center; gap: 6px; background: var(--app-pin-bg); border: 1px solid var(--app-pin);
+  border-radius: 3px; padding: 3px 6px; font-size: 11px; color: var(--app-text); }
+.pinbanner .t { flex: 1; min-width: 0; line-height: 1.5; }
+.pinbanner .pinsvg, .pinpill .pinsvg { width: 11px; height: 11px; color: var(--app-pin); }
+.pinpill { display: inline-flex; align-items: center; gap: 5px; background: var(--app-pin-bg); border: 1px solid var(--app-pin);
+  border-radius: 3px; padding: 1px 4px 1px 6px; color: var(--app-text); font-weight: 600; white-space: nowrap; }
+.pinpill .chip, .pinbanner .chip { background: #fff; font-weight: 400; }
+.ent.pinned { font-weight: 700; }
+.ent.pinned .pinsvg { color: var(--app-pin); width: 10px; height: 10px; }
+/* Round 6e: a slate (or every slate) that mixes campuses */
+.hseg.warn, .stepbar .mixc { color: var(--app-caution); font-weight: 600; }
+.stepbar .mixc { white-space: nowrap; }
+.multic { display: flex; align-items: center; gap: 4px; font-size: 11px; color: var(--app-faint); margin: 2px 0 0 1px; cursor: pointer; }
+.multic input { margin: 0; }
+.stepbar .pinsvg { color: var(--app-pin); margin-right: 1px; }
+.fwide { flex: 1; min-width: 0; flex-wrap: wrap; gap: 0 1px; }
+.fbtn.on { font-weight: 700; color: var(--app-filter-on); }
+.ptog { display: inline-flex; align-items: center; gap: 4px; border-right: 1px solid var(--app-line) !important; border-radius: 3px 0 0 3px; padding-right: 7px; }
+.ptog .bm { width: 11px; height: 11px; }
+.ptog .chg { font-weight: 400; color: var(--app-faint); }
+.fpop { position: absolute; z-index: 11; min-width: 200px; max-width: 330px; max-height: 330px; overflow: auto; background: #fff;
+  border: 1px solid #9aa6b6; border-radius: 5px; box-shadow: 0 6px 18px rgba(20, 30, 45, .25); padding: 5px; font-size: 12px; color: var(--app-text); }
+.fpop .phead { font-weight: 700; padding: 1px 3px 4px; }
+.fpop .muted { color: var(--app-faint); }
+.flist { display: flex; flex-direction: column; }
+.fopt { display: flex; align-items: center; justify-content: space-between; gap: 8px; padding: 1px 3px; border-radius: 3px; }
+.fopt:hover { background: var(--app-hover); }
+.fopt label { display: flex; gap: 5px; align-items: center; }
+.eye { border: 0; background: transparent; padding: 1px 3px; cursor: pointer; color: var(--app-ghost); display: flex; border-radius: 3px; }
+.eye svg { width: 15px; height: 15px; }
+.eye.on { color: var(--app-watch); }
+.eye:hover { background: var(--app-hover); }
+.tagmode { display: flex; flex-direction: column; gap: 1px; padding: 0 3px 4px; border-bottom: 1px solid var(--app-split); margin-bottom: 3px; }
+.tagmode label { display: flex; gap: 4px; align-items: center; }
+.cpaste { width: 100%; font: inherit; font-size: 12px; padding: 3px 5px; border: 1px solid var(--app-line); border-radius: 3px; margin-bottom: 4px; }
+.pmsg { font-size: 11px; color: var(--app-faint); padding: 0 3px 4px; }
+.prow { display: grid; grid-template-columns: minmax(0, 1fr) max-content max-content; gap: 8px; align-items: center; padding: 2px 3px; border-radius: 3px; }
+/* The popup's title row: its name, and "Access watch" over the eye column at the same size (round 4 review) */
+.fpop .prow.phead, .fpop .fopt.phead { padding: 1px 3px 4px; }
+.fpop .phead:hover { background: none; }
+.pwhdr { color: var(--app-watch); font-weight: 700; cursor: help; white-space: nowrap; }
+/* One fixed-width column for the heading and the eyes, so each row's eye centres under it */
+.wcol { width: 116px; display: flex; justify-content: center; flex: none; }
+.pweye svg { width: 15px; height: 15px; vertical-align: -3px; margin-right: 3px; }
+.pmore-gap { width: 20px; }
+/* Round 5: the ⋯ menu, renaming in the row, deleting with a question in the row, the shared line */
+.pmenu { display: flex; gap: 2px; justify-content: flex-end; padding: 0 3px 3px; }
+.pmenu button { border: 1px solid var(--app-line); background: var(--app-panel); font: inherit; font-size: 11px; padding: 2px 8px; border-radius: 3px; cursor: pointer; }
+.pmenu button:hover { background: var(--app-hover); }
+.pren { display: flex; gap: 4px; align-items: center; min-width: 0; }
+.pren input { font: inherit; font-size: 12px; padding: 1px 4px; border: 1px solid var(--app-select); border-radius: 3px; min-width: 0; width: 120px; }
+.perr { font-size: 11px; color: var(--app-attn); padding: 0 3px 3px; }
+.pconfirm { font-size: 11px; line-height: 1.4; background: #fdf1ef; border-radius: 3px; padding: 4px 6px; margin: 2px 0 3px; display: flex; flex-direction: column; gap: 4px; }
+.pconfirm .btns { display: flex; gap: 8px; align-items: center; }
+.abtn.danger { border-color: var(--app-attn); color: var(--app-attn); }
+.pshared { font-size: 10px; color: var(--app-faint); padding: 4px 3px 0; }
+/* The open watch's eye (round 5): same green as a watched eye */
+.watching { display: inline-flex; gap: 3px; align-items: center; border: 0; background: transparent; font: inherit; font-size: 11px; font-weight: 600; color: var(--app-watch); cursor: pointer; padding: 1px 4px; border-radius: 3px; }
+.watching svg { width: 15px; height: 15px; }
+.watching:hover:not(:disabled) { background: var(--app-hover); }
+.watching:disabled { color: var(--app-ghost); cursor: not-allowed; }
+/* Scheduling Environment flyout and the app's Confirm dialog (round 5) */
+.mnav { border: 0; background: transparent; font: inherit; color: inherit; cursor: pointer; padding: 2px 4px; border-radius: 3px; text-decoration: underline dotted; text-underline-offset: 3px; }
+.mnav:hover { background: var(--app-hover); color: var(--app-text); }
+.seflyout { position: absolute; left: 0; top: 34px; bottom: 0; width: 640px; background: var(--app-panel); border-right: 1px solid #8a96a6;
+  box-shadow: 6px 0 24px rgba(20, 30, 45, .22); z-index: 12; display: flex; flex-direction: column; }
+.se-title { height: 30px; display: flex; align-items: center; padding-left: 12px; background: #e9edf2; border-bottom: 1px solid var(--app-line); font-size: 13px; flex: none; }
+.se-title .t { flex: 1; font-weight: 600; }
+.se-title button { border: 0; background: transparent; height: 100%; padding: 0 12px; cursor: pointer; font: inherit; color: var(--app-faint); }
+.se-title button:hover { background: #e3483f; color: #fff; }
+.se-body { display: flex; flex: 1; min-height: 0; }
+.secats { width: 150px; border-right: 1px solid var(--app-split); padding: 8px 0; font-size: 12px; flex: none; }
+.secats div { padding: 4px 12px; color: var(--app-faint); }
+.secats div.on { background: var(--app-select-bg); color: var(--app-text); font-weight: 600; }
+.sepage { padding: 8px 10px; max-width: 420px; flex: 1; display: flex; flex-direction: column; gap: 6px; font-size: 12px; }
+.se-h { font-size: 20px; font-weight: 600; }
+.se-desc { color: var(--app-faint); line-height: 1.4; }
+.setable { border-collapse: collapse; width: 100%; border: 1px solid var(--app-line); }
+.setable th { text-align: left; font-weight: 600; background: #f3f5f8; border-bottom: 1px solid var(--app-line); padding: 4px 6px; }
+.setable td { padding: 3px 6px; border-bottom: 1px solid var(--app-split); cursor: pointer; }
+.setable tr.sel td { background: var(--app-select-bg); }
+.setable th:last-child, .setable td:last-child { width: 1%; }
+.se-btns { display: flex; gap: 4px; align-items: center; }
+.se-btns .spacer { flex: 1; }
+.modal-back { position: absolute; inset: 0; background: rgba(20, 30, 45, .25); z-index: 20; display: flex; align-items: center; justify-content: center; }
+.modal { background: #fff; border-radius: 6px; box-shadow: 0 12px 40px rgba(20, 30, 45, .35); padding: 14px 16px 12px; width: 380px; font-size: 12px; line-height: 1.45; }
+.modal .mt { font-weight: 700; font-size: 13px; margin-bottom: 6px; }
+.modal p { margin: 0 0 6px; }
+.modal .mbtns { display: flex; gap: 6px; justify-content: flex-end; margin-top: 10px; }
+.help.sup { width: 11px; height: 11px; font-size: 7px; line-height: 9px; vertical-align: 5px; margin-left: 1px; border-color: var(--app-watch); color: var(--app-watch); }
+.prow.cur { background: var(--app-select-bg); }
+.prow:hover { background: var(--app-hover); }
+.pname { border: 0; background: none; font: inherit; text-align: left; cursor: pointer; padding: 0; color: inherit; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.pname:hover { text-decoration: underline; }
+.pw { display: flex; gap: 3px; align-items: center; font-size: 11px; }
+.pmore { border: 0; background: none; cursor: pointer; color: var(--app-faint); font: inherit; padding: 0 4px; }
+.pnote { font-size: 11px; line-height: 1.4; background: var(--app-watch-bg); border-radius: 3px; padding: 3px 6px; margin: 2px 0 3px; }
+.pchg { font-size: 11px; padding: 2px 3px 5px; display: flex; gap: 6px; align-items: center; flex-wrap: wrap; border-bottom: 1px solid var(--app-split); margin-bottom: 3px; }
+.psave { display: flex; gap: 5px; align-items: center; flex-wrap: wrap; border-top: 1px solid var(--app-split); margin-top: 4px; padding: 5px 3px 1px; font-size: 11px; }
+.psave input { font: inherit; font-size: 12px; padding: 2px 5px; border: 1px solid var(--app-line); border-radius: 3px; width: 140px; }
+.det .src { font-size: 11px; color: var(--app-faint); margin-top: -2px; }
+.ctx { position: absolute; z-index: 10; min-width: 190px; background: #fff; border: 1px solid #9aa6b6; border-radius: 4px;
+  box-shadow: 0 6px 18px rgba(20, 30, 45, .25); padding: 3px 0; font-size: 12px; color: var(--app-text); }
+.ctx button { display: flex; width: 100%; gap: 6px; align-items: center; border: 0; background: transparent; font: inherit; text-align: left; padding: 4px 12px; cursor: pointer; color: inherit; }
+.ctx button:hover:not(:disabled) { background: var(--app-hover); }
+.ctx button:disabled { color: var(--app-ghost); cursor: default; }
+.ctx hr { border: 0; border-top: 1px solid var(--app-split); margin: 3px 0; }
+
+/* Popped-out windows */
+.win { position: absolute; background: var(--app-panel); border: 1px solid #8a96a6; border-radius: 6px;
+  box-shadow: 0 10px 30px rgba(20, 30, 45, .28); display: flex; flex-direction: column; overflow: hidden; z-index: 5; }
+.win-title { height: 28px; display: flex; align-items: center; padding-left: 10px; background: #e9edf2; font-size: 12px;
+  border-bottom: 1px solid var(--app-line); cursor: move; flex: none; }
+.win-title .t { flex: 1; font-weight: 600; }
+.win-title button { border: 0; background: transparent; height: 100%; padding: 0 12px; cursor: pointer; font: inherit; color: var(--app-faint); }
+.win-title button:hover { background: #e3483f; color: #fff; }
+.win .panel-body { flex: 1; }
+
+/* Tooltip for grid tiles (hover) */
+.tip { position: absolute; z-index: 9; max-width: 300px; background: #1f2733; color: #f2f5f8; font-size: 11px; line-height: 1.35;
+  padding: 5px 8px; border-radius: 4px; pointer-events: none; white-space: pre-line; }
+
+/* ---------- Round 6 ---------- */
+/* Conflict marks, drawn as the app draws them today: a red radial glow on the line (ProgramConflictGlowCenter #60C03030
+   fading to transparent) and a 2 px red line between tiles (ProgramConflictBrush) */
+.ent.conflict { background-image: radial-gradient(ellipse 75% 90% at 50% 50%, rgba(192, 48, 48, .376), rgba(192, 48, 48, 0)); }
+.ent.stranded.conflict { background-image: radial-gradient(ellipse 75% 90% at 50% 50%, rgba(192, 48, 48, .376), rgba(192, 48, 48, 0)),
+  repeating-linear-gradient(135deg, transparent 0 3px, rgba(110, 125, 145, .45) 3px 4px); }
+.conflictlines { position: absolute; inset: 0; pointer-events: none; overflow: visible; }
+.conflictlines .cl { stroke: var(--app-attn); stroke-width: 2; }
+.conflictlines .clhit { stroke: transparent; stroke-width: 9; pointer-events: stroke; cursor: help; }
+/* The app's announcement banner (AppAnnouncements), shown once per version */
+.banner { display: flex; align-items: center; gap: 8px; padding: 4px 10px; background: #fff7dc; border-bottom: 1px solid #e6d18a; font-size: 12px; }
+.banner .bt { flex: 1; }
+.banner button { border: 0; background: transparent; cursor: pointer; font: inherit; color: var(--app-faint); }
+/* The inline section editor (compact, FontSize 10–11) */
+.card.editing { border-color: var(--app-select); }
+.ed { border-top: 1px solid var(--app-split); margin-top: 3px; padding-top: 3px; display: flex; flex-direction: column; gap: 3px; }
+.erow { display: flex; gap: 4px; flex-wrap: wrap; }
+.ef { display: flex; flex-direction: column; font-size: 10px; color: #3d4a5c; }
+.ef .ev { font-size: 11px; color: var(--app-text); border: 1px solid var(--app-line); border-radius: 4px; padding: 2px 4px; background: #f6f8fa; height: 22px;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.ef select { font: inherit; font-size: 11px; height: 22px; border: 1px solid var(--app-select); border-radius: 4px; background: #fff; }
+.esched { font-size: 11px; color: var(--app-faint); }
+.esched .el { font-size: 10px; color: #3d4a5c; }
+.ebtns { display: flex; gap: 4px; justify-content: flex-end; }
+/* Scheduling Environment: drawn pages are buttons; NEW marks what round 6 adds */
+.secats button { display: block; width: 100%; text-align: left; border: 0; background: transparent; font: inherit; padding: 4px 12px; color: var(--app-text); cursor: pointer; }
+.secats button:hover { background: var(--app-hover); }
+.secats button.on { background: var(--app-select-bg); font-weight: 600; }
+.secats .new::after, .cs-body .new::after { content: "new"; margin-left: 5px; font-size: 9px; font-weight: 700; color: #fff; background: var(--page-accent); border-radius: 3px; padding: 0 3px; vertical-align: 1px; }
+.cs-body { padding: 8px 14px; display: flex; flex-direction: column; gap: 4px; font-size: 12px; max-width: 460px; }
+.cs-body label { display: flex; gap: 5px; align-items: center; }
+.cs-in { padding-left: 20px; display: flex; flex-direction: column; gap: 3px; }
+.cs-ft { display: flex; gap: 24px; margin: 2px 0 6px; color: var(--app-faint); }
+
+.notes { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 12px; margin-top: 14px; }
+.note { background: var(--page-card); border: 1px solid var(--page-line); border-radius: 6px; padding: 12px 14px; min-width: 0; }
+.note h2 { font-size: 14px; margin: 0 0 6px; }
+.note ol, .note ul { margin: 0; padding-left: 20px; line-height: 1.5; }
+.note li + li { margin-top: 4px; }
+.note .muted { color: var(--page-muted); }
+</style>
+
+<h1>Access panel, round 6: conflict marks and delivery type</h1>
+<p class="lede">Two pieces. <strong>Conflict marks</strong> (the spec's "teal boxes"; in the app they are a red glow on
+each conflicting section's line, with a red line joining them across tiles) now mark only conflicts that cost students
+something, and say so on hover. Revision 6b: <strong>Mark all conflicts</strong> (Access tab, off by default) marks
+every conflict as today. Revision 6c: a watch's <strong>Courses</strong> list says which sections it uses (open the
+tag watches <em>Cohort 1</em> and <em>Cohort 2</em>). <strong>Delivery
+type</strong> is a new optional section field: how a section is taught. Double-click a card in Section View to edit
+it; it also shows on cards, as a filter, in <strong>Scheduling Environment</strong> and in <strong>Copy
+Semester</strong> (both on the menu bar). Wording is proposed, for approval.</p>
+
+<div class="toolbar" role="group" aria-label="Review controls">
+  <label for="variant">Semester changes
+    <select id="variant">
+      <option value="0">As planned</option>
+      <option value="1">PSYCH 101 A moved to Tue Thu 10:00</option>
+      <option value="2">PSYCH 101 A and B both moved to Tue Thu 10:00</option>
+      <option value="3">CHEM 201 LEC2, LEC3 and LEC4 moved to Tue Thu 14:30 (open Chem Y2)</option>
+      <option value="4">PSYCH 101 A, B to Tue Thu 9:30 and GEOG 250 A, B to Tue Thu 11:00 (CHEM 213 can't fit)</option>
+      <option value="5">BMEG 230 101 moved to Tue Wed Fri 14:00, on every lab (open Biomed Y2)</option>
+      <option value="6">CHEM 213 A moved to Chilliwack (open Enviro Y2 or Cohort 2)</option>
+      <option value="7">CHEM 213 A, GEOG 250 A and B moved to Mon Wed Fri 9:00 (open Enviro Y2)</option>
+    </select>
+  </label>  <label>Layout <span class="seg" id="layoutSeg"></span></label>
+  <label><input type="checkbox" id="readonly"> Read-only</label>
+  <label><input type="checkbox" id="fit"> Fit to width</label>
+  <button type="button" id="restart" class="pagebtn">Start again</button>
+</div>
+
+<div class="stage" id="stage"><div class="stage-inner" id="stageInner"><div class="app" id="app"></div></div></div>
+
+<div class="notes">
+  <div class="note">
+    <h2>New in round 6</h2>
+    <ul>
+      <li><strong>Revision 6e (Greg): a Multi-campus box per watch, off by default.</strong> It sits under the
+        courses in a light font, and only on a watch whose in-person sections are on more than one campus (open
+        <em>Enviro Y2</em>). Off, a slate keeps to one campus, as in 6d: a section on the other campus is stranded
+        ("STAT 104 C is stranded: it is at Chilliwack, and every slate uses BIOL 201 A at Abbotsford (Multi-campus is
+        off)"). Ticked, slates may mix campuses: a quiet count ("11 slates · 5 mix campuses"), "mixes campuses" on each
+        such slate while stepping, and, when <em>every</em> slate mixes campuses, the yellow ● and the cause in yellow.
+        Try <em>Semester changes</em> 6 (CHEM 213 A moved to Chilliwack) on Enviro Y2: off, "No full slate · CHEM 213 A
+        is at Chilliwack, but BIOL 201 A is at Abbotsford" (hover says to tick Multi-campus); ticked, "11 slates ·
+        every slate mixes campuses · CHEM 213 A is at Chilliwack, but BIOL 201 A is at Abbotsford". The box is saved
+        with the watch.</li>
+      <li><strong>Revision 6d: why there's no full slate.</strong> Try <em>Semester changes</em> 5 to 7.
+        (5) A course that can't be taken even alone: "BMEG 230's labs all conflict with its only lecture (101)", not
+        "can't fit with the rest". (6) Campus, with Multi-campus off (see 6e). (7) More than one course left out: "CHEM 213 and GEOG 250 can't fit" when there's one way,
+        "CHEM 101 or MATH 111 can't fit" when either, and here "only one of CHEM 213, GEOG 250 and BIOL 201 fits".
+        <em>Cohort 3</em> mocks a missing part: its BIOL 201 lab isn't tagged, so the line reads "No full slate ·
+        BIOL 201's labs aren't in this watch · the other sections fit together".</li>
+      <li><strong>Revision 6c:</strong> a watch covers exactly the sections its filter shows, so a tag on chosen
+        sections makes a cohort watch. Two are added as tag watches. <em>Cohort 1</em> takes some sections of four
+        courses; its Courses list gives one phrase per part: "all 3 sections", "only A", "all but L2", "LEC1, LEC2",
+        or "4 of 8 ▸", which opens a line naming them and the ones left out. "All" counts the whole semester, not
+        the grid's filters. <em>Cohort 2</em> takes one section of each of three courses: its line reads "All 3
+        sections fit together", or, with <em>PSYCH 101 A moved to Tue Thu 10:00</em>, "CHEM 213 A conflicts with
+        PSYCH 101 A", with no slate count, best partial or Step through slates.</li>
+      <li><strong>Revision 6b (Greg's review):</strong> <em>Mark all conflicts</em>, in an open watch's bar above the
+        schedule (and at the foot of the watch list, for when none is open), off by default. Ticked, every conflict between two parts of a watch
+        is marked as today (in <em>As planned</em>, 30 instead of 12 since 6c–6d (was 22 instead of 2), including lecture–lab conflicts inside CHEM 201), since removing one may still improve the
+        schedule, or matter in ways TermPoint can't know. The extra ones look the same; their hover says "Other sections
+        still let students in 1st yr Science get around this conflict."</li>
+      <li><strong>Conflict marks (rule 33):</strong> only conflicts that cost students something: a section no
+        one taking the watch's courses can use, or no way to take every course. Hover a red line (or the red line
+        between tiles) for what it costs. Try each <em>Semester changes</em> option. The last one is the Q22 case:
+        no single conflict is to blame, so every conflict with CHEM 213 A is marked.</li>
+      <li>Marks show for every watch when none is open; with a watch open, only that watch's marks. Ticks and pins
+        don't change them: they show the saved schedule.</li>
+      <li><strong>What's new</strong> appears once after the upgrade, in the app's announcement banner (top of the
+        window), so people used to every overlap glowing don't think marks have gone missing.</li>
+      <li><strong>Delivery type:</strong> double-click a card in Section View. <em>Delivery Type</em> sits beside
+        Campus (both say how and where a section is taught), optional. Cards show it after the section type
+        ("Lecture · Blended"). The filter bar gets <em>Delivery Type</em>. <strong>Scheduling Environment</strong> gets
+        a <em>Delivery Types</em> list after Section Type; Section Type and Meeting Type get descriptions that say
+        how the three differ. Deleting one follows round 5's preset rule (try <em>Online live</em> with the preset
+        <em>Online sections</em>). <strong>Copy Semester</strong> gets "Include any delivery type assignments", ticked.</li>
+      <li>Not shown: <em>Import Sections</em> gets an optional <em>Delivery Type</em> column (new names are added to
+        the list, as Section Type does today), and exports include it.</li>
+    </ul>
+  </div>
+  <div class="note">
+    <h2>To look at (6b to 6e)</h2>
+    <ol>
+      <li>6e: the Multi-campus box (name, place, light font, hover), the stranded and no-full-slate wording with it
+        off, and the quiet count and yellow flag with it ticked (Enviro Y2, Semester changes 0 and 6).</li>
+      <li>6d: the two new explanations (Semester changes 5 and 7). A missing part counts as no full slate (Greg,
+        2026-11-20): Cohort 3's line.</li>
+      <li>6c: the Courses phrases in <em>Cohort 1</em> (and <em>Chem Y2</em>, <em>Enviro Y2</em>, which now use
+        them too), including the "4 of 8 ▸" expander; "· parts inferred" now follows the phrases.</li>
+      <li>6c: <em>Cohort 2</em>'s plain line, as planned and with PSYCH 101 A moved.</li>
+      <li><em>Mark all conflicts</em>: its name, its place on the bar above the schedule, and the hover on the
+        extra marks. The health line now ends with the watch's number of conflicts ("2 conflicts").</li>
+      <li>The What's new sentence, now pointing to the box.</li>
+    </ol>
+    <h2 style="margin-top:12px">Round 6, settled by Greg</h2>
+    <ol class="muted">
+      <li>Mark only conflicts that cost something; Mark all conflicts (off by default) marks the rest as today.</li>
+      <li>Hover wording: fine for now; to adjust later.</li>
+      <li>2026-11-20: 6b to 6e approved: section phrases, one-section wording, the Multi-campus box, a missing part as
+        no full slate, and the notice wordings. Mark all conflicts' hover is Greg's: "Marks all conflicts, even those
+        students can avoid by registering in different slates. Removing them can still improve access."</li>
+      <li>Tag watches are the same as preset watches.</li>
+      <li>They stay red, not teal.</li>
+      <li>Delivery Type beside Campus.</li>
+      <li>Meeting Type and Delivery Type are clear with the new descriptions.</li>
+      <li>Say "conflicts", never "clashes"; parts are "inferred", never "guessed" (2026-11-19).</li>
+    </ol>
+    <h2 style="margin-top:12px">Not in this round</h2>
+    <ul class="muted">
+      <li>The editor pointer, Check all courses, parts in Courses</li>
+      <li>Delivery type in the analyzer: never (rule 11)</li>
+    </ul>
+  </div>
+</div>
+
+
+<script>
+(() => {
+  // ================= Mock semester (Fall 2027) =================
+  // Days: 0 Mon … 4 Fri. Times in decimal hours. parts: the course's parts list; confirmed = stored by the user.
+  const COURSES = {
+    "BIOL 201": { parts: ["Lecture", "Laboratory"], confirmed: false },
+    "CHEM 213": { parts: [], confirmed: true },
+    "CHEM 201": { parts: ["Lecture", "Laboratory"], confirmed: true },
+    "PSYCH 101": { parts: [], confirmed: false },
+    "STAT 104": { parts: [], confirmed: false },
+    "GEOG 250": { parts: [], confirmed: false },
+    "BIOL 111": { parts: [], confirmed: false },
+    "MATH 111": { parts: [], confirmed: false },
+    "BMEG 230": { parts: ["Lecture", "Laboratory", "Discussion"], confirmed: false },
+    "CHBE 201": { parts: ["Lecture"], confirmed: false },
+    "ELEC 203": { parts: ["Lecture"], confirmed: false },
+    "HIST 101": { parts: [], confirmed: false },
+    "ENGL 105": { parts: [], confirmed: false }
+  };
+  const TT = [1, 3], MWF = [0, 2, 4], MW = [0, 2];
+  const m = (days, s, e) => ({ days, s, e });
+  /** Builds the semester's sections for one "Semester changes" variant. */
+  function sections(variant) {
+    const psychA = variant === 1 || variant === 2 ? [m(TT, 10, 11.33)] : variant === 4 ? [m(TT, 9.5, 10.83)] : [m(TT, 8.5, 9.83)];
+    const psychB = variant === 2 ? [m(TT, 10, 11.33)] : variant === 4 ? [m(TT, 9.5, 10.83)] : [m(MW, 10, 11.33)];
+    const chemLec = (meets) => (variant === 3 ? [m(TT, 14.5, 15.83)] : meets);
+    const geog = (meets) => (variant === 4 ? [m(TT, 11, 12.33)] : variant === 7 ? [m(MWF, 9, 9.83)] : meets);
+    // Round 6d: 5 = BMEG 230's only lecture lands on all its labs; 7 = CHEM 213 A and both GEOG 250s on BIOL 201 A
+    const bmegLec = variant === 5 ? [m([1, 2, 4], 14, 15.33)] : [m(MW, 9.5, 10.83)];
+    const chem213 = variant === 7 ? [m(MWF, 9, 9.83)] : [m(TT, 10, 11.33)];
+    const out = [
+      { c: "BIOL 201", code: "A", type: "Lecture", meets: [m(MWF, 9, 9.83)], cap: 120 },
+      { c: "BIOL 201", code: "L1", type: "Laboratory", meets: [m([1], 13, 15.83)], cap: 24 },
+      { c: "BIOL 201", code: "L2", type: "Laboratory", meets: [m([3], 13, 15.83)], cap: 24 },
+      { c: "BIOL 201", code: "L3", type: "Laboratory", meets: [m([2], 13, 15.83)], cap: 24 },
+      { c: "CHEM 213", code: "A", type: "Lecture", meets: chem213, cap: 80 },
+      { c: "GEOG 250", code: "A", type: "Lecture", meets: geog([m(MW, 13, 14.33)]), cap: 35 },
+      { c: "GEOG 250", code: "B", type: "Lecture", meets: geog([m(TT, 13, 14.33)]), cap: 35 },
+      { c: "PSYCH 101", code: "A", type: "Lecture", meets: psychA, cap: 40 },
+      { c: "PSYCH 101", code: "B", type: "Lecture", meets: psychB, cap: 40 },
+      { c: "PSYCH 101", code: "C", type: "Lecture", meets: [m(TT, 10, 11.33)], cap: 40 },
+      { c: "STAT 104", code: "A", type: "Lecture", meets: [m(MWF, 11, 11.83)], cap: 60 },
+      { c: "STAT 104", code: "C", type: "Lecture", meets: [m(TT, 14.5, 15.83)], cap: 60 },
+      { c: "STAT 104", code: "D", type: "Lecture", meets: [], cap: 60 },
+      { c: "BIOL 111", code: "A", type: "Lecture", meets: [m(MWF, 8, 8.83)] },
+      { c: "MATH 111", code: "A", type: "Lecture", meets: [m(MWF, 12, 12.83)] },
+      { c: "MATH 111", code: "B", type: "Lecture", meets: [m(TT, 8.5, 9.83)] },
+      { c: "BMEG 230", code: "101", type: "Lecture", meets: bmegLec },
+      { c: "BMEG 230", code: "L1A", type: "Laboratory", meets: [m([1], 15, 17.83)] },
+      { c: "BMEG 230", code: "L1B", type: "Laboratory", meets: [m([2], 14, 16.83)] },
+      { c: "BMEG 230", code: "L1C", type: "Laboratory", meets: [m([4], 13, 15.83)] },
+      { c: "BMEG 230", code: "T1A", type: "Discussion", meets: [m([1], 15, 15.83)] },
+      { c: "BMEG 230", code: "T1B", type: "Discussion", meets: [m([3], 9, 9.83)] },
+      { c: "BMEG 230", code: "X01", type: null, meets: [m([4], 9, 9.83)] },
+      { c: "CHBE 201", code: "101", type: "Lecture", meets: [m(TT, 11, 12.33)] },
+      { c: "ELEC 203", code: "101", type: "Lecture", meets: [m([0, 2], 14, 14.83)] },
+      { c: "ELEC 203", code: "102", type: "Lecture", meets: [m(TT, 13, 14.33)] },
+      // CHEM 201: 4 lectures, 8 labs. LAB-A conflicts with every lecture but LEC1 (hard to reach).
+      { c: "CHEM 201", code: "LEC1", type: "Lecture", meets: [m(MWF, 8, 8.83)], cap: 60 },
+      { c: "CHEM 201", code: "LEC2", type: "Lecture", meets: chemLec([m(MWF, 10, 10.83)]), cap: 60 },
+      { c: "CHEM 201", code: "LEC3", type: "Lecture", meets: chemLec([m(MWF, 13, 13.83)]), cap: 60 },
+      { c: "CHEM 201", code: "LEC4", type: "Lecture", meets: chemLec([m(MWF, 12, 12.83)]), cap: 60 },
+      { c: "CHEM 201", code: "LAB-A", type: "Laboratory", meets: [m([0], 10, 13.83)], cap: 24 },
+      { c: "CHEM 201", code: "LAB-B", type: "Laboratory", meets: [m([1], 8.5, 11.33)], cap: 24 },
+      { c: "CHEM 201", code: "LAB-C", type: "Laboratory", meets: [m([1], 13, 15.83)], cap: 24 },
+      { c: "CHEM 201", code: "LAB-D", type: "Laboratory", meets: [m([2], 14, 16.83)], cap: 24 },
+      { c: "CHEM 201", code: "LAB-E", type: "Laboratory", meets: [m([3], 8.5, 11.33)], cap: 24 },
+      { c: "CHEM 201", code: "LAB-F", type: "Laboratory", meets: [m([3], 13, 15.83)], cap: 24 },
+      { c: "CHEM 201", code: "LAB-G", type: "Laboratory", meets: [m([4], 14, 16.83)], cap: 24 },
+      { c: "CHEM 201", code: "LAB-H", type: "Laboratory", meets: [m([1], 15, 17.83)], cap: 24 },
+      // Not in any watch; co-scheduled with watch sections so tiles hold more than one line
+      { c: "HIST 101", code: "A", type: "Lecture", meets: [m(TT, 8.5, 9.83)] },
+      { c: "ENGL 105", code: "B", type: "Lecture", meets: [m(TT, 14.5, 15.83)] }
+    ].map((s, i) => attrs({ ...s, id: s.c + " " + s.code, flag: s.c === "BIOL 201" && s.code === "L2" }, i));
+    // Round 6d: 6 = CHEM 213 A (the only section) moves to Chilliwack; BIOL 201 A (the only lecture) stays at Abbotsford
+    if (variant === 6) out.find((s) => s.id === "CHEM 213 A").campus = "Chilliwack";
+    return out;
+  }
+  /**
+   * Round 6: the department's delivery types (Scheduling Environment → Delivery Types) and each section's choice.
+   * Most sections have none, as in an existing database (rule 12: existing data is never moved). Edited in the
+   * section editor; the analyzer never reads it (rule 11).
+   */
+  const DELIVERY = ["F2F", "Blended", "Online live", "Online self-paced"];
+  const DLV = {
+    "BIOL 201 A": "F2F", "BIOL 201 L1": "F2F", "BIOL 201 L2": "F2F", "BIOL 201 L3": "F2F", "CHEM 213 A": "F2F",
+    "PSYCH 101 A": "F2F", "PSYCH 101 B": "F2F", "PSYCH 101 C": "Blended", "GEOG 250 B": "Online live",
+    "STAT 104 A": "F2F", "STAT 104 C": "F2F", "STAT 104 D": "Online self-paced"
+  };
+  /** Course tags (applied to the course's sections), for the Tags filter and tag watches (D26). */
+  const COURSE_TAGS = {
+    "BIOL 111": ["1st yr Science"], "PSYCH 101": ["1st yr Science", "Writing intensive"], "MATH 111": ["1st yr Science"],
+    "STAT 104": ["1st yr Science"], "HIST 101": ["Writing intensive"], "ENGL 105": ["Writing intensive"]
+  };
+  /**
+   * Round 6c: tags on chosen sections, for cohorts. Cohort 1 takes some sections of four courses (shows every kind of
+   * candidate phrase); Cohort 2 takes exactly one section of each of three courses (the one-section wording; its
+   * PSYCH 101 A moves onto CHEM 213 A under "Semester changes").
+   */
+  const SECTION_TAGS = {
+    "BIOL 201 A": ["Cohort 1", "Cohort 3"], "BIOL 201 L1": ["Cohort 1"], "BIOL 201 L3": ["Cohort 1"],
+    "CHEM 201 LEC1": ["Cohort 1"], "CHEM 201 LEC2": ["Cohort 1"],
+    "CHEM 201 LAB-B": ["Cohort 1"], "CHEM 201 LAB-C": ["Cohort 1"], "CHEM 201 LAB-E": ["Cohort 1"], "CHEM 201 LAB-F": ["Cohort 1"],
+    "PSYCH 101 A": ["Cohort 1", "Cohort 2"], "PSYCH 101 B": ["Cohort 1"], "PSYCH 101 C": ["Cohort 1", "Cohort 3"],
+    "STAT 104 A": ["Cohort 1", "Cohort 3"],
+    "BIOL 111 A": ["Cohort 2"], "CHEM 213 A": ["Cohort 2"]
+  };
+  /** The department's tags as Scheduling Environment → Tags lists them (name, abbreviation). Round 5 can delete one. */
+  const TAGS = [{ name: "1st yr Science", abbr: "SCI1" }, { name: "Writing intensive", abbr: "WI" }, { name: "Co-op", abbr: "COOP" },
+    { name: "Cohort 1", abbr: "C1" }, { name: "Cohort 2", abbr: "C2" }, { name: "Cohort 3", abbr: "C3" }];
+  const TAGLIST = TAGS.map((t) => t.name);
+  const CHILLIWACK = ["BIOL 201 L3", "STAT 104 C", "MATH 111 B"];
+  const INSTRUCTORS = ["J. R. Smith", "M. K. Patel", "A. L. Wong", "D. T. Nguyen", "R. H. Chen"];
+  /** Gives a mock section the fields the filter bar reads. */
+  function attrs(s, i) {
+    s.subj = s.c.split(" ")[0];
+    s.level = s.c.split(" ")[1][0] + "00";
+    s.campus = CHILLIWACK.includes(s.id) ? "Chilliwack" : "Abbotsford";
+    s.instr = INSTRUCTORS[i % INSTRUCTORS.length];
+    s.room = s.type === "Laboratory" ? (i % 2 ? "Lab 1" : "Lab 2") : s.meets.length ? ["A225", "B101", "C140", "D305"][i % 4] : "None";
+    s.mtype = s.meets.length ? "In person" : "Online";
+    s.tags = [...(COURSE_TAGS[s.c] || []), ...(SECTION_TAGS[s.id] || [])];
+    s.dlv = DLV[s.id] || null;
+    return s;
+  }
+  /** Another department's sections, shown as a shared-schedule overlay (not in any watch here). */
+  const SHARED = [{ id: "PHYS 101 A (shared)", c: "PHYS 101", code: "A", meets: [m([0, 2], 15, 16.33)] }];
+  /** Subject colours for the grid's subject markers (colour by subject). */
+  const SUBJ = { BIOL: "#3a9a5b", CHEM: "#d9822b", PSYCH: "#c94f7c", STAT: "#3b78c4", MATH: "#2a9d8f", BMEG: "#8d6e63",
+    CHBE: "#6a8d2b", ELEC: "#b59b00", HIST: "#7d6ab0", ENGL: "#a05a2c", PHYS: "#555", GEOG: "#4f8f9e" };
+  const SEMESTER_BORDER = "#5d87b8";
+  // ================= Filters, presets and watches (round 4) =================
+  // Round 6: Delivery Type follows Section Type
+  const DIMS = ["Instructor", "Room", "Subject", "Campus", "Section Type", "Delivery Type", "Tags", "Meeting Type", "Level", "Course"];
+  const VAL = { Instructor: (s) => s.instr, Room: (s) => s.room, Subject: (s) => s.subj, Campus: (s) => s.campus,
+    "Section Type": (s) => s.type || "No type", "Delivery Type": (s) => s.dlv || "No delivery type",
+    "Meeting Type": (s) => s.mtype, Level: (s) => s.level, Course: (s) => s.c };
+  /** A Filter Set: per choice, the ticked values (empty = no restriction); tagsAny = "any of the checked tags". */
+  const fset = (sel = {}, tagsAny = false) => ({ sel, tagsAny });
+  const cloneF = (f) => ({ sel: Object.fromEntries(Object.entries(f.sel).map(([k, v]) => [k, [...v]])), tagsAny: f.tagsAny });
+  const fActive = (f) => DIMS.some((d) => (f.sel[d] || []).length);
+  const fEqual = (a, b) => a.tagsAny === b.tagsAny && DIMS.every((d) => [...(a.sel[d] || [])].sort().join("|") === [...(b.sel[d] || [])].sort().join("|"));
+  /** Whether a section passes a Filter Set: "and" between choices, "or" inside one (Tags: all or any). */
+  function passes(s, f) {
+    for (const d of DIMS) {
+      const set = f.sel[d];
+      if (!set || !set.length) continue;
+      if (d === "Tags") { const has = (t) => s.tags.includes(t); if (f.tagsAny ? !set.some(has) : !set.every(has)) return false; }
+      else if (!set.includes(VAL[d](s))) return false;
+    }
+    return true;
+  }
+  /** The values a choice offers. Course lists every course, not only those offered this term. */
+  function optionsFor(d, secs) {
+    if (d === "Course") return [...new Set([...Object.keys(COURSES), ...secs.map((x) => x.c)])].sort();
+    if (d === "Tags") return TAGLIST;
+    return [...new Set(secs.map(VAL[d]))].sort();
+  }
+  /** D25: a watch's courses are those of the sections its Filter Set shows (the result, not the ticks). */
+  const coursesOf = (f, secs) => [...new Set(secs.filter((x) => passes(x, f)).map((x) => x.c))].sort();
+  /** Every watch now: watched presets, then watched tags (each a one-choice Filter Set behind the scenes). */
+  function watchesNow(secs) {
+    return [
+      ...state.presets.filter((p) => p.watch).map((p) => ({ name: p.name, src: "preset", f: p.f, courses: coursesOf(p.f, secs) })),
+      ...[...state.tagWatch].map((t) => { const f = fset({ Tags: [t] }); return { name: t, src: "tag", f, courses: coursesOf(f, secs) }; })
+    ];
+  }
+  const DAYN = ["Mon", "Tue", "Wed", "Thu", "Fri"];
+
+  // ================= The slate search (what the real engine will do, in miniature) =================
+  /**
+   * Two sections conflict when some meetings share a day and overlap in time (half-open). IGNORED holds one pair of
+   * section ids whose conflict is set aside, for rule 33's "with that one conflict ignored" test.
+   */
+  let IGNORED = null;
+  const conflict = (a, b) => !(IGNORED && ((IGNORED[0] === a.id && IGNORED[1] === b.id) || (IGNORED[0] === b.id && IGNORED[1] === a.id))) &&
+    conflictDays(a, b).length > 0;
+  /** The days on which two sections' meetings overlap (half-open). */
+  const conflictDays = (a, b) => [...new Set(a.meets.flatMap((x) => b.meets.flatMap((y) =>
+    x.s < y.e && y.s < x.e ? x.days.filter((d) => y.days.includes(d)) : [])))];
+  /**
+   * Round 6e (rule 15, Greg 2026-11-20): each watch has a Multi-campus box, off by default. Off: a slate keeps its
+   * in-person sections at one campus (6d's rule, so a watch made by picking four courses doesn't count slates few
+   * students take). On: slates may mix campuses; they are counted quietly, and flagged when every slate mixes them.
+   * A section with no meetings, or meeting online, fits any campus. Checked pairwise, since "all at one campus" means
+   * every two share one. STRICT_CAMPUS is the open question for the watch being analysed: analyse() sets it from the
+   * watch's box, and render() sets it again for the open watch before drawing.
+   */
+  let STRICT_CAMPUS = true;
+  const multiOn = (w) => state.multi.has(w.name);
+  const inPerson = (s) => s.meets.length > 0 && s.mtype === "In person";
+  const campusSplit = (a, b) => STRICT_CAMPUS && inPerson(a) && inPerson(b) && a.campus !== b.campus;
+  /** Whether two sections can be in one slate: no time conflict (and, while counting one-campus slates, one campus). */
+  const compatible = (a, b) => !conflict(a, b) && !campusSplit(a, b);
+  /** Whether a slate puts in-person sections on more than one campus. */
+  const mixesCampuses = (slate) => new Set(slate.filter(inPerson).map((s) => s.campus)).size > 1;
+  /** "lab", "lecture", "discussion": a part's name in running text. */
+  const partWord = (p) => ({ Laboratory: "lab", Lecture: "lecture", Discussion: "discussion" }[p] || String(p).toLowerCase());
+
+  /**
+   * Splits courses into groups (one per part), applying pins: a group holding a pinned section keeps only that
+   * section. Also collects missing parts and sections not counted (no section type).
+   * @param courseCodes the ticked courses, in watch order.
+   * @param secs the semester's sections.
+   * @param pins Set of pinned section ids.
+   */
+  function groupsFor(courseCodes, secs, pins) {
+    const groups = [], missing = [], notCounted = [];
+    for (const c of courseCodes) {
+      const mine = secs.filter((s) => s.c === c);
+      if (!mine.length) continue;               // D25: a course with no sections isn't in the watch at all
+      const parts = COURSES[c].parts;
+      let gs;
+      if (parts.length >= 2) {
+        gs = parts.map((p) => ({ course: c, part: p, all: mine.filter((s) => s.type === p) }));
+        mine.filter((s) => !parts.includes(s.type)).forEach((s) => notCounted.push(s));
+        const gone = gs.filter((g) => !g.all.length);
+        if (gone.length) { gone.forEach((g) => missing.push({ course: c, part: g.part })); continue; }
+      } else gs = [{ course: c, part: null, all: mine }];
+      gs.forEach((g) => { const p = g.all.filter((s) => pins.has(s.id)); g.secs = p.length ? p : g.all; g.pinned = p.length > 0; });
+      groups.push(...gs);
+    }
+    return { groups, missing, notCounted };
+  }
+
+  /** Counts slates (capped) and records which sections appear in at least one. */
+  function search(groups, cap = 10000) {
+    const order = [...groups].sort((a, b) => a.secs.length - b.secs.length);
+    const used = new Set(), per = new Map();   // per: slates each section is in (its clique count)
+    let count = 0;
+    const pick = [];
+    (function dfs(i) {
+      if (count >= cap) return;
+      if (i === order.length) { count++; pick.forEach((s) => { used.add(s.id); per.set(s.id, (per.get(s.id) || 0) + 1); }); return; }
+      for (const s of order[i].secs) {
+        if (pick.some((p) => !compatible(p, s))) continue;
+        pick.push(s); dfs(i + 1); pick.pop();
+        if (count >= cap) return;
+      }
+    })(0);
+    return { count, used, per, capped: count >= cap };
+  }
+
+  /**
+   * A clickable section name: looks like the text around it (underline and hand cursor on hover only); a click
+   * selects the section everywhere, as clicking it on the grid or in Section View does (SectionStore.SetSelection).
+   */
+  const sref = (id, label = id) => `<button class="sref" data-sel="${esc(id)}" title="Show ${esc(id)}">${esc(label)}</button>`;
+  /** Makes every full section id in an already-escaped message clickable (longest ids first). */
+  function linkify(html, ids) {
+    const sorted = [...new Set(ids)].sort((x, y) => y.length - x.length);
+    let out = html;
+    const marks = [];
+    sorted.forEach((id) => {
+      out = out.split(esc(id)).join(`\u0001${marks.length}\u0002`);
+      marks.push(id);
+    });
+    return out.replace(/\u0001(\d+)\u0002/g, (_, i) => sref(marks[+i]));
+  }
+
+  /**
+   * Yellow cautions from each section's share of slates (round 3 review, point 5). Within one part's group, every
+   * slate uses exactly one section, so the shares add to 1 and the fair share is 1 / (sections in the group).
+   * Hard to reach: in some slates, but under a third of its fair share. Heavy load: over twice its fair share in a
+   * group of 3 or more, short of every slate (that case is "depends on"). Pinned groups and single sections never
+   * get one.
+   * @returns [{ id, kind: "hard" | "heavy", text }]
+   */
+  function cautionsFor(a, r) {
+    const out = [];
+    if (!r.count || r.capped) return out;
+    // Each message is built twice from the same pieces: plain (grid hover) and with clickable section names (detail)
+    const plainF = (t, s) => (s && t.c === s.c ? t.code : t.id);
+    const both = (build) => ({ text: build(plainF), html: build((t, s) => sref(t.id, plainF(t, s))) });
+    for (const g of a.groups) {
+      if (g.pinned || g.secs.length < 2) continue;
+      const fair = 1 / g.secs.length;
+      for (const s of g.secs) {
+        if (!s.meets.length) continue;    // a section with no times fits anything; a caution would be noise
+        const share = (r.per.get(s.id) || 0) / r.count;
+        if (share > 0 && share < fair / 3) {
+          // The reason: the group where it fits with the fewest sections
+          let best = null;
+          for (const h of a.groups) if (h !== g) {
+            const fits = h.secs.filter((t) => !conflict(s, t));
+            if (fits.length < h.secs.length && (!best || fits.length / h.secs.length < best.fits.length / best.h.secs.length)) best = { h, fits };
+          }
+          out.push({ id: s.id, kind: "hard", ...both((f) => !best ? `${f(s)} is hard to reach: few combinations of the other courses fit around it.`
+            : best.fits.length === 1 ? `${f(s)} fits only with ${f(best.fits[0], s)}: it conflicts with ${joinAnd(best.h.secs.filter((t) => t !== best.fits[0]).map((t) => f(t, s)))}.`
+            : `${f(s)} fits with only ${best.fits.length} of ${best.h.secs.length} ${best.h.course} sections: it conflicts with ${joinAnd(best.h.secs.filter((t) => !best.fits.includes(t)).map((t) => f(t, s)))}.`) });
+        } else if (g.secs.length >= 3 && share > 2 * fair && share < 1) {
+          const leaners = a.groups.filter((h) => h !== g).flatMap((h) => h.secs)
+            .filter((u) => { const f = g.secs.filter((t) => !conflict(u, t)); return f.length === 1 && f[0] === s; });
+          out.push({ id: s.id, kind: "heavy", ...both((f) => leaners.length
+            ? `${f(s)} carries a heavy load: ${joinAnd(leaners.map((u) => f(u, s)))} ${leaners.length === 1 ? "fits" : "fit"} only with it.`
+            : `${f(s)} carries a heavy load: it is in far more slates than the other ${g.course} ${({ Laboratory: "labs", Lecture: "lectures", Discussion: "discussions" })[g.part] || "sections"}, which conflict more.`) });
+        }
+      }
+    }
+    return out;
+  }
+
+  /**
+   * Lists slates in a stable order for stepping: groups in watch order (course, then part), sections by code.
+   * @returns arrays of sections, at most cap of them.
+   */
+  function listSlates(groups, cap = 10000) {
+    const out = [], pick = [];
+    (function dfs(i) {
+      if (out.length >= cap) return;
+      if (i === groups.length) { out.push([...pick]); return; }
+      for (const s of groups[i].secs) {
+        if (pick.some((p) => !compatible(p, s))) continue;
+        pick.push(s); dfs(i + 1); pick.pop();
+      }
+    })(0);
+    return out;
+  }
+
+  /** The best partial slate when there's no full one: the courses left out of every largest subset that fits. */
+  /**
+   * Round 6d: alts lists, for each largest subset that fits, the courses it leaves out (all the same size), so
+   * "CHEM 213 and GEOG 250 can't fit" (one way) is told apart from "CHEM 101 or MATH 111 can't fit" (either).
+   * @param skip courses that can't be taken even on their own: left out first, never part of alts.
+   * @returns {{covers, of, alts: string[][], cantFit: string[]}} cantFit: skip plus every course in alts.
+   */
+  function bestPartial(groups, skip = []) {
+    const all = [...new Set(groups.map((g) => g.course))];
+    const courses = all.filter((c) => !skip.includes(c));
+    const gs = groups.filter((g) => courses.includes(g.course));
+    for (let k = courses.length; k >= 1; k--) {
+      const alts = [];
+      for (const subset of combos(courses, k))
+        if (search(gs.filter((g) => subset.includes(g.course)), 1).count) alts.push(courses.filter((c) => !subset.includes(c)));
+      if (alts.length) return { covers: k, of: all.length, alts: alts.filter((x) => x.length), cantFit: [...new Set([...skip, ...alts.flat()])] };
+    }
+    return { covers: 0, of: all.length, alts: [], cantFit: all };
+  }
+  /**
+   * Round 6d (gap 1): why a course can't be taken even on its own, named from its own sections:
+   * "BMEG 230's labs all conflict with its only lecture (101)", or (Multi-campus off) the campus version.
+   */
+  function selfFailWhy(c, groups) {
+    const gs = groups.filter((g) => g.course === c);
+    for (const g of gs) if (g.secs.length === 1) {
+      const o = g.secs[0], only = `its only ${partWord(g.part)} (${o.code})`;
+      for (const h of gs) if (h !== g && h.secs.every((t) => conflict(o, t)))
+        return h.secs.length === 1 ? `${c}'s only ${partWord(h.part)} (${h.secs[0].code}) conflicts with ${only}`
+          : `${c}'s ${partWord(h.part)}s all conflict with ${only}`;
+      for (const h of gs) if (h !== g && h.secs.every((t) => campusSplit(o, t)))
+        return `${c}'s ${partWord(h.part)}s are all at ${h.secs[0].campus}, but ${only} is at ${o.campus}`;
+    }
+    return `no set of ${c}'s ${gs.map((g) => partWord(g.part)).join(", ")} sections fits together`;
+  }
+  /**
+   * Round 6d/6e: why campus stands in the way. Names the only sections on the less common campus:
+   * "CHEM 213 A is at Chilliwack, but BIOL 201 A is at Abbotsford"; else a general sentence.
+   * @param mixed false: Multi-campus is off and no slate keeps to one campus (no full slate).
+   *              true: Multi-campus is on and every slate mixes campuses.
+   */
+  function campusWhy(groups, mixed) {
+    if (!mixed) {
+      const w = campusWhy(groups, true);
+      return { text: w.text === "no slate keeps to one campus" ? "the slates that fit in time mix campuses" : w.text,
+        tip: "A slate keeps its in-person sections at one campus. Tick Multi-campus, under the courses, to count slates across campuses." };
+    }
+    const only = groups.filter((g) => g.secs.length === 1).map((g) => g.secs[0]).filter(inPerson);
+    const by = {}; only.forEach((s) => (by[s.campus] = by[s.campus] || []).push(s));
+    const total = (cp) => groups.flatMap((g) => g.secs).filter((s) => inPerson(s) && s.campus === cp).length;
+    const camps = Object.keys(by).sort((x, y) => by[x].length - by[y].length || total(x) - total(y));
+    if (camps.length >= 2) {
+      const few = by[camps[0]], many = by[camps[camps.length - 1]];
+      return { text: `${joinAnd(few.map((s) => s.id))} ${few.length > 1 ? "are" : "is"} at ${camps[0]}, but ${many.length <= 3 ? joinAnd(many.map((s) => s.id)) : nameList(many.map((s) => s.id))} ${many.length > 1 ? "are" : "is"} at ${camps[camps.length - 1]}`,
+        tip: "Every slate uses these sections, so a student taking every course has classes on more than one campus." };
+    }
+    return { text: "no slate keeps to one campus",
+      tip: "Each slate puts in-person sections on more than one campus, so a student taking every course has classes on more than one campus." };
+  }
+  function combos(arr, k) {
+    if (k === 0) return [[]];
+    if (arr.length < k) return [];
+    const [h, ...t] = arr;
+    return [...combos(t, k - 1).map((c) => [h, ...c]), ...combos(t, k)];
+  }
+
+
+  /**
+   * Everything the panel reports about one watch, for the ticked courses and pins.
+   * @param w the watch. @param secs the semester's sections.
+   * @param ticked Set of ticked courses (null = all). @param pins Set of pinned section ids.
+   */
+  function analyse(w, secs, ticked = null, pins = new Set()) {
+    const offered = w.courses.filter((c) => secs.some((s) => s.c === c));
+    const courses = offered.filter((c) => !ticked || ticked.has(c));
+    const { groups, missing, notCounted } = groupsFor(courses, secs, pins);
+    const multi = multiOn(w);
+    STRICT_CAMPUS = !multi;
+    const r = search(groups);
+    const a = { w, offered, courses, groups, missing, notCounted, count: r.count, capped: r.capped, roles: {}, pins, multi };
+    // Round 6e: the Multi-campus box shows only when the watch's in-person sections are on more than one campus
+    a.spansCampuses = new Set(groups.flatMap((g) => g.all).filter(inPerson).map((s) => s.campus)).size > 1;
+    a.subset = courses.length < offered.length ? `${courses.length} of ${offered.length} courses` : "";
+    a.essentialTiming = []; a.onlySections = []; a.selfFail = []; a.campusWhy = null; a.mixWhy = null;
+    for (const g of groups) for (const s of g.secs) {
+      if (r.count === 0) { a.roles[s.id] = "none"; continue; }
+      if (!r.used.has(s.id)) a.roles[s.id] = "stranded";
+      else if (g.secs.filter((x) => r.used.has(x.id)).length === 1) {
+        if (g.secs.length > 1) { a.roles[s.id] = "essential"; a.essentialTiming.push(s.id); }
+        else { a.roles[s.id] = "only"; if (!g.pinned) a.onlySections.push(s.id); }
+      } else a.roles[s.id] = "usable";
+    }
+    a.cautions = cautionsFor(a, r);
+    // Round 6b: the number of conflicts between sections of different parts (what Mark all conflicts would mark)
+    a.conflicts = a.groups.reduce((n, g, i) => n + a.groups.slice(i + 1).reduce((m, h) =>
+      m + g.all.reduce((q, s) => q + h.all.filter((t) => conflictDays(s, t).length).length, 0), 0), 0);
+    // Round 6c: every part has exactly one section in the watch (before pins), so there is one slate or none and the
+    // health line says so plainly: "All 3 sections fit together" / "BIOL 111 A conflicts with CHEM 213 A"
+    a.single = groups.length > 0 && groups.every((g) => g.all.length === 1);
+    if (a.single) {
+      const one = groups.map((g) => g.all[0]);
+      a.singlePairs = one.flatMap((s, i) => one.slice(i + 1).filter((t) => conflict(s, t)).map((t) => [s, t]));
+    }
+    a.stranded = Object.entries(a.roles).filter(([, x]) => x === "stranded").map(([id]) => id);
+    if (r.count === 0) {
+      // Did pins cause it? Then name the pin that can't fit instead of a best partial.
+      if (pins.size && search(groupsFor(courses, secs, new Set()).groups, 1).count) {
+        a.pinBlock = [...pins].map((p) => {
+          const rest = new Set([...pins].filter((x) => x !== p));
+          const aw = analyse(w, secs, ticked, rest);
+          return aw.count && aw.roles[p] === "stranded" ? { pin: p, why: strandedReason(secs.find((s) => s.id === p), aw) } : null;
+        }).filter(Boolean);
+        if (!a.pinBlock.length) a.pinBlock = [{ pin: null, why: "these pins don't fit together." }];
+      } else {
+        // Round 6d: courses that can't be taken even alone are named first and left out of the best partial
+        a.selfFail = [...new Set(groups.map((g) => g.course))]
+          .filter((c) => !search(groups.filter((g) => g.course === c), 1).count)
+          .map((c) => ({ course: c, why: selfFailWhy(c, groups) }));
+        a.best = bestPartial(groups, a.selfFail.map((x) => x.course));
+        // Round 6d: with Multi-campus off and no course failing alone, is the campus rule alone to blame?
+        if (!a.selfFail.length && STRICT_CAMPUS) {
+          STRICT_CAMPUS = false; const n = search(groups, 1).count; STRICT_CAMPUS = true;
+          if (n) a.campusWhy = campusWhy(groups, false);
+        }
+      }
+    } else if (a.multi) {
+      // Round 6e (Multi-campus on): how many slates keep to one campus; when none do, name why (flagged, but a full slate)
+      STRICT_CAMPUS = true; a.oneCampus = search(groups).count; STRICT_CAMPUS = false;
+      a.mixed = r.capped ? null : r.count - a.oneCampus;
+      if (!a.oneCampus) a.mixWhy = campusWhy(groups, true);
+    }
+    a.noTimes = groups.flatMap((g) => g.secs).filter((s) => !s.meets.length && (r.count === 0 || r.used.has(s.id))).map((s) => s.id);
+    // Seats (mock): the smallest total capacity of usable sections in any one part. An upper bound, hence "up to";
+    // the real engine solves a small packing problem. Shown only when every section has a capacity.
+    const allCaps = groups.every((g) => g.secs.every((s) => s.cap));
+    a.seats = r.count && allCaps ? Math.min(...groups.map((g) => g.secs.filter((s) => r.used.has(s.id)).reduce((t, s) => t + s.cap, 0))) : null;
+    a.noCaps = !allCaps;
+    a.mark = (!r.count || missing.length || notCounted.length) ? "attn" : a.essentialTiming.length || a.mixWhy ? "fragile" : "ok";
+    return a;
+  }
+  const nameList = (ids) => ids.length <= 2 ? ids.join(", ") : `${ids.slice(0, 2).join(", ")} +${ids.length - 2} more`;
+  const plural = (n, one, many) => `${n} ${n === 1 ? one : many}`;
+  const joinAnd = (xs) => xs.length <= 1 ? xs.join("") : `${xs.slice(0, -1).join(", ")} and ${xs[xs.length - 1]}`;
+
+  /**
+   * The health line as phrases, each with optional hover help (only seats, "depends on" and "can't fit" have one).
+   * @returns [{ text, tip }] in display order.
+   */
+  function healthSegs(a) {
+    const segs = [];
+    if (a.subset) segs.push({ text: a.subset });
+    if (a.pins.size) segs.push({ text: `${plural(a.pins.size, "section", "sections")} pinned` });
+    const seatSeg = () => {
+      if (!a.seats) return;
+      const shared = a.sharedWith.length;
+      segs.push({ text: `up to ${a.seats} students${shared ? " (seats shared)" : ""}`,
+        tip: shared ? `Seats shared with ${a.sharedWith.map((s) => `${s.name} (${joinAnd(s.courses)})`).join("; ")}.` : "" });
+    };
+    const tail = () => {
+      if (a.notCounted.length) segs.push({ text: `${plural(a.notCounted.length, "section", "sections")} not counted` });
+      if (a.noTimes.length) segs.push({ text: `${plural(a.noTimes.length, "section", "sections")} without times` });
+    };
+    if (a.missing.length) {
+      // Round 6d mock (gap 4): a part with no sections in the watch means students can't take every course, so the
+      // line says No full slate and why, then what the other courses still allow
+      segs.push({ text: "No full slate" });
+      a.missing.forEach((x) => {
+        const exists = (a.secsSem || []).some((s) => s.c === x.course && s.type === x.part);
+        segs.push({ text: exists ? `${x.course}'s ${partWord(x.part)}s aren't in this watch` : `${x.course} has no ${partWord(x.part)}s this term` });
+      });
+      if (a.count) {
+        const gone = joinAnd([...new Set(a.missing.map((x) => x.course))]);
+        segs.push({ text: a.single ? "the other sections fit together" : `${a.capped ? "more than 10,000 slates" : plural(a.count, "slate", "slates")} without ${gone}` });
+      }
+      tail();
+      return segs;
+    }
+    if (a.single) {
+      // Round 6c: one section per part, so no slate count, best partial or conflict count: just whether they fit
+      const n = a.groups.length, p = a.singlePairs;
+      if (p.length) {
+        segs.push({ text: `${p[0][0].id} conflicts with ${p[0][1].id}` });
+        if (p.length > 1) segs.push({ text: `${plural(p.length - 1, "more conflict", "more conflicts")}`,
+          tip: p.slice(1).map(([s, t]) => `${s.id} conflicts with ${t.id}`).join("; ") + "." });
+      } else if (!a.count) {
+        // Round 6d: no time conflict, so the campus rule (or a course that can't be taken alone) is the reason
+        segs.push(a.selfFail.length ? { text: a.selfFail[0].why } : a.campusWhy || { text: "these sections don't fit together" });
+      } else {
+        segs.push({ text: n === 1 ? "1 section" : n === 2 ? "Both sections fit together" : `All ${n} sections fit together` });
+        // Round 6e (Multi-campus on): but not on one campus
+        if (a.mixWhy) segs.push({ text: a.mixWhy.text, tip: a.mixWhy.tip, warn: true });
+        seatSeg();
+      }
+      tail();
+      return segs;
+    }
+    if (a.count) {
+      segs.push({ text: a.capped ? "More than 10,000 slates" : `${a.count.toLocaleString()} ${a.count === 1 ? "slate" : "slates"}` });
+      // Round 6e (Multi-campus on): slates that mix campuses. When all of them do, it is flagged and the cause named;
+      // when only some do, a quiet count
+      if (a.mixWhy) {
+        segs.push({ text: a.count === 1 ? "it mixes campuses" : "every slate mixes campuses", warn: true, tip: a.mixWhy.tip });
+        segs.push({ text: a.mixWhy.text, warn: true });
+      } else if (a.multi && a.mixed !== 0) {
+        segs.push({ text: a.mixed === null ? "some mix campuses" : `${a.mixed.toLocaleString()} ${a.mixed === 1 ? "mixes" : "mix"} campuses`,
+          tip: a.mixed === null ? "Some slates put in-person sections on more than one campus."
+            : `${a.mixed.toLocaleString()} of ${a.count.toLocaleString()} slates put in-person sections on more than one campus; the other ${a.oneCampus.toLocaleString()} keep to one. Step through slates to see which.` });
+      }
+      seatSeg();
+      if (a.essentialTiming.length) {
+        const why = a.essentialTiming.map((id) => {
+          const s = a.groups.flatMap((g) => g.secs).find((x) => x.id === id);
+          const g = a.groups.find((gg) => gg.secs.includes(s));
+          return g.secs.filter((x) => x !== s).map((x) => `${x.id} ${conflictText(x, a)}`).join("; ");
+        });
+        segs.push({ text: `depends on ${nameList(a.essentialTiming)}`, tip: why.join("; ") + "." });
+      }
+      // Stranded: sections no student taking these courses can use (flagged in the detail with the reason)
+      if (a.stranded.length) segs.push({ text: `${plural(a.stranded.length, "section", "sections")} stranded` });
+      const hard = a.cautions.filter((c) => c.kind === "hard").length, heavy = a.cautions.length - hard;
+      if (hard) segs.push({ text: `${plural(hard, "section", "sections")} hard to reach` });
+      if (heavy) segs.push({ text: `${plural(heavy, "section carries", "sections carry")} a heavy load` });
+    } else if (a.pinBlock) {
+      segs.push({ text: "No slate with these pins" });
+      a.pinBlock.forEach((b) => segs.push({ text: b.pin ? `${b.pin} (pinned): ${b.why.replace(/^it /, "").replace(/, which every slate uses\.$/, "").replace(/\.$/, "")}` : b.why }));
+    } else {
+      segs.push({ text: "No full slate" });
+      // Round 6d: a course that can't be taken even alone (gap 1); the campus rule (gap 2); else the best partial,
+      // telling "A and B can't fit" (one way) from "A or B can't fit" (either) (gap 3)
+      a.selfFail.forEach((x) => segs.push({ text: x.why }));
+      if (a.campusWhy) segs.push({ text: a.campusWhy.text, tip: a.campusWhy.tip });
+      else if (a.best.alts.length) {
+        segs.push({ text: `best partial covers ${a.best.covers} of ${a.best.of}` });
+        const alts = a.best.alts, k = alts[0].length, union = [...new Set(alts.flat())];
+        let text, tip = `Students can take all but ${alts.map(joinAnd).join(", or all but ")}.`;
+        if (alts.length === 1) { text = `${joinAnd(alts[0])} can't fit`; if (k === 1) tip = `No ${alts[0][0]} section fits with the other courses.`; }
+        else if (k === 1) text = `${union.join(" or ")} can't fit`;
+        else if (union.length - k === 1) text = `only one of ${joinAnd(union)} fits`;
+        else text = `${k} of ${joinAnd(union)} can't fit`;
+        segs.push({ text, tip });
+      }
+    }
+    if (a.notCounted.length) segs.push({ text: `${plural(a.notCounted.length, "section", "sections")} not counted` });
+    if (a.noTimes.length) segs.push({ text: `${plural(a.noTimes.length, "section", "sections")} without times` });
+    // Round 6b (Greg): every conflict between two parts of the watch, harmless or not; plain text, no hover
+    if (a.conflicts) segs.push({ text: plural(a.conflicts, "conflict", "conflicts") });
+    return segs;
+  }
+
+  /** "conflicts with CHEM 213 A", or a plain fallback when no single section is to blame. */
+  function conflictText(s, a) {
+    const always = Object.entries(a.roles).filter(([, r]) => r === "essential" || r === "only").map(([id]) => id);
+    const hit = a.groups.flatMap((g) => g.secs).find((t) => (t.c !== s.c || t.type !== s.type) && always.includes(t.id) && conflict(s, t));
+    return hit ? `conflicts with ${hit.id}` : "doesn't fit with the other courses";
+  }
+
+  /** Why a section can't be part of any slate: the first section it conflicts with that every slate uses. */
+  function strandedReason(s, a) {
+    const always = Object.entries(a.roles).filter(([, r]) => r === "essential" || r === "only").map(([id]) => id);
+    const secs = a.groups.flatMap((g) => g.secs);
+    const hit = secs.find((t) => t.c !== s.c && always.includes(t.id) && conflict(s, t)) ||
+      secs.find((t) => t.c === s.c && t.type !== s.type && always.includes(t.id) && conflict(s, t));
+    if (hit) return `it conflicts with ${hit.id}, which every slate uses.`;
+    // Round 6d (rule 15, Multi-campus off): kept out by campus, not time
+    const away = secs.find((t) => (t.c !== s.c || t.type !== s.type) && always.includes(t.id) && campusSplit(s, t));
+    if (away) return `it is at ${s.campus}, and every slate uses ${away.id} at ${away.campus} (Multi-campus is off).`;
+    return "no combination of the other courses fits around it.";
+  }
+
+  // ================= Conflict marks (round 6: rule 33, Q16, Q22, D24) =================
+  /** "PSYCH 101 A, B, C and GEOG 250 A, B": sections grouped by course. */
+  function byCourse(secs) {
+    const map = new Map();
+    secs.forEach((s) => { if (!map.has(s.c)) map.set(s.c, []); map.get(s.c).push(s.code); });
+    return joinAnd([...map].map(([c, codes]) => `${c} ${codes.join(", ")}`));
+  }
+  /**
+   * The conflicts to mark for one watch, on the saved schedule (ticks and pins never change them).
+   * Rule 33: only a conflict between sections of different parts that costs something. With a full slate: ignoring
+   * that one conflict makes a stranded section usable. With none: the conflict involves a course that can't fit (Q22); its
+   * hover says whether fixing it alone would bring back a full slate.
+   * Round 6b (Greg): "Mark all conflicts" in the Access tab, off by default, also marks every other conflict between
+   * different parts, as today, since removing one may still improve the schedule, or matter in ways TermPoint
+   * can't know. Those look the same; their hover says students can get around them.
+   * @param w the watch. @param secs its sections (its Filter Set's result). @param all whether Mark all conflicts is on.
+   * @returns [{ a, b, days, w, kind, x?, tip }]; tip is the hover sentence for this one pair.
+   */
+  function conflictMarksFor(w, secs, all) {
+    const a = analyse(w, secs), out = [];
+    const groupOf = (x) => a.groups.find((g) => g.secs.includes(x));
+    a.groups.forEach((g, i) => a.groups.slice(i + 1).forEach((h) => g.secs.forEach((s) => h.secs.forEach((t) => {
+      const days = conflictDays(s, t);
+      if (!days.length) return;
+      // kind: "stranded" (x can't be part of any slate), "other" (ignoring it frees some other section),
+      // "nofull" (fixing this conflict alone brings back a full slate), "q22" (x's course can't fit; no single conflict to blame)
+      let mk = null;
+      if (a.count && a.stranded.length) {
+        IGNORED = [s.id, t.id]; const r = search(a.groups); IGNORED = null;
+        const freed = a.stranded.filter((id) => r.used.has(id));
+        const x = freed.includes(s.id) ? s : freed.includes(t.id) ? t : null;
+        if (x) mk = { kind: "stranded", x, tip: `${x.id} conflicts with ${(x === s ? t : s).id}, so ${x.id} can't be part of any slate for ${w.name}.` };
+        else if (freed.length) mk = { kind: "other", tip: `${s.id} conflicts with ${t.id}. Because of this conflict, ${joinAnd(freed)} can't be part of any slate for ${w.name}.` };
+      } else if (!a.count && a.best && !a.campusWhy && (a.best.cantFit.includes(s.c) || a.best.cantFit.includes(t.c))) {
+        // (Round 6d: when the campus rule alone leaves no slate, no time conflict is to blame, so none is marked)
+        IGNORED = [s.id, t.id]; const n = search(a.groups, 1).count; IGNORED = null;
+        if (n) mk = { kind: "nofull", tip: `${s.id} conflicts with ${t.id}, so ${w.name} has no full slate.` };
+        else {
+          // Q22: no single conflict is to blame, so name everything the can't-fit section conflicts with
+          const x = a.best.cantFit.includes(s.c) ? s : t;
+          const hits = a.groups.filter((k) => k !== groupOf(x)).flatMap((k) => k.secs).filter((u) => conflictDays(x, u).length);
+          mk = { kind: "q22", x, tip: `${x.id} conflicts with ${byCourse(hits)}, so ${w.name} has no full slate. Fixing only one of these conflicts isn't enough.` };
+        }
+      }
+      if (!mk && all) mk = { kind: "harmless", tip: `${s.id} conflicts with ${t.id}. Other sections still let students in ${w.name} get around this conflict.` };
+      if (mk) out.push({ a: s, b: t, days, w: w.name, ...mk });
+    }))));
+    return out;
+  }
+  /** The marks on the grid now: every watch's when none is open, or the open watch's only. */
+  let MARKS = [];
+  function conflictMarks(secs) {
+    return watchesNow(secs).filter((w) => !state.open || w.name === state.open)
+      .flatMap((w) => conflictMarksFor(w, secs.filter((x) => passes(x, w.f)), state.markAll));
+  }
+  /**
+   * The hover lines for one section's line on one day. Conflicts of one kind are merged into one sentence ("CHEM 213 A
+   * conflicts with PSYCH 101 A, B, C, so …"), and each line is led by its watch's name when more than one watch speaks.
+   */
+  function conflictTips(id, day) {
+    const mine = MARKS.filter((k) => (k.a.id === id || k.b.id === id) && k.days.includes(day));
+    const many = new Set(mine.map((k) => k.w)).size > 1, lines = [];
+    const otherEnd = (k) => (k.a.id === id ? k.b : k.a);
+    for (const w of [...new Set(mine.map((k) => k.w))]) {
+      const ks = mine.filter((k) => k.w === w), say = (t) => lines.push((many ? `${w}: ` : "") + t);
+      // Stranded: one sentence per set of stranded sections that conflict with the same sections
+      const byX = new Map();
+      ks.filter((k) => k.kind === "stranded").forEach((k) => { if (!byX.has(k.x.id)) byX.set(k.x.id, { x: k.x, others: [] }); byX.get(k.x.id).others.push(k.a === k.x ? k.b : k.a); });
+      const merged = new Map();
+      byX.forEach(({ x, others }) => { const key = byCourse(others); if (!merged.has(key)) merged.set(key, []); merged.get(key).push(x); });
+      merged.forEach((xs, others) => say(xs.length === 1
+        ? `${xs[0].id} conflicts with ${others}, so ${xs[0].id} can't be part of any slate for ${w}.`
+        : `${byCourse(xs)} conflict with ${others}, so they can't be part of any slate for ${w}.`));
+      const nf = ks.filter((k) => k.kind === "nofull");
+      if (nf.length) say(`${id} conflicts with ${byCourse(nf.map(otherEnd))}, so ${w} has no full slate.`);
+      [...new Set(ks.filter((k) => k.kind === "q22" || k.kind === "other").map((k) => k.tip))].forEach(say);
+      const hl = ks.filter((k) => k.kind === "harmless");
+      if (hl.length) say(`${id} conflicts with ${byCourse(hl.map(otherEnd))}. Other sections still let students in ${w} get around ${hl.length === 1 ? "this conflict" : "these conflicts"}.`);
+    }
+    return { on: mine.length > 0, lines };
+  }
+
+  // ================= Review state =================
+  // ticked / pins / stepping / slateIx / k belong to the open watch only and reset whenever it closes (never saved).
+  const state = {
+    variant: 0, open: null, showOthers: false, layout: "docked", tab: "access", readOnly: false, slotH: 250,
+    stub: null, foldOpen: false, confirmed: new Set(),
+    ticked: null, pins: new Set(), stepping: false, slateIx: 0, ctx: null, sel: null,
+    // Round 4: the filter bar, presets and tag watches (stored for real in the database; here in memory)
+    filter: fset(), savedFilter: null, appliedPreset: null, pop: null, note: null, pasteMsg: "",
+    presets: [
+      { name: "Enviro Y2", watch: true, f: fset({ Course: ["BIOL 201", "CHEM 213", "GEOG 250", "PSYCH 101", "STAT 104"] }) },
+      { name: "Chem Y2", watch: true, f: fset({ Course: ["CHEM 201", "MATH 111", "STAT 104"] }) },
+      { name: "Biomed Y2", watch: true, f: fset({ Subject: ["BMEG", "CHBE", "ELEC"], Level: ["200"] }) },
+      { name: "Science 100–200", watch: false, f: fset({ Subject: ["BIOL", "CHEM", "GEOG", "MATH", "PSYCH", "STAT"], Level: ["100", "200"] }) },
+      { name: "Chilliwack", watch: false, f: fset({ Campus: ["Chilliwack"] }) },
+      { name: "Writing 100", watch: true, f: fset({ Tags: ["Writing intensive"], Level: ["100"] }) },
+      { name: "Science or writing", watch: false, f: fset({ Tags: ["1st yr Science", "Writing intensive"] }, true) },
+      { name: "Online sections", watch: false, f: fset({ "Delivery Type": ["Online live", "Online self-paced"] }) },
+      { name: "Live online", watch: false, f: fset({ "Delivery Type": ["Online live"] }) }
+    ],
+    // Round 6: conflict marks as today or as rule 33; the What's new banner; the section editor (one card open);
+    // Scheduling Environment's page; the Copy Semester flyout
+    markAll: false, whatsNew: true, editing: null, editDlv: null, seCat: "Delivery Types", copySem: false,
+    // Round 5: the open ⋯ menu, a rename or delete in progress, Scheduling Environment, the delete-tag confirmation
+    pmenu: null, prename: null, prenameErr: "", pdelete: null, se: false, seSel: null, seNote: null, seConfirm: null,
+    tagWatch: new Set(["1st yr Science", "Cohort 1", "Cohort 2", "Cohort 3"]),
+    // Round 6c: courses whose "3 of 8 labs ▸" list is expanded in the open watch (reset when it closes)
+    candOpen: new Set(),
+    multi: new Set(),      // Round 6e: watches with Multi-campus ticked (saved with the watch, so closing keeps it)
+    wins: { access: { x: 520, y: 160, w: 540, h: 470 } }
+  };
+  const LAYOUTS = [["docked", "Docked"], ["accessOut", "Access popped out"]];
+  const $ = (s) => document.querySelector(s);
+  const esc = (s) => String(s).replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
+  const popIcon = '<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M9 2h5v5M14 2 7.5 8.5M12 9.5V14H2V4h4.5"/></svg>';
+  /** Pin glyph; in the app it would be an AXAML path, never a Unicode character. */
+  const PIN = '<svg class="pinsvg" viewBox="0 0 16 16" fill="currentColor" aria-hidden="true"><path d="M10 1l5 5-2 1-3 3 .5 3.5-1.5 1.5-3-3-4 4-1-1 4-4-3-3L3.5 6.5 7 7l3-3z"/></svg>';
+  /** The one help icon for the whole Access idea (slates, parts, seats). */
+  const HELP = `<button class="help" data-act="help" title="How access watches work (opens Help)" aria-label="Help: access watches">?</button>`;
+  const isInferred = (c) => !COURSES[c].confirmed && !state.confirmed.has(c);
+  /** The pinned sections as chips: clickable name (selects it) + ✕ (unpins it). Used in the detail and the legend bar. */
+  const pinChips = () => [...state.pins].map((p) =>
+    `<span class="chip">${sref(p)}<button data-unpin="${esc(p)}" aria-label="Unpin ${esc(p)}" title="Unpin">✕</button></span>`).join(" ");
+  /** Forgets everything that belongs to an open watch (ticks, pins, stepping). */
+  function resetWatchState() { state.ticked = null; state.pins = new Set(); state.stepping = false; state.slateIx = 0; state.ctx = null; state.foldOpen = false; state.candOpen = new Set(); }
+
+  let lastList = [];
+  function analyses() {
+    const secs = sections(state.variant);
+    // Slates use only the sections the watch's Filter Set shows (D25), so each watch gets its own sections
+    const list = watchesNow(secs).map((w) => {
+      const mine = secs.filter((x) => passes(x, w.f));
+      const a = w.name === state.open ? analyse(w, mine, state.ticked, state.pins) : analyse(w, mine);
+      a.secsW = mine; a.secIds = new Set(mine.map((x) => x.id)); a.secsSem = secs;
+      return a;
+    });
+    lastList = list;
+    for (const a of list) if (!a.kind) {
+      // Shared seats: other watches whose courses overlap this one's
+      a.sharedWith = list.filter((b) => !b.kind && b !== a)
+        .map((b) => ({ name: b.w.name, courses: a.courses.filter((c) => b.w.courses.includes(c)) }))
+        .filter((x) => x.courses.length);
+      a.segs = healthSegs(a);
+      a.line = a.segs.map((s) => s.text).join(" · ");
+    }
+    return { secs, list };
+  }
+
+  // ================= Rendering =================
+  /** Round 6b: the Mark all conflicts box: in an open watch's legend bar above the grid, and at the foot of the watch list (one setting). */
+  const markAllBox = () => `<label class="markall" title="Marks all conflicts, even those students can avoid by registering in different slates. Removing them can still improve access."><input type="checkbox" data-markall="1" ${state.markAll ? "checked" : ""}> Mark all conflicts</label>`;
+  let MARK_ALL = "";
+  function listView(all) {
+    const order = { attn: 0, fragile: 1, ok: 1 };
+    const sorted = [...all].sort((x, y) => {
+      const kx = x.kind ? 3 : order[x.mark], ky = y.kind ? 3 : order[y.mark];
+      return kx - ky || x.w.name.localeCompare(y.w.name);
+    });
+    const ro = state.readOnly ? ' disabled title="Read-only: you can look at watches but not change them."' : "";
+    let h = `<div class="acc"><div class="acc-head"><span class="sem">Access · Fall 2027 ${HELP}</span>
+      <button class="abtn" data-addwatch="1"${ro}>+ Add a watch</button><button class="abtn" data-act="checkall">Check all courses</button></div>`;
+    if (state.stub) h += `<div class="stub">${esc(state.stub)}</div>`;
+    h += `<div class="rows" role="list">` + sorted.map((a) => {
+      const line = a.line;
+      const mark = a.kind ? "" : a.mark;
+      const cls = ["row", mark === "attn" ? "attn" : "", a.kind === "off" ? "off" : ""].join(" ");
+      const mk = `<span class="mk ${mark}" aria-hidden="true">${mark === "attn" ? "▲" : mark === "fragile" ? "●" : mark === "ok" ? "○" : ""}</span>`;
+      return `<button role="listitem" class="${cls}" data-open="${esc(a.w.name)}">${mk}<span class="nm">${esc(a.w.name)}</span><span class="hl">${esc(line)}</span></button>`;
+    }).join("") + `</div>`;
+    // Round 6b: Mark all conflicts (off by default; remembered on this computer, as a view setting)
+    h += `<div class="acc-foot">${MARK_ALL}${all.some((a) => !a.kind && a.noCaps) ? `<span>Set section capacities to see how many students fit.</span>` : ""}</div>`;
+    return h + `</div>`;
+  }
+
+  function detailView(a, secsNow) {
+    const ro = state.readOnly ? ' disabled title="Read-only: you can look at watches but not change them."' : "";
+    let h = `<div class="det"><div class="det-head"><button class="back" data-back="1">‹ All watches</button>
+      <span class="nm">${esc(a.w.name)} ${HELP}</span>
+      ${a.w.src === "preset" ? `<button class="abtn" data-editfilters="1" title="Puts this watch's filters on the bar to change">Edit filters</button>` : ""}
+      <button class="watching" data-unwatch="${esc(a.w.name)}" title="Click to stop watching (the ${a.w.src === "tag" ? "tag" : "preset"} stays)" aria-pressed="true"${state.readOnly ? " disabled" : ""}>${EYE}Watching</button></div>
+      <div class="src">${a.w.src === "tag" ? `Watching the tag <b>${esc(a.w.name)}</b>: courses carrying it.` : `Watching the preset <b>${esc(a.w.name)}</b>: ${esc(describeF(a.w.f))}.`}</div>`;
+    if (a.kind === "off") return h + `<div class="facts">This watch is off, so TermPoint isn't checking it. Turn it on to see
+      its access.</div></div>`;
+
+    h += `<div class="health ${!a.count || a.missing.length ? "attn" : ""}">` + a.segs.map((s) =>
+      `<span class="hseg${s.warn ? " warn" : ""}"${s.tip ? ` data-tip="${esc(s.tip)}"` : ""}>${esc(s.text)}</span>`).join(" · ") + `</div>`;
+    // Pins (round 3 review): a tinted banner at the top, so nobody wonders where their slates went
+    if (state.pins.size) h += `<div class="pinbanner">${PIN}<span class="t">Only slates with ${pinChips()} are shown.</span>
+      <button class="abtn" data-clearpins="1">Unpin all</button></div>`;
+    const secsAll = a.groups.flatMap((g) => g.secs);
+    const allIds = secsAll.map((x) => x.id);
+    a.stranded.forEach((id) => { h += `<div class="flag"><span class="t">▲ ${linkify(esc(`${id} is stranded: ${strandedReason(secsAll.find((x) => x.id === id), a)}`), allIds)} No student taking ${a.subset ? "these courses" : "all of " + esc(a.w.name)} can use it.</span></div>`; });
+    a.cautions.forEach((c) => { h += `<div class="flag caution"><span class="t">◆ ${c.html}</span></div>`; });
+    a.missing.forEach((x) => { h += `<div class="flag"><span class="t">▲ ${x.course}'s ${x.part.toLowerCase()} sections aren't in
+      this watch. Add one, or edit ${x.course}'s parts if it no longer has one.</span><button class="abtn" data-act="parts"${ro}>Edit parts</button></div>`; });
+    a.notCounted.forEach((s) => { h += `<div class="flag"><span class="t">▲ ${s.id} has no section type, so it isn't counted.</span>
+      <button class="abtn" data-act="parts"${ro}>Edit parts</button></div>`; });
+
+    // Courses: a tick box each (never saved), what a student takes, and parts. Ticks work read-only too.
+    const lastOne = a.courses.length === 1;
+    h += `<div class="clist">` + a.offered.map((c) => {
+      const on = a.courses.includes(c);
+      const g = on && isInferred(c) && COURSES[c].parts.length >= 2 ? ' <span class="g">· parts inferred</span>' : "";
+      const cand = candText(c, secsNow, a.secsSem);
+      return `<input type="checkbox" data-tick="${esc(c)}" ${on ? "checked" : ""} ${on && lastOne ? 'disabled title="At least one course stays ticked."' : ""} aria-label="Include ${c}">
+        <span class="cc ${on ? "" : "off"}">${c}</span><span class="pp ${on ? "" : "off"}">${cand.html}${g}</span>
+        <span><button class="lnk" data-act="parts"${ro}>Edit parts</button></span>` +
+        cand.more.map((x) => `<span class="cmore ${on ? "" : "off"}">${x}</span>`).join("");
+    }).join("") + `</div>`;
+    if (a.subset) h += `<div class="pins"><button class="lnk" data-tickall="1">Tick all</button></div>`;
+    // Round 6e (Greg): Multi-campus, quiet, under the courses; only when the watch's in-person sections span campuses
+    if (a.spansCampuses || a.multi) h += `<label class="multic" title="Ticked: count slates whose in-person sections are on more than one campus. Unticked: a slate keeps to one campus. Saved with the watch."><input type="checkbox" data-multi="${esc(a.w.name)}" ${a.multi ? "checked" : ""}${ro}> Multi-campus</label>`;
+    const inferred = a.courses.filter((c) => isInferred(c) && COURSES[c].parts.length >= 2);
+    if (inferred.length) h += `<div class="confirm"><button class="abtn" data-confirm="${esc(inferred.join("|"))}"${ro}
+      title="Saves these parts to the courses. Other watches with these courses use them too.">These are right</button>
+      <span>saves the inferred parts of ${inferred.join(", ")} as shown</span></div>`;
+
+
+    if (a.count && !a.single) h += `<span class="stepper"><span class="hint">Right-click a section on the grid to pin it. Step through slates in the grid's legend bar.</span></span>`;
+
+    // Quieter facts
+    const facts = [];
+    if (a.noCaps && a.count) facts.push("Seats: set section capacities to see how many students fit.");
+    if (a.onlySections.length && !a.single) facts.push(`Only sections, so every slate uses them: ${a.onlySections.join(", ")}.`);
+    if (a.noTimes.length) facts.push(`Assumes ${a.noTimes.join(", ")} (no times) fits anywhere.`);
+    if (facts.length) {
+      if (!state.foldOpen) h += `<button class="foldbtn" data-fold="1">▸ More about this watch (${facts.length})</button>`;
+      else h += `<div class="facts"><button class="foldbtn" data-fold="1">▾ Less</button>${facts.map((f) => `<span>${esc(f)}</span>`).join("")}</div>`;
+    }
+    return h + `</div>`;
+  }
+
+  /**
+   * Round 6c: the sections of a course that the watch's slates can use, one phrase per part, shortest that is exact:
+   * "all 4 sections", "only A", "all but L2" (at most two left out, fewer than are in), "LEC1, LEC2" (up to three),
+   * else "4 of 8 labs ▸", which expands into a line naming them and the ones left out. "All" counts the course's
+   * sections in the whole semester (rule 29), so grid filters never change it.
+   * @param c the course. @param inW the sections the watch's filter shows. @param inSem the semester's sections.
+   * @returns {{html: string, more: string[]}} the phrase, and the expanded lines (empty unless expanded).
+   */
+  function candText(c, inW, inSem) {
+    const parts = COURSES[c].parts.length >= 2 ? COURSES[c].parts : [null];
+    const short = (p) => ({ Laboratory: "lab", Lecture: "lecture", Discussion: "discussion" }[p] || p.toLowerCase());
+    const codes = (xs) => xs.map((s) => s.code).join(", ");
+    const out = [], more = [];
+    for (const p of parts) {
+      const pick = (xs) => xs.filter((s) => s.c === c && (p === null || s.type === p));
+      const mine = pick(inW), all = pick(inSem), ids = new Set(mine.map((s) => s.id));
+      const left = all.filter((s) => !ids.has(s.id));
+      // With a part label ("Lab: ") the noun is left out: "Lab: all 3", "Lab: 4 of 8 ▸", "Lab: none"
+      const noun = p ? short(p) : "section", nouns = p ? "" : " sections";
+      const label = p ? `${noun[0].toUpperCase()}${noun.slice(1)}: ` : "";
+      const key = `${c}|${p || ""}`;
+      let t;
+      if (!mine.length) t = `<span class="no">${p ? "none" : "no sections"}</span>`;
+      else if (!left.length) t = all.length === 1 ? `only ${mine[0].code}` : `all ${all.length}${nouns}`;
+      else if (mine.length === 1) t = `only ${mine[0].code}`;
+      else if (left.length <= 2 && left.length < mine.length) t = `all but ${codes(left)}`;
+      else if (mine.length <= 3) t = codes(mine);
+      else {
+        const open = state.candOpen.has(key);
+        t = `<button class="lnk cand" data-cand="${esc(key)}" aria-expanded="${open}">${mine.length} of ${all.length}${nouns} ${open ? "▾" : "▸"}</button>`;
+        if (open) more.push(`${label}${codes(mine)} <span class="g">· not in this watch: ${codes(left)}</span>`);
+      }
+      out.push(label + t);
+    }
+    return { html: out.join(" · "), more };
+  }
+
+  /** Section View: one card per section. Round 6: the delivery type follows the section type ("Lecture · Blended"). */
+  function sectionList(secs) {
+    return `<div class="cards">` + secs.map((s) => {
+      const when = s.meets.length ? s.meets.map((x) => x.days.map((d) => DAYN[d]).join(" ") + " " + hm(x.s) + "–" + hm(x.e)).join(", ") : "No times";
+      const kind = [s.type || "No type", s.dlv].filter(Boolean).join(" · ");
+      const open = state.editing === s.id;
+      return `<div class="card${state.sel === s.id ? " sel" : ""}${open ? " editing" : ""}" data-card="${esc(s.id)}" title="${open ? "" : "Double-click to edit"}">
+        <div class="h">${s.id}</div><div class="s">${esc(kind)} · ${when}</div>${open ? sectionEditor(s, when) : ""}</div>`;
+    }).join("") + `</div>`;
+  }
+  /**
+   * The inline section editor, cut down to what round 6 changes: Delivery Type, beside Campus. The other fields are
+   * shown as they are today, not editable here.
+   */
+  function sectionEditor(s, when) {
+    const ro = state.readOnly ? " disabled" : "";
+    const cur = state.editDlv === null ? s.dlv || "" : state.editDlv;
+    const fld = (label, value, w) => `<label class="ef" style="width:${w}px"><span>${label}</span><span class="ev">${esc(value)}</span></label>`;
+    return `<div class="ed">
+      <div class="erow">${fld("Subject", s.subj, 70)}${fld("Course", s.c.split(" ")[1], 56)}${fld("Section Code", s.code, 70)}${fld("Section Type", s.type || "—", 84)}${fld("Capacity", s.cap || "—", 50)}</div>
+      <div class="esched"><span class="el">Schedule</span> ${esc(when)} · ${esc(s.room)} · ${esc(s.instr)}</div>
+      <div class="erow">${fld("Tags", s.tags.length ? s.tags.join(", ") : "None", 120)}${fld("Campus", s.campus, 88)}
+        <label class="ef" style="width:118px"><span>Delivery Type</span>
+          <select data-edlv="1"${ro} title="How this section is taught. Delivery types are set under Scheduling Environment.">
+            <option value=""${cur ? "" : " selected"}>—</option>${DELIVERY.map((d) => `<option${d === cur ? " selected" : ""}>${esc(d)}</option>`).join("")}</select></label></div>
+      <div class="ebtns"><button class="abtn" data-eapply="1"${ro}>Apply</button><button class="abtn" data-ecancel="1">Cancel</button></div></div>`;
+  }
+  const hm = (t) => `${Math.floor(t)}:${String(Math.round((t % 1) * 60)).padStart(2, "0")}`;
+
+  /** The grid with every timed section; while a watch is open, its picture (or the current slate) is laid over it. */
+  function grid(secs, a, slate) {
+    // Round 6d: with a watch open, each day is as wide as its side-by-side tiles need for their labels; equal widths
+    // when everything fits the panel (as before), and the grid scrolls sideways when it doesn't
+    const top = 20, hourH = 46, x0 = 40, start = 8, AVAIL = 774, MIN_DAY = 110;
+    let h = "";
+    const tiles = new Map();
+    const addItem = (s, d, st, en, shared) => {
+      const key = `${d}|${st}|${en}|${shared ? "x" : ""}`;
+      if (!tiles.has(key)) tiles.set(key, { d, st, en, shared, secs: [] });
+      tiles.get(key).secs.push(s);
+    };
+    // While a watch is open, other courses are hidden unless "Show other courses" is ticked. Unticked courses of
+    // the watch stay, faded.
+    // No watch open: the sections the filters show. A watch open: its own sections (the result of its Filter Set).
+    const shown = (s) => (a ? state.showOthers || a.secIds.has(s.id) : passes(s, state.filter));
+    const shownShared = () => (a ? state.showOthers : !fActive(state.filter));
+    secs.filter(shown).forEach((s) => s.meets.forEach((mt) => mt.days.forEach((d) => addItem(s, d, mt.s, mt.e, false))));
+    SHARED.filter(shownShared).forEach((s) => s.meets.forEach((mt) => mt.days.forEach((d) => addItem(s, d, mt.s, mt.e, true))));
+    // A line's width, estimated: subject marker, "BMEG230 L1A", and room for a flag, pin or access mark
+    const lineW = (s) => 30 + 6.6 * (s.c.replace(" ", "").length + 1 + s.code.length);
+    const days = DAYN.map((_, d) => {
+      const list = [...tiles.values()].filter((t) => t.d === d).sort((p, q) => p.st - q.st || p.en - q.en);
+      const lanes = [];
+      list.forEach((t) => { let l = lanes.findIndex((e) => e <= t.st); if (l < 0) { l = lanes.length; lanes.push(0); } lanes[l] = t.en; t.lane = l; });
+      const n = Math.max(1, lanes.length), laneW = Math.max(0, ...list.flatMap((t) => t.secs.map(lineW)));
+      return { list, n, need: Math.max(MIN_DAY, n * laneW + 4) };
+    });
+    // Equal widths if every day fits in an equal share; else each day its need, sharing out any room left over
+    const total = days.reduce((t, x) => t + x.need, 0), even = AVAIL / days.length;
+    // With no watch open the whole semester is shown; sizing it to its labels would scroll 2.5 panels wide, so it
+    // keeps equal widths (labels may be cut there)
+    const widths = !a || days.every((x) => x.need <= even) ? days.map(() => even)
+      : days.map((x) => x.need + Math.max(0, AVAIL - total) / days.length);
+    let x = x0;
+    days.forEach((day, d) => {
+      const colW = widths[d], w = (colW - 4) / day.n;
+      h += `<div class="gday" style="left:${x}px;width:${colW}px">${DAYN[d]}</div>`;
+      day.list.forEach((t) => {
+        const lines = t.secs.map((s) => entry(s, t.shared, a, slate, d)).join("");
+        h += `<div class="gtile ${t.shared ? "shared" : ""}" style="--sem-border:${SEMESTER_BORDER};left:${x + 2 + t.lane * w}px;width:${w - 2}px;top:${top + (t.st - start) * hourH}px;height:${(t.en - t.st) * hourH - 2}px">${lines}</div>`;
+      });
+      x += colW;
+    });
+    for (let hr = start; hr <= 18; hr++) {
+      const y = top + (hr - start) * hourH;
+      h += `<div class="gline" style="top:${y}px;width:${x - x0}px"></div><div class="ghour" style="top:${y - 6}px">${hr}:00</div>`;
+    }
+    return h;
+  }
+
+  /**
+   * One section's line in a tile: subject marker, label, flag, pin, and (while a watch is open) its access mark.
+   * Marks are per line, so two sections sharing a tile can differ. Round 6: a line in a marked conflict on this day
+   * glows red (as today), and its hover adds what the conflict costs.
+   * @param d the day column the line is drawn in.
+   */
+  function entry(s, shared, a, slate, d) {
+    let cls = "ent", tip = "", amk = "";
+    const pinned = state.pins.has(s.id) && a && !a.kind;
+    if (shared) tip = `${s.c} ${s.code}: another department's section (shared schedule). Not in this watch.`;
+    if (a && !a.kind && !shared) {
+      const inWatch = a.w.courses.includes(s.c), ticked = a.courses.includes(s.c);
+      const g = a.groups.find((gg) => gg.all.includes(s));
+      const role = a.roles[s.id];
+      if (!inWatch || !a.secIds.has(s.id)) cls += " faded";
+      else if (!ticked) { cls += " faded"; tip = `${s.c} is unticked, so it isn't part of these slates.`; }
+      else if (g && !g.secs.includes(s)) { cls += " faded"; tip = `Not used: ${g.secs[0].id} is pinned.`; }
+      else if (slate) {
+        if (slate.includes(s)) { cls += " ghost"; tip = `${s.id} is in this slate.`; }
+        else cls += " faded";
+      }
+      else if (a.count === 0) {
+        const blockPin = a.pinBlock && a.pinBlock.find((b) => b.pin === s.id);
+        if (blockPin) { cls += " cantfit"; amk = "▲"; tip = `Pinned ${s.id} can't be part of any slate: ${blockPin.why}`; }
+        else if (a.best && a.best.cantFit.includes(s.c)) {
+          cls += " cantfit"; amk = "▲";
+          const sf = a.selfFail.find((x) => x.course === s.c);
+          tip = sf ? `${s.c} can't be taken: ${sf.why}.`
+            : a.campusWhy ? `${s.c} can't fit with the rest of ${a.w.name}: ${a.campusWhy.text}.`
+            : `${s.c} can't fit with the rest of ${a.w.name}: no ${s.c} section fits around the other courses.`;
+        }
+      }
+      else if (role === "stranded") { cls += " stranded"; tip = `${s.id} can't be part of any slate for ${a.w.name}: ${strandedReason(s, a)}`; }
+      else if (a.cautions.some((c) => c.id === s.id)) { cls += " caution"; amk = "◆"; tip = a.cautions.find((c) => c.id === s.id).text; }
+      else if (role === "essential") { cls += " essential"; amk = "●"; tip = `Every slate for ${a.w.name} uses ${s.id}: ${s.c}'s other sections can't fit. If it moves to a conflicting time, students lose every full slate.`; }
+      else if (role === "only") tip = pinned ? `${s.id} is pinned: only slates with it count.` : `${s.id} is the only ${s.c} ${COURSES[s.c].parts.length >= 2 ? s.type.toLowerCase() : "section"}, so every slate uses it.`;
+      else if (role === "usable") tip = `${s.id} can be part of a slate for ${a.w.name}.`;
+      else if (!g) { cls += " faded"; tip = `${s.id} isn't counted (no section type).`; }
+    }
+    const subj = s.c.split(" ")[0];
+    const flag = s.flag ? `<span class="flg" title="Flagged">⚑</span>` : "";
+    if (state.sel === s.id) cls += " sel";
+    if (pinned) cls += " pinned";
+    const ct = shared ? { on: false, lines: [] } : conflictTips(s.id, d);
+    if (ct.on) { cls += " conflict"; tip = [...ct.lines, tip].filter(Boolean).join("\n"); }
+    return `<div class="${cls}" data-sec="${esc(s.id)}" data-day="${d}"${tip ? ` data-tip="${esc(tip)}"` : ""}><span class="smk" style="background:${SUBJ[subj] || "#999"}"></span>${s.c.replace(" ", "")} ${s.code}${flag}${pinned ? PIN : ""}${amk ? `<span class="amk">${amk}</span>` : ""}</div>`;
+  }
+
+  /** The grid's right-click menu: the existing items (stubs here) plus Pin / Unpin while a watch is open. */
+  function ctxMenu(a) {
+    const c = state.ctx;
+    if (!c) return "";
+    const inWatch = a && !a.kind && a.w.courses.includes(c.sec.split(" ").slice(0, 2).join(" "));
+    const pinned = state.pins.has(c.sec);
+    return `<div class="ctx" style="left:${c.x}px;top:${c.y}px" role="menu">
+      <button disabled>Edit ${esc(c.sec)}</button><button disabled>Flag ▸</button><button disabled>Copy</button>
+      ${inWatch && !state.ctxShared ? `<hr><button data-pin="${esc(c.sec)}">${PIN}${pinned ? "Unpin" : `Pin in slates for ${esc(a.w.name)}`}</button>` : ""}</div>`;
+  }
+
+  function render() {
+    const { secs, list } = analyses();
+    MARKS = conflictMarks(secs); MARK_ALL = markAllBox();
+    const open = state.open && list.find((a) => a.w.name === state.open);
+    const enabled = list.filter((a) => a.kind !== "off").length;
+    const attn = list.filter((a) => a.mark === "attn").length;
+    // Round 6e: the campus rule for the open watch while its detail, tiles and slates are drawn
+    if (open && !open.kind) STRICT_CAMPUS = !multiOn(open.w);
+    const accessBody = open ? detailView(open, open.secsW) : listView(list);
+    const pic = open && !open.kind;
+    // The stepper lives in the grid's legend bar (round 3 review): Step through slates, then ‹ Slate i of N › + Clear.
+    let slate = null, stepper = "";
+    if (pic && state.stepping && open.count) {
+      const slates = listSlates(open.groups), i = state.slateIx = Math.min(state.slateIx, slates.length - 1);
+      slate = slates[i];
+      const total = open.capped ? "more than 10,000" : slates.length.toLocaleString();
+      const parts = open.courses.map((c) => { const mine = slate.filter((s) => s.c === c); return mine.length ? `${esc(c)} ${mine.map((s) => (state.pins.has(s.id) ? PIN : "") + sref(s.id, s.code)).join(" + ")}` : ""; }).filter(Boolean);
+      stepper = `<span class="stepbar"><button class="abtn" data-step="-1" ${i === 0 ? "disabled" : ""} aria-label="Previous slate">‹</button>
+        <span class="pos"><span class="sw gh"></span>Slate ${(i + 1).toLocaleString()} of ${total}</span>
+        <button class="abtn" data-step="1" ${i >= slates.length - 1 ? "disabled" : ""} aria-label="Next slate">›</button>
+        <span class="slate">${parts.join(" · ")}</span>${mixesCampuses(slate) ? `<span class="mixc" title="This slate has in-person sections on ${joinAnd([...new Set(slate.filter(inPerson).map((s) => s.campus))].sort())}.">mixes campuses</span>` : ""}
+        <button class="abtn" data-step="stop">Clear</button></span>`;
+    } else state.stepping = false;
+    const pinPill = pic && state.pins.size ? `<span class="pinpill">${PIN}Pinned: ${pinChips()}<button class="abtn" data-clearpins="1">Unpin all</button></span>` : "";
+    const legend = !pic ? "" : `<div class="picbar"><b>${esc(open.w.name)}${open.subset ? ` · ${open.subset}` : ""}</b>${pinPill}${slate
+      ? stepper
+      : open.count && !open.single
+        // Round 3 review: no key to the marks here (hard to scan); each mark explains itself on hover
+        ? `<button class="abtn" data-step="start">Step through slates</button>`
+        : ""}<span class="oth">${MARK_ALL}</span><label class="oth2"><input type="checkbox" id="showOthers" ${state.showOthers ? "checked" : ""}> Show other courses</label><button class="x" data-back="1" aria-label="Close the watch">✕ Close</button></div>`;
+    const accDocked = state.layout === "docked";
+    const pop = `<button class="iconbtn" data-pop="1" title="Open ${state.tab === "access" ? "Access" : "Workload"} in its own window">${popIcon}</button>`;
+    const slot = accDocked ? `<div class="hsplit" id="hsplit" title="Drag to resize"></div>
+      <div class="panel" style="height:${state.slotH}px;flex:none"><div class="panel-head" role="tablist">
+        <button class="tab" role="tab" data-tab="workload" aria-selected="${state.tab === "workload"}">Workload</button>
+        <button class="tab" role="tab" data-tab="access" aria-selected="${state.tab === "access"}">Access${attn && state.tab !== "access" ? '<span class="dot"></span>' : ""}</button>
+        <span class="spacer"></span>${pop}</div>
+        <div class="panel-body">${state.tab === "access" ? accessBody : workload()}</div></div>`
+      : `<div class="hsplit"></div><div class="panel" style="height:${state.slotH}px;flex:none"><div class="panel-head"><span class="title">Workload View</span></div><div class="panel-body">${workload()}</div></div>`;
+    // Round 6: What's new, once, in the app's announcement banner (approved wording pending)
+    const banner = state.whatsNew ? `<div class="banner"><span class="bt"><b>What's new:</b> access watches now mark only
+      conflicts that cost students something: a section no one taking the watch's courses can use, or no way to take every
+      course. To see every conflict as before, tick <b>Mark all conflicts</b> in the Access tab.</span><button data-banner="1" title="Dismiss" aria-label="Dismiss">✕</button></div>` : "";
+    $("#app").style.gridTemplateRows = banner ? "34px auto 1fr" : "";
+    // Round 6d: the grid can scroll sideways; keep its position across re-renders
+    const oldGrid = $("#gridarea"), keepScroll = oldGrid ? [oldGrid.scrollLeft, oldGrid.scrollTop] : [0, 0];
+    $("#app").innerHTML = `
+      <div class="menubar"><b>TermPoint</b><span>Files</span><span>Sections</span><span>Courses</span><span>Instructors</span><button class="mnav" data-se="1">Scheduling Environment</button><button class="mnav" data-copysem="1" title="Academic Years → Copy Semester">Copy Semester</button><span>Export</span><span>More</span></div>
+      ${banner}
+      <div class="body3"><div class="leftcol">
+          <div class="panel" style="flex:1"><div class="panel-head"><span class="title">Section View</span></div><div class="panel-body">${sectionList(secs)}</div></div>
+          ${slot}</div>
+        <div class="vsplit"></div>
+        <div class="panel"><div class="panel-head"><span class="title">Schedule View <span style="font-weight:400;color:var(--app-faint)">Fall 2027</span></span></div>
+          <div class="filterbar">
+            <div class="fgroup fwide"><span class="legend">Filters</span>${filterBar(secs)}</div>
+            <div class="fgroup"><span class="legend">Overlays</span><button class="fbtn" tabindex="-1">None ▾</button></div>
+            <div class="fgroup"><span class="legend">Access</span><button class="fbtn" id="summaryBtn">${enabled} watches${attn ? ` · <span class="attn">${attn} ${attn === 1 ? "needs" : "need"} a look</span>` : ""}</button></div>
+          </div>
+          ${legend}
+          <div class="gridarea ${pic ? "" : "nopic"}" id="gridarea">${grid(secs, pic ? open : null, slate)}</div>
+        </div></div>
+      ${accDocked ? "" : `<div class="win" style="left:${state.wins.access.x}px;top:${state.wins.access.y}px;width:${state.wins.access.w}px;height:${state.wins.access.h}px">
+        <div class="win-title" data-drag="access"><span class="t">Access — TermPoint</span><button data-close="1" title="Close: goes back into the main window">✕</button></div>
+        <div class="panel-body">${accessBody}</div></div>`}
+      ${ctxMenu(pic ? open : null)}
+      ${state.pop ? `<div class="fpop" id="fpop">${popupBody(state.pop, secs)}</div>` : ""}
+      ${state.se ? seFlyout() : ""}
+      ${state.copySem ? copySemFlyout() : ""}
+      ${state.seConfirm ? seConfirmBox() : ""}`;
+    const newGrid = $("#gridarea");
+    if (newGrid) { newGrid.scrollLeft = keepScroll[0]; newGrid.scrollTop = keepScroll[1]; }
+    placePopup();
+    drawConflictLines();
+    $("#layoutSeg").innerHTML = LAYOUTS.map(([k, l]) => `<button data-layout="${k}" aria-pressed="${state.layout === k}">${l}</button>`).join("");
+  }
+  // ---------------- The filter bar (round 4) ----------------
+  /** Which preset the bar's filters match, or were started from. */
+  const matchedPreset = () => state.presets.find((p) => fActive(state.filter) && fEqual(p.f, state.filter));
+  /** Plain words for a Filter Set: "Course: BIOL 201, CHEM 213 · Level: 200". */
+  const describeF = (f) => DIMS.filter((d) => (f.sel[d] || []).length).map((d) =>
+    `${d}${d === "Tags" && f.tagsAny ? " (any)" : ""}: ${f.sel[d].join(", ")}`).join(" · ") || "no filters";
+  const BOOKMARK = '<svg class="bm" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" aria-hidden="true"><path d="M4 2h8v12l-4-3-4 3z"/></svg>';
+  const EYE = '<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true"><path d="M1 8s2.6-5 7-5 7 5 7 5-2.6 5-7 5-7-5-7-5z"/><circle cx="8" cy="8" r="2"/></svg>';
+  /** "Access watch" over the eye column of Presets and Tags: green eye in front, the title's size, help as a superscript (approved wording). */
+  const WATCH_HEAD = `<span class="wcol"><span class="pwhdr"><span class="pweye">${EYE}</span><span title="An access watch monitors a selection of courses for student access.">Access watch</span>${HELP.replace('class="help"', 'class="help sup"')}</span></span>`;
+
+  /** The Filters group: Presets, Clear, then the nine choices labelled as the app labels them ("Course (5)"). */
+  function filterBar(secs) {
+    const mp = matchedPreset();
+    const label = mp ? esc(mp.name) : state.appliedPreset && fActive(state.filter) ? `${esc(state.appliedPreset)} <span class="chg">(changed)</span>` : "Presets";
+    let h = `<button class="fbtn ptog ${mp || state.appliedPreset ? "on" : ""}" data-ftog="Presets" aria-expanded="${state.pop === "Presets"}">${BOOKMARK}${label} ▾</button>
+      <button class="fbtn" data-fclear="1" title="Clear filters">🗑</button>`;
+    for (const d of DIMS) {
+      const n = (state.filter.sel[d] || []).length;
+      h += `<button class="fbtn ${n ? "on" : ""}" data-ftog="${esc(d)}" aria-expanded="${state.pop === d}">${d}${n ? ` (${d === "Tags" && state.filter.tagsAny ? "any of " : ""}${n})` : ""}</button>`;
+    }
+    return h;
+  }
+
+  /** The open popup's contents: Presets, Tags (with Watch eyes), Course (with type-or-paste), or a plain list. */
+  function popupBody(d, secs) {
+    const ro = state.readOnly ? " disabled" : "";
+    if (d === "Presets") {
+      const mp = matchedPreset();
+      let h = `<div class="prow phead"><span>Presets</span>${WATCH_HEAD}<span class="pmore-gap"></span></div>`;
+      if (state.note && state.note.hint) h += `<div class="pnote">${state.note.html}</div>`;
+      if (!mp && state.appliedPreset && fActive(state.filter)) h += `<div class="pchg">Filters changed from <b>${esc(state.appliedPreset)}</b>.
+        <button class="abtn" data-pupdate="1"${ro}>Update ${esc(state.appliedPreset)}</button></div>`;
+      // No course count on a row (round 4 review): a preset can be any Filter Set, so a count can mislead
+      h += state.presets.map((p) => {
+        const eye = `<span class="wcol"><button class="eye ${p.watch ? "on" : ""}" data-pwatch="${esc(p.name)}" title="${p.watch ? "Watched: click to stop watching" : "Watch this preset"}" aria-pressed="${p.watch}"${ro}>${EYE}</button></span>`;
+        // Round 5: renaming happens in the row itself (Enter saves, Esc cancels)
+        const name = state.prename === p.name
+          ? `<span class="pren"><input id="renameBox" value="${esc(p.name)}" aria-label="New name for ${esc(p.name)}"><button class="abtn" data-prenok="1">Save</button><button class="lnk" data-prenno="1">Cancel</button></span>`
+          : `<button class="pname" data-papply="${esc(p.name)}" title="${esc(describeF(p.f))}">${esc(p.name)}</button>`;
+        let row = `<div class="prow ${mp === p ? "cur" : ""}">${name}${eye}
+          <button class="pmore" data-pmore="${esc(p.name)}" title="Rename or delete" aria-expanded="${state.pmenu === p.name}"${ro}>⋯</button></div>`;
+        if (state.pmenu === p.name) row += `<div class="pmenu" role="menu"><button data-prename="${esc(p.name)}">Rename…</button><button data-pdelete="${esc(p.name)}">Delete…</button></div>`;
+        if (state.prename === p.name && state.prenameErr) row += `<div class="perr">${esc(state.prenameErr)}</div>`;
+        // Deleting asks in the row, never in a modal: one sentence on what happens, then Delete / Cancel
+        if (state.pdelete === p.name) row += `<div class="pconfirm"><span>${p.watch
+          ? `Delete <b>${esc(p.name)}</b>? It is an access watch, so TermPoint will stop checking it. Your filters on the bar stay as they are.`
+          : `Delete <b>${esc(p.name)}</b>? Your filters on the bar stay as they are.`}</span>
+          <span class="btns"><button class="abtn danger" data-pdelok="1">Delete</button><button class="lnk" data-pdelno="1">Cancel</button></span></div>`;
+        if (state.note && state.note.preset === p.name) row += `<div class="pnote">${state.note.html}</div>`;
+        return row;
+      }).join("");
+      if (state.note && state.note.deleted) h += `<div class="pnote">${state.note.html}</div>`;
+      // Read-only (another computer is editing): presets can be applied, not changed
+      h += state.readOnly
+        ? `<div class="psave"><span class="muted">Read-only: you can use presets, but not save or change them.</span></div>`
+        : `<div class="psave">${fActive(state.filter)
+          ? `<span>Save current filters as a preset:</span><input id="presetName" placeholder="Name" aria-label="Preset name"><button class="abtn" data-psave="1">Save</button>`
+          : `<span class="muted">Choose some filters, then save them here as a preset.</span>`}</div>`;
+      if (state.note && state.note.saved) h += `<div class="pnote">${state.note.html}</div>`;
+      if (state.prenameErr && !state.prename) h += `<div class="perr">${esc(state.prenameErr)}</div>`;
+      // Round 5: presets live in the database, so everyone using it sees the same ones (and the same watches)
+      h += `<div class="pshared">Presets are shared: everyone using this database sees them.</div>`;
+      return h;
+    }
+    const opts = optionsFor(d, secs), sel = state.filter.sel[d] || [];
+    let h = "";
+    if (d === "Tags") h += `<div class="fopt phead"><span>Tags</span>${WATCH_HEAD}</div><div class="tagmode">Show sections with:<label><input type="radio" name="tm" data-tagsany="0" ${state.filter.tagsAny ? "" : "checked"}> all of the checked tags</label>
+      <label><input type="radio" name="tm" data-tagsany="1" ${state.filter.tagsAny ? "checked" : ""}> any of the checked tags</label></div>`;
+    if (d === "Course") h += `<input id="coursePaste" class="cpaste" placeholder="Type or paste course codes" aria-label="Type or paste course codes">
+      ${state.pasteMsg ? `<div class="pmsg">${esc(state.pasteMsg)}</div>` : ""}`;
+    h += `<div class="flist">` + opts.map((v) => `<div class="fopt" data-fval="${esc(v)}"><label><input type="checkbox" data-fdim="${esc(d)}" data-fv="${esc(v)}" ${sel.includes(v) ? "checked" : ""}> ${esc(v)}</label>${
+      d === "Tags" ? `<span class="wcol"><button class="eye ${state.tagWatch.has(v) ? "on" : ""}" data-tagwatch="${esc(v)}" title="${state.tagWatch.has(v) ? "Watched: click to stop watching" : "Watch this tag"}" aria-pressed="${state.tagWatch.has(v)}"${ro}>${EYE}</button></span>` : ""}</div>`).join("") + `</div>`;
+    if (d === "Tags" && state.note && state.note.tag) h += `<div class="pnote">${state.note.html}</div>`;
+    return h;
+  }
+
+  // ---------------- Scheduling Environment → Tags (round 5) ----------------
+  /** The Scheduling Environment flyout, opened on Tags: today's list plus an Access watch eye column (D26's second place). */
+  /**
+   * Scheduling Environment's pages that this mock draws. Round 6 adds Delivery Types after Section Type, and rewords
+   * Section Type and Meeting Type so the three say how they differ (proposed wording; today's in comments).
+   */
+  const SE_PAGES = {
+    // Today: "Classify sections by format — e.g. Lecture, Lab, Tutorial, Online. Used for filtering in the schedule grid."
+    "Section Type": { desc: "What kind of section it is: e.g. Lecture, Lab, Tutorial. Used for filtering in the schedule grid. How a section is taught goes in Delivery Types.",
+      rows: () => ["Lecture", "Laboratory", "Discussion"] },
+    "Delivery Types": { desc: "How a section is taught: e.g. F2F, Blended, Online live, Online self-paced. A section has at most one. Shown on section cards and used for filtering in the schedule grid.",
+      rows: () => DELIVERY, dim: "Delivery Type" },
+    // Today: "Describe how a section meets — e.g. In-Person, Hybrid, Remote. Assigned per meeting day on each section."
+    "Meeting Type": { desc: "How one meeting is held: e.g. In-Person, Remote. Set for each meeting of a section, so a section can meet in person on Tuesday and online on Thursday. For the section as a whole, use Delivery Types.",
+      rows: () => ["In person", "Online"] },
+    Tags: { desc: "Freeform labels that can be attached to sections and courses for custom grouping and filtering e.g. 'Cohort1' or 'PSYMAJOR'" }
+  };
+  function seFlyout() {
+    const ro = state.readOnly ? " disabled" : "";
+    const cats = ["Section Type", "Delivery Types", "Meeting Type", "Staff Type", "Tags", "Resources", "Reserve Codes", "Room Types", "Rooms", "Campuses"];
+    const cat = state.seCat, page = SE_PAGES[cat];
+    const catList = cats.map((c) => SE_PAGES[c]
+      ? `<button class="${c === cat ? "on" : ""}${c === "Delivery Types" ? " new" : ""}" data-secat="${esc(c)}">${c}</button>`
+      : `<div>${c}</div>`).join("");
+    let table;
+    if (cat === "Tags") {
+      const rows = TAGS.map((t) => `<tr class="${state.seSel === t.name ? "sel" : ""}" data-serow="${esc(t.name)}"><td>${esc(t.name)}</td><td>${esc(t.abbr)}</td>
+        <td><span class="wcol"><button class="eye ${state.tagWatch.has(t.name) ? "on" : ""}" data-setag="${esc(t.name)}" title="${state.tagWatch.has(t.name) ? "Watched: click to stop watching" : "Watch this tag"}" aria-pressed="${state.tagWatch.has(t.name)}"${ro}>${EYE}</button></span></td></tr>`).join("");
+      table = `<table class="setable"><thead><tr><th>Name</th><th>Abbreviation</th><th>${WATCH_HEAD}</th></tr></thead><tbody>${rows}</tbody></table>`;
+    } else {
+      const rows = page.rows().map((n) => `<tr class="${state.seSel === n ? "sel" : ""}" data-serow="${esc(n)}"><td>${esc(n)}</td></tr>`).join("");
+      table = `<table class="setable"><thead><tr><th>Name</th></tr></thead><tbody>${rows}</tbody></table>`;
+    }
+    return `<div class="seflyout" role="dialog" aria-label="Scheduling Environment">
+      <div class="se-title"><span class="t">Scheduling Environment</span><button data-seclose="1" title="Close">✕</button></div>
+      <div class="se-body"><div class="secats">${catList}</div>
+        <div class="sepage"><div class="se-h">${esc(cat)}</div>
+          <div class="se-desc">${esc(page.desc)}</div>
+          ${table}
+          ${state.seNote ? `<div class="pnote">${state.seNote}</div>` : ""}
+          <div class="se-btns"><button class="abtn" disabled>↑</button><button class="abtn" disabled>↓</button><span class="spacer"></span>
+            <button class="abtn" data-sestub="1"${ro}>Add</button><button class="abtn" data-sestub="1"${ro}${state.seSel ? "" : " disabled"}>Edit</button>
+            <button class="abtn" data-sedel="1"${ro}${state.seSel && (cat === "Tags" || page.dim) ? "" : " disabled"}>Delete</button></div></div></div></div>`;
+  }
+
+  /** Copy Semester (reached from Academic Years), with round 6's box for delivery types after section types. */
+  function copySemFlyout() {
+    const box = (label, on = true, cls = "") => `<label class="${cls}"><input type="checkbox" ${on ? "checked" : ""}> ${label}</label>`;
+    return `<div class="seflyout" role="dialog" aria-label="Copy Semester">
+      <div class="se-title"><span class="t">Copy Semester</span><button data-copyclose="1" title="Close">✕</button></div>
+      <div class="cs-body"><div class="se-h">Copy Semester</div>
+        <div class="cs-ft"><span><b>From</b> Fall 2027</span><span><b>To</b> Fall 2028</span></div>
+        ${box("Copy section designations only", false)}${box("Copy section designations and:")}
+        <div class="cs-in">${box("Include any section type assignments")}${box("Include any delivery type assignments", true, "new")}${box("Include all assigned tags")}
+          ${box("Include all staff members assigned to each section")}${box("Include all section meeting times and:")}
+          <div class="cs-in">${box("Include any room assignments")}${box("Include any meeting type assignments")}</div>${box("Include all reserves")}</div>
+        <div class="se-btns"><span class="spacer"></span><button class="abtn" disabled>Copy</button><button class="abtn" data-copyclose="1">Cancel</button></div></div></div>`;
+  }
+
+  /**
+   * What deleting a tag does to presets (round 5 rule). A preset that names the tag drops it, unless that would widen
+   * the preset (the tag was the last in its Tags choice, or "all of the checked tags" is on); then the preset no
+   * longer means what it did, so it is deleted too. A watched tag stops being watched.
+   * @param t the tag's name.
+   * @returns { gone, kept, watched }: presets to delete, presets that keep their other tags, whether the tag is watched.
+   */
+  function tagDeletePlan(t) { return deletePlan("Tags", t); }
+  /**
+   * Round 5's rule for anything a preset names (round 6 uses it for delivery types): drop the value, or delete the
+   * preset if dropping it would widen it (it was the choice's only value; for Tags, also "all of the checked tags").
+   * @param dim the filter choice ("Tags", "Delivery Type"). @param v the value being deleted.
+   */
+  function deletePlan(dim, v) {
+    const users = state.presets.filter((p) => (p.f.sel[dim] || []).includes(v));
+    const widens = (p) => p.f.sel[dim].length === 1 || (dim === "Tags" && !p.f.tagsAny);
+    return { gone: users.filter(widens), kept: users.filter((p) => !widens(p)), watched: dim === "Tags" && state.tagWatch.has(v) };
+  }
+  /** "the preset A" / "the presets A and B", with "(an access watch)" after each watched one. */
+  const presetNames = (ps) => `${ps.length === 1 ? "The preset" : "The presets"} ${joinAnd(ps.map((p) => `<b>${esc(p.name)}</b>${p.watch ? " (an access watch)" : ""}`))}`;
+
+  /** The app's Delete confirmation for a tag (today's two lines), with one line per kind of preset or watch affected. */
+  function seConfirmBox() {
+    const { cat, name: t } = state.seConfirm, isTag = cat === "Tags", plan = isTag ? tagDeletePlan(t) : deletePlan(SE_PAGES[cat].dim, t);
+    const lines = [isTag ? `This will also remove it from all sections and courses that reference it.` : `This will also remove it from all sections in all semesters that reference it.`];
+    const noun = isTag ? "tag" : "delivery type";
+    if (plan.gone.length) lines.push(`${presetNames(plan.gone)} ${plan.gone.length === 1 ? "depends" : "depend"} on this ${noun}, so ${plan.gone.length === 1 ? "it" : "they"} will be deleted too.`);
+    if (plan.kept.length) lines.push(`${presetNames(plan.kept)} will no longer include it.`);
+    if (plan.watched) lines.push(`This tag is an access watch, so TermPoint will stop checking it.`);
+    return `<div class="modal-back"><div class="modal" role="alertdialog" aria-label="Delete tag"><div class="mt">Delete "${esc(t)}"?</div>
+      ${lines.map((l) => `<p>${l}</p>`).join("")}<div class="mbtns"><button class="abtn danger" data-seok="1">Delete</button><button class="abtn" data-seno="1">Cancel</button></div></div></div>`;
+  }
+
+  /** Deletes a tag as the app would, applying tagDeletePlan, and leaves one notice in the Access tab. */
+  function deleteTag(t) {
+    const plan = tagDeletePlan(t);
+    TAGS.splice(TAGS.findIndex((x) => x.name === t), 1);
+    TAGLIST.splice(TAGLIST.indexOf(t), 1);
+    Object.values(COURSE_TAGS).forEach((list) => { const i = list.indexOf(t); if (i >= 0) list.splice(i, 1); });
+    dropFromPresets("Tags", plan, t);
+    state.presets = state.presets.filter((p) => !plan.gone.includes(p));
+    if (state.open && (state.open === t || plan.gone.some((p) => p.name === state.open))) closeWatch();
+    state.tagWatch.delete(t);
+    if (state.filter.sel.Tags) state.filter.sel.Tags = state.filter.sel.Tags.filter((x) => x !== t);
+    if (plan.gone.some((p) => p.name === state.appliedPreset)) state.appliedPreset = null;
+    // The notice everyone sees in the Access tab (other computers on their next reload), once
+    // Only when a watch ended: what was deleted, and which of it was being checked
+    const goneDesc = plan.gone.map((p) => `the preset ${p.name}${p.watch ? ", which was an access watch" : ""}`);
+    state.stub = plan.watched || plan.gone.some((p) => p.watch)
+      ? `The tag ${t} was deleted${goneDesc.length ? `, and with it ${joinAnd(goneDesc)}` : ""}.${plan.watched ? " The tag was an access watch, so TermPoint no longer checks it." : ""}`
+      : null;
+    state.seSel = null; state.seNote = `Deleted <b>${esc(t)}</b>.`;
+  }
+  /** Removes the deleted value from the presets that keep working without it. */
+  function dropFromPresets(dim, plan, v) { plan.kept.forEach((p) => { p.f.sel[dim] = p.f.sel[dim].filter((x) => x !== v); }); }
+  /** Deletes a delivery type: off every section, out of the presets by the rule, gone presets deleted (none watched here). */
+  function deleteDelivery(v) {
+    const plan = deletePlan("Delivery Type", v);
+    DELIVERY.splice(DELIVERY.indexOf(v), 1);
+    Object.keys(DLV).forEach((id) => { if (DLV[id] === v) delete DLV[id]; });
+    dropFromPresets("Delivery Type", plan, v);
+    state.presets = state.presets.filter((p) => !plan.gone.includes(p));
+    if (state.open && plan.gone.some((p) => p.name === state.open)) closeWatch();
+    if (plan.gone.some((p) => p.name === state.appliedPreset)) state.appliedPreset = null;
+    if (state.filter.sel["Delivery Type"]) state.filter.sel["Delivery Type"] = state.filter.sel["Delivery Type"].filter((x) => x !== v);
+    state.seSel = null; state.seNote = `Deleted <b>${esc(v)}</b>.`;
+  }
+
+  /**
+   * Round 6: joins the two lines of each marked conflict in different tiles with a red line, as the app does today
+   * (from the left tile's right edge to the right tile's left edge, at each line's middle). The line carries the same
+   * hover as the glow; a wider invisible stroke makes it easy to hover.
+   */
+  function drawConflictLines() {
+    const area = document.getElementById("gridarea");
+    if (!area || !MARKS.length) return;
+    const k = scale() || 1, base = area.getBoundingClientRect();   // a hidden page fits to scale 0
+    // In the grid's own coordinates, so the lines scroll with the tiles when the grid is wider than the panel
+    const sx = area.scrollLeft, sy = area.scrollTop;
+    const box = (el) => { const r = el.getBoundingClientRect(); return { l: (r.left - base.left) / k + sx, r: (r.right - base.left) / k + sx, y: (r.top + r.height / 2 - base.top) / k + sy }; };
+    const seen = new Map();
+    MARKS.forEach((mk) => mk.days.forEach((d) => {
+      const ea = area.querySelector(`.ent[data-sec="${CSS.escape(mk.a.id)}"][data-day="${d}"]`);
+      const eb = area.querySelector(`.ent[data-sec="${CSS.escape(mk.b.id)}"][data-day="${d}"]`);
+      if (!ea || !eb || ea.parentElement === eb.parentElement) return;
+      const key = [mk.a.id, mk.b.id].sort().join("|") + "|" + d;
+      if (!seen.has(key)) seen.set(key, { ta: box(ea.parentElement), tb: box(eb.parentElement), ya: box(ea).y, yb: box(eb).y, tips: [], ws: new Set() });
+      const e = seen.get(key); e.ws.add(mk.w); if (mk.tip) e.tips.push({ w: mk.w, t: mk.tip });
+    }));
+    let svg = `<svg class="conflictlines" width="100%" height="100%" aria-hidden="true">`;
+    seen.forEach((e) => {
+      const [L, R, yl, yr] = e.ta.l <= e.tb.l ? [e.ta, e.tb, e.ya, e.yb] : [e.tb, e.ta, e.yb, e.ya];
+      const many = e.ws.size > 1, tip = e.tips.map((x) => (many ? `${x.w}: ` : "") + x.t).join("\n");
+      const xy = `x1="${L.r}" y1="${yl}" x2="${R.l}" y2="${yr}"`;
+      svg += `<line ${xy} class="cl"/>${tip ? `<line ${xy} class="clhit" data-tip="${esc(tip)}"/>` : ""}`;
+    });
+    area.insertAdjacentHTML("beforeend", svg + `</svg>`);
+  }
+
+  /** Puts the open popup under its button, as Avalonia's Popup with Placement="Bottom" does. */
+  function placePopup() {
+    const pop = document.getElementById("fpop");
+    if (!pop) return;
+    const t = document.querySelector(`[data-ftog="${CSS.escape(state.pop)}"]`);
+    const base = stageInner.getBoundingClientRect(), k = scale(), r = t.getBoundingClientRect();
+    pop.style.left = Math.min(1280 - 330, (r.left - base.left) / k) + "px";
+    pop.style.top = ((r.bottom - base.top) / k + 2) + "px";
+  }
+
+  /** The one sentence that says what watching checks (D25), with the course count from the preset's result. */
+  function watchSentence(name, n) {
+    // Round 5: nothing shows this term (e.g. a tag no section carries yet); D25 has no "not offered", so say only that
+    if (!n) return `Watching <b>${esc(name)}</b>. No sections show for it this term, so there is nothing to check yet.`;
+    return `Watching <b>${esc(name)}</b>. TermPoint will check that students can take all ${n} of ${n === 1 ? "this course" : "these courses"} in one term.
+      <button class="lnk" data-openwatch="${esc(name)}">Open it</button>`;
+  }
+  /** Course codes in pasted text ("BIOL201, chem 213; STAT-104") as "BIOL 201". */
+  const codesIn = (t) => [...t.matchAll(/([A-Za-z]{2,5})\s*-?\s*(\d{3}[A-Za-z]?)/g)].map((m2) => `${m2[1].toUpperCase()} ${m2[2].toUpperCase()}`);
+
+  function workload() {
+    return `<table class="wl"><thead><tr><th>Instructor</th><th>Sections</th><th>Credits</th></tr></thead><tbody>` +
+      [["J. R. Smith", 3, "9.0"], ["M. K. Patel", 4, "12.0"], ["A. L. Wong", 2, "6.0"], ["D. T. Nguyen", 3, "9.0"], ["R. H. Chen", 4, "12.0"]]
+        .map((r) => `<tr><td>${r[0]}</td><td>${r[1]}</td><td>${r[2]}</td></tr>`).join("") + `</tbody></table>`;
+  }
+
+  // ================= Interactions =================
+  /** Ticks, pins and the semester change the slates, so stepping goes back to slate 1. */
+  const slatesChanged = () => { state.slateIx = 0; };
+  const offeredOf = (name) => lastList.find((a) => a.w.name === name).offered;
+  $("#variant").addEventListener("change", (e) => { state.variant = +e.target.value; state.pins = new Set(); slatesChanged(); render(); });
+  $("#readonly").addEventListener("change", (e) => { state.readOnly = e.target.checked; render(); });
+  $("#fit").addEventListener("change", (e) => setFit(e.target.checked));
+  document.addEventListener("change", (e) => {
+    const d = e.target.dataset;
+    if (d.edlv) { state.editDlv = e.target.value; return; }
+    if (d.markall) { state.markAll = e.target.checked; render(); return; }
+    if (e.target.id === "showOthers") state.showOthers = e.target.checked;
+    else if (d.fdim) {
+      filtersChanged();
+      const cur = new Set(state.filter.sel[d.fdim] || []);
+      if (e.target.checked) cur.add(d.fv); else cur.delete(d.fv);
+      state.filter.sel[d.fdim] = [...cur]; state.note = null;
+    }
+    else if (d.tagsany !== undefined) { filtersChanged(); state.filter.tagsAny = d.tagsany === "1"; }
+    else if (d.tick) {
+      const all = offeredOf(state.open);
+      const t = new Set(state.ticked || all);
+      if (e.target.checked) t.add(d.tick); else { t.delete(d.tick); [...state.pins].filter((p) => p.startsWith(d.tick + " ")).forEach((p) => state.pins.delete(p)); }
+      state.ticked = t.size === all.length ? null : t; slatesChanged();
+    }
+    else return;
+    render();
+  });
+  document.addEventListener("keydown", (e) => {
+    if (e.key === "Escape") {
+      if (state.pop) { state.pop = null; state.note = null; } else if (state.ctx) state.ctx = null; else if (state.stepping) state.stepping = false; else if (state.open) closeWatch();
+      render();
+    } else if (state.stepping && (e.key === "ArrowRight" || e.key === "ArrowLeft")) {
+      state.slateIx = Math.max(0, state.slateIx + (e.key === "ArrowRight" ? 1 : -1)); render(); e.preventDefault();
+    }
+  });
+  /** Changing filters while a watch is open closes it: the bar is the user's again (round 4). */
+  function filtersChanged() {
+    if (state.open) { state.appliedPreset = lastList.find((a) => a.w.name === state.open)?.w.src === "preset" ? state.open : null; state.open = null; state.savedFilter = null; resetWatchState(); }
+  }
+  /** Opens a watch: its Filter Set goes on the bar; the user's own filters are kept to put back on close. */
+  function openWatch(name) {
+    const w = lastList.find((a) => a.w.name === name)?.w || watchesNow(sections(state.variant)).find((x) => x.name === name);
+    if (!state.open) state.savedFilter = cloneF(state.filter);
+    state.open = name; state.stub = null; resetWatchState(); state.tab = "access"; state.se = false;
+    state.filter = cloneF(w.f); state.pop = null;
+  }
+  function closeWatch() {
+    if (state.savedFilter) state.filter = state.savedFilter;
+    state.savedFilter = null; state.open = null; resetWatchState();
+  }
+  /** Forgets what belongs to an open popup: its note, a paste message, the ⋯ menu, a rename or delete in progress. */
+  function popupReset() { state.note = null; state.pasteMsg = ""; state.pmenu = null; state.prename = null; state.prenameErr = ""; state.pdelete = null; }
+  /** Preset names are unique (ignoring case), so the Access list never shows two watches with one name. */
+  const DUP_NAME = "A preset already has that name.";
+  const nameTaken = (name, except = null) => state.presets.some((p) => p !== except && p.name.toLowerCase() === name.toLowerCase());
+  /**
+   * Renames the preset being renamed from the row's box. Renaming a watched preset renames its watch (they are one
+   * thing), and the open watch and the bar's label follow. Returns false (and says why) when the name can't be used.
+   */
+  function renamePreset() {
+    const box = document.getElementById("renameBox"), p = state.presets.find((x) => x.name === state.prename);
+    const name = box.value.trim();
+    if (!name) { box.focus(); return false; }
+    if (nameTaken(name, p)) { state.prenameErr = DUP_NAME; render(); const b = document.getElementById("renameBox"); b.value = name; b.focus(); return false; }
+    if (state.open === p.name) state.open = name;
+    if (state.appliedPreset === p.name) state.appliedPreset = name;
+    const old = p.name; p.name = name;
+    state.prename = null; state.prenameErr = "";
+    state.note = old === name ? null : { preset: name, html: `Renamed <b>${esc(old)}</b> to <b>${esc(name)}</b>.${p.watch ? " Its watch has the new name too." : ""}` };
+    return true;
+  }
+  document.addEventListener("keydown", (e) => {
+    if (e.target.id === "renameBox") {
+      if (e.key === "Enter") { if (renamePreset()) render(); e.preventDefault(); }
+      else if (e.key === "Escape") { state.prename = null; state.prenameErr = ""; render(); e.preventDefault(); }
+    }
+  });
+  document.addEventListener("input", (e) => {
+    if (e.target.id !== "coursePaste") return;
+    const t = e.target.value, codes = codesIn(t);
+    if (codes.length >= 2) {
+      // Pasted a list: tick every code found and say which weren't
+      const all = optionsFor("Course", sections(state.variant)), found = codes.filter((c) => all.includes(c)), miss = codes.filter((c) => !all.includes(c));
+      const cur = new Set(state.filter.sel.Course || []); found.forEach((c) => cur.add(c));
+      filtersChanged(); state.filter.sel.Course = [...cur];
+      state.pasteMsg = `Ticked ${found.length}${found.length ? ": " + found.join(", ") : ""}${miss.length ? ` · Not found: ${miss.join(", ")}` : ""}`;
+      render(); document.getElementById("coursePaste")?.focus();
+      return;
+    }
+    // Typing: just narrow the list
+    const q = t.trim().toUpperCase().replace(/\s+/g, " ");
+    document.querySelectorAll("#fpop .fopt").forEach((r) => { r.style.display = !q || r.dataset.fval.toUpperCase().replace(/\s+/g, " ").includes(q) ? "" : "none"; });
+  });
+  document.addEventListener("click", (e) => {
+    if (state.pop && !e.target.closest("#fpop, [data-ftog]")) { state.pop = null; popupReset(); render(); if (!e.target.closest("button, input, .ent")) return; }
+    if (state.ctx && !e.target.closest(".ctx")) { state.ctx = null; render(); if (!e.target.closest("button, input")) return; }
+    const fb = e.target.closest("[data-ftog], [data-fclear], [data-papply], [data-psave], [data-pupdate], [data-pmore], [data-prename], [data-prenok], [data-prenno], [data-pdelete], [data-pdelok], [data-pdelno], [data-pwatch], [data-tagwatch], [data-addwatch], [data-openwatch], [data-editfilters]");
+    if (fb) {
+      const d = fb.dataset;
+      if (d.ftog) { state.pop = state.pop === d.ftog ? null : d.ftog; popupReset(); }
+      else if (d.fclear) { filtersChanged(); state.filter = fset(); state.appliedPreset = null; }
+      else if (d.papply) { filtersChanged(); const p = state.presets.find((x) => x.name === d.papply); state.filter = cloneF(p.f); state.appliedPreset = p.name; state.pop = null; }
+      else if (d.pupdate) { const p = state.presets.find((x) => x.name === state.appliedPreset); p.f = cloneF(state.filter); state.note = { preset: p.name, html: `Updated <b>${esc(p.name)}</b>.${p.watch ? " Its watch now uses these filters." : ""}` }; }
+      else if (d.psave) {
+        const name = document.getElementById("presetName").value.trim();
+        if (!name) { document.getElementById("presetName").focus(); return; }
+        if (nameTaken(name)) { state.prenameErr = DUP_NAME; render(); document.getElementById("presetName").value = name; return; }
+        state.prenameErr = "";
+        state.presets.push({ name, watch: false, f: cloneF(state.filter) }); state.appliedPreset = name;
+        state.note = { saved: true, html: `Saved <b>${esc(name)}</b>. Click its eye to have TermPoint check access for it.` };
+      }
+      else if (d.pmore) { state.pmenu = state.pmenu === d.pmore ? null : d.pmore; state.pdelete = null; state.prename = null; state.prenameErr = ""; state.note = null; }
+      else if (d.prename) { state.prename = d.prename; state.pmenu = null; state.prenameErr = ""; render(); const b = document.getElementById("renameBox"); b.focus(); b.select(); return; }
+      else if (d.prenok) { if (!renamePreset()) return; }
+      else if (d.prenno) { state.prename = null; state.prenameErr = ""; }
+      else if (d.pdelete) { state.pdelete = d.pdelete; state.pmenu = null; }
+      else if (d.pdelno) state.pdelete = null;
+      else if (d.pdelok) {
+        const p = state.presets.find((x) => x.name === state.pdelete);
+        state.presets = state.presets.filter((x) => x !== p);
+        if (state.open === p.name) closeWatch();
+        if (state.appliedPreset === p.name) state.appliedPreset = null;
+        state.note = { deleted: true, html: `Deleted <b>${esc(p.name)}</b>.${p.watch ? " TermPoint no longer checks it." : ""}` };
+        state.pdelete = null;
+      }
+      else if (d.pwatch) {
+        // Same eye as on tags (round 4 review), not a tick box
+        const p = state.presets.find((x) => x.name === d.pwatch);
+        p.watch = !p.watch;
+        state.note = { preset: p.name, html: p.watch ? watchSentence(p.name, coursesOf(p.f, sections(state.variant)).length) : `Stopped watching <b>${esc(p.name)}</b>. The preset stays.` };
+        if (!p.watch && state.open === p.name) closeWatch();
+      }
+      else if (d.tagwatch) {
+        const t = d.tagwatch;
+        if (state.tagWatch.has(t)) { state.tagWatch.delete(t); state.note = { tag: true, html: `Stopped watching <b>${esc(t)}</b>. The tag stays.` }; }
+        else { state.tagWatch.add(t); state.note = { tag: true, html: watchSentence(t, coursesOf(fset({ Tags: [t] }), sections(state.variant)).length) }; }
+      }
+      else if (d.addwatch) {
+        // No second way to make a watch (round 4 review): this opens Presets and says how
+        if (state.open) closeWatch();
+        state.pop = "Presets";
+        state.note = { hint: true, html: `A watch is a preset you watch. Set the filters on the bar (in <b>Course</b> you can paste course codes), save them here as a preset, then click its eye.` };
+      }
+      else if (d.openwatch) openWatch(d.openwatch);
+      else if (d.editfilters) { const name = state.open; state.open = null; state.savedFilter = null; resetWatchState(); state.appliedPreset = name; state.pop = "Presets";
+        state.note = { preset: name, html: `Change the filters on the bar, then <b>Update ${esc(name)}</b> here.` }; }
+      render();
+      return;
+    }
+    // Round 5: Scheduling Environment → Tags, and its Delete confirmation
+    // Round 6: conflict-mark mode, the banner, Copy Semester, the section editor
+    const r6 = e.target.closest("[data-banner], [data-copysem], [data-copyclose], [data-eapply], [data-ecancel]");
+    if (r6) {
+      const d = r6.dataset;
+      if (d.banner) state.whatsNew = false;
+      else if (d.copysem) { state.copySem = true; state.se = false; state.pop = null; }
+      else if (d.copyclose) state.copySem = false;
+      else if (d.eapply) {
+        const v = state.editDlv;
+        if (v !== null) { if (v) DLV[state.editing] = v; else delete DLV[state.editing]; }
+        state.editing = null; state.editDlv = null;
+      }
+      else if (d.ecancel) { state.editing = null; state.editDlv = null; }
+      render();
+      return;
+    }
+    const se = e.target.closest("[data-se], [data-seclose], [data-secat], [data-setag], [data-serow], [data-sedel], [data-seok], [data-seno], [data-sestub]");
+    if (se) {
+      const d = se.dataset;
+      if (d.se) { state.se = true; state.copySem = false; state.pop = null; popupReset(); state.seNote = null; }
+      else if (d.secat) { state.seCat = d.secat; state.seSel = null; state.seNote = null; }
+      else if (d.seclose) { state.se = false; state.seSel = null; }
+      else if (d.setag) {
+        const t = d.setag;
+        if (state.tagWatch.has(t)) { state.tagWatch.delete(t); if (state.open === t) closeWatch(); state.seNote = `Stopped watching <b>${esc(t)}</b>. The tag stays.`; }
+        else { state.tagWatch.add(t); state.seNote = watchSentence(t, coursesOf(fset({ Tags: [t] }), sections(state.variant)).length); }
+      }
+      else if (d.serow) { state.seSel = d.serow; state.seNote = null; }
+      else if (d.sedel) state.seConfirm = { cat: state.seCat, name: state.seSel };
+      else if (d.seno) state.seConfirm = null;
+      else if (d.seok) { const c = state.seConfirm; if (c.cat === "Tags") deleteTag(c.name); else deleteDelivery(c.name); state.seConfirm = null; }
+      else if (d.sestub) state.seNote = "Add and Edit work as they do today.";
+      render();
+      return;
+    }
+    const line = e.target.closest("#gridarea .ent");
+    if (line && !e.target.closest("button")) { state.sel = line.dataset.sec; render(); revealSelection(); return; }
+    const t = e.target.closest("button, input[data-act], input[data-multi]");
+    if (!t) return;
+    if (t.dataset.sel) { state.sel = t.dataset.sel; render(); revealSelection(); return; }
+    const d = t.dataset;
+    if (d.open) openWatch(d.open);
+    else if (d.unwatch) {
+      // Round 5: the open watch's eye, the same as in Presets and Tags
+      const n = d.unwatch, p = state.presets.find((x) => x.name === n);
+      if (p) p.watch = false; else state.tagWatch.delete(n);
+      closeWatch(); state.stub = `Stopped watching ${n}. The ${p ? "preset" : "tag"} stays; click its eye to watch it again.`;
+    }
+    else if (d.back) closeWatch();
+    else if (d.layout) state.layout = d.layout;
+    else if (d.fold) state.foldOpen = !state.foldOpen;
+    else if (d.cand) { if (!state.candOpen.delete(d.cand)) state.candOpen.add(d.cand); }
+    else if (d.multi) { if (!state.multi.delete(d.multi)) state.multi.add(d.multi); state.slateIx = 0; }
+    else if (d.tab) state.tab = d.tab;
+    else if (d.pop) { if (state.tab === "access") state.layout = "accessOut"; }
+    else if (d.close) state.layout = "docked";
+    else if (d.confirm) d.confirm.split("|").forEach((c) => state.confirmed.add(c));
+    else if (d.tickall) { state.ticked = null; slatesChanged(); }
+    else if (d.unpin) { state.pins.delete(d.unpin); slatesChanged(); }
+    else if (d.clearpins) { state.pins = new Set(); slatesChanged(); }
+    else if (d.pin) {
+      const course = d.pin.split(" ").slice(0, 2).join(" ");
+      if (state.pins.has(d.pin)) state.pins.delete(d.pin);
+      else {
+        // One pin per part: pinning replaces another pin of the same course and part; pinning ticks the course.
+        const secs = sections(state.variant), me = secs.find((s) => s.id === d.pin);
+        [...state.pins].forEach((p) => { const o = secs.find((s) => s.id === p); if (o && o.c === me.c && o.type === me.type) state.pins.delete(p); });
+        state.pins.add(d.pin);
+        if (state.ticked) state.ticked.add(course);
+      }
+      state.ctx = null; slatesChanged();
+    }
+    else if (d.step) {
+      if (d.step === "start") { state.stepping = true; state.slateIx = 0; }
+      else if (d.step === "stop") state.stepping = false;
+      else state.slateIx = Math.max(0, state.slateIx + +d.step);
+    }
+    else if (d.act === "toggle") { e.preventDefault(); return; }
+    else if (d.act) {
+      state.stub = { help: "Opens the Access help article: slates, parts, seats, pins and stepping explained once.",
+        add: "Round 4: saving a filter preset and ticking Watch.", checkall: "A later round: Check all courses.",
+        edit: "Round 4: editing the watch's preset.", delete: "Deleting asks first, then stops watching (the preset stays).",
+        parts: "A later round: opens this course's parts in Courses, then comes back here." }[d.act];
+      if (state.open && d.act !== "add" && d.act !== "checkall") { alertInDetail(state.stub); return; }
+    }
+    else if (t.id === "summaryBtn") { state.tab = "access"; }
+    else return;
+    render();
+  });
+  /** Scrolls Section View to the selected card, as the app does (ListScrollAnchorBehavior.ScrollItemIntoView). */
+  function revealSelection() {
+    const card = document.querySelector(".card.sel");
+    if (!card) return;
+    const box = card.closest(".panel-body");
+    box.scrollTop = card.offsetTop - box.offsetTop - 30;
+  }
+  /** Shows a one-line "what this would do" note at the top of an open detail. */
+  function alertInDetail(msg) {
+    render();
+    const det = document.querySelector(".det");
+    if (det) det.insertAdjacentHTML("afterbegin", `<div class="stub" style="margin:0">${esc(msg)}</div>`);
+  }
+
+  // Round 6: double-click a card to open its editor (one card open at a time); Esc-free, Cancel closes it
+  document.addEventListener("dblclick", (e) => {
+    const card = e.target.closest("[data-card]");
+    if (!card || e.target.closest(".ed")) return;
+    state.editing = card.dataset.card; state.editDlv = null; state.sel = card.dataset.card;
+    render();
+  });
+
+  // Right-click a section line on the grid while a watch is open: the grid's menu gains Pin / Unpin
+  const stage = $("#stage"), stageInner = $("#stageInner");
+  stageInner.addEventListener("contextmenu", (e) => {
+    const line = e.target.closest(".ent");
+    if (!line || !state.open || !e.target.closest("#gridarea")) return;
+    e.preventDefault();
+    const base = stageInner.getBoundingClientRect(), k = scale();
+    state.ctxShared = !!line.closest(".gtile.shared");
+    state.ctx = { sec: line.dataset.sec, x: Math.min(1280 - 200, (e.clientX - base.left) / k), y: Math.min(760 - 120, (e.clientY - base.top) / k) };
+    render();
+  });
+
+  // Hover tips
+  let tipEl = null;
+  stageInner.addEventListener("pointerover", (e) => {
+    const tile = e.target.closest("[data-tip]");
+    if (tipEl) { tipEl.remove(); tipEl = null; }
+    if (!tile || state.ctx) return;
+    tipEl = document.createElement("div");
+    tipEl.className = "tip"; tipEl.textContent = tile.dataset.tip;
+    const r = tile.getBoundingClientRect(), base = stageInner.getBoundingClientRect(), k = scale();
+    tipEl.style.left = Math.min(1280 - 310, (r.left - base.left) / k + 8) + "px";
+    tipEl.style.top = ((r.bottom - base.top) / k + 4) + "px";
+    stageInner.appendChild(tipEl);
+  });
+
+  // Dragging the splitter and the popped-out window
+  let drag = null;
+  const scale = () => (stageInner.style.transform ? parseFloat(stageInner.style.transform.slice(6)) : 1);
+  document.addEventListener("pointerdown", (e) => {
+    if (e.button !== 0) return;
+    if (e.target.id === "hsplit") drag = { kind: "split", y: e.clientY, h0: state.slotH };
+    const bar = e.target.closest("[data-drag]");
+    if (bar && !e.target.closest("button")) drag = { kind: "win", x: e.clientX, y: e.clientY, gx: state.wins.access.x, gy: state.wins.access.y };
+    if (drag) e.preventDefault();
+  });
+  document.addEventListener("pointermove", (e) => {
+    if (!drag) return;
+    const k = scale();
+    if (drag.kind === "split") {
+      state.slotH = Math.max(120, Math.min(560, drag.h0 - (e.clientY - drag.y) / k));
+      const p = document.querySelector("#hsplit + .panel"); if (p) p.style.height = state.slotH + "px";
+    } else {
+      const g = state.wins.access;
+      g.x = Math.max(0, Math.min(1200, drag.gx + (e.clientX - drag.x) / k));
+      g.y = Math.max(0, Math.min(730, drag.gy + (e.clientY - drag.y) / k));
+      const w = document.querySelector(".win"); if (w) { w.style.left = g.x + "px"; w.style.top = g.y + "px"; }
+    }
+  });
+  document.addEventListener("pointerup", () => { drag = null; });
+
+  function setFit(on) {
+    $("#fit").checked = on;
+    stage.classList.toggle("fit", on);
+    if (on) { const k = Math.min(1, stage.clientWidth / 1280); stageInner.style.transform = `scale(${k})`; stage.style.height = 760 * k + 2 + "px"; }
+    else { stageInner.style.transform = ""; stage.style.height = ""; }
+  }
+  window.addEventListener("resize", () => { if ($("#fit").checked) setFit(true); });
+
+  /** Review aid: lets the page's numbers be checked from the browser console. */
+  window.__access = { sections, analyse, watchesNow, passes, state, marks: () => MARKS };
+
+  // Round 6 opens on the watch list (a taller Access slot, as in rounds 3–5); deletions come back on Start again
+  $("#restart").addEventListener("click", () => location.reload());
+  state.slotH = 330;
+  render();
+  setFit(window.innerWidth < 1320);
+})();
+</script>

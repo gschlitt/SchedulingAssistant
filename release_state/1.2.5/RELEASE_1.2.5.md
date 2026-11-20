@@ -2,7 +2,7 @@
 
 **Goal:** to be set by Greg (the unassigned candidate work is in [backlog-1.2.5.md](backlog-1.2.5.md)).
 **MinimumVersionToWrite:** not asked yet.
-**Updated:** 2026-11-18
+**Updated:** 2026-11-20
 
 ## Work
 
@@ -59,16 +59,16 @@ Notes: [lost-notices/NOTES.md](lost-notices/NOTES.md). Source: backlog WN1, plus
 </details>
 
 <details>
-<summary><b>Access Analyzer and easy access watches</b> · Waiting on Greg · **ACTIVE**</summary>
+<summary><b>Access Analyzer and easy access watches</b> · In progress · **ACTIVE**</summary>
 
 **Goal:** administrators see at a glance whether students can still take every course of a watched set (a full "slate" of one section per part), get notices when a change breaks it, and create watches easily. Done means the feature in the app, field-tested.
 
-**State:** Design in progress (progressive spec). Phases 1 and 2 locked; Phase 3 (UX) wireframe rounds 1-5 settled (4 and 5 on 2026-11-18; wording approved for coding, to fine-tune later). Round 6's scope waits on Greg (recommended: teal boxes with delivery type, the first piece to ship). Phases 4-6 and all code still to come; nothing broken on branch 1.2.5.
+**State:** Design in progress (progressive spec) on branch 1.2.5. Phases 1 and 2 locked; Phase 3 (UX) wireframe rounds 1-6 settled (round 6 with revisions 6b-6e, all approved by Greg 2026-11-20). Phases 4-6 and all code still to come; nothing broken.
 
 <details>
 <summary>Steps (6 left)</summary>
 
-1. Further wireframe rounds (round 6 next) until the rest of Phase 3 is settled; Greg locks Phase 3.
+1. Round 7 onward (editor pointer, parts in Courses, Check all courses), one screen per round, until Phase 3 is settled; Greg locks Phase 3.
 2. Phase 4: data design (ask Greg which readable columns any new table needs; check against `MinimumVersionToWrite`).
 3. Phase 5: architecture (including whether `DetachablePanel` can do tabs).
 4. Phase 6: implementation plan, in the delivery order (delivery type first, easy watches, then the analyzer).
@@ -78,7 +78,6 @@ Notes: [lost-notices/NOTES.md](lost-notices/NOTES.md). Source: backlog WN1, plus
 </details>
 
 **Open questions:**
-- Round 6's scope (what the entry waits for): teal boxes and delivery type, or the editor pointer; later parts in Courses, Check all courses, Copy Semester.
 - Phase 3 questions Q29-Q34, and the left-open Phase 2 items (Q18 extra part names, Q28).
 - Does the whole feature fit 1.2.5, or does only the first piece (delivery type, easy watches) ship now?
 
