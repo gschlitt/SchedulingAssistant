@@ -15,7 +15,9 @@ oddly, or before writing large output to disk.
   snapshot that sometimes doesn't run the page's script (blank mock), can't be reloaded (`location.reload()` fails),
   and is replaced after every edit. Before driving it from JavaScript, wait about a second and check the mock has
   rendered; never run the page's script a second time by hand, because doubled click handlers make every toggle fire
-  twice. Greg reviews them in a real browser.
+  twice. Greg reviews them in a real browser. `navigate` to the same URL in the same tab may not reload either (check
+  `performance.now()`): the page keeps whatever Claude's test clicked, and Greg may look at that pane. After driving a
+  mock, close its tab (`tabs_close`) and open it afresh before handing it over.
 
 ## GregDeskTop (the main dev computer)
 
