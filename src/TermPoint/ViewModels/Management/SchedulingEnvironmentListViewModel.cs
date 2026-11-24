@@ -4,6 +4,7 @@ using TermPoint.Data;
 using TermPoint.Data.Repositories;
 using TermPoint.Models;
 using TermPoint.Services;
+using TermPoint.Services.Access;
 using System.Collections.ObjectModel;
 using System.Data.Common;
 
@@ -21,6 +22,8 @@ public partial class SchedulingEnvironmentListViewModel : ViewModelBase, IDismis
     private readonly IDialogService _dialog;
     private readonly string _type;
     private readonly WriteLockService _lockService;
+    private readonly AccessWatchToggler? _watchToggler;
+    private readonly GridChangeNotifier? _changeNotifier;
 
     /// <summary>True when this instance holds the write lock; gates all write-capable buttons.</summary>
     public bool IsWriteEnabled => _lockService.IsWriter;
@@ -29,6 +32,38 @@ public partial class SchedulingEnvironmentListViewModel : ViewModelBase, IDismis
     private bool CanWrite() => _lockService.IsWriter;
 
     public string DisplayName { get; }
+
+    /// <summary>
+    /// True only for the Tags category: the list shows the eye column, which turns a tag's access watch on or off
+    /// (<see cref="ToggleWatchCommand"/>).
+    /// </summary>
+    public bool ShowWatchColumn => _type == SchedulingEnvironmentTypes.Tag;
+
+    /// <summary>
+    /// Turns the access watch on a tag on or off through <see cref="AccessWatchToggler"/> (which saves the tag, makes
+    /// the access state stale and redraws the grid), then reloads the list so the row redraws. Does nothing when
+    /// this computer cannot save or no toggler was given. It writes only the tag, never a section, so the
+    /// open-section-card rule does not apply.
+    /// </summary>
+    /// <param name="tag">The tag's row.</param>
+    [RelayCommand(CanExecute = nameof(CanWrite))]
+    private void ToggleWatch(SchedulingEnvironmentValue? tag)
+    {
+        if (tag is null || _watchToggler is not { CanToggle: true } toggler) return;
+        LastErrorMessage = null;
+        try
+        {
+            toggler.SetWatched(tag.Id, !tag.IsAccessWatch);
+            var selectedId = SelectedItem?.Id;
+            Load();
+            SelectedItem = Items.FirstOrDefault(x => x.Id == selectedId);
+        }
+        catch (Exception ex)
+        {
+            App.Logger.LogError(ex, "SchedulingEnvironmentListViewModel.ToggleWatch");
+            LastErrorMessage = WriteFailureText.For(ex, "The watch could not be changed. No changes were made. Please try again.");
+        }
+    }
 
     /// <summary>
     /// Optional explanatory sentence shown below the title, above the list.
@@ -70,8 +105,12 @@ public partial class SchedulingEnvironmentListViewModel : ViewModelBase, IDismis
         WriteLockService lockService,
         bool showAbbreviation = false,
         string? description = null,
-        IRoomRepository? roomRepo = null)
+        IRoomRepository? roomRepo = null,
+        AccessWatchToggler? watchToggler = null,
+        GridChangeNotifier? changeNotifier = null)
     {
+        _watchToggler = watchToggler;
+        _changeNotifier = changeNotifier;
         _type = propertyType;
         DisplayName = displayName;
         Description = description;
@@ -104,6 +143,7 @@ public partial class SchedulingEnvironmentListViewModel : ViewModelBase, IDismis
         AddCommand.NotifyCanExecuteChanged();
         EditCommand.NotifyCanExecuteChanged();
         DeleteCommand.NotifyCanExecuteChanged();
+        ToggleWatchCommand.NotifyCanExecuteChanged();
     }
 
     /// <summary>
@@ -190,7 +230,7 @@ public partial class SchedulingEnvironmentListViewModel : ViewModelBase, IDismis
             IsComponent = SelectedItem.IsComponent,
         }.WithExtensionDataFrom(SelectedItem); // Save writes the whole copy back: keep unknown JSON fields.
         EditVm = new SchedulingEnvironmentEditViewModel(copy, isNew: false,
-            onSave: v => { _repo.Update(v); Load(); SelectedItem = Items.FirstOrDefault(x => x.Id == v.Id); EditVm = null; _sectionListVm.Reload(); },
+            onSave: v => { _repo.Update(v); Load(); SelectedItem = Items.FirstOrDefault(x => x.Id == v.Id); EditVm = null; _sectionListVm.Reload(); _changeNotifier?.NotifyGridContentChanged(); },
             onCancel: () => EditVm = null,
             nameExists: name => _repo.ExistsByName(_type, name, excludeId: copy.Id),
             showAbbreviation: ShowAbbreviation);
@@ -311,6 +351,8 @@ public partial class SchedulingEnvironmentListViewModel : ViewModelBase, IDismis
             tx?.Commit();
             Load();
             _sectionListVm.Reload();
+            // Names of tags and section types appear in the grid's filters and in the Access hovers and list.
+            _changeNotifier?.NotifyGridContentChanged();
         }
         catch (Exception ex)
         {

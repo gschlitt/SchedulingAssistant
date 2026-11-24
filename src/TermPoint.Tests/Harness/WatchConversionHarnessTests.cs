@@ -63,7 +63,7 @@ public sealed class WatchConversionHarnessTests : IDisposable
             cmd.Parameters.AddWithValue("$d", JsonHelpers.Serialize(new SchedulingEnvironmentValue { Id = "tag-1", Name = tagName }));
             cmd.ExecuteNonQuery();
             cmd.CommandText = "INSERT INTO ProgramWatches (id, semester_id, name, mode, data) VALUES ('w1', 'sem-1', $n, 'tag', $w)";
-            cmd.Parameters.AddWithValue("$w", JsonHelpers.Serialize(new ProgramWatch { Id = "w1", Name = tagName, TagIds = ["tag-1"] }));
+            cmd.Parameters.AddWithValue("$w", $"{{\"id\":\"w1\",\"name\":{System.Text.Json.JsonSerializer.Serialize(tagName)},\"mode\":0,\"isEnabled\":true,\"tagIds\":[\"tag-1\"],\"courseIds\":[],\"levelIds\":[]}}");
             cmd.ExecuteNonQuery();
         }
         SqliteConnection.ClearAllPools();

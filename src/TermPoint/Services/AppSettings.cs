@@ -192,6 +192,13 @@ public class AppSettings
     public double TileFontSize { get; set; } = 11.0;
 
     /// <summary>
+    /// The Access tab's "Mark all conflicts" box (Access Analyzer round 6b): when false (the default) the grid marks
+    /// only the conflicts that cost something; when true it marks every conflict between sections of different
+    /// components. Per computer, not per database. Set through <c>AccessState.MarkAllConflicts</c>, which saves it.
+    /// </summary>
+    public bool MarkAllAccessConflicts { get; set; } = false;
+
+    /// <summary>
     /// Controls what the Section List does when the Schedule Grid filter passes a section.
     /// Default: Highlight (existing behaviour — matching cards receive a visual tint).
     /// </summary>

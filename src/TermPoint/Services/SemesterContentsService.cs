@@ -9,15 +9,16 @@ namespace TermPoint.Services;
 /// Every screen that empties or deletes one (Empty Semester, the Semester Manager,
 /// the Academic Year list) must go through this service, so the rules cannot drift apart again.
 /// <para>
-/// Six tables are tied to a semester by <c>semester_id</c>: Sections, Meetings, Releases,
-/// InstructorCommitments, SchedulingNotes and ProgramWatches. The decided rules are:
+/// Five tables are tied to a semester by <c>semester_id</c>: Sections, Meetings, Releases,
+/// InstructorCommitments and SchedulingNotes (the old ProgramWatches table is always empty since the 1.2.5
+/// conversion to watched tags, so it is neither counted nor deleted here). The decided rules are:
 /// </para>
 /// <list type="number">
 ///   <item><description><b>Empty Semester</b> deletes everything attached to the semester, in all
-///   six tables, in one transaction. It is refused for a semester that is currently loaded (any of
+///   five tables, in one transaction. It is refused for a semester that is currently loaded (any of
 ///   the selected semesters, not just the first). It does not delete the semester row.</description></item>
 ///   <item><description><b>Delete semester</b> is allowed only when the semester has no rows in any
-///   of the six tables and is not currently loaded. Otherwise the refusal says what remains and
+///   of the five tables and is not currently loaded. Otherwise the refusal says what remains and
 ///   points to Empty Semester.</description></item>
 ///   <item><description><b>Delete academic year</b> is allowed only when none of its semesters is
 ///   currently loaded and every one of its semesters is empty. It then deletes the year's legal
@@ -41,7 +42,6 @@ namespace TermPoint.Services;
 /// <param name="releaseRepo">Releases (semester-scoped).</param>
 /// <param name="commitmentRepo">Instructor commitments (semester-scoped).</param>
 /// <param name="noteRepo">Scheduling notes (semester-scoped).</param>
-/// <param name="watchRepo">Program watches (semester-scoped).</param>
 /// <param name="semesterRepo">Semesters, used for names and for deleting semester rows.</param>
 /// <param name="academicYearRepo">Academic years, used for names and for deleting the year row.</param>
 /// <param name="legalStartTimeRepo">Legal start times (academic-year-scoped).</param>
@@ -53,7 +53,6 @@ public sealed class SemesterContentsService(
     IReleaseRepository releaseRepo,
     IInstructorCommitmentRepository commitmentRepo,
     ISchedulingNoteRepository noteRepo,
-    IProgramWatchRepository watchRepo,
     ISemesterRepository semesterRepo,
     IAcademicYearRepository academicYearRepo,
     ILegalStartTimeRepository legalStartTimeRepo,
@@ -71,11 +70,10 @@ public sealed class SemesterContentsService(
         Meetings:        meetingRepo.CountBySemesterId(semesterId),
         Releases:        releaseRepo.CountBySemesterId(semesterId),
         Commitments:     commitmentRepo.CountBySemesterId(semesterId),
-        SchedulingNotes: noteRepo.CountBySemesterId(semesterId),
-        ProgramWatches:  watchRepo.CountBySemesterId(semesterId));
+        SchedulingNotes: noteRepo.CountBySemesterId(semesterId));
 
     /// <summary>
-    /// True when the semester has no rows in any of the six semester-scoped tables.
+    /// True when the semester has no rows in any of the five semester-scoped tables.
     /// This is the one emptiness rule used by all three screens.
     /// </summary>
     /// <param name="semesterId">The semester to test.</param>
@@ -166,7 +164,7 @@ public sealed class SemesterContentsService(
 
     /// <summary>
     /// Deletes everything attached to the semester — sections, meetings, releases, instructor
-    /// commitments, scheduling notes and program watches — in ONE transaction: either all six are
+    /// commitments, scheduling notes — in ONE transaction: either all five are
     /// emptied or (on any failure) none are. The semester row itself is kept.
     /// </summary>
     /// <param name="semesterId">The semester to empty.</param>
@@ -188,7 +186,6 @@ public sealed class SemesterContentsService(
             releaseRepo.DeleteBySemesterId(semesterId, tx);
             commitmentRepo.DeleteBySemesterId(semesterId, tx);
             noteRepo.DeleteBySemesterId(semesterId, tx);
-            watchRepo.DeleteBySemesterId(semesterId, tx);
         });
     }
 

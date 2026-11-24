@@ -243,9 +243,9 @@ public sealed class SectionMarksTests : IDisposable
             new CampusRepository(db), _semesterContext, new AcademicUnitService(new AcademicUnitRepository(db)),
             _sectionStore, new MeetingStore(), new MeetingRepository(db), notifier,
             new InstructorCommitmentRepository(db), _fx.Lock, new SharedScheduleService(),
-            new AccessPanelViewModel(new ProgramWatchRepository(db), _semesterContext, notifier, envRepo, courseRepo, () => true),
             _focus, FocusTestSupport.NoColours(courseRepo, subjectRepo, _sectionStore), new BlockPatternRepository(db),
-            new FakeSectionCardState(), new LegalStartTimeRepository(db), new SectionMarks());
+            new FakeSectionCardState(), new LegalStartTimeRepository(db), new SectionMarks(),
+            AccessStateTestSupport.For(db, _sectionStore, notifier));
     }
 
     /// <summary>Marks follow the section id, so a grid reload leaves them in place; the menu shares the same set.</summary>

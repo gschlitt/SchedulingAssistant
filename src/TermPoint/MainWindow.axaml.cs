@@ -28,6 +28,7 @@ public partial class MainWindow : Window, ILifecyclePrompts, ISessionHost
 {
     private DetachedPanelWindow? _sectionViewWindow;
     private DetachedPanelWindow? _workloadWindow;
+    private DetachedPanelWindow? _accessWindow;
     private DetachedPanelWindow? _scheduleGridWindow;
 
     // ── Loading curtain ──────────────────────────────────────────────────────
@@ -918,7 +919,7 @@ public partial class MainWindow : Window, ILifecyclePrompts, ISessionHost
     /// </summary>
     private void HideSecondaryWindows()
     {
-        foreach (var w in new[] { _sectionViewWindow, _workloadWindow, _scheduleGridWindow })
+        foreach (var w in new[] { _sectionViewWindow, _workloadWindow, _accessWindow, _scheduleGridWindow })
         {
             if (w is null) continue;
             w.SuppressReattach = true;
@@ -1593,6 +1594,8 @@ public partial class MainWindow : Window, ILifecyclePrompts, ISessionHost
                     svp.DetachRequested += OnSectionViewDetach;
                 if (MainViewControl.FindControl<DetachablePanel>("WorkloadPanel") is { } wp)
                     wp.DetachRequested += OnWorkloadDetach;
+                if (MainViewControl.FindControl<DetachablePanel>("AccessPanel") is { } ap)
+                    ap.DetachRequested += OnAccessDetach;
                 if (MainViewControl.FindControl<DetachablePanel>("ScheduleGridPanel") is { } sgp)
                     sgp.DetachRequested += OnScheduleGridDetach;
 
@@ -1658,12 +1661,39 @@ public partial class MainWindow : Window, ILifecyclePrompts, ISessionHost
             headerContent);
     }
 
+    /// <summary>
+    /// Detaches the Workload tab into its own window. The bottom-left slot's tab strip hides the Workload tab while
+    /// it is detached and shows Access instead, so the slot never shows an empty tab; reattaching brings the tab back
+    /// and selects it.
+    /// </summary>
+    /// <param name="sender">The Workload <see cref="DetachablePanel"/>.</param>
+    /// <param name="e">Unused.</param>
     private void OnWorkloadDetach(object? sender, EventArgs e)
     {
         var slot = (DetachablePanel)sender!;
+        var vm = Vm;
         DetachSlot(slot, ref _workloadWindow,
-            () => new WorkloadPanelView { DataContext = Vm.WorkloadPanelVm },
-            () => { slot.IsVisible = true; _workloadWindow = null; });
+            () => new WorkloadPanelView { DataContext = vm.WorkloadPanelVm },
+            () => { slot.IsVisible = true; _workloadWindow = null; vm.IsWorkloadDetached = false; vm.IsAccessTabSelected = false; },
+            title: "Workload View");
+        if (_workloadWindow is not null) { vm.IsWorkloadDetached = true; vm.IsAccessTabSelected = true; }
+    }
+
+    /// <summary>
+    /// Detaches the Access tab into its own window (Access Analyzer, D17: each tab detaches on its own). Mirrors
+    /// <see cref="OnWorkloadDetach"/>: the slot shows Workload meanwhile, and reattaching selects Access again.
+    /// </summary>
+    /// <param name="sender">The Access <see cref="DetachablePanel"/>.</param>
+    /// <param name="e">Unused.</param>
+    private void OnAccessDetach(object? sender, EventArgs e)
+    {
+        var slot = (DetachablePanel)sender!;
+        var vm = Vm;
+        DetachSlot(slot, ref _accessWindow,
+            () => new AccessTabView { DataContext = vm.AccessTabVm },
+            () => { slot.IsVisible = true; _accessWindow = null; vm.IsAccessDetached = false; vm.IsAccessTabSelected = true; },
+            title: "Access");
+        if (_accessWindow is not null) { vm.IsAccessDetached = true; vm.IsAccessTabSelected = false; }
     }
 
     private void OnScheduleGridDetach(object? sender, EventArgs e)
@@ -1874,7 +1904,7 @@ public partial class MainWindow : Window, ILifecyclePrompts, ISessionHost
     /// </summary>
     private void CloseSecondaryWindows()
     {
-        foreach (var w in new[] { _sectionViewWindow, _workloadWindow, _scheduleGridWindow })
+        foreach (var w in new[] { _sectionViewWindow, _workloadWindow, _accessWindow, _scheduleGridWindow })
         {
             if (w is null) continue;
             w.SuppressReattach = true; // don't reattach into a tearing-down main window
@@ -1882,6 +1912,7 @@ public partial class MainWindow : Window, ILifecyclePrompts, ISessionHost
         }
         _sectionViewWindow  = null;
         _workloadWindow     = null;
+        _accessWindow       = null;
         _scheduleGridWindow = null;
 
         Views.Management.WorkflowsView.CloseAllNotes();
@@ -1889,12 +1920,22 @@ public partial class MainWindow : Window, ILifecyclePrompts, ISessionHost
 
     // ── Core detach mechanism ───────────────────────────────────────────────
 
+    /// <summary>
+    /// Moves a panel's content into its own window and hides the slot, or brings the existing window forward.
+    /// </summary>
+    /// <param name="slot">The panel being detached.</param>
+    /// <param name="existingWindow">The panel's window field; set to the new window.</param>
+    /// <param name="buildContent">Builds the window's content.</param>
+    /// <param name="onReattach">Run when the window closes and the panel returns to its slot.</param>
+    /// <param name="headerContext">Optional extra header content for the window.</param>
+    /// <param name="title">The window's title; null uses the slot's <see cref="DetachablePanel.Header"/> (the bottom-left tabs have none).</param>
     private void DetachSlot(
         DetachablePanel slot,
         ref DetachedPanelWindow? existingWindow,
         Func<Control> buildContent,
         Action onReattach,
-        object? headerContext = null)
+        object? headerContext = null,
+        string? title = null)
     {
         if (existingWindow is not null)
         {
@@ -1905,7 +1946,7 @@ public partial class MainWindow : Window, ILifecyclePrompts, ISessionHost
         slot.IsVisible = false;
 
         var win = new DetachedPanelWindow { OnReattach = onReattach };
-        win.SetContent(slot.Header, buildContent(), headerContext);
+        win.SetContent(title ?? slot.Header, buildContent(), headerContext);
         existingWindow = win;
         win.Show(this);
     }

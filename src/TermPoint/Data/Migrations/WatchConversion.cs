@@ -13,8 +13,8 @@ namespace TermPoint.Data.Migrations;
 /// before the <c>user_version</c> stamp, on every copy of the file that opens at version 1 or lower: a writer's
 /// working copy (reaching the shared file with the next ordinary save) and a reader's throw-away snapshot.
 ///
-/// <para><b>Reads the old rows as JSON, not as the <c>ProgramWatch</c> model</b>, so that model can be deleted
-/// later. Writes only what the rules below say: the watched flag on a tag row, new tag rows, and the
+/// <para><b>Reads the old rows as JSON, not as a model class</b> (the old <c>ProgramWatch</c> model has been deleted).
+/// Writes only what the rules below say: the watched flag on a tag row, new tag rows, and the
 /// <c>tagIds</c> member of section and course JSON (nothing else in those documents is rewritten, so unknown
 /// fields from newer versions survive untouched). A row is rewritten only when its tags really change.</para>
 ///
@@ -27,7 +27,7 @@ namespace TermPoint.Data.Migrations;
 ///         semester only (Q38). Never replaces existing tags; never duplicates.</item>
 ///   <item><b>Tag mode with several tags, or with levels (or levels only):</b> a new tag named as the watch is
 ///         added to the sections the watch covered in its semester (today's rule, see
-///         <c>ProgramConflictService.ResolveCoveredSections</c>: all the tags, and a section level in the
+///         the removed ProgramConflictService's <c>ResolveCoveredSections</c>: all the tags, and a section level in the
 ///         list when levels are given). Not on courses. A watch that covered nothing still gets its (empty)
 ///         tag, so nothing the user made disappears.</item>
 ///   <item><b>Same name in several semesters</b> (case-insensitive, trimmed): the rows form a group.

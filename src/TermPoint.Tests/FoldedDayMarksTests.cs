@@ -1,6 +1,7 @@
 using System.Collections.Generic;
 using System.Linq;
 using TermPoint.Services;
+using TermPoint.Services.Access;
 using TermPoint.ViewModels.GridView;
 using Xunit;
 
@@ -19,13 +20,13 @@ public sealed class FoldedDayMarksTests
         new(meetings.Select(m => m.Id).Distinct().Count(), false,
             meetings.Select(m => new FoldedSectionMeeting(m.Id, m.Start, m.End, $"LBL-{m.Id}")).ToList(), []);
 
-    private static MarkInputs Inputs(string[]? selected = null, GhostBlock[]? ghosts = null, ProgramConflict[]? conflicts = null,
+    private static MarkInputs Inputs(string[]? selected = null, GhostBlock[]? ghosts = null, GridConflict[]? conflicts = null,
                                      string[]? marked = null) =>
         new(selected ?? [], ghosts ?? [], conflicts ?? [], marked ?? []);
 
-    private static ConflictMeeting CM(string id, int day, int start, int end) => new(id, null, day, start, end, null);
+    private static GridConflictMeeting CM(string id, int day, int start, int end) => new(id, null, day, start, end, null);
 
-    private static ProgramConflict Conflict(ConflictMeeting a, ConflictMeeting b) => new("w", "watch", a, b);
+    private static GridConflict Conflict(GridConflictMeeting a, GridConflictMeeting b) => new("w", "watch", a, b);
 
     /// <summary>A selected section on the folded day is a Selection mark at its meeting's span, with its label.</summary>
     [Fact]

@@ -27,13 +27,13 @@ public sealed class SemesterContentsScreensTests : IDisposable
 {
     // ── Fixture ───────────────────────────────────────────────────────────────
 
-    /// <summary>The six kinds of row tied to a semester; used to seed exactly one kind.</summary>
-    public enum Kind { Sections, Meetings, Releases, Commitments, SchedulingNotes, ProgramWatches }
+    /// <summary>The five kinds of row tied to a semester; used to seed exactly one kind.</summary>
+    public enum Kind { Sections, Meetings, Releases, Commitments, SchedulingNotes }
 
     // Distinct counts per kind, so a mix-up between two kinds cannot go unnoticed.
-    private static readonly SemesterContents FullContents = new(3, 2, 4, 5, 6, 7);
-    private static readonly SemesterContents SingleOfEach = new(1, 1, 1, 1, 1, 1);
-    private static readonly SemesterContents PairOfEach   = new(2, 2, 2, 2, 2, 2);
+    private static readonly SemesterContents FullContents = new(3, 2, 4, 5, 6);
+    private static readonly SemesterContents SingleOfEach = new(1, 1, 1, 1, 1);
+    private static readonly SemesterContents PairOfEach   = new(2, 2, 2, 2, 2);
 
     /// <summary>Protects the developer's real settings.json: SemesterContext.Reload saves AppSettings.</summary>
     private readonly SettingsFileGuard _settingsGuard = new();
@@ -46,7 +46,6 @@ public sealed class SemesterContentsScreensTests : IDisposable
     private readonly ReleaseRepository _releaseRepo;
     private readonly InstructorCommitmentRepository _commitmentRepo;
     private readonly SchedulingNoteRepository _noteRepo;
-    private readonly ProgramWatchRepository _watchRepo;
     private readonly SemesterRepository _semesterRepo;
     private readonly AcademicYearRepository _ayRepo;
     private readonly LegalStartTimeRepository _legalRepo;
@@ -63,7 +62,7 @@ public sealed class SemesterContentsScreensTests : IDisposable
 
     /// <summary>
     /// Builds the repositories and the service, then seeds two academic years (2024-2025: Fall,
-    /// Winter; 2025-2026: Spring, Summer) with legal start times for both, and rows of all six kinds
+    /// Winter; 2025-2026: Spring, Summer) with legal start times for both, and rows of all five kinds
     /// in Fall, Winter and Spring. Summer is left empty.
     /// </summary>
     public SemesterContentsScreensTests()
@@ -74,14 +73,13 @@ public sealed class SemesterContentsScreensTests : IDisposable
         _releaseRepo = new ReleaseRepository(db);
         _commitmentRepo = new InstructorCommitmentRepository(db);
         _noteRepo = new SchedulingNoteRepository(db);
-        _watchRepo = new ProgramWatchRepository(db);
         _semesterRepo = new SemesterRepository(db);
         _ayRepo = new AcademicYearRepository(db);
         _legalRepo = new LegalStartTimeRepository(db);
 
         _service = new SemesterContentsService(
             db, _sectionRepo, _meetingRepo, _releaseRepo, _commitmentRepo, _noteRepo,
-            _watchRepo, _semesterRepo, _ayRepo, _legalRepo, _context);
+            _semesterRepo, _ayRepo, _legalRepo, _context);
 
         _ayRepo.Insert(new AcademicYear { Id = _ay1, Name = "2024-2025" });
         _ayRepo.Insert(new AcademicYear { Id = _ay2, Name = "2025-2026" });
@@ -159,9 +157,6 @@ public sealed class SemesterContentsScreensTests : IDisposable
         // One scheduling note per (instructor, semester), so vary the instructor.
         for (var i = 0; i < counts.SchedulingNotes; i++)
             _noteRepo.Save(new SchedulingNote { SemesterId = semesterId, InstructorId = $"inst-{i}", Text = "note" });
-
-        for (var i = 0; i < counts.ProgramWatches; i++)
-            _watchRepo.Save(semesterId, new ProgramWatch { Name = $"Watch {i}" });
     }
 
     /// <summary>Returns a <see cref="SemesterContents"/> with 1 in the given kind and 0 elsewhere.</summary>
@@ -171,8 +166,7 @@ public sealed class SemesterContentsScreensTests : IDisposable
         kind == Kind.Meetings ? 1 : 0,
         kind == Kind.Releases ? 1 : 0,
         kind == Kind.Commitments ? 1 : 0,
-        kind == Kind.SchedulingNotes ? 1 : 0,
-        kind == Kind.ProgramWatches ? 1 : 0);
+        kind == Kind.SchedulingNotes ? 1 : 0);
 
     /// <summary>Loads the given semesters of an academic year into the context (the "loaded" set).</summary>
     /// <param name="yearId">The academic year the semesters belong to.</param>
@@ -232,7 +226,7 @@ public sealed class SemesterContentsScreensTests : IDisposable
         Assert.Equal(FullContents, vm.Contents);
         Assert.Equal(
             "This semester contains 3 sections, 2 meetings, 4 releases, 5 scheduled commitments, " +
-            "6 scheduling notes, 7 program watches.",
+            "6 scheduling notes.",
             vm.ContentsSummary);
     }
 
@@ -271,12 +265,12 @@ public sealed class SemesterContentsScreensTests : IDisposable
     }
 
     /// <summary>
-    /// Confirming removes all six kinds for the chosen semester only. The confirmation was shown the
+    /// Confirming removes all five kinds for the chosen semester only. The confirmation was shown the
     /// semester's name and a description naming every kind present; afterwards the screen reports the
     /// semester empty and the button is disabled again.
     /// </summary>
     [Fact]
-    public async Task EmptySemester_Confirmed_RemovesAllSixKinds_AfterListingThemInTheConfirmation()
+    public async Task EmptySemester_Confirmed_RemovesAllFiveKinds_AfterListingThemInTheConfirmation()
     {
         var vm = NewEmptyVm(_ay1, _fall);
         var asked = new List<(string Name, string Description)>();
@@ -293,10 +287,10 @@ public sealed class SemesterContentsScreensTests : IDisposable
         var (askedName, askedDescription) = Assert.Single(asked);
         Assert.Equal("2024-2025 Fall", askedName);   // academic year + semester, shown in bold in the dialog
         Assert.Equal(FullContents.Describe(), askedDescription);
-        foreach (var noun in new[] { "sections", "meetings", "releases", "scheduled commitments", "scheduling notes", "program watches" })
+        foreach (var noun in new[] { "sections", "meetings", "releases", "scheduled commitments", "scheduling notes" })
             Assert.Contains(noun, askedDescription);
 
-        // All six kinds are gone from Fall; other semesters are untouched.
+        // All five kinds are gone from Fall; other semesters are untouched.
         Assert.True(_service.IsEmpty(_fall));
         Assert.Equal(SingleOfEach, _service.CountContents(_winter));
         Assert.Equal(PairOfEach, _service.CountContents(_spring));
@@ -504,8 +498,8 @@ public sealed class SemesterContentsScreensTests : IDisposable
     // ═════════════════════════════════════════════════════════════════════════
 
     /// <summary>
-    /// The 1.2.2 "emptied" case: the sections are gone but meetings, releases, commitments, notes and
-    /// watches remain. Delete is refused, the message lists what is left and points to Empty Semester,
+    /// The 1.2.2 "emptied" case: the sections are gone but meetings, releases, commitments, notes
+    /// remain. Delete is refused, the message lists what is left and points to Empty Semester,
     /// the user is not even asked to confirm, and nothing is deleted.
     /// </summary>
     [Fact]
@@ -518,7 +512,7 @@ public sealed class SemesterContentsScreensTests : IDisposable
         await vm.DeleteCommand.ExecuteAsync(null);
 
         Assert.Equal(
-            "\"Winter\" still contains 1 meeting, 1 release, 1 scheduled commitment, 1 scheduling note, 1 program watch. " +
+            "\"Winter\" still contains 1 meeting, 1 release, 1 scheduled commitment, 1 scheduling note. " +
             "Use Empty Semester to remove everything before deleting it.",
             vm.LastErrorMessage);
         Assert.Empty(dialog.Confirmations);
@@ -646,14 +640,14 @@ public sealed class SemesterContentsScreensTests : IDisposable
     public async Task DeleteAcademicYear_Refused_WhenOneSemesterHasOneRowOfAnyKind()
     {
         _service.EmptySemester(_spring);
-        Seed(_summer, OnlyOne(Kind.ProgramWatches));
+        Seed(_summer, OnlyOne(Kind.SchedulingNotes));
         var dialog = new FakeDialog(answer: true);
         var vm = NewYearListVm(_ay2, dialog);
 
         await vm.DeleteCommand.ExecuteAsync(null);
 
         Assert.Equal(
-            "\"2025-2026\" can't be deleted because it still contains: Summer (1 program watch). " +
+            "\"2025-2026\" can't be deleted because it still contains: Summer (1 scheduling note). " +
             "Use Empty Semester to remove everything from each of these semesters before deleting the year.",
             vm.LastErrorMessage);
         Assert.NotNull(_ayRepo.GetById(_ay2));

@@ -367,9 +367,17 @@ public record GridData(
     }
 
     /// <summary>
-    /// Program conflicts detected among the filtered sections by enabled watches.
-    /// Set by the grid pipeline after construction; consumed by the renderer to draw
-    /// colored overlays. Empty when no watches are active or no conflicts exist.
+    /// Access conflicts to draw: one record per overlapping meeting pair of every conflict mark of every watched
+    /// tag, over the whole semester (Access Analyzer rule 29), so a record's partner may not be on the grid (its
+    /// connecting line is then skipped). Set by the grid pipeline after construction; consumed by the renderer to
+    /// draw the glow and lines. Empty when no tag is watched or no conflict is marked.
     /// </summary>
-    public IReadOnlyList<Services.ProgramConflict> ProgramConflicts { get; init; } = [];
+    public IReadOnlyList<Services.Access.GridConflict> ProgramConflicts { get; init; } = [];
+
+    /// <summary>
+    /// The conflict hover lines of a section's line on a day, keyed by (section id, day number), for the tile's
+    /// tooltip (<c>AccessText.ConflictTips</c>). A key is absent when the line has nothing to say.
+    /// </summary>
+    public IReadOnlyDictionary<(string SectionId, int Day), IReadOnlyList<string>> ConflictHoverLines { get; init; }
+        = new Dictionary<(string SectionId, int Day), IReadOnlyList<string>>();
 }

@@ -75,6 +75,17 @@
 	<Color x:Key="ProgramConflictGlowCenter">#60C03030</Color>
 	<Color x:Key="ProgramConflictGlowEdge">#00C03030</Color>
 
+	<!--  Access tab (Access Analyzer): the watch list's marks and a watched tag's eye.  -->
+	<!--  ▲ no full slate or something missing; ● a full slate that depends on one section; ○ nothing to report.  -->
+	<SolidColorBrush x:Key="AccessMarkAttention" Color="{StaticResource ProgramConflictColor}" />
+	<SolidColorBrush x:Key="AccessMarkFragile" Color="#B7791F" />
+	<SolidColorBrush x:Key="AccessMarkOk" Color="#64748B" />
+	<!--  The eye on a watched tag (green, as in the wireframes); an unwatched eye uses AccessWatchEyeOff.  -->
+	<SolidColorBrush x:Key="AccessWatchEyeOn" Color="#1F6F4A" />
+	<SolidColorBrush x:Key="AccessWatchEyeOff" Color="#A0AEC0" />
+	<!--  The small dot on the Access tab while a watch needs a look and the tab is not showing.  -->
+	<SolidColorBrush x:Key="AccessTabDot" Color="{StaticResource ProgramConflictColor}" />
+
 
 	<!--  User targets for interaction: buttons, selectors  -->
 	<Color x:Key="UserInteractionColor">Transparent</Color>

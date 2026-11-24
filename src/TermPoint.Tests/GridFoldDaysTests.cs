@@ -90,9 +90,8 @@ public sealed class GridFoldDaysTests : IDisposable
             new CampusRepository(db), _semesterContext, new AcademicUnitService(new AcademicUnitRepository(db)),
             _sectionStore, _meetingStore, _meetingRepo, notifier, new InstructorCommitmentRepository(db),
             _fx.Lock, new SharedScheduleService(),
-            new AccessPanelViewModel(new ProgramWatchRepository(db), _semesterContext, notifier, envRepo, _courseRepo,
-                () => true),
-            _focus, _presenter, _patternRepo = new BlockPatternRepository(db), new FakeSectionCardState(), new LegalStartTimeRepository(db), new SectionMarks());
+            _focus, _presenter, _patternRepo = new BlockPatternRepository(db), new FakeSectionCardState(), new LegalStartTimeRepository(db), new SectionMarks(),
+            AccessStateTestSupport.For(db, _sectionStore, notifier));
     }
 
     /// <summary>Restores settings, releases the presenter, the focus service, the database and the settings guard.</summary>

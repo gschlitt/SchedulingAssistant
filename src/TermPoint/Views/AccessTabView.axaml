@@ -1,0 +1,90 @@
+<UserControl
+	x:Class="TermPoint.Views.AccessTabView"
+	xmlns="https://github.com/avaloniaui"
+	xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+	x:CompileBindings="False">
+
+	<!--
+		The Access tab (Access Analyzer, D17): one line per watched tag of the loaded semester(s), worst first, with its
+		health line, then the Mark all conflicts box. DataContext: AccessTabViewModel. The open watch's detail and Check
+		all courses come in piece F. Marks use three Paths shown by direct bools, never class-conditioned styles.
+	-->
+	<DockPanel Margin="6,4,6,4">
+
+		<!--  Header: the semester and Add a watch (disabled read-only; its hover says why)  -->
+		<DockPanel DockPanel.Dock="Top" Margin="0,0,0,4">
+			<Button
+				Padding="6,1"
+				MinHeight="0"
+				Command="{Binding AddWatchCommand}"
+				Content="+ Add a watch"
+				DockPanel.Dock="Right"
+				FontSize="{StaticResource FontSizePanelList}"
+				IsEnabled="{Binding CanAddWatch}"
+				ToolTip.ShowOnDisabled="True"
+				ToolTip.Tip="{Binding AddWatchTip}" />
+			<TextBlock
+				VerticalAlignment="Center"
+				FontSize="{StaticResource FontSizePanelList}"
+				FontWeight="SemiBold"
+				Foreground="{StaticResource TextSecondary}"
+				Text="{Binding Title}"
+				TextTrimming="CharacterEllipsis" />
+		</DockPanel>
+
+		<!--  Foot: Mark all conflicts (a view setting, remembered on this computer; works read-only)  -->
+		<CheckBox
+			Margin="0,4,0,0"
+			Content="Mark all conflicts"
+			DockPanel.Dock="Bottom"
+			FontSize="{StaticResource FontSizePanelList}"
+			IsChecked="{Binding MarkAllConflicts}"
+			ToolTip.Tip="Marks all conflicts, even those students can avoid by registering in different slates. Removing them can still improve access." />
+
+		<Panel>
+			<!--  Empty state (approved wording)  -->
+			<TextBlock
+				FontSize="{StaticResource FontSizePanelList}"
+				Foreground="{StaticResource TextFaint}"
+				IsVisible="{Binding IsEmpty}"
+				Text="{Binding EmptyText}"
+				TextWrapping="Wrap" />
+
+			<ScrollViewer IsVisible="{Binding HasRows}" VerticalScrollBarVisibility="Auto">
+				<ItemsControl ItemsSource="{Binding Rows}">
+					<ItemsControl.ItemTemplate>
+						<DataTemplate>
+							<!--  Mark, name, health line (trimmed; the whole line on hover)  -->
+							<Grid
+								Margin="0,1"
+								Background="Transparent"
+								ColumnDefinitions="14,Auto,*"
+								ToolTip.Tip="{Binding HealthLine}">
+								<Panel Grid.Column="0" VerticalAlignment="Center">
+									<Path Width="9" Height="9" Data="{StaticResource AccessMarkAttentionIcon}" Fill="{StaticResource AccessMarkAttention}" IsVisible="{Binding IsAttention}" Stretch="Uniform" />
+									<Path Width="8" Height="8" Data="{StaticResource AccessMarkFragileIcon}" Fill="{StaticResource AccessMarkFragile}" IsVisible="{Binding IsFragile}" Stretch="Uniform" />
+									<Path Width="8" Height="8" Data="{StaticResource AccessMarkOkIcon}" Stroke="{StaticResource AccessMarkOk}" StrokeThickness="1.2" IsVisible="{Binding IsOk}" Stretch="Uniform" />
+								</Panel>
+								<TextBlock
+									Grid.Column="1"
+									Margin="0,0,8,0"
+									VerticalAlignment="Center"
+									FontSize="{StaticResource FontSizePanelList}"
+									FontWeight="SemiBold"
+									Foreground="{StaticResource TextPrimary}"
+									Text="{Binding Name}" />
+								<TextBlock
+									Grid.Column="2"
+									VerticalAlignment="Center"
+									FontSize="{StaticResource FontSizePanelList}"
+									Foreground="{StaticResource TextFaint}"
+									Text="{Binding HealthLine}"
+									TextTrimming="CharacterEllipsis" />
+							</Grid>
+						</DataTemplate>
+					</ItemsControl.ItemTemplate>
+				</ItemsControl>
+			</ScrollViewer>
+		</Panel>
+	</DockPanel>
+</UserControl>

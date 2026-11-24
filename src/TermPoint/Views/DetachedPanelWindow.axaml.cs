@@ -77,7 +77,7 @@ public partial class DetachedPanelWindow : Window
     /// <para>
     /// Avalonia disposes a closing window synchronously: OnClosing → CloseInternal →
     /// WindowImpl.Dispose(). If we rebuilt the panel inline during that teardown, the fresh
-    /// ScheduleGridView's AccessPanelView carries grouped ("WatchMode") RadioButtons whose
+    /// ScheduleGridView's old Access popup (removed in 1.2.5; any view with grouped RadioButtons can do it) carried grouped ("WatchMode") RadioButtons whose
     /// attach-time routed-event publish needs a lock the in-progress compositor teardown
     /// holds → UI-thread deadlock (0% CPU, "not responding"). Deferring the reattach with a
     /// Dispatcher.Post is NOT enough: the nested message pump inside Dispose() drains the

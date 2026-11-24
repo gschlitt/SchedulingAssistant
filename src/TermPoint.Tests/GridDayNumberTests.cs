@@ -153,9 +153,8 @@ public sealed class GridDayNumberTests : IDisposable
             new CampusRepository(db), semesterContext, new AcademicUnitService(new AcademicUnitRepository(db)),
             sectionStore, new MeetingStore(), new MeetingRepository(db), notifier, new InstructorCommitmentRepository(db),
             _fx.Lock, new SharedScheduleService(),
-            new AccessPanelViewModel(new ProgramWatchRepository(db), semesterContext, notifier, envRepo, courseRepo,
-                () => true),
-            focus, presenter, new BlockPatternRepository(db), new FakeSectionCardState(), new LegalStartTimeRepository(db), new SectionMarks());
+            focus, presenter, new BlockPatternRepository(db), new FakeSectionCardState(), new LegalStartTimeRepository(db), new SectionMarks(),
+            AccessStateTestSupport.For(db, sectionStore, notifier));
 
         semesterContext.Reload(ayRepo, semesterRepo, year.Id, new HashSet<string> { fall.Id });
         sectionStore.Reload(sectionRepo, [fall.Id]);

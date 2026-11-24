@@ -2,6 +2,7 @@ using CommunityToolkit.Mvvm.ComponentModel;
 using TermPoint.Data;
 using TermPoint.Data.Repositories;
 using TermPoint.Services;
+using TermPoint.Services.Access;
 using System.Collections.ObjectModel;
 
 namespace TermPoint.ViewModels.Management;
@@ -27,14 +28,17 @@ public partial class SchedulingEnvironmentViewModel : ViewModelBase, IDismissabl
         IDatabaseContext db,
         SectionListViewModel sectionListVm,
         IDialogService dialog,
-        WriteLockService lockService)
+        WriteLockService lockService,
+        AccessWatchToggler watchToggler,
+        GridChangeNotifier changeNotifier)
     {
         // Pass lockService to every child VM so their button panels are gated consistently.
         Categories = new ObservableCollection<ViewModelBase>
         {
             new SchedulingEnvironmentListViewModel(SchedulingEnvironmentTypes.SectionType, "Section Type",  repo, sectionRepo, courseRepo, instructorRepo, db, sectionListVm, dialog, lockService,
                 // approved wording
-                description: "What kind of section it is: e.g. Lecture, Lab, Tutorial. Used for filtering in the schedule grid. How a section is taught goes in Delivery Types."),
+                description: "What kind of section it is: e.g. Lecture, Lab, Tutorial. Used for filtering in the schedule grid. How a section is taught goes in Delivery Types.",
+                changeNotifier: changeNotifier),
             new SchedulingEnvironmentListViewModel(SchedulingEnvironmentTypes.DeliveryType, "Delivery Type", repo, sectionRepo, courseRepo, instructorRepo, db, sectionListVm, dialog, lockService,
                 // approved wording
                 description: "How a section is taught: e.g. F2F, Blended, Online live, Online self-paced. A section has at most one. Shown on section cards and used for filtering in the schedule grid."),
@@ -44,7 +48,8 @@ public partial class SchedulingEnvironmentViewModel : ViewModelBase, IDismissabl
             new SchedulingEnvironmentListViewModel(SchedulingEnvironmentTypes.StaffType,   "Staff Type",    repo, sectionRepo, courseRepo, instructorRepo, db, sectionListVm, dialog, lockService,
                 description: "Categorize instructors by employment type or role — e.g. Full-Time, Part-Time, Adjunct, Lab Instructor"),
             new SchedulingEnvironmentListViewModel(SchedulingEnvironmentTypes.Tag,         "Tags",          repo, sectionRepo, courseRepo, instructorRepo, db, sectionListVm, dialog, lockService,
-                description: "Freeform labels that can be attached to sections and courses for custom grouping and filtering e.g. 'Cohort1' or 'PSYMAJOR'"),
+                description: "Freeform labels that can be attached to sections and courses for custom grouping and filtering e.g. 'Cohort1' or 'PSYMAJOR'",
+                watchToggler: watchToggler, changeNotifier: changeNotifier),
             new SchedulingEnvironmentListViewModel(SchedulingEnvironmentTypes.Resource,    "Resources",     repo, sectionRepo, courseRepo, instructorRepo, db, sectionListVm, dialog, lockService,
                 description: "Special facilities or equipment a section requires — e.g. Recording Studio, Smart Board."),
             new SchedulingEnvironmentListViewModel(SchedulingEnvironmentTypes.Reserve,     "Reserve Codes", repo, sectionRepo, courseRepo, instructorRepo, db, sectionListVm, dialog, lockService,

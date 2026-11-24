@@ -2,8 +2,8 @@ namespace TermPoint.Data;
 
 /// <summary>
 /// The one SQL fragment that makes a query spanning ALL semesters ignore "orphan" rows: rows in a
-/// semester-scoped table (Sections, Meetings, Releases, InstructorCommitments, SchedulingNotes,
-/// ProgramWatches) whose <c>semester_id</c> no longer exists in <c>Semesters</c>.
+/// semester-scoped table (Sections, Meetings, Releases, InstructorCommitments, SchedulingNotes)
+/// whose <c>semester_id</c> no longer exists in <c>Semesters</c>.
 /// <para>
 /// Orphans were left behind by older app versions (academic-year delete removed the semesters but
 /// not what hung off them). They are never deleted, detected or

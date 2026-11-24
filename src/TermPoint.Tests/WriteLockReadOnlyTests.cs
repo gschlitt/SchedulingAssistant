@@ -171,7 +171,7 @@ public sealed class WriteLockReadOnlyTests : IDisposable
     /// <summary>Creates the service that owns the empty/delete-semester rules, over the fixture's repositories.</summary>
     private SemesterContentsService CreateContentsService() =>
         new(_db, _sectionRepo, _meetingRepo, _releaseRepo, _commitmentRepo, _noteRepo,
-            new ProgramWatchRepository(_db), _semesterRepo, _ayRepo, _legalStartTimeRepo, _semesterContext);
+            _semesterRepo, _ayRepo, _legalStartTimeRepo, _semesterContext);
 
     /// <summary>Creates a fully-wired <see cref="MeetingListViewModel"/> in reader mode.</summary>
     private MeetingListViewModel CreateMeetingListVm() =>

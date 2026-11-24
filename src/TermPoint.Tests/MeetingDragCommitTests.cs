@@ -79,9 +79,9 @@ public sealed class MeetingDragCommitTests : IDisposable
             new CampusRepository(db), _semesterContext, new AcademicUnitService(new AcademicUnitRepository(db)),
             _sectionStore, new MeetingStore(), new MeetingRepository(db), notifier,
             new InstructorCommitmentRepository(db), lockService, new SharedScheduleService(),
-            new AccessPanelViewModel(new ProgramWatchRepository(db), _semesterContext, notifier, envRepo, courseRepo, () => true),
             _focus, FocusTestSupport.NoColours(courseRepo, subjectRepo, _sectionStore), new BlockPatternRepository(db),
-            _card, new LegalStartTimeRepository(db), new TermPoint.ViewModels.GridView.SectionMarks());
+            _card, new LegalStartTimeRepository(db), new TermPoint.ViewModels.GridView.SectionMarks(),
+            AccessStateTestSupport.For(db, _sectionStore, notifier));
     }
 
     /// <summary>Releases the focus service, the database and the settings guard.</summary>

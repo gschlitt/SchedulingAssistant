@@ -1,0 +1,393 @@
+using System.Globalization;
+using TermPoint.Models;
+using TermPoint.Services.Access;
+
+namespace TermPoint.ViewModels.Access;
+
+/// <summary>One conflict mark together with the watch that produced it, as the hover wording needs it.</summary>
+/// <param name="WatchId">The watch's id (the watched tag's id); marks of one watch are spoken together.</param>
+/// <param name="WatchName">The watch's name (the tag's name), used in the sentences.</param>
+/// <param name="Mark">The mark.</param>
+public sealed record WatchMark(string WatchId, string WatchName, ConflictMark Mark);
+
+/// <summary>Why a conflict's other section is not on the grid (Q41).</summary>
+public enum HiddenReason
+{
+    /// <summary>Its subject is not one of the subjects chosen in the top banner (the subject focus).</summary>
+    Subjects,
+    /// <summary>The grid's filters leave it out.</summary>
+    Filters,
+}
+
+/// <summary>
+/// The wording of Access Analyzer messages, kept in this one UI-side class and never in the engine (decision D29),
+/// so the grid's hover and, later, the Access tab say the same thing. A port of the r9 wireframe's
+/// <c>conflictTips</c>, <c>byCourse</c> and <c>joinAnd</c> (designs/wireframes/access-panel-r9.html). Pure and static.
+/// </summary>
+public static class AccessText
+{
+    /// <summary>
+    /// A section's name in a sentence: its course's calendar code and its section code, e.g. "CHEM 213 A"; just the
+    /// section code when the section has no course.
+    /// </summary>
+    /// <param name="inputs">The semester view (for the course's code).</param>
+    /// <param name="section">The section.</param>
+    /// <returns>The label.</returns>
+    public static string SectionLabel(AccessInputs inputs, Section section) =>
+        section.CourseId is null ? section.SectionCode : $"{inputs.CourseCode(section.CourseId)} {section.SectionCode}";
+
+    /// <summary>Joins phrases as "a, b and c" (a single phrase stays as it is; none gives an empty string).</summary>
+    /// <param name="items">The phrases.</param>
+    /// <returns>The joined text.</returns>
+    public static string JoinAnd(IReadOnlyList<string> items) =>
+        items.Count <= 1 ? string.Concat(items) : $"{string.Join(", ", items.Take(items.Count - 1))} and {items[^1]}";
+
+    /// <summary>
+    /// Names sections grouped by course, in order of first appearance: "PSYCH 101 A, B, C and GEOG 250 A".
+    /// </summary>
+    /// <param name="inputs">The semester view (for course codes).</param>
+    /// <param name="sections">The sections.</param>
+    /// <returns>The grouped text.</returns>
+    public static string ByCourse(AccessInputs inputs, IEnumerable<Section> sections)
+    {
+        var courses = new List<string>();
+        var codes = new Dictionary<string, List<string>>();
+        foreach (var s in sections)
+        {
+            var key = s.CourseId ?? string.Empty;
+            if (!codes.TryGetValue(key, out var list)) { codes[key] = list = []; courses.Add(key); }
+            list.Add(s.SectionCode);
+        }
+        return JoinAnd(courses.Select(c =>
+            (c.Length == 0 ? string.Empty : inputs.CourseCode(c) + " ") + string.Join(", ", codes[c])).ToList());
+    }
+
+    /// <summary>
+    /// The hover lines for one section's line on one day: what the conflict marks on it say. Conflicts of one kind
+    /// are merged into one sentence ("CHEM 213 A conflicts with PSYCH 101 A, B, C, so ..."), each line is led by its
+    /// watch's name ("Chem Y2: ") only when more than one watch speaks, and a partner that the grid is not showing
+    /// gets a line of its own at the end.
+    /// </summary>
+    /// <param name="inputs">The semester view the marks were made on.</param>
+    /// <param name="section">The section whose line is hovered.</param>
+    /// <param name="day">The day number of the hovered line (1 = Monday).</param>
+    /// <param name="marks">Every mark that involves <paramref name="section"/> on <paramref name="day"/>, with its watch.</param>
+    /// <param name="isHidden">Why a section is not on the grid (null when it is shown); null when everything is shown.</param>
+    /// <returns>The lines, in order; empty when no mark involves the section on that day.</returns>
+    public static IReadOnlyList<string> ConflictTips(
+        AccessInputs inputs, Section section, int day, IReadOnlyList<WatchMark> marks, Func<string, HiddenReason?>? isHidden = null)
+    {
+        var mine = marks.Where(m => (m.Mark.A.Id == section.Id || m.Mark.B.Id == section.Id)
+                                    && m.Mark.Meetings.Any(p => p.A.Day == day)).ToList();
+        var lines = new List<string>();
+        if (mine.Count == 0) return lines;
+
+        string id = SectionLabel(inputs, section);
+        bool many = mine.Select(m => m.WatchId).Distinct().Count() > 1;
+        Section OtherEnd(ConflictMark k) => k.A.Id == section.Id ? k.B : k.A;
+
+        foreach (var watchId in mine.Select(m => m.WatchId).Distinct())
+        {
+            var ks = mine.Where(m => m.WatchId == watchId).ToList();
+            string w = ks[0].WatchName;
+            void Say(string text) => lines.Add((many ? $"{w}: " : string.Empty) + text);
+
+            // Stranded: one sentence per set of stranded sections that conflict with the same sections.
+            // approved wording (round 6)
+            var xOrder = new List<string>();
+            var byX = new Dictionary<string, (Section X, List<Section> Others)>();
+            foreach (var k in ks.Where(m => m.Mark.Kind == ConflictMarkKind.Stranded).Select(m => m.Mark))
+            {
+                var x = k.X!;
+                if (!byX.ContainsKey(x.Id)) { byX[x.Id] = (x, []); xOrder.Add(x.Id); }
+                byX[x.Id].Others.Add(k.A.Id == x.Id ? k.B : k.A);
+            }
+            var mergedOrder = new List<string>();
+            var merged = new Dictionary<string, List<Section>>();
+            foreach (var xid in xOrder)
+            {
+                var (x, others) = byX[xid];
+                var key = ByCourse(inputs, others);
+                if (!merged.ContainsKey(key)) { merged[key] = []; mergedOrder.Add(key); }
+                merged[key].Add(x);
+            }
+            foreach (var others in mergedOrder)
+            {
+                var xs = merged[others];
+                Say(xs.Count == 1
+                    ? $"{SectionLabel(inputs, xs[0])} conflicts with {others}, so {SectionLabel(inputs, xs[0])} can't be part of any slate for {w}."
+                    : $"{ByCourse(inputs, xs)} conflict with {others}, so they can't be part of any slate for {w}.");
+            }
+
+            // approved wording (round 6)
+            var nf = ks.Where(m => m.Mark.Kind == ConflictMarkKind.NoFull).Select(m => OtherEnd(m.Mark)).ToList();
+            if (nf.Count > 0)
+                Say($"{id} conflicts with {ByCourse(inputs, nf)}, so {w} has no full slate.");
+
+            // Q22 and Other: one sentence per mark, repeats dropped.
+            // approved wording (round 6)
+            var seen = new HashSet<string>();
+            foreach (var m in ks.Where(m => m.Mark.Kind is ConflictMarkKind.NoSingleFix or ConflictMarkKind.Other))
+            {
+                var k = m.Mark;
+                string tip = k.Kind == ConflictMarkKind.NoSingleFix
+                    ? $"{SectionLabel(inputs, k.X!)} conflicts with {ByCourse(inputs, k.XConflictsWith)}, so {w} has no full slate. Fixing only one of these conflicts isn't enough."
+                    : $"{SectionLabel(inputs, k.A)} conflicts with {SectionLabel(inputs, k.B)}. Because of this conflict, {JoinAnd(FreedLabels(inputs, k))} can't be part of any slate for {w}.";
+                if (seen.Add(tip)) Say(tip);
+            }
+
+            // approved wording (round 6)
+            var hl = ks.Where(m => m.Mark.Kind == ConflictMarkKind.Harmless).Select(m => OtherEnd(m.Mark)).ToList();
+            if (hl.Count > 0)
+                Say($"{id} conflicts with {ByCourse(inputs, hl)}. Other sections still let students in {w} get around "
+                    + $"{(hl.Count == 1 ? "this conflict" : "these conflicts")}.");
+        }
+
+        // Q41: a partner the grid is not showing, and why: the subjects chosen in the top banner (Greg, 2026-11-24:
+        // "hidden by the filters" was wrong for those) or the grid's filters. both lines approved wording (Greg, 2026-11-24)
+        if (isHidden is not null)
+        {
+            var said = new HashSet<string>();
+            foreach (var partner in mine.Select(m => OtherEnd(m.Mark)))
+            {
+                if (isHidden(partner.Id) is not { } why) continue;
+                var label = SectionLabel(inputs, partner);
+                if (said.Add(label))
+                    lines.Add(why == HiddenReason.Subjects
+                        ? $"{label} isn't shown: its subject isn't one of your chosen Subjects."
+                        : $"{label} is hidden by the filters.");
+            }
+        }
+        return lines;
+    }
+
+    /// <summary>The labels of the stranded sections an <see cref="ConflictMarkKind.Other"/> mark keeps out of every slate.</summary>
+    private static List<string> FreedLabels(AccessInputs inputs, ConflictMark mark) =>
+        mark.FreedSectionIds
+            .Select(fid => inputs.Sections.FirstOrDefault(s => s.Id == fid))
+            .OfType<Section>()
+            .Select(s => SectionLabel(inputs, s))
+            .ToList();
+
+    // ── The Access tab's health line (port of the r9 wireframe's healthSegs) ────────────────────────────────────
+
+    /// <summary>The separator between the phrases of a health line.</summary>
+    private const string PhraseSeparator = " · ";
+
+    /// <summary>
+    /// "1 section" / "3 sections": a count with the right noun (the mock's <c>plural</c>).
+    /// </summary>
+    /// <param name="n">The count.</param>
+    /// <param name="one">The noun for exactly one.</param>
+    /// <param name="many">The noun for any other count.</param>
+    /// <returns>The count and noun, e.g. "2 conflicts".</returns>
+    public static string Plural(int n, string one, string many) =>
+        $"{n.ToString("N0", CultureInfo.InvariantCulture)} {(n == 1 ? one : many)}";
+
+    /// <summary>
+    /// Names up to two items and counts the rest: "A, B" or "A, B +3 more" (the mock's <c>nameList</c>).
+    /// </summary>
+    /// <param name="names">The names.</param>
+    /// <returns>The shortened list.</returns>
+    public static string NameList(IReadOnlyList<string> names) =>
+        names.Count <= 2 ? string.Join(", ", names) : $"{string.Join(", ", names.Take(2))} +{names.Count - 2} more";
+
+    /// <summary>
+    /// A component's name inside a sentence, from its section type: "Laboratory" is "lab", any other type is its
+    /// name in lower case; "section" when there is no type.
+    /// </summary>
+    /// <param name="inputs">The semester view (for the section type names).</param>
+    /// <param name="typeId">The section type id; may be null.</param>
+    /// <returns>The word.</returns>
+    public static string PartWord(AccessInputs inputs, string? typeId)
+    {
+        var name = typeId is null ? null : inputs.SectionTypes.FirstOrDefault(t => t.Id == typeId)?.Name;
+        if (string.IsNullOrWhiteSpace(name)) return "section";
+        return name.Equals("Laboratory", StringComparison.OrdinalIgnoreCase) ? "lab" : name.ToLowerInvariant();
+    }
+
+    /// <summary>
+    /// Why a course cannot be taken even on its own (the mock's <c>selfFailWhy</c>), in a phrase that follows
+    /// "No full slate".
+    /// </summary>
+    /// <param name="inputs">The semester view.</param>
+    /// <param name="analysis">The analysis (for the course's groups).</param>
+    /// <param name="failure">The failing course and its structured reason.</param>
+    /// <param name="campusName">Gives a campus's name from its id.</param>
+    /// <returns>The phrase, e.g. "BMEG 230's labs all conflict with its only lecture (101)".</returns>
+    public static string SelfFailWhy(AccessInputs inputs, Analysis analysis, SelfFailCourse failure, Func<string?, string> campusName)
+    {
+        string c = inputs.CourseCode(failure.CourseId);
+        var r = failure.Reason;
+        if (r.OnlyGroup is { } g && r.OtherGroup is { } h && g.Candidates.Count > 0 && h.Candidates.Count > 0)
+        {
+            var o = g.Candidates[0];
+            string only = $"its only {PartWord(inputs, g.ComponentTypeId)} ({o.SectionCode})";
+            string hw = PartWord(inputs, h.ComponentTypeId);
+            // approved wording (round 6d)
+            if (r.Kind == SelfFailKind.TimeConflict)
+                return h.Candidates.Count == 1
+                    ? $"{c}'s only {hw} ({h.Candidates[0].SectionCode}) conflicts with {only}"
+                    : $"{c}'s {hw}s all conflict with {only}";
+            if (r.Kind == SelfFailKind.Campus)
+                return $"{c}'s {hw}s are all at {campusName(h.Candidates[0].CampusId)}, but {only} is at {campusName(o.CampusId)}";
+        }
+        var words = analysis.Groups.Where(x => x.CourseId == failure.CourseId)
+            .Select(x => PartWord(inputs, x.ComponentTypeId)).ToList();
+        // approved wording (round 6d)
+        return $"no set of {c}'s {string.Join(", ", words)} sections fits together";
+    }
+
+    /// <summary>
+    /// Why campus stands in the way (the mock's <c>campusWhy</c>): the only sections on the less common campus
+    /// against those on the most common one, or a general sentence.
+    /// </summary>
+    /// <param name="inputs">The semester view.</param>
+    /// <param name="reason">The structured campus reason.</param>
+    /// <param name="mixed">True when Multi-campus is on and every slate mixes campuses; false when it is off and no slate keeps to one campus.</param>
+    /// <param name="campusName">Gives a campus's name from its id.</param>
+    /// <returns>The phrase.</returns>
+    public static string CampusWhy(AccessInputs inputs, CampusReason reason, bool mixed, Func<string?, string> campusName)
+    {
+        if (reason.Kind == CampusReasonKind.OnlySectionsOnDifferentCampuses)
+        {
+            var few = reason.LessCommonOnlySections.Select(s => SectionLabel(inputs, s)).ToList();
+            var many = reason.MoreCommonOnlySections.Select(s => SectionLabel(inputs, s)).ToList();
+            // approved wording (round 6e)
+            return $"{JoinAnd(few)} {(few.Count > 1 ? "are" : "is")} at {campusName(reason.LessCommonCampusId)}, but "
+                 + $"{(many.Count <= 3 ? JoinAnd(many) : NameList(many))} {(many.Count > 1 ? "are" : "is")} at {campusName(reason.MoreCommonCampusId)}";
+        }
+        // approved wording (round 6d, 6e)
+        return mixed ? "no slate keeps to one campus" : "the slates that fit in time mix campuses";
+    }
+
+    /// <summary>
+    /// The phrases of a watch's health line, in order (see <see cref="HealthLine"/>).
+    /// </summary>
+    /// <param name="inputs">The semester view the analysis was made on.</param>
+    /// <param name="a">The watch's analysis over the whole semester.</param>
+    /// <param name="campusName">Gives a campus's name from its id.</param>
+    /// <returns>The phrases; never empty.</returns>
+    public static IReadOnlyList<string> HealthPhrases(AccessInputs inputs, Analysis a, Func<string?, string> campusName)
+    {
+        var segs = new List<string>();
+        // approved wording (Q53, Greg 2026-11-24)
+        if (a.Health == AccessHealth.TooLarge)
+            return [$"Too many courses to check (more than {AccessAnalyzer.MaxCourses})"];
+
+        void Tail()
+        {
+            if (a.NotCountedSections.Count > 0) segs.Add($"{Plural(a.NotCountedSections.Count, "section", "sections")} not counted");
+            if (a.SectionsWithoutTimes.Count > 0) segs.Add($"{Plural(a.SectionsWithoutTimes.Count, "section", "sections")} without times");
+        }
+        string SlateCountText(bool lead) => a.SlateCountCapped
+            ? $"{(lead ? "More" : "more")} than {a.SlateCount.ToString("N0", CultureInfo.InvariantCulture)} slates"
+            : Plural(a.SlateCount, "slate", "slates");
+
+        if (a.MissingComponents.Count > 0)
+        {
+            // approved wording (round 6d, gap 4)
+            segs.Add("No full slate");
+            foreach (var x in a.MissingComponents)
+            {
+                string course = inputs.CourseCode(x.CourseId), word = PartWord(inputs, x.ComponentTypeId);
+                segs.Add(x.SectionsExistInView ? $"{course}'s {word}s aren't in this watch" : $"{course} has no {word}s this term");
+            }
+            if (a.HasSlate)
+            {
+                var gone = JoinAnd(a.MissingComponents.Select(x => inputs.CourseCode(x.CourseId)).Distinct().ToList());
+                segs.Add(a.IsSingleSectionCase ? "the other sections fit together" : $"{SlateCountText(false)} without {gone}");
+            }
+            Tail();
+            return segs;
+        }
+
+        if (a.IsSingleSectionCase)
+        {
+            // approved wording (round 6c)
+            int n = a.Groups.Count;
+            var p = a.SingleSectionConflicts;
+            if (p.Count > 0)
+            {
+                segs.Add($"{SectionLabel(inputs, p[0].A)} conflicts with {SectionLabel(inputs, p[0].B)}");
+                if (p.Count > 1) segs.Add(Plural(p.Count - 1, "more conflict", "more conflicts"));
+            }
+            else if (!a.HasSlate)
+            {
+                // approved wording (round 6d)
+                segs.Add(a.SelfFailCourses.Count > 0 ? SelfFailWhy(inputs, a, a.SelfFailCourses[0], campusName)
+                    : a.CampusReason is { } cr ? CampusWhy(inputs, cr, false, campusName)
+                    : "these sections don't fit together");
+            }
+            else
+            {
+                segs.Add(n == 1 ? "1 section" : n == 2 ? "Both sections fit together" : $"All {n} sections fit together");
+                if (a.MixedCampusReason is { } mr) segs.Add(CampusWhy(inputs, mr, true, campusName));
+            }
+            Tail();
+            return segs;
+        }
+
+        if (a.HasSlate)
+        {
+            segs.Add(SlateCountText(true));
+            // approved wording (round 6e)
+            if (a.MixedCampusReason is { } mr)
+            {
+                segs.Add(a.SlateCount == 1 ? "it mixes campuses" : "every slate mixes campuses");
+                segs.Add(CampusWhy(inputs, mr, true, campusName));
+            }
+            else if (!a.OneCampusRule && a.MixedSlateCount != 0)
+            {
+                segs.Add(a.MixedSlateCount is null ? "some mix campuses"
+                    : $"{a.MixedSlateCount.Value.ToString("N0", CultureInfo.InvariantCulture)} {(a.MixedSlateCount == 1 ? "mixes" : "mix")} campuses");
+            }
+            if (a.EssentialByTimingSections.Count > 0)
+                segs.Add($"depends on {NameList(a.EssentialByTimingSections.Select(s => SectionLabel(inputs, s)).ToList())}");
+            if (a.StrandedSections.Count > 0)
+                segs.Add($"{Plural(a.StrandedSections.Count, "section", "sections")} stranded");
+        }
+        else
+        {
+            // approved wording (round 6d)
+            segs.Add("No full slate");
+            foreach (var x in a.SelfFailCourses) segs.Add(SelfFailWhy(inputs, a, x, campusName));
+            if (a.CampusReason is { } cr) segs.Add(CampusWhy(inputs, cr, false, campusName));
+            else if (a.BestPartial is { Alternatives.Count: > 0 } best)
+            {
+                segs.Add($"best partial covers {(best.Complete ? "" : "at least ")}{best.Covers} of {best.Of}");
+                segs.Add(CantFitText(inputs, best));
+            }
+        }
+        Tail();
+        // approved wording (round 6b): every conflict between two components of the watch, harmless or not
+        if (a.ConflictCount > 0) segs.Add(Plural(a.ConflictCount, "conflict", "conflicts"));
+        return segs;
+    }
+
+    /// <summary>"A and B can't fit", "A or B can't fit", "only one of A, B and C fits" or "2 of A, B and C can't fit" (round 6d, gap 3).</summary>
+    private static string CantFitText(AccessInputs inputs, BestPartial best)
+    {
+        var alts = best.Alternatives.Select(alt => (IReadOnlyList<string>)alt.Select(inputs.CourseCode).ToList()).ToList();
+        int k = alts[0].Count;
+        // Sorted by code: the search finds the left-out courses in an order that means nothing to the reader.
+        var union = alts.SelectMany(x => x).Distinct().OrderBy(c => c, StringComparer.OrdinalIgnoreCase).ToList();
+        // approved wording (round 6d)
+        if (alts.Count == 1) return $"{JoinAnd(alts[0])} can't fit";
+        if (k == 1) return $"{string.Join(" or ", union)} can't fit";
+        if (union.Count - k == 1) return $"only one of {JoinAnd(union)} fits";
+        return $"{k} of {JoinAnd(union)} can't fit";
+    }
+
+    /// <summary>
+    /// The one-line health of a watch for the Access tab: phrases joined with " · " (a port of the r9 wireframe's
+    /// <c>healthSegs</c> for the whole watch: no subset, no pins, no seats, no cautions). A watch with too many
+    /// courses says so and nothing else.
+    /// </summary>
+    /// <param name="inputs">The semester view the analysis was made on.</param>
+    /// <param name="analysis">The watch's analysis over the whole semester.</param>
+    /// <param name="campusName">Gives a campus's name from its id (for the campus reasons).</param>
+    /// <returns>The line.</returns>
+    public static string HealthLine(AccessInputs inputs, Analysis analysis, Func<string?, string> campusName) =>
+        string.Join(PhraseSeparator, HealthPhrases(inputs, analysis, campusName));
+}

@@ -1,0 +1,53 @@
+<UserControl
+	x:Class="TermPoint.Views.BottomLeftTabs"
+	xmlns="https://github.com/avaloniaui"
+	xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+	x:CompileBindings="False">
+
+	<!--
+		The Workload / Access tabs (Access Analyzer, D17), shown as the title of both bottom-left panels, so the tabs
+		take no row of their own. DataContext: MainWindowViewModel (inherited). A tab whose panel is detached hides
+		here; its window carries the panel. The dot on Access says a watch needs a look while the tab isn't showing.
+	-->
+	<UserControl.Styles>
+		<Style Selector="Button.paneltab">
+			<Setter Property="Background" Value="Transparent" />
+			<Setter Property="BorderThickness" Value="0" />
+			<Setter Property="Padding" Value="0,0,12,0" />
+			<Setter Property="MinHeight" Value="0" />
+			<Setter Property="Cursor" Value="Hand" />
+			<Setter Property="FontSize" Value="{StaticResource FontSizePanelTab}" />
+			<Setter Property="Foreground" Value="{StaticResource TextFaint}" />
+		</Style>
+		<Style Selector="Button.paneltab.selected">
+			<Setter Property="FontWeight" Value="SemiBold" />
+			<Setter Property="Foreground" Value="{StaticResource TextPrimary}" />
+		</Style>
+	</UserControl.Styles>
+
+	<StackPanel VerticalAlignment="Center" Orientation="Horizontal">
+		<Button
+			Classes="paneltab"
+			Classes.selected="{Binding IsWorkloadTabSelected}"
+			Command="{Binding ShowWorkloadTabCommand}"
+			Content="Workload"
+			IsVisible="{Binding !IsWorkloadDetached}" />
+		<Button
+			Classes="paneltab"
+			Classes.selected="{Binding IsAccessTabSelected}"
+			Command="{Binding ShowAccessTabCommand}"
+			IsVisible="{Binding !IsAccessDetached}">
+			<StackPanel Orientation="Horizontal" Spacing="3">
+				<TextBlock Text="Access" />
+				<Ellipse
+					Width="6"
+					Height="6"
+					Margin="0,2,0,0"
+					VerticalAlignment="Top"
+					Fill="{StaticResource AccessTabDot}"
+					IsVisible="{Binding ShowAccessDot}"
+					ToolTip.Tip="A watch needs a look" />
+			</StackPanel>
+		</Button>
+	</StackPanel>
+</UserControl>

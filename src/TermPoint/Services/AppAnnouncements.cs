@@ -66,6 +66,13 @@ public static class AppAnnouncements
             "  •  Improved file reliability on a shared network drive",
             LinkText     : "Folding Days",
             LinkUrl      :"https://youtu.be/_u7DI5SxxRE"
-            )
+            ),
+
+        // approved wording (Greg, 2026-11-24)
+        new VersionedAnnouncement(
+            SinceVersion: new Version(1,2,5),
+            Message     : "New in TermPoint 1.2.5: access watches now mark only conflicts that cost students something: " +
+                          "a section no one taking the watch's courses can use, or no way to take every course. " +
+                          "To see every conflict as before, tick Mark all conflicts in the Access tab.")
     ];
 }

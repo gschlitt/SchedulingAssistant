@@ -81,18 +81,12 @@
 		Background="{StaticResource AppBackground}"
 		RowDefinitions="Auto,Auto,*,Auto">
 
-		<!--  Row 0: Filter bar + Access panel + Events toggle - always visible  -->
+		<!--  Row 0: Filter bar + Events toggle - always visible (the Access watches moved to the Access tab)  -->
 		<WrapPanel Grid.Row="0" Margin="0,0,0,4">
 			<local:GridFilterView
 				x:Name="GridFilterBar"
 				MinHeight="28"
 				DataContext="{Binding Filter}" />
-
-			<!--  ── Access group (program conflict watches) ──  -->
-			<local:AccessPanelView
-				x:Name="AccessPanel"
-				MinHeight="28"
-				DataContext="{Binding Access}" />
 
 			<!--  Events visibility toggle  -->
 			<Border

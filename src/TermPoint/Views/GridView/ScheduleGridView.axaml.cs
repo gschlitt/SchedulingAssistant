@@ -1395,9 +1395,10 @@ public partial class ScheduleGridView : UserControl
                 }
 
 
-                // Meeting tiles get an attendee tooltip. Section tiles get no tooltip.
-                var tileTooltip = ScheduleGridViewModel.BuildTileTooltip(tile);
-                if (!string.IsNullOrEmpty(tileTooltip.AttendeeList))
+                // Meeting tiles get an attendee tooltip. Section tiles get one only when an Access conflict mark has
+                // something to say about one of their entries (the time range, then those lines).
+                var tileTooltip = ScheduleGridViewModel.BuildTileTooltip(tile, data.ConflictHoverLines, data.DayOfColumn(d));
+                if (!string.IsNullOrEmpty(tileTooltip.AttendeeList) || tileTooltip.Lines.Count > 1)
                     ToolTip.SetTip(border, BuildTileTooltipContent(tileTooltip));
 
                 Canvas.SetLeft(border, tileX);
@@ -1905,7 +1906,7 @@ public partial class ScheduleGridView : UserControl
         {
             var panel = new StackPanel { Spacing = 2 };
             foreach (var line in tooltip.Lines)
-                panel.Children.Add(new TextBlock { Text = line });
+                panel.Children.Add(new TextBlock { Text = line, TextWrapping = TextWrapping.Wrap, MaxWidth = 300 });
 
             // Full attendee list: wrap at 300 px so it forms a readable box rather than a
             // single long line. Separated from the time range (when there is one) by a small top margin.

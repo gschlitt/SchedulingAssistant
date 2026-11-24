@@ -235,21 +235,6 @@ public sealed class ExtensionDataRepositoryTests : IDisposable
         FutureFields.AssertPresent(raw["instructorAssignments"]![0], "instructorAssignments[0]", "attendee");
     }
 
-    [Fact]
-    public void ProgramWatches_KeepUnknownFields()
-    {
-        var repo = new ProgramWatchRepository(_fx.Db);
-        var watch = new ProgramWatch { Name = "CS core", Mode = ProgramWatchMode.Course, CourseIds = ["c-1"] };
-        repo.Save("sem-1", watch);
-
-        _fx.Stamp("ProgramWatches", watch.Id);
-        var loaded = repo.GetAll("sem-1").Single();
-        Assert.NotNull(loaded.ExtensionData);
-        repo.Save("sem-1", loaded);
-
-        FutureFields.AssertPresent(_fx.ReadData("ProgramWatches", watch.Id), "ProgramWatches", "root");
-    }
-
     /// <summary>
     /// The note repository's Save is an upsert keyed on (semester, instructor). It is the one
     /// repository whose update path takes a freshly built object, so the caller carries the

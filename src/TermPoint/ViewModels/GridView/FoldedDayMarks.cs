@@ -1,4 +1,5 @@
 using TermPoint.Services;
+using TermPoint.Services.Access;
 
 namespace TermPoint.ViewModels.GridView;
 
@@ -43,7 +44,7 @@ public sealed record AttentionMark(MarkKind Kind, int Start, int End, string? Se
 public sealed record MarkInputs(
     IReadOnlyCollection<string> SelectedSectionIds,
     IReadOnlyList<GhostBlock> Ghosts,
-    IReadOnlyList<ProgramConflict> Conflicts,
+    IReadOnlyList<GridConflict> Conflicts,
     IReadOnlyCollection<string> MarkedSectionIds)
 {
     /// <summary>No selection, no ghosts, no conflicts, no marked sections.</summary>

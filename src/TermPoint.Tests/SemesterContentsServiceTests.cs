@@ -18,9 +18,9 @@ namespace TermPoint.Tests;
 /// years, owned by <see cref="SemesterContentsService"/>:
 /// <list type="number">
 ///   <item><description>Empty Semester deletes sections, meetings, releases, commitments,
-///   scheduling notes and program watches for that semester only, in one transaction, and is refused
+///   scheduling notes for that semester only, in one transaction, and is refused
 ///   for any loaded semester (not just the first of several).</description></item>
-///   <item><description>A semester can be deleted only once it is empty (all six tables) and not
+///   <item><description>A semester can be deleted only once it is empty (all five tables) and not
 ///   loaded.</description></item>
 ///   <item><description>An academic year can be deleted only when none of its semesters is loaded and
 ///   all of them are empty; it then takes its semesters and legal start times with it, in one
@@ -33,17 +33,17 @@ public sealed class SemesterContentsServiceTests : IDisposable
 {
     // ── Fixture ───────────────────────────────────────────────────────────────
 
-    /// <summary>The six kinds of row tied to a semester; used to seed exactly one kind.</summary>
-    public enum Kind { Sections, Meetings, Releases, Commitments, SchedulingNotes, ProgramWatches }
+    /// <summary>The five kinds of row tied to a semester; used to seed exactly one kind.</summary>
+    public enum Kind { Sections, Meetings, Releases, Commitments, SchedulingNotes }
 
-    /// <summary>The six semester-scoped tables, for raw-SQL orphan checks that bypass the repositories.</summary>
+    /// <summary>The five semester-scoped tables the app reads, for raw-SQL orphan checks that bypass the repositories.</summary>
     private static readonly string[] SemesterTables =
-        ["Sections", "Meetings", "Releases", "InstructorCommitments", "SchedulingNotes", "ProgramWatches"];
+        ["Sections", "Meetings", "Releases", "InstructorCommitments", "SchedulingNotes"];
 
     // Distinct counts per kind, so a mix-up between two kinds cannot go unnoticed.
-    private static readonly SemesterContents FullContents   = new(3, 2, 4, 5, 6, 7);
-    private static readonly SemesterContents SingleOfEach   = new(1, 1, 1, 1, 1, 1);
-    private static readonly SemesterContents PairOfEach     = new(2, 2, 2, 2, 2, 2);
+    private static readonly SemesterContents FullContents   = new(3, 2, 4, 5, 6);
+    private static readonly SemesterContents SingleOfEach   = new(1, 1, 1, 1, 1);
+    private static readonly SemesterContents PairOfEach     = new(2, 2, 2, 2, 2);
 
     private readonly SettingsFileGuard _settingsGuard;
     private readonly string _tempDir;
@@ -54,7 +54,6 @@ public sealed class SemesterContentsServiceTests : IDisposable
     private readonly ReleaseRepository _releaseRepo;
     private readonly InstructorCommitmentRepository _commitmentRepo;
     private readonly SchedulingNoteRepository _noteRepo;
-    private readonly ProgramWatchRepository _watchRepo;
     private readonly SemesterRepository _semesterRepo;
     private readonly AcademicYearRepository _ayRepo;
     private readonly LegalStartTimeRepository _legalRepo;
@@ -71,7 +70,7 @@ public sealed class SemesterContentsServiceTests : IDisposable
 
     /// <summary>
     /// Builds a temp-file database holding two academic years (2024-2025: Fall, Winter;
-    /// 2025-2026: Spring, Summer), legal start times for both years, and rows in all six
+    /// 2025-2026: Spring, Summer), legal start times for both years, and rows in all five
     /// semester-scoped tables for Fall, Winter and Spring. Summer is left empty.
     /// <see cref="SemesterContext.Reload"/> saves <see cref="AppSettings"/>, so the settings file is
     /// guarded for the life of the fixture.
@@ -89,7 +88,6 @@ public sealed class SemesterContentsServiceTests : IDisposable
         _releaseRepo = new ReleaseRepository(_db);
         _commitmentRepo = new InstructorCommitmentRepository(_db);
         _noteRepo = new SchedulingNoteRepository(_db);
-        _watchRepo = new ProgramWatchRepository(_db);
         _semesterRepo = new SemesterRepository(_db);
         _ayRepo = new AcademicYearRepository(_db);
         _legalRepo = new LegalStartTimeRepository(_db);
@@ -115,15 +113,15 @@ public sealed class SemesterContentsServiceTests : IDisposable
     // ── Helpers ───────────────────────────────────────────────────────────────
 
     /// <summary>
-    /// Creates a service over the real repositories, optionally replacing the program-watch or
+    /// Creates a service over the real repositories, optionally replacing the scheduling-note or
     /// academic-year repository (used to inject a failure that must trigger a rollback).
     /// </summary>
-    /// <param name="watchRepo">Replacement watch repository, or <c>null</c> for the real one.</param>
+    /// <param name="noteRepo">Replacement scheduling-note repository, or <c>null</c> for the real one.</param>
     /// <param name="ayRepo">Replacement academic-year repository, or <c>null</c> for the real one.</param>
     private SemesterContentsService CreateService(
-        IProgramWatchRepository? watchRepo = null, IAcademicYearRepository? ayRepo = null) =>
-        new(_db, _sectionRepo, _meetingRepo, _releaseRepo, _commitmentRepo, _noteRepo,
-            watchRepo ?? _watchRepo, _semesterRepo, ayRepo ?? _ayRepo, _legalRepo, _context);
+        ISchedulingNoteRepository? noteRepo = null, IAcademicYearRepository? ayRepo = null) =>
+        new(_db, _sectionRepo, _meetingRepo, _releaseRepo, _commitmentRepo,
+            noteRepo ?? _noteRepo, _semesterRepo, ayRepo ?? _ayRepo, _legalRepo, _context);
 
     /// <summary>Inserts the two academic years, their semesters and their legal start times.</summary>
     private void SeedStructure()
@@ -170,9 +168,6 @@ public sealed class SemesterContentsServiceTests : IDisposable
         // One scheduling note per (instructor, semester), so vary the instructor.
         for (var i = 0; i < counts.SchedulingNotes; i++)
             _noteRepo.Save(new SchedulingNote { SemesterId = semesterId, InstructorId = $"inst-{i}", Text = "note" });
-
-        for (var i = 0; i < counts.ProgramWatches; i++)
-            _watchRepo.Save(semesterId, new ProgramWatch { Name = $"Watch {i}" });
     }
 
     /// <summary>Returns a <see cref="SemesterContents"/> with 1 in the given kind and 0 elsewhere.</summary>
@@ -182,11 +177,10 @@ public sealed class SemesterContentsServiceTests : IDisposable
         kind == Kind.Meetings ? 1 : 0,
         kind == Kind.Releases ? 1 : 0,
         kind == Kind.Commitments ? 1 : 0,
-        kind == Kind.SchedulingNotes ? 1 : 0,
-        kind == Kind.ProgramWatches ? 1 : 0);
+        kind == Kind.SchedulingNotes ? 1 : 0);
 
     /// <summary>
-    /// Counts rows referring to a semester by querying the six tables directly, bypassing the
+    /// Counts rows referring to a semester by querying the five tables directly, bypassing the
     /// repositories, so orphan checks do not depend on the code under test.
     /// </summary>
     /// <param name="semesterId">The semester id to look for.</param>
@@ -214,14 +208,14 @@ public sealed class SemesterContentsServiceTests : IDisposable
 
     // ── CountContents / IsEmpty ───────────────────────────────────────────────
 
-    /// <summary>Each of the six counts comes from its own table.</summary>
+    /// <summary>Each of the five counts comes from its own table.</summary>
     [Fact]
     public void CountContents_ReturnsTheCountForEachKind()
     {
         Assert.Equal(FullContents, _service.CountContents(_fall));
         Assert.Equal(SingleOfEach, _service.CountContents(_winter));
         Assert.Equal(PairOfEach, _service.CountContents(_spring));
-        Assert.Equal(27, _service.CountContents(_fall).Total);
+        Assert.Equal(20, _service.CountContents(_fall).Total);
     }
 
     /// <summary>An empty or unknown semester counts as all zeros and reports empty.</summary>
@@ -234,14 +228,13 @@ public sealed class SemesterContentsServiceTests : IDisposable
         Assert.False(_service.IsEmpty(_fall));
     }
 
-    /// <summary>A semester is not empty when only one of the six tables has a row.</summary>
+    /// <summary>A semester is not empty when only one of the five tables has a row.</summary>
     [Theory]
     [InlineData(Kind.Sections)]
     [InlineData(Kind.Meetings)]
     [InlineData(Kind.Releases)]
     [InlineData(Kind.Commitments)]
     [InlineData(Kind.SchedulingNotes)]
-    [InlineData(Kind.ProgramWatches)]
     public void IsEmpty_IsFalseWhenAnySingleTableHasARow(Kind kind)
     {
         Seed(_summer, OnlyOne(kind));
@@ -256,7 +249,7 @@ public sealed class SemesterContentsServiceTests : IDisposable
     [Fact]
     public void Describe_Empty_IsNothing()
     {
-        var empty = new SemesterContents(0, 0, 0, 0, 0, 0);
+        var empty = new SemesterContents(0, 0, 0, 0, 0);
 
         Assert.True(empty.IsEmpty);
         Assert.Equal("nothing", empty.Describe());
@@ -264,17 +257,17 @@ public sealed class SemesterContentsServiceTests : IDisposable
 
     /// <summary>Only the non-zero kinds appear, in a fixed order, with correct singular/plural.</summary>
     [Theory]
-    [InlineData(1, 0, 0, 0, 0, 0, "1 section")]
-    [InlineData(12, 3, 1, 4, 0, 0, "12 sections, 3 meetings, 1 release, 4 scheduled commitments")]
-    [InlineData(0, 1, 2, 0, 0, 0, "1 meeting, 2 releases")]
-    [InlineData(0, 0, 0, 1, 2, 1, "1 scheduled commitment, 2 scheduling notes, 1 program watch")]
-    [InlineData(0, 0, 0, 0, 1, 3, "1 scheduling note, 3 program watches")]
-    [InlineData(1, 1, 1, 1, 1, 1, "1 section, 1 meeting, 1 release, 1 scheduled commitment, 1 scheduling note, 1 program watch")]
-    [InlineData(2, 2, 2, 2, 2, 2, "2 sections, 2 meetings, 2 releases, 2 scheduled commitments, 2 scheduling notes, 2 program watches")]
+    [InlineData(1, 0, 0, 0, 0, "1 section")]
+    [InlineData(12, 3, 1, 4, 0, "12 sections, 3 meetings, 1 release, 4 scheduled commitments")]
+    [InlineData(0, 1, 2, 0, 0, "1 meeting, 2 releases")]
+    [InlineData(0, 0, 0, 1, 2, "1 scheduled commitment, 2 scheduling notes")]
+    [InlineData(0, 0, 0, 0, 1, "1 scheduling note")]
+    [InlineData(1, 1, 1, 1, 1, "1 section, 1 meeting, 1 release, 1 scheduled commitment, 1 scheduling note")]
+    [InlineData(2, 2, 2, 2, 2, "2 sections, 2 meetings, 2 releases, 2 scheduled commitments, 2 scheduling notes")]
     public void Describe_NamesOnlyNonZeroKinds_WithSingularAndPlural(
-        int sections, int meetings, int releases, int commitments, int notes, int watches, string expected)
+        int sections, int meetings, int releases, int commitments, int notes, string expected)
     {
-        var contents = new SemesterContents(sections, meetings, releases, commitments, notes, watches);
+        var contents = new SemesterContents(sections, meetings, releases, commitments, notes);
 
         Assert.Equal(expected, contents.Describe());
         Assert.False(contents.IsEmpty);
@@ -283,11 +276,11 @@ public sealed class SemesterContentsServiceTests : IDisposable
     // ── EmptySemester ─────────────────────────────────────────────────────────
 
     /// <summary>
-    /// Emptying one semester removes all six kinds of row for it, leaves every other semester
+    /// Emptying one semester removes all five kinds of row for it, leaves every other semester
     /// (same year and other year) untouched, and keeps the semester row and the legal start times.
     /// </summary>
     [Fact]
-    public void EmptySemester_RemovesAllSixKinds_ForThatSemesterOnly()
+    public void EmptySemester_RemovesAllFiveKinds_ForThatSemesterOnly()
     {
         _service.EmptySemester(_fall);
 
@@ -314,21 +307,21 @@ public sealed class SemesterContentsServiceTests : IDisposable
     }
 
     /// <summary>
-    /// A failure part-way through (the program-watch delete, which runs last) rolls back the
-    /// deletes already made for sections, meetings, releases, commitments and notes, so the
+    /// A failure part-way through (the scheduling-note delete, which runs last) rolls back the
+    /// deletes already made for sections, meetings, releases and commitments, so the
     /// semester is exactly as it was, and the original exception reaches the caller.
     /// </summary>
     [Fact]
     public void EmptySemester_FailureMidway_RollsBackEverything()
     {
-        var failingWatches = new Mock<IProgramWatchRepository>();
-        failingWatches
+        var failingNotes = new Mock<ISchedulingNoteRepository>();
+        failingNotes
             .Setup(w => w.DeleteBySemesterId(It.IsAny<string>(), It.IsAny<DbTransaction?>()))
-            .Throws(new IOException("simulated watch failure"));
-        var service = CreateService(watchRepo: failingWatches.Object);
+            .Throws(new IOException("simulated note failure"));
+        var service = CreateService(noteRepo: failingNotes.Object);
 
         var ex = Assert.Throws<IOException>(() => service.EmptySemester(_fall));
-        Assert.Equal("simulated watch failure", ex.Message);
+        Assert.Equal("simulated note failure", ex.Message);
 
         // Everything deleted earlier in the same transaction is back.
         Assert.Equal(FullContents, _service.CountContents(_fall));
@@ -397,7 +390,7 @@ public sealed class SemesterContentsServiceTests : IDisposable
     // ── WhyCannotDeleteSemester / DeleteSemester ──────────────────────────────
 
     /// <summary>
-    /// A semester with a row in just one of the six tables cannot be deleted. The refusal says
+    /// A semester with a row in just one of the five tables cannot be deleted. The refusal says
     /// what remains and points to Empty Semester, and <see cref="SemesterContentsService.DeleteSemester"/>
     /// throws the same text and leaves the semester in place.
     /// </summary>
@@ -407,7 +400,6 @@ public sealed class SemesterContentsServiceTests : IDisposable
     [InlineData(Kind.Releases, "1 release")]
     [InlineData(Kind.Commitments, "1 scheduled commitment")]
     [InlineData(Kind.SchedulingNotes, "1 scheduling note")]
-    [InlineData(Kind.ProgramWatches, "1 program watch")]
     public void DeleteSemester_IsRefusedWhileAnySingleTableHasARow(Kind kind, string remaining)
     {
         Seed(_summer, OnlyOne(kind));
@@ -426,7 +418,7 @@ public sealed class SemesterContentsServiceTests : IDisposable
     {
         Assert.Equal(
             "\"Fall\" still contains 3 sections, 2 meetings, 4 releases, 5 scheduled commitments, " +
-            "6 scheduling notes, 7 program watches. Use Empty Semester to remove everything before deleting it.",
+            "6 scheduling notes. Use Empty Semester to remove everything before deleting it.",
             _service.WhyCannotDeleteSemester(_fall));
     }
 
@@ -460,7 +452,7 @@ public sealed class SemesterContentsServiceTests : IDisposable
     }
 
     /// <summary>
-    /// The intended workflow: Empty Semester, then Delete. Afterwards no row in any of the six
+    /// The intended workflow: Empty Semester, then Delete. Afterwards no row in any of the five
     /// tables refers to the deleted semester (no orphans).
     /// </summary>
     [Fact]
@@ -522,10 +514,10 @@ public sealed class SemesterContentsServiceTests : IDisposable
         _service.EmptySemester(_spring);
         Assert.Null(_service.WhyCannotDeleteAcademicYear(_ay2));
 
-        Seed(_summer, OnlyOne(Kind.ProgramWatches));
+        Seed(_summer, OnlyOne(Kind.SchedulingNotes));
 
         Assert.Equal(
-            "\"2025-2026\" can't be deleted because it still contains: Summer (1 program watch). " +
+            "\"2025-2026\" can't be deleted because it still contains: Summer (1 scheduling note). " +
             "Use Empty Semester to remove everything from each of these semesters before deleting the year.",
             _service.WhyCannotDeleteAcademicYear(_ay2));
     }
@@ -682,22 +674,6 @@ public sealed class SemesterContentsServiceTests : IDisposable
         Assert.Equal(1, repo.CountBySemesterId("sem-b"));
     }
 
-    /// <summary>Demo program watches count and delete by semester.</summary>
-    [Fact]
-    public void Demo_ProgramWatches_CountAndDeleteBySemesterId()
-    {
-        var repo = new DemoProgramWatchRepository();
-        repo.Save("sem-a", new ProgramWatch { Name = "W1" });
-        repo.Save("sem-a", new ProgramWatch { Name = "W2" });
-        repo.Save("sem-b", new ProgramWatch { Name = "W3" });
-        Assert.Equal(2, repo.CountBySemesterId("sem-a"));
-
-        repo.DeleteBySemesterId("sem-a");
-
-        Assert.Equal(0, repo.CountBySemesterId("sem-a"));
-        Assert.Equal(1, repo.CountBySemesterId("sem-b"));
-    }
-
     /// <summary>Demo sections and meetings accept the (ignored) transaction argument and delete by semester.</summary>
     [Fact]
     public void Demo_SectionsAndMeetings_DeleteBySemesterId_AcceptsNullTransaction()
@@ -764,7 +740,7 @@ public sealed class SemesterContentsServiceTests : IDisposable
         var service = new SemesterContentsService(
             new DemoDatabaseContext(), new DemoSectionRepository(), new DemoMeetingRepository(),
             new DemoReleaseRepository(), new DemoInstructorCommitmentRepository(),
-            new DemoSchedulingNoteRepository(), new DemoProgramWatchRepository(),
+            new DemoSchedulingNoteRepository(),
             semesters, years, legalStartTimes, context);
 
         // Fall (demo-sem-1) holds sections, a meeting, a release and a commitment.

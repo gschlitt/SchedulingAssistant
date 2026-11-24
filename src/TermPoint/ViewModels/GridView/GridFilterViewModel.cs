@@ -2,6 +2,7 @@ using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using TermPoint.Models;
 using TermPoint.Services;
+using TermPoint.Services.Access;
 using System.Collections.ObjectModel;
 using System.ComponentModel;
 
@@ -325,6 +326,69 @@ public partial class GridFilterViewModel : ViewModelBase
             item.IsOverlayActive = OverlayType == "Tag" && item.Id == SelectedOverlayId;
     }
 
+    // ── Access watches (the eye on a tag) ─────────────────────────────────────
+
+    /// <summary>The approved text of the note shown above the Tags list when the user came to add a watch.</summary>
+    // approved wording (Greg, 2026-11-24)
+    public const string WatchNote =
+        "An access watch is a tag watched for student access, to ensure that students can register in a full slate of sections " +
+        "without time conflicts. If your tag describes courses (or specific sections) you wish students to take together, " +
+        "you can enable the watch by clicking the eye.";
+
+    /// <summary>
+    /// Turns a tag's watch on or off. Set once by the main window view model; null in tests that do not exercise
+    /// the eye, in which case <see cref="CanEditWatches"/> stays false.
+    /// </summary>
+    public AccessWatchToggler? WatchToggler { get; set; }
+
+    /// <summary>
+    /// Whether the Tags popup is open. The view binds the Tags toggle's IsChecked to it two-way, so code can open
+    /// the popup (<see cref="OpenTagsForWatch"/>). Opening re-reads <see cref="CanEditWatches"/>; closing hides the note.
+    /// </summary>
+    [ObservableProperty] private bool _isTagsPopupOpen;
+
+    /// <summary>Whether the explanatory note (<see cref="WatchNoteText"/>) is showing above the Tags list.</summary>
+    [ObservableProperty] private bool _showWatchNote;
+
+    /// <summary>
+    /// Whether the eyes are clickable: this computer holds the write lock. Re-read each time the popup opens and
+    /// each time the option lists are rebuilt.
+    /// </summary>
+    [ObservableProperty] private bool _canEditWatches;
+
+    /// <summary>The note's text: <see cref="WatchNote"/>.</summary>
+    public string WatchNoteText => WatchNote;
+
+    partial void OnIsTagsPopupOpenChanged(bool value)
+    {
+        if (value) CanEditWatches = WatchToggler?.CanToggle ?? false;
+        else ShowWatchNote = false;
+    }
+
+    /// <summary>Opens the Tags popup with the note on top: where "Add a watch" sends the user.</summary>
+    public void OpenTagsForWatch()
+    {
+        ShowWatchNote = true;
+        if (IsTagsPopupOpen) CanEditWatches = WatchToggler?.CanToggle ?? false;
+        IsTagsPopupOpen = true;
+    }
+
+    /// <summary>
+    /// Turns the watch on a tag on or off (the eye). Does nothing when there is no toggler or this computer cannot
+    /// save. The toggler saves the tag and tells the grid its content changed; the grid's reload rebuilds the
+    /// option lists from the saved tags and keeps every tick (<see cref="RebuildList"/>), so the item is also
+    /// flipped here for the moments before that reload reaches it.
+    /// </summary>
+    /// <param name="item">The tag's item in <see cref="Tags"/>.</param>
+    [RelayCommand]
+    private void ToggleTagWatch(FilterItemViewModel? item)
+    {
+        if (item is null || WatchToggler is not { CanToggle: true } toggler) return;
+        bool target = !item.IsWatched;
+        toggler.SetWatched(item.Id, target);
+        item.IsWatched = target;
+    }
+
     // ── Populate ──────────────────────────────────────────────────────────────
 
     /// <summary>
@@ -382,6 +446,9 @@ public partial class GridFilterViewModel : ViewModelBase
             id => deliveryTypeLookup is not null && deliveryTypeLookup.TryGetValue(id, out var v) ? v.Name : null);
         RebuildList(Tags,         tagLookup.Keys,
             id => tagLookup.TryGetValue(id, out var v) ? v.Name : null);
+        foreach (var tag in Tags)
+            tag.IsWatched = tagLookup.TryGetValue(tag.Id, out var tv) && tv.IsAccessWatch;
+        CanEditWatches = WatchToggler?.CanToggle ?? false;
         RebuildList(MeetingTypes, meetingTypeLookup.Keys,
             id => meetingTypeLookup.TryGetValue(id, out var v) ? v.Name : null);
         // Levels always show the full fixed set of level bands (0, 100, … 900).

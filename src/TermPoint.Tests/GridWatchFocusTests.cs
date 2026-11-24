@@ -4,18 +4,20 @@ using TermPoint.Data.Repositories;
 using TermPoint.Models;
 using TermPoint.Services;
 using TermPoint.ViewModels.GridView;
+using TermPoint.ViewModels.Management;
 using Xunit;
 
 namespace TermPoint.Tests;
 
 /// <summary>
-/// Program access watches scan only the sections in the chosen subjects (spec item 20, decided 2026-10-23): a clash
-/// with a section in an unchosen subject is not reported, because the user can't see that section and each such
-/// report needed an investigation. Real <see cref="ScheduleGridViewModel"/> and <see cref="AccessPanelViewModel"/>
+/// The grid's Access conflict marks come from <see cref="AccessState"/> over the WHOLE semester (Access Analyzer
+/// rule 29, Q41), not just the sections the subject focus shows. This replaces the old rule (spec item 20, 2026-10-23)
+/// that watches scanned only the visible sections: a clash with a section in an unchosen subject now still glows the
+/// visible section and its hover says the partner's subject isn't one of the chosen Subjects. Real <see cref="ScheduleGridViewModel"/>
 /// over a temp database.
 /// <para>
-/// Seed: one Fall semester, a Biology and a Chemistry section meeting at the same time (Monday 8:30), and one
-/// enabled course-mode watch covering both courses, so under All the watch reports exactly one conflict.
+/// Seed: one Fall semester, a Biology and a Chemistry section meeting at the same time (Monday 8:30), both carrying
+/// a watched tag "Pre-med", so under All the watch marks exactly one conflict (one overlapping meeting pair).
 /// </para>
 /// </summary>
 public sealed class GridWatchFocusTests : IDisposable
@@ -31,6 +33,11 @@ public sealed class GridWatchFocusTests : IDisposable
     private readonly FocusService _focus;
     private readonly ScheduleGridViewModel _grid;
 
+    private readonly ISectionRepository _sectionRepo;
+    private readonly string _fallId;
+    private readonly Section _biolSection;
+    private readonly Section _chemSection;
+
     private readonly Subject _biol = new() { Id = "subj-biol", Name = "Biology", CalendarAbbreviation = "BIOL" };
     private readonly Subject _chem = new() { Id = "subj-chem", Name = "Chemistry", CalendarAbbreviation = "CHEM" };
 
@@ -43,7 +50,6 @@ public sealed class GridWatchFocusTests : IDisposable
         var semesterRepo = new SemesterRepository(db);
         var ayRepo = new AcademicYearRepository(db);
         var envRepo = new SchedulingEnvironmentRepository(db);
-        var watchRepo = new ProgramWatchRepository(db);
 
         subjectRepo.Insert(_biol);
         subjectRepo.Insert(_chem);
@@ -57,19 +63,23 @@ public sealed class GridWatchFocusTests : IDisposable
         var fall = new Semester { AcademicYearId = year.Id, Name = "Fall", SortOrder = 0 };
         semesterRepo.Insert(fall);
 
-        // Same day and time, so a watch over both courses sees one clash.
-        foreach (var course in new[] { biolCourse, chemCourse })
-            sectionRepo.Insert(new Section
-            {
-                CourseId = course.Id, SemesterId = fall.Id, SectionCode = "A",
-                Schedule = [new SectionDaySchedule { Day = 1, StartMinutes = 510, DurationMinutes = 90 }],
-            });
-
-        watchRepo.Save(fall.Id, new ProgramWatch
+        // A watched tag on both sections, same day and time, so the watch sees one clash.
+        var tag = new SchedulingEnvironmentValue { Name = "Pre-med", IsAccessWatch = true };
+        envRepo.Insert(SchedulingEnvironmentTypes.Tag, tag);
+        Section Seed(Course course)
         {
-            Name = "Pre-med", Mode = ProgramWatchMode.Course, IsEnabled = true,
-            CourseIds = [biolCourse.Id, chemCourse.Id],
-        });
+            var section = new Section
+            {
+                CourseId = course.Id, SemesterId = fall.Id, SectionCode = "A", TagIds = [tag.Id],
+                Schedule = [new SectionDaySchedule { Day = 1, StartMinutes = 510, DurationMinutes = 90 }],
+            };
+            sectionRepo.Insert(section);
+            return section;
+        }
+        _biolSection = Seed(biolCourse);
+        _chemSection = Seed(chemCourse);
+        _sectionRepo = sectionRepo;
+        _fallId = fall.Id;
 
         _focus = new FocusService(
             subjectRepo, courseRepo, sectionRepo, semesterRepo, ayRepo, _semesterContext, _sectionStore, null);
@@ -80,8 +90,8 @@ public sealed class GridWatchFocusTests : IDisposable
             new CampusRepository(db), _semesterContext, new AcademicUnitService(new AcademicUnitRepository(db)),
             _sectionStore, new MeetingStore(), new MeetingRepository(db), notifier, new InstructorCommitmentRepository(db),
             _fx.Lock, new SharedScheduleService(),
-            new AccessPanelViewModel(watchRepo, _semesterContext, notifier, envRepo, courseRepo, () => true),
-            _focus, FocusTestSupport.NoColours(courseRepo, subjectRepo, _sectionStore), new BlockPatternRepository(db), new FakeSectionCardState(), new LegalStartTimeRepository(db), new SectionMarks());
+            _focus, FocusTestSupport.NoColours(courseRepo, subjectRepo, _sectionStore), new BlockPatternRepository(db), new FakeSectionCardState(), new LegalStartTimeRepository(db), new SectionMarks(),
+            AccessStateTestSupport.For(db, _sectionStore, notifier));
 
         // Open the Fall semester and load its sections, as the section list does in the app.
         _semesterContext.Reload(ayRepo, semesterRepo, year.Id, new HashSet<string> { fall.Id });
@@ -96,28 +106,85 @@ public sealed class GridWatchFocusTests : IDisposable
         _settingsGuard.Dispose();
     }
 
-    /// <summary>Under All, the watch sees both sections and reports the clash.</summary>
+    /// <summary>Under All, the watch marks the clash: one drawing record, and the hover says what it costs.</summary>
     [Fact]
-    public void UnderAll_WatchReportsTheClash()
+    public void UnderAll_WatchMarksTheClash()
     {
-        Assert.Equal(1, _grid.Access.TotalConflictCount);
+        Assert.Single(_grid.GridData.ProgramConflicts);
+        var lines = _grid.GridData.ConflictHoverLines[(_biolSection.Id, 1)];
+        Assert.Contains("BIOL101 A conflicts with CHEM101 A, so Pre-med has no full slate.", lines);
+        Assert.DoesNotContain(lines, l => l.Contains("hidden by the filters"));
     }
 
-    /// <summary>With only Biology chosen, the Chemistry section is not scanned, so no clash is reported.</summary>
+    /// <summary>
+    /// With only Biology chosen, the clash is still marked (whole semester, rule 29): the Biology section glows, and
+    /// its hover says the Chemistry partner's subject isn't one of the chosen Subjects (not "hidden by the filters").
+    /// </summary>
     [Fact]
-    public void ClashWithAnUnchosenSubject_IsNotReported()
+    public void ClashWithAnUnchosenSubject_StillMarked_AndSaysHidden()
     {
         _focus.SetFocus(SubjectFocus.ForSubjects([_biol.Id]));
 
-        Assert.Equal(0, _grid.Access.TotalConflictCount);
+        Assert.Single(_grid.GridData.ProgramConflicts);
+        var lines = _grid.GridData.ConflictHoverLines[(_biolSection.Id, 1)];
+        Assert.Contains("CHEM101 A isn't shown: its subject isn't one of your chosen Subjects.", lines);
+        Assert.DoesNotContain(lines, l => l.Contains("hidden by the filters"));
     }
 
-    /// <summary>With both subjects chosen, the clash is reported again.</summary>
+    /// <summary>With both subjects chosen, the partner is shown, so there is no hidden-partner line.</summary>
     [Fact]
-    public void ClashWithinTheChosenSubjects_IsReported()
+    public void ClashWithinTheChosenSubjects_HasNoHiddenLine()
     {
+        _focus.SetFocus(SubjectFocus.ForSubjects([_biol.Id]));
         _focus.SetFocus(SubjectFocus.ForSubjects([_biol.Id, _chem.Id]));
 
-        Assert.Equal(1, _grid.Access.TotalConflictCount);
+        Assert.Single(_grid.GridData.ProgramConflicts);
+        Assert.DoesNotContain(_grid.GridData.ConflictHoverLines[(_biolSection.Id, 1)], l => l.Contains("hidden by the filters"));
+    }
+
+    /// <summary>
+    /// A save ends in a store reload: moving the Chemistry section clears the mark, moving it back brings it back.
+    /// A reader's Refresh ends in the same reload, so this covers it too.
+    /// </summary>
+    [Fact]
+    public void MarksFollowAReload_AfterTheSectionsChange()
+    {
+        _chemSection.Schedule = [new SectionDaySchedule { Day = 2, StartMinutes = 510, DurationMinutes = 90 }];
+        _sectionRepo.Update(_chemSection);
+        _sectionStore.Reload(_sectionRepo, [_fallId]);
+        Assert.Empty(_grid.GridData.ProgramConflicts);
+        Assert.Empty(_grid.GridData.ConflictHoverLines);
+
+        _chemSection.Schedule = [new SectionDaySchedule { Day = 1, StartMinutes = 540, DurationMinutes = 60 }];
+        _sectionRepo.Update(_chemSection);
+        _sectionStore.Reload(_sectionRepo, [_fallId]);
+        Assert.Single(_grid.GridData.ProgramConflicts);
+    }
+
+    /// <summary>A tag that stops being watched marks nothing once the state is invalidated and the grid redraws.</summary>
+    [Fact]
+    public void TagNoLongerWatched_MarksNothing()
+    {
+        var envRepo = new SchedulingEnvironmentRepository(_fx.Db);
+        var tag = envRepo.GetAll(SchedulingEnvironmentTypes.Tag).Single();
+        tag.IsAccessWatch = false;
+        envRepo.Update(tag);
+
+        _sectionStore.Reload(_sectionRepo, [_fallId]);
+
+        Assert.Empty(_grid.GridData.ProgramConflicts);
+    }
+
+    /// <summary>The tile tooltip leads with the time range and then the hover lines of its entries.</summary>
+    [Fact]
+    public void TileTooltip_AppendsTheConflictLines()
+    {
+        var tile = _grid.GridData.DayColumns.SelectMany(c => c.Tiles)
+            .First(t => t.Entries.Any(e => e.SectionId == _biolSection.Id));
+
+        var tip = ScheduleGridViewModel.BuildTileTooltip(tile, _grid.GridData.ConflictHoverLines, 1);
+
+        Assert.Equal("0830-1000", tip.Lines[0]);
+        Assert.True(tip.Lines.Count > 1);
     }
 }

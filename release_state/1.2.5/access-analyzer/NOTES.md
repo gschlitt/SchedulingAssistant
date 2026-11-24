@@ -222,6 +222,41 @@ Ledger: [RELEASE_1.2.5.md](../RELEASE_1.2.5.md). Design: [designs/1.2.5/access-a
   Studio overlaps its only lecture, Tue/Fri 14:00; before setup Studio counts as a component, Q18). The engine is
   right; expect UBC users to untick types like Studio in the setup wizard, and expect "No full slate" to be common
   on first open of scraped data.
+- **D-core built 2026-11-24, not committed** (Sonnet the C#, Opus reviewed; plan in "Piece D: build plan"):
+  `AccessState`, `AccessSnapshot`, `GridConflict` (the drawing record, moved and renamed), `ViewModels/Access/AccessText`
+  and `GridAccessMarks`. Full suite 4943 passed, 0 failed; both compile checks clean. Choices: the analysis is lazy
+  per watch (the grid pays only for marks); a failure computing marks logs and draws the grid without them; a tile's
+  tooltip merges its entries' lines; "visible" = on the grid in any section block. Found: a database switch builds a
+  new service provider, so `AccessState` can't serve another database; saves and reader refreshes both end in
+  `SectionStore.Reload`. Changed on purpose: `GridWatchFocusTests` now asserts a conflict with a hidden subject IS
+  marked, with the Q41 line (old rule: not reported). The old popup's badge stays at 0 until D-ui removes it. Not
+  audited: which Scheduling Environment edits raise `GridContentChanged` (a tag rename must, for names in hovers).
+  D-ui wording approved by Greg (2026-11-24): What's new as the r9 banner ("Access watches now mark only conflicts
+  that cost students something: a section no one taking the watch's courses can use, or no way to take every course.
+  To see every conflict as before, tick Mark all conflicts in the Access tab."); Q41 "<section> is hidden by the
+  filters."; too big "Too many courses to check (more than 30)"; empty tab "No access watches yet. An access watch is
+  a tag you watch: TermPoint then shows whether students can still take all its courses together. [+ Add a watch]";
+  Add a watch note, Greg's own: "An access watch is a tag watched for student access, to ensure that students can
+  register in a full slate of sections without time conflicts. If your tag describes courses (or specific sections)
+  you wish students to take together, you can enable the watch by clicking the eye."
+- **D-ui built 2026-11-24; hand-checked by Greg and committed with D-core the same day.** Next: piece E. (Sonnet the C#, Opus the views and review).
+  Access tab beside Workload: the tab strip is both panels' title (`BottomLeftTabs`; empty `Header`, window titles
+  passed to `DetachSlot`), each tab detaches alone, a detached tab hides from the strip, a red dot on Access when a
+  watch needs a look. List rows: Path marks (not Unicode, WASM), name, health line (`AccessText.HealthLine`, the
+  mock's `healthSegs` without seats, cautions, pins, subsets). Eye in the Tags popup and Scheduling Environment → Tags
+  (`AccessWatchToggler`: one tag `Update`, then invalidate and redraw; refuses read-only). Add a watch opens the Tags
+  popup with Greg's note. What's new entry for 1.2.5. Old popup, `AccessPanelViewModel`, `WatchCreationViewModel`,
+  `ProgramConflictService`, the `ProgramWatch` model and repositories deleted (table and schema kept; the conversion
+  reads rows as JSON); Semester contents no longer counts watches. Full suite 4904 passed, 0 failed. Found and fixed:
+  Scheduling Environment edit and delete never told the grid (no `GridContentChanged`), so a renamed tag stayed stale.
+  Choices for Greg's eye: "N conflicts" only in the general health line (as the mock); "A or B can't fit" sorted by
+  course code; the Header's 12 px margin leaves a small gap before the tabs (`DetachablePanel` not edited). Not done:
+  campus and course renames don't refresh Access names until the next reload; the old ProgramWatches rows of a
+  semester emptied in 1.2.5 are no longer deleted (always empty after the conversion).
+- Greg's hand check, first comment (2026-11-24): a partner hidden by the chosen Subjects (top banner), not the
+  filters, was said to be "hidden by the filters". Now the hover names the reason (`HiddenReason`, from
+  `FocusService.Matches`); draft wording for that case: "<section> isn't shown: its subject isn't one of your chosen
+  Subjects." Approved by Greg (2026-11-24).
 - Round 7 as first built (2026-11-20): the pointer reads "Access: <clause>" like the
   editor's "Room conflict:" lines, because the draft's "Affects access for Enviro Y2" makes the user click to learn
   anything; at most two lines (the editor is tight; no single edit in the mock touches four watches, so the fold is at
@@ -296,6 +331,38 @@ only** (ids, kinds, lists; no sentences: wording is F's), and fixes the mock's s
   to treat as watched tags, plus 2 old watches (schema version 0, so the copy also runs the piece B conversion).
 - Not in C: notices (F), what-if (G), seats (Q42: later), cautions (F, from per-section slate counts kept on the
   result), all wording.
+
+</details>
+
+<details>
+<summary>Piece D: build plan (Opus, 2026-11-24)</summary>
+
+Split in two because D.3–D.5 edit `.axaml` (Greg closes the files in VS first) and wait on wording.
+
+**D-core (no `.axaml`):**
+- `Services/Access/AccessState.cs`, singleton, both DI paths. Holds one snapshot per loaded semester (`AccessInputs`,
+  each watched tag's `Analysis` and `ConflictMarks`). **Lazy:** handlers only mark it stale and raise `Changed`;
+  `Current` recomputes when stale. Stale on `SectionStore.SectionsChanged` (semester switches, saves and reader
+  refreshes all end in a reload), `GridChangeNotifier.GridContentChanged` (tag rename etc.), and `Invalidate()`
+  (eye, Mark all, later components). Ordering: `ScheduleGridViewModel` takes `AccessState` as a constructor
+  dependency, so DI builds it first and its handlers run before the grid's reload (the codebase's existing pattern
+  for `FocusService`, `SubjectColorPresenter`). The suggestion query runs once per recompute.
+- **Mark all conflicts:** `AppSettings.MarkAllAccessConflicts` (per computer, default off), set through `AccessState`.
+- Grid: `AccessState`'s marks replace `DetectConflicts`, over the whole semester (rule 29), every watched tag. The
+  drawing record keeps today's shape (moved out of `ProgramConflictService`); glow and lines unchanged. Hover lines
+  (port of the r9 mock's `conflictTips`, approved round 6 wording) go on the tile's existing tooltip. Q41: a partner
+  that is filtered off gets the mark on the visible tile, no line, and one hover line (draft wording, for Greg).
+- Wording lives in one UI-side static class (`ViewModels/Access/AccessText.cs`), never in the engine (D29).
+- Tests: `AccessState` (stale after reload / invalidate, a semester switch, multi-semester separate, Mark all);
+  grid marks after a save and after a reader refresh; hover texts.
+
+**D-ui (`.axaml`, after Greg closes the files):** the eye in the Tags popup and Scheduling Environment → Tags
+(disabled read-only; calls `Invalidate()` and redraws); the Access tab beside Workload (tab strip over two
+`DetachablePanel`s; list rows ▲/●/○, name, health line with conflict count, ported from the mock's `healthSegs`
+without seats, cautions, pins or subsets; Mark all conflicts at the foot); remove the filter-bar popup,
+`AccessPanelViewModel`, `WatchCreationViewModel`, `ProgramWatchItemViewModel`, `ProgramConflictService`, the
+`ProgramWatch` repository (the conversion reads JSON) and their tests; What's new entry. Files: `MainView.axaml`,
+`ScheduleGridView.axaml`, `AccessPanelView.axaml` (deleted), the Tags popup's and Scheduling Environment's views.
 
 </details>
 

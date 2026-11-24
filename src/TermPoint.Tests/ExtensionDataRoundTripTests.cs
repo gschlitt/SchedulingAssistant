@@ -199,7 +199,7 @@ public class ExtensionDataRoundTripTests
             // top-level records (one per data-bearing table)
             typeof(AcademicUnit), typeof(AcademicYear), typeof(BlockPattern), typeof(Campus),
             typeof(Course), typeof(Instructor), typeof(InstructorCommitment), typeof(Meeting),
-            typeof(ProgramWatch), typeof(Release), typeof(Room), typeof(SchedulingEnvironmentValue),
+            typeof(Release), typeof(Room), typeof(SchedulingEnvironmentValue),
             typeof(SchedulingNote), typeof(Section), typeof(SectionCodePattern), typeof(Subject),
             typeof(Semester),
             // records nested inside them

@@ -22,6 +22,19 @@ public partial class FilterItemViewModel : ViewModelBase
     /// </summary>
     [ObservableProperty] private bool _isEnabled = true;
 
+    /// <summary>
+    /// Tags only: whether the tag is an access watch (the eye in the Tags popup is lit). Set from the tag record
+    /// when the option list is built, and flipped by <see cref="GridFilterViewModel.ToggleTagWatchCommand"/>. Not
+    /// a filter state: changing it never reloads the grid by itself.
+    /// </summary>
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(WatchTip))]
+    private bool _isWatched;
+
+    /// <summary>The eye's tooltip: what a click does (approved wording).</summary>
+    // approved wording
+    public string WatchTip => IsWatched ? "Watched: click to stop watching" : "Watch this tag";
+
     public FilterItemViewModel(string id, string name)
     {
         Id = id;

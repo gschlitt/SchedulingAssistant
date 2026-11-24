@@ -8,6 +8,9 @@ using Xunit;
 
 namespace TermPoint.Tests;
 
+/// <summary>The <c>mode</c> of an old watch row as the old repository serialized it: its numeric value is what the JSON held.</summary>
+public enum OldWatchMode { Tag = 0, Course = 1 }
+
 /// <summary>
 /// Access Analyzer piece B: the schema version 1 to 2 conversion of today's <c>ProgramWatches</c> rows into watched
 /// tags (<c>WatchConversion</c>, run by <c>DatabaseContext.Migrate</c> and by <c>ReinitializeConnection</c>), with one
@@ -155,17 +158,20 @@ public sealed class WatchConversionTests : IDisposable
         /// <param name="tags">Tag ids (tag mode).</param>
         /// <param name="courses">Course ids (course mode).</param>
         /// <param name="levels">Level values (tag mode).</param>
-        public Seeder Watch(string id, string semesterId, string name, ProgramWatchMode mode = ProgramWatchMode.Tag,
+        public Seeder Watch(string id, string semesterId, string name, OldWatchMode mode = OldWatchMode.Tag,
             bool enabled = true, string[]? tags = null, string[]? courses = null, string[]? levels = null)
         {
             using var c = Open(path);
-            var w = new ProgramWatch
+            // The JSON the old ProgramWatchRepository wrote: camelCase members, mode as a number (0 tag, 1 course).
+            var w = new JsonObject
             {
-                Id = id, Name = name, Mode = mode, IsEnabled = enabled,
-                TagIds = [.. tags ?? []], CourseIds = [.. courses ?? []], LevelIds = [.. levels ?? []],
+                ["id"] = id, ["name"] = name, ["mode"] = (int)mode, ["isEnabled"] = enabled,
+                ["tagIds"] = new JsonArray([.. (tags ?? []).Select(t => (JsonNode?)JsonValue.Create(t))]),
+                ["courseIds"] = new JsonArray([.. (courses ?? []).Select(t => (JsonNode?)JsonValue.Create(t))]),
+                ["levelIds"] = new JsonArray([.. (levels ?? []).Select(t => (JsonNode?)JsonValue.Create(t))]),
             };
             Exec(c, "INSERT INTO ProgramWatches (id, semester_id, name, mode, data) VALUES ($0, $1, $2, $3, $4)",
-                id, semesterId, name, mode.ToString().ToLowerInvariant(), JsonHelpers.Serialize(w));
+                id, semesterId, name, mode.ToString().ToLowerInvariant(), w.ToJsonString());
             return this;
         }
     }
@@ -226,7 +232,7 @@ public sealed class WatchConversionTests : IDisposable
     public void OldWatchRows_StoreTheModeAsANumber()
     {
         var path = NewV1("mode");
-        new Seeder(path).Semester("s1").Watch("w1", "s1", "W", ProgramWatchMode.Course, courses: ["c1"]);
+        new Seeder(path).Semester("s1").Watch("w1", "s1", "W", OldWatchMode.Course, courses: ["c1"]);
 
         Assert.Equal(1, JsonNode.Parse(Rows(path, "ProgramWatches").Single().Data)!["mode"]!.GetValue<int>());
     }
@@ -280,7 +286,7 @@ public sealed class WatchConversionTests : IDisposable
             .Section("a", "s1", "c1", null, ["x"]).Section("b", "s1", "c2", null, [])
             .Section("c", "s2", "c1", null, ["x"]).Section("d", "s1", "c3", null, [])
             .Section("e", "s1", null, null, [])
-            .Watch("w-core", "s1", "Core", ProgramWatchMode.Course, courses: ["c1", "c2", "c1", "nope"]);
+            .Watch("w-core", "s1", "Core", OldWatchMode.Course, courses: ["c1", "c2", "c1", "nope"]);
 
         Convert(path);
 
@@ -403,7 +409,7 @@ public sealed class WatchConversionTests : IDisposable
             .Tag("t1", "CIVL Y3").Course("c1")
             .Section("a", "s2", "c1", null, [])
             .Watch("w1", "s1", "Civil", tags: ["t1"])
-            .Watch("w2", "s2", "Civil", ProgramWatchMode.Course, courses: ["c1"]);
+            .Watch("w2", "s2", "Civil", OldWatchMode.Course, courses: ["c1"]);
 
         Convert(path);
 
@@ -508,7 +514,7 @@ public sealed class WatchConversionTests : IDisposable
             .Section("x1", "s1", "c1", "100", ["a", "b"]).Section("x2", "s1", "c2", "200", ["a"])
             .Section("x3", "s2", "c1", "100", ["a", "b"], futureField: true)
             .Watch("w1", "s1", "Civil", tags: ["a", "b"]).Watch("w2", "s2", "Civil", tags: ["a", "b"], enabled: false)
-            .Watch("w3", "s1", "Courses", ProgramWatchMode.Course, courses: ["c1", "c2"])
+            .Watch("w3", "s1", "Courses", OldWatchMode.Course, courses: ["c1", "c2"])
             .Watch("w4", "s1", "Just A", tags: ["a"]).Watch("w5", "s2", "Lv", levels: ["100"]);
         var copy = Path.Combine(_dir, "copy.db");
         File.Copy(path, copy);

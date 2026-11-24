@@ -12,12 +12,14 @@ using TermPoint.Data;
 using TermPoint.Data.Repositories;
 using TermPoint.Data.Repositories.Demo;
 using TermPoint.Services;
+using TermPoint.Services.Access;
 using TermPoint.Services.SectionImport;
 #if !BROWSER
 using TermPoint.Exceptions;
 #endif
 using TermPoint.Licensing;
 using TermPoint.ViewModels;
+using TermPoint.ViewModels.Access;
 using TermPoint.ViewModels.GridView;
 using TermPoint.ViewModels.Management;
 using TermPoint.Views;
@@ -523,7 +525,6 @@ public partial class App : Application
         services.AddSingleton<ICampusRepository, CampusRepository>();
         services.AddSingleton<IMeetingRepository, MeetingRepository>();
         services.AddSingleton<ISectionCodePatternRepository, SectionCodePatternRepository>();
-        services.AddSingleton<IProgramWatchRepository, ProgramWatchRepository>();
         services.AddSingleton<IAccessChecksSetupRepository, AccessChecksSetupRepository>();
 
         // Owns the empty / delete semester and academic year rules.
@@ -657,7 +658,6 @@ public partial class App : Application
         services.AddSingleton<ICampusRepository,              DemoCampusRepository>();
         services.AddSingleton<IMeetingRepository,             DemoMeetingRepository>();
         services.AddSingleton<ISectionCodePatternRepository,  DemoSectionCodePatternRepository>();
-        services.AddSingleton<IProgramWatchRepository,       DemoProgramWatchRepository>();
         services.AddSingleton<IAccessChecksSetupRepository,  DemoAccessChecksSetupRepository>();
 
         // Owns the empty / delete semester and academic year rules.
@@ -752,19 +752,24 @@ public partial class App : Application
         services.AddSingleton<SectionStore>();
         services.AddSingleton<MeetingStore>();
         services.AddSingleton<GridChangeNotifier>();
-        services.AddSingleton<AccessPanelViewModel>(sp => new AccessPanelViewModel(
-            sp.GetRequiredService<IProgramWatchRepository>(),
-            sp.GetRequiredService<SemesterContext>(),
-            sp.GetRequiredService<GridChangeNotifier>(),
-            sp.GetRequiredService<ISchedulingEnvironmentRepository>(),
-            sp.GetRequiredService<ICourseRepository>(),
-            // Watches are saved only while the write lock is ours; a reader keeps them in memory (see the class).
-            () => sp.GetRequiredService<WriteLockService>().IsWriter));
         // Shared by every indicator and the Focus picker; exposed as MainWindowViewModel.FocusVm.
         services.AddSingleton<FocusViewModel>();
         services.AddSingleton<MainWindowViewModel>();
         // Marked sections (never saved): framed in Schedule View and in the Section List, so both share one set.
         services.AddSingleton<SectionMarks>();
+        // The Access Analyzer's one service: per-semester marks and analyses, computed lazily (see AccessState).
+        // Registered here so the desktop and the WASM demo both get it.
+        services.AddSingleton<AccessState>(sp => new AccessState(
+            sp.GetRequiredService<SectionStore>(),
+            sp.GetRequiredService<GridChangeNotifier>(),
+            sp.GetRequiredService<ISectionRepository>(),
+            sp.GetRequiredService<ICourseRepository>(),
+            sp.GetRequiredService<ISchedulingEnvironmentRepository>(),
+            sp.GetRequiredService<IAccessChecksSetupRepository>()));
+        // The eye on a tag, shared by the filter's Tags popup, Scheduling Environment and the Access tab.
+        services.AddSingleton<AccessWatchToggler>();
+        // The Access tab beside Workload (desktop and WASM demo).
+        services.AddSingleton<AccessTabViewModel>();
         services.AddSingleton<SectionListViewModel>();
         services.AddSingleton<ISectionCardState>(sp => sp.GetRequiredService<SectionListViewModel>());
         services.AddSingleton<MeetingListViewModel>();
@@ -785,7 +790,6 @@ public partial class App : Application
             sp.GetRequiredService<IInstructorCommitmentRepository>(),
             sp.GetRequiredService<WriteLockService>(),
             sp.GetRequiredService<SharedScheduleService>(),
-            sp.GetRequiredService<AccessPanelViewModel>(),
             // A constructor dependency so FocusService is built, and subscribes to SectionsChanged, first.
             sp.GetRequiredService<FocusService>(),
             // Likewise, so the presenter drops its caches on SectionsChanged/FocusChanged before the grid reloads.
@@ -796,7 +800,10 @@ public partial class App : Application
             sp.GetRequiredService<ISectionCardState>(),
             // The legal start times a dragged meeting snaps to (registered by both the desktop and the demo setup).
             sp.GetRequiredService<ILegalStartTimeRepository>(),
-            sp.GetRequiredService<SectionMarks>()));
+            sp.GetRequiredService<SectionMarks>(),
+            // A constructor dependency so AccessState is built, and marks itself stale on SectionsChanged and
+            // GridContentChanged, before the grid's reload handlers run (same reason as FocusService above).
+            sp.GetRequiredService<AccessState>()));
         services.AddSingleton<WorkloadPanelViewModel>(sp => new WorkloadPanelViewModel(
             sp.GetRequiredService<IInstructorRepository>(),
             sp.GetRequiredService<ISectionRepository>(),

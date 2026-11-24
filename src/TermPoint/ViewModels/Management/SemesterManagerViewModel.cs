@@ -264,7 +264,7 @@ public partial class SemesterManagerViewModel : ViewModelBase, IUnappliedChanges
     /// <summary>
     /// Deletes the selected semester after the user confirms. <see cref="SemesterContentsService"/>
     /// decides whether it may go: it must not be loaded in the main view and must hold nothing in any
-    /// of the six semester-scoped tables. Otherwise the service's refusal (which says what remains and
+    /// of the five semester-scoped tables. Otherwise the service's refusal (which says what remains and
     /// points to Empty Semester) is shown in <see cref="ViewModelBase.LastErrorMessage"/> and nothing is deleted.
     /// </summary>
     [RelayCommand(CanExecute = nameof(CanWrite))]

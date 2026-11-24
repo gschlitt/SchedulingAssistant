@@ -4,6 +4,8 @@ using CommunityToolkit.Mvvm.Input;
 using TermPoint.Data.Repositories;
 using TermPoint.Models;
 using TermPoint.Services;
+using TermPoint.Services.Access;
+using TermPoint.ViewModels.Access;
 using TermPoint.ViewModels.Management;
 using System.Threading.Tasks;
 
@@ -52,6 +54,7 @@ public partial class ScheduleGridViewModel : ViewModelBase
     /// schedules and ghosts never do (see <see cref="BuildFilteredBlocks"/> and <see cref="BuildOverlayBlocks"/>).
     /// </summary>
     private readonly FocusService _focus;
+    private readonly AccessState _accessState;
 
     /// <summary>
     /// Subject colours (colour by subject). Every section block is stamped
@@ -109,9 +112,6 @@ public partial class ScheduleGridViewModel : ViewModelBase
 
     /// <summary>Filter state. Exposed so the view can bind to it.</summary>
     public GridFilterViewModel Filter { get; } = new();
-
-    /// <summary>Access panel state (program conflict watches). Exposed so the view can bind to it.</summary>
-    public AccessPanelViewModel Access { get; }
 
     /// <summary>Shared schedule strip state (collapsible info panel above the grid).</summary>
     public SharedScheduleStripViewModel SharedScheduleStrip { get; private set; } = null!;
@@ -200,15 +200,16 @@ public partial class ScheduleGridViewModel : ViewModelBase
         IInstructorCommitmentRepository commitmentRepo,
         WriteLockService lockService,
         SharedScheduleService sharedScheduleService,
-        AccessPanelViewModel accessPanelViewModel,
         FocusService focus,
         SubjectColorPresenter subjectColors,
         IBlockPatternRepository blockPatternRepo,
         ISectionCardState cardState,
         ILegalStartTimeRepository legalStartTimeRepo,
-        SectionMarks marks)
+        SectionMarks marks,
+        AccessState accessState)
     {
         Marks = marks;
+        _accessState = accessState;
         _cardState = cardState;
         _legalStartTimeRepo = legalStartTimeRepo;
         _sectionRepo = sectionRepo;
@@ -230,7 +231,6 @@ public partial class ScheduleGridViewModel : ViewModelBase
         _sharedScheduleService = sharedScheduleService;
         _focus = focus;
         _subjectColors = subjectColors;
-        Access = accessPanelViewModel;
         SharedScheduleStrip = new SharedScheduleStripViewModel(sharedScheduleService);
 
         // After a context-menu save, refresh the shared section cache so all views
@@ -484,7 +484,7 @@ public partial class ScheduleGridViewModel : ViewModelBase
 
     /// <summary>The inputs of the last successful reload, so a fold can rebuild without the database.</summary>
     private (IReadOnlyList<SemesterDisplay> Semesters, IReadOnlyList<GridBlock> Blocks,
-             IReadOnlyList<ProgramConflict> Conflicts)? _gridInputs;
+             GridAccessMarks AccessMarks)? _gridInputs;
 
     /// <summary>Short day names for <see cref="FoldedDaysCaption"/>, by day number.</summary>
     private static readonly string[] ShortDayNames = ["", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
@@ -603,7 +603,7 @@ public partial class ScheduleGridViewModel : ViewModelBase
     {
         if (_foldedDays.SetEquals(days) || _gridInputs is not { } inputs) return;
         SetFoldedDays(days);
-        UpdateDisplayProperties(inputs.Semesters, inputs.Blocks, inputs.Conflicts);
+        UpdateDisplayProperties(inputs.Semesters, inputs.Blocks, inputs.AccessMarks);
     }
 
     /// <summary>
@@ -764,42 +764,37 @@ public partial class ScheduleGridViewModel : ViewModelBase
         var combinedBlocks = filtered.Concat(overlayOnly).Concat(commitments).Concat(meetingBlocks).Concat(sharedBlocks);
         var allBlocks = DeduplicateBlocks(combinedBlocks);
 
-        // ── Program conflict detection ────────────────────────────────────────
-        var enabledWatches = Access.GetEnabledWatches();
-        IReadOnlyList<ProgramConflict> programConflicts = [];
-        if (enabledWatches.Count > 0)
-        {
-            // Program access watches scan only the sections on the grid: Pass 1, which applies the chosen subjects
-            // and then the ordinary filter. Scanning out-of-subject sections
-            // reported clashes with sections the user couldn't see, each one a puzzle to track down. The trade-off,
-            // accepted: a clash with a section in an unchosen subject goes unreported until that subject is chosen.
-            var visibleSectionIds = filtered.OfType<SectionMeetingBlock>()
-                .Select(b => b.SectionId).ToHashSet();
-            var visibleSections = lookups.Sections
-                .Where(s => visibleSectionIds.Contains(s.Id)).ToList();
-            var tagIdsBySectionId = visibleSections
-                .ToDictionary(s => s.Id, s => (IReadOnlyList<string>)s.TagIds);
-            programConflicts = ProgramConflictService.DetectConflicts(
-                enabledWatches, visibleSections, tagIdsBySectionId);
-        }
-        // Build section-ID-to-label map so the Access panel can show conflict details.
-        var sectionLabels = new Dictionary<string, string>();
-        if (programConflicts.Count > 0)
-        {
-            var involvedIds = new HashSet<string>();
-            foreach (var pc in programConflicts) { involvedIds.Add(pc.MeetingA.SectionId); involvedIds.Add(pc.MeetingB.SectionId); }
-            foreach (var s in lookups.Sections)
-            {
-                if (!involvedIds.Contains(s.Id)) continue;
-                var code = s.CourseId is not null && lookups.Courses.TryGetValue(s.CourseId, out var c)
-                    ? c.CalendarCode : null;
-                sectionLabels[s.Id] = code is not null ? $"{code} {s.SectionCode}" : s.SectionCode;
-            }
-        }
-        Access.UpdateConflictCounts(programConflicts, sectionLabels);
+        // ── Access conflict marks ─────────────────────────────────────────────
+        // Marks come from AccessState over the WHOLE semester, not just the sections on the grid (Access Analyzer
+        // rule 29, Q41): a conflict with a section the filters or the subject focus hide still glows the visible
+        // section, gets no connecting line (its partner has no entry row) and says so in the hover. This supersedes
+        // the old rule of scanning only the visible sections. AccessState was built before this view model (a
+        // constructor dependency), so it already knows the reload that brought us here is stale-marked.
+        var visibleSectionIds = allBlocks.OfType<SectionMeetingBlock>().Select(b => b.SectionId).ToHashSet();
+        var accessMarks = BuildAccessMarks(visibleSectionIds);
 
-        _gridInputs = (semesters, allBlocks, programConflicts);
-        UpdateDisplayProperties(semesters, allBlocks, programConflicts);
+        _gridInputs = (semesters, allBlocks, accessMarks);
+        UpdateDisplayProperties(semesters, allBlocks, accessMarks);
+    }
+
+    /// <summary>
+    /// The grid's Access conflict marks for the loaded semesters, from <see cref="AccessState"/>. A failure to compute
+    /// them is logged and the grid is drawn without marks rather than blanked: the marks are an aid, the timetable is
+    /// the page.
+    /// </summary>
+    /// <param name="visibleSectionIds">The sections on the grid; a mark's partner outside it gets the hidden-partner hover line.</param>
+    /// <returns>The drawing records and hover lines; <see cref="GridAccessMarks.None"/> when there are none or on failure.</returns>
+    private GridAccessMarks BuildAccessMarks(IReadOnlySet<string> visibleSectionIds)
+    {
+        try
+        {
+            return GridAccessMarks.Build(_accessState.Current, visibleSectionIds, _focus.Matches);
+        }
+        catch (Exception ex)
+        {
+            App.Logger.LogError(ex, "ScheduleGridViewModel.BuildAccessMarks");
+            return GridAccessMarks.None;
+        }
     }
 
     // ─────────────────────────────────────────────────────────────────────────────
@@ -1091,14 +1086,24 @@ public partial class ScheduleGridViewModel : ViewModelBase
     /// <summary>
     /// Builds the tooltip data for a grid tile.
     /// The first line is always the time range (e.g. "1015-1145").
-    /// Additional lines can be appended here in the future without changing the view.
+    /// When Access conflict marks speak about the tile's entries, their hover lines follow.
     /// </summary>
     /// <param name="tile">The tile whose tooltip is being built.</param>
+    /// <param name="conflictLines">The grid's conflict hover lines by (section id, day); null for none.</param>
+    /// <param name="day">The tile's day number, to look the lines up.</param>
     /// <returns>A <see cref="TileTooltip"/> whose <c>Lines</c> are ready for display.</returns>
-    internal static TileTooltip BuildTileTooltip(GridTile tile)
+    internal static TileTooltip BuildTileTooltip(
+        GridTile tile, IReadOnlyDictionary<(string SectionId, int Day), IReadOnlyList<string>>? conflictLines = null, int day = 0)
     {
         static string Fmt(int minutes) => $"{minutes / 60:D2}{minutes % 60:D2}";
         var lines = new List<string> { $"{Fmt(tile.StartMinutes)}-{Fmt(tile.EndMinutes)}" };
+
+        // Access conflict hover lines for the tile's entries (each section's own lines, repeats dropped).
+        if (conflictLines is not null)
+            foreach (var line in tile.Entries
+                         .SelectMany(e => conflictLines.TryGetValue((e.SectionId, day), out var l) ? l : [])
+                         .Distinct())
+                lines.Add(line);
 
         // For meeting tiles with more attendees than fit in the tile label, surface the
         // full name list as a wrapped block in the tooltip.
@@ -1703,7 +1708,7 @@ public partial class ScheduleGridViewModel : ViewModelBase
     private void UpdateDisplayProperties(
         IReadOnlyList<SemesterDisplay> semesters,
         IReadOnlyList<GridBlock> allBlocks,
-        IReadOnlyList<ProgramConflict>? programConflicts = null)
+        GridAccessMarks? accessMarks = null)
     {
         // Grid end is always 22:00. Grid start is 07:30 when any block starts before 08:00
         // (to accommodate early meetings), otherwise 08:00 to avoid wasting vertical space.
@@ -1773,7 +1778,8 @@ public partial class ScheduleGridViewModel : ViewModelBase
 
         GridData = new GridData(firstRow, lastRow, dayColumns, semesters.Count)
         {
-            ProgramConflicts = programConflicts ?? []
+            ProgramConflicts = accessMarks?.Conflicts ?? [],
+            ConflictHoverLines = accessMarks?.HoverLines ?? new Dictionary<(string SectionId, int Day), IReadOnlyList<string>>(),
         };
 
         // ── Semester line and colored segment chips ────────────────────────────

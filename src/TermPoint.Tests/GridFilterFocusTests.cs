@@ -124,8 +124,8 @@ public sealed class GridFilterFocusTests : IDisposable
             _sectionRepo, _courseRepo, _instructorRepo, _roomRepo, _subjectRepo, envRepo, campusRepo,
             _semesterContext, new AcademicUnitService(new AcademicUnitRepository(db)), _sectionStore, new MeetingStore(),
             meetingRepo, notifier, new InstructorCommitmentRepository(db), _fx.Lock, new SharedScheduleService(),
-            new AccessPanelViewModel(new ProgramWatchRepository(db), _semesterContext, notifier, envRepo, _courseRepo, () => true),
-            _focus, FocusTestSupport.NoColours(_courseRepo, _subjectRepo, _sectionStore), new BlockPatternRepository(db), new FakeSectionCardState(), new LegalStartTimeRepository(db), _marks);
+            _focus, FocusTestSupport.NoColours(_courseRepo, _subjectRepo, _sectionStore), new BlockPatternRepository(db), new FakeSectionCardState(), new LegalStartTimeRepository(db), _marks,
+            AccessStateTestSupport.For(db, _sectionStore, notifier));
 
         // Viewing year 1's fall semester, as the user would after opening the database.
         _semesterContext.Reload(_ayRepo, _semesterRepo, _year1Id, new HashSet<string> { _fall1 });

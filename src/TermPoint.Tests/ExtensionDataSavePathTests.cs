@@ -292,7 +292,7 @@ public sealed class ExtensionDataSavePathTests : IDisposable
 
         var contentsService = new SemesterContentsService(
             _fx.Db, _sectionRepo, _meetingRepo, _releaseRepo, _commitmentRepo, _noteRepo,
-            new ProgramWatchRepository(_fx.Db), _semesterRepo, _ayRepo, _legalRepo, _semesterContext);
+            _semesterRepo, _ayRepo, _legalRepo, _semesterContext);
         var vm = new SemesterManagerViewModel(ay.Id, _ayRepo, _semesterRepo, contentsService, _semesterContext, _dialog, _fx.Lock);
         vm.SelectedSemester = vm.Semesters.Single();
         vm.RenameCommand.Execute(null);
@@ -558,25 +558,5 @@ public sealed class ExtensionDataSavePathTests : IDisposable
         var raw = _fx.ReadData("AcademicUnits", unit.Id);
         Assert.Equal("Biology", raw["name"]!.GetValue<string>());
         FutureFields.AssertPresent(raw, "AcademicUnits", "root");
-    }
-
-    [Fact]
-    public void ProgramWatch_ToggleThroughItsViewModel_KeepsUnknownFields()
-    {
-        var repo = new ProgramWatchRepository(_fx.Db);
-        var watch = new ProgramWatch { Name = "CS core", Mode = ProgramWatchMode.Course, CourseIds = ["c-1"] };
-        repo.Save("sem-1", watch);
-        _fx.Stamp("ProgramWatches", watch.Id);
-
-        // The panel loads watches from the repository, mutates the loaded object (name / enabled)
-        // and saves that same object.
-        var loaded = repo.GetAll("sem-1").Single();
-        loaded.IsEnabled = false;
-        loaded.Name = "CS core (paused)";
-        repo.Save("sem-1", loaded);
-
-        var raw = _fx.ReadData("ProgramWatches", watch.Id);
-        Assert.False(raw["isEnabled"]!.GetValue<bool>());
-        FutureFields.AssertPresent(raw, "ProgramWatches", "root");
     }
 }

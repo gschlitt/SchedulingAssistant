@@ -4,6 +4,8 @@ using Microsoft.Extensions.DependencyInjection;
 using TermPoint.Data;
 using TermPoint.Models;
 using TermPoint.Services;
+using TermPoint.Services.Access;
+using TermPoint.ViewModels.Access;
 using TermPoint.Services.SectionImport;
 using TermPoint.Views;
 using TermPoint.ViewModels.GridView;
@@ -87,6 +89,48 @@ public partial class MainWindowViewModel : ViewModelBase
     /// The permanent bottom-left workload panel. Held for app lifetime.
     /// </summary>
     public WorkloadPanelViewModel WorkloadPanelVm { get; }
+
+    /// <summary>
+    /// The Access tab beside Workload in the bottom-left panel. Held for app lifetime.
+    /// </summary>
+    public AccessTabViewModel AccessTabVm { get; }
+
+    /// <summary>
+    /// True when the bottom-left panel shows the Access tab; false (the default) shows Workload. Changing it
+    /// re-raises <see cref="IsWorkloadTabSelected"/> and <see cref="ShowAccessDot"/>.
+    /// </summary>
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(IsWorkloadTabSelected))]
+    [NotifyPropertyChangedFor(nameof(ShowAccessDot))]
+    private bool _isAccessTabSelected;
+
+    /// <summary>True when the bottom-left panel shows Workload (the tab that is not Access).</summary>
+    public bool IsWorkloadTabSelected => !IsAccessTabSelected;
+
+    /// <summary>
+    /// True while the Workload panel is detached into its own window; the tab strip hides a detached tab.
+    /// Set by MainWindow when the panel is detached or reattached.
+    /// </summary>
+    [ObservableProperty] private bool _isWorkloadDetached;
+
+    /// <summary>
+    /// True while the Access panel is detached into its own window; the tab strip hides a detached tab.
+    /// Set by MainWindow when the panel is detached or reattached.
+    /// </summary>
+    [ObservableProperty] private bool _isAccessDetached;
+
+    /// <summary>
+    /// True when the dot on the Access tab shows: some watch needs a look and the Access tab is not the one on show.
+    /// </summary>
+    public bool ShowAccessDot => AccessTabVm.NeedsALook && !IsAccessTabSelected;
+
+    /// <summary>Shows the Workload tab.</summary>
+    [RelayCommand]
+    private void ShowWorkloadTab() => IsAccessTabSelected = false;
+
+    /// <summary>Shows the Access tab.</summary>
+    [RelayCommand]
+    private void ShowAccessTab() => IsAccessTabSelected = true;
 
     /// <summary>
     /// Tour overlay ViewModel. Drives the walkthrough card and highlight ring.
@@ -729,7 +773,9 @@ public partial class MainWindowViewModel : ViewModelBase
         WriteLockService lockService,
         AppNotificationService notificationService,
         TourRunner tourRunner,
-        FocusViewModel focusVm)
+        FocusViewModel focusVm,
+        AccessTabViewModel accessTabVm,
+        AccessWatchToggler watchToggler)
     {
         _services             = services;
         SemesterContext       = semesterContext;
@@ -741,6 +787,13 @@ public partial class MainWindowViewModel : ViewModelBase
         _notificationService  = notificationService;
         _tourRunner           = tourRunner;
         FocusVm               = focusVm;
+        AccessTabVm           = accessTabVm;
+
+        // The eyes in the Tags popup save through the shared toggler; "Add a watch" opens that popup with its note.
+        scheduleGridVm.Filter.WatchToggler = watchToggler;
+        accessTabVm.AddWatchRequested += () => _scheduleGridVm.Filter.OpenTagsForWatch();
+        accessTabVm.PropertyChanged += (_, e) =>
+        { if (e.PropertyName == nameof(AccessTabViewModel.NeedsALook)) OnPropertyChanged(nameof(ShowAccessDot)); };
         TourOverlayVm         = new TourOverlayViewModel(tourRunner);
 
         // Wire the Room Availability Browser ghost block callback

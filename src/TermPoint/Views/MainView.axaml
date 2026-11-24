@@ -593,7 +593,7 @@
 				b:ConditionalColumnWidthBehavior.TrueWidth="-1"
 				ColumnDefinitions="440,4,*">
 
-				<!--  Left column: Section Editor (top) + Workload (bottom)  -->
+				<!--  Left column: Section Editor (top) + Workload / Access tabs (bottom)  -->
 				<Grid Grid.Column="0" RowDefinitions="*,4,250">
 
 					<controls:DetachablePanel
@@ -641,14 +641,34 @@
 						Background="{StaticResource GridSplitterColor}"
 						ResizeDirection="Rows" />
 
-					<controls:DetachablePanel
-						x:Name="WorkloadPanel"
-						Grid.Row="2"
-						Header="Workload View">
-						<controls:DetachablePanel.PanelContent>
-							<panelViews:WorkloadPanelView DataContext="{Binding WorkloadPanelVm}" />
-						</controls:DetachablePanel.PanelContent>
-					</controls:DetachablePanel>
+					<!--
+						Bottom-left slot: two tabs, Workload and Access (Access Analyzer, D17), each its own DetachablePanel so each
+						detaches on its own. The tab strip is both panels' title (BottomLeftTabs), so it takes no extra row. The wrapper
+						Panels carry the tab choice, because detaching sets the DetachablePanel's own IsVisible locally (MainWindow
+						DetachSlot), which would replace a binding there.
+					-->
+					<Panel Grid.Row="2">
+						<Panel IsVisible="{Binding IsWorkloadTabSelected}">
+							<controls:DetachablePanel x:Name="WorkloadPanel" Header="">
+								<controls:DetachablePanel.HeaderContext>
+									<panelViews:BottomLeftTabs />
+								</controls:DetachablePanel.HeaderContext>
+								<controls:DetachablePanel.PanelContent>
+									<panelViews:WorkloadPanelView DataContext="{Binding WorkloadPanelVm}" />
+								</controls:DetachablePanel.PanelContent>
+							</controls:DetachablePanel>
+						</Panel>
+						<Panel IsVisible="{Binding IsAccessTabSelected}">
+							<controls:DetachablePanel x:Name="AccessPanel" Header="">
+								<controls:DetachablePanel.HeaderContext>
+									<panelViews:BottomLeftTabs />
+								</controls:DetachablePanel.HeaderContext>
+								<controls:DetachablePanel.PanelContent>
+									<panelViews:AccessTabView DataContext="{Binding AccessTabVm}" />
+								</controls:DetachablePanel.PanelContent>
+							</controls:DetachablePanel>
+						</Panel>
+					</Panel>
 
 				</Grid>
 
