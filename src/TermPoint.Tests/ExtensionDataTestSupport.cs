@@ -185,7 +185,8 @@ internal static class PersistedTypeCatalog
         foreach (var p in type.GetProperties(BindingFlags.Public | BindingFlags.Instance))
         {
             if (p.SetMethod is not { IsPublic: true }) continue;
-            if (p.GetCustomAttribute<JsonIgnoreAttribute>() is not null) continue;
+            // Conditional ignores (WhenWritingDefault/Null) are still persisted fields.
+            if (p.GetCustomAttribute<JsonIgnoreAttribute>() is { Condition: JsonIgnoreCondition.Always }) continue;
             if (p.Name == nameof(PersistedRecord.ExtensionData)) continue;
             var value = ValueFor(p.PropertyType, p.Name);
             if (value is not null) p.SetValue(instance, value);

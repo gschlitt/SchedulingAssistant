@@ -111,7 +111,8 @@ public sealed class ExtensionDataSavePathTests : IDisposable
         // Level "200" is deliberately NOT what the course number would suggest ("100"), and
         // Capacity is set: the edit-copy used to drop both, so every Apply reset them.
         var course = new Course { Id = "c-1", SubjectId = "subj-1", CalendarCode = "HIST101", Title = "Intro",
-                                  Level = "200", Capacity = 30, TagIds = ["tag-1"] };
+                                  Level = "200", Capacity = 30, TagIds = ["tag-1"],
+                                  ComponentTypeIds = ["st-1"] };
         _courseRepo.Insert(course);
         _fx.Stamp("Courses", course.Id);
 
@@ -130,6 +131,7 @@ public sealed class ExtensionDataSavePathTests : IDisposable
         Assert.Equal(30, raw["capacity"]!.GetValue<int>());
         Assert.Equal("200", raw["level"]!.GetValue<string>());
         Assert.Equal("tag-1", raw["tagIds"]![0]!.GetValue<string>());
+        Assert.Equal("st-1", raw["componentTypeIds"]![0]!.GetValue<string>());
         FutureFields.AssertPresent(raw, "Courses", "root");
     }
 
@@ -236,7 +238,8 @@ public sealed class ExtensionDataSavePathTests : IDisposable
     [Fact]
     public void SchedulingEnvironmentValueEdit_KeepsUnknownFields()
     {
-        var value = new SchedulingEnvironmentValue { Id = "st-1", Name = "Lecture" };
+        var value = new SchedulingEnvironmentValue { Id = "st-1", Name = "Lecture",
+                                                     IsAccessWatch = true, WatchMultiCampus = true, IsComponent = true };
         _envRepo.Insert(SchedulingEnvironmentTypes.SectionType, value);
         _fx.Stamp("SchedulingEnvironmentValues", value.Id);
 
@@ -249,6 +252,10 @@ public sealed class ExtensionDataSavePathTests : IDisposable
 
         var raw = _fx.ReadData("SchedulingEnvironmentValues", value.Id);
         Assert.Equal("Lecture (large)", raw["name"]!.GetValue<string>());
+        // The edit-copy used to omit nothing here; the Access Analyzer fields must ride along.
+        Assert.True(raw["isAccessWatch"]!.GetValue<bool>());
+        Assert.True(raw["watchMultiCampus"]!.GetValue<bool>());
+        Assert.True(raw["isComponent"]!.GetValue<bool>());
         FutureFields.AssertPresent(raw, "SchedulingEnvironmentValues", "root");
     }
 

@@ -185,6 +185,9 @@ public partial class SchedulingEnvironmentListViewModel : ViewModelBase, IDismis
             Name = SelectedItem.Name,
             SectionCodeAbbreviation = SelectedItem.SectionCodeAbbreviation,
             SortOrder = SelectedItem.SortOrder,
+            IsAccessWatch = SelectedItem.IsAccessWatch,
+            WatchMultiCampus = SelectedItem.WatchMultiCampus,
+            IsComponent = SelectedItem.IsComponent,
         }.WithExtensionDataFrom(SelectedItem); // Save writes the whole copy back: keep unknown JSON fields.
         EditVm = new SchedulingEnvironmentEditViewModel(copy, isNew: false,
             onSave: v => { _repo.Update(v); Load(); SelectedItem = Items.FirstOrDefault(x => x.Id == v.Id); EditVm = null; _sectionListVm.Reload(); },

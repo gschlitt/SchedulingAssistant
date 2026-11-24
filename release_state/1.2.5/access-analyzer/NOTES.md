@@ -171,6 +171,24 @@ Ledger: [RELEASE_1.2.5.md](../RELEASE_1.2.5.md). Design: [designs/1.2.5/access-a
   `NetworkHangTests.AHungWrite_TimesOutByTheDeadline...` (file in use in its temp folder), passed on rerun: a flake.
   **Piece A hand-checked by Greg and committed 2026-11-24.** Next: piece B (Phase 6 steps B.1-B.6; write the
   fix-on-fix check into these notes before coding). `tools/section-import/README.md` says 19 columns.
+- **Piece B built and committed 2026-11-24** (Sonnet the C#, Opus reviewed; full suite with the harness: 4912
+  passed, 0 failed). Must not be released without D (Q46): the old watch UI still reads `ProgramWatches`, now empty.
+  Conversion is `Data/Migrations/WatchConversion.cs` (excluded from the browser build), called from `Migrate`;
+  tests `WatchConversionTests`, `AccessChecksDataTests`, `Harness/WatchConversionHarnessTests`. Choices made while
+  building, where the spec left room: old rows store `mode` as a number (0 tag, 1 course; a string or the `mode`
+  column is also accepted); "first watch by semester order" = academic year name, then semester sort order, then id,
+  missing semesters last; a name shared by single-tag and other watches: single-tag rows mark their own tag, the rest
+  share one new tag; a watch that covered nothing still gets its tag (nothing the user made disappears); the name
+  clash check includes tags made earlier in the same run; a blank name becomes "Watch"; an old watch ID already used
+  by a value row (practically impossible) gets a repeatable derived GUID; only `tagIds` is edited in section and
+  course JSON, and only rows whose tags change are rewritten. `AccessChecksSetUp` lives behind
+  `IAccessChecksSetupRepository` (demo version for WASM). Found: `IsMigrationNeeded` returned false for every
+  version-1 file (the legacy column checks all say "up to date"), so the conversion would never have run; it now
+  returns true for any stamped version below current. `ReinitializeConnection` also runs `InitializeSchema`
+  (idempotent) before converting, only below version 2. Consequence for release: every 1.2.3/1.2.4 database is version
+  1, so the first 1.2.5 open runs the migration (with its backup) even with no watches; 1.2.4 accepts version 2.
+  Extension-data and clone tests now skip only unconditional `[JsonIgnore]`, so the written-only-when-set fields are
+  covered. **Next: piece C.**
 - Round 7 as first built (2026-11-20): the pointer reads "Access: <clause>" like the
   editor's "Room conflict:" lines, because the draft's "Affects access for Enviro Y2" makes the user click to learn
   anything; at most two lines (the editor is tight; no single edit in the mock touches four watches, so the fold is at
@@ -181,6 +199,33 @@ Ledger: [RELEASE_1.2.5.md](../RELEASE_1.2.5.md). Design: [designs/1.2.5/access-a
 - Wording (Greg, 2026-11-19): "conflicts", never "clashes"; unconfirmed components are "inferred", never "guessed". In
   user-facing text, docs and code.
 - Greg (2026-11-16): add the feature to the 1.2.5 ledger. Earlier it was "release undecided, probably not 1.2.4".
+
+</details>
+
+<details>
+<summary>Piece B: fix-on-fix check for ReinitializeConnection (B.6, 2026-11-24)</summary>
+
+The conversion runs inside `ReinitializeConnection` only when `user_version` < 2, before `ApplyReadOnly`, in
+`Migrate`'s own transaction, without the pre-migration backup. Code callers are two (all `readOnly: true`); the
+writer's fresh-copy path (`RefreshLocalCopyAfterFailedCheckAsync`) rebuilds the services, so it goes through the
+constructor's `Migrate`, not here.
+
+- **Reader refresh** (`MainWindowViewModel.RefreshData`, user-clicked; no automatic refresh exists). At that moment:
+  the connection is closed (BeforeOverwrite) and D'' swapped; no save, heartbeat or backup touches D'' (readers don't
+  save or back up). The poll compares D against `HashAtCheckout` (D's bytes, set at the swap), never D'''s content,
+  so converting D'' can't make the poll see a change and loop. A throwing conversion rolls back and counts as a failed
+  reopen: 3 attempts, then the existing "connection lost" line. D'' is a throw-away copy: rule 3 doesn't arise.
+- **Demotion after lock loss** (`SessionLifecycle.HandleWriteLockLostAsync` → `DemoteCoreAsync` AfterOpen). Usually
+  reopens on a fresh D'' copied from D (unconverted if the last writer was 1.2.4 or Bob never saved): converted as
+  above. If the snapshot failed, it reopens on the kept D' (the only copy of unsaved work): that file was opened by
+  this session's constructor, so it is already version 2 and the conversion writes nothing. Pinned by a test
+  (reopening a version-2 file leaves its bytes unchanged). The poll timer starts just before AfterOpen, but a refresh
+  needs the user's click and Mode is already ReadOnly, so this is today's window, made no wider except for an
+  unconverted D''.
+- **Writer save paths:** untouched. `ContentHashAtCheckout` is taken before the constructor's `Migrate`, so the first
+  save after a conversion is a real one (test pins it).
+- **Tests:** conversion cases (unit); twice = identical rows; first save real; harness: reader refreshing onto a file a
+  1.2.4 writer saved, and a demotion onto an unconverted D.
 
 </details>
 

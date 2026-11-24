@@ -75,7 +75,8 @@ public sealed class ExtensionDataRepositoryTests : IDisposable
     {
         var repo = new CourseRepository(_fx.Db);
         AssertRoundTrip("Courses",
-            new Course { SubjectId = "subj-1", CalendarCode = "HIST101", Title = "Intro", Capacity = 30, Level = "100" },
+            new Course { SubjectId = "subj-1", CalendarCode = "HIST101", Title = "Intro", Capacity = 30, Level = "100",
+                ComponentTypeIds = ["st-1", "st-2"] },
             x => x.Id, repo.Insert, repo.GetById, c => repo.Update(c));
     }
 
@@ -107,7 +108,7 @@ public sealed class ExtensionDataRepositoryTests : IDisposable
     public void SchedulingEnvironmentValues_KeepUnknownFields()
     {
         var repo = new SchedulingEnvironmentRepository(_fx.Db);
-        AssertRoundTrip("SchedulingEnvironmentValues", new SchedulingEnvironmentValue { Name = "Lab" },
+        AssertRoundTrip("SchedulingEnvironmentValues", new SchedulingEnvironmentValue { Name = "Lab", IsAccessWatch = true, WatchMultiCampus = true, IsComponent = true },
             x => x.Id, v => repo.Insert("roomType", v), repo.GetById, repo.Update);
     }
 

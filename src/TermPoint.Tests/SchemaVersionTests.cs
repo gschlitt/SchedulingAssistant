@@ -71,9 +71,9 @@ public sealed class SchemaVersionTests : IDisposable
     /// If this fails, it means the constant was changed without updating the tests.
     /// </summary>
     [Fact]
-    public void CurrentSchemaVersion_IsOne()
+    public void CurrentSchemaVersion_IsTwo()
     {
-        Assert.Equal(1, DatabaseContext.CurrentSchemaVersion);
+        Assert.Equal(2, DatabaseContext.CurrentSchemaVersion);
     }
 
     /// <summary>

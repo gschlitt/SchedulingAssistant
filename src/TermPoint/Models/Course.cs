@@ -41,4 +41,13 @@ public class Course : PersistedRecord
     /// New sections of this course inherit it as their starting capacity (see SectionEditViewModel).
     /// </summary>
     public int? Capacity { get; set; }
+
+    /// <summary>
+    /// IDs of the section types that are this course's components (the parts a student takes one section
+    /// of). <c>null</c> means "never set": the access analyzer then uses its suggestion. An empty list is a
+    /// different answer (one section of any type), so null and empty must never be merged. Written only when
+    /// non-null.
+    /// </summary>
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public List<string>? ComponentTypeIds { get; set; }
 }

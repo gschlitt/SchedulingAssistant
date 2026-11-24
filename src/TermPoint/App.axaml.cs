@@ -524,6 +524,7 @@ public partial class App : Application
         services.AddSingleton<IMeetingRepository, MeetingRepository>();
         services.AddSingleton<ISectionCodePatternRepository, SectionCodePatternRepository>();
         services.AddSingleton<IProgramWatchRepository, ProgramWatchRepository>();
+        services.AddSingleton<IAccessChecksSetupRepository, AccessChecksSetupRepository>();
 
         // Owns the empty / delete semester and academic year rules.
         services.AddSingleton<SemesterContentsService>();
@@ -657,6 +658,7 @@ public partial class App : Application
         services.AddSingleton<IMeetingRepository,             DemoMeetingRepository>();
         services.AddSingleton<ISectionCodePatternRepository,  DemoSectionCodePatternRepository>();
         services.AddSingleton<IProgramWatchRepository,       DemoProgramWatchRepository>();
+        services.AddSingleton<IAccessChecksSetupRepository,  DemoAccessChecksSetupRepository>();
 
         // Owns the empty / delete semester and academic year rules.
         services.AddSingleton<SemesterContentsService>();

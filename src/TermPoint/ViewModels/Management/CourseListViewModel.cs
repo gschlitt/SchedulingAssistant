@@ -331,6 +331,7 @@ public partial class CourseListViewModel : ViewModelBase, IDismissableEditor, IU
             IsActive = SelectedCourse.IsActive,
             Level = SelectedCourse.Level,
             Capacity = SelectedCourse.Capacity,
+            ComponentTypeIds = SelectedCourse.ComponentTypeIds is null ? null : new List<string>(SelectedCourse.ComponentTypeIds),
         }.WithExtensionDataFrom(SelectedCourse);
         EditVm = new CourseEditViewModel(clone, isNew: false,
             allTags: LoadAllTags(),

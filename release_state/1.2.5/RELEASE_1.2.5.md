@@ -63,18 +63,17 @@ Notes: [lost-notices/NOTES.md](lost-notices/NOTES.md). Source: backlog WN1, plus
 
 **Goal:** administrators see at a glance whether students can still take every course of a watched set (a full "slate" of one section per component), get notices when a change breaks it, and create watches easily. Done means the feature in the app, field-tested.
 
-**State:** Design complete on branch 1.2.5: all six phases locked (Phase 6, the plan in pieces A-H, on 2026-11-24). Piece A (delivery type) done and committed 2026-11-24 after Greg's hand check. Next is piece B.
+**State:** Design complete on branch 1.2.5: all six phases locked (2026-11-24). Pieces A (delivery type) and B (data layer, watch conversion) committed 2026-11-24; B passed the full suite and the harness, and must not be released without D. Next is piece C.
 
 <details>
-<summary>Steps (7 left)</summary>
+<summary>Steps (6 left)</summary>
 
-1. B: data layer and the watch conversion (harness run).
-2. C: engine core, then measure on UBC's database.
-3. D: session state, grid marks, the eye on tags, first Access tab (released only with B).
-4. E: components (setup wizard, Courses, Copy Semester, import).
-5. F: analyzer screens (detail, notices, picture, Check all courses).
-6. G: editor pointer and drag line.
-7. H: release (version stamp, WASM demo, help, field test).
+1. C: engine core, then measure on UBC's database.
+2. D: session state, grid marks, the eye on tags, first Access tab (released only with B).
+3. E: components (setup wizard, Courses, Copy Semester, import).
+4. F: analyzer screens (detail, notices, picture, Check all courses).
+5. G: editor pointer and drag line.
+6. H: release (version stamp, WASM demo, help, field test).
 
 </details>
 

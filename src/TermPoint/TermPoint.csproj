@@ -66,6 +66,7 @@
   <ItemGroup Condition="$(TargetFramework.Contains('browser'))">
     <Compile Remove="Program.cs" />
     <Compile Remove="Data\DatabaseContext.cs" />
+    <Compile Remove="Data\Migrations\**\*.cs" />
     <Compile Remove="ViewModels\SupportViewModel.cs" />
     <Compile Remove="Services\SupportLogs.cs" />
     <Compile Remove="Services\SupportPlatform.cs" />

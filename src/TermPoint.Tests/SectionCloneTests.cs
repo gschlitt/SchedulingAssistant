@@ -104,7 +104,7 @@ public class SectionCloneTests
     private static IEnumerable<PropertyInfo> PersistedProperties(Type type) =>
         type.GetProperties(BindingFlags.Public | BindingFlags.Instance)
             .Where(p => p.SetMethod is { IsPublic: true }
-                        && p.GetCustomAttribute<JsonIgnoreAttribute>() is null);
+                        && p.GetCustomAttribute<JsonIgnoreAttribute>() is not { Condition: JsonIgnoreCondition.Always });
 
     /// <summary>
     /// True when <paramref name="value"/> is "populated": not null, not a blank string, not an

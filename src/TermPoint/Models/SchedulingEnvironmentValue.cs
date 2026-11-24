@@ -1,3 +1,5 @@
+using System.Text.Json.Serialization;
+
 namespace TermPoint.Models;
 
 /// <summary>
@@ -21,4 +23,26 @@ public class SchedulingEnvironmentValue : PersistedRecord
     /// Defaults to 0 for all existing records; densely re-packed after each move operation.
     /// </summary>
     public int SortOrder { get; set; } = 0;
+
+    /// <summary>
+    /// Tag only: the tag is an access watch, named by the tag and read live (Access Analyzer D26, D28).
+    /// Written only when true, so other rows do not grow and a database that never watched anything is
+    /// unchanged.
+    /// </summary>
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)]
+    public bool IsAccessWatch { get; set; }
+
+    /// <summary>
+    /// Tag only: the access watch's "Multi-campus" box. Off by default (one campus at a time). Written only
+    /// when true.
+    /// </summary>
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)]
+    public bool WatchMultiCampus { get; set; }
+
+    /// <summary>
+    /// Section type only: this section type is a component type (a lecture, lab or tutorial a student must
+    /// take one section of). Written only when true.
+    /// </summary>
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)]
+    public bool IsComponent { get; set; }
 }

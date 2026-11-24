@@ -1,5 +1,6 @@
 using System.Data.Common;
 using Microsoft.Data.Sqlite;
+using TermPoint.Data.Migrations;
 using TermPoint.Exceptions;
 using TermPoint.Services;
 
@@ -18,8 +19,11 @@ public class DatabaseContext : IDatabaseContext
     /// skipping all per-column proxy checks. Increment this constant whenever a new
     /// <c>AddColumnIfMissing</c> call or any other migration step is added to
     /// <see cref="Migrate"/> — that is the only update required to make the check robust.
+    ///
+    /// <para><b>Version 2</b> (1.2.5, Access Analyzer): <see cref="WatchConversion"/> turns the old
+    /// <c>ProgramWatches</c> rows into watched tags and deletes them.</para>
     /// </summary>
-    internal const int CurrentSchemaVersion = 1;
+    internal const int CurrentSchemaVersion = 2;
     // Stored as SqliteConnection so internal helpers (SeedData, schema migrations) can use it
     // directly without casting. Exposed publicly as the base DbConnection type.
     // Not readonly because ReinitializeConnection needs to reassign it after a file refresh.
@@ -408,11 +412,15 @@ public class DatabaseContext : IDatabaseContext
     /// process is killed at the OS level (outside SQLite's transactional protection).
     /// </summary>
     /// <param name="dbPath">Path to the database file, used for the pre-migration backup.</param>
-    private void Migrate(string dbPath)
+    /// <param name="takeBackup">
+    /// False for <see cref="ReinitializeConnection"/>: the file there is a throw-away read-only copy (or the
+    /// session's own already-migrated file), so a backup of it would only fill the folder.
+    /// </param>
+    private void Migrate(string dbPath, bool takeBackup = true)
     {
         if (!IsMigrationNeeded()) return;
 
-        TakePreMigrationBackup(dbPath);
+        if (takeBackup) TakePreMigrationBackup(dbPath);
 
         using var tx = _conn.BeginTransaction();
         try
@@ -482,6 +490,10 @@ public class DatabaseContext : IDatabaseContext
 
             BackfillReadableColumns(_conn, tx);
 
+            // Version 2: today's access watches become watched tags (idempotent: it does nothing once the
+            // ProgramWatches rows are gone, and a file already at version 2 never reaches this method).
+            WatchConversion.Run(_conn, tx);
+
             // Stamp the schema version so IsMigrationNeeded can return false immediately on
             // the next startup, without re-running every proxy check. This is the last write
             // inside the migration transaction — if anything above fails and we rollback,
@@ -519,7 +531,12 @@ public class DatabaseContext : IDatabaseContext
 
         // Fast path: version stamp is current — nothing to do.
         cmd.CommandText = "PRAGMA user_version";
-        if (Convert.ToInt32(cmd.ExecuteScalar()) >= CurrentSchemaVersion) return false;
+        var version = Convert.ToInt32(cmd.ExecuteScalar());
+        if (version >= CurrentSchemaVersion) return false;
+
+        // Stamped by an earlier release (version 1, 1.2.3/1.2.4): every step added since must run, and the
+        // legacy proxies below say nothing about them (they would all read "up to date").
+        if (version >= 1) return true;
 
         // Old table name still present → rename migration needed
         cmd.CommandText = "SELECT COUNT(*) FROM sqlite_master WHERE type='table' AND name='SectionPropertyValues'";
@@ -539,7 +556,24 @@ public class DatabaseContext : IDatabaseContext
         cmd.CommandText = "SELECT EXISTS(SELECT 1 FROM Sections WHERE section_code IS NULL)";
         if (Convert.ToInt32(cmd.ExecuteScalar()) == 1) return true;
 
+        // Unstamped file that still holds access watches: the version 2 conversion must see them.
+        cmd.CommandText = "SELECT COUNT(*) FROM sqlite_master WHERE type='table' AND name='ProgramWatches'";
+        if (Convert.ToInt32(cmd.ExecuteScalar()) > 0)
+        {
+            cmd.CommandText = "SELECT EXISTS(SELECT 1 FROM ProgramWatches)";
+            if (Convert.ToInt32(cmd.ExecuteScalar()) == 1) return true;
+        }
+
         return false;
+    }
+
+    /// <summary>Reads <c>PRAGMA user_version</c> on the current connection.</summary>
+    /// <returns>The stored schema version (0 when never stamped).</returns>
+    private int ReadUserVersion()
+    {
+        using var cmd = _conn.CreateCommand();
+        cmd.CommandText = "PRAGMA user_version";
+        return Convert.ToInt32(cmd.ExecuteScalar());
     }
 
     /// <summary>
@@ -719,8 +753,19 @@ public class DatabaseContext : IDatabaseContext
         {
             _conn.Open();
             ConfigureConnection(_conn);
-            // No need to call InitializeSchema or Migrate — the new file already has the schema
-            // (it was a copy of the old D'', which was a consistent snapshot).
+            // The new file is usually already at the current schema (a copy of the old D'', or the session's
+            // own D'), and then nothing here writes. But a reader refreshing onto a file a 1.2.4 writer saved,
+            // or a demotion that reopens a fresh copy of D, can land on a version 1 file: its access watches
+            // are still ProgramWatches rows, which this version no longer reads, so the reader would see no
+            // watches at all. Convert such a file now, exactly as the constructor would, but without the
+            // pre-migration backup (the file is a throw-away read-only copy, or already ours) and before
+            // ApplyReadOnly, which turns writing off. The conversion is deterministic and the poll compares
+            // D's bytes (never this copy's), so converting here can neither loop nor reach the shared file.
+            if (ReadUserVersion() < CurrentSchemaVersion)
+            {
+                InitializeSchema();
+                Migrate(newDbPath, takeBackup: false);
+            }
             ApplyReadOnly(readOnly);
         }
         catch (Exception ex)
