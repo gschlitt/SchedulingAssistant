@@ -63,8 +63,8 @@ Notes: [lost-notices/NOTES.md](lost-notices/NOTES.md). Source: backlog WN1, plus
 
 **Goal:** administrators see at a glance whether students can still take every course of a watched set (a full "slate" of one section per component), get notices when a change breaks it, and create watches easily. Done means the feature in the app, field-tested.
 
-**State:** On branch 1.2.5, design locked; pieces A, B and C (engine, measured on UBC data) committed 2026-11-24. B and D must ship together with E (Q46). Every watch at once fits the 30 ms budget, with the search bounded and watches capped at 30 courses.
-The whole feature (A–H) ships in 1.2.5 (Greg, Q45). Piece D (Access tab, eye on tags, grid marks; old watch UI removed) hand-checked and committed 2026-11-24. Next is piece E.
+**State:** On branch 1.2.5 (pushed), design locked; pieces A–D committed 2026-11-24 and D hand-checked by Greg.
+B and D must ship together with E (Q46). The whole feature (A–H) ships in 1.2.5 (Greg, Q45). Next is piece E.
 
 <details>
 <summary>Steps (4 left)</summary>

@@ -9,6 +9,10 @@ Ledger: [RELEASE_1.2.5.md](../RELEASE_1.2.5.md). Design: [designs/1.2.5/access-a
 - `designs/1.2.5/access-analyzer-handoff.md`: older handoff (written 2026-11-10). Its branch and release notes are out of date; the ledger replaces it for state. Its summary of the method and working agreements still holds.
 - `designs/wireframes/`: the clickable HTML wireframes (rounds 1-8 settled; r8 is components in Courses, the setup wizard and D28; r9, Check all courses, settled 2026-11-23; all planned rounds done). Each round starts as a copy of the last and keeps its own file as the record. Reviewing them in Claude's browser pane: see `docs/dev/dev-machines.md` (to load an edited file afresh, close the tab and open the `file:///` URL again; reload and a same-tab navigate can keep the old page and its test clicks). `window.__access` exposes the mock's engine (`proposal`, `accessChanges`, `analysesFor`) for checking scenarios from the console.
 - `src/TermPoint/Services/Access/`: the engine (piece C); start with `AccessAnalyzer.cs`, `AccessInputs.cs`, `ConflictMarks.cs`. Shape in "Piece C: engine shape" below. Tests: `src/TermPoint.Tests/Access*Tests.cs`; `AccessEngineMeasurementTests` times it on a copy of the UBC demo database.
+- Piece D's session state and UI (to build E on): `Services/Access/AccessState.cs` (invalidate it after any change to
+  component types, courses' components or the set-up mark), `AccessWatchToggler.cs`, `ViewModels/Access/`
+  (`AccessText` holds all user wording; `AccessTabViewModel`), `Views/AccessTabView.axaml`, `Views/BottomLeftTabs.axaml`.
+  Piece E's steps are Phase 6 "E. Components" in the spec; its wording waits are Q40 and rule 8b.
 - `designs/1.2.5/slot-browser.md`: related; its D3 level 2 is judged by whole slates.
 - Memory note `project_access_analyzer` (Greg's own working notes).
 
