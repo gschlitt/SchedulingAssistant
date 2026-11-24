@@ -8,6 +8,7 @@ Ledger: [RELEASE_1.2.5.md](../RELEASE_1.2.5.md). Design: [designs/1.2.5/access-a
 - `designs/1.2.5/access-analyzer.md`: the spec. Status block at the top; Terms (D2); decisions D1-D29; Phase 2 rules 1-41; Phase 3 wireframe rounds table; Phase 4 (what is stored, the watch upgrade) and Phase 5 (layers, saving, tests) at the end.
 - `designs/1.2.5/access-analyzer-handoff.md`: older handoff (written 2026-11-10). Its branch and release notes are out of date; the ledger replaces it for state. Its summary of the method and working agreements still holds.
 - `designs/wireframes/`: the clickable HTML wireframes (rounds 1-8 settled; r8 is components in Courses, the setup wizard and D28; r9, Check all courses, settled 2026-11-23; all planned rounds done). Each round starts as a copy of the last and keeps its own file as the record. Reviewing them in Claude's browser pane: see `docs/dev/dev-machines.md` (to load an edited file afresh, close the tab and open the `file:///` URL again; reload and a same-tab navigate can keep the old page and its test clicks). `window.__access` exposes the mock's engine (`proposal`, `accessChanges`, `analysesFor`) for checking scenarios from the console.
+- `src/TermPoint/Services/Access/`: the engine (piece C); start with `AccessAnalyzer.cs`, `AccessInputs.cs`, `ConflictMarks.cs`. Shape in "Piece C: engine shape" below. Tests: `src/TermPoint.Tests/Access*Tests.cs`; `AccessEngineMeasurementTests` times it on a copy of the UBC demo database.
 - `designs/1.2.5/slot-browser.md`: related; its D3 level 2 is judged by whole slates.
 - Memory note `project_access_analyzer` (Greg's own working notes).
 
@@ -189,6 +190,38 @@ Ledger: [RELEASE_1.2.5.md](../RELEASE_1.2.5.md). Design: [designs/1.2.5/access-a
   1, so the first 1.2.5 open runs the migration (with its backup) even with no watches; 1.2.4 accepts version 2.
   Extension-data and clone tests now skip only unconditional `[JsonIgnore]`, so the written-only-when-set fields are
   covered. **Next: piece C.**
+- **Piece C.1–C.2 built 2026-11-24, not committed** (Sonnet the C#, Opus reviewed): `Services/Access/` (14 files),
+  `GetSectionTypeIdsByCourse` on the section repositories, `ProgramConflictService` now uses `SectionOverlap`; 124
+  new tests (`Access*Tests`, fixtures `AccessTestKit`, `AccessMockSemester` = the r9 mock's data, variants 0–8, with a
+  brute-force slate-count cross-check). Full suite 4914 passed, 0 failed; both compile checks clean. Choices made
+  where the spec left room (for Greg's eye): Q18 names match as whole words anywhere in a type name ("Lab Section");
+  two pins in one component both stay candidates; nothing covered = no slate but health Ok unless findings; Check all
+  courses doesn't check setup itself (its caller does, round 9).
+- **C.3 measured 2026-11-24** (`AccessEngineMeasurementTests`, self-skips without `DEMO\Test-TT.db`; numbers also in
+  `%TEMP%\access-engine-measurement.txt`). 561 sections, 45 tags as watches (43 program-years, 2 converted):
+  **every watch, analysis + marks, 23 ms** (budget 30); worst single watch 3 ms (GEOE-Y3: 7 courses, 15 components);
+  Check all courses 4 ms; suggestion query 6 ms. **The one real cost: best partial is exponential in courses** when
+  there is no full slate: 12 courses 9 ms, 14 courses 76 ms, 16 courses 790 ms, 18 courses 1.6 s. No program has
+  over 9 courses, but a user can tag more. → Q52.
+- **Q52 answered by Greg (2026-11-24): bound the search.** Built: a greedy pass gives a lower bound, then the exact
+  top-down search runs until 300 subset tests (`AccessReasons.BestPartialSubsetBudget`, rationale in its doc);
+  out of tests, it keeps the best found, `BestPartial.Complete = false` (wording later: "at least", F).
+  `AccessBestPartialBoundTests`. Re-measured: every watch 25 ms; analysis ≤ 7 ms up to 32 courses, ≤ 70 ms at 126.
+  Every real program is still searched exactly. **New, for Greg (Q53):** at that size the conflict marks cost
+  instead: 32 courses 19 ms, 110+ courses about 0.5 s (one search per conflict with a can't-fit course). A tag on
+  100+ courses can't describe a student's term, so the proposal is a course limit per watch (say 30): above it, no
+  analysis or marks, and the watch says it is too big to check (wording for Greg).
+- **Q53 answered by Greg (2026-11-24): cap at 30 courses.** Built: `AccessAnalyzer.MaxCourses` (rationale in its
+  doc); over it, `AccessHealth.TooLarge` and nothing else, and no marks. The cap counts the chosen courses, so a
+  subset of a large watch can still be analysed. `AccessWatchSizeTests`. Wording for the too-big watch: F (draft
+  for Greg). Final: every watch 16–25 ms (varies run to run), at 30 courses 14 ms, over 30 nothing. Full suite
+  4922 passed, 0 failed.
+- **Q45 answered by Greg (2026-11-24): the whole feature (A–H) ships in 1.2.5.** No split into 1.2.6; F and G
+  stay in this release.
+- Found on real data: 25 of the 45 watches have no full slate, mostly from the scrape (CHBE-Y4: CHBE 453's only
+  Studio overlaps its only lecture, Tue/Fri 14:00; before setup Studio counts as a component, Q18). The engine is
+  right; expect UBC users to untick types like Studio in the setup wizard, and expect "No full slate" to be common
+  on first open of scraped data.
 - Round 7 as first built (2026-11-20): the pointer reads "Access: <clause>" like the
   editor's "Room conflict:" lines, because the draft's "Affects access for Enviro Y2" makes the user click to learn
   anything; at most two lines (the editor is tight; no single edit in the mock touches four watches, so the fold is at
@@ -226,6 +259,43 @@ constructor's `Migrate`, not here.
   save after a conversion is a real one (test pins it).
 - **Tests:** conversion cases (unit); twice = identical rows; first save real; harness: reader refreshing onto a file a
   1.2.4 writer saved, and a demotion onto an unconverted D.
+
+</details>
+
+<details>
+<summary>Piece C: engine shape (Opus, 2026-11-24)</summary>
+
+Reference implementation: the r9 mock's script (`designs/wireframes/access-panel-r9.html`, `groupsFor` … `analyse`,
+`conflictMarksFor`, `runCheck`, `mismatches`, `derivedParts`). The engine ports its logic, returns **structured results
+only** (ids, kinds, lists; no sentences: wording is F's), and fixes the mock's shortcuts listed here.
+
+- `Services/Access/`, namespace `TermPoint.Services.Access`, static/immutable (D29), models only (WASM).
+- `SectionOverlap.Conflicts(a, b)` and `OverlappingMeetings(a, b)` (rule 13); `ProgramConflictService` calls it until D
+  deletes that class.
+- `ComponentNames.LooksLikeComponent(name)`: Q18's list (Lecture/LEC, Laboratory/Lab, Tutorial/TUT, Discussion/DIS,
+  Recitation/REC, Seminar/SEM, Studio/STU, Workshop/WKS, Practicum/PRA), ignoring case, whole words.
+- `AccessInputs`: one semester's saved sections + `Proposal` (upserts, removed ids; empty = saved), courses by id,
+  section types in sort order, `SetUp`, the suggestion source (section type ids seen per course, every semester).
+  Component types: `SetUp` ? `IsComponent` : name list. A course's components: `SetUp` and stored list not null →
+  stored ∩ component types; else suggestion = (seen ∪ this view's types) ∩ component types. Sorted by type order.
+- Suggestion query: `ISectionRepository.GetSectionTypeIdsByCourse()` (one SQL query, orphans excluded; demo version
+  in memory).
+- Grouping (rules 7–10, 8a): ≤ 1 component → one group of all sections; ≥ 2 → one group per component, others not
+  counted, any empty group → course missing and left out. Mismatches (8a, set up only) over the course's semester
+  sections, not just covered ones. Pins narrow a group.
+- In person (campus rule 15/6e): has a non-remote meeting and a campus. Mix = two in-person sections, different campus.
+- Search on an index-based compatibility matrix built once per analysis. Fix to the mock: when the count hits the cap,
+  the used set is incomplete, so each unused section gets an existence search with it fixed (roles stay right).
+  Costly marks test only the stranded sections with the pair ignored, not a full recount.
+- Stable order (Q34): courses by calendar code, components by type order, sections by code.
+- `AccessAnalyzer.Analyze(inputs, covered, multiCampus, subset, pins, cap)` plus a watch overload (tag coverage, D28;
+  untagged flag 8g). `ConflictMarks.For(...)` (rule 33, Q22, 6b; Harmless only with Mark all conflicts).
+  `CheckAllCourses.Run(inputs)` (rules 39–41, round 9: one-campus rule, missing components quiet).
+- Measurement vehicle (Greg, 2026-11-24): `C:\ProgramData\TermPoint\DEMO\Test-TT.db` (always a copy): UBC
+  Engineering Winter Term 1, 562 sections, 228 courses, 43 program-year tags (BMEG-Y2 … MINE-Y4, 2–9 courses each)
+  to treat as watched tags, plus 2 old watches (schema version 0, so the copy also runs the piece B conversion).
+- Not in C: notices (F), what-if (G), seats (Q42: later), cautions (F, from per-section slate counts kept on the
+  result), all wording.
 
 </details>
 

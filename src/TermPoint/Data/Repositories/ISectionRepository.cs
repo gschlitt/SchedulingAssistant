@@ -37,6 +37,17 @@ public interface ISectionRepository
     List<Section> GetByCourseId(string courseId);
 
     /// <summary>
+    /// Returns, for each course id, the distinct non-null section type ids its sections have in any semester.
+    /// This is the access analyzer's suggestion source for courses whose components were never set.
+    /// <para>
+    /// Excludes orphans like <see cref="GetAll()"/>: sections whose semester no longer exists. Sections with no
+    /// course or no section type contribute nothing.
+    /// </para>
+    /// </summary>
+    /// <returns>Section type ids by course id; courses with no typed sections are absent.</returns>
+    IReadOnlyDictionary<string, IReadOnlySet<string>> GetSectionTypeIdsByCourse();
+
+    /// <summary>
     /// Inserts a new section. The <see cref="Section.Id"/> must already be set.
     /// An optional <paramref name="tx"/> may be supplied to include this write in a larger transaction.
     /// </summary>

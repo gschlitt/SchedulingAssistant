@@ -1,4 +1,5 @@
 using TermPoint.Models;
+using TermPoint.Services.Access;
 
 namespace TermPoint.Services;
 
@@ -153,26 +154,14 @@ public static class ProgramConflictService
         Section secB,
         List<ProgramConflict> results)
     {
-        foreach (var schedA in secA.Schedule)
+        // The one conflict test (rule 13): same day, half-open time overlap, shared week.
+        foreach (var (schedA, schedB) in SectionOverlap.OverlappingMeetings(secA, secB))
         {
-            foreach (var schedB in secB.Schedule)
-            {
-                if (schedA.Day != schedB.Day) continue;
-
-                // Half-open interval overlap: [startA, endA) ∩ [startB, endB)
-                if (schedA.StartMinutes >= schedB.EndMinutes ||
-                    schedB.StartMinutes >= schedA.EndMinutes)
-                    continue;
-
-                if (!SectionDaySchedule.FrequenciesOverlap(schedA.Frequency, schedB.Frequency))
-                    continue;
-
-                results.Add(new ProgramConflict(
-                    watch.Id,
-                    watch.Name,
-                    new ConflictMeeting(secA.Id, secA.CourseId, schedA.Day, schedA.StartMinutes, schedA.EndMinutes, schedA.Frequency),
-                    new ConflictMeeting(secB.Id, secB.CourseId, schedB.Day, schedB.StartMinutes, schedB.EndMinutes, schedB.Frequency)));
-            }
+            results.Add(new ProgramConflict(
+                watch.Id,
+                watch.Name,
+                new ConflictMeeting(secA.Id, secA.CourseId, schedA.Day, schedA.StartMinutes, schedA.EndMinutes, schedA.Frequency),
+                new ConflictMeeting(secB.Id, secB.CourseId, schedB.Day, schedB.StartMinutes, schedB.EndMinutes, schedB.Frequency)));
         }
     }
 }

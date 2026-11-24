@@ -63,17 +63,17 @@ Notes: [lost-notices/NOTES.md](lost-notices/NOTES.md). Source: backlog WN1, plus
 
 **Goal:** administrators see at a glance whether students can still take every course of a watched set (a full "slate" of one section per component), get notices when a change breaks it, and create watches easily. Done means the feature in the app, field-tested.
 
-**State:** Design complete on branch 1.2.5: all six phases locked (2026-11-24). Pieces A (delivery type) and B (data layer, watch conversion) committed 2026-11-24; B passed the full suite and the harness, and must not be released without D. Next is piece C.
+**State:** On branch 1.2.5, design locked; pieces A, B and C (engine, measured on UBC data) committed 2026-11-24. B must not be released without D. Every watch at once fits the 30 ms budget, with the search bounded and watches capped at 30 courses.
+The whole feature (A–H) ships in 1.2.5 (Greg, Q45). Next is piece D.
 
 <details>
-<summary>Steps (6 left)</summary>
+<summary>Steps (5 left)</summary>
 
-1. C: engine core, then measure on UBC's database.
-2. D: session state, grid marks, the eye on tags, first Access tab (released only with B).
-3. E: components (setup wizard, Courses, Copy Semester, import).
-4. F: analyzer screens (detail, notices, picture, Check all courses).
-5. G: editor pointer and drag line.
-6. H: release (version stamp, WASM demo, help, field test).
+1. D: session state, grid marks, the eye on tags, first Access tab (released only with B).
+2. E: components (setup wizard, Courses, Copy Semester, import).
+3. F: analyzer screens (detail, notices, picture, Check all courses).
+4. G: editor pointer and drag line.
+5. H: release (version stamp, WASM demo, help, field test).
 
 </details>
 
@@ -82,7 +82,7 @@ Notes: [lost-notices/NOTES.md](lost-notices/NOTES.md). Source: backlog WN1, plus
 - The import summary's line for pre-filled components (rule 8b): wording to draft for Greg.
 - Check all courses' read-only "not set up" comment: draft wording, awaiting Greg's approval.
 - The left-open Phase 2 items (Q18 extra component names, Q28).
-- What ships in 1.2.5: decide after piece C's measurement (Q45).
+- The too-big-to-check line for a watch over 30 courses (Q53): wording to draft for Greg in F.
 
 Notes: [access-analyzer/NOTES.md](access-analyzer/NOTES.md). Design: [designs/1.2.5/access-analyzer.md](../../designs/1.2.5/access-analyzer.md).
 

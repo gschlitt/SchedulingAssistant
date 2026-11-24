@@ -24,6 +24,15 @@ public class DemoSectionRepository : ISectionRepository
             .OrderBy(s => s.SectionCode)];
 
     /// <inheritdoc/>
+    public IReadOnlyDictionary<string, IReadOnlySet<string>> GetSectionTypeIdsByCourse() =>
+        _sections
+            .Where(s => s.CourseId is not null && !string.IsNullOrEmpty(s.SectionTypeId))
+            .GroupBy(s => s.CourseId!)
+            .ToDictionary(
+                g => g.Key,
+                g => (IReadOnlySet<string>)g.Select(s => s.SectionTypeId!).ToHashSet());
+
+    /// <inheritdoc/>
     public Section? GetById(string id) =>
         _sections.FirstOrDefault(s => s.Id == id);
 

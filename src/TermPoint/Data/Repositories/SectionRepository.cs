@@ -31,6 +31,31 @@ public class SectionRepository(IDatabaseContext db) : ISectionRepository
         return ReadSections(cmd);
     }
 
+    /// <summary>
+    /// Returns each course's distinct section type ids over every semester, in one query, excluding orphans
+    /// (sections whose semester no longer exists) like <see cref="GetAll()"/>. Sections with no course or no
+    /// section type are skipped.
+    /// </summary>
+    /// <returns>Section type ids by course id.</returns>
+    public IReadOnlyDictionary<string, IReadOnlySet<string>> GetSectionTypeIdsByCourse()
+    {
+        using var cmd = db.Connection.CreateCommand();
+        cmd.CommandText =
+            $"SELECT DISTINCT course_id, data ->> 'sectionTypeId' FROM Sections " +
+            $"WHERE course_id IS NOT NULL AND (data ->> 'sectionTypeId') IS NOT NULL AND (data ->> 'sectionTypeId') <> '' " +
+            $"AND {OrphanFilter.SemesterStillExists}";
+        var result = new Dictionary<string, HashSet<string>>();
+        using var reader = cmd.ExecuteReader();
+        while (reader.Read())
+        {
+            var courseId = reader.GetString(0);
+            if (!result.TryGetValue(courseId, out var set))
+                result[courseId] = set = new HashSet<string>();
+            set.Add(reader.GetString(1));
+        }
+        return result.ToDictionary(kv => kv.Key, kv => (IReadOnlySet<string>)kv.Value);
+    }
+
     public Section? GetById(string id)
     {
         using var cmd = db.Connection.CreateCommand();
