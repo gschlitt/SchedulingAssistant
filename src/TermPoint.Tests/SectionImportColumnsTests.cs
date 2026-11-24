@@ -14,11 +14,11 @@ public class SectionImportColumnsTests
     private static readonly string[] ExpectedNames =
     {
         "Academic Year", "Term", "Subject", "Course Number", "Course Title", "Section Code", "Section Type",
-        "Instructor(s)", "Tags", "Capacity", "Meeting Days", "Begin", "End", "Frequency", "Meeting Type",
+        "Delivery Type", "Instructor(s)", "Tags", "Capacity", "Meeting Days", "Begin", "End", "Frequency", "Meeting Type",
         "Building", "Room", "Campus",
     };
 
-    /// <summary>The columns hold the template's 18 names in template order.</summary>
+    /// <summary>The columns hold the template's 19 names in template order.</summary>
     [Fact]
     public void All_HasTheTemplateColumnsInOrder() =>
         Assert.Equal(ExpectedNames, SectionImportColumns.All.Select(c => c.Name));
@@ -41,6 +41,14 @@ public class SectionImportColumnsTests
         Assert.Equal(new[] { "Academic Year", "Term", "Subject", "Course Number", "Section Code" }, required);
     }
 
+    /// <summary>Only Delivery Type may be left out of a file; every other column must be present.</summary>
+    [Fact]
+    public void All_OnlyDeliveryTypeMayBeLeftOutOfAFile()
+    {
+        var optional = SectionImportColumns.All.Where(c => c.HeaderOptional).Select(c => c.Name);
+        Assert.Equal(new[] { "Delivery Type" }, optional);
+    }
+
     /// <summary>The named constants are the same strings as the list, so code never needs a literal.</summary>
     [Fact]
     public void Constants_MatchTheList()
@@ -49,7 +57,8 @@ public class SectionImportColumnsTests
         {
             SectionImportColumns.AcademicYear, SectionImportColumns.Term, SectionImportColumns.Subject,
             SectionImportColumns.CourseNumber, SectionImportColumns.CourseTitle, SectionImportColumns.SectionCode,
-            SectionImportColumns.SectionType, SectionImportColumns.Instructors, SectionImportColumns.Tags,
+            SectionImportColumns.SectionType, SectionImportColumns.DeliveryType, SectionImportColumns.Instructors,
+            SectionImportColumns.Tags,
             SectionImportColumns.Capacity, SectionImportColumns.MeetingDays, SectionImportColumns.Begin,
             SectionImportColumns.End, SectionImportColumns.Frequency, SectionImportColumns.MeetingType,
             SectionImportColumns.Building, SectionImportColumns.Room, SectionImportColumns.Campus,

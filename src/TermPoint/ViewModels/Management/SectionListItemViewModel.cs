@@ -74,16 +74,38 @@ public partial class SectionListItemViewModel : ObservableObject, ISectionListEn
     public string? InstructorLine { get; }
     public string? InstructorHeaderLine { get; }
     public string? SectionTypeName { get; }
+
+    /// <summary>Name of the section's delivery type (how it is taught), or null when it has none.</summary>
+    public string? DeliveryTypeName { get; }
+
+    /// <summary>
+    /// Section type and delivery type on one card line, e.g. "Lecture · Blended". Either name alone
+    /// when the other is missing; null when the section has neither.
+    /// </summary>
+    public string? TypeLine { get; }
     public string? TagLine { get; }
     public string? ReserveLine { get; }
     public string? ResourceLine { get; }
     public string? NoteLine { get; }
 
-    /// <summary>Capacity number for the summary row, or null when unspecified (hidden in the UI).</summary>
+    /// <summary>Capacity number, or null when unspecified. Shown on the summary row through <see cref="SummaryCapacity"/>.</summary>
     public string? CapacityLabel { get; }
 
+    /// <summary>
+    /// The type text on the card's summary row: the section type alone while the card is collapsed, and
+    /// <see cref="TypeLine"/> (section type and delivery type) while it is open. Why: Greg (2026-11-24) keeps collapsed
+    /// cards uncluttered; delivery type and capacity show only on open cards, in the same columns so they line up.
+    /// </summary>
+    public string? SummaryTypeText => IsCollapsed ? SectionTypeName : TypeLine;
+
+    /// <summary>The capacity on the summary row: null while the card is collapsed (see <see cref="SummaryTypeText"/>).</summary>
+    public string? SummaryCapacity => IsCollapsed ? null : CapacityLabel;
+
     [ObservableProperty] private bool _isExpanded;
-    [ObservableProperty] private bool _isCollapsed;
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(SummaryTypeText))]
+    [NotifyPropertyChangedFor(nameof(SummaryCapacity))]
+    private bool _isCollapsed;
 
     /// <summary>
     /// True when the Schedule Grid has an active filter and this section's ID is in the
@@ -312,7 +334,8 @@ public partial class SectionListItemViewModel : ObservableObject, ISectionListEn
         Dictionary<string, SchedulingEnvironmentValue> meetingTypeLookup,
         string semesterName = "",
         string semesterColor = "",
-        Func<Section, string>? subjectChipColorFor = null)
+        Func<Section, string>? subjectChipColorFor = null,
+        Dictionary<string, SchedulingEnvironmentValue>? deliveryTypeLookup = null)
     {
         Section = section;
 
@@ -426,6 +449,15 @@ public partial class SectionListItemViewModel : ObservableObject, ISectionListEn
         SectionTypeName = section.SectionTypeId is not null && sectionTypeLookup.TryGetValue(section.SectionTypeId, out var sectionType)
             ? sectionType.Name
             : null;
+
+        // Delivery type name, and the combined "Lecture · Blended" line (set once, no class toggling).
+        DeliveryTypeName = section.DeliveryTypeId is not null && deliveryTypeLookup is not null
+                           && deliveryTypeLookup.TryGetValue(section.DeliveryTypeId, out var deliveryType)
+            ? deliveryType.Name
+            : null;
+        TypeLine = SectionTypeName is not null && DeliveryTypeName is not null
+            ? $"{SectionTypeName} · {DeliveryTypeName}"
+            : SectionTypeName ?? DeliveryTypeName;
 
         var tagNames = section.TagIds
             .Select(id => tagLookup.TryGetValue(id, out var t) ? t.Name : null)

@@ -22,9 +22,15 @@ public enum ImportColumnLevel
 /// <param name="Level">Whether the column is section-level or meeting-level.</param>
 /// <param name="AlwaysRequired">
 /// True when a row's cell in this column may never be blank. Every column must be <em>present</em> in a
-/// file (the header check); this flag is only about the cell's content, which the planner checks.
+/// file (the header check), unless <paramref name="HeaderOptional"/> is set; this flag is only about the cell's
+/// content, which the planner checks.
 /// </param>
-public sealed record ImportColumn(string Name, ImportColumnLevel Level, bool AlwaysRequired);
+/// <param name="HeaderOptional">
+/// True when a file may leave the column out altogether (every cell then reads as blank). Used for a column added
+/// after the template first shipped, so files saved from an older template, and CSVs written by older tools,
+/// still import. Default false.
+/// </param>
+public sealed record ImportColumn(string Name, ImportColumnLevel Level, bool AlwaysRequired, bool HeaderOptional = false);
 
 /// <summary>
 /// The single source of truth for the columns of the section import template, in template order.
@@ -53,6 +59,9 @@ public static class SectionImportColumns
 
     /// <summary>The section type name (section level).</summary>
     public const string SectionType = "Section Type";
+
+    /// <summary>The delivery type name: how the section is taught, e.g. F2F or Blended (section level; the column may be left out of a file).</summary>
+    public const string DeliveryType = "Delivery Type";
 
     /// <summary>The instructors, <c>Last, First</c> separated by semicolons (section level).</summary>
     public const string Instructors = "Instructor(s)";
@@ -97,6 +106,7 @@ public static class SectionImportColumns
         new ImportColumn(CourseTitle,   ImportColumnLevel.Section, AlwaysRequired: false),
         new ImportColumn(SectionCode,   ImportColumnLevel.Section, AlwaysRequired: true),
         new ImportColumn(SectionType,   ImportColumnLevel.Section, AlwaysRequired: false),
+        new ImportColumn(DeliveryType,  ImportColumnLevel.Section, AlwaysRequired: false, HeaderOptional: true),
         new ImportColumn(Instructors,   ImportColumnLevel.Section, AlwaysRequired: false),
         new ImportColumn(Tags,          ImportColumnLevel.Section, AlwaysRequired: false),
         new ImportColumn(Capacity,      ImportColumnLevel.Section, AlwaysRequired: false),

@@ -833,6 +833,8 @@ public class BackupService : IDisposable
         var rooms       = roomRepo.GetAll().ToDictionary(r => r.Id);
         var sectionTypes = propertyRepo.GetAll(SchedulingEnvironmentTypes.SectionType)
                                         .ToDictionary(p => p.Id, p => p.Name);
+        var deliveryTypes = propertyRepo.GetAll(SchedulingEnvironmentTypes.DeliveryType)
+                                        .ToDictionary(p => p.Id, p => p.Name);
         var campuses     = campusRepo.GetAll()
                                         .ToDictionary(c => c.Id, c => c.Name);
         var tags         = propertyRepo.GetAll(SchedulingEnvironmentTypes.Tag)
@@ -860,7 +862,7 @@ public class BackupService : IDisposable
             "AcademicYear", "Semester",
             "CourseCode", "CourseTitle",
             "SectionCode", "Instructors",
-            "SectionType", "Campus", "Tags", "Resources", "Reserves",
+            "SectionType", "DeliveryType", "Campus", "Tags", "Resources", "Reserves",
             "Day", "StartTime", "EndTime", "DurationMin",
             "Room", "Frequency", "MeetingType");
 
@@ -899,6 +901,9 @@ public class BackupService : IDisposable
                 var sectionType = section.SectionTypeId is not null
                                   && sectionTypes.TryGetValue(section.SectionTypeId, out var st)
                                   ? st : string.Empty;
+                var deliveryType = section.DeliveryTypeId is not null
+                                  && deliveryTypes.TryGetValue(section.DeliveryTypeId, out var dt)
+                                  ? dt : string.Empty;
                 var campus      = section.CampusId is not null
                                   && campuses.TryGetValue(section.CampusId, out var cp)
                                   ? cp : string.Empty;
@@ -932,7 +937,7 @@ public class BackupService : IDisposable
                         ayName, semester.Name,
                         courseCode, courseTitle,
                         section.SectionCode, instructorsCsv,
-                        sectionType, campus, tagsCsv, resourcesCsv, reservesCsv,
+                        sectionType, deliveryType, campus, tagsCsv, resourcesCsv, reservesCsv,
                         "", "", "", "",
                         "", "", "");
                 }
@@ -963,7 +968,7 @@ public class BackupService : IDisposable
                                 ayName, semester.Name,
                                 courseCode, courseTitle,
                                 section.SectionCode, instructorsCsv,
-                                sectionType, campus, tagsCsv, resourcesCsv, reservesCsv,
+                                sectionType, deliveryType, campus, tagsCsv, resourcesCsv, reservesCsv,
                                 dayName, startStr, endStr, durStr,
                                 roomName, freq, meetingType);
                             firstMeeting = false;
@@ -975,7 +980,7 @@ public class BackupService : IDisposable
                                 "", "",
                                 "", "",
                                 "", "",
-                                "", "", "", "", "",
+                                "", "", "", "", "", "",
                                 dayName, startStr, endStr, durStr,
                                 roomName, freq, meetingType);
                         }

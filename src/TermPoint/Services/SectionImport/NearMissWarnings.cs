@@ -44,6 +44,10 @@ internal sealed class NearMissWarnings
             _snapshot.SectionTypes.Select(v => v.Name), v => v.Name,
             RowsBySingle(sections, s => s.SectionType, s => CellRow(s, SectionImportColumns.SectionType)));
 
+        CheckRefs("delivery type", "delivery types", _plan.NewDeliveryTypes,
+            _snapshot.DeliveryTypes.Select(v => v.Name), v => v.Name,
+            RowsBySingle(sections, s => s.DeliveryType, s => CellRow(s, SectionImportColumns.DeliveryType)));
+
         CheckRefs("meeting type", "meeting types", _plan.NewMeetingTypes,
             _snapshot.MeetingTypes.Select(v => v.Name), v => v.Name,
             RowsByMeetingRow(sections, m => m.MeetingType));

@@ -4,6 +4,7 @@ namespace TermPoint.ViewModels.Management;
 public static class SchedulingEnvironmentTypes
 {
     public const string SectionType = "sectionType";
+    public const string DeliveryType = "deliveryType";
     public const string MeetingType = "meetingType";
     public const string StaffType   = "staffType";
     public const string Tag         = "tag";

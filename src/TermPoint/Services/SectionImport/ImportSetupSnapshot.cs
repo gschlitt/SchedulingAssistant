@@ -31,6 +31,9 @@ public sealed class ImportSetupSnapshot
     /// <summary>Every section type (setup value of type <c>sectionType</c>).</summary>
     public IReadOnlyList<SchedulingEnvironmentValue> SectionTypes { get; }
 
+    /// <summary>Every delivery type (setup value of type <c>deliveryType</c>).</summary>
+    public IReadOnlyList<SchedulingEnvironmentValue> DeliveryTypes { get; }
+
     /// <summary>Every meeting type (setup value of type <c>meetingType</c>).</summary>
     public IReadOnlyList<SchedulingEnvironmentValue> MeetingTypes { get; }
 
@@ -67,6 +70,7 @@ public sealed class ImportSetupSnapshot
     /// <param name="instructors">All instructors.</param>
     /// <param name="sections">The sections already in the open semester.</param>
     /// <param name="sectionTypes">All section types.</param>
+    /// <param name="deliveryTypes">All delivery types.</param>
     /// <param name="meetingTypes">All meeting types.</param>
     /// <param name="tags">All tags.</param>
     /// <param name="campuses">All campuses.</param>
@@ -84,6 +88,7 @@ public sealed class ImportSetupSnapshot
         IEnumerable<Instructor>? instructors = null,
         IEnumerable<Section>? sections = null,
         IEnumerable<SchedulingEnvironmentValue>? sectionTypes = null,
+        IEnumerable<SchedulingEnvironmentValue>? deliveryTypes = null,
         IEnumerable<SchedulingEnvironmentValue>? meetingTypes = null,
         IEnumerable<SchedulingEnvironmentValue>? tags = null,
         IEnumerable<Campus>? campuses = null,
@@ -100,6 +105,7 @@ public sealed class ImportSetupSnapshot
         Instructors = Copy(instructors);
         Sections = Copy(sections);
         SectionTypes = Copy(sectionTypes);
+        DeliveryTypes = Copy(deliveryTypes);
         MeetingTypes = Copy(meetingTypes);
         Tags = Copy(tags);
         Campuses = Copy(campuses);

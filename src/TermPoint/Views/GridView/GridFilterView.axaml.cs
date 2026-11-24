@@ -74,6 +74,9 @@ public partial class GridFilterView : UserControl
         SetHeader(SubjectToggle,     SubjectPanel,     "Subject",      _vm.Subjects);
         SetHeader(CampusToggle,      CampusPanel,      "Campus",       _vm.Campuses);
         SetHeader(SectionTypeToggle, SectionTypePanel, "Section Type", _vm.SectionTypes);
+        SetHeader(DeliveryTypeToggle, DeliveryTypePanel, "Delivery Type", _vm.DeliveryTypes);
+        // Delivery types are optional and most databases have none: no button for an empty list (conserves the bar).
+        DeliveryTypePanel.IsVisible = _vm.DeliveryTypes.Count > 0;
         SetHeader(TagsToggle,        TagsPanel,        "Tags",         _vm.Tags, _vm.TagsMatchAny ? "any of " : null);
         SetHeader(MeetingTypeToggle, MeetingTypePanel, "Meeting Type", _vm.MeetingTypes);
         SetHeader(LevelToggle,       LevelPanel,       "Level",        _vm.Levels);

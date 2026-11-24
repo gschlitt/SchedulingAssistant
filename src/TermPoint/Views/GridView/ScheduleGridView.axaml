@@ -265,7 +265,7 @@
 							MaxWidth="260"
 							Margin="10,6,10,4"
 							ColumnDefinitions="Auto,*"
-							RowDefinitions="Auto,Auto,Auto,Auto">
+							RowDefinitions="Auto,Auto,Auto,Auto,Auto">
 							<TextBlock
 								Grid.ColumnSpan="2"
 								Margin="0,0,0,2"
@@ -306,10 +306,25 @@
 								Margin="0,0,4,0"
 								FontSize="{StaticResource FontSizeFilterPopup}"
 								Foreground="{StaticResource TextSecondary}"
+								IsVisible="{Binding ContextMenu.DetailDeliveryType, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"
+								Text="Delivery:" />
+							<TextBlock
+								Grid.Row="3"
+								Grid.Column="1"
+								FontSize="{StaticResource FontSizeFilterPopup}"
+								Foreground="{StaticResource TextPrimary}"
+								IsVisible="{Binding ContextMenu.DetailDeliveryType, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"
+								Text="{Binding ContextMenu.DetailDeliveryType}"
+								TextWrapping="Wrap" />
+							<TextBlock
+								Grid.Row="4"
+								Margin="0,0,4,0"
+								FontSize="{StaticResource FontSizeFilterPopup}"
+								Foreground="{StaticResource TextSecondary}"
 								IsVisible="{Binding ContextMenu.DetailTags, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"
 								Text="Tags:" />
 							<TextBlock
-								Grid.Row="3"
+								Grid.Row="4"
 								Grid.Column="1"
 								FontSize="{StaticResource FontSizeFilterPopup}"
 								Foreground="{StaticResource TextPrimary}"

@@ -766,12 +766,13 @@
                         </StackPanel>
                     </Grid>
 
-                    <!--  Tags Reserve Codes + Resources + Campus  -->
+                    <!--  Tags + Reserve Codes + Resources; below them Campus + Delivery Type (five boxes don't fit 400 px in one row)  -->
                     <Grid
                         MaxWidth="400"
                         Margin="0,4,0,0"
                         HorizontalAlignment="Left"
-                        ColumnDefinitions="*,8,*,8,*,8,*">
+                        ColumnDefinitions="*,8,*,8,*"
+                        RowDefinitions="Auto,Auto">
 
                         <StackPanel Grid.Column="0" Spacing="1">
                             <StackPanel Orientation="Horizontal">
@@ -956,7 +957,7 @@
                         </StackPanel>
 
                         <!--  Campus dropdown  -->
-                        <StackPanel Grid.Column="6" Spacing="1">
+                        <StackPanel Grid.Row="1" Grid.Column="0" Margin="0,4,0,0" Spacing="1">
                             <TextBlock
                                 Height="16"
                                 VerticalAlignment="Center"
@@ -971,6 +972,25 @@
                                 ItemsSource="{Binding Campuses}"
                                 SelectedValue="{Binding SelectedCampusId}"
                                 SelectedValueBinding="{Binding Id}" />
+                        </StackPanel>
+
+                        <!--  Delivery Type dropdown (optional; how the section is taught; approved wording, round 6)  -->
+                        <StackPanel Grid.Row="1" Grid.Column="2" Margin="0,4,0,0" Spacing="1">
+                            <TextBlock
+                                Height="16"
+                                VerticalAlignment="Center"
+                                FontSize="10"
+                                Foreground="{StaticResource TextLabel}"
+                                Text="Delivery Type" />
+                            <ComboBox
+                                HorizontalAlignment="Stretch"
+                                CornerRadius="4"
+                                DisplayMemberBinding="{Binding Name}"
+                                FontSize="11"
+                                ItemsSource="{Binding DeliveryTypes}"
+                                SelectedValue="{Binding SelectedDeliveryTypeId}"
+                                SelectedValueBinding="{Binding Id}"
+                                ToolTip.Tip="How this section is taught. Delivery types are set under Scheduling Environment." />
                         </StackPanel>
 
 
@@ -1083,6 +1103,10 @@
             this view and tuned by eye, like the Row 1 widths above.
         -->
         <x:Double x:Key="SectionMeetingRoomMinWidth">90</x:Double>
+        <!--  Property lines (tags, reserves, resources) wrap at this width. The card sizes to its content, so without a
+              cap a long tag list measures unconstrained and widens the card instead of wrapping. 400 card minimum
+              less the row's 6 + 8 margins and the borders.  -->
+        <x:Double x:Key="SectionPropertyLinesMaxWidth">384</x:Double>
     </UserControl.Resources>
 
     <Grid Background="{StaticResource AppBackground}" RowDefinitions="Auto,*" ColumnDefinitions="Auto">
@@ -1394,22 +1418,22 @@
                                                     Text="{Binding InstructorHeaderLine}"
                                                     TextWrapping="Wrap"
                                                     />
-                                                <!--  Section Type  -->
+                                                <!--  Section type; open cards add the delivery type ("Lecture · Blended"): SectionListItemViewModel.SummaryTypeText  -->
                                                 <TextBlock
                                                     Grid.Column="3"
                                                     Margin="4,0,0,0"
                                                     FontSize="12"
-                                                    IsVisible="{Binding SectionTypeName, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"
-                                                    Text="{Binding SectionTypeName}" />
-                                                <!--  Capacity (no label; hidden when unspecified)  -->
+                                                    IsVisible="{Binding SummaryTypeText, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"
+                                                    Text="{Binding SummaryTypeText}" />
+                                                <!--  Capacity (no label; open cards only, hidden when unspecified: SummaryCapacity)  -->
                                                 <TextBlock
                                                     Grid.Column="4"
                                                     Margin="6,0,0,0"
                                                     VerticalAlignment="Top"
                                                     FontSize="12"
                                                     Foreground="{StaticResource TextMuted}"
-                                                    IsVisible="{Binding CapacityLabel, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"
-                                                    Text="{Binding CapacityLabel}"
+                                                    IsVisible="{Binding SummaryCapacity, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"
+                                                    Text="{Binding SummaryCapacity}"
                                                     ToolTip.Tip="Section capacity" />
                                                 <!--
                                                     Attention flag — view-only on the card and shown only when a flag is set
@@ -1514,6 +1538,8 @@
                                                     b:PropertyLinesBehavior.TagIcon="{StaticResource TagIcon}"
                                                     b:PropertyLinesBehavior.WarningFontWeight="SemiBold"
                                                     b:PropertyLinesBehavior.WarningForeground="{StaticResource TextError}"
+                                                    MaxWidth="{StaticResource SectionPropertyLinesMaxWidth}"
+                                                    HorizontalAlignment="Left"
                                                     FontSize="11"
                                                     IsVisible="{Binding HasPropertyLines}"
                                                     TextWrapping="Wrap" />

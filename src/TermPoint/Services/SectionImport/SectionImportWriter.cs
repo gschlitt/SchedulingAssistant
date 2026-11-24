@@ -133,6 +133,8 @@ public sealed class SectionImportWriter
             _campuses.Insert(campus.Record);
         foreach (var sectionType in plan.NewSectionTypes)
             _environment.Insert(SchedulingEnvironmentTypes.SectionType, sectionType.Record);
+        foreach (var deliveryType in plan.NewDeliveryTypes)
+            _environment.Insert(SchedulingEnvironmentTypes.DeliveryType, deliveryType.Record);
         foreach (var meetingType in plan.NewMeetingTypes)
             _environment.Insert(SchedulingEnvironmentTypes.MeetingType, meetingType.Record);
         foreach (var tag in plan.NewTags)
@@ -148,7 +150,7 @@ public sealed class SectionImportWriter
 
         return new ImportCounts(
             plan.NewSubjects.Count, plan.NewCampuses.Count, plan.NewSectionTypes.Count,
-            plan.NewMeetingTypes.Count, plan.NewTags.Count, plan.NewRooms.Count,
+            plan.NewDeliveryTypes.Count, plan.NewMeetingTypes.Count, plan.NewTags.Count, plan.NewRooms.Count,
             plan.NewCourses.Count, plan.NewInstructors.Count, sections.Count);
     }
 
@@ -156,7 +158,7 @@ public sealed class SectionImportWriter
     /// <param name="plan">The plan.</param>
     private static bool HasNothingToWrite(ImportPlan plan) =>
         plan.NewSubjects.Count == 0 && plan.NewCampuses.Count == 0 && plan.NewSectionTypes.Count == 0
-        && plan.NewMeetingTypes.Count == 0 && plan.NewTags.Count == 0 && plan.NewRooms.Count == 0
+        && plan.NewDeliveryTypes.Count == 0 && plan.NewMeetingTypes.Count == 0 && plan.NewTags.Count == 0 && plan.NewRooms.Count == 0
         && plan.NewCourses.Count == 0 && plan.NewInstructors.Count == 0 && plan.NewSections.Count == 0;
 
     /// <summary>
@@ -170,7 +172,8 @@ public sealed class SectionImportWriter
     {
         bool allNew =
             plan.NewSubjects.All(r => r.IsNew) && plan.NewCampuses.All(r => r.IsNew)
-            && plan.NewSectionTypes.All(r => r.IsNew) && plan.NewMeetingTypes.All(r => r.IsNew)
+            && plan.NewSectionTypes.All(r => r.IsNew) && plan.NewDeliveryTypes.All(r => r.IsNew)
+            && plan.NewMeetingTypes.All(r => r.IsNew)
             && plan.NewTags.All(r => r.IsNew) && plan.NewRooms.All(r => r.IsNew)
             && plan.NewCourses.All(r => r.IsNew) && plan.NewInstructors.All(r => r.IsNew)
             && plan.NewSections.All(d => !d.AlreadyExists);
@@ -195,6 +198,7 @@ public sealed class SectionImportWriter
         CourseId = draft.Course.Record.Id,
         SectionCode = draft.Key.SectionCode.Trim(),
         SectionTypeId = draft.SectionType?.Record.Id,
+        DeliveryTypeId = draft.DeliveryType?.Record.Id,
         CampusId = draft.Campus?.Record.Id,
         TagIds = draft.TagIds.ToList(),
         Capacity = draft.Capacity,

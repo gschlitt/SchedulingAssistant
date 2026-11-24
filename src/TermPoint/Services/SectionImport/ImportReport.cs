@@ -10,6 +10,7 @@ namespace TermPoint.Services.SectionImport;
 /// <param name="NewSubjects">Subjects to create.</param>
 /// <param name="NewCampuses">Campuses to create.</param>
 /// <param name="NewSectionTypes">Section types to create.</param>
+/// <param name="NewDeliveryTypes">Delivery types to create.</param>
 /// <param name="NewMeetingTypes">Meeting types to create.</param>
 /// <param name="NewTags">Tags to create.</param>
 /// <param name="NewRooms">Rooms to create (their <c>CampusId</c> is already set where the sections agree).</param>
@@ -20,6 +21,7 @@ public sealed record ImportPlan(
     IReadOnlyList<SetupRef<Subject>> NewSubjects,
     IReadOnlyList<SetupRef<Campus>> NewCampuses,
     IReadOnlyList<SetupRef<SchedulingEnvironmentValue>> NewSectionTypes,
+    IReadOnlyList<SetupRef<SchedulingEnvironmentValue>> NewDeliveryTypes,
     IReadOnlyList<SetupRef<SchedulingEnvironmentValue>> NewMeetingTypes,
     IReadOnlyList<SetupRef<SchedulingEnvironmentValue>> NewTags,
     IReadOnlyList<SetupRef<Room>> NewRooms,
@@ -31,6 +33,7 @@ public sealed record ImportPlan(
     public static ImportPlan Empty { get; } = new(
         Array.Empty<SetupRef<Subject>>(),
         Array.Empty<SetupRef<Campus>>(),
+        Array.Empty<SetupRef<SchedulingEnvironmentValue>>(),
         Array.Empty<SetupRef<SchedulingEnvironmentValue>>(),
         Array.Empty<SetupRef<SchedulingEnvironmentValue>>(),
         Array.Empty<SetupRef<SchedulingEnvironmentValue>>(),

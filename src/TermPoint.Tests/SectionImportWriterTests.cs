@@ -33,7 +33,7 @@ public sealed class SectionImportWriterTests
 
         var counts = rig.Writer.Write(report.Plan, rig.Fall.Id);
 
-        Assert.Equal(new ImportCounts(Subjects: 1, Campuses: 0, SectionTypes: 1, MeetingTypes: 1, Tags: 1,
+        Assert.Equal(new ImportCounts(Subjects: 1, Campuses: 0, SectionTypes: 1, DeliveryTypes: 0, MeetingTypes: 1, Tags: 1,
             Rooms: 1, Courses: 1, Instructors: 1, Sections: 3), counts);
 
         // Setup values.
@@ -156,6 +156,41 @@ public sealed class SectionImportWriterTests
         Assert.Equal(campus.Id, rig.Rooms.GetAll().Single(r => r.Building == "NEW").CampusId);
         Assert.Equal(campus.Id, rig.Sections.GetAll(rig.Fall.Id).Single(s => s.SectionCode == "N").CampusId);
         Assert.Equal("Satellite", rig.QueryRow("SELECT name FROM Campuses WHERE id = $id", ("$id", campus.Id))[0]);
+    }
+
+    /// <summary>
+    /// The Delivery Type column: an existing delivery type is matched by name, a new one is inserted once (as a
+    /// delivery type, not a section type) and counted, and each section refers to its own.
+    /// </summary>
+    [Fact]
+    public void Write_DeliveryType_ExistingIsMatched_NewIsInsertedAndCounted()
+    {
+        using var rig = new ImportRig();
+        SeedExisting(rig);
+        var f2f = new SchedulingEnvironmentValue { Name = "F2F", SortOrder = 1 };
+        rig.Environment.Insert(SchedulingEnvironmentTypes.DeliveryType, f2f);
+        var sheet = SectionImportTestKit.Sheet(
+            SectionImportTestKit.Sec(2, "CHEM", "101", "N1", (SectionImportColumns.DeliveryType, "f2f")),
+            SectionImportTestKit.Sec(3, "CHEM", "101", "N2", (SectionImportColumns.DeliveryType, "Blended")),
+            SectionImportTestKit.Sec(4, "CHEM", "101", "N3", (SectionImportColumns.DeliveryType, "BLENDED")),
+            SectionImportTestKit.Sec(5, "CHEM", "101", "N4"));
+        var report = rig.Plan(sheet);
+        Assert.False(report.HasProblems, string.Join("; ", report.Problems.Select(p => p.Message)));
+
+        var counts = rig.Writer.Write(report.Plan, rig.Fall.Id);
+
+        Assert.Equal(1, counts.DeliveryTypes);
+        Assert.Equal(0, counts.SectionTypes);
+        var blended = Assert.Single(rig.Environment.GetAll(SchedulingEnvironmentTypes.DeliveryType), v => v.Name == "Blended");
+        Assert.True(blended.SortOrder > f2f.SortOrder);
+        Assert.Equal(2, rig.Environment.GetAll(SchedulingEnvironmentTypes.DeliveryType).Count);
+        var sections = rig.Sections.GetAll(rig.Fall.Id).ToDictionary(s => s.SectionCode);
+        Assert.Equal(f2f.Id, sections["N1"].DeliveryTypeId);
+        Assert.Equal(blended.Id, sections["N2"].DeliveryTypeId);
+        Assert.Equal(blended.Id, sections["N3"].DeliveryTypeId);
+        Assert.Null(sections["N4"].DeliveryTypeId);
+        Assert.Equal(new string?[] { SchedulingEnvironmentTypes.DeliveryType, "Blended" },
+            rig.QueryRow("SELECT type, name FROM SchedulingEnvironmentValues WHERE id = $id", ("$id", blended.Id)));
     }
 
     /// <summary>An empty plan writes nothing and does not touch the database (no dirty marker, no refusal).</summary>

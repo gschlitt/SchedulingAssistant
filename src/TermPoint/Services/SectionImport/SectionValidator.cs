@@ -31,6 +31,7 @@ internal sealed class SectionValidator
     private static readonly (string Column, bool IsList)[] AgreementColumns =
     {
         (SectionImportColumns.SectionType, false),
+        (SectionImportColumns.DeliveryType, false),
         (SectionImportColumns.Instructors, true),
         (SectionImportColumns.Tags, true),
         (SectionImportColumns.Capacity, false),

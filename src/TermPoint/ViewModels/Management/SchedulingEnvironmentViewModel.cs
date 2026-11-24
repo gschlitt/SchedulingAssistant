@@ -33,9 +33,14 @@ public partial class SchedulingEnvironmentViewModel : ViewModelBase, IDismissabl
         Categories = new ObservableCollection<ViewModelBase>
         {
             new SchedulingEnvironmentListViewModel(SchedulingEnvironmentTypes.SectionType, "Section Type",  repo, sectionRepo, courseRepo, instructorRepo, db, sectionListVm, dialog, lockService,
-                description: "Classify sections by format — e.g. Lecture, Lab, Tutorial, Online. Used for filtering in the schedule grid."),
+                // approved wording
+                description: "What kind of section it is: e.g. Lecture, Lab, Tutorial. Used for filtering in the schedule grid. How a section is taught goes in Delivery Types."),
+            new SchedulingEnvironmentListViewModel(SchedulingEnvironmentTypes.DeliveryType, "Delivery Type", repo, sectionRepo, courseRepo, instructorRepo, db, sectionListVm, dialog, lockService,
+                // approved wording
+                description: "How a section is taught: e.g. F2F, Blended, Online live, Online self-paced. A section has at most one. Shown on section cards and used for filtering in the schedule grid."),
             new SchedulingEnvironmentListViewModel(SchedulingEnvironmentTypes.MeetingType, "Meeting Type",  repo, sectionRepo, courseRepo, instructorRepo, db, sectionListVm, dialog, lockService,
-                description: "Describe how a section meets — e.g. In-Person, Hybrid, Remote. Assigned per meeting day on each section."),
+                // approved wording
+                description: "How one meeting is held: e.g. In-Person, Remote. Set for each meeting of a section, so a section can meet in person on Tuesday and online on Thursday. For the section as a whole, use Delivery Types."),
             new SchedulingEnvironmentListViewModel(SchedulingEnvironmentTypes.StaffType,   "Staff Type",    repo, sectionRepo, courseRepo, instructorRepo, db, sectionListVm, dialog, lockService,
                 description: "Categorize instructors by employment type or role — e.g. Full-Time, Part-Time, Adjunct, Lab Instructor"),
             new SchedulingEnvironmentListViewModel(SchedulingEnvironmentTypes.Tag,         "Tags",          repo, sectionRepo, courseRepo, instructorRepo, db, sectionListVm, dialog, lockService,

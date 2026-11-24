@@ -185,8 +185,20 @@ public partial class SectionEditViewModel : UnappliedChangesEditor
     [ObservableProperty] private ObservableCollection<SchedulingEnvironmentValue> _sectionTypes = new();
     [ObservableProperty] private ObservableCollection<Campus> _campuses = new();
 
+    /// <summary>
+    /// The delivery types the section can be given (how it is taught: F2F, Blended, Online), led by a
+    /// "(none)" entry whose <c>Id</c> is empty. Empty apart from "(none)" until the user defines some.
+    /// </summary>
+    [ObservableProperty] private ObservableCollection<SchedulingEnvironmentValue> _deliveryTypes = new();
+
     // Section-level single-select selections (empty string = null / none)
     [ObservableProperty] private string? _selectedSectionTypeId;
+
+    /// <summary>
+    /// Id of the chosen delivery type; the empty string means none and is saved as a null
+    /// <see cref="Section.DeliveryTypeId"/>. Not part of the step-gate (<see cref="AreOtherFieldsEnabled"/>).
+    /// </summary>
+    [ObservableProperty] private string? _selectedDeliveryTypeId;
     [ObservableProperty] private string? _selectedCampusId;
 
     // Multi-select collections
@@ -519,6 +531,9 @@ public partial class SectionEditViewModel : UnappliedChangesEditor
     /// it is filled in after a start time is committed on a meeting that has no block length yet,
     /// and only when that length is legal at the committed start time.
     /// </param>
+    /// <param name="deliveryTypes">
+    /// All delivery-type values for the Delivery Type dropdown. Null is treated as an empty list.
+    /// </param>
     public SectionEditViewModel(
         Section section,
         bool isNew,
@@ -543,7 +558,8 @@ public partial class SectionEditViewModel : UnappliedChangesEditor
         IReadOnlyList<SchedulingEnvironmentValue> roomTypes,
         double? defaultBlockLength = null,
         int? defaultSectionCapacity = null,
-        IReadOnlySet<string>? outOfFocusInstructorIds = null)
+        IReadOnlySet<string>? outOfFocusInstructorIds = null,
+        IReadOnlyList<SchedulingEnvironmentValue>? deliveryTypes = null)
     {
         _section = section;
         IsNew = isNew;
@@ -655,6 +671,7 @@ public partial class SectionEditViewModel : UnappliedChangesEditor
 
         // Build single-select lists with a leading "(none)" sentinel
         SectionTypes = BuildSentinelList(sectionTypes);
+        DeliveryTypes = BuildSentinelList(deliveryTypes ?? []);
 
         // Build campuses list sorted by SortOrder, with a "(none)" sentinel prepended
         var campusList = new List<Campus>
@@ -664,6 +681,7 @@ public partial class SectionEditViewModel : UnappliedChangesEditor
 
         SelectedSectionTypeId = section.SectionTypeId ?? "";
         SelectedCampusId      = section.CampusId      ?? "";
+        SelectedDeliveryTypeId = section.DeliveryTypeId ?? "";
 
         // Build multi-select lists
         TagSelections = new ObservableCollection<TagSelectionViewModel>(
@@ -711,7 +729,7 @@ public partial class SectionEditViewModel : UnappliedChangesEditor
     /// <returns>Comparable text; equal for equal values.</returns>
     protected override string CaptureState() => UnappliedChangesKey.Of(
         SelectedCourseId ?? "", SectionCode.Trim(), Notes.Trim(), SelectedFlag, CapacityText.Trim(),
-        SelectedSectionTypeId ?? "", SelectedCampusId ?? "",
+        SelectedSectionTypeId ?? "", SelectedCampusId ?? "", SelectedDeliveryTypeId ?? "",
         InstructorSelections.Where(i => i.IsSelected).Select(i => UnappliedChangesKey.Of(i.Value.Id, i.ParsedWorkload ?? (object)i.WorkloadText.Trim())),
         TagSelections.Where(t => t.IsSelected).Select(t => t.Value.Id),
         ResourceSelections.Where(r => r.IsSelected).Select(r => r.Value.Id),
@@ -1185,6 +1203,7 @@ public partial class SectionEditViewModel : UnappliedChangesEditor
         // Single-select properties (treat empty string sentinel as null)
         _section.SectionTypeId = string.IsNullOrEmpty(SelectedSectionTypeId) ? null : SelectedSectionTypeId;
         _section.CampusId      = string.IsNullOrEmpty(SelectedCampusId)      ? null : SelectedCampusId;
+        _section.DeliveryTypeId = string.IsNullOrEmpty(SelectedDeliveryTypeId) ? null : SelectedDeliveryTypeId;
 
         // Multi-select properties
         _section.TagIds = TagSelections

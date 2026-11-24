@@ -423,16 +423,19 @@ public sealed class ImportFileReader
             return null;
         }
 
-        var missing = Enumerable.Range(0, columns.Count)
-            .Where(c => sourceIndexes[c] < 0)
-            .Select(c => columns[c].Name)
-            .ToList();
-        if (missing.Count == columns.Count)
+        var absent = Enumerable.Range(0, columns.Count).Where(c => sourceIndexes[c] < 0).ToList();
+        if (absent.Count == columns.Count)
         {
-            // Nothing matched: listing all 18 names would not help; the row is not a template header at all.
+            // Nothing matched: listing every name would not help; the row is not a template header at all.
             problem = NoTemplateHeaderMessage;
             return null;
         }
+
+        // A column a file may leave out (ImportColumn.HeaderOptional) is not reported; its cells read as blank.
+        var missing = absent
+            .Where(c => !columns[c].HeaderOptional)
+            .Select(c => columns[c].Name)
+            .ToList();
 
         if (missing.Count > 0)
         {
@@ -457,7 +460,8 @@ public sealed class ImportFileReader
     /// <returns>True when the row has no content in any template column.</returns>
     private static bool IsBlank(RawRow raw, int[] sourceIndexes) =>
         sourceIndexes.All(index =>
-            index >= raw.Cells.Count
+            index < 0   // a left-out optional column has no cell
+            || index >= raw.Cells.Count
             || (string.IsNullOrWhiteSpace(raw.Cells[index]) && raw.Issues?[index] is null));
 
     /// <summary>
@@ -474,7 +478,7 @@ public sealed class ImportFileReader
         for (int c = 0; c < columns.Count; c++)
         {
             int index = sourceIndexes[c];
-            map[columns[c].Name] = index < cells.Count ? cells[index] : string.Empty;
+            map[columns[c].Name] = index >= 0 && index < cells.Count ? cells[index] : string.Empty;
         }
         return map;
     }
@@ -496,7 +500,7 @@ public sealed class ImportFileReader
         for (int c = 0; c < columns.Count; c++)
         {
             int index = sourceIndexes[c];
-            if (index < raw.Issues.Count && raw.Issues[index] is { } issue)
+            if (index >= 0 && index < raw.Issues.Count && raw.Issues[index] is { } issue)
                 (map ??= new Dictionary<string, CellIssue>(NameMatch.Comparer))[columns[c].Name] = issue;
         }
         return map;

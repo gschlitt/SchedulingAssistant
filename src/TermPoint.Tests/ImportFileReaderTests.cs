@@ -240,6 +240,44 @@ public class ImportFileReaderTests
         Assert.Equal("The Tags column is missing.", Problem(_reader.Read(bytes, name)));
     }
 
+    /// <summary>
+    /// A file saved before Delivery Type existed (the column is left out altogether) still reads: its cells read as
+    /// blank, and the other columns are untouched. A file that has the column reads its values.
+    /// </summary>
+    [Theory]
+    [InlineData(Format.Csv)]
+    [InlineData(Format.Xlsx)]
+    public void DeliveryTypeColumnLeftOut_StillReads_AndPresentColumnIsRead(Format format)
+    {
+        int delivery = Array.IndexOf(Headers, SectionImportColumns.DeliveryType);
+        var headers = Headers.Where(h => h != SectionImportColumns.DeliveryType).ToArray();
+        var row = MakeRow((SectionImportColumns.SectionType, "Lecture"), (SectionImportColumns.Campus, "Main"))
+            .Where((_, i) => i != delivery).ToArray();
+        var (bytes, name) = Build(format, headers, new[] { row });
+
+        var older = Ok(_reader.Read(bytes, name)).Rows.Single();
+        Assert.Equal("", older.Cells[SectionImportColumns.DeliveryType]);
+        Assert.Equal("Lecture", older.Cells[SectionImportColumns.SectionType]);
+        Assert.Equal("Main", older.Cells[SectionImportColumns.Campus]);
+
+        var current = Ok(ReadBuilt(format, MakeRow((SectionImportColumns.DeliveryType, "Blended")))).Rows.Single();
+        Assert.Equal("Blended", current.Cells[SectionImportColumns.DeliveryType]);
+    }
+
+    /// <summary>With Delivery Type also left out, the message names only the columns that must be there.</summary>
+    [Theory]
+    [InlineData(Format.Csv)]
+    [InlineData(Format.Xlsx)]
+    public void MissingColumns_DoNotMentionTheOptionalDeliveryType(Format format)
+    {
+        var dropped = new[] { SectionImportColumns.DeliveryType, SectionImportColumns.Tags };
+        var keep = Headers.Select((h, i) => (h, i)).Where(p => !dropped.Contains(p.h)).ToArray();
+        var row = MakeRow();
+        var (bytes, name) = Build(format, keep.Select(p => p.h).ToArray(), new[] { keep.Select(p => row[p.i]).ToArray() });
+
+        Assert.Equal("The Tags column is missing.", Problem(_reader.Read(bytes, name)));
+    }
+
     /// <summary>Several missing columns are one message, in template order.</summary>
     [Theory]
     [InlineData(Format.Csv)]

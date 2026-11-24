@@ -336,11 +336,12 @@ public partial class ScheduleGridViewModel : ViewModelBase
         var rooms       = _roomRepo.GetAll();
         var tags        = _propertyRepo.GetAll(SchedulingEnvironmentTypes.Tag);
         var types       = _propertyRepo.GetAll(SchedulingEnvironmentTypes.SectionType);
+        var deliveryTypes = _propertyRepo.GetAll(SchedulingEnvironmentTypes.DeliveryType);
         var calCode     = section.CourseId is null ? null : _courseRepo.GetById(section.CourseId)?.CalendarCode;
         var heading     = calCode is null ? section.SectionCode : $"{calCode} {section.SectionCode}";
 
         ContextMenu.Load(section, day, startMinutes, order.Ordered, rooms, tags, order.OutOfFocusIds, meetingIndex,
-            heading, types);
+            heading, types, deliveryTypes);
     }
 
     [RelayCommand]
@@ -744,7 +745,7 @@ public partial class ScheduleGridViewModel : ViewModelBase
         // sections — publishing all section IDs would light up every card in the section list,
         // which would be misleading. The snap.FilterX properties are false for that sentinel.
         bool hasActualFilter = snap.FilterInstructor || snap.FilterRoom || snap.FilterSubject
-                            || snap.FilterCampus    || snap.FilterSectionType || snap.FilterTag
+                            || snap.FilterCampus    || snap.FilterSectionType || snap.FilterDeliveryType || snap.FilterTag
                             || snap.FilterMeetingType || snap.FilterLevel || snap.FilterCourse;
         IReadOnlySet<string>? filteredIds = hasActualFilter
             ? filtered.OfType<SectionMeetingBlock>().Select(b => b.SectionId).ToHashSet()
@@ -907,6 +908,7 @@ public partial class ScheduleGridViewModel : ViewModelBase
         var sectionTypes = _propertyRepo.GetAll(SchedulingEnvironmentTypes.SectionType).ToDictionary(v => v.Id);
         var tags         = _propertyRepo.GetAll(SchedulingEnvironmentTypes.Tag).ToDictionary(v => v.Id);
         var meetingTypes = _propertyRepo.GetAll(SchedulingEnvironmentTypes.MeetingType).ToDictionary(v => v.Id);
+        var deliveryTypes = _propertyRepo.GetAll(SchedulingEnvironmentTypes.DeliveryType).ToDictionary(v => v.Id);
 
         // The level "lookup" is a fixed dictionary of all ten level bands mapped to
         // themselves. Levels are now stored as integers-of-hundreds ("0", "100", …,
@@ -925,7 +927,7 @@ public partial class ScheduleGridViewModel : ViewModelBase
 
         return new GridLookups(
             sections, courses, activeCourses, instructors, activeInstructors, rooms, subjects,
-            campuses, sectionTypes, tags, meetingTypes, levels, semesterIdToName, semesterIdToColor);
+            campuses, sectionTypes, tags, meetingTypes, levels, semesterIdToName, semesterIdToColor, deliveryTypes);
     }
 
     /// <summary>
@@ -982,7 +984,8 @@ public partial class ScheduleGridViewModel : ViewModelBase
             lookups.Tags,
             lookups.MeetingTypes,
             lookups.Levels,
-            lookups.ActiveCourses);  // Filter shows only active courses
+            lookups.ActiveCourses,   // Filter shows only active courses
+            lookups.DeliveryTypes ?? new Dictionary<string, SchedulingEnvironmentValue>());
     }
 
     /// <summary>
@@ -1027,7 +1030,8 @@ public partial class ScheduleGridViewModel : ViewModelBase
             OverlayType:        Filter.OverlayType,
             SelectedOverlayId:  Filter.SelectedOverlayId,
             TagsMatchAny:       Filter.TagsMatchAny,
-            TickedTagsInOrder:  Filter.TickedTagsInOrder);
+            TickedTagsInOrder:  Filter.TickedTagsInOrder,
+            DeliveryTypeIds:    Filter.SelectedDeliveryTypeIds);
     }
 
     /// <summary>
@@ -1312,6 +1316,9 @@ public partial class ScheduleGridViewModel : ViewModelBase
                 continue;
 
             if (snap.FilterSectionType && !snap.SectionTypeIds.Contains(section.SectionTypeId ?? string.Empty))
+                continue;
+
+            if (snap.FilterDeliveryType && !snap.DeliveryTypeIds!.Contains(section.DeliveryTypeId ?? string.Empty))
                 continue;
 
             // Tags: by default the section must carry ALL selected tags; with "any" one is enough.

@@ -6,7 +6,7 @@
 
 It has two sheets:
 
-- **Sections**: the 18 template columns, a few sample rows showing every pattern (two instructors, an odd-week lab,
+- **Sections**: the 19 template columns (Delivery Type may be left out of a file), a few sample rows showing every pattern (two instructors, an odd-week lab,
   one section on two rows, an online section), and Text formatting on Course Number, Section Code, Begin and End so
   Excel keeps leading zeros.
 - **Instructions**: the text of `SectionImportInstructions.txt` (see below), one paragraph per row.

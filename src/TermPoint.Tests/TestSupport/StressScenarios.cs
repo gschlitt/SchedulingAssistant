@@ -196,7 +196,7 @@ internal static class StressScenarios
         int n = exported.Count(e => e.Spec is not null);
         return Built(file, StressOutcome.Ready,
             $"Ready: \"{Summary(n)}\" There are no new courses, no new instructors, and no \"New in TermPoint\" list: every name already exists. " +
-            $"After Import the flyout says \"{ImportMessages.Done(new ImportCounts(0, 0, 0, 0, 0, 0, 0, 0, n), Winter, StressContext.TargetYear)}\" and \"{ImportMessages.UndoHint}\" " +
+            $"After Import the flyout says \"{ImportMessages.Done(new ImportCounts(0, 0, 0, 0, 0, 0, 0, 0, 0, n), Winter, StressContext.TargetYear)}\" and \"{ImportMessages.UndoHint}\" " +
             $"(Winter was empty). After Import and Save, Winter ({StressContext.TargetYear}) should show the same sections as Fall ({StressContext.SourceYear}) (their meetings, rooms, instructors and campuses; not their notes, flags or workloads).",
             newSections: n, noNewRecords: true);
     }
@@ -230,7 +230,7 @@ internal static class StressScenarios
         file.AddSection(specs[0].WithCode("NEW1"));
         file.AddSection(specs[1].WithCode("NEW2"));
         return Built(file, StressOutcome.Ready,
-            $"Ready: \"{Summary(2)}\" and \"{ImportMessages.Skipped(Winter, n)}\" Press Import: the flyout says \"{ImportMessages.Done(new ImportCounts(0, 0, 0, 0, 0, 0, 0, 0, 2), Winter, StressContext.TargetYear)}\" " +
+            $"Ready: \"{Summary(2)}\" and \"{ImportMessages.Skipped(Winter, n)}\" Press Import: the flyout says \"{ImportMessages.Done(new ImportCounts(0, 0, 0, 0, 0, 0, 0, 0, 0, 2), Winter, StressContext.TargetYear)}\" " +
             "(no undo hint, because Winter was not empty), Winter gains two sections (codes NEW1 and NEW2) and nothing else changes.",
             newSections: 2, skipped: n, noNewRecords: true,
             hint: $"The file adds section NEW1 to course {specs[0].Subject}{specs[0].CourseNumber} and NEW2 to course {specs[1].Subject}{specs[1].CourseNumber}.");

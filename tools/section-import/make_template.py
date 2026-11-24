@@ -2,7 +2,7 @@
 Builds the TermPoint section import template workbook.
 
 Writes src/TermPoint/Assets/Templates/TermPointSectionsTemplate.xlsx with two sheets:
-  * Sections     - the 18 template columns, a few sample rows that show every pattern, and Text
+  * Sections     - the 19 template columns, a few sample rows that show every pattern, and Text
                    formatting on the code and time columns so Excel keeps leading zeros.
   * Instructions - built from src/TermPoint/Assets/Templates/SectionImportInstructions.txt. That one
                    file is also what the app's Import Sections flyout shows and what its "Save instructions..."
@@ -49,6 +49,7 @@ COLUMNS = [
     ("Course Title", 28),
     ("Section Code", 13),
     ("Section Type", 14),
+    ("Delivery Type", 14),
     ("Instructor(s)", 26),
     ("Tags", 20),
     ("Capacity", 10),
@@ -73,19 +74,19 @@ LAST_FORMATTED_ROW = 2000
 AY, TERM = "2026-2027", "Fall"
 SAMPLE_ROWS = [
     # Two instructors, three days, a room, two tags, a capacity, a campus.
-    [AY, TERM, "CHEM", "101", "Introductory Chemistry", "A", "Lecture", "Smith, John; Lee, Ann",
+    [AY, TERM, "CHEM", "101", "Introductory Chemistry", "A", "Lecture", "F2F", "Smith, John; Lee, Ann",
      "Science; First Year", "60", "M,W,F", "0900", "0950", "", "Class", "SCI", "210", "Main"],
     # A lab that meets on odd weeks.
-    [AY, TERM, "CHEM", "101", "Introductory Chemistry", "L1", "Lab", "Lee, Ann",
+    [AY, TERM, "CHEM", "101", "Introductory Chemistry", "L1", "Lab", "F2F", "Lee, Ann",
      "Science", "24", "R", "1300", "1550", "odd", "Lab", "SCI", "105", "Main"],
     # One section on two rows: different times, different rooms. The second row leaves the
     # section-level cells blank.
-    [AY, TERM, "ENGL", "110", "Academic Writing", "A", "Seminar", "Brown, Maria",
+    [AY, TERM, "ENGL", "110", "Academic Writing", "A", "Seminar", "Blended", "Brown, Maria",
      "Writing", "25", "M,W", "1000", "1120", "", "Class", "ARTS", "214", "Main"],
-    [AY, TERM, "ENGL", "110", "", "A", "", "",
+    [AY, TERM, "ENGL", "110", "", "A", "", "", "",
      "", "", "F", "1300", "1350", "", "Class", "ARTS", "118", ""],
     # An online section: no meeting days or times, and a leading-zero section code.
-    [AY, TERM, "HIST", "200", "Topics in History", "001", "Online", "Garcia, Luis",
+    [AY, TERM, "HIST", "200", "Topics in History", "001", "Online", "Online", "Garcia, Luis",
      "", "30", "", "", "", "", "", "", "", ""],
 ]
 

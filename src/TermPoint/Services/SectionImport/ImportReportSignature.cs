@@ -6,7 +6,7 @@ namespace TermPoint.Services.SectionImport;
 ///
 /// <para>The signature is a list of lines, one for every problem (row, column, message), every warning
 /// message, every skipped section's label, every new record's identity (subjects by abbreviation and name;
-/// campuses, section types, meeting types and tags by name; rooms by building, number and campus; courses by
+/// campuses, section types, delivery types, meeting types and tags by name; rooms by building, number and campus; courses by
 /// code and title; instructors by last name, first name and initials) and every new section's label. It
 /// holds <b>no</b> ids, sort orders or other values the user does not see, except that an <i>existing</i>
 /// campus (whose id is stable) stands for itself in a room's line. Two reports made from the same sheet and
@@ -46,6 +46,7 @@ public static class ImportReportSignature
         lines.AddRange(plan.NewSubjects.Select(s => Line("subject", s.Record.CalendarAbbreviation, s.Record.Name)));
         lines.AddRange(plan.NewCampuses.Select(c => Line("campus", c.Record.Name)));
         lines.AddRange(plan.NewSectionTypes.Select(t => Line("sectionType", t.Record.Name)));
+        lines.AddRange(plan.NewDeliveryTypes.Select(t => Line("deliveryType", t.Record.Name)));
         lines.AddRange(plan.NewMeetingTypes.Select(t => Line("meetingType", t.Record.Name)));
         lines.AddRange(plan.NewTags.Select(t => Line("tag", t.Record.Name)));
         lines.AddRange(plan.NewRooms.Select(r => Line("room", r.Record.Building, r.Record.RoomNumber, CampusText(r.Record.CampusId))));

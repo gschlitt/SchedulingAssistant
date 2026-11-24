@@ -47,8 +47,9 @@ public sealed class ImportMessagesTests
     // ── Done ──────────────────────────────────────────────────────────────────
 
     private static ImportCounts Counts(int sections = 0, int courses = 0, int instructors = 0, int subjects = 0,
-        int campuses = 0, int sectionTypes = 0, int meetingTypes = 0, int tags = 0, int rooms = 0) =>
-        new(subjects, campuses, sectionTypes, meetingTypes, tags, rooms, courses, instructors, sections);
+        int campuses = 0, int sectionTypes = 0, int meetingTypes = 0, int tags = 0, int rooms = 0,
+        int deliveryTypes = 0) =>
+        new(subjects, campuses, sectionTypes, deliveryTypes, meetingTypes, tags, rooms, courses, instructors, sections);
 
     /// <summary>The done line omits zero courses and instructors and pluralises.</summary>
     [Theory]
@@ -71,6 +72,8 @@ public sealed class ImportMessagesTests
             "Also added 2 subjects, 3 tags and 14 rooms. New rooms need their capacity and room type: see Rooms.",
             ImportMessages.SetupLine(Counts(subjects: 2, tags: 3, rooms: 14)));
         Assert.Equal("Also added 1 campus.", ImportMessages.SetupLine(Counts(campuses: 1)));
+        Assert.Equal("Also added 1 section type and 2 delivery types.",
+            ImportMessages.SetupLine(Counts(sectionTypes: 1, deliveryTypes: 2)));
         Assert.Equal("Also added 2 campuses and 1 section type.", ImportMessages.SetupLine(Counts(campuses: 2, sectionTypes: 1)));
         Assert.Equal(
             "Also added 1 subject, 2 campuses, 3 section types, 4 meeting types, 5 tags and 6 rooms. "

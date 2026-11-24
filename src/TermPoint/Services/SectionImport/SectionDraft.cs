@@ -57,6 +57,9 @@ public sealed class SectionDraft
     /// <summary>The section type, or null when the cell is blank.</summary>
     public SetupRef<SchedulingEnvironmentValue>? SectionType { get; init; }
 
+    /// <summary>The delivery type (how the section is taught), or null when the cell is blank or the column is absent.</summary>
+    public SetupRef<SchedulingEnvironmentValue>? DeliveryType { get; init; }
+
     /// <summary>The campus, or null when the cell is blank.</summary>
     public SetupRef<Campus>? Campus { get; init; }
 

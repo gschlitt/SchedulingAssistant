@@ -58,6 +58,14 @@ public partial class CopySemesterViewModel : ViewModelBase, IDisposable
     public bool AreMeetingSubOptionsEnabled => CopyAndMore && IncludeAllMeetingTimes;
 
     [ObservableProperty] private bool _includeSectionType;
+
+    /// <summary>
+    /// Whether each copied section keeps its delivery type (<see cref="Section.DeliveryTypeId"/>).
+    /// Only applies under "Copy and more" (<see cref="CopyAndMore"/>), like the other sub-options.
+    /// Ticked by default, unlike the other sub-options, because a section's delivery type rarely changes
+    /// from one year to the next. Not persisted between sessions.
+    /// </summary>
+    [ObservableProperty] private bool _includeDeliveryType = true;
     [ObservableProperty] private bool _includeAllTags;
     [ObservableProperty] private bool _includeAllStaff;
     [ObservableProperty] private bool _includeRoomAssignments;
@@ -231,6 +239,9 @@ public partial class CopySemesterViewModel : ViewModelBase, IDisposable
 
         if (IncludeSectionType)
             s.SectionTypeId = source.SectionTypeId;
+
+        if (IncludeDeliveryType)
+            s.DeliveryTypeId = source.DeliveryTypeId;
 
         if (IncludeAllTags)
             s.TagIds = new List<string>(source.TagIds);

@@ -13,6 +13,8 @@ namespace TermPoint.Data.Repositories.Demo;
 public class DemoSchedulingEnvironmentRepository : ISchedulingEnvironmentRepository
 {
     private readonly List<SchedulingEnvironmentValue> _sectionTypes  = [.. DemoData.SectionTypes];
+    /// <summary>Delivery types start empty in the demo (nothing is seeded).</summary>
+    private readonly List<SchedulingEnvironmentValue> _deliveryTypes = [];
     private readonly List<SchedulingEnvironmentValue> _meetingTypes  = [.. DemoData.MeetingTypes];
     private readonly List<SchedulingEnvironmentValue> _staffTypes    = [.. DemoData.StaffTypes];
     private readonly List<SchedulingEnvironmentValue> _tags          = [.. DemoData.Tags];
@@ -22,11 +24,12 @@ public class DemoSchedulingEnvironmentRepository : ISchedulingEnvironmentReposit
 
     /// <summary>All buckets, used by the type-agnostic operations (lookup, update, delete).</summary>
     private List<SchedulingEnvironmentValue>[] AllBuckets =>
-        [_sectionTypes, _meetingTypes, _staffTypes, _tags, _resources, _reserves, _roomTypes];
+        [_sectionTypes, _deliveryTypes, _meetingTypes, _staffTypes, _tags, _resources, _reserves, _roomTypes];
 
     private List<SchedulingEnvironmentValue> ListFor(string type) => type switch
     {
         SchedulingEnvironmentTypes.SectionType => _sectionTypes,
+        SchedulingEnvironmentTypes.DeliveryType => _deliveryTypes,
         SchedulingEnvironmentTypes.MeetingType => _meetingTypes,
         SchedulingEnvironmentTypes.StaffType   => _staffTypes,
         SchedulingEnvironmentTypes.Tag         => _tags,

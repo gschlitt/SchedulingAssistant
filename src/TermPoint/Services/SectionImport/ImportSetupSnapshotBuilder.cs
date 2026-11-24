@@ -81,6 +81,7 @@ public sealed class ImportSetupSnapshotBuilder
             instructors: _instructors.GetAll(),
             sections: _sections.GetAll(semesterId),
             sectionTypes: _environment.GetAll(SchedulingEnvironmentTypes.SectionType),
+            deliveryTypes: _environment.GetAll(SchedulingEnvironmentTypes.DeliveryType),
             meetingTypes: _environment.GetAll(SchedulingEnvironmentTypes.MeetingType),
             tags: _environment.GetAll(SchedulingEnvironmentTypes.Tag),
             campuses: _campuses.GetAll(),

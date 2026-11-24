@@ -643,7 +643,8 @@ public partial class SectionListViewModel : ViewModelBase, IUnappliedChangesHost
         Dictionary<string, SchedulingEnvironmentValue> Tags,
         Dictionary<string, SchedulingEnvironmentValue> Resources,
         Dictionary<string, SchedulingEnvironmentValue> Reserves,
-        Dictionary<string, SchedulingEnvironmentValue> MeetingTypes);
+        Dictionary<string, SchedulingEnvironmentValue> MeetingTypes,
+        Dictionary<string, SchedulingEnvironmentValue> DeliveryTypes);
 
     /// <summary>
     /// Builds the entity lookup tables used to construct section cards. All sources are
@@ -659,7 +660,8 @@ public partial class SectionListViewModel : ViewModelBase, IUnappliedChangesHost
         _propertyRepo.GetAll(SchedulingEnvironmentTypes.Tag).ToDictionary(v => v.Id),
         _propertyRepo.GetAll(SchedulingEnvironmentTypes.Resource).ToDictionary(v => v.Id),
         _propertyRepo.GetAll(SchedulingEnvironmentTypes.Reserve).ToDictionary(v => v.Id),
-        _propertyRepo.GetAll(SchedulingEnvironmentTypes.MeetingType).ToDictionary(v => v.Id));
+        _propertyRepo.GetAll(SchedulingEnvironmentTypes.MeetingType).ToDictionary(v => v.Id),
+        _propertyRepo.GetAll(SchedulingEnvironmentTypes.DeliveryType).ToDictionary(v => v.Id));
 
     /// <summary>
     /// Constructs a single <see cref="SectionListItemViewModel"/> for <paramref name="s"/>
@@ -669,7 +671,7 @@ public partial class SectionListViewModel : ViewModelBase, IUnappliedChangesHost
         Section s, ItemLookups lk, string semesterName, string semesterColor) =>
         new(s, lk.Courses, lk.Instructors, lk.Rooms, lk.SectionTypes, lk.Campuses,
             lk.Tags, lk.Resources, lk.Reserves, lk.MeetingTypes, semesterName, semesterColor,
-            _subjectColors.ColorFor)
+            _subjectColors.ColorFor, lk.DeliveryTypes)
         {
             IsMarked = _marks.IsMarked(s.Id),
         };
@@ -1217,7 +1219,8 @@ public partial class SectionListViewModel : ViewModelBase, IUnappliedChangesHost
         List<SchedulingEnvironmentValue> AllResources,
         List<SchedulingEnvironmentValue> AllReserves,
         List<SectionCodePattern>   SectionCodePatterns,
-        List<SchedulingEnvironmentValue> RoomTypes);
+        List<SchedulingEnvironmentValue> RoomTypes,
+        List<SchedulingEnvironmentValue> DeliveryTypes);
 
     /// <summary>
     /// Loads all data needed to open the inline editor and returns it as an
@@ -1247,7 +1250,8 @@ public partial class SectionListViewModel : ViewModelBase, IUnappliedChangesHost
             AllResources:        _propertyRepo.GetAll(SchedulingEnvironmentTypes.Resource),
             AllReserves:         _propertyRepo.GetAll(SchedulingEnvironmentTypes.Reserve),
             SectionCodePatterns: _codePatternRepo.GetAll(),
-            RoomTypes:           _propertyRepo.GetAll(SchedulingEnvironmentTypes.RoomType));
+            RoomTypes:           _propertyRepo.GetAll(SchedulingEnvironmentTypes.RoomType),
+            DeliveryTypes:       _propertyRepo.GetAll(SchedulingEnvironmentTypes.DeliveryType));
     }
 
     /// <summary>
@@ -1271,7 +1275,8 @@ public partial class SectionListViewModel : ViewModelBase, IUnappliedChangesHost
             ctx.AllResources.ToDictionary(v => v.Id),
             ctx.AllReserves.ToDictionary(v => v.Id),
             ctx.MeetingTypes.ToDictionary(v => v.Id),
-            subjectChipColorFor: _subjectColors.ColorFor);
+            subjectChipColorFor: _subjectColors.ColorFor,
+            deliveryTypeLookup: ctx.DeliveryTypes.ToDictionary(v => v.Id));
         placeholder.IsBeingCreated = true;
         return placeholder;
     }
@@ -1352,7 +1357,8 @@ public partial class SectionListViewModel : ViewModelBase, IUnappliedChangesHost
             roomTypes: ctx.RoomTypes,
             defaultBlockLength: ctx.DefaultBlockLength,
             defaultSectionCapacity: AppSettings.Current.DefaultSectionCapacity,
-            outOfFocusInstructorIds: instructorOrder.OutOfFocusIds);
+            outOfFocusInstructorIds: instructorOrder.OutOfFocusIds,
+            deliveryTypes: ctx.DeliveryTypes);
 
         // Live conflict notice. The labels are built once here, from
         // the lists the editor already loaded; the semester's sections are read from the store at each check, so a
@@ -1764,6 +1770,7 @@ public partial class SectionListViewModel : ViewModelBase, IUnappliedChangesHost
         Flag            = s.Flag,
         Schedule        = s.Schedule.Select(d => d.Clone()).ToList(),
         SectionTypeId   = s.SectionTypeId,
+        DeliveryTypeId  = s.DeliveryTypeId,
         CampusId        = s.CampusId,
         TagIds          = new List<string>(s.TagIds),
         ResourceIds     = new List<string>(s.ResourceIds),

@@ -134,6 +134,43 @@ Ledger: [RELEASE_1.2.5.md](../RELEASE_1.2.5.md). Design: [designs/1.2.5/access-a
   (2026-11-23).** For Phase 6: measure the engine on UBC's real database before building UI; confirm the migration's
   writes reach D with the first save (`CheckoutService` unchanged-save logic); `ReinitializeConnection` must run the
   conversion.
+- **Phase 6 drafted (2026-11-23), awaiting Greg.** Pieces A-H in the spec: A delivery type; B data layer and conversion;
+  C engine, then measure on UBC; D `AccessState`, marks, eye, first Access tab (list plus Mark all conflicts, since
+  What's new points to it); E components; F analyzer screens; G pointer and drag line; H release. A-E is the smallest
+  unit that includes the conversion; F-G store nothing new. Confirmed by code read: `ContentHashAtCheckout` is taken
+  before the version gate and before `DatabaseContext` opens D' (so before `Migrate`), so a converted D' is never an
+  "unchanged" save; the first save carries conversion and stamp together. `ReinitializeConnection`'s three callers
+  (reader refresh, `SessionLifecycle.OnWriteLockLost`, `MainWindowViewModel` refresh) all pass `readOnly: true`.
+  Open: Q45 (what ships, after C), Q46 (B and D released together), Q47 (Edit Course tag overwrite, backlog), Q48
+  (delivery type details as a half-page).
+- **Phase 6 locked by Greg (2026-11-24)**, Q45-Q48 as recommended: what ships decided after C's measurement; B and D
+  committed separately on 1.2.5 but never released apart; Edit Course tag overwrite went to `release_state/backlog.md`;
+  delivery type's details as a half-page at the start of A. **Next: piece A.**
+- **Piece A details (A.1) drafted (2026-11-24), awaiting Greg.** Round 6's agreed parts kept; round 6's "round 5's
+  preset rule" for deleting is moot (presets gone), so delete follows section types'. Found: Scheduling Environment's
+  shared `Delete` (`SchedulingEnvironmentListViewModel`) rewrites sections and reloads the list without
+  `OpenCardMessages.WhyRefused`, so deleting any type with a card open drops the typing (Q49). Code map for building A:
+  type strings in `SchedulingEnvironmentTypes`; categories and descriptions in `SchedulingEnvironmentViewModel`; filter
+  in `GridFilterViewModel` (shared via `SectionStore.FilteredSectionIds`); card text `SectionListItemViewModel.SectionTypeName`;
+  right-click `SectionContextMenuViewModel.DetailSectionType`; Copy Semester options in `CopySemesterViewModel`; import
+  columns `SectionImport/SectionImportColumns` (plus planner, writer, counts, messages, near-miss); backup CSV in
+  `BackupService`; demo lists in `Demo/DemoData.SchedulingEnvironment.cs`. Nothing is seeded for new databases today.
+- **A.1 approved (Greg, 2026-11-24), Q49-Q51 as recommended. Piece A built 2026-11-24** (Sonnet the C#, Opus the views;
+  `DeliveryTypeTests` plus extended import, clone, context-menu tests). Choices made while building, for Greg's hand
+  check: (1) the Delivery Type import column may be left out of a file (`ImportColumn.HeaderOptional`, only that
+  column), since every column was required and old templates and the scraper's CSVs would otherwise be rejected;
+  (2) the filter has no "No delivery type" entry, mirroring Section Type, which has none (round 6 drew one; adding it
+  would be new for both); (3) the filter's Delivery Type button is hidden while the list is empty
+  (`GridFilterView.UpdateAllHeaders`); (4) the right-click details label is "Delivery:" beside "Type:"; (5) the
+  section Copy command doesn't copy it (it doesn't copy section type either); (6) editor layout (Greg, 2026-11-24, after
+  a five-column row overran its headings at 400 px): Tags, Reserve Codes, Resources on one row; Campus and Delivery
+  Type side by side on a row below.
+  (7) cards (Greg, 2026-11-24): a collapsed card's top line shows the section type only; open cards add the delivery
+  type and capacity in the same columns (`SummaryTypeText`, `SummaryCapacity`). Property lines (tags etc.) wrap at
+  384 px (`SectionPropertyLinesMaxWidth`) instead of widening the card. Full suite 2026-11-24: one failure,
+  `NetworkHangTests.AHungWrite_TimesOutByTheDeadline...` (file in use in its temp folder), passed on rerun: a flake.
+  **Piece A hand-checked by Greg and committed 2026-11-24.** Next: piece B (Phase 6 steps B.1-B.6; write the
+  fix-on-fix check into these notes before coding). `tools/section-import/README.md` says 19 columns.
 - Round 7 as first built (2026-11-20): the pointer reads "Access: <clause>" like the
   editor's "Room conflict:" lines, because the draft's "Affects access for Enviro Y2" makes the user click to learn
   anything; at most two lines (the editor is tight; no single edit in the mock touches four watches, so the fold is at

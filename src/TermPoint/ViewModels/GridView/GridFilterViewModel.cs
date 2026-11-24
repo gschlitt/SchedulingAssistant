@@ -63,6 +63,12 @@ public partial class GridFilterViewModel : ViewModelBase
     public ObservableCollection<FilterItemViewModel> Subjects     { get; } = new();
     public ObservableCollection<FilterItemViewModel> Campuses     { get; } = new();
     public ObservableCollection<FilterItemViewModel> SectionTypes { get; } = new();
+
+    /// <summary>
+    /// The delivery types (how a section is taught) offered by the filter. Like <see cref="SectionTypes"/>,
+    /// there is no "none" entry: a section with no delivery type is simply hidden while one is ticked.
+    /// </summary>
+    public ObservableCollection<FilterItemViewModel> DeliveryTypes { get; } = new();
     public ObservableCollection<FilterItemViewModel> Tags         { get; } = new();
     public ObservableCollection<FilterItemViewModel> MeetingTypes { get; } = new();
     public ObservableCollection<FilterItemViewModel> Levels       { get; } = new();
@@ -75,6 +81,9 @@ public partial class GridFilterViewModel : ViewModelBase
     public HashSet<string> SelectedSubjectIds     => SelectedIds(Subjects);
     public HashSet<string> SelectedCampusIds      => SelectedIds(Campuses);
     public HashSet<string> SelectedSectionTypeIds => SelectedIds(SectionTypes);
+
+    /// <summary>The ids of the ticked delivery types; empty when the dimension is inactive.</summary>
+    public HashSet<string> SelectedDeliveryTypeIds => SelectedIds(DeliveryTypes);
     public HashSet<string> SelectedTagIds         => SelectedIds(Tags);
 
     /// <summary>The ticked tags as (ID, name), in the order the filter lists them (for the multi-tag mark's hover).</summary>
@@ -334,7 +343,8 @@ public partial class GridFilterViewModel : ViewModelBase
         IReadOnlyDictionary<string, SchedulingEnvironmentValue> tagLookup,
         IReadOnlyDictionary<string, SchedulingEnvironmentValue> meetingTypeLookup,
         IReadOnlyDictionary<string, string> levelLookup,
-        IReadOnlyDictionary<string, Course> courseLookup)
+        IReadOnlyDictionary<string, Course> courseLookup,
+        IReadOnlyDictionary<string, SchedulingEnvironmentValue>? deliveryTypeLookup = null)
     {
         // Instructors: the caller passes only active instructors so deactivated ones
         // never appear as filter or overlay choices. The full instructor set (including
@@ -368,6 +378,8 @@ public partial class GridFilterViewModel : ViewModelBase
             id => campusLookup.TryGetValue(id, out var v) ? v.Name : null);
         RebuildList(SectionTypes, sectionTypeLookup.Keys,
             id => sectionTypeLookup.TryGetValue(id, out var v) ? v.Name : null);
+        RebuildList(DeliveryTypes, (deliveryTypeLookup ?? new Dictionary<string, SchedulingEnvironmentValue>()).Keys,
+            id => deliveryTypeLookup is not null && deliveryTypeLookup.TryGetValue(id, out var v) ? v.Name : null);
         RebuildList(Tags,         tagLookup.Keys,
             id => tagLookup.TryGetValue(id, out var v) ? v.Name : null);
         RebuildList(MeetingTypes, meetingTypeLookup.Keys,
@@ -721,6 +733,7 @@ public partial class GridFilterViewModel : ViewModelBase
         AppendSummaryPart(parts, "Subject",       Subjects);
         AppendSummaryPart(parts, "Campus",        Campuses);
         AppendSummaryPart(parts, "Type",          SectionTypes);
+        AppendSummaryPart(parts, "Delivery",      DeliveryTypes);
         AppendSummaryPart(parts, _tagsMatchAny ? "Tags (any)" : "Tags", Tags);
         AppendSummaryPart(parts, "Meeting Type",  MeetingTypes);
         AppendSummaryPart(parts, "Level",         Levels);
@@ -750,6 +763,7 @@ public partial class GridFilterViewModel : ViewModelBase
         yield return Subjects;
         yield return Campuses;
         yield return SectionTypes;
+        yield return DeliveryTypes;
         yield return Tags;
         yield return MeetingTypes;
         yield return Levels;

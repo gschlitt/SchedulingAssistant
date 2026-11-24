@@ -60,6 +60,7 @@ public class SectionCloneTests
         SectionCode   = "A1",
         Notes         = "Some notes",
         SectionTypeId = "type-lecture",
+        DeliveryTypeId = "delivery-blended",
         CampusId      = "campus-1",
         Level         = "200",
         Capacity      = 42,

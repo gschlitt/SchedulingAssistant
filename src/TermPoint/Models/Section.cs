@@ -22,6 +22,12 @@ public class Section : SchedulableBase
     /// <summary>Section-type property-value ID (FK into SchedulingEnvironmentValues of type "sectionType").</summary>
     public string? SectionTypeId { get; set; }
 
+    /// <summary>
+    /// Optional delivery-type value ID (FK into SchedulingEnvironmentValues of type "deliveryType"):
+    /// how the section is taught, e.g. F2F, Blended, Online. A section has at most one; null means none.
+    /// </summary>
+    public string? DeliveryTypeId { get; set; }
+
     /// <summary>Reserved-seat blocks for this section. Stored in JSON.</summary>
     public List<SectionReserve> Reserves { get; set; } = new();
 

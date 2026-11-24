@@ -7,6 +7,7 @@ namespace TermPoint.Services.SectionImport;
 /// <param name="Subjects">Subjects inserted.</param>
 /// <param name="Campuses">Campuses inserted.</param>
 /// <param name="SectionTypes">Section types inserted.</param>
+/// <param name="DeliveryTypes">Delivery types inserted.</param>
 /// <param name="MeetingTypes">Meeting types inserted.</param>
 /// <param name="Tags">Tags inserted.</param>
 /// <param name="Rooms">Rooms inserted.</param>
@@ -17,6 +18,7 @@ public sealed record ImportCounts(
     int Subjects,
     int Campuses,
     int SectionTypes,
+    int DeliveryTypes,
     int MeetingTypes,
     int Tags,
     int Rooms,
@@ -25,10 +27,10 @@ public sealed record ImportCounts(
     int Sections)
 {
     /// <summary>The counts of an import that inserted nothing.</summary>
-    public static ImportCounts None { get; } = new(0, 0, 0, 0, 0, 0, 0, 0, 0);
+    public static ImportCounts None { get; } = new(0, 0, 0, 0, 0, 0, 0, 0, 0, 0);
 
-    /// <summary>The number of setup values inserted: subjects, campuses, section types, meeting types, tags and rooms.</summary>
-    public int SetupValues => Subjects + Campuses + SectionTypes + MeetingTypes + Tags + Rooms;
+    /// <summary>The number of setup values inserted: subjects, campuses, section types, delivery types, meeting types, tags and rooms.</summary>
+    public int SetupValues => Subjects + Campuses + SectionTypes + DeliveryTypes + MeetingTypes + Tags + Rooms;
 
     /// <summary>The number of records inserted, of every kind.</summary>
     public int Total => SetupValues + Courses + Instructors + Sections;

@@ -39,6 +39,7 @@ internal sealed class SectionImportPlanningRun
     private readonly SetupRegistry<Course, CourseRef> _courses;
     private readonly SetupRegistry<Instructor, InstructorRef> _instructors;
     private readonly SetupRegistry<SchedulingEnvironmentValue, SetupRef<SchedulingEnvironmentValue>> _sectionTypes;
+    private readonly SetupRegistry<SchedulingEnvironmentValue, SetupRef<SchedulingEnvironmentValue>> _deliveryTypes;
     private readonly SetupRegistry<SchedulingEnvironmentValue, SetupRef<SchedulingEnvironmentValue>> _meetingTypes;
     private readonly SetupRegistry<SchedulingEnvironmentValue, SetupRef<SchedulingEnvironmentValue>> _tags;
     private readonly SetupRegistry<Campus, SetupRef<Campus>> _campuses;
@@ -96,6 +97,7 @@ internal sealed class SectionImportPlanningRun
         _instructors = new(snapshot.Instructors, i => PersonKey(i.LastName, i.FirstName), NameMatch.Comparer,
             i => new InstructorRef(i, isNew: false, firstRow: null));
         _sectionTypes = NewNamedRegistry(snapshot.SectionTypes);
+        _deliveryTypes = NewNamedRegistry(snapshot.DeliveryTypes);
         _meetingTypes = NewNamedRegistry(snapshot.MeetingTypes);
         _tags = NewNamedRegistry(snapshot.Tags);
         _campuses = new(snapshot.Campuses, c => c.Name, NameMatch.Comparer, SetupRef<Campus>.Existing,
@@ -126,7 +128,7 @@ internal sealed class SectionImportPlanningRun
             StringComparer.OrdinalIgnoreCase);
     }
 
-    /// <summary>Builds a registry for setup values matched by <c>Name</c> (section types, meeting types, tags).</summary>
+    /// <summary>Builds a registry for setup values matched by <c>Name</c> (section types, delivery types, meeting types, tags).</summary>
     /// <param name="existing">The existing values of one type.</param>
     /// <returns>A registry whose new values continue the type's sort order.</returns>
     private static SetupRegistry<SchedulingEnvironmentValue, SetupRef<SchedulingEnvironmentValue>> NewNamedRegistry(
@@ -159,7 +161,7 @@ internal sealed class SectionImportPlanningRun
         CourseTitleCheck.Run(_newSections, _problems);
 
         var plan = new ImportPlan(
-            _subjects.NewRefs, _campuses.NewRefs, _sectionTypes.NewRefs, _meetingTypes.NewRefs,
+            _subjects.NewRefs, _campuses.NewRefs, _sectionTypes.NewRefs, _deliveryTypes.NewRefs, _meetingTypes.NewRefs,
             _tags.NewRefs, _rooms.NewRefs, _courses.NewRefs, _instructors.NewRefs, _newSections);
 
         // Stable sort: file-wide problems first, then by row, keeping the order found within a row. A bad cell
@@ -353,6 +355,8 @@ internal sealed class SectionImportPlanningRun
         var instructors = ResolveInstructors(group.Rows);
         var sectionType = ResolveFirstNamed(group.Rows, SectionImportColumns.SectionType, _sectionTypes,
             "section types", NewEnvironmentValue);
+        var deliveryType = ResolveFirstNamed(group.Rows, SectionImportColumns.DeliveryType, _deliveryTypes,
+            "delivery types", NewEnvironmentValue);
         var campus = ResolveFirstNamed(group.Rows, SectionImportColumns.Campus, _campuses,
             "campuses", NewCampus);
         var tags = ResolveTags(group.Rows);
@@ -369,6 +373,7 @@ internal sealed class SectionImportPlanningRun
             Course = course,
             Instructors = instructors,
             SectionType = sectionType,
+            DeliveryType = deliveryType,
             Campus = campus,
             Tags = tags,
             RawCapacity = ImportRowText.FirstNonBlank(group.Rows, SectionImportColumns.Capacity)?.Text,
@@ -501,7 +506,7 @@ internal sealed class SectionImportPlanningRun
     // ── Section-level values ──────────────────────────────────────────────────
 
     /// <summary>
-    /// Resolves a section-level column that holds one name (Section Type, Campus): the value comes
+    /// Resolves a section-level column that holds one name (Section Type, Delivery Type, Campus): the value comes
     /// from the first row where it is filled; blank gives null.
     /// </summary>
     /// <typeparam name="T">The record type.</typeparam>
@@ -550,7 +555,7 @@ internal sealed class SectionImportPlanningRun
         return match.Ref;
     }
 
-    /// <summary>Builds a new section type, meeting type or tag, named as first typed.</summary>
+    /// <summary>Builds a new section type, delivery type, meeting type or tag, named as first typed.</summary>
     /// <param name="name">The typed name.</param>
     /// <param name="sortOrder">The sort order to give it.</param>
     private static SchedulingEnvironmentValue NewEnvironmentValue(string name, int sortOrder) =>

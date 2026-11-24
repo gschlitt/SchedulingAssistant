@@ -46,6 +46,61 @@ public class SectionImportPlannerValueTests
         Assert.All(report.Plan.NewSections, s => Assert.Same(type, s.SectionType));
     }
 
+    /// <summary>A delivery type matches an existing one by name, ignoring case and spacing.</summary>
+    [Fact]
+    public void DeliveryType_Existing_IsMatchedByName()
+    {
+        var blended = Val("Blended");
+        var report = SectionImportPlanner.Plan(
+            Sheet(Sec(2, "CHEM", "101", "A", (C.DeliveryType, " blended "))),
+            Snapshot(deliveryTypes: new[] { blended }));
+
+        Assert.Empty(report.Problems);
+        Assert.Empty(report.Plan.NewDeliveryTypes);
+        var type = report.Plan.NewSections.Single().DeliveryType!;
+        Assert.Same(blended, type.Record);
+        Assert.False(type.IsNew);
+    }
+
+    /// <summary>An unknown delivery type is planned, named as first typed, and shared by every section that names it.</summary>
+    [Fact]
+    public void DeliveryType_New_IsNamedAsFirstTyped()
+    {
+        var report = SectionImportPlanner.Plan(
+            Sheet(Sec(2, "CHEM", "101", "A", (C.DeliveryType, "Online live")),
+                  Sec(3, "CHEM", "101", "B", (C.DeliveryType, "ONLINE LIVE"))),
+            Snapshot());
+
+        var type = Assert.Single(report.Plan.NewDeliveryTypes);
+        Assert.True(type.IsNew);
+        Assert.Equal("Online live", type.Record.Name);
+        Assert.Equal(2, type.FirstRow);
+        Assert.All(report.Plan.NewSections, s => Assert.Same(type, s.DeliveryType));
+        // A delivery type is its own list: it is not mistaken for a section type.
+        Assert.Empty(report.Plan.NewSectionTypes);
+    }
+
+    /// <summary>A blank delivery type is null, and nothing is planned.</summary>
+    [Fact]
+    public void DeliveryType_Blank_IsNull()
+    {
+        var report = SectionImportPlanner.Plan(Sheet(Sec(2, "CHEM", "101", "A")), Snapshot());
+
+        Assert.Null(report.Plan.NewSections.Single().DeliveryType);
+        Assert.Empty(report.Plan.NewDeliveryTypes);
+    }
+
+    /// <summary>A section's rows that disagree about the delivery type are a problem, like any section-level cell.</summary>
+    [Fact]
+    public void DeliveryType_RowsDisagree_IsAProblem()
+    {
+        var report = SectionImportPlanner.Plan(
+            Sheet(Sec(2, "CHEM", "101", "A", (C.DeliveryType, "F2F")), Sec(3, "CHEM", "101", "A", (C.DeliveryType, "Blended"))),
+            Snapshot());
+
+        Assert.Contains(report.Problems, p => p.Column == C.DeliveryType);
+    }
+
     /// <summary>A blank section type is null, and nothing is planned.</summary>
     [Fact]
     public void SectionType_Blank_IsNull()

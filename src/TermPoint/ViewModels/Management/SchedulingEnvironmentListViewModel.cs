@@ -193,11 +193,30 @@ public partial class SchedulingEnvironmentListViewModel : ViewModelBase, IDismis
             showAbbreviation: ShowAbbreviation);
     }
 
+    /// <summary>
+    /// Deletes the selected value after confirmation, clearing it from every section (or course, instructor
+    /// or room) that references it, in one transaction.
+    /// <para>
+    /// Refuses, before asking anything, while a section card is open for editing or creating
+    /// (<see cref="OpenCardMessages.WhyRefused"/>, shown in <see cref="ViewModelBase.LastErrorMessage"/>).
+    /// Why: the delete rewrites sections and reloads the section list, which closes an open card and
+    /// silently throws away whatever the user had typed into it. This applies to every value type,
+    /// because every type reloads the list after a delete.
+    /// </para>
+    /// </summary>
     [RelayCommand(CanExecute = nameof(CanWrite))]
     private async Task Delete()
     {
         if (SelectedItem is null) return;
         LastErrorMessage = null;
+
+        var refusal = OpenCardMessages.WhyRefused(_sectionListVm);
+        if (refusal is not null)
+        {
+            LastErrorMessage = refusal;
+            return;
+        }
+
         var id = SelectedItem.Id;
         var name = SelectedItem.Name;
 
@@ -231,6 +250,9 @@ public partial class SchedulingEnvironmentListViewModel : ViewModelBase, IDismis
                         break;
                     case SchedulingEnvironmentTypes.SectionType:
                         if (section.SectionTypeId == id) { section.SectionTypeId = null; changed = true; }
+                        break;
+                    case SchedulingEnvironmentTypes.DeliveryType:
+                        if (section.DeliveryTypeId == id) { section.DeliveryTypeId = null; changed = true; }
                         break;
                     case SchedulingEnvironmentTypes.Reserve:
                         var before = section.Reserves.Count;

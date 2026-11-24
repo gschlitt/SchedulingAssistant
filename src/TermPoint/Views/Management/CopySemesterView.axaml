@@ -90,6 +90,8 @@
                         IsEnabled="{Binding AreSubOptionsEnabled}">
                 <CheckBox Content="Include any section type assignments"
                           IsChecked="{Binding IncludeSectionType}" />
+                <CheckBox Content="Include any delivery type assignments"
+                          IsChecked="{Binding IncludeDeliveryType}" />
                 <CheckBox Content="Include all assigned tags"
                           IsChecked="{Binding IncludeAllTags}" />
                 <CheckBox Content="Include all staff members assigned to each section"

@@ -29,6 +29,7 @@ public sealed class GridContextMenuDetailsTests : IDisposable
     private readonly SchedulingEnvironmentValue _online = new() { Id = "t-online", Name = "Online" };
     private readonly SchedulingEnvironmentValue _first  = new() { Id = "t-first",  Name = "First-year" };
     private readonly SchedulingEnvironmentValue _lab    = new() { Id = "st-lab",   Name = "Lab" };
+    private readonly SchedulingEnvironmentValue _blended = new() { Id = "dt-blended", Name = "Blended" };
 
     public GridContextMenuDetailsTests()
     {
@@ -59,7 +60,7 @@ public sealed class GridContextMenuDetailsTests : IDisposable
     {
         var menu = new SectionContextMenuViewModel(_sectionRepo, () => { }, _fx.Lock, new FakeSectionCardState(), new SectionMarks());
         menu.Load(section, 1, 510, [_ines, _ada, _hugo], new List<Room>(), [_first, _online], null, 0,
-            heading, [_lab]);
+            heading, [_lab], [_blended]);
         return menu;
     }
 
@@ -125,6 +126,21 @@ public sealed class GridContextMenuDetailsTests : IDisposable
         Assert.Null(menu.DetailTags);
     }
 
+    /// <summary>The delivery type is named; none, or an id that no longer resolves, leaves the line out (null).</summary>
+    [Fact]
+    public void DeliveryType_NamedWhenSet_NullWhenNoneOrStale()
+    {
+        var section = MakeSection("ada");
+        section.DeliveryTypeId = "dt-blended";
+        Assert.Equal("Blended", LoadMenu(section).DetailDeliveryType);
+
+        Assert.Null(LoadMenu(MakeSection("ada")).DetailDeliveryType);
+
+        var stale = MakeSection("ada");
+        stale.DeliveryTypeId = "dt-deleted";
+        Assert.Null(LoadMenu(stale).DetailDeliveryType);
+    }
+
     /// <summary>An empty heading falls back to the section code.</summary>
     [Fact]
     public void EmptyHeading_FallsBackToSectionCode()
@@ -139,9 +155,12 @@ public sealed class GridContextMenuDetailsTests : IDisposable
         var first = MakeSection("ada", "ines");
         first.SectionTypeId = "st-lab";
         first.TagIds = ["t-online"];
+        first.DeliveryTypeId = "dt-blended";
         var menu = LoadMenu(first);
+        Assert.Equal("Blended", menu.DetailDeliveryType);
 
-        menu.Load(MakeSection(), 1, 510, [_ada], new List<Room>(), [_online], null, 0, "BIOL 201 B", [_lab]);
+        menu.Load(MakeSection(), 1, 510, [_ada], new List<Room>(), [_online], null, 0, "BIOL 201 B", [_lab], [_blended]);
+        Assert.Null(menu.DetailDeliveryType);
 
         Assert.Equal("BIOL 201 B", menu.DetailHeading);
         Assert.Equal("none", menu.DetailInstructorNames);

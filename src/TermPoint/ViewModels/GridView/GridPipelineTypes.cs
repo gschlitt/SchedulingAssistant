@@ -80,7 +80,12 @@ internal record GridLookups(
     /// the user-chosen semester color. Empty string means the semester has no color and
     /// should fall back to name-based color lookup.
     /// </summary>
-    IReadOnlyDictionary<string, string> SemesterIdToColor);
+    IReadOnlyDictionary<string, string> SemesterIdToColor,
+
+    /// <summary>
+    /// Delivery-type property values (how a section is taught), keyed by value ID. Null (the default) means none.
+    /// </summary>
+    IReadOnlyDictionary<string, SchedulingEnvironmentValue>? DeliveryTypes = null);
 
 /// <summary>
 /// Immutable snapshot of the grid filter state, captured once at the start of each
@@ -207,7 +212,13 @@ internal record FilterSnapshot(
     /// The ticked tags as (ID, name), in the order the filter lists them, so the multi-tag mark's hover names them in
     /// that order. Null (the default) or empty = no section gets the mark. Same tags as <see cref="TagIds"/>.
     /// </summary>
-    IReadOnlyList<(string Id, string Name)>? TickedTagsInOrder = null)
+    IReadOnlyList<(string Id, string Name)>? TickedTagsInOrder = null,
+
+    /// <summary>
+    /// Delivery-type property-value IDs selected in the filter. Null (the default) or empty = the dimension is
+    /// inactive. A section with no delivery type never matches an active delivery-type filter (like section types).
+    /// </summary>
+    HashSet<string>? DeliveryTypeIds = null)
 {
     /// <summary>
     /// The names of the ticked tags a section carries, ", "-joined in the filter's order, when the Tags filter is in
@@ -255,6 +266,9 @@ internal record FilterSnapshot(
 
     /// <summary>True when one or more section types are selected.</summary>
     public bool FilterSectionType => SectionTypeIds.Count > 0;
+
+    /// <summary>True when one or more delivery types are selected.</summary>
+    public bool FilterDeliveryType => DeliveryTypeIds is { Count: > 0 };
 
     /// <summary>
     /// True when one or more tags are selected. Whether a section passes is <see cref="PassesTagFilter"/>.

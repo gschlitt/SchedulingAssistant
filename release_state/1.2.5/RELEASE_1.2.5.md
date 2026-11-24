@@ -2,7 +2,7 @@
 
 **Goal:** to be set by Greg (the unassigned candidate work is in [backlog-1.2.5.md](backlog-1.2.5.md)).
 **MinimumVersionToWrite:** not asked yet.
-**Updated:** 2026-11-23
+**Updated:** 2026-11-24
 
 ## Work
 
@@ -63,14 +63,18 @@ Notes: [lost-notices/NOTES.md](lost-notices/NOTES.md). Source: backlog WN1, plus
 
 **Goal:** administrators see at a glance whether students can still take every course of a watched set (a full "slate" of one section per component), get notices when a change breaks it, and create watches easily. Done means the feature in the app, field-tested.
 
-**State:** Design in progress (progressive spec) on branch 1.2.5. Phases 1-5 locked (4, data design, and 5, architecture, both on 2026-11-23). Next is Phase 6, the implementation plan. No code yet, nothing broken.
+**State:** Design complete on branch 1.2.5: all six phases locked (Phase 6, the plan in pieces A-H, on 2026-11-24). Piece A (delivery type) done and committed 2026-11-24 after Greg's hand check. Next is piece B.
 
 <details>
-<summary>Steps (3 left)</summary>
+<summary>Steps (7 left)</summary>
 
-1. Phase 6: implementation plan, in the delivery order (delivery type first, easy watches, then the analyzer).
-2. Build in pieces, each with tests and compile checks.
-3. Full suite, field test, answer the `MinimumVersionToWrite` question.
+1. B: data layer and the watch conversion (harness run).
+2. C: engine core, then measure on UBC's database.
+3. D: session state, grid marks, the eye on tags, first Access tab (released only with B).
+4. E: components (setup wizard, Courses, Copy Semester, import).
+5. F: analyzer screens (detail, notices, picture, Check all courses).
+6. G: editor pointer and drag line.
+7. H: release (version stamp, WASM demo, help, field test).
 
 </details>
 
@@ -79,7 +83,7 @@ Notes: [lost-notices/NOTES.md](lost-notices/NOTES.md). Source: backlog WN1, plus
 - The import summary's line for pre-filled components (rule 8b): wording to draft for Greg.
 - Check all courses' read-only "not set up" comment: draft wording, awaiting Greg's approval.
 - The left-open Phase 2 items (Q18 extra component names, Q28).
-- Does the whole feature fit 1.2.5, or does only the first piece (delivery type, easy watches) ship now?
+- What ships in 1.2.5: decide after piece C's measurement (Q45).
 
 Notes: [access-analyzer/NOTES.md](access-analyzer/NOTES.md). Design: [designs/1.2.5/access-analyzer.md](../../designs/1.2.5/access-analyzer.md).
 

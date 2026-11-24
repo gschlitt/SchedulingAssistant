@@ -429,6 +429,43 @@
 						</Popup>
 					</Panel>
 
+					<!--  Delivery Type (hidden while the list is empty: GridFilterView.UpdateAllHeaders)  -->
+					<Panel x:Name="DeliveryTypePanel" IsVisible="True">
+						<ToggleButton
+							x:Name="DeliveryTypeToggle"
+							VerticalAlignment="Center"
+							Classes="FilterDim" />
+						<Popup
+							x:Name="DeliveryTypePopup"
+							IsLightDismissEnabled="True"
+							IsOpen="{Binding #DeliveryTypeToggle.IsChecked, Mode=TwoWay}"
+							Placement="Bottom"
+							PlacementTarget="{Binding #DeliveryTypeToggle}">
+							<Border
+								MinWidth="120"
+								MaxHeight="220"
+								Padding="4"
+								Background="{StaticResource FilterExpanderContent}"
+								BorderBrush="{StaticResource FilterPopupBorder}"
+								BorderThickness="1"
+								CornerRadius="5"
+								BoxShadow="{StaticResource FilterPopupShadow}">
+								<ScrollViewer VerticalScrollBarVisibility="Auto">
+									<ListBox
+										Classes="FilterList"
+										ItemsSource="{Binding DeliveryTypes}"
+										SelectionMode="Multiple">
+										<ListBox.ItemTemplate>
+											<DataTemplate>
+												<CheckBox Content="{Binding Name}" IsChecked="{Binding IsSelected}" />
+											</DataTemplate>
+										</ListBox.ItemTemplate>
+									</ListBox>
+								</ScrollViewer>
+							</Border>
+						</Popup>
+					</Panel>
+
 					<!--  Tags  -->
 					<Panel x:Name="TagsPanel" IsVisible="True">
 						<ToggleButton

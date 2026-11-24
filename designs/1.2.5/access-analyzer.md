@@ -1,11 +1,11 @@
 # Access Analyzer and Easy Access Watches — Progressive Design Spec
 
 ## Status
-Current phase: **6 — Implementation plan.** Phase 5 locked 2026-11-23 (Q41–Q43 as recommended; D29). Phase 4 locked 2026-11-23 (Q37–Q40 as recommended). Phase 3 locked 2026-11-23 (wireframe rounds 1–9 settled; D17, D26, D28 agreed; D25
+Current phase: **Build.** Phase 6 locked 2026-11-24 (Q45–Q48 as recommended). Phase 5 locked 2026-11-23 (Q41–Q43 as recommended; D29). Phase 4 locked 2026-11-23 (Q37–Q40 as recommended). Phase 3 locked 2026-11-23 (wireframe rounds 1–9 settled; D17, D26, D28 agreed; D25
 superseded by D28; Q29–Q34 answered; where the draft sections and a round differ, the round wins). Phase 2 locked 2026-11-10
 (Q18's extra component names and Q28 left open, not blocking); Phase 1 locked 2026-11-06.
-Last session: 2026-11-23
-Next step: Phase 6, implementation plan, in the delivery order. State of the work: the 1.2.5 release ledger.
+Last session: 2026-11-24
+Next step: piece B (data layer and the watch conversion). Piece A done 2026-11-24. State of the work: the 1.2.5 release ledger.
 Release: 1.2.5 (added 2026-11-16); whether the whole feature or only the first piece ships in it is still open
 
 ---
@@ -1759,3 +1759,186 @@ memory.
 | Q41 | **Marks when the other section is filtered off the grid.** Today's code deliberately scans only visible sections (out-of-view conflicts were puzzles). The analysis is now the whole semester (rule 29) | Mark the visible section; its hover names the other section and says it's hidden by the filters; no joining line. Health and notices never depend on filters |
 | Q42 | **Seats in the first analyzer piece?** Three or more courses need a small linear-program solver (no library today), and neither real database has capacities set (Q20) | A later piece: the first analyzer shows the "set section capacities" hint only. Avoids a solver nobody can see working yet |
 | Q43 | **Several semesters selected** (multi-semester view). Not covered by Phases 1–4. A slate is within one term | Analyse each selected semester separately. A watch's row shows its worst semester, named ("Winter: no full slate"); the detail has a semester switch when more than one is selected; marks follow each semester's sub-column |
+
+---
+
+## Phase 6: Implementation plan (LOCKED 2026-11-24)
+
+*From Phases 1–5 as locked and the code as read on 2026-11-23. Each piece is built, tested and compile-checked before
+the next starts, and ends in a state that could be committed without breaking the app. Opus briefs and reviews,
+Sonnet codes (working agreements); `.axaml` edits are Opus's, after asking Greg to close the file in VS.*
+
+### Stories (today vs. with Phase 6)
+
+**Greg's next sessions.** Today the spec says what to build but not in what order, nor where a piece could stop and
+ship. With Phase 6 each session picks up the next piece by its letter, with its steps, its tests and the questions it
+waits on; the ledger's steps become these pieces.
+
+**Release day, if 1.2.5 must ship before the analyzer is done.** Pieces A–E form a unit that can ship alone: the same
+watches as today, now watched tags, with costly-only marks and components. Pieces F–G add the analyzer screens and the
+pointer. F–G store nothing new, so shipping them later needs no second `MinimumVersionToWrite` raise.
+
+### Confirmed from the code before planning (Phase 5's two "to confirm" items)
+
+- **The conversion reaches D with the writer's first save.** `CheckoutService` takes D's content fingerprint
+  (`ContentHashAtCheckout`) right after the copy is verified, *before* the version gate and before `DatabaseContext`
+  opens D' (so before `Migrate`). A converted D' never looks "unchanged", so the first save (the exit save included) is
+  a real one and carries the conversion and the stamp together, as the stamp travels today. Piece B pins this with a
+  test.
+- **`ReinitializeConnection` skips `Migrate`** (its comment: "the new file already has the schema"). Callers: the
+  reader refresh, the demotion after lock loss (`SessionLifecycle.OnWriteLockLost`) and `MainWindowViewModel`'s
+  refresh. All three reopen with `readOnly: true`, so the conversion there is a snapshot-only step with no backup.
+
+### The pieces, in delivery order
+
+| Piece | What | Stores data? | Ships alone? |
+|---|---|---|---|
+| **A** | Delivery type (D14) | Yes (new type, section field) | Yes |
+| **B** | Data layer: Phase 4's fields, the watch conversion, `ReinitializeConnection` | Yes | No: only with C–E |
+| **C** | Engine core (`Services/Access/`), then measured on UBC | No | Nothing visible |
+| **D** | `AccessState`, grid marks, the eye on tags, a first Access tab; the old watch UI goes | Yes (tag fields) | With B, C, E |
+| **E** | Components: setup wizard, Courses column, Edit Course, Copy Semester, import | Yes | With B–D |
+| **F** | Analyzer screens: watch detail, notices, picture and stepping, Check all courses, several semesters | No | Yes, after E |
+| **G** | Editor pointer and drag line (what-if) | No | Yes, after F |
+| **H** | Release: version stamp, WASM demo, help, field test | — | — |
+
+#### A. Delivery type (D14)
+1. A half-page of details for Greg first (Phase 1 left them outside this spec): the list's defaults (empty or seeded),
+   import/export column name, filter placement, the card. Round 6's agreed placement (beside Campus) and reworded
+   Section Type and Meeting Type descriptions stand.
+2. Model: `deliveryTypeId` on `Section` (clone, `WithExtensionDataFrom`, `SectionCloneTests`); `deliveryType` rows in
+   `SchedulingEnvironmentValues`.
+3. Scheduling Environment list; editor combo beside Campus; section filter; import/export column; Copy Semester copies it.
+4. Tests: clone and extension data, import round trip, filter. Both compile checks; full suite.
+*Touches `.axaml`:* section editor, Scheduling Environment, filter bar.
+
+**A.1 Delivery type details (approved by Greg 2026-11-24, Q49–Q51 as recommended).** Drawn from round 6 (agreed) and the code as read today.
+Items marked *agreed* are round 6's; the rest are recommendations.
+
+*Story.* Today UFV's Pat records "Online" as a section type, so an online lab can't also be a Lab. With A, Pat adds
+Online under Scheduling Environment → Delivery Types, sets it on the section beside Campus, and the card reads
+"Lab · Online". Existing sections are untouched (rule 12).
+
+| # | Where | Behaviour |
+|---|---|---|
+| 1 | **The list** | Starts **empty** in every database, new or upgraded; no seeding. Rule 12: never guess at someone's data. (Alternative: seed F2F, Blended, Online for new databases only.) |
+| 2 | **Scheduling Environment** | *Agreed:* "Delivery Types" after Section Type, description "How a section is taught: e.g. F2F, Blended, Online live, Online self-paced. A section has at most one. Shown on section cards and used for filtering in the schedule grid." Section Type's description becomes "What kind of section it is: e.g. Lecture, Lab, Tutorial. Used for filtering in the schedule grid. How a section is taught goes in Delivery Types." Meeting Type's becomes "How one meeting is held: e.g. In-Person, Remote. Set for each meeting of a section, so a section can meet in person on Tuesday and online on Thursday. For the section as a whole, use Delivery Types." |
+| 3 | **Deleting one** | As section types today: "Delete "Online"? This will also remove it from all sections in all semesters that reference it." (Round 6 said "round 5's preset rule"; presets are gone, D28.) |
+| 4 | **Section editor** | *Agreed:* optional "Delivery Type" box beside Campus; hover "How this section is taught. Delivery types are set under Scheduling Environment." Blank = none. Not part of the editor's step-gate (any order). |
+| 5 | **Section card** | *Agreed:* "Lecture · Blended"; the delivery type alone when there's no section type. Set directly on the card's text, no class-conditioned style. |
+| 6 | **Schedule View right-click details** | One more line under the section type, same look ("Blended"); nothing when none. |
+| 7 | **Filter bar** (both views) | *Agreed:* "Delivery Type" after Section Type, with "No delivery type" for none; the summary reads "Delivery: …". |
+| 8 | **Copy Semester** | *Agreed:* "Include any delivery type assignments", ticked by default. |
+| 9 | **Import Sections** | Optional section-level column "Delivery Type", after Section Type in the template. Unknown names are created, counted ("2 delivery types") and listed ("Delivery types: …") exactly as section types; the same near-miss warning for close spellings. Template and instructions page updated. |
+| 10 | **Export** | The backup CSV gains "DeliveryType" after "SectionType". The shared-schedule export is unchanged (it carries no section type either). |
+| 11 | **Not included** | Section code patterns (tied to section type), sorting the list by delivery type, Workload, the analyzer (rule 11). The WASM demo keeps its sample section types "F2F"/"Remote" as they are (rule 12); a demo delivery type list is optional. |
+
+*Safety.* Stored: `deliveryTypeId` on sections and the new list's rows; part of the release's `MinimumVersionToWrite`
+Yes. A 1.2.4 reader opening a database with delivery types ignores the field, and any section it can't write anyway.
+Every write is an ordinary save (four rules unchanged). Deleting a type rewrites sections in one transaction, as today.
+
+*Found while reading (existing, all types):* Scheduling Environment's Delete rewrites sections and reloads the section
+list without checking `OpenCardMessages.WhyRefused`, so deleting a tag, section type, meeting type, reserve or resource
+while a section card is open closes the card and silently drops what was typed (the CLAUDE.md rule for saving sections
+from outside the card). Q49.
+
+| Q | Question | Recommendation |
+|---|---|---|
+| Q49 | **Delete with an open card** (above) | Fix it in A, once, in the shared Delete (refuse with `WhyRefused`'s message, for every type): A adds another type that would inherit the hole, and the fix is one check in one place |
+| Q50 | **Seed a starter list?** (row 1) | No: empty everywhere |
+| Q51 | **Right-click details line** (row 6) | Yes, one line |
+
+#### B. Data layer and the watch conversion
+1. Fields: `IsAccessWatch`, `WatchMultiCampus` on `SchedulingEnvironmentValue` (written only when true); `IsComponent`
+   on section types; `ComponentTypeIds` (nullable list) on `Course`. Every rebuild path copies them and calls
+   `WithExtensionDataFrom` (course copy, Edit Course, Scheduling Environment editor); extend the extension-data and
+   clone tests.
+2. `AccessChecksSetUp` read and write in `AppConfiguration` (as `MinimumVersionToWrite`'s key is).
+3. `Migrate` step for schema version 2: Phase 4's eight conversion rules, Q37 and Q39, in the existing transaction
+   after the backup. It reads the `ProgramWatches` JSON directly, so the old model class can go in D.
+4. `ReinitializeConnection` runs the same step when `user_version` is below 2, without the backup.
+5. Tests: one per conversion case; converting twice gives identical rows; the first save after a conversion is a real
+   save. Harness: a reader refreshing onto an unconverted file a 1.2.4 writer saved; a writer whose D' is replaced by an
+   unconverted copy. Full suite **and the harness**.
+6. Before coding, the fix-on-fix check goes in the item notes: what runs at the same moment as each
+   `ReinitializeConnection` caller.
+*No `.axaml`.* Nothing visible yet: watches are converted but the old UI still reads `ProgramWatches` (now empty), so
+B and D must not be released apart (Q46).
+
+#### C. Engine core, then measure
+1. `SectionOverlap` (moved from `ProgramConflictService`, plus the meeting-pair variant); `AccessInputs` with
+   `Proposal`; `AccessWatch`; `Components.Resolve` with the suggestion query; `SlateSearch`; `Analysis` (health,
+   roles, best partial, costly and all conflicts, campus mix, untagged flag, findings).
+2. Unit tests for rules 1–23, 33, 6e, 8a, Q22's three-course case, the cap, odd/even weeks, sections without times; the
+   mock's `window.__access` scenarios as test cases.
+3. **Measure on UBC's real database** (a copy, dev machine): the largest watch, every watch, Check all courses. Over the
+   30 ms budget: the off-UI-thread variant goes into D's design before D starts.
+*No `.axaml`.* The WASM compile check matters here (no SQLite in the engine).
+
+#### D. Session state, marks and watched tags
+1. `AccessState` (singleton): recomputes on `SectionsChanged`, semester change, watched-tag or component change; caches
+   the suggestion per reload. (Notices come in F.)
+2. Grid: `AccessState`'s marks replace `DetectConflicts`; costly-only by default; round 6's hovers; Q41's
+   hidden-partner hover; marks set directly per tile, never class-conditioned styles.
+3. The eye on tags (Tags popup; Scheduling Environment → Tags), disabled when read-only.
+4. A first Access tab beside Workload (a tab strip hosting two `DetachablePanel`s): the watch list (▲ / ● / ○, health
+   line with its conflict count) and the **Mark all conflicts** box at the list's foot, because What's new points to
+   it. The open watch's detail comes in F.
+5. Remove `ProgramWatch`'s repository, `WatchCreationViewModel`, the watch popup and `ProgramConflictService`. What's
+   new entry (wording for Greg).
+6. Tests: marks after a save and after a reader refresh; eye disabled when read-only. Full suite.
+*Touches `.axaml`:* grid, Tags popup, Scheduling Environment, main window's bottom-left slot.
+
+#### E. Components
+1. Setup wizard (8f): the question, the component section types, every course's components pre-filled; These are right
+   is one transaction (set-up mark, flags, courses). Offered at the top of Access and when the first eye is ticked.
+2. Courses: the Components column (folds, remembered per computer, 8c) and Edit Course's group; unmarking a type asks in
+   the row and rewrites the affected courses in one transaction; rule 8a findings.
+3. Copy Semester: rule 36 and Q40's line. Import: rule 8b's pre-fill and its summary line.
+4. Tests: the wizard saves in one transaction; unmarking rewrites; Copy Semester keeps watched tags with "Include all
+   tags" unticked; import pre-fills new courses only. Full suite.
+*Waits on wording:* Q40's line, rule 8b's line. *Touches `.axaml`:* wizard, Courses flyout, Edit Course, Copy Semester,
+import summary.
+
+#### F. Analyzer screens
+1. Watch detail: Courses (which sections each offers), slates, roles, best partial, subsets, pins, Multi-campus box,
+   the untagged line (8g), the one-section wording (6c), why no full slate (6d).
+2. `Notices.Compare` in `AccessState` after saves and reloads, not semester changes: Lost, Component missing, Newly
+   essential, Restored, every slate mixes campuses; shown with the other advisories.
+3. Grid picture and stepping (the Room Browser's ghost look); the legend bar with Mark all conflicts and Step through
+   slates.
+4. Check all courses (round 9), with the read-only "not set up" comment; several semesters (Q43).
+5. Tests: notices from a save and from a reader refresh, none from a semester change; detail VM tests.
+*Waits on wording:* Check all courses' read-only comment.
+
+#### G. Editor pointer and drag line
+1. `AccessState.WhatIf(proposal)`; the section editor hooks in beside `editVm.CheckConflicts`; the meeting drag asks
+   once per new drop target, only for watches covering the dragged section; the floating message bar (7b).
+2. Tests: what-if leaves the saved analyses alone; at most two lines, worst first.
+
+#### H. Release
+1. `MinimumVersionToWrite`: `ThisReleaseRequires` and `ThisReleaseReason` (reason wording for Greg), the pinned test,
+   Store submission mandatory.
+2. WASM demo repositories build their sample watches as watched tags.
+3. Help articles and tours that point at the old watch popup.
+4. Both compile checks, full suite, harness; field test: upgrading a copy of a real database with watches, a 1.2.4
+   reader alongside, lock loss with the Access tab open.
+
+### Risks (watched during the build)
+- **Save and lock paths:** only B touches them (`Migrate`, `ReinitializeConnection`); everything else writes through
+  ordinary saves. B gets the harness and the fix-on-fix check.
+- **Edit Course's "apply tags to all sections"** can strip a watch's cohort tag (existing hazard, Phase 4). Q47.
+- **Performance:** settled by C's measurement before any UI depends on the engine.
+- **Wording waits:** What's new (D), Q40 and rule 8b (E), Check all courses' comment (F), the version reason (H). None
+  blocks A–C.
+
+### Questions (Phase 6)
+*Greg, 2026-11-24: Q45–Q48 answered as recommended; Phase 6 locked.*
+
+
+| Q | Question | Recommendation |
+|---|---|---|
+| Q45 | **What ships in 1.2.5?** | Decide after C's measurement. A can ship at any time; A–E is the smallest unit that includes the conversion; F–G can follow in 1.2.6 with no new stored data |
+| Q46 | **B and D must not be released apart** (converted data with no UI to show it) | Commit them on branch 1.2.5 as separate commits, but merge or release only once D passes |
+| Q47 | **Edit Course's tag overwrite** | A backlog line; fixing it changes an unrelated editor during this feature |
+| Q48 | **Delivery type's details** (A.1) | A half-page for Greg at the start of A, not a new phase |

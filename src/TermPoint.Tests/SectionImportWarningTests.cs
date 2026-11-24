@@ -373,6 +373,18 @@ public class SectionImportWarningTests
         }, messages);
     }
 
+    /// <summary>A new delivery type close to an existing one is a warning, worded like the other kinds.</summary>
+    [Fact]
+    public void NearMiss_NewDeliveryTypeVersusExisting()
+    {
+        var report = SectionImportPlanner.Plan(
+            Sheet(Sec(2, "CHEM", "101", "A", (C.DeliveryType, "Blendd"))),
+            Snapshot(deliveryTypes: new[] { Val("Blended") }));
+
+        var warning = Assert.Single(report.Warnings, w => w.Kind == K.NearMiss);
+        Assert.Equal("Will add delivery type Blendd. Blended already exists (row 2).", warning.Message);
+    }
+
     /// <summary>A new building close to an existing building is a warning (SCIENCE versus SCI).</summary>
     [Fact]
     public void NearMiss_NewBuilding_VersusExisting()

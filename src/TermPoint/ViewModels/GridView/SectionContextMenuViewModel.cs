@@ -104,6 +104,9 @@ public partial class SectionContextMenuViewModel : ObservableObject
     /// <summary>The section type's name, or null when the section has none (the line is then hidden). Set on <see cref="Load"/>.</summary>
     [ObservableProperty] private string? _detailSectionType;
 
+    /// <summary>The delivery type's name (how the section is taught), or null when the section has none (the line is then hidden). Set on <see cref="Load"/>.</summary>
+    [ObservableProperty] private string? _detailDeliveryType;
+
     /// <summary>The section's tag names, comma-separated in the configured tag order, or null when it has none. Set on <see cref="Load"/>.</summary>
     [ObservableProperty] private string? _detailTags;
 
@@ -176,6 +179,7 @@ public partial class SectionContextMenuViewModel : ObservableObject
     /// Heading of the details block (course code and section code); empty falls back to the section code.
     /// </param>
     /// <param name="sectionTypes">Every section type, to name the section's type in the details; null names none.</param>
+    /// <param name="deliveryTypes">Every delivery type, to name the section's delivery type in the details; null names none.</param>
     public void Load(
         Section section,
         int meetingDay,
@@ -186,7 +190,8 @@ public partial class SectionContextMenuViewModel : ObservableObject
         IReadOnlySet<string>? outOfFocusInstructorIds = null,
         int meetingIndex = -1,
         string detailsHeading = "",
-        IEnumerable<SchedulingEnvironmentValue>? sectionTypes = null)
+        IEnumerable<SchedulingEnvironmentValue>? sectionTypes = null,
+        IEnumerable<SchedulingEnvironmentValue>? deliveryTypes = null)
     {
         var instructorList = instructors.ToList();
         var tagList = tags.ToList();
@@ -202,7 +207,7 @@ public partial class SectionContextMenuViewModel : ObservableObject
         ShowTagsCommand.NotifyCanExecuteChanged();
         ShowFlagCommand.NotifyCanExecuteChanged();
         RefreshMarkState();
-        FillDetails(section, detailsHeading, instructorList, tagList, sectionTypes);
+        FillDetails(section, detailsHeading, instructorList, tagList, sectionTypes, deliveryTypes);
 
         // Instructors — multi-select: active instructors, plus any inactive instructor the section already has.
         // Confirm rebuilds the assignments from the ticked rows, so an assigned instructor missing from the list
@@ -257,15 +262,17 @@ public partial class SectionContextMenuViewModel : ObservableObject
 
     /// <summary>
     /// Sets the details block (<see cref="DetailHeading"/>, the instructor label and names, <see cref="DetailSectionType"/>,
-    /// <see cref="DetailTags"/>) for the right-clicked section. Ids that no longer resolve are left out, as on the tile.
+    /// <see cref="DetailDeliveryType"/>, <see cref="DetailTags"/>) for the right-clicked section. Ids that no longer resolve are left out, as on the tile.
     /// </summary>
     /// <param name="section">The right-clicked section.</param>
     /// <param name="heading">Course code and section code; empty falls back to the section code.</param>
     /// <param name="instructors">Every instructor (any order); the section's are listed in its stored order.</param>
     /// <param name="tags">Every tag, in the configured order, which the tag line keeps.</param>
     /// <param name="sectionTypes">Every section type, or null when none are known.</param>
+    /// <param name="deliveryTypes">Every delivery type, or null when none are known.</param>
     private void FillDetails(Section section, string heading, IReadOnlyList<Instructor> instructors,
-        IReadOnlyList<SchedulingEnvironmentValue> tags, IEnumerable<SchedulingEnvironmentValue>? sectionTypes)
+        IReadOnlyList<SchedulingEnvironmentValue> tags, IEnumerable<SchedulingEnvironmentValue>? sectionTypes,
+        IEnumerable<SchedulingEnvironmentValue>? deliveryTypes)
     {
         DetailHeading = string.IsNullOrWhiteSpace(heading) ? section.SectionCode : heading;
 
@@ -280,6 +287,10 @@ public partial class SectionContextMenuViewModel : ObservableObject
         DetailSectionType = section.SectionTypeId is null
             ? null
             : sectionTypes?.FirstOrDefault(t => t.Id == section.SectionTypeId)?.Name;
+
+        DetailDeliveryType = section.DeliveryTypeId is null
+            ? null
+            : deliveryTypes?.FirstOrDefault(t => t.Id == section.DeliveryTypeId)?.Name;
 
         var tagIds = section.TagIds.ToHashSet();
         var tagNames = tags.Where(t => tagIds.Contains(t.Id)).Select(t => t.Name).ToList();

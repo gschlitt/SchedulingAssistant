@@ -207,6 +207,7 @@ public static class ImportMessages
         if (counts.Subjects > 0) parts.Add(ImportText.Counted(counts.Subjects, "subject", "subjects"));
         if (counts.Campuses > 0) parts.Add(ImportText.Counted(counts.Campuses, "campus", "campuses"));
         if (counts.SectionTypes > 0) parts.Add(ImportText.Counted(counts.SectionTypes, "section type", "section types"));
+        if (counts.DeliveryTypes > 0) parts.Add(ImportText.Counted(counts.DeliveryTypes, "delivery type", "delivery types"));
         if (counts.MeetingTypes > 0) parts.Add(ImportText.Counted(counts.MeetingTypes, "meeting type", "meeting types"));
         if (counts.Tags > 0) parts.Add(ImportText.Counted(counts.Tags, "tag", "tags"));
         if (counts.Rooms > 0) parts.Add(ImportText.Counted(counts.Rooms, "room", "rooms"));
@@ -266,7 +267,7 @@ public static class ImportMessages
     };
 
     /// <summary>
-    /// The "New in TermPoint" lists: the subjects, section types, meeting types, tags, campuses and rooms the
+    /// The "New in TermPoint" lists: the subjects, section types, delivery types, meeting types, tags, campuses and rooms the
     /// import will create, one group per kind with a heading, in that order. A kind with nothing new is left
     /// out. Always shown when non-empty, because a typo in the file creates a record.
     /// </summary>
@@ -284,6 +285,7 @@ public static class ImportMessages
 
         Add("Subjects", plan.NewSubjects.Select(s => SubjectLine(s.Record)));
         Add("Section types", plan.NewSectionTypes.Select(s => s.Record.Name));
+        Add("Delivery types", plan.NewDeliveryTypes.Select(s => s.Record.Name));
         Add("Meeting types", plan.NewMeetingTypes.Select(s => s.Record.Name));
         Add("Tags", plan.NewTags.Select(s => s.Record.Name));
         Add("Campuses", plan.NewCampuses.Select(s => s.Record.Name));
