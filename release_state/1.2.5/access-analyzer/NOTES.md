@@ -5,7 +5,7 @@ Ledger: [RELEASE_1.2.5.md](../RELEASE_1.2.5.md). Design: [designs/1.2.5/access-a
 <details>
 <summary>Files to read first</summary>
 
-- `designs/1.2.5/access-analyzer.md`: the spec. Status block at the top; Terms (D2); decisions D1-D26; Phase 2 rules 1-41; Phase 3 wireframe rounds table.
+- `designs/1.2.5/access-analyzer.md`: the spec. Status block at the top; Terms (D2); decisions D1-D29; Phase 2 rules 1-41; Phase 3 wireframe rounds table; Phase 4 (what is stored, the watch upgrade) and Phase 5 (layers, saving, tests) at the end.
 - `designs/1.2.5/access-analyzer-handoff.md`: older handoff (written 2026-11-10). Its branch and release notes are out of date; the ledger replaces it for state. Its summary of the method and working agreements still holds.
 - `designs/wireframes/`: the clickable HTML wireframes (rounds 1-8 settled; r8 is components in Courses, the setup wizard and D28; r9, Check all courses, settled 2026-11-23; all planned rounds done). Each round starts as a copy of the last and keeps its own file as the record. Reviewing them in Claude's browser pane: see `docs/dev/dev-machines.md` (to load an edited file afresh, close the tab and open the `file:///` URL again; reload and a same-tab navigate can keep the old page and its test clicks). `window.__access` exposes the mock's engine (`proposal`, `accessChanges`, `analysesFor`) for checking scenarios from the console.
 - `designs/1.2.5/slot-browser.md`: related; its D3 level 2 is judged by whole slates.
@@ -112,6 +112,28 @@ Ledger: [RELEASE_1.2.5.md](../RELEASE_1.2.5.md). Design: [designs/1.2.5/access-a
 - **Phase 3 locked by Greg (2026-11-23).** Q29: slot fine, `DetachablePanel` can do tabs; Q30 and Q31 as recommended
   (keep ▲ / ● / ○; no app notification for notices); Q32 answered earlier; Q33 moot; Q34: stable order, course then
   section code.
+- **Phase 4 drafted (2026-11-23), awaiting Greg.** No new table: `isAccessWatch` and `watchMultiCampus` on the tag's
+  record, `isComponent` on section types, `componentTypeIds` (null = never set) on courses, `deliveryTypeId` on sections,
+  `AccessChecksSetUp` in `AppConfiguration`. The watch conversion goes in `DatabaseContext.Migrate` (schema version 2),
+  so a reader's snapshot converts too and nothing new decides when; new tag IDs = old watch IDs (deterministic); old
+  rows deleted (semester delete counts them). Found: `ReinitializeConnection` skips `Migrate` (must fix); Copy Semester
+  without "Include all tags" would empty every watch (Q40); Edit Course's "apply tags to all sections" overwrites
+  cohort tags (existing hazard). Local test databases hold 6 watches, 3 disabled, only one a course list.
+- Q37-Q40 answered by Greg as recommended (2026-11-23): "(watch)" suffix on a name clash; own semester plus courses;
+  disabled watches become unwatched tags; Copy Semester always copies watched tags, with a line (wording to approve).
+  **Phase 4 locked by Greg (2026-11-23).**
+- **Phase 5 drafted (2026-11-23), awaiting Greg.** Four layers: data; a pure engine in `Services/Access/` (WASM-safe);
+  `AccessState` (session analyses, notices, what-if); UI. The editor pointer hooks in like `editVm.CheckConflicts`
+  (`SectionListViewModel`). Found: today's grid scans only visible sections on purpose (comment in
+  `ScheduleGridViewModel`), now Q41; multi-semester mode was never designed (Q43); `DetachablePanel` has no tabs yet
+  (tab strip hosting two panels). To confirm before building: migration writes skip `MarkDirty`, but check
+  `CheckoutService`'s unchanged-save logic.
+- Q41-Q43 answered by Greg as recommended (2026-11-23): hidden partner = mark the visible tile, hover names it, no
+  line; seats a later piece; several semesters analysed separately (worst named in the row, switch in the detail).
+  Q44 recorded as D29 (engine static in `Services/Access/`, only `AccessState` registered). **Phase 5 locked by Greg
+  (2026-11-23).** For Phase 6: measure the engine on UBC's real database before building UI; confirm the migration's
+  writes reach D with the first save (`CheckoutService` unchanged-save logic); `ReinitializeConnection` must run the
+  conversion.
 - Round 7 as first built (2026-11-20): the pointer reads "Access: <clause>" like the
   editor's "Room conflict:" lines, because the draft's "Affects access for Enviro Y2" makes the user click to learn
   anything; at most two lines (the editor is tight; no single edit in the mock touches four watches, so the fold is at

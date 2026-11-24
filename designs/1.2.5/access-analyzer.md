@@ -1,11 +1,11 @@
 # Access Analyzer and Easy Access Watches — Progressive Design Spec
 
 ## Status
-Current phase: **4 — Data design.** Phase 3 locked 2026-11-23 (wireframe rounds 1–9 settled; D17, D26, D28 agreed; D25
+Current phase: **6 — Implementation plan.** Phase 5 locked 2026-11-23 (Q41–Q43 as recommended; D29). Phase 4 locked 2026-11-23 (Q37–Q40 as recommended). Phase 3 locked 2026-11-23 (wireframe rounds 1–9 settled; D17, D26, D28 agreed; D25
 superseded by D28; Q29–Q34 answered; where the draft sections and a round differ, the round wins). Phase 2 locked 2026-11-10
 (Q18's extra component names and Q28 left open, not blocking); Phase 1 locked 2026-11-06.
 Last session: 2026-11-23
-Next step: Phase 4, data design. State of the work: the 1.2.5 release ledger.
+Next step: Phase 6, implementation plan, in the delivery order. State of the work: the 1.2.5 release ledger.
 Release: 1.2.5 (added 2026-11-16); whether the whole feature or only the first piece ships in it is still open
 
 ---
@@ -1501,3 +1501,261 @@ Opens inside the tab like a detail:
 | Q35 | **Reopens Q1 (Greg, 2026-11-10): analyse tag/level watches too?** Tags pick sections and the courses follow, but a pool ("300-level BIOL") would read "No full slate" forever, and untagging a course's last section drops it silently | **Superseded by D25 (2026-11-10).** Every watched preset is analysed; watching is the user's statement that students take all its courses, said in one sentence when Watch is ticked; drop-outs get a before-and-after notice |
 | Q36 | **One concept, not two? (Greg, 2026-11-10).** Is the split between course-list and tag watches helping? First proposal: an access watch is a tag you choose to watch (course tags as course lists) | **Superseded by D25 (2026-11-10):** a watch is a filter preset you choose to watch. Keeps the tag idea's gains (one idea, no semester copying, section-level picking) without its costs (outside courses can't carry this database's tags; on/off living on a tag) |
 | Q34 | **Stepping order.** Stable (course, then section code) or by usefulness (fewest days, earliest finish)? | Stable first; preference ordering belongs with Q14. **Answered by Greg 2026-11-23: stable, by course then section code** |
+
+---
+
+## Phase 4: Data design (LOCKED 2026-11-23)
+
+*Written from Phases 1–3 as locked (D28: a watch is a watched tag; 8f: the setup wizard, courses own their components;
+6e: the Multi-campus box) and from the code (read 2026-11-23). Supersedes the stored-data notes in earlier phases where
+they differ (presets, copied watch rows, per-semester watches).*
+
+### Stories (today vs. with Phase 4)
+
+**Alice upgrades.** Today Alice's database has two watches in Fall 2026: "CIVL Y3 T1" (the tag CIVL Y3 T1) and
+"MATH111, MATH152" (two courses). With 1.2.5, the first time anyone opens the database the app turns them into tags in
+the same step that upgrades the file's format (the existing open-time migration, with its backup first): CIVL Y3 T1 is
+simply marked watched; a new tag "MATH111, MATH152" goes on both courses and on their Fall 2026 sections, and is
+watched. The old watch rows go. Alice sees the same two watches, by the same names, covering the same sections.
+
+**Bob opens read-only first.** Bob, read-only, opens the database before any 1.2.5 writer has saved. His private
+snapshot gets the same conversion (it is a copy; nothing reaches the shared file), so he sees the same two watches.
+When Alice later saves, the shared file holds the converted data and Bob's next refresh needs no conversion.
+
+**Carol on 1.2.4.** Once Alice's 1.2.5 has saved, the database is stamped 1.2.5 and Carol's 1.2.4 opens it read-only
+(today's mechanism, with its "update from the Store" banner). She can never write old-style watches into a converted
+database.
+
+**Dana sets up access checks.** Dana answers the wizard's Yes, marks Lecture and Laboratory as components, and clicks
+These are right. One save stores: the "set up" mark, Component on the two section types, and a components list on every
+course. Nothing else is written, before or after.
+
+### What is stored (all additive, all in existing tables)
+
+| Where | Field (JSON in `data`) | Meaning | Absent / default |
+|---|---|---|---|
+| `SchedulingEnvironmentValues`, type `tag` | `isAccessWatch` (bool) | The tag is watched: an access watch named by the tag, read live (D26, D28) | Not watched |
+| same | `watchMultiCampus` (bool) | The watch's Multi-campus box (6e) | Off |
+| `SchedulingEnvironmentValues`, type `sectionType` | `isComponent` (bool) | Rule 4: this section type is a component type | Not a component |
+| `Courses` | `componentTypeIds` (list of section-type IDs, or null) | Rule 5: the course's components; empty = one section of any type | null = never set: the analyzer uses the suggestion (before setup, or a course made by a path that didn't set it) |
+| `Sections` | `deliveryTypeId` (ID or null) | D14; its own small spec | No delivery type |
+| `SchedulingEnvironmentValues`, new type `deliveryType` | (name, sort order, as other types) | D14's user-defined list | — |
+| `AppConfiguration` | key `AccessChecksSetUp`, value `1` | The wizard was finished (either answer). Before it: the suggestion, and Access invites the setup (rule 6) | Not set up |
+
+- **No new table, so no readable-column question** (the tables keep their readable `type`/`name`, `calendar_code`,
+  `section_code` columns). `AppConfiguration` is already a readable key/value table.
+- **Why on the tag, not a watch table:** the watch's name is the tag's (renaming renames it), deleting the tag ends the
+  watch with nothing left dangling, and there is nothing to keep in step. The cost is two tag-only fields on the shared
+  `SchedulingEnvironmentValue` class, as `SectionCodeAbbreviation` already is campus-only. They are written only when
+  true, so other types' rows don't grow.
+- **Read-time tolerance:** a `componentTypeIds` entry whose section type is deleted or no longer a component is ignored.
+  Unmarking a type rewrites the affected courses in the same save (the mock's "It comes off BMEG 230 and CHEM 201"), so
+  the stored lists say what the user was told.
+- **Never stored** (unchanged from earlier phases): slates, roles, seats, notices, Check-all results, subsets, pins, the
+  suggestion. Local view settings (Components column folded, front tab) go in the computer's app settings.
+
+### The upgrade of today's watches (D28)
+
+A step in `DatabaseContext.Migrate` (schema version 1 → 2), inside its transaction, after its pre-migration backup.
+It runs wherever that migration runs: a writer's working copy (reaching the shared file with the next ordinary save,
+as the `MinimumVersionToWrite` stamp does) and a reader's private snapshot (never written back).
+
+For each `ProgramWatches` row:
+1. **One tag, no levels:** mark that tag watched (if the watch is enabled). No new tag, no section writes.
+2. **A course list:** a new tag named as the watch, added (never replacing) to each course's `TagIds` (so new sections
+   get it) and to the `TagIds` of those courses' sections in the watch's semester (Q38). Watched if enabled.
+3. **Several tags, or levels:** a new tag named as the watch, added to the sections the watch covered in its semester
+   (today's rule: all the tags, any level). Not on courses. Watched if enabled.
+4. **Same name in several semesters:** one tag; each row tags its own semester's sections; watched if any row is enabled.
+5. **New tag IDs are the old watch IDs** (for rows of the same name, the first by semester order), so every copy that
+   converts gives the same result.
+6. **Name clash** with an existing tag of another meaning: Q37. **Disabled watches:** Q39.
+7. **The rows are deleted** in the same transaction. Kept rows would be dead data, and today's semester delete refuses
+   while a semester has watch rows ("still contains 2 access watches"), naming watches the user can no longer find. The pre-migration backup holds them.
+8. Multi-campus is off for every converted watch (today's behaviour is pairwise, campus-blind; one campus is the new
+   default, 6e).
+
+### Copy Semester (gap found while writing this phase)
+Watches now live on sections' tags, and Copy Semester copies tags only when "Include all tags" is ticked. Unticked, the
+new semester's sections carry no watched tag, so every watch is empty there: Phase 1's "rebuilt by hand every term"
+problem, back in a new form. Q40.
+
+### Production and data safety (Phase 4)
+- **`MinimumVersionToWrite`: Yes** (watched tags, Multi-campus, components, the set-up mark, delivery type; and the
+  conversion itself). Set `ThisReleaseRequires`/`ThisReleaseReason` for the release that ships it, and make the Store
+  submission mandatory. Reason wording for Greg at release time.
+- **Four rules.** (1) The conversion and every new field reach the shared file only through the existing checked copy
+  and atomic rename. (2) Only a session holding the lock, with the file as last seen, ever saves them; a reader converts
+  only its own snapshot. (3) No one's unsaved work is involved: the conversion runs at open, before any edit, after the
+  backup. (4) The upgrade asks nothing; the What's-new banner says in one line that watches are now watched tags
+  (wording for Greg).
+- **Must fix with it (Phase 5):** `ReinitializeConnection` (snapshot refresh, D' replaced) skips `Migrate`, so a reader
+  refreshing onto a file a 1.2.4 writer saved would see unconverted rows and no watches. Every path that opens a fresh
+  copy must run the conversion when the schema version is below 2.
+- **Edge accepted:** versions before 1.2.3 ignore the stamp and could still add old watch rows to a converted file; the
+  new version never reads them. (Store installs auto-update; very old installs are unlikely.)
+- **Persisted-record rules:** code that rebuilds a course (`CourseListViewModel`'s copy, Edit Course), a tag or section
+  type (Scheduling Environment editor) or a section must copy the new fields and call `WithExtensionDataFrom`; extend
+  `SectionCloneTests` and the extension-data tests to the new fields.
+- **Rewrites of many rows,** all user-started and all ordinary saves: the wizard's These are right (every course),
+  unmarking a component type (affected courses), and the conversion (affected sections). Phase 5 checks their save time
+  on a large database (UBC).
+- **WASM demo:** demo repositories build their sample watches as watched tags directly; no conversion there.
+- **Existing hazard noted, not changed:** Edit Course's "apply tags to all sections" overwrites every section's tags in
+  every semester, so it would strip cohort tags (watches) from sections. It predates this feature; Phase 3 kept tagging
+  as it is. Worth a line in Phase 5's risk list.
+
+### Questions (Phase 4)
+*Greg, 2026-11-23: Q37–Q40 answered as recommended. Q40's line before Copy is draft wording, still to approve.*
+
+
+| Q | Question | Recommendation |
+|---|---|---|
+| Q37 | **A converted watch's name is already a tag** with a different meaning (watch "Civil" on tags CIVL Y3 + CIVL Y4, and a tag "Civil" exists) | Don't reuse it: name the new tag "Civil (watch)" (then "(watch 2)"…). Reusing would add sections to someone else's tag and change what it filters. A single-tag watch of the same name is case 1, so no clash arises there |
+| Q38 | **Which semesters' sections** a course-list watch's new tag goes on | Its own semester only, plus the courses (for new sections). That is exactly what the watch covered; later semesters had no watch before, so nothing is lost. Tagging every semester would rewrite past terms and guess at future ones |
+| Q39 | **Disabled watches** (3 of the 6 in your test databases) | Convert them too, as unwatched tags (single-tag ones: nothing to do), so nothing the user made disappears; they can delete the tag. Alternative: drop them (the backup holds them) |
+| Q40 | **Copy Semester and watched tags** (above) | Like rule 36: copy watched tags even when "Include all tags" is unticked, with one line before Copy ("Watched tags are still copied, so access watches carry over"). Wording for Greg |
+
+---
+
+## Phase 5: Architecture (LOCKED 2026-11-23)
+
+*From Phases 1–4 as locked and the code as read on 2026-11-23. Names are working names; Phase 6 may adjust them.*
+
+### Stories (today vs. with Phase 5)
+
+**Alice drags PSYCH 101 A onto CHEM 213 A.** Today the grid scans only the sections on screen, pair by pair, after the
+save. With Phase 5, while she drags, the drag asks the engine one what-if question (the semester with that one meeting
+moved) and the message bar says "Access: Enviro Y2 would have no full slate." She drops anyway; the save reloads the
+section store, the engine reruns every watch on the saved semester, compares with the run before, and the Access tab
+gets one Lost notice. The editor, the drag, the panel and the marks all asked the same engine, so they agree.
+
+**Bob saves on another computer.** Alice's reader refresh brings Bob's change in. The same reload path reruns the
+analysis and compares, so Alice gets Bob's notice too (Q21: notices from any saves the app sees).
+
+### Layers
+
+| Layer | What | Where (proposed) | Depends on |
+|---|---|---|---|
+| **1. Data** | Phase 4's fields; the migration step; a way to read and write the set-up mark; one query for the suggestion | `Models/`, `Data/DatabaseContext.Migrate`, repositories | SQLite |
+| **2. Engine** (D8) | Pure, UI-free, no database: the conflict test, coverage, components, slates, roles, best partial, costly conflicts, seats, notices, Check all courses | `Services/Access/` | Models only, so it builds for WASM |
+| **3. Session state** | `AccessState`: the current analyses of every watch for the loaded semester(s), the session's notices, invalidation | `Services/Access/AccessState.cs` (singleton) | Engine, `SectionStore`, `SemesterContext`, repositories |
+| **4. UI** | The Access tab (list, detail, Check all courses), the setup wizard, the grid marks and picture, stepping, the editor pointer, the drag line, the eye on tags, Courses' components, Copy Semester, import | ViewModels + views | Session state and engine; never computes access itself |
+
+### Layer 2: the engine (`Services/Access/`)
+
+All static or immutable, unit-testable on plain lists, like `RoomConflictService` today.
+
+- **`SectionOverlap.Conflicts(a, b)`** (rule 13): moved out of `ProgramConflictService.FindOverlappingMeetings`, plus a
+  meeting-level variant that returns the overlapping meeting pairs for drawing marks. The one conflict test; the Slot
+  Browser will call it too.
+- **`AccessInputs`** (the semester view, rules 28–30): the semester's saved sections with a **`Proposal`** laid over
+  them (sections replaced, added, removed), plus lookups the engine needs (courses with their components, which
+  section types are component types, campuses, whether setup is done, the suggestion). Built once per question; an
+  empty proposal is the saved state, so there is no second code path (D11).
+- **`AccessWatch`**: tag ID, name (read live from the tag), Multi-campus. Coverage (rule 1, D28): the view's sections
+  that carry the tag.
+- **`Components.Resolve(course, inputs)`** (rules 4–10, 8a): the course's components (stored list, or the suggestion
+  when null), and per component its candidate sections; plus the findings: missing components, sections not counted
+  (no type), sections of a component type the course doesn't list. The **suggestion** is computed from one query (the
+  distinct course and section type pairs over every semester) cached by `AccessState` and refreshed on save.
+- **`SlateSearch`** (rules 16–23, 15/6e): one section per component of each chosen course, smallest group first,
+  pruning conflicts and (Multi-campus off) campus mixes. Entry points: count up to the cap; first slate with a section
+  fixed (usable); any slate without a section (essential); best partial over subsets; step through slates in the
+  stable order (Q34); pins narrow a group to one candidate.
+- **`Analysis`** (immutable result of `Analyze(inputs, watch, subset, pins)`): health, slate count, roles per section,
+  best partial and left-out courses, costly conflicts (rule 33 and Q22) and all conflicts (Mark all conflicts),
+  campus-mix counts (6e), untagged-sections flag (8g), findings. Never stored (D10).
+- **`Notices.Compare(before, after)`** (rule 31): Lost, Component missing, Newly essential by timing, Restored, every
+  slate mixes campuses (6e). The pointer's lines (7b) are the same comparison on a what-if.
+- **`CheckAllCourses.Run(inputs)`** (rules 39–41, round 9): each offered, complete course alone.
+- **`Seats`** (rules 24–27): see Q42.
+
+### Layer 3: session state (`AccessState`)
+
+- **Owns** the analyses for the loaded semester(s) and the session's notices (memory only, Q21), and raises `Changed`.
+- **Recomputes** on `SectionStore.SectionsChanged` (own saves, reader refreshes, reloads after other users' saves), on
+  semester change, and when a watched tag, a component type or a course's components change. Not on filter changes:
+  the analysis is the whole semester (rule 29). After a recompute caused by a save or reload it runs
+  `Notices.Compare` against the previous analyses; after a semester change it doesn't (that is not a change to the
+  schedule).
+- **What-if:** `WhatIf(proposal)` returns the pointer lines for a proposal without touching the saved analyses. The
+  section editor gets it through the same hook as its live room and instructor check (`editVm.CheckConflicts` in
+  `SectionListViewModel`); the meeting drag calls it on each new drop target.
+- **Replaces** the grid's `ProgramConflictService.DetectConflicts` call: the grid asks `AccessState` for the marks of
+  the loaded semester(s) and draws those on visible tiles (Q41). `ProgramConflictService`, `ProgramWatch`'s repository,
+  `WatchCreationViewModel` and the popup's VM go once the migration step exists (the class stays only as the shape
+  the migration reads, or the migration reads the JSON directly).
+
+### Layer 4: UI (one line each; the screens are Phase 3's)
+
+- **Access tab** beside Workload, each detachable on its own (D17). `DetachablePanel` has no tabs today: a small tab
+  strip in the bottom-left slot hosting two `DetachablePanel`s, each still using today's detach mechanism.
+- **Setup wizard:** one VM; These are right writes the set-up mark, the section types' Component flags and every
+  course's components in **one transaction** through the ordinary repositories (as Copy Semester does).
+- **Eye on tags** (Tags popup, Scheduling Environment → Tags): a tag update. Read-only: disabled, as in the mock.
+- **Grid:** marks from `AccessState`; the open watch's picture and stepping use the Room Browser's ghost-tile look.
+  Per-tile marks are set directly, never class-conditioned styles (CLAUDE.md).
+- **Courses:** the Components column and Edit Course's group; Copy Semester's rule 36 and Q40 lines; import's rule 8b.
+
+### Saving and the four rules
+
+New writes, all ordinary edits through the existing save: the eye (one tag row), Multi-campus (one tag row), the
+wizard (one transaction), unmarking a component type (the type and the affected courses, one transaction), Edit
+Course, import's pre-fill (inside the import's own transaction). **No section is written by any new UI**, so the
+`OpenCardMessages.WhyRefused` rule (saving sections from outside the card) doesn't arise. The analysis only reads
+memory.
+
+- **Rules 1–2:** unchanged: every write goes into D' and reaches D only through the checked copy and the atomic
+  rename, while the lock is ours. A reader's eye, wizard and Multi-campus are disabled.
+- **Rule 3:** nothing new holds unsaved work. The what-if never writes.
+- **Rule 4:** the notices and lines are the approved wordings; nothing asks twice.
+- **The migration (Phase 4)** reaches D with the writer's first save, together with the `MinimumVersionToWrite` stamp,
+  because migration writes don't call `MarkDirty` (to confirm against `CheckoutService`'s unchanged-save logic before
+  building). So 1.2.4 turns read-only exactly when converted data lands.
+  A writer who opens and edits nothing leaves D unconverted; the next open converts again with the same IDs.
+- **Fix-on-fix check (working agreement).** What else runs when the migration runs: at open, nothing (the UI isn't up).
+  At a reader refresh or a D' replacement (`ReinitializeConnection`, which must now run the migration when the schema
+  version is below 2): the reader poll triggered it, so no save or heartbeat is in the same connection; the swap
+  already closes and reopens the connection; the pre-migration backup is skipped for a reader's snapshot (it is a
+  throw-away copy). Tests: a harness case for a reader refreshing onto an unconverted file a 1.2.4 writer saved; a
+  writer whose D' is replaced by an unconverted copy; converting twice gives identical rows.
+
+### Performance
+
+- Typical watch (5 courses, a few components, under 50 sections): well under a millisecond per analysis. The budget for
+  recomputing every watch after a save is 30 ms (the Phase D lockup baseline for bulk work); the slate count is capped
+  (rule 19) and the role searches stop at the first slate.
+- **Measure on UBC's real database** (dev machine, read from a copy) before building the UI: the largest watch, every
+  watch at once, and Check all courses. If a watch exceeds the budget, the analysis moves off the UI thread with the
+  result posted back; the design keeps that possible because the engine is pure.
+- The what-if during a drag runs only the watches covering the dragged section, once per new drop target.
+- The suggestion query (distinct course and section type pairs, every semester) runs once per reload, not per watch.
+
+### Tests (by layer)
+
+- **Engine:** unit tests on hand-built sections for every rule (1–41, 8a, 8b, 6e), including Q22's three-course case,
+  pins, subsets, the cap, odd/even weeks, sections without times, Multi-campus on and off. The mock's scenarios
+  (`window.__access`) become test cases.
+- **Data:** migration tests for each conversion case (one tag; course list; several tags or levels; same name in
+  several semesters; name clash, Q37; disabled, Q39; run twice); extension-data and clone tests for the new fields;
+  `MinimumVersionToWrite`'s pinned test when it is set.
+- **Session state:** notices from a save, from a reader refresh, none from a semester change; what-if leaves saved
+  analyses alone.
+- **Harness:** the refresh and D'-replacement cases above.
+
+### Decisions (Phase 5)
+
+| # | Decision | Rationale |
+|---|---|---|
+| D29 | **The engine lives in `Services/Access/`: static and immutable types, models only, no DI; only `AccessState` is a registered service** (Greg, 2026-11-23) | Matches `RoomConflictService` and its siblings; pure functions test on hand-built lists with nothing to fake; no SQLite reference, so it builds for WASM; every caller (pointer, drag, panel, marks, later the Slot Browser) reaches the same engine with no wiring, so they can't disagree (D8); all session memory (notices, last analyses) sits in the one service. Settings such as the slate cap are passed as parameters |
+
+### Questions (Phase 5)
+*Greg, 2026-11-23: Q41–Q43 answered as recommended; Q44 became decision D29.*
+
+
+| Q | Question | Recommendation |
+|---|---|---|
+| Q41 | **Marks when the other section is filtered off the grid.** Today's code deliberately scans only visible sections (out-of-view conflicts were puzzles). The analysis is now the whole semester (rule 29) | Mark the visible section; its hover names the other section and says it's hidden by the filters; no joining line. Health and notices never depend on filters |
+| Q42 | **Seats in the first analyzer piece?** Three or more courses need a small linear-program solver (no library today), and neither real database has capacities set (Q20) | A later piece: the first analyzer shows the "set section capacities" hint only. Avoids a solver nobody can see working yet |
+| Q43 | **Several semesters selected** (multi-semester view). Not covered by Phases 1–4. A slate is within one term | Analyse each selected semester separately. A watch's row shows its worst semester, named ("Winter: no full slate"); the detail has a semester switch when more than one is selected; marks follow each semester's sub-column |

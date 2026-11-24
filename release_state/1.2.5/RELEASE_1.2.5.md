@@ -63,20 +63,19 @@ Notes: [lost-notices/NOTES.md](lost-notices/NOTES.md). Source: backlog WN1, plus
 
 **Goal:** administrators see at a glance whether students can still take every course of a watched set (a full "slate" of one section per component), get notices when a change breaks it, and create watches easily. Done means the feature in the app, field-tested.
 
-**State:** Design in progress (progressive spec) on branch 1.2.5. Phases 1, 2 and 3 locked (Phase 3 on 2026-11-23, after wireframe rounds 1-9; the last, Check all courses, settled the same day). Next is Phase 4, data design; no code yet, nothing broken.
+**State:** Design in progress (progressive spec) on branch 1.2.5. Phases 1-5 locked (4, data design, and 5, architecture, both on 2026-11-23). Next is Phase 6, the implementation plan. No code yet, nothing broken.
 
 <details>
-<summary>Steps (5 left)</summary>
+<summary>Steps (3 left)</summary>
 
-1. Phase 4: data design (ask Greg which readable columns any new table needs; check against `MinimumVersionToWrite`).
-2. Phase 5: architecture.
-3. Phase 6: implementation plan, in the delivery order (delivery type first, easy watches, then the analyzer).
-4. Build in pieces, each with tests and compile checks.
-5. Full suite, field test, answer the `MinimumVersionToWrite` question.
+1. Phase 6: implementation plan, in the delivery order (delivery type first, easy watches, then the analyzer).
+2. Build in pieces, each with tests and compile checks.
+3. Full suite, field test, answer the `MinimumVersionToWrite` question.
 
 </details>
 
 **Open questions:**
+- Copy Semester's line about watched tags (Q40): draft wording to approve.
 - The import summary's line for pre-filled components (rule 8b): wording to draft for Greg.
 - Check all courses' read-only "not set up" comment: draft wording, awaiting Greg's approval.
 - The left-open Phase 2 items (Q18 extra component names, Q28).
