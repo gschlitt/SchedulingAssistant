@@ -63,23 +63,23 @@ Notes: [lost-notices/NOTES.md](lost-notices/NOTES.md). Source: backlog WN1, plus
 
 **Goal:** administrators see at a glance whether students can still take every course of a watched set (a full "slate" of one section per component), get notices when a change breaks it, and create watches easily. Done means the feature in the app, field-tested.
 
-**State:** Design in progress (progressive spec) on branch 1.2.5. Phases 1 and 2 locked; Phase 3 (UX) wireframe rounds 1-7 settled (round 7, the editor pointer and its lines during a meeting drag, settled by Greg 2026-11-20); round 8 (components in Courses) revised as 8b-8e; 8f (a setup wizard when the first watch is made; each course owns its components) built 2026-11-23. Same day, D28: filter presets go; watches are made only on tags; built as 8g. Round 8 settled by Greg 2026-11-23 (8f, 8g, rule 36, import pre-fill). Phases 4-6 and all code still to come; nothing broken.
+**State:** Design in progress (progressive spec) on branch 1.2.5. Phases 1, 2 and 3 locked (Phase 3 on 2026-11-23, after wireframe rounds 1-9; the last, Check all courses, settled the same day). Next is Phase 4, data design; no code yet, nothing broken.
 
 <details>
-<summary>Steps (6 left)</summary>
+<summary>Steps (5 left)</summary>
 
-1. Round 9 (Check all courses), one screen per round, until Phase 3 is settled; Greg locks Phase 3.
-2. Phase 4: data design (ask Greg which readable columns any new table needs; check against `MinimumVersionToWrite`).
-3. Phase 5: architecture (including whether `DetachablePanel` can do tabs).
-4. Phase 6: implementation plan, in the delivery order (delivery type first, easy watches, then the analyzer).
-5. Build in pieces, each with tests and compile checks.
-6. Full suite, field test, answer the `MinimumVersionToWrite` question.
+1. Phase 4: data design (ask Greg which readable columns any new table needs; check against `MinimumVersionToWrite`).
+2. Phase 5: architecture.
+3. Phase 6: implementation plan, in the delivery order (delivery type first, easy watches, then the analyzer).
+4. Build in pieces, each with tests and compile checks.
+5. Full suite, field test, answer the `MinimumVersionToWrite` question.
 
 </details>
 
 **Open questions:**
 - The import summary's line for pre-filled components (rule 8b): wording to draft for Greg.
-- Phase 3 questions Q29-Q34, and the left-open Phase 2 items (Q18 extra component names, Q28).
+- Check all courses' read-only "not set up" comment: draft wording, awaiting Greg's approval.
+- The left-open Phase 2 items (Q18 extra component names, Q28).
 - Does the whole feature fit 1.2.5, or does only the first piece (delivery type, easy watches) ship now?
 
 Notes: [access-analyzer/NOTES.md](access-analyzer/NOTES.md). Design: [designs/1.2.5/access-analyzer.md](../../designs/1.2.5/access-analyzer.md).

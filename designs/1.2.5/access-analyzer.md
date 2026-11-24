@@ -1,11 +1,11 @@
 # Access Analyzer and Easy Access Watches — Progressive Design Spec
 
 ## Status
-Current phase: **3 — UX Sketch, in wireframe rounds** (rounds 1–7 settled; D17, D26, D28 agreed; D25 superseded by D28; the rest of the
-draft is ideas to try). Phase 2 locked 2026-11-10
+Current phase: **4 — Data design.** Phase 3 locked 2026-11-23 (wireframe rounds 1–9 settled; D17, D26, D28 agreed; D25
+superseded by D28; Q29–Q34 answered; where the draft sections and a round differ, the round wins). Phase 2 locked 2026-11-10
 (Q18's extra component names and Q28 left open, not blocking); Phase 1 locked 2026-11-06.
 Last session: 2026-11-23
-Next step: round 9, Check all courses (see the rounds table). State of the work: the 1.2.5 release ledger.
+Next step: Phase 4, data design. State of the work: the 1.2.5 release ledger.
 Release: 1.2.5 (added 2026-11-16); whether the whole feature or only the first piece ships in it is still open
 
 ---
@@ -562,7 +562,7 @@ list, inferred from codes and confirmed like components, would close it. It woul
 
 ---
 
-## Phase 3: UX Sketch (DRAFT 2026-11-10, not locked)
+## Phase 3: UX Sketch (LOCKED 2026-11-23)
 
 Screens, words and interactions. No code, tables or classes (Phases 4–5). Sketches are ASCII; sizes are
 indicative. Decisions D17 onward are **proposed** until Greg locks the phase.
@@ -582,7 +582,38 @@ shows; the sections below are ideas to try until a round confirms them.
 | 6 | Conflict marks (the "teal boxes", rule 33, Q16, Q22, D24) with a Today / Round 6 switch, and delivery type (D14): editor, card, filter, Scheduling Environment, Copy Semester (`access-panel-r6.html`) | Reviewed 2026-11-18 (points below); 6b built (Mark all conflicts); 6c built 2026-11-19 (which sections a watch uses; one-section wording); 6d built 2026-11-19 (why no full slate; missing component, agreed 2026-11-20); 6e built 2026-11-20 (Multi-campus box per watch, off by default); **6b–6e settled by Greg 2026-11-20** |
 | 7 | The editor pointer (D6, D22, rule 32): the pointer, its Open, the open watch's what-if line, Apply turning it into a notice; 7b: the same lines during a meeting drag (`access-panel-r7.html`) | Built 2026-11-20; Greg answered the six questions the same day (below); 7b built and approved; **settled 2026-11-20** |
 | 8 | Components in Courses (D23, rules 4-8, 36-38): the Components column, the Components group in Edit Course, Edit components from a watch, Copy Semester's rule 36 line (`access-panel-r8.html`) | Built 2026-11-20; Greg's first look the same day; 8b built (components, always listed, quick confirm); 8c (the column folds); 8d (section types say which are components; replaces inferred, Confirm and Confirm all); 8e (no Edit components in a watch); 8f (setup wizard; courses own their components; rule 8a), built 2026-11-23; 8g (D28: presets gone, watches only on tags; the untagged line), built 2026-11-23; 8f and 8g approved by Greg 2026-11-23 (wording to be fine-tuned by Greg); rule 36 (Q32) and import pre-fill (rule 8b) agreed the same day. **Settled 2026-11-23** |
-| later | Check all courses. (Copy Semester's access-watch box went with D25: presets have no semester.) | — |
+| 9 | Check all courses (D16, rules 39-41): the results screen, a course's picture on the grid, before setup and setup answered No, Q28's line (`access-panel-r9.html`) | Built 2026-11-23; before-setup changed by Greg the same day (wizard first; read-only comment); campus rule, quiet missing components and out-of-date results kept as built. **Settled 2026-11-23** (Copy Semester's access-watch box went with D25: presets have no semester.) |
+
+**Round 9 (built and settled 2026-11-23).** Greg's answers before building (2026-11-23): settle all four pieces
+(the results screen, clicking a course to see it on the grid, what happens before setup, Q28); a component with no
+sections this term goes in a quiet second list; rule 8a's sections are listed there too; the button stays in the
+Access tab header. As built:
+- *Results* open inside the Access tab like a watch's detail: "‹ All watches", "Check all courses · Fall 2027",
+  **Check again**. Heading "2 courses need a look:", then one red ▲ line per problem, in a watch's detail wording: "BMEG
+  230 can't be taken: its labs all conflict with its only lecture (101)."; "BIOL 340 L1 is stranded: it conflicts with
+  BIOL 340 A, which every slate uses. No student taking BIOL 340 can use it." Nothing found: "No problems in 4 courses
+  with more than one component."
+- *Worth a look* (grey, below): "BMEG 230 has no Discussion sections this term, but Discussion is one of its
+  components."; rule 8a's sentence; "BMEG 230 X01 has no section type, so it isn't counted." Each has **Open in
+  Courses** (Edit Course for that course) or **Show** (selects the section). A course with a missing component is not
+  also judged for slates (rule 40).
+- *A problem line* opens that course as a one-course watch (rule 39): its picture on the grid, health line, flags,
+  costly-conflict marks, pins and stepping; "‹ Check all courses" or ✕ Close goes back to the results. Its header says
+  "BMEG 230 checked on its own: all its sections this term. Not a watch; nothing is saved." Never counted in the
+  filter-bar summary or listed as a watch.
+- *Out of date:* after any change the results stay, under "These results are from before the last change. Click Check
+  again to update them."
+- *Before setup* (Greg, 2026-11-23, replacing a first build that ran on the suggestion): clicking Check all courses
+  opens the setup wizard first, as making a watch does; the check runs when it finishes, not if it's cancelled.
+  Read-only: no check, one quiet comment (draft) "Access checks aren't set up for this database yet. Someone who can
+  edit it needs to set them up before courses can be checked." *Setup answered No:* "Nothing to check: when access checks were set up, each course was said to take just one section." plus how to
+  change it.
+- *Foot:* "Checked each of the 4 courses with more than one component on its own (14 courses offered this term)." and
+  always (Q28) "Labs set up as separate courses (such as BIOL 111 and BIOL 111LAB) are checked together only by a watch:
+  tag both courses and watch the tag."
+- *Settled by Greg (2026-11-23):* a course on its own follows the one-campus rule (BIOL 201 L3 at Chilliwack is
+  reported stranded, its only lecture being at Abbotsford); missing components stay quiet although a watch calls them
+  "No full slate" (6d); out of date keeps the old results. Wording as built, to be fine-tuned like rounds 5-8.
 
 **Round 8, Greg's first look (2026-11-20).**
 1. **"Part" becomes "component"** everywhere (done throughout; see the note under Terms).
@@ -1415,6 +1446,7 @@ not a detail is open. Tag/level watches keep today's boxes. No box for harmless 
   is taught" hint. The "isn't counted" flag names section type only. The rest is delivery type's own small spec.
 
 ### 9. Check all courses (D16, rules 39–41)
+*Superseded by round 9 (`access-panel-r9.html`, above); kept as the first sketch.*
 Opens inside the tab like a detail:
 ```
  ‹ All watches    Check all courses — Winter Term 1 2026-27     [Check again]
@@ -1461,11 +1493,11 @@ Opens inside the tab like a detail:
 
 | Q | Question | Recommendation |
 |---|---|---|
-| Q29 | **Where the panel lives.** Tab beside Workload (bottom-left, 440 × 250 by default) vs. its own panel right of the grid vs. a bigger popup | Tab beside Workload (D17). Phase 5 risk: `DetachablePanel` may not do tabs today; fallback is a third panel stacked in the left column with a splitter. Is that slot big enough in your daily use? |
-| Q30 | **Marks.** ▲ / ● / ○; ● (essential by timing) may be too loud for "fine, but fragile" | ▲ attention, ● access colour, ○ faint. Or drop ● and let "depends on" in the line say it |
-| Q31 | **Should a new notice do more than change the summary and the tab?** (e.g. an app notification, mainly for other users' saves arriving on reload) | No: the pointer already warned before one's own save, and interrupting for others' saves is what D4 avoids. Revisit if testers miss notices |
+| Q29 | **Where the panel lives.** Tab beside Workload (bottom-left, 440 × 250 by default) vs. its own panel right of the grid vs. a bigger popup | Tab beside Workload (D17). Phase 5 risk: `DetachablePanel` may not do tabs today; fallback is a third panel stacked in the left column with a splitter. Is that slot big enough in your daily use? **Answered by Greg 2026-11-23: the slot is fine, and `DetachablePanel` can do tabs (no fallback needed)** |
+| Q30 | **Marks.** ▲ / ● / ○; ● (essential by timing) may be too loud for "fine, but fragile" | ▲ attention, ● access colour, ○ faint. Or drop ● and let "depends on" in the line say it. **Answered by Greg 2026-11-23: as recommended (keep ▲ / ● / ○)** |
+| Q31 | **Should a new notice do more than change the summary and the tab?** (e.g. an app notification, mainly for other users' saves arriving on reload) | No: the pointer already warned before one's own save, and interrupting for others' saves is what D4 avoids. Revisit if testers miss notices. **Answered by Greg 2026-11-23: as recommended (No)** |
 | Q32 | **Rule 36 in Copy Semester.** Copy section types anyway for multi-component courses (line shown before Copy), warn and let the user choose, or tick-and-lock the box | Copy anyway with the line: unticking section types means "don't carry these labels", not "break access". **Answered: Greg agreed 2026-11-23** |
 | Q33 | **Un-confirming components. MOOT after 8d (2026-11-21):** ticking a course's boxes back to what its section types give returns it to following them. Can a confirmed course go back to inferred? | Not in the first version; editing the boxes covers real cases |
 | Q35 | **Reopens Q1 (Greg, 2026-11-10): analyse tag/level watches too?** Tags pick sections and the courses follow, but a pool ("300-level BIOL") would read "No full slate" forever, and untagging a course's last section drops it silently | **Superseded by D25 (2026-11-10).** Every watched preset is analysed; watching is the user's statement that students take all its courses, said in one sentence when Watch is ticked; drop-outs get a before-and-after notice |
 | Q36 | **One concept, not two? (Greg, 2026-11-10).** Is the split between course-list and tag watches helping? First proposal: an access watch is a tag you choose to watch (course tags as course lists) | **Superseded by D25 (2026-11-10):** a watch is a filter preset you choose to watch. Keeps the tag idea's gains (one idea, no semester copying, section-level picking) without its costs (outside courses can't carry this database's tags; on/off living on a tag) |
-| Q34 | **Stepping order.** Stable (course, then section code) or by usefulness (fewest days, earliest finish)? | Stable first; preference ordering belongs with Q14 |
+| Q34 | **Stepping order.** Stable (course, then section code) or by usefulness (fewest days, earliest finish)? | Stable first; preference ordering belongs with Q14. **Answered by Greg 2026-11-23: stable, by course then section code** |

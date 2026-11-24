@@ -7,7 +7,7 @@ Ledger: [RELEASE_1.2.5.md](../RELEASE_1.2.5.md). Design: [designs/1.2.5/access-a
 
 - `designs/1.2.5/access-analyzer.md`: the spec. Status block at the top; Terms (D2); decisions D1-D26; Phase 2 rules 1-41; Phase 3 wireframe rounds table.
 - `designs/1.2.5/access-analyzer-handoff.md`: older handoff (written 2026-11-10). Its branch and release notes are out of date; the ledger replaces it for state. Its summary of the method and working agreements still holds.
-- `designs/wireframes/`: the clickable HTML wireframes (rounds 1-7 settled; r7 is the editor pointer; r8, components in Courses, revised in place through 8d, awaiting review). Each round starts as a copy of the last and keeps its own file as the record. Reviewing them in Claude's browser pane: see `docs/dev/dev-machines.md` (to load an edited file afresh, close the tab and open the `file:///` URL again; reload and a same-tab navigate can keep the old page and its test clicks). `window.__access` exposes the mock's engine (`proposal`, `accessChanges`, `analysesFor`) for checking scenarios from the console.
+- `designs/wireframes/`: the clickable HTML wireframes (rounds 1-8 settled; r8 is components in Courses, the setup wizard and D28; r9, Check all courses, settled 2026-11-23; all planned rounds done). Each round starts as a copy of the last and keeps its own file as the record. Reviewing them in Claude's browser pane: see `docs/dev/dev-machines.md` (to load an edited file afresh, close the tab and open the `file:///` URL again; reload and a same-tab navigate can keep the old page and its test clicks). `window.__access` exposes the mock's engine (`proposal`, `accessChanges`, `analysesFor`) for checking scenarios from the console.
 - `designs/1.2.5/slot-browser.md`: related; its D3 level 2 is judged by whole slates.
 - Memory note `project_access_analyzer` (Greg's own working notes).
 
@@ -96,6 +96,22 @@ Ledger: [RELEASE_1.2.5.md](../RELEASE_1.2.5.md). Design: [designs/1.2.5/access-a
   types anyway for multi-component courses, with a line); new rule 8b: a course created by a section import gets its
   components pre-filled from its imported sections' component types, said in one line of the import summary (wording
   still to draft for Greg; not in the mock). Existing courses' components are never changed by an import.
+- Round 9 (Greg's answers 2026-11-23, before building): settle the results screen, a course on the grid, before setup,
+  and Q28; missing components and rule 8a sections in a quiet "Worth a look" list; button stays in the Access header.
+  Built 2026-11-23 in `access-panel-r9.html`, awaiting review (spec: "Round 9" under the rounds table). Choices made
+  while building, for Greg to confirm: a course alone follows the one-campus rule (so BIOL 201 L3 is reported stranded);
+  out of date keeps the old results; a course with a missing
+  component isn't also judged for slates (rule 40). Mock data: BIOL 340 (untagged, lab L1 on its only lecture) added;
+  Semester changes 8 drops BMEG 230's tutorials and adds ENGL 105 T1 (Discussion); the suggestion now reads this term
+  plus "an earlier term" (As planned), so a component not offered this term is still suggested. Found: "(Multi-campus
+  is off)" in the stranded reason makes no sense for a course alone, so the check drops it.
+- Round 9, Greg (2026-11-23): before setup the check doesn't run on the suggestion, since new watches don't either;
+  the button opens the wizard first (as making a watch does). Read-only before setup: no check, a quiet comment that
+  someone who can edit needs to set up first (draft wording). Built. Greg kept the other three as built (one-campus
+  rule for a course alone, missing components quiet, out of date keeps old results): **round 9 settled 2026-11-23**.
+- **Phase 3 locked by Greg (2026-11-23).** Q29: slot fine, `DetachablePanel` can do tabs; Q30 and Q31 as recommended
+  (keep ▲ / ● / ○; no app notification for notices); Q32 answered earlier; Q33 moot; Q34: stable order, course then
+  section code.
 - Round 7 as first built (2026-11-20): the pointer reads "Access: <clause>" like the
   editor's "Room conflict:" lines, because the draft's "Affects access for Enviro Y2" makes the user click to learn
   anything; at most two lines (the editor is tight; no single edit in the mock touches four watches, so the fold is at
@@ -119,7 +135,7 @@ Ledger: [RELEASE_1.2.5.md](../RELEASE_1.2.5.md). Design: [designs/1.2.5/access-a
 <details>
 <summary>Technical issues</summary>
 
-- Phase 5 risk: `DetachablePanel` may not support tabs today (fallback: a third panel with a splitter).
+- `DetachablePanel` tabs: Greg (2026-11-23) says it can do tabs, so the splitter fallback isn't needed (Q29).
 - The "teal boxes" are red in the app: `ScheduleGridView.axaml.cs` gives each conflicting entry row a radial glow
   (`ProgramConflictGlowCenter`/`Edge`) and joins cross-tile pairs with a 2 px `ProgramConflictBrush` line; no hover
   today. Pairs come from `ProgramConflictService.DetectConflicts` (any overlap between two courses of a watch).
