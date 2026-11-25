@@ -143,7 +143,7 @@ public sealed class AccessSetupService
     /// <exception cref="Exception">Any database failure, after the rollback.</exception>
     public void SaveSetup(
         IReadOnlySet<string> componentTypeIds, IReadOnlyDictionary<string, IReadOnlyList<string>> componentsByCourse) =>
-        Write(tx =>
+        Write((tx, written) =>
         {
             var types = SectionTypes();
             foreach (var type in types)
@@ -153,7 +153,7 @@ public sealed class AccessSetupService
                 type.IsComponent = want;
                 _envRepo.Update(type, tx);
             }
-            WriteCourseLists(componentsByCourse, types, tx);
+            WriteCourseLists(componentsByCourse, types, tx, written);
             _setupRepo.MarkSetUp(tx);
         });
 
@@ -227,7 +227,7 @@ public sealed class AccessSetupService
     /// <exception cref="InvalidOperationException">The write lock is not ours; nothing is saved.</exception>
     /// <exception cref="Exception">Any database failure, after the rollback.</exception>
     public void UnmarkComponent(string typeId) =>
-        Write(tx =>
+        Write((tx, written) =>
         {
             var type = SectionTypes().FirstOrDefault(t => t.Id == typeId);
             if (type is not null && type.IsComponent)
@@ -239,6 +239,7 @@ public sealed class AccessSetupService
             {
                 course.ComponentTypeIds!.RemoveAll(id => id == typeId);
                 _courseRepo.Update(course, tx);
+                written.Add(course.Id);
             }
         });
 
@@ -247,7 +248,7 @@ public sealed class AccessSetupService
     /// <exception cref="InvalidOperationException">The write lock is not ours; nothing is saved.</exception>
     /// <exception cref="Exception">Any database failure, after the rollback.</exception>
     public void SaveCourseComponents(IReadOnlyDictionary<string, IReadOnlyList<string>> componentsByCourse) =>
-        Write(tx => WriteCourseLists(componentsByCourse, SectionTypes(), tx));
+        Write((tx, written) => WriteCourseLists(componentsByCourse, SectionTypes(), tx, written));
 
     /// <summary>The section types, in section type order.</summary>
     private List<SchedulingEnvironmentValue> SectionTypes() =>
@@ -257,9 +258,10 @@ public sealed class AccessSetupService
     /// <param name="componentsByCourse">For each course id, its component type ids.</param>
     /// <param name="typesInOrder">The section types in order; lists are stored in this order.</param>
     /// <param name="tx">The open transaction, or null.</param>
+    /// <param name="written">Receives the id of every course written, for the notices' cause.</param>
     private void WriteCourseLists(
         IReadOnlyDictionary<string, IReadOnlyList<string>> componentsByCourse,
-        IReadOnlyList<SchedulingEnvironmentValue> typesInOrder, DbTransaction? tx)
+        IReadOnlyList<SchedulingEnvironmentValue> typesInOrder, DbTransaction? tx, List<string> written)
     {
         var order = typesInOrder.Select((t, i) => (t.Id, i)).ToDictionary(x => x.Id, x => x.i);
         int Rank(string id) => order.TryGetValue(id, out var i) ? i : int.MaxValue;
@@ -269,24 +271,30 @@ public sealed class AccessSetupService
             if (course.ComponentTypeIds is not null && course.ComponentTypeIds.SequenceEqual(wanted)) continue;
             course.ComponentTypeIds = wanted;   // the record read back keeps unknown JSON fields (PersistedRecord)
             _courseRepo.Update(course, tx);
+            written.Add(course.Id);
         }
     }
 
-    /// <summary>
-    /// Runs the writes in one transaction after the write-lock check, then makes the access state stale and tells the
-    /// grid. A failure rolls back (a failed rollback never masks the original exception) and rethrows, and nothing
-    /// is notified.
-    /// </summary>
+    /// <summary>Runs writes that do not write any course's list (see <see cref="Write(Action{DbTransaction?, List{string}})"/>).</summary>
     /// <param name="work">The writes; receives the transaction, or null when the context has none.</param>
-    private void Write(Action<DbTransaction?> work)
+    private void Write(Action<DbTransaction?> work) => Write((tx, _) => work(tx));
+
+    /// <summary>
+    /// Runs the writes in one transaction after the write-lock check, then makes the access state stale (naming the
+    /// courses written, so a notice can say whose components changed) and tells the grid. A failure rolls back (a
+    /// failed rollback never masks the original exception) and rethrows, and nothing is notified.
+    /// </summary>
+    /// <param name="work">The writes; receives the transaction, or null when the context has none, and a list to add the id of every course it writes to.</param>
+    private void Write(Action<DbTransaction?, List<string>> work)
     {
         if (!CanSave)
             throw new InvalidOperationException("The access setup can only be changed while this computer can save.");
+        var writtenCourseIds = new List<string>();
         using (var tx = _db.BeginWriteTransaction())
         {
             try
             {
-                work(tx);
+                work(tx, writtenCourseIds);
                 tx?.Commit();
             }
             catch
@@ -295,7 +303,7 @@ public sealed class AccessSetupService
                 throw;
             }
         }
-        _state.Invalidate();
+        _state.InvalidateAfterComponentsChange(writtenCourseIds);
         _notifier.NotifyGridContentChanged();
     }
 }

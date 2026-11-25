@@ -2,7 +2,7 @@
 
 **Goal:** to be set by Greg (the unassigned candidate work is in [backlog-1.2.5.md](backlog-1.2.5.md)).
 **MinimumVersionToWrite:** not asked yet.
-**Updated:** 2026-11-24
+**Updated:** 2026-11-25
 
 ## Work
 
@@ -64,7 +64,7 @@ Notes: [lost-notices/NOTES.md](lost-notices/NOTES.md). Source: backlog WN1, plus
 **Goal:** administrators see at a glance whether students can still take every course of a watched set (a full "slate" of one section per component), get notices when a change breaks it, and create watches easily. Done means the feature in the app, field-tested.
 
 **State:** On branch 1.2.5, design locked; pieces A–E committed (E hand-checked by Greg, 2026-11-25; full suite
-passes). Next is piece F. B and D must ship together with E (Q46). The whole feature ships in 1.2.5 (Q45).
+passes). Piece F built, not committed (2026-11-25): awaits Greg's hand check. B and D must ship together with E (Q46). The whole feature ships in 1.2.5 (Q45).
 
 <details>
 <summary>Steps (3 left)</summary>
@@ -76,7 +76,8 @@ passes). Next is piece F. B and D must ship together with E (Q46). The whole fea
 </details>
 
 **Open questions:**
-- Check all courses' read-only "not set up" comment: draft wording, awaiting Greg's approval.
+- F's draft wording (in the notes): Check all courses' read-only comment, the general notice cause, the components causes.
+- Round 6d's day widths while a watch is open: build in F, or leave out?
 - The left-open Phase 2 items (Q18 extra component names, Q28).
 - The too-big-to-check line for a watch over 30 courses (Q53): wording to draft for Greg in F.
 - Should the wizard's question 2 start with every section type ticked (his new Section Type text says most are components)?

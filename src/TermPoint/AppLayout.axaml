@@ -112,6 +112,21 @@
     <x:Double x:Key="MeetingDragGhostOpacity">0.8</x:Double>
     <!--  Opacity of the dragged line in its original tile while the drag lasts  -->
     <x:Double x:Key="MeetingDragSourceOpacity">0.4</x:Double>
+
+    <!--  Access Analyzer: an open watch's picture on the grid  -->
+    <!--  Opacity of a line outside the open watch's ticked courses, or not in the slate being stepped to  -->
+    <x:Double x:Key="AccessFadedOpacity">0.3</x:Double>
+    <!--  Opacity of a stranded line (no slate can use it): dimmed, but still readable  -->
+    <x:Double x:Key="AccessStrandedOpacity">0.55</x:Double>
+    <!--  Outline of a line every slate uses (essential by timing)  -->
+    <x:Double x:Key="AccessEssentialBorderThickness">2</x:Double>
+    <!--  The ▲ ◆ ● mark and the pin after a line's label  -->
+    <x:Double x:Key="AccessTileMarkSize">8</x:Double>
+    <Thickness x:Key="AccessTileMarkMargin">3,0,0,0</Thickness>
+    <!--  The legend bar above the grid while a watch is open  -->
+    <Thickness x:Key="AccessLegendPadding">6,3</Thickness>
+    <!--  Space between the sentences of a tile's Access hover (each conflict line is a notice of its own)  -->
+    <x:Double x:Key="TileTooltipNoticeSpacing">6</x:Double>
     <!--  Thickness of the ghost's frame  -->
     <x:Double x:Key="MeetingDragGhostBorderThickness">2</x:Double>
     <!--  Gap between the pointer and the time label (to the right and below)  -->

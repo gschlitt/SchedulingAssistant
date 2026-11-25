@@ -770,7 +770,12 @@ public partial class App : Application
         services.AddSingleton<AccessWatchToggler>();
         // Every write of the access setup (wizard, Component boxes, courses' components) and the requests to open the wizard.
         services.AddSingleton<AccessSetupService>();
+        // The open watch (ticks, pins, stepping, Show other courses): read by the Access tab's detail, the grid, its legend bar
+        // and the right-click menu. Built right after AccessState so it drops its cache before any view reloads.
+        services.AddSingleton<AccessPicture>();
         // The Access tab beside Workload (desktop and WASM demo).
+        services.AddSingleton<AccessWatchDetailViewModel>();
+        services.AddSingleton<AccessCheckViewModel>();
         services.AddSingleton<AccessTabViewModel>();
         services.AddSingleton<SectionListViewModel>();
         services.AddSingleton<ISectionCardState>(sp => sp.GetRequiredService<SectionListViewModel>());
@@ -805,7 +810,9 @@ public partial class App : Application
             sp.GetRequiredService<SectionMarks>(),
             // A constructor dependency so AccessState is built, and marks itself stale on SectionsChanged and
             // GridContentChanged, before the grid's reload handlers run (same reason as FocusService above).
-            sp.GetRequiredService<AccessState>()));
+            sp.GetRequiredService<AccessState>(),
+            // The open access watch: the grid shows its sections and redraws when it changes.
+            sp.GetRequiredService<AccessPicture>()));
         services.AddSingleton<WorkloadPanelViewModel>(sp => new WorkloadPanelViewModel(
             sp.GetRequiredService<IInstructorRepository>(),
             sp.GetRequiredService<ISectionRepository>(),

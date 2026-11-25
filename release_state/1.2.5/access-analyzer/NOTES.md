@@ -429,6 +429,89 @@ Greg closes them in VS: `CourseListView`, `SchedulingEnvironmentListView`, `Copy
 </details>
 
 <details>
+<summary>Piece F: build plan (Opus, 2026-11-25)</summary>
+
+Reference: the r9 mock (`listView`, `detailView`, `candText`, `cautionsFor`, `grid`/`entry`, `ctxMenu`, the legend bar in
+`render`, `accessChanges`/`causeOf`/`noticeText`, `runCheck`/`checkView`). Its wording was approved for coding in
+rounds 5–9. Split like D and E: **F-core** (Sonnet; no `.axaml`) then **F-ui** (Opus, after Greg closes
+`AccessTabView.axaml` and `ScheduleGridView.axaml` in VS).
+
+- **Notices (F.2).** Pure `Services/Access/Notices.cs`: `Compare(before, after)` per watch present in both, kinds as
+  the mock's `accessChanges` (lost, left, mixes, essential, stranded, restored; one per watch, its worst). `AccessState`
+  keeps the previous snapshot and compares **per semester present in both**, so a semester switch never makes one
+  (no reason flag needed). Compares only after a section reload or a components/setup save
+  (`AccessSetupService` says which courses); not after the eye, Mark all, Multi-campus or ticks. Session-only list,
+  newest first; a new notice replaces the watch's older one; ✕ dismisses; a notice that stops being true (rechecked
+  after each recompute) goes by itself. Cause from the semester's section diff: one section changed → the mock's
+  `causeOf`; several (a reader refresh, an import) → a general cause (draft).
+- **Open watch state.** A small singleton (`AccessPicture`) holds the open watch or checked course, ticks, pins,
+  stepping index and Show other courses, and raises `Changed`; the tab's detail, the grid's legend bar, the grid's
+  tiles and the right-click menu all read it. The analysis with ticks and pins is `AccessAnalyzer.Analyze(inputs,
+  watch, subset, pins)` on the snapshot's inputs; slates listed by `SlateSearch.List`.
+- **Detail VM (F.1):** port of `detailView` (health, flags incl. stranded, cautions ◆, missing, not counted, rule 8a,
+  untagged line, courses with `candText` phrases and ticks, Multi-campus box (a tag write beside the eye in
+  `AccessWatchToggler`), the fold of quieter facts, Watching button). Check-mode variant for a course alone.
+- **Grid (F.3):** per-entry looks set directly on `TileEntry` (faded, stranded, essential ●, can't fit ▲, caution ◆,
+  in-slate ghost, pinned), built by a pure `GridAccessPicture` with the mock's hovers. While a watch is open the grid
+  shows its sections only, unless Show other courses (then the usual filter result plus them). Legend bar VM: name,
+  subset, pin pill, Step through slates / stepper, Mark all, Show other courses, ✕ Close. Pin / Unpin in the section
+  right-click menu while a watch is open.
+- **Check all courses (F.4):** `CheckAllCourses.Run` per semester, results a snapshot that goes out of date on any
+  `AccessState.Changed`; before setup it opens the wizard first (editing) or shows the read-only comment; a problem
+  line opens the course alone (check mode).
+- **Drafts for Greg:** read-only comment "Access watches aren't set up for this database yet. Someone who can edit it
+  needs to set them up before courses can be checked." (the mock's, with "access checks" → "access watches"); general
+  cause "The latest changes mean …"; components cause "Changing BMEG 230's components" (round 8) and, for several
+  courses, "Changing courses' components".
+- **Not in F:** round 6d's day widths while a watch is open (ask Greg); seats; what-if lines (G); clickable section
+  names inside messages (later, if wanted).
+- **F-core built 2026-11-25, not committed** (Sonnet; Opus reviewed): `Notices.cs` (`AccessNotices`), `AccessPicture`,
+  `Cautions`, `AccessWatchDetailViewModel`, `AccessLegendViewModel` (`ScheduleGridViewModel.AccessLegend`),
+  `AccessCheckViewModel`, `GridAccessPicture` (`AccessTileLook` on `TileEntry.Access`), wording partials
+  `AccessTextNotices/Detail/Picture/Check`; tab VM pages List/Detail/Check with notices; context-menu Pin
+  (`HasPinItem`, `TogglePinCommand`); `AccessWatchToggler.SetMultiCampus`. 102 new tests; full suite 5038 passed,
+  0 failed; both compile checks clean. Choices for Greg's eye: notices keyed by watch and semester; a watch open shows
+  only its sections (no meetings, commitments, shared schedules) unless Show other courses; an Edit Course components
+  change makes a notice too ("Changing X's components"); health phrases plain (no warn colour or hovers yet); list
+  lines leave cautions out; Check's Open in Courses doesn't select the course. More drafts: "Adding X", "Deleting X",
+  "Changing X's tags", "Changing X's course", the separate-labs footer, and three failure lines "… couldn't be saved /
+  checked / changed. Your work is safe; try again." **Next: F-ui** (Opus; Greg closes `AccessTabView.axaml` and
+  `ScheduleGridView.axaml` first): detail and check pages, notices box, legend bar, tile looks in
+  `ScheduleGridView.axaml.cs`, Pin menu item.
+- **F-ui built 2026-11-25, not committed** (Opus): `AccessTabView.axaml` has three pages (list with notices and
+  clickable rows; detail; check) and Check all courses beside Add a watch; the legend bar sits in the grid's row 1
+  above the error banner (`ScheduleGridView.axaml`); Pin / Unpin under Clear All Marks in the right-click menu; tile
+  looks in `ScheduleGridView.axaml.cs` (`AccessOpacity`, `AccessFrame`, `NewAccessMark`: faded and stranded by
+  opacity, the essential outline, the slate's ghost fill and outline, ▲ ◆ ● and pin icons after the label). New
+  resources: `Access*` brushes in `AppColors`, `Access*` sizes in `AppLayout`, `AccessMarkCautionIcon` and
+  `Chevron*Icon` in `Icons` (paths, since the WASM fonts lack ‹ › ▸ ▾). Not hand-checked yet. Not done: Escape to
+  close the detail; a few labels in the view, not `AccessText` ("All watches" on the check page, "Unpin all", "Open").
+- **Greg's first hand check (2026-11-25), both built:** (1) rows didn't look clickable → hover tint and a ▸ on each
+  row (Open and ✕ are only on notices). (2) An open watch replaced the grid's sections privately while the filter bar
+  still showed the user's filters, and hid all filtering. **Decided (Greg): opening a watch sets the real filter bar
+  to its tag** (a course checked alone: Course), so the header says so and other filters and overlays combine as
+  usual (`AccessWatchFilter`; `GridFilterViewModel.CaptureSelection` / `ApplySelection`). Opening remembers and
+  replaces the user's filters; Close restores them only if the filters are still just what opening set (changed
+  meanwhile = theirs, left alone); switching watches with untouched filters keeps the remembered ones. Show other
+  courses is gone (remove the tag filter instead; other sections are drawn faded). The grid draws what the filters
+  show, events and shared schedules included. Legend bar: quiet line when filters or the subject focus hide some of
+  the watch's sections, DRAFT "2 of Cohort 1's sections are hidden by the filters." (+ " or the chosen Subjects").
+  The Section View narrows too (it shares the filter). Full suite 5040 passed, 0 failed.
+- **Greg, tile hover (2026-11-25), built:** a tile the Access marks or an open watch speak about is hovered with
+  their lines alone, no time range (other tiles keep it); each line's watch name in bold when several watches speak
+  (`**W:**`, `InlineFormatter`, `TileTooltip.Markup`); lines 6 px apart (`TileTooltipNoticeSpacing`).
+- **Greg (2026-11-25), built:** every mention of a watch's name in the grid's hovers is bold (`AccessText.Bold`, in
+  `ConflictTips` and `GridAccessPicture`; a course checked alone stays plain). A section of a course left out for a
+  missing component (rules 10, 6d) was faded with the wrong hover ("no section type"); now DRAFT "MANU330 L0A isn't
+  counted: MANU330's lecture sections aren't in **CHBE-Y2**." (`MissingComponentTip`). Full suite 5041 passed.
+  Found by Greg the same day: with no full slate that case was drawn plainly, with no hover, because the no-slate
+  branch returned first; the not-in-any-group check now runs before the slates. Full suite 5043 passed.
+  Then (Greg): still no hover. Cause: tiles showed a tooltip only with more than one line (the time used to be line
+  one), so a single Access line was dropped after the time was removed. Now `TileTooltip.IsShownOnTile`.
+
+</details>
+
+<details>
 <summary>Dead ends</summary>
 
 - Separate course-list and tag watches (Q35, Q36): superseded by D25.

@@ -431,11 +431,19 @@ public partial class CourseListViewModel : ViewModelBase, IDismissableEditor, IU
             Capacity = SelectedCourse.Capacity,
             ComponentTypeIds = SelectedCourse.ComponentTypeIds is null ? null : new List<string>(SelectedCourse.ComponentTypeIds),
         }.WithExtensionDataFrom(SelectedCourse);
+        var componentsBefore = SelectedCourse.ComponentTypeIds?.ToList();
         EditVm = new CourseEditViewModel(clone, isNew: false,
             allTags: LoadAllTags(),
             onSave: async c =>
             {
-                try { _courseRepo.Update(c); _accessState?.Invalidate(); LoadCourses(); SelectedCourse = Courses.FirstOrDefault(x => x.Id == c.Id); EditVm = null; }
+                try
+                {
+                    _courseRepo.Update(c);
+                    // A change to the course's components may make an Access notice, which names the course as its cause.
+                    bool componentsChanged = !(componentsBefore is null && c.ComponentTypeIds is null)
+                        && !(componentsBefore is not null && c.ComponentTypeIds is not null && componentsBefore.SequenceEqual(c.ComponentTypeIds));
+                    if (componentsChanged) _accessState?.InvalidateAfterComponentsChange([c.Id]); else _accessState?.Invalidate();
+                    LoadCourses(); SelectedCourse = Courses.FirstOrDefault(x => x.Id == c.Id); EditVm = null; }
                 catch (Exception ex) { App.Logger.LogError(ex, "CourseListViewModel.Edit"); LastErrorMessage = WriteFailureText.For(ex, "The save could not be completed. Please try again."); }
                 await Task.CompletedTask;
             },

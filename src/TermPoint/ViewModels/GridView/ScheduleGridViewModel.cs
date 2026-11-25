@@ -57,6 +57,19 @@ public partial class ScheduleGridViewModel : ViewModelBase
     private readonly AccessState _accessState;
 
     /// <summary>
+    /// The open access watch, or null when the grid was built without one (the tests). While a watch is open the grid
+    /// shows its sections and draws each as the watch sees it (<see cref="ApplyAccessPicture"/>); it redraws on
+    /// <see cref="AccessPicture.Changed"/>.
+    /// </summary>
+    private readonly AccessPicture? _picture;
+
+    /// <summary>
+    /// The legend bar above the grid while a watch is open (name, pins, stepper, Show other courses, Close). Null when
+    /// the grid was built without a picture.
+    /// </summary>
+    public AccessLegendViewModel? AccessLegend { get; }
+
+    /// <summary>
     /// Subject colours (colour by subject). Every section block is stamped
     /// with <see cref="SubjectColorPresenter.ColorFor"/>, and the grid reloads once on
     /// <see cref="SubjectColorPresenter.Changed"/>.
@@ -206,10 +219,13 @@ public partial class ScheduleGridViewModel : ViewModelBase
         ISectionCardState cardState,
         ILegalStartTimeRepository legalStartTimeRepo,
         SectionMarks marks,
-        AccessState accessState)
+        AccessState accessState,
+        AccessPicture? picture = null)
     {
         Marks = marks;
         _accessState = accessState;
+        _picture = picture;
+        if (picture is not null) AccessLegend = new AccessLegendViewModel(picture, accessState, campusRepo);
         _cardState = cardState;
         _legalStartTimeRepo = legalStartTimeRepo;
         _sectionRepo = sectionRepo;
@@ -235,7 +251,7 @@ public partial class ScheduleGridViewModel : ViewModelBase
 
         // After a context-menu save, refresh the shared section cache so all views
         // (including this one via SectionsChanged below) reload in one shot.
-        ContextMenu = new SectionContextMenuViewModel(sectionRepo, ReloadSectionStore, lockService, cardState, Marks);
+        ContextMenu = new SectionContextMenuViewModel(sectionRepo, ReloadSectionStore, lockService, cardState, Marks, picture);
 
         // The "finish editing first" message a refused drag shows goes away when the card closes.
         _cardState.OpenCardChanged += OnOpenCardChanged;
@@ -274,6 +290,12 @@ public partial class ScheduleGridViewModel : ViewModelBase
         // one full reload (P5-5). The presenter is a constructor dependency, so it subscribed to SectionsChanged and
         // FocusChanged before this view model did and answers ColorFor from fresh caches in those reloads too.
         _subjectColors.Changed += Reload;
+
+        // The open access watch: opening, closing, a tick, a pin and stepping all redraw the grid.
+        // The picture is a constructor dependency, so it dropped its cache on AccessState.Changed before any reload here.
+        // Subscribed first, so the filter bar is set before this view model reloads for the same change.
+        if (_picture is not null) _ = new AccessWatchFilter(_picture, Filter);
+        if (_picture is not null) _picture.Changed += Reload;
 
         // Keep SelectedSectionIds in sync with the store's single source of truth.
         _sectionStore.SelectionChanged += ids => SelectedSectionIds = ids;
@@ -763,6 +785,14 @@ public partial class ScheduleGridViewModel : ViewModelBase
 
         var combinedBlocks = filtered.Concat(overlayOnly).Concat(commitments).Concat(meetingBlocks).Concat(sharedBlocks);
         var allBlocks = DeduplicateBlocks(combinedBlocks);
+        // An open access watch filters the grid for real (AccessWatchFilter sets the filter bar to its tag), so the grid
+        // draws what the filters show, as always; the watch only styles it: its own sections by their role, any other
+        // section faded. The legend bar says how many of its sections the filters or the subject focus hide.
+        if (IsAccessPictureOpen())
+        {
+            allBlocks = StampAccessLooks(allBlocks);
+            UpdateHiddenWatchSections(allBlocks);
+        }
 
         // ── Access conflict marks ─────────────────────────────────────────────
         // Marks come from AccessState over the WHOLE semester, not just the sections on the grid (Access Analyzer
@@ -775,6 +805,64 @@ public partial class ScheduleGridViewModel : ViewModelBase
 
         _gridInputs = (semesters, allBlocks, accessMarks);
         UpdateDisplayProperties(semesters, allBlocks, accessMarks);
+    }
+
+    /// <summary>Whether an access watch is open and its analysis can be had (a failure reading it is logged and counts as closed).</summary>
+    private bool IsAccessPictureOpen()
+    {
+        if (_picture is not { IsOpen: true }) return false;
+        try
+        {
+            return _picture.Analysis is not null;
+        }
+        catch (Exception ex)
+        {
+            App.Logger.LogError(ex, "ScheduleGridViewModel.IsAccessPictureOpen");
+            return false;
+        }
+    }
+
+    /// <summary>
+    /// Tells the legend bar how many of the open watch's sections that have meeting times are not on the grid, and
+    /// whether the subject focus hides any of them (the filters hide the rest).
+    /// </summary>
+    /// <param name="blocks">The blocks being drawn.</param>
+    private void UpdateHiddenWatchSections(List<GridBlock> blocks)
+    {
+        try
+        {
+            var drawn = blocks.OfType<SectionMeetingBlock>().Select(b => b.SectionId).ToHashSet();
+            var hidden = _picture!.CoveredSections.Where(s => s.Schedule.Count > 0 && !drawn.Contains(s.Id)).ToList();
+            AccessLegend?.SetHiddenSections(hidden.Count, hidden.Any(s => !_focus.Matches(s)));
+        }
+        catch (Exception ex)
+        {
+            App.Logger.LogError(ex, "ScheduleGridViewModel.UpdateHiddenWatchSections");
+        }
+    }
+
+    /// <summary>
+    /// Stamps every section block with how the open watch draws it: the watch's own sections as
+    /// <see cref="GridAccessPicture"/> says, any other section faded.
+    /// </summary>
+    /// <param name="blocks">The blocks to draw.</param>
+    /// <returns>The same blocks with <see cref="SectionMeetingBlock.Access"/> set on the section blocks; unchanged when the looks cannot be built.</returns>
+    private List<GridBlock> StampAccessLooks(List<GridBlock> blocks)
+    {
+        try
+        {
+            var campuses = _campusRepo.GetAll().ToDictionary(c => c.Id, c => c.Name);
+            string CampusName(string? id) => id is not null && campuses.TryGetValue(id, out var n) ? n : "another campus";
+            var looks = GridAccessPicture.Build(_picture!, CampusName);
+            return blocks.Select(b => b is SectionMeetingBlock m
+                ? m with { Access = looks.TryGetValue(m.SectionId, out var look) ? look : AccessTileLook.OtherCourse }
+                : b).ToList();
+        }
+        catch (Exception ex)
+        {
+            App.Logger.LogError(ex, "ScheduleGridViewModel.StampAccessLooks");
+            return blocks;
+        }
     }
 
     /// <summary>
@@ -1085,8 +1173,9 @@ public partial class ScheduleGridViewModel : ViewModelBase
 
     /// <summary>
     /// Builds the tooltip data for a grid tile.
-    /// The first line is always the time range (e.g. "1015-1145").
-    /// When Access conflict marks speak about the tile's entries, their hover lines follow.
+    /// When Access conflict marks or an open watch speak about the tile's entries, the tooltip is their lines alone
+    /// (Greg, 2026-11-25: the time adds nothing there and the hover is dense enough), as InlineFormatter markup.
+    /// Otherwise it is the time range (e.g. "1015-1145").
     /// </summary>
     /// <param name="tile">The tile whose tooltip is being built.</param>
     /// <param name="conflictLines">The grid's conflict hover lines by (section id, day); null for none.</param>
@@ -1096,7 +1185,7 @@ public partial class ScheduleGridViewModel : ViewModelBase
         GridTile tile, IReadOnlyDictionary<(string SectionId, int Day), IReadOnlyList<string>>? conflictLines = null, int day = 0)
     {
         static string Fmt(int minutes) => $"{minutes / 60:D2}{minutes % 60:D2}";
-        var lines = new List<string> { $"{Fmt(tile.StartMinutes)}-{Fmt(tile.EndMinutes)}" };
+        var lines = new List<string>();
 
         // Access conflict hover lines for the tile's entries (each section's own lines, repeats dropped).
         if (conflictLines is not null)
@@ -1105,13 +1194,23 @@ public partial class ScheduleGridViewModel : ViewModelBase
                          .Distinct())
                 lines.Add(line);
 
+        // While an access watch is open: what it says about each section on the tile (after the conflict lines, as the mock does).
+        foreach (var line in tile.Entries
+                     .Select(e => e.Access?.Hover)
+                     .Where(h => !string.IsNullOrEmpty(h))
+                     .Distinct())
+            lines.Add(line!);
+
+        bool access = lines.Count > 0;
+        if (!access) lines.Add($"{Fmt(tile.StartMinutes)}-{Fmt(tile.EndMinutes)}");
+
         // For meeting tiles with more attendees than fit in the tile label, surface the
         // full name list as a wrapped block in the tooltip.
         var attendeeList = tile.Entries
             .Select(e => e.AttendeeList)
             .FirstOrDefault(a => !string.IsNullOrEmpty(a));
 
-        return new TileTooltip(lines, attendeeList);
+        return new TileTooltip(lines, attendeeList, Markup: access);
     }
 
     /// <summary>
@@ -1833,7 +1932,7 @@ public partial class ScheduleGridViewModel : ViewModelBase
     /// </summary>
     private static TileEntry ToEntry(GridBlock block) => block switch
     {
-        SectionMeetingBlock s => new TileEntry(s.Label, s.Initials, s.SectionId, s.IsOverlay, false, s.FrequencyAnnotation, s.IsDeemphasized, IsEmphasized: s.IsEmphasized, Flag: s.Flag, SubjectColor: s.SubjectColor, MultiTagNames: s.MultiTagNames, MeetingIndex: s.MeetingIndex),
+        SectionMeetingBlock s => new TileEntry(s.Label, s.Initials, s.SectionId, s.IsOverlay, false, s.FrequencyAnnotation, s.IsDeemphasized, IsEmphasized: s.IsEmphasized, Flag: s.Flag, SubjectColor: s.SubjectColor, MultiTagNames: s.MultiTagNames, MeetingIndex: s.MeetingIndex, Access: s.Access),
         CommitmentBlock c     => new TileEntry(c.Name,  string.Empty, string.Empty, true,  IsCommitment: true),
         // Meeting blocks: carry the MeetingId so double-click can route to the editor.
         // IsCommitment=true is kept so the right-click context menu (section-only) is

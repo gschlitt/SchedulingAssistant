@@ -14,6 +14,7 @@ using Avalonia.Threading;
 using Avalonia.VisualTree;
 using TermPoint.Models;
 using TermPoint.Services;
+using TermPoint.ViewModels.Access;
 using TermPoint.ViewModels.GridView;
 using System.ComponentModel;
 
@@ -33,7 +34,7 @@ public partial class ScheduleGridView : UserControl
     /// whose own frame shows the selection.
     /// </param>
     private record EntryRowInfo(Border Row, TextBlock Label, string SectionId, bool IsOverlay, bool IsDeemphasized, IBrush BaseBg,
-                                Border? SelectionRing = null);
+                                Border? SelectionRing = null, AccessTileLook? Access = null);
     private readonly List<EntryRowInfo> _entryRowRegistry = new();
 
     /// <summary>
@@ -444,6 +445,7 @@ public partial class ScheduleGridView : UserControl
             var (frameBrush, thickness) = EntryRowFrame(isSelected, marks?.IsMarked(info.SectionId) == true,
                                                         selectedBorder, markedBorder, frameThickness);
 
+            if (thickness == 0 && AccessFrame(info.Access) is { } accessFrame) (frameBrush, thickness) = accessFrame;
             info.Row.Background      = info.BaseBg;
             info.Row.BorderBrush     = frameBrush;
             info.Row.BorderThickness = new Thickness(thickness);
@@ -1179,7 +1181,11 @@ public partial class ScheduleGridView : UserControl
                         markerLine.Children.Add(entryLabel);  // fills the remaining width, trims with ellipsis
                         entryText = markerLine;
                     }
-                    IBrush entryRowBg = entry.IsMeeting   ? MeetingTileFill
+                    // An open access watch's picture (Access Analyzer): a line in the slate being stepped to gets the
+                    // Room Browser's ghost look. Set directly per line, never by a class-conditioned style (CLAUDE.md).
+                    var access = entry.Access;
+                    IBrush entryRowBg = access?.InSlate == true ? GhostBodyFill
+                                      : entry.IsMeeting   ? MeetingTileFill
                                       : entry.IsEmphasized ? FilterEmphasizedBg
                                       : Brushes.Transparent;
 
@@ -1206,11 +1212,14 @@ public partial class ScheduleGridView : UserControl
                     }
                     Control? multiTagMark = string.IsNullOrEmpty(entry.MultiTagNames)
                         ? null : NewMultiTagMark(entry.MultiTagNames, chrome);
-                    if (flagIcon is not null || multiTagMark is not null)
+                    // The open watch's mark (can't fit, caution, essential) and the pin, before the flag.
+                    Control? accessMark = NewAccessMark(access);
+                    Control? pinIcon = access?.Pinned == true ? NewAccessIcon("PinIcon", TileText) : null;
+                    if (flagIcon is not null || multiTagMark is not null || accessMark is not null || pinIcon is not null)
                     {
                         var dock = new DockPanel();
                         // Right-docked children are added first so they reserve their space; the first is outermost.
-                        foreach (var icon in new[] { flagIcon, multiTagMark })
+                        foreach (var icon in new[] { flagIcon, multiTagMark, accessMark, pinIcon })
                         {
                             if (icon is null) continue;
                             DockPanel.SetDock(icon, Dock.Right);
@@ -1236,6 +1245,7 @@ public partial class ScheduleGridView : UserControl
                         : Brushes.Transparent;
                     var (frameBrush, frameThickness) = EntryRowFrame(entrySelected, markedIds.Contains(entry.SectionId),
                                                                      UserSelectedBorder, MarkedBorder, chrome.SelectionBorder);
+                    if (frameThickness == 0 && AccessFrame(access) is { } accessFrame) (frameBrush, frameThickness) = accessFrame;
                     var entryRow = new Border
                     {
                         Background      = isConflict ? conflictGlow : entryRowBg,
@@ -1249,6 +1259,7 @@ public partial class ScheduleGridView : UserControl
                         Cursor       = entry.IsCommitment && !entry.IsMeeting ? null : entryCursor,
                         Tag          = clickCtx,
                         Child        = entryContent,
+                        Opacity      = AccessOpacity(access),
                     };
                     if (isConflict)
                         conflictEntryRows[(entry.SectionId, clickDay, tile.StartMinutes, tile.EndMinutes)] =
@@ -1279,7 +1290,7 @@ public partial class ScheduleGridView : UserControl
                     // Register for lightweight selection repainting (avoids full Render() on selection change).
                     if (!entry.IsCommitment)
                         _entryRowRegistry.Add(new EntryRowInfo(entryRow, entryLabel, entryId, entry.IsOverlay, entry.IsDeemphasized, isConflict ? conflictGlow : entryRowBg,
-                                                               selectionRing));
+                                                               selectionRing, access));
 
                     entryRow.PointerPressed += (sender, e) =>
                     {
@@ -1395,10 +1406,11 @@ public partial class ScheduleGridView : UserControl
                 }
 
 
-                // Meeting tiles get an attendee tooltip. Section tiles get one only when an Access conflict mark has
-                // something to say about one of their entries (the time range, then those lines).
+                // Meeting tiles get an attendee tooltip. Section tiles get one only when the Access conflict marks or an
+                // open watch have something to say about one of their entries (Markup: those lines alone, even a single
+                // one; a tile with nothing to say would show just its time, which the tile already shows).
                 var tileTooltip = ScheduleGridViewModel.BuildTileTooltip(tile, data.ConflictHoverLines, data.DayOfColumn(d));
-                if (!string.IsNullOrEmpty(tileTooltip.AttendeeList) || tileTooltip.Lines.Count > 1)
+                if (tileTooltip.IsShownOnTile)
                     ToolTip.SetTip(border, BuildTileTooltipContent(tileTooltip));
 
                 Canvas.SetLeft(border, tileX);
@@ -1898,15 +1910,20 @@ public partial class ScheduleGridView : UserControl
         bool hasAttendeeList = !string.IsNullOrEmpty(tooltip.AttendeeList);
 
         object content;
-        if (tooltip.Lines.Count == 1 && !hasAttendeeList)
+        if (tooltip.Lines.Count == 1 && !hasAttendeeList && !tooltip.Markup)
         {
             content = new TextBlock { Text = tooltip.Lines[0] };
         }
         else
         {
-            var panel = new StackPanel { Spacing = 2 };
+            var panel = new StackPanel { Spacing = tooltip.Markup ? Resource<double>("TileTooltipNoticeSpacing", 6) : 2 };
             foreach (var line in tooltip.Lines)
-                panel.Children.Add(new TextBlock { Text = line, TextWrapping = TextWrapping.Wrap, MaxWidth = 300 });
+            {
+                var block = new TextBlock { TextWrapping = TextWrapping.Wrap, MaxWidth = 300 };
+                // Access lines carry InlineFormatter markup (a bold watch name); other lines are plain text.
+                if (tooltip.Markup) Helpers.InlineFormatter.SetText(block, line); else block.Text = line;
+                panel.Children.Add(block);
+            }
 
             // Full attendee list: wrap at 300 px so it forms a readable box rather than a
             // single long line. Separated from the time range (when there is one) by a small top margin.
@@ -2537,6 +2554,63 @@ public partial class ScheduleGridView : UserControl
     /// <param name="key">The resource key.</param>
     /// <param name="fallback">Returned when the key is missing or holds another type.</param>
     /// <returns>The resource value, or <paramref name="fallback"/>.</returns>
+    /// <summary>
+    /// The opacity of a section line under an open access watch: faded (another course, an unticked course, a section
+    /// a pin leaves out, or not in the slate being stepped to), dimmed when stranded, else fully drawn.
+    /// </summary>
+    /// <param name="look">The line's look; null when no watch is open.</param>
+    /// <returns>The opacity (1 when no watch is open).</returns>
+    private static double AccessOpacity(AccessTileLook? look) =>
+        look is null ? 1
+        : look.Faded ? Resource<double>("AccessFadedOpacity", 0.3)
+        : look.Stranded ? Resource<double>("AccessStrandedOpacity", 0.55)
+        : 1;
+
+    /// <summary>
+    /// The frame an open access watch gives a line that has no selection or mark frame: the ghost outline for a line in
+    /// the slate being stepped to, the essential outline for a line every slate uses.
+    /// </summary>
+    /// <param name="look">The line's look; null when no watch is open.</param>
+    /// <returns>The brush and thickness, or null for no frame.</returns>
+    private static (IBrush Brush, double Thickness)? AccessFrame(AccessTileLook? look) =>
+        look is null ? null
+        : look.InSlate ? (GhostOutlineBrush, Resource<double>("AccessEssentialBorderThickness", 2))
+        : look.Essential ? (Res("AccessEssentialOutline"), Resource<double>("AccessEssentialBorderThickness", 2))
+        : null;
+
+    /// <summary>
+    /// The open watch's mark after a line's label: a triangle (can't fit) in the attention colour, a diamond (caution)
+    /// or a dot (essential) in the fragile colour. Paths, never Unicode glyphs (the WASM build's fonts).
+    /// </summary>
+    /// <param name="look">The line's look; null when no watch is open.</param>
+    /// <returns>The mark, or null when the line has none.</returns>
+    private static Control? NewAccessMark(AccessTileLook? look) =>
+        look is null ? null
+        : look.CantFit ? NewAccessIcon("AccessMarkAttentionIcon", Res("AccessMarkAttention"))
+        : look.Caution ? NewAccessIcon("AccessMarkCautionIcon", Res("AccessMarkFragile"))
+        : look.Essential ? NewAccessIcon("AccessMarkFragileIcon", Res("AccessMarkFragile"))
+        : null;
+
+    /// <summary>A small icon after a line's label (<c>AccessTileMarkSize</c>, <c>AccessTileMarkMargin</c>).</summary>
+    /// <param name="geometryKey">The icon's geometry resource.</param>
+    /// <param name="fill">Its fill.</param>
+    /// <returns>The icon, or null when the geometry is missing.</returns>
+    private static Control? NewAccessIcon(string geometryKey, IBrush fill)
+    {
+        if (Resource<Geometry?>(geometryKey, null) is not { } geometry) return null;
+        double size = Resource<double>("AccessTileMarkSize", 8);
+        return new Avalonia.Controls.Shapes.Path
+        {
+            Data              = geometry,
+            Fill              = fill,
+            Width             = size,
+            Height            = size,
+            Stretch           = Stretch.Uniform,
+            VerticalAlignment = VerticalAlignment.Center,
+            Margin            = Resource<Thickness>("AccessTileMarkMargin", default),
+        };
+    }
+
     private static T Resource<T>(string key, T fallback) =>
         Application.Current!.Resources.TryGetResource(key, null, out var v) && v is T t ? t : fallback;
 

@@ -18,6 +18,12 @@ namespace TermPoint.ViewModels.Access;
 ///
 /// <para><b>Read-only.</b> Looking at watches and the Mark all conflicts setting (a per-computer view setting) work
 /// without the write lock; adding a watch does not (<see cref="CanAddWatch"/>).</para>
+///
+/// <para><b>Pages.</b> The tab shows one of three pages (<see cref="Page"/>): the list of watches (with the session's
+/// notices), the detail of the open watch or checked course (<see cref="Detail"/>) and Check all courses
+/// (<see cref="Check"/>). Opening a row or a notice opens the watch in <see cref="AccessPicture"/>, which makes the
+/// detail the page; closing the picture (Back, the legend bar's Close, the watch vanishing) returns to the list, or
+/// to Check all courses when a course was opened from there.</para>
 /// </summary>
 public sealed partial class AccessTabViewModel : ViewModelBase
 {
@@ -26,7 +32,9 @@ public sealed partial class AccessTabViewModel : ViewModelBase
     private readonly ICampusRepository _campusRepo;
     private readonly AccessWatchToggler _toggler;
     private readonly AccessSetupService _setup;
+    private readonly AccessPicture _picture;
     private bool _isSetUp;
+    private AccessTabPage _returnPage = AccessTabPage.List;
 
     /// <summary>The tooltip of the Add a watch button when it is enabled (approved wording).</summary>
     // approved wording
@@ -38,6 +46,49 @@ public sealed partial class AccessTabViewModel : ViewModelBase
 
     /// <summary>Raised when the user clicks Add a watch; the main window opens the filter's Tags popup with its note.</summary>
     public event Action? AddWatchRequested;
+
+    /// <summary>Raised when the user asks to open a course in Courses (from Check all courses); the main window opens the Courses flyout.</summary>
+    public event Action<string>? OpenCoursesRequested;
+
+    /// <summary>The detail of the open watch or checked course: the tab's second page.</summary>
+    public AccessWatchDetailViewModel Detail { get; }
+
+    /// <summary>Check all courses: the tab's third page.</summary>
+    public AccessCheckViewModel Check { get; }
+
+    /// <summary>Which page the tab shows.</summary>
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(IsListPage))]
+    [NotifyPropertyChangedFor(nameof(IsDetailPage))]
+    [NotifyPropertyChangedFor(nameof(IsCheckPage))]
+    private AccessTabPage _page = AccessTabPage.List;
+
+    /// <summary>True while the list of watches shows.</summary>
+    public bool IsListPage => Page == AccessTabPage.List;
+
+    /// <summary>True while the detail of a watch (or of a checked course) shows.</summary>
+    public bool IsDetailPage => Page == AccessTabPage.Detail;
+
+    /// <summary>True while Check all courses shows.</summary>
+    public bool IsCheckPage => Page == AccessTabPage.Check;
+
+    /// <summary>The session's notices, newest first (a notice of a semester that is not loaded is left out).</summary>
+    public ObservableCollection<AccessNoticeViewModel> Notices { get; } = new();
+
+    /// <summary>True when there is at least one notice.</summary>
+    public bool HasNotices => Notices.Count > 0;
+
+    /// <summary>The Check all courses button's text.</summary>
+    public string CheckAllCoursesText => AccessText.CheckAllCoursesText;
+
+    /// <summary>Runs Check all courses and shows its page (the setup wizard comes first when it is not done and this computer can save).</summary>
+    public IRelayCommand CheckAllCoursesCommand { get; }
+
+    /// <summary>Opens a watch from its row (its worst semester first).</summary>
+    public IRelayCommand<AccessWatchRowViewModel> OpenWatchCommand { get; }
+
+    /// <summary>Goes back to the list, closing the open watch when there is one.</summary>
+    public IRelayCommand BackToListCommand { get; }
 
     /// <summary>The tab's title: "Access · " and the loaded semester(s), or just "Access" when none is loaded.</summary>
     [ObservableProperty] private string _title = "Access";
@@ -115,17 +166,33 @@ public sealed partial class AccessTabViewModel : ViewModelBase
     /// <param name="campusRepo">Campus names for the health lines.</param>
     /// <param name="toggler">Says whether this computer may change watches.</param>
     /// <param name="setup">The access setup: whether it is done, whether this computer can save, and how to open the wizard.</param>
+    /// <param name="picture">The open watch the detail and the grid read.</param>
+    /// <param name="detail">The detail page.</param>
+    /// <param name="check">The Check all courses page.</param>
     public AccessTabViewModel(
         AccessState state, SemesterContext semesters, ICampusRepository campusRepo, AccessWatchToggler toggler,
-        AccessSetupService setup)
+        AccessSetupService setup, AccessPicture picture, AccessWatchDetailViewModel detail, AccessCheckViewModel check)
     {
         _setup = setup;
+        _picture = picture;
+        Detail = detail;
+        Check = check;
         _state = state;
         _semesters = semesters;
         _campusRepo = campusRepo;
         _toggler = toggler;
         AddWatchCommand = new RelayCommand(() => AddWatchRequested?.Invoke(), () => CanAddWatch);
         SetUpCommand = new RelayCommand(() => _setup.RequestSetupWizard(), () => _setup.CanSave);
+        CheckAllCoursesCommand = new RelayCommand(Check.Run);
+        OpenWatchCommand = new RelayCommand<AccessWatchRowViewModel>(row =>
+        { if (row is not null) _picture.OpenWatch(row.TagId, row.SemesterId.Length == 0 ? null : row.SemesterId); });
+        BackToListCommand = new RelayCommand(() => { _picture.Close(); Page = AccessTabPage.List; });
+        _picture.Changed += OnPictureChanged;
+        Detail.BackRequested += _picture.Close;
+        Check.ShowRequested += () => Page = AccessTabPage.Check;
+        Check.BackRequested += () => Page = AccessTabPage.List;
+        Check.OpenInCoursesRequested += id => OpenCoursesRequested?.Invoke(id);
+        _state.NoticesChanged += RebuildNotices;
         _setup.CanSaveChanged += OnCanToggleChanged;
         // Never unsubscribed: singletons that live as long as the services of one database.
         _state.Changed += Refresh;
@@ -198,15 +265,72 @@ public sealed partial class AccessTabViewModel : ViewModelBase
             var line = AccessText.HealthLine(semester.Inputs, analysis, CampusName);
             if (several)
                 line = $"{(semesterNames.TryGetValue(semester.SemesterId, out var sn) ? sn : semester.SemesterId)}: {line}";
-            rows.Add(new AccessWatchRowViewModel(watch.Tag.Name, line, analysis.Health));
+            rows.Add(new AccessWatchRowViewModel(watch.Tag.Name, line, analysis.Health, watch.Tag.Id, semester.SemesterId));
         }
 
         var sorted = rows.OrderBy(r => r.IsAttention ? 0 : 1).ThenBy(r => r.Name, StringComparer.OrdinalIgnoreCase).ToList();
         Rows.Clear();
         foreach (var r in sorted) Rows.Add(r);
-        NeedsALook = sorted.Any(r => r.IsAttention);
+        _anyRowNeedsALook = sorted.Any(r => r.IsAttention);
         OnPropertyChanged(nameof(HasRows));
         OnPropertyChanged(nameof(IsEmpty));
+        RebuildNotices();
+    }
+
+    private bool _anyRowNeedsALook;
+
+    /// <summary>
+    /// Rebuilds <see cref="Notices"/> from <see cref="AccessState.Notices"/>, wording each one, and sets
+    /// <see cref="NeedsALook"/> (a watch needs a look, or a notice is bad news). A failure is logged and leaves the
+    /// notices as they were.
+    /// </summary>
+    private void RebuildNotices()
+    {
+        try
+        {
+            var snapshot = _state.Current;
+            var campuses = _campusRepo.GetAll().ToDictionary(c => c.Id, c => c.Name);
+            string CampusName(string? id) => id is not null && campuses.TryGetValue(id, out var n) ? n : "another campus";
+            var notices = new List<AccessNoticeViewModel>();
+            foreach (var notice in _state.Notices)
+            {
+                if (!snapshot.Semesters.TryGetValue(notice.SemesterId, out var semester)) continue;
+                var watch = semester.Watches.FirstOrDefault(w => w.Tag.Id == notice.WatchId);
+                if (watch is null) continue;
+                notices.Add(new AccessNoticeViewModel(notice.Id,
+                    AccessText.NoticeText(semester.Inputs, watch.Tag.Name, notice, CampusName), notice.IsBad,
+                    () => _picture.OpenWatch(notice.WatchId, notice.SemesterId),
+                    () => _state.DismissNotice(notice.Id)));
+            }
+            Notices.Clear();
+            foreach (var n in notices) Notices.Add(n);
+        }
+        catch (Exception ex)
+        {
+            App.Logger.LogError(ex, "AccessTabViewModel.RebuildNotices");
+        }
+        NeedsALook = _anyRowNeedsALook || Notices.Any(n => n.IsBad);
+        OnPropertyChanged(nameof(HasNotices));
+    }
+
+    /// <summary>
+    /// The open watch changed: a watch or course opened makes the detail the page (remembering where to go back to);
+    /// closing it returns there.
+    /// </summary>
+    private void OnPictureChanged()
+    {
+        if (_picture.IsOpen)
+        {
+            if (Page != AccessTabPage.Detail)
+            {
+                _returnPage = _picture.IsCourseOnly ? AccessTabPage.Check : AccessTabPage.List;
+                Page = AccessTabPage.Detail;
+            }
+        }
+        else if (Page == AccessTabPage.Detail)
+        {
+            Page = _returnPage;
+        }
     }
 
     /// <summary>How bad a health is, for picking a watch's worst semester: attention (and too large) over fragile over ok.</summary>

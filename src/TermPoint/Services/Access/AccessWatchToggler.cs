@@ -74,4 +74,24 @@ public sealed class AccessWatchToggler
         _state.Invalidate();
         _notifier.NotifyGridContentChanged();
     }
+
+    /// <summary>
+    /// Sets a watch's Multi-campus box (decision 6e) and saves the tag: one <see cref="ISchedulingEnvironmentRepository.Update"/>,
+    /// as <see cref="SetWatched"/>, then the access state is made stale and the grid told. Does nothing when the tag is
+    /// gone or already has that setting. Like the eye, it is refused without the write lock.
+    /// </summary>
+    /// <param name="tagId">The watched tag's id.</param>
+    /// <param name="multiCampus">True to let slates mix campuses, false for the one-campus rule.</param>
+    /// <exception cref="InvalidOperationException">The write lock is not ours (<see cref="CanToggle"/> is false); nothing is saved.</exception>
+    public void SetMultiCampus(string tagId, bool multiCampus)
+    {
+        if (!CanToggle)
+            throw new InvalidOperationException("An access watch can only be changed while this computer can save.");
+        var tag = _envRepo.GetById(tagId);
+        if (tag is null || tag.WatchMultiCampus == multiCampus) return;
+        tag.WatchMultiCampus = multiCampus; // the record read back keeps unknown JSON fields (PersistedRecord)
+        _envRepo.Update(tag);
+        _state.Invalidate();
+        _notifier.NotifyGridContentChanged();
+    }
 }

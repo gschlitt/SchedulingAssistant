@@ -78,7 +78,7 @@ public sealed class AccessTabTests : IDisposable
             _state, _notifier, () => _canWrite);
 
     private AccessTabViewModel NewTab() =>
-        new(_state, _semesters, new CampusRepository(_fx.Db), NewToggler(), NewSetup());
+        AccessStateTestSupport.TabFor(_fx.Db, _state, _semesters, _store, NewToggler(), NewSetup(), out _);
 
     private void LoadBoth()
     {

@@ -85,6 +85,16 @@
 	<SolidColorBrush x:Key="AccessWatchEyeOff" Color="#A0AEC0" />
 	<!--  The small dot on the Access tab while a watch needs a look and the tab is not showing.  -->
 	<SolidColorBrush x:Key="AccessTabDot" Color="{StaticResource ProgramConflictColor}" />
+	<!--  Notices at the top of the Access tab: a bad one (lost, stranded...) has the attention border; good news a plain one.  -->
+	<SolidColorBrush x:Key="AccessNoticeBackground" Color="#FFFBF5" />
+	<SolidColorBrush x:Key="AccessNoticeBadBorder" Color="{StaticResource ProgramConflictColor}" />
+	<SolidColorBrush x:Key="AccessNoticeGoodBorder" Color="#94A3B8" />
+	<!--  The tinted banner while pins narrow the slates, and the bar above the grid while a watch is open.  -->
+	<SolidColorBrush x:Key="AccessPinBannerBackground" Color="#EEF4FC" />
+	<SolidColorBrush x:Key="AccessLegendBackground" Color="#F1F5F9" />
+	<SolidColorBrush x:Key="AccessLegendBorder" Color="#CBD5E1" />
+	<!--  An open watch's picture on the grid: the outline of a section every slate uses (essential by timing).  -->
+	<SolidColorBrush x:Key="AccessEssentialOutline" Color="#B7791F" />
 
 
 	<!--  User targets for interaction: buttons, selectors  -->

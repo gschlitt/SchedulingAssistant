@@ -39,7 +39,7 @@ public sealed class AccessTextTests
             Sec("B", "1", Lecture, At(0, 9, 10)), Sec("B", "2", Lecture, At(1, 9, 10)),
         };
         var marks = WatchMarks("Y2", Engine(sections));
-        var expected = "B 1 conflicts with A 1, so B 1 can't be part of any slate for Y2.";
+        var expected = "B 1 conflicts with A 1, so B 1 can't be part of any slate for **Y2**.";
         Assert.Equal([expected], Tips(sections, "B 1", marks));
         Assert.Equal([expected], Tips(sections, "A 1", marks));
         Assert.Empty(Tips(sections, "B 2", marks));
@@ -55,7 +55,7 @@ public sealed class AccessTextTests
             Sec("B", "1", Lecture, At(0, 9, 10)),
         };
         var marks = WatchMarks("Y2", Engine(sections));
-        Assert.Equal(["A 1, 2 conflict with B 1, so they can't be part of any slate for Y2."], Tips(sections, "B 1", marks));
+        Assert.Equal(["A 1, 2 conflict with B 1, so they can't be part of any slate for **Y2**."], Tips(sections, "B 1", marks));
     }
 
     [Fact]
@@ -63,7 +63,7 @@ public sealed class AccessTextTests
     {
         var sections = new[] { Sec("A", "1", Lecture, At(0, 9, 10)), Sec("B", "1", Lecture, At(0, 9, 10)) };
         var marks = WatchMarks("Y2", Engine(sections));
-        Assert.Equal(["A 1 conflicts with B 1, so Y2 has no full slate."], Tips(sections, "A 1", marks));
+        Assert.Equal(["A 1 conflicts with B 1, so **Y2** has no full slate."], Tips(sections, "A 1", marks));
     }
 
     [Fact]
@@ -76,7 +76,7 @@ public sealed class AccessTextTests
         };
         var marks = WatchMarks("Y2", Engine(sections));
         var line = Assert.Single(Tips(sections, "A 1", marks));
-        Assert.Equal("C 1 conflicts with A 1 and B 1, so Y2 has no full slate. Fixing only one of these conflicts isn't enough.", line);
+        Assert.Equal("C 1 conflicts with A 1 and B 1, so **Y2** has no full slate. Fixing only one of these conflicts isn't enough.", line);
     }
 
     [Fact]
@@ -86,7 +86,7 @@ public sealed class AccessTextTests
         var mark = Engine(sections).Single(m => m.Kind == ConflictMarkKind.Other);
         var marks = WatchMarks("Y2", [mark]);
         var line = Assert.Single(Tips(sections, mark.A.Id, marks, day: mark.Meetings[0].A.Day));
-        Assert.Equal($"{mark.A.Id} conflicts with {mark.B.Id}. Because of this conflict, B x can't be part of any slate for Y2.", line);
+        Assert.Equal($"{mark.A.Id} conflicts with {mark.B.Id}. Because of this conflict, B x can't be part of any slate for **Y2**.", line);
     }
 
     [Fact]
@@ -98,11 +98,11 @@ public sealed class AccessTextTests
         var sections = new[] { a1, b1, c1 };
 
         var one = WatchMarks("Y2", [Hand(ConflictMarkKind.Harmless, a1, b1)]);
-        Assert.Equal(["A 1 conflicts with B 1. Other sections still let students in Y2 get around this conflict."],
+        Assert.Equal(["A 1 conflicts with B 1. Other sections still let students in **Y2** get around this conflict."],
             Tips(sections, "A 1", one));
 
         var two = WatchMarks("Y2", [Hand(ConflictMarkKind.Harmless, a1, b1), Hand(ConflictMarkKind.Harmless, a1, c1)]);
-        Assert.Equal(["A 1 conflicts with B 1 and C 1. Other sections still let students in Y2 get around these conflicts."],
+        Assert.Equal(["A 1 conflicts with B 1 and C 1. Other sections still let students in **Y2** get around these conflicts."],
             Tips(sections, "A 1", two));
     }
 
@@ -134,9 +134,9 @@ public sealed class AccessTextTests
         var mark = Engine(sections).Single();
         var both = WatchMarks("Y2", [mark]).Concat(WatchMarks("Y3", [mark])).ToList();
         Assert.Equal(
-            ["Y2: A 1 conflicts with B 1, so Y2 has no full slate.", "Y3: A 1 conflicts with B 1, so Y3 has no full slate."],
+            ["**Y2**: A 1 conflicts with B 1, so **Y2** has no full slate.", "**Y3**: A 1 conflicts with B 1, so **Y3** has no full slate."],
             Tips(sections, "A 1", both));
-        Assert.Equal(["A 1 conflicts with B 1, so Y2 has no full slate."],
+        Assert.Equal(["A 1 conflicts with B 1, so **Y2** has no full slate."],
             Tips(sections, "A 1", WatchMarks("Y2", [mark])));
     }
 
@@ -146,8 +146,8 @@ public sealed class AccessTextTests
         var sections = new[] { Sec("A", "1", Lecture, At(0, 9, 10)), Sec("B", "1", Lecture, At(0, 9, 10)) };
         var marks = WatchMarks("Y2", Engine(sections));
         var lines = Tips(sections, "A 1", marks, hidden: id => id == "B 1" ? HiddenReason.Filters : null);
-        Assert.Equal(["A 1 conflicts with B 1, so Y2 has no full slate.", "B 1 is hidden by the filters."], lines);
-        Assert.Equal(["A 1 conflicts with B 1, so Y2 has no full slate."], Tips(sections, "A 1", marks, hidden: _ => null));
+        Assert.Equal(["A 1 conflicts with B 1, so **Y2** has no full slate.", "B 1 is hidden by the filters."], lines);
+        Assert.Equal(["A 1 conflicts with B 1, so **Y2** has no full slate."], Tips(sections, "A 1", marks, hidden: _ => null));
     }
 
     /// <summary>A partner left out by the chosen subjects (not the filters) says so (Greg, 2026-11-24).</summary>
@@ -157,7 +157,16 @@ public sealed class AccessTextTests
         var sections = new[] { Sec("A", "1", Lecture, At(0, 9, 10)), Sec("B", "1", Lecture, At(0, 9, 10)) };
         var marks = WatchMarks("Y2", Engine(sections));
         var lines = Tips(sections, "A 1", marks, hidden: id => id == "B 1" ? HiddenReason.Subjects : null);
-        Assert.Equal(["A 1 conflicts with B 1, so Y2 has no full slate.",
+        Assert.Equal(["A 1 conflicts with B 1, so **Y2** has no full slate.",
                       "B 1 isn't shown: its subject isn't one of your chosen Subjects."], lines);
+    }
+
+    /// <summary>A section of a course left out for a missing component says which components, with the watch in bold.</summary>
+    [Fact]
+    public void MissingComponentTip_NamesTheMissingComponents_AndBoldsTheWatch()
+    {
+        Assert.Equal("MANU330 L0A isn't counted: MANU330's lecture sections aren't in **CHBE-Y2**.",
+            AccessText.MissingComponentTip("MANU330 L0A", "MANU330", ["lecture"], AccessText.Bold("CHBE-Y2")));
+        Assert.Equal("**AB**", AccessText.Bold("A*B"));
     }
 }

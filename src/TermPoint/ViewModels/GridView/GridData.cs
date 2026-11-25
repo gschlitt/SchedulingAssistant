@@ -1,5 +1,6 @@
 using Avalonia.Media;
 using TermPoint.Models;
+using TermPoint.ViewModels.Access;
 
 namespace TermPoint.ViewModels.GridView;
 
@@ -60,6 +61,8 @@ public abstract record GridBlock(int Day, int StartMinutes, int EndMinutes, bool
 ///                       <see cref="FilterSnapshot.MultiTagNames"/>); empty otherwise, meaning no multi-tag mark.
 /// MeetingIndex        = index of this meeting in <c>section.Schedule</c>, so two meetings of one section on the same
 ///                       day and start (odd/even weeks) can be told apart; -1 = not a section meeting.
+/// Access              = how the open access watch draws this section (faded, stranded, essential, ...), set only while a
+///                       watch is open (<see cref="GridAccessPicture"/>); null = drawn as usual.
 /// </summary>
 public record SectionMeetingBlock(
     int Day, int StartMinutes, int EndMinutes, bool IsOverlay,
@@ -71,7 +74,8 @@ public record SectionMeetingBlock(
     SectionFlag Flag = SectionFlag.None,
     string SubjectColor = "",
     string MultiTagNames = "",
-    int MeetingIndex = -1
+    int MeetingIndex = -1,
+    AccessTileLook? Access = null
 ) : GridBlock(Day, StartMinutes, EndMinutes, IsOverlay, SemesterId, SemesterName, SemesterColor);
 
 /// <summary>
@@ -201,7 +205,13 @@ public record TileEntry(
     /// so a click or drag identifies the exact meeting rather than the first one at its day and start.
     /// -1 = not a section meeting.
     /// </summary>
-    int MeetingIndex = -1);
+    int MeetingIndex = -1,
+    /// <summary>
+    /// How the open access watch draws this line (faded, stranded, essential ●, can't fit ▲, caution ◆, in the slate, pinned)
+    /// and the hover line to add to the tile's tooltip, carried from <see cref="SectionMeetingBlock.Access"/>. Null = drawn
+    /// as usual (no watch is open).
+    /// </summary>
+    AccessTileLook? Access = null);
 
 /// <summary>
 /// A single tile drawn on the grid, potentially containing multiple co-scheduled sections
@@ -310,7 +320,16 @@ public record GridDayColumn(
 /// AttendeeList, when non-null, is rendered as a separate wrapped TextBlock (MaxWidth 300)
 /// below the main lines — used for meeting tiles with many attendees.
 /// </summary>
-public record TileTooltip(IReadOnlyList<string> Lines, string? AttendeeList = null);
+/// Markup, when true, renders each line through InlineFormatter (Access hover lines lead with a bold watch name) and
+/// spaces the lines further apart (<c>TileTooltipNoticeSpacing</c>), since each is a sentence of its own.
+public record TileTooltip(IReadOnlyList<string> Lines, string? AttendeeList = null, bool Markup = false)
+{
+    /// <summary>
+    /// Whether a grid tile shows this tooltip: when it has an attendee list or Access lines (even a single one). A
+    /// tooltip of just the time range is not shown; the tile already shows its time.
+    /// </summary>
+    public bool IsShownOnTile => Markup || !string.IsNullOrEmpty(AttendeeList);
+}
 
 /// <summary>All data needed by the view to render the schedule grid.</summary>
 public record GridData(

@@ -112,7 +112,7 @@ public sealed class GridWatchFocusTests : IDisposable
     {
         Assert.Single(_grid.GridData.ProgramConflicts);
         var lines = _grid.GridData.ConflictHoverLines[(_biolSection.Id, 1)];
-        Assert.Contains("BIOL101 A conflicts with CHEM101 A, so Pre-med has no full slate.", lines);
+        Assert.Contains("BIOL101 A conflicts with CHEM101 A, so **Pre-med** has no full slate.", lines);
         Assert.DoesNotContain(lines, l => l.Contains("hidden by the filters"));
     }
 
@@ -175,16 +175,24 @@ public sealed class GridWatchFocusTests : IDisposable
         Assert.Empty(_grid.GridData.ProgramConflicts);
     }
 
-    /// <summary>The tile tooltip leads with the time range and then the hover lines of its entries.</summary>
+    /// <summary>
+    /// A tile the conflict marks speak about is hovered with their lines alone, as markup (no time range: Greg,
+    /// 2026-11-25); a tile nothing speaks about keeps the time range.
+    /// </summary>
     [Fact]
-    public void TileTooltip_AppendsTheConflictLines()
+    public void TileTooltip_IsTheConflictLinesAlone_WithoutTheTime()
     {
         var tile = _grid.GridData.DayColumns.SelectMany(c => c.Tiles)
             .First(t => t.Entries.Any(e => e.SectionId == _biolSection.Id));
 
         var tip = ScheduleGridViewModel.BuildTileTooltip(tile, _grid.GridData.ConflictHoverLines, 1);
 
-        Assert.Equal("0830-1000", tip.Lines[0]);
-        Assert.True(tip.Lines.Count > 1);
+        Assert.DoesNotContain("0830-1000", tip.Lines);
+        Assert.NotEmpty(tip.Lines);
+        Assert.True(tip.Markup);
+
+        var plain = ScheduleGridViewModel.BuildTileTooltip(tile, null, 1);
+        Assert.Equal(["0830-1000"], plain.Lines);
+        Assert.False(plain.Markup);
     }
 }

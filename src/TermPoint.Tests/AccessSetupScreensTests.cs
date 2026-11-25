@@ -41,8 +41,8 @@ public sealed class AccessSetupScreensTests : IDisposable
     // ── Access tab ────────────────────────────────────────────────────────────
 
     private AccessTabViewModel NewTab(AccessSetupService service) =>
-        new(_rig.State, new SemesterContext(), new CampusRepository(_rig.Fx.Db),
-            new AccessWatchToggler(_rig.Env, _rig.State, _rig.Notifier, () => _rig.CanWrite), service);
+        AccessStateTestSupport.TabFor(_rig.Fx.Db, _rig.State, new SemesterContext(), _rig.Store,
+            new AccessWatchToggler(_rig.Env, _rig.State, _rig.Notifier, () => _rig.CanWrite), service, out _);
 
     /// <summary>Before the setup the tab invites it (naming the likely components); a read-only computer gets the quiet line; after the setup neither shows.</summary>
     [Fact]

@@ -65,8 +65,8 @@ public static partial class AccessText
     /// <summary>
     /// The hover lines for one section's line on one day: what the conflict marks on it say. Conflicts of one kind
     /// are merged into one sentence ("CHEM 213 A conflicts with PSYCH 101 A, B, C, so ..."), each line is led by its
-    /// watch's name ("Chem Y2: ") only when more than one watch speaks, and a partner that the grid is not showing
-    /// gets a line of its own at the end.
+    /// watch's name in bold ("**Chem Y2:** ", <see cref="Helpers.InlineFormatter"/> markup; Greg, 2026-11-25) only when
+    /// more than one watch speaks, and a partner that the grid is not showing gets a line of its own at the end.
     /// </summary>
     /// <param name="inputs">The semester view the marks were made on.</param>
     /// <param name="section">The section whose line is hovered.</param>
@@ -89,7 +89,8 @@ public static partial class AccessText
         foreach (var watchId in mine.Select(m => m.WatchId).Distinct())
         {
             var ks = mine.Where(m => m.WatchId == watchId).ToList();
-            string w = ks[0].WatchName;
+            // Every mention of the watch's name is bold (InlineFormatter markup; Greg, 2026-11-25).
+            string w = Bold(ks[0].WatchName);
             void Say(string text) => lines.Add((many ? $"{w}: " : string.Empty) + text);
 
             // Stranded: one sentence per set of stranded sections that conflict with the same sections.
@@ -267,8 +268,14 @@ public static partial class AccessText
     /// <param name="inputs">The semester view the analysis was made on.</param>
     /// <param name="a">The watch's analysis over the whole semester.</param>
     /// <param name="campusName">Gives a campus's name from its id.</param>
+    /// <param name="cautions">
+    /// The analysis's cautions (<see cref="Cautions.For"/>) for the watch's detail, which counts them after the stranded
+    /// sections; <c>null</c> (the list's rows) leaves them out. A watch whose pins stop a full slate names the pins
+    /// instead of a best partial.
+    /// </param>
     /// <returns>The phrases; never empty.</returns>
-    public static IReadOnlyList<string> HealthPhrases(AccessInputs inputs, Analysis a, Func<string?, string> campusName)
+    public static IReadOnlyList<string> HealthPhrases(
+        AccessInputs inputs, Analysis a, Func<string?, string> campusName, IReadOnlyList<Caution>? cautions = null)
     {
         var segs = new List<string>();
         // approved wording (Q53, Greg 2026-11-24)
@@ -346,6 +353,18 @@ public static partial class AccessText
                 segs.Add($"depends on {NameList(a.EssentialByTimingSections.Select(s => SectionLabel(inputs, s)).ToList())}");
             if (a.StrandedSections.Count > 0)
                 segs.Add($"{Plural(a.StrandedSections.Count, "section", "sections")} stranded");
+            if (cautions is { Count: > 0 })
+            {
+                int hard = cautions.Count(c => c.Kind == CautionKind.HardToReach), heavy = cautions.Count - hard;
+                if (hard > 0) segs.Add($"{Plural(hard, "section", "sections")} hard to reach");
+                if (heavy > 0) segs.Add($"{Plural(heavy, "section carries", "sections carry")} a heavy load");
+            }
+        }
+        else if (a.PinBlocks.Count > 0)
+        {
+            // approved wording (round 3 review): the pins are why there is no full slate, so name them, not a best partial
+            segs.Add("No slate with these pins");
+            foreach (var block in a.PinBlocks) segs.Add(PinBlockPhrase(inputs, block, campusName));
         }
         else
         {

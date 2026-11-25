@@ -21,6 +21,11 @@
 	<!-- Access tab marks — 10×10. Attention ▲ and fragile ● are filled; ok ○ is an OUTLINE (Stroke, no Fill) -->
 	<StreamGeometry x:Key="AccessMarkAttentionIcon">M5 1L9.5 9H0.5Z</StreamGeometry>
 	<StreamGeometry x:Key="AccessMarkFragileIcon">M5 1.5A3.5 3.5 0 1 1 5 8.5A3.5 3.5 0 1 1 5 1.5Z</StreamGeometry>
+	<!--  Small chevrons (Access tab: back, the slate stepper, folds); paths, since the WASM fonts lack ‹ › ▸ ▾  -->
+	<StreamGeometry x:Key="ChevronLeftIcon">M6.5 1L2.5 5L6.5 9L7.5 8L4.5 5L7.5 2Z</StreamGeometry>
+	<StreamGeometry x:Key="ChevronRightIcon">M3.5 1L7.5 5L3.5 9L2.5 8L5.5 5L2.5 2Z</StreamGeometry>
+	<StreamGeometry x:Key="ChevronDownIcon">M1 3.5L5 7.5L9 3.5L8 2.5L5 5.5L2 2.5Z</StreamGeometry>
+	<StreamGeometry x:Key="AccessMarkCautionIcon">M5 0.5L9.5 5L5 9.5L0.5 5Z</StreamGeometry>
 	<StreamGeometry x:Key="AccessMarkOkIcon">M5 1.5A3.5 3.5 0 1 1 5 8.5A3.5 3.5 0 1 1 5 1.5Z</StreamGeometry>
 
 	<!-- Funnel / filter — Heroicons solid, 24×24 -->

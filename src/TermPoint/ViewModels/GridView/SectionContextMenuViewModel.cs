@@ -3,6 +3,8 @@ using CommunityToolkit.Mvvm.Input;
 using TermPoint.Data.Repositories;
 using TermPoint.Models;
 using TermPoint.Services;
+using TermPoint.Services.Access;
+using TermPoint.ViewModels.Access;
 using System.Collections.ObjectModel;
 
 namespace TermPoint.ViewModels.GridView;
@@ -15,6 +17,7 @@ public partial class SectionContextMenuViewModel : ObservableObject
     private readonly Action _onSaved;
     private readonly WriteLockService _lockService;
     private readonly ISectionCardState _cardState;
+    private readonly AccessPicture? _picture;
 
     /// <summary>CanExecute predicate for the Confirm command; refuses writes in reader mode.</summary>
     private bool CanConfirm() => _lockService.IsWriter;
@@ -123,9 +126,15 @@ public partial class SectionContextMenuViewModel : ObservableObject
     /// The grid's marked sections. Marking is deliberately not gated by <paramref name="lockService"/> or
     /// <paramref name="cardState"/>: it changes nothing saved.
     /// </param>
+    /// <param name="picture">
+    /// The open access watch, or null (the tests). While a watch is open, the menu offers "Pin in slates for ..." /
+    /// "Unpin" for a section the watch covers. Like marking, it is not gated by the write lock or an open card: pins
+    /// are for looking and save nothing.
+    /// </param>
     public SectionContextMenuViewModel(ISectionRepository sectionRepo, Action onSaved, WriteLockService lockService,
-        ISectionCardState cardState, SectionMarks marks)
+        ISectionCardState cardState, SectionMarks marks, AccessPicture? picture = null)
     {
+        _picture = picture;
         _marks = marks;
         _cardState = cardState;
         _sectionRepo = sectionRepo;
@@ -207,6 +216,7 @@ public partial class SectionContextMenuViewModel : ObservableObject
         ShowTagsCommand.NotifyCanExecuteChanged();
         ShowFlagCommand.NotifyCanExecuteChanged();
         RefreshMarkState();
+        RefreshPinState();
         FillDetails(section, detailsHeading, instructorList, tagList, sectionTypes, deliveryTypes);
 
         // Instructors — multi-select: active instructors, plus any inactive instructor the section already has.
@@ -370,6 +380,33 @@ public partial class SectionContextMenuViewModel : ObservableObject
 
     [RelayCommand]
     private void Cancel() => IsOpen = false;
+
+    /// <summary>
+    /// True while an access watch is open and covers the right-clicked section: the menu offers to pin it in the
+    /// watch's slates (or unpin it). Set on <see cref="Load"/>.
+    /// </summary>
+    [ObservableProperty] private bool _hasPinItem;
+
+    /// <summary>"Pin in slates for Chem Y2", or "Unpin" when the section is already pinned. Set on <see cref="Load"/>.</summary>
+    [ObservableProperty] private string _pinItemText = string.Empty;
+
+    /// <summary>Pins the right-clicked section in the open watch's slates, or unpins it, and closes the menu.</summary>
+    [RelayCommand]
+    private void TogglePin()
+    {
+        if (_section is null || _picture is null) return;
+        _picture.TogglePin(_section.Id);
+        IsOpen = false;
+    }
+
+    /// <summary>Sets <see cref="HasPinItem"/> and <see cref="PinItemText"/> from the open watch and the loaded section.</summary>
+    private void RefreshPinState()
+    {
+        bool offer = _picture is { IsOpen: true } && _section is not null && _picture.Covers(_section.Id);
+        HasPinItem = offer;
+        PinItemText = !offer ? string.Empty
+            : _picture!.IsPinned(_section!.Id) ? AccessText.UnpinText : AccessText.PinInSlatesText(_picture.Name);
+    }
 
     /// <summary>Refreshes <see cref="MarkItemText"/> and <see cref="HasAnyMarks"/> from the marks and the loaded section.</summary>
     private void RefreshMarkState()

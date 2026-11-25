@@ -840,6 +840,68 @@ public partial class GridFilterViewModel : ViewModelBase
             parts.Add($"{label}: {string.Join(", ", selected)}");
     }
 
+    // ── Saving and setting the whole selection (an open access watch) ─────────────
+
+    /// <summary>
+    /// The filter selections as they stand: the ticked ids of every dimension, in <see cref="AllCollections"/> order,
+    /// and the tag logic. The overlay is not part of it (an access watch never touches it).
+    /// </summary>
+    /// <returns>The selection, comparable with <see cref="FilterSelection.SameAs"/>.</returns>
+    public FilterSelection CaptureSelection() =>
+        new(AllCollections().Select(c => (IReadOnlySet<string>)c.Where(i => i.IsSelected).Select(i => i.Id).ToHashSet()).ToList(),
+            _tagsMatchAny);
+
+    /// <summary>
+    /// A selection with only the given tags and courses ticked, the tag logic "all": what opening an access watch shows
+    /// (its tag) or a course checked alone (the course).
+    /// </summary>
+    /// <param name="tagIds">The tags to tick.</param>
+    /// <param name="courseIds">The courses to tick.</param>
+    /// <returns>The selection.</returns>
+    public FilterSelection SelectionOf(IEnumerable<string> tagIds, IEnumerable<string> courseIds) =>
+        new(AllCollections().Select(c => (IReadOnlySet<string>)(
+                ReferenceEquals(c, Tags) ? tagIds.ToHashSet()
+                : ReferenceEquals(c, Courses) ? courseIds.ToHashSet()
+                : new HashSet<string>())).ToList(),
+            false);
+
+    /// <summary>
+    /// Sets every dimension's ticks and the tag logic to <paramref name="selection"/>, then re-runs the grid once.
+    /// Ids no longer in a list are skipped. The overlay is left as it is.
+    /// </summary>
+    /// <param name="selection">A selection from <see cref="CaptureSelection"/> or <see cref="SelectionOf"/>.</param>
+    public void ApplySelection(FilterSelection selection)
+    {
+        var handler = FilterChanged;
+        FilterChanged = null;
+        try
+        {
+            int i = 0;
+            foreach (var collection in AllCollections().ToList())
+            {
+                var ids = i < selection.SelectedIds.Count ? selection.SelectedIds[i] : new HashSet<string>();
+                foreach (var item in collection.ToList()) item.IsSelected = ids.Contains(item.Id);
+                i++;
+            }
+        }
+        finally
+        {
+            FilterChanged = handler;
+        }
+        if (_tagsMatchAny != selection.TagsMatchAny)
+        {
+            _tagsMatchAny = selection.TagsMatchAny;
+            OnPropertyChanged(nameof(TagsMatchAny));
+            OnPropertyChanged(nameof(TagsMatchAll));
+        }
+        RefreshInstructorMutualExclusion();
+        RefreshRoomMutualExclusion();
+        RefreshDerived();
+        ClearTagsCommand.NotifyCanExecuteChanged();
+        FilterChanged?.Invoke();
+        HeadersChanged?.Invoke();
+    }
+
     private IEnumerable<ObservableCollection<FilterItemViewModel>> AllCollections()
     {
         yield return Instructors;
