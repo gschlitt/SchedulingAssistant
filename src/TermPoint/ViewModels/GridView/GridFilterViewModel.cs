@@ -342,6 +342,12 @@ public partial class GridFilterViewModel : ViewModelBase
     public AccessWatchToggler? WatchToggler { get; set; }
 
     /// <summary>
+    /// The access setup (wizard requests and the set-up mark). Set once by the main window view model; when null
+    /// (tests that do not exercise the wizard) a watch is turned on without asking.
+    /// </summary>
+    public AccessSetupService? SetupService { get; set; }
+
+    /// <summary>
     /// Whether the Tags popup is open. The view binds the Tags toggle's IsChecked to it two-way, so code can open
     /// the popup (<see cref="OpenTagsForWatch"/>). Opening re-reads <see cref="CanEditWatches"/>; closing hides the note.
     /// </summary>
@@ -385,6 +391,17 @@ public partial class GridFilterViewModel : ViewModelBase
     {
         if (item is null || WatchToggler is not { CanToggle: true } toggler) return;
         bool target = !item.IsWatched;
+        // The first watch before the access setup (revision 8f): the wizard opens first, and the watch is made only
+        // when it finishes. Cancelling makes no watch.
+        if (target && SetupService is { IsSetUp: false, CanSave: true } setup)
+        {
+            setup.RequestSetupWizard(() =>
+            {
+                toggler.SetWatched(item.Id, true);
+                item.IsWatched = true;
+            });
+            return;
+        }
         toggler.SetWatched(item.Id, target);
         item.IsWatched = target;
     }

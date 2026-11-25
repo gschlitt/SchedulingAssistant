@@ -199,6 +199,12 @@ public class AppSettings
     public bool MarkAllAccessConflicts { get; set; } = false;
 
     /// <summary>
+    /// Whether the Courses flyout's Components column is open (Access Analyzer 8c), per computer. Null means the user
+    /// has not chosen: the column is then open when some course has two or more components.
+    /// </summary>
+    public bool? ComponentsColumnOpen { get; set; }
+
+    /// <summary>
     /// Controls what the Section List does when the Schedule Grid filter passes a section.
     /// Default: Highlight (existing behaviour — matching cards receive a visual tint).
     /// </summary>

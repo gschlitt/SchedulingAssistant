@@ -768,6 +768,8 @@ public partial class App : Application
             sp.GetRequiredService<IAccessChecksSetupRepository>()));
         // The eye on a tag, shared by the filter's Tags popup, Scheduling Environment and the Access tab.
         services.AddSingleton<AccessWatchToggler>();
+        // Every write of the access setup (wizard, Component boxes, courses' components) and the requests to open the wizard.
+        services.AddSingleton<AccessSetupService>();
         // The Access tab beside Workload (desktop and WASM demo).
         services.AddSingleton<AccessTabViewModel>();
         services.AddSingleton<SectionListViewModel>();

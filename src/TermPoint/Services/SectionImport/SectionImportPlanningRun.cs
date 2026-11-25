@@ -159,6 +159,7 @@ internal sealed class SectionImportPlanningRun
 
         AssignCampusesToNewRooms();
         CourseTitleCheck.Run(_newSections, _problems);
+        FillNewCourseComponents();
 
         var plan = new ImportPlan(
             _subjects.NewRefs, _campuses.NewRefs, _sectionTypes.NewRefs, _deliveryTypes.NewRefs, _meetingTypes.NewRefs,
@@ -170,6 +171,27 @@ internal sealed class SectionImportPlanningRun
         var problems = WithoutProblemsOnBadCells(_problems).OrderBy(p => p.Row ?? 0).ToList();
         var warnings = new ImportWarningCollector(_snapshot, plan).Collect();
         return new ImportReport(problems, warnings, _skippedSections, plan, semesterWasEmpty);
+    }
+
+    /// <summary>
+    /// Rule 8b: once the access checks are set up, each NEW course gets as its components the distinct section types
+    /// of its imported sections that already exist and are marked Component, in section type order (an empty list
+    /// when it has none). A section type the import itself creates is never marked, so it never counts. Existing
+    /// courses are never touched. Done at planning, so the plan the user sees and the rows the writer inserts agree.
+    /// </summary>
+    private void FillNewCourseComponents()
+    {
+        if (!_snapshot.AccessSetUp) return;
+        foreach (var course in _courses.NewRefs)
+        {
+            course.Record.ComponentTypeIds = _newSections
+                .Where(s => s.Course.Record.Id == course.Record.Id && s.SectionType is { IsNew: false } t && t.Record.IsComponent)
+                .Select(s => s.SectionType!.Record)
+                .DistinctBy(t => t.Id)
+                .OrderBy(t => t.SortOrder).ThenBy(t => t.Id, StringComparer.Ordinal)
+                .Select(t => t.Id)
+                .ToList();
+        }
     }
 
     // ── Rows: required cells and the semester ─────────────────────────────────

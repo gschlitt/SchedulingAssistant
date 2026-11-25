@@ -42,10 +42,11 @@ public class SchedulingEnvironmentRepository(IDatabaseContext db) : ISchedulingE
         cmd.ExecuteNonQuery();
     }
 
-    public void Update(SchedulingEnvironmentValue value)
+    public void Update(SchedulingEnvironmentValue value, System.Data.Common.DbTransaction? tx = null)
     {
         db.MarkDirty();
         using var cmd = db.Connection.CreateCommand();
+        cmd.Transaction = tx;
         cmd.CommandText =
             "UPDATE SchedulingEnvironmentValues SET name = $name, data = $data WHERE id = $id";
         cmd.AddParam("$id", value.Id);

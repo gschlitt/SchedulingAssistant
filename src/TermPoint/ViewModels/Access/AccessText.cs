@@ -24,7 +24,7 @@ public enum HiddenReason
 /// so the grid's hover and, later, the Access tab say the same thing. A port of the r9 wireframe's
 /// <c>conflictTips</c>, <c>byCourse</c> and <c>joinAnd</c> (designs/wireframes/access-panel-r9.html). Pure and static.
 /// </summary>
-public static class AccessText
+public static partial class AccessText
 {
     /// <summary>
     /// A section's name in a sentence: its course's calendar code and its section code, e.g. "CHEM 213 A"; just the

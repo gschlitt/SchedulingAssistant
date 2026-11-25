@@ -73,8 +73,12 @@ public sealed class AccessTabTests : IDisposable
 
     private AccessWatchToggler NewToggler() => new(_envRepo, _state, _notifier, () => _canWrite);
 
+    private AccessSetupService NewSetup() =>
+        new(_fx.Db, _envRepo, new CourseRepository(_fx.Db), _sectionRepo, new AccessChecksSetupRepository(_fx.Db),
+            _state, _notifier, () => _canWrite);
+
     private AccessTabViewModel NewTab() =>
-        new(_state, _semesters, new CampusRepository(_fx.Db), NewToggler());
+        new(_state, _semesters, new CampusRepository(_fx.Db), NewToggler(), NewSetup());
 
     private void LoadBoth()
     {
@@ -138,15 +142,13 @@ public sealed class AccessTabTests : IDisposable
     }
 
     [Fact]
-    public void NoWatches_ShowsTheApprovedEmptyText()
+    public void NoWatches_IsEmpty()
     {
         _envRepo.Update(new SchedulingEnvironmentValue { Id = _zeta.Id, Name = "Zeta", IsAccessWatch = false });
         _envRepo.Update(new SchedulingEnvironmentValue { Id = _alpha.Id, Name = "Alpha", IsAccessWatch = false });
         var tab = NewTab();
         Assert.True(tab.IsEmpty);
         Assert.False(tab.HasRows);
-        Assert.Equal("No access watches yet. An access watch is a tag you watch: TermPoint then shows whether students can still take all its courses together.",
-            tab.EmptyText);
     }
 
     [Fact]

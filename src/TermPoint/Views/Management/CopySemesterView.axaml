@@ -111,6 +111,17 @@
                 <CheckBox Content="Include all reserves"
                           IsChecked="{Binding IncludeAllReserves}" />
             </StackPanel>
+
+            <!-- Access Analyzer (rule 36, Q40): what is still copied when its option is off, in either copy mode.
+                 Outside the sub-options panel so the lines stay readable when that panel is disabled. -->
+            <TextBlock Text="{Binding ComponentTypesLine}" Margin="0,6,0,0"
+                       IsVisible="{Binding ComponentTypesLine, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"
+                       TextWrapping="Wrap" FontSize="{StaticResource FontSizePanelList}"
+                       Foreground="{StaticResource TextSecondary}" />
+            <TextBlock Text="{Binding WatchedTagsLine}" Margin="0,2,0,0"
+                       IsVisible="{Binding WatchedTagsLine, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"
+                       TextWrapping="Wrap" FontSize="{StaticResource FontSizePanelList}"
+                       Foreground="{StaticResource TextSecondary}" />
         </StackPanel>
 
         <!-- Status message -->

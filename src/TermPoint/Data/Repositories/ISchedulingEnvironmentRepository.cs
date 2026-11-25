@@ -25,7 +25,9 @@ public interface ISchedulingEnvironmentRepository
     void Insert(string type, SchedulingEnvironmentValue value);
 
     /// <summary>Updates the value matched by <see cref="SchedulingEnvironmentValue.Id"/>.</summary>
-    void Update(SchedulingEnvironmentValue value);
+    /// <param name="value">The value to save.</param>
+    /// <param name="tx">Optional transaction to join; null for auto-commit behaviour.</param>
+    void Update(SchedulingEnvironmentValue value, DbTransaction? tx = null);
 
     /// <summary>
     /// Deletes the value with the given <paramref name="id"/>.

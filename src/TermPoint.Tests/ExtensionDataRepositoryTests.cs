@@ -109,7 +109,7 @@ public sealed class ExtensionDataRepositoryTests : IDisposable
     {
         var repo = new SchedulingEnvironmentRepository(_fx.Db);
         AssertRoundTrip("SchedulingEnvironmentValues", new SchedulingEnvironmentValue { Name = "Lab", IsAccessWatch = true, WatchMultiCampus = true, IsComponent = true },
-            x => x.Id, v => repo.Insert("roomType", v), repo.GetById, repo.Update);
+            x => x.Id, v => repo.Insert("roomType", v), repo.GetById, v => repo.Update(v));
     }
 
     [Fact]

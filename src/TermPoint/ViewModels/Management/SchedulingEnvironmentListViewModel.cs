@@ -5,6 +5,7 @@ using TermPoint.Data.Repositories;
 using TermPoint.Models;
 using TermPoint.Services;
 using TermPoint.Services.Access;
+using TermPoint.ViewModels.Access;
 using System.Collections.ObjectModel;
 using System.Data.Common;
 
@@ -24,6 +25,7 @@ public partial class SchedulingEnvironmentListViewModel : ViewModelBase, IDismis
     private readonly WriteLockService _lockService;
     private readonly AccessWatchToggler? _watchToggler;
     private readonly GridChangeNotifier? _changeNotifier;
+    private readonly AccessSetupService? _setupService;
 
     /// <summary>True when this instance holds the write lock; gates all write-capable buttons.</summary>
     public bool IsWriteEnabled => _lockService.IsWriter;
@@ -51,6 +53,16 @@ public partial class SchedulingEnvironmentListViewModel : ViewModelBase, IDismis
     {
         if (tag is null || _watchToggler is not { CanToggle: true } toggler) return;
         LastErrorMessage = null;
+
+        // The first watch before the access setup (revision 8f): the wizard opens first, and the watch is made only
+        // when it finishes. Cancelling makes no watch.
+        if (!tag.IsAccessWatch && _setupService is { IsSetUp: false, CanSave: true } setup)
+        {
+            var tagId = tag.Id;
+            setup.RequestSetupWizard(() => toggler.SetWatched(tagId, true));
+            return;
+        }
+
         try
         {
             toggler.SetWatched(tag.Id, !tag.IsAccessWatch);
@@ -107,8 +119,11 @@ public partial class SchedulingEnvironmentListViewModel : ViewModelBase, IDismis
         string? description = null,
         IRoomRepository? roomRepo = null,
         AccessWatchToggler? watchToggler = null,
-        GridChangeNotifier? changeNotifier = null)
+        GridChangeNotifier? changeNotifier = null,
+        AccessSetupService? setupService = null)
     {
+        _setupService = setupService;
+        if (_setupService is not null) _setupService.CanSaveChanged += OnLockStateChanged;
         _watchToggler = watchToggler;
         _changeNotifier = changeNotifier;
         _type = propertyType;
@@ -128,8 +143,151 @@ public partial class SchedulingEnvironmentListViewModel : ViewModelBase, IDismis
         Load();
     }
 
-    public void Load() =>
+    public void Load()
+    {
         Items = new ObservableCollection<SchedulingEnvironmentValue>(_repo.GetAll(_type));
+        if (!ShowComponentColumn) return;
+        // Before the setup the boxes show the guess the analyzer counts by (nothing is stored yet).
+        var guess = _setupService is { IsSetUp: false } s ? s.GuessedComponentTypeIds() : null;
+        foreach (var v in Items) v.ComponentBoxChecked = guess?.Contains(v.Id) ?? v.IsComponent;
+        OnPropertyChanged(nameof(ShowComponentGuessNote));
+        ComponentRows = new ObservableCollection<SectionTypeRowViewModel>(
+            Items.Select(v => new SectionTypeRowViewModel(this, v, v.ComponentBoxChecked)));
+    }
+
+    // ── Section Type: the Component box (Access Analyzer revision 8f) ────────
+
+    /// <summary>True only for the Section Type category: the list shows the Component column (<see cref="ComponentRows"/>).</summary>
+    public bool ShowComponentColumn => _type == SchedulingEnvironmentTypes.SectionType;
+
+    /// <summary>One row per section type, in list order, with its Component box. Empty for other categories. Rebuilt by <see cref="Load"/>.</summary>
+    [ObservableProperty] private ObservableCollection<SectionTypeRowViewModel> _componentRows = new();
+
+    /// <summary>
+    /// The row whose "Stop counting it?" ask is showing (under the list), or null. One at a time: the list is a
+    /// DataGrid of the stored values, so the ask can't sit inside the row.
+    /// </summary>
+    [ObservableProperty] private SectionTypeRowViewModel? _pendingAsk;
+
+    /// <summary>
+    /// A Component box in the list was clicked (the cell shows the stored value, so it only changes after a save).
+    /// Flips that type's row, which saves or asks (<see cref="OnComponentBoxChanged"/>). Ignored while an ask is open.
+    /// </summary>
+    /// <param name="value">The section type whose box was clicked.</param>
+    [RelayCommand]
+    private void ToggleComponent(SchedulingEnvironmentValue? value)
+    {
+        if (value is null || PendingAsk is not null || !CanChangeComponents) return;
+        var row = ComponentRows.FirstOrDefault(r => r.Value.Id == value.Id);
+        if (row is not null) row.IsComponent = !row.IsComponent;
+    }
+
+    /// <summary>The Component column heading's tooltip.</summary>
+    public string ComponentHeadingTip => AccessText.ComponentHeadingTip;
+
+    /// <summary>True on Section Type until a Component box is saved (the setup is not done): the boxes show a guess.</summary>
+    public bool ShowComponentGuessNote => ShowComponentColumn && _setupService is { IsSetUp: false };
+
+    /// <summary>The line saying the ticks are TermPoint's guess.</summary>
+    public string ComponentGuessNote => AccessText.ComponentGuessNote;
+
+    /// <summary>
+    /// Whether the Component boxes can be changed: this computer can save. They work before the access-watch setup
+    /// too; the first click there counts as the setup (<see cref="AccessSetupService.SetComponentBeforeSetup"/>).
+    /// </summary>
+    public bool CanChangeComponents => _setupService is { CanSave: true };
+
+    /// <summary>
+    /// A Component box was clicked. Ticking marks the type and, when any course has its components set, opens the
+    /// wizard's "which courses have it?" step (otherwise every course still takes its components from its sections,
+    /// so there is nothing to ask and the user stays in the list). Unticking takes the type off at once when no course lists it, otherwise shows the in-row ask first. Before the
+    /// setup, the shown guess plus this change is saved as the setup (no course lists anything yet, so no ask). A
+    /// refused or failed change puts the box back.
+    /// </summary>
+    /// <param name="row">The row.</param>
+    /// <param name="previous">The box's state before the click.</param>
+    internal void OnComponentBoxChanged(SectionTypeRowViewModel row, bool previous)
+    {
+        LastErrorMessage = null;
+        if (!CanChangeComponents || _setupService is not { } setup)
+        {
+            row.SetWithoutSaving(previous);
+            return;
+        }
+        try
+        {
+            if (!setup.IsSetUp)
+            {
+                setup.SetComponentBeforeSetup(row.Value.Id, row.IsComponent);
+                ReloadKeepingSelection();
+                if (row.IsComponent && setup.AnyCourseComponentsSet()) setup.RequestNewTypeWizard(row.Value.Id);
+                return;
+            }
+
+            if (row.IsComponent)
+            {
+                setup.MarkComponent(row.Value.Id);
+                ReloadKeepingSelection();
+                if (setup.AnyCourseComponentsSet()) setup.RequestNewTypeWizard(row.Value.Id);
+                return;
+            }
+
+            var listing = setup.CoursesListing(row.Value.Id);
+            if (listing.Count == 0)
+            {
+                setup.UnmarkComponent(row.Value.Id);
+                Load();
+                return;
+            }
+            row.AskText = AccessText.StopCountingAsk(row.Value.Name, listing.Select(c => c.CalendarCode).ToList());
+            row.IsAsking = true;
+            PendingAsk = row;
+        }
+        catch (Exception ex)
+        {
+            App.Logger.LogError(ex, "SchedulingEnvironmentListViewModel.OnComponentBoxChanged");
+            row.SetWithoutSaving(previous);
+            LastErrorMessage = WriteFailureText.For(ex, "The change could not be saved. No changes were made. Please try again.");
+        }
+    }
+
+    /// <summary>Reloads the list after a Component change, keeping the selected section type selected.</summary>
+    private void ReloadKeepingSelection()
+    {
+        var selectedId = SelectedItem?.Id;
+        Load();
+        SelectedItem = Items.FirstOrDefault(x => x.Id == selectedId);
+    }
+
+    /// <summary>"Stop counting it": unmarks the type and removes it from every course that lists it, in one transaction.</summary>
+    /// <param name="row">The row whose ask was confirmed.</param>
+    internal void ConfirmUnmark(SectionTypeRowViewModel row)
+    {
+        LastErrorMessage = null;
+        PendingAsk = null;
+        if (_setupService is not { CanSave: true } setup) { CancelUnmark(row); return; }
+        try
+        {
+            setup.UnmarkComponent(row.Value.Id);
+            Load();
+        }
+        catch (Exception ex)
+        {
+            App.Logger.LogError(ex, "SchedulingEnvironmentListViewModel.ConfirmUnmark");
+            row.IsAsking = false;
+            row.SetWithoutSaving(true);
+            LastErrorMessage = WriteFailureText.For(ex, "The change could not be saved. No changes were made. Please try again.");
+        }
+    }
+
+    /// <summary>Cancel on the ask: the box goes back to ticked and nothing is saved.</summary>
+    /// <param name="row">The row.</param>
+    internal void CancelUnmark(SectionTypeRowViewModel row)
+    {
+        PendingAsk = null;
+        row.IsAsking = false;
+        row.SetWithoutSaving(true);
+    }
 
     /// <summary>
     /// Called when the write lock state changes. Notifies the UI to re-evaluate
@@ -144,6 +302,8 @@ public partial class SchedulingEnvironmentListViewModel : ViewModelBase, IDismis
         EditCommand.NotifyCanExecuteChanged();
         DeleteCommand.NotifyCanExecuteChanged();
         ToggleWatchCommand.NotifyCanExecuteChanged();
+        OnPropertyChanged(nameof(CanChangeComponents));
+        foreach (var row in ComponentRows) row.RefreshEnabled();
     }
 
     /// <summary>
@@ -370,5 +530,6 @@ public partial class SchedulingEnvironmentListViewModel : ViewModelBase, IDismis
     public void Dispose()
     {
         _lockService.LockStateChanged -= OnLockStateChanged;
+        if (_setupService is not null) _setupService.CanSaveChanged -= OnLockStateChanged;
     }
 }

@@ -97,7 +97,62 @@
                                         IsVisible="{Binding ValidationError, Converter={x:Static ObjectConverters.IsNotNull}}"
                                         Text="{Binding ValidationError}" />
 
-
+                                    <!--
+                                        Components (Access Analyzer, 8f): the kinds of section students take one of each of.
+                                        Before access checks are set up, only a hint. Offered: the section types marked
+                                        Component, plus any this course still lists that has since been unmarked.
+                                    -->
+                                    <TextBlock
+                                        FontSize="12"
+                                        Foreground="{StaticResource TextMuted}"
+                                        IsVisible="{Binding ShowComponentsHint}"
+                                        Text="{Binding ComponentsHint}"
+                                        TextWrapping="Wrap" />
+                                    <StackPanel IsVisible="{Binding HasComponentGroup}" Spacing="3">
+                                        <TextBlock>
+                                            <Run Text="Components" />
+                                            <Run FontSize="12" Foreground="{StaticResource TextMuted}" Text="(students take one section of each)" />
+                                        </TextBlock>
+                                        <ItemsControl ItemsSource="{Binding ComponentOptions}">
+                                            <ItemsControl.ItemsPanel>
+                                                <ItemsPanelTemplate>
+                                                    <WrapPanel />
+                                                </ItemsPanelTemplate>
+                                            </ItemsControl.ItemsPanel>
+                                            <ItemsControl.ItemTemplate>
+                                                <DataTemplate>
+                                                    <CheckBox Margin="0,0,12,0" IsChecked="{Binding IsSelected}">
+                                                        <TextBlock>
+                                                            <Run Text="{Binding Name}" />
+                                                            <Run FontSize="11" Foreground="{StaticResource TextMuted}" Text="{Binding CountText}" />
+                                                        </TextBlock>
+                                                    </CheckBox>
+                                                </DataTemplate>
+                                            </ItemsControl.ItemTemplate>
+                                        </ItemsControl>
+                                        <TextBlock
+                                            FontSize="12"
+                                            Foreground="{StaticResource TextMuted}"
+                                            IsVisible="{Binding HasNoComponentOptions}"
+                                            Text="{Binding NoComponentTypesText}" />
+                                        <TextBlock
+                                            FontSize="12"
+                                            Foreground="{StaticResource TextAttention}"
+                                            IsVisible="{Binding NotCountedText, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"
+                                            Text="{Binding NotCountedText}"
+                                            TextWrapping="Wrap" />
+                                        <ItemsControl ItemsSource="{Binding ComponentMismatchLines}">
+                                            <ItemsControl.ItemTemplate>
+                                                <DataTemplate>
+                                                    <TextBlock
+                                                        FontSize="12"
+                                                        Foreground="{StaticResource TextAttention}"
+                                                        Text="{Binding StringFormat='▲ {0}'}"
+                                                        TextWrapping="Wrap" />
+                                                </DataTemplate>
+                                            </ItemsControl.ItemTemplate>
+                                        </ItemsControl>
+                                    </StackPanel>
 
                                     <!--  Tag multi-select  -->
                                     <Expander
@@ -192,6 +247,55 @@
                                 MinWidth="130"
                                 Binding="{Binding Title}"
                                 Header="Title" />
+                            <!--
+                                Components (Access Analyzer, 8c/8f): shown only after access checks are set up, and folds
+                                to a narrow strip (remembered on this computer). DataGrid columns can't bind IsVisible or
+                                Width, so CourseListView.SyncComponentsColumn sets them from the view model; the column is
+                                found by its Tag. ▲ marks rule 8a's sections, named in the hover.
+                            -->
+                            <DataGridTemplateColumn Tag="Components" Width="Auto" CanUserSort="False">
+                                <DataGridTemplateColumn.Header>
+                                    <StackPanel Orientation="Horizontal" Spacing="4">
+                                        <TextBlock
+                                            VerticalAlignment="Center"
+                                            IsVisible="{Binding $parent[DataGrid].DataContext.ComponentsColumnOpen}"
+                                            Text="Components"
+                                            ToolTip.Tip="{Binding $parent[DataGrid].DataContext.ComponentsColumnTip}" />
+                                        <Button
+                                            Padding="2,0"
+                                            MinHeight="0"
+                                            Background="Transparent"
+                                            BorderThickness="0"
+                                            Command="{Binding $parent[DataGrid].DataContext.ToggleComponentsColumnCommand}">
+                                            <Panel>
+                                                <TextBlock IsVisible="{Binding $parent[DataGrid].DataContext.ComponentsColumnOpen}" Text="◂" ToolTip.Tip="Hide the Components column" />
+                                                <TextBlock IsVisible="{Binding !$parent[DataGrid].DataContext.ComponentsColumnOpen}" Text="▸" ToolTip.Tip="Show the Components column" />
+                                            </Panel>
+                                        </Button>
+                                    </StackPanel>
+                                </DataGridTemplateColumn.Header>
+                                <DataGridTemplateColumn.CellTemplate>
+                                    <DataTemplate>
+                                        <StackPanel
+                                            Margin="4,0"
+                                            VerticalAlignment="Center"
+                                            IsVisible="{Binding $parent[DataGrid].DataContext.ComponentsColumnOpen}"
+                                            Orientation="Horizontal"
+                                            Spacing="4">
+                                            <TextBlock VerticalAlignment="Center" Text="{Binding ComponentsText}" />
+                                            <Path
+                                                Width="9"
+                                                Height="9"
+                                                VerticalAlignment="Center"
+                                                Data="{StaticResource AccessMarkAttentionIcon}"
+                                                Fill="{StaticResource AccessMarkAttention}"
+                                                IsVisible="{Binding MismatchText, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"
+                                                Stretch="Uniform"
+                                                ToolTip.Tip="{Binding MismatchText}" />
+                                        </StackPanel>
+                                    </DataTemplate>
+                                </DataGridTemplateColumn.CellTemplate>
+                            </DataGridTemplateColumn>
                             <DataGridTextColumn
                                 Width="Auto"
                                 MinWidth="80"

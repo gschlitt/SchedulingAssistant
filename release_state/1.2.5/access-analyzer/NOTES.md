@@ -12,7 +12,8 @@ Ledger: [RELEASE_1.2.5.md](../RELEASE_1.2.5.md). Design: [designs/1.2.5/access-a
 - Piece D's session state and UI (to build E on): `Services/Access/AccessState.cs` (invalidate it after any change to
   component types, courses' components or the set-up mark), `AccessWatchToggler.cs`, `ViewModels/Access/`
   (`AccessText` holds all user wording; `AccessTabViewModel`), `Views/AccessTabView.axaml`, `Views/BottomLeftTabs.axaml`.
-  Piece E's steps are Phase 6 "E. Components" in the spec; its wording waits are Q40 and rule 8b.
+  Piece E's steps are Phase 6 "E. Components" in the spec; its code starts at `Services/Access/AccessSetupService.cs`
+  and `ViewModels/Access/AccessSetupWizardViewModel.cs`.
 - `designs/1.2.5/slot-browser.md`: related; its D3 level 2 is judged by whole slates.
 - Memory note `project_access_analyzer` (Greg's own working notes).
 
@@ -367,6 +368,63 @@ without seats, cautions, pins or subsets; Mark all conflicts at the foot); remov
 `AccessPanelViewModel`, `WatchCreationViewModel`, `ProgramWatchItemViewModel`, `ProgramConflictService`, the
 `ProgramWatch` repository (the conversion reads JSON) and their tests; What's new entry. Files: `MainView.axaml`,
 `ScheduleGridView.axaml`, `AccessPanelView.axaml` (deleted), the Tags popup's and Scheduling Environment's views.
+
+</details>
+
+<details>
+<summary>Piece E: build plan (Opus, 2026-11-24)</summary>
+
+Split like D: **E-core** (Sonnet: services, view models, tests; no `.axaml`) then **E-ui** (Opus: the views, after
+Greg closes them in VS: `CourseListView`, `SchedulingEnvironmentListView`, `CopySemesterView`, `ImportSectionsView`,
+`AccessTabView`, the Tags popup's view; new `AccessSetupWizardView`).
+
+- **Writes:** one `AccessSetupService` (singleton, both DI paths; refuses without the write lock, like
+  `AccessWatchToggler`): wizard No (types unmarked, set-up mark), wizard Yes (type flags, every course's list, mark),
+  mark a type, unmark a type (with its affected courses), save several courses' lists. Each in one transaction
+  (nullable-tx pattern), only changed rows written; then `AccessState.Invalidate` and `NotifyGridContentChanged`.
+- **Wizard as a flyout page** (like Courses), not a window: WASM-safe and no picker/dispose deadlock. Same view model in
+  "new type" mode for the follow-up after ticking Component. Wording from the r9 mock (approved for coding, 8f).
+- **First eye before setup** (Tags popup, Scheduling Environment → Tags): opens the wizard; the watch is made only
+  when it finishes. Access tab: the invite (editing) or the quiet read-only line until set up.
+- **Courses:** Components column only after setup, folds (`AppSettings`, null = open when any course has 2+), ▲ with
+  rule 8a's sentence. Edit Course group only after setup; Add Course then starts with an empty list (before setup:
+  null). A course save invalidates `AccessState`.
+- **Copy Semester:** section types kept for courses with 2+ components (rule 36) and watched tags kept (Q40) whenever
+  the option that would copy them is off, in both copy modes (choice for Greg); lines before Copy.
+- **Import (8b):** after setup, each new course stores its imported sections' component types; existing courses
+  untouched; summary line names the courses with 2+.
+- Not in E: round 7's what-if lines and notices (F, G).
+- **Approved by Greg (2026-11-24):** Q40 "Watched tags are still copied, so access watches carry over."; rule 8b
+  "Components were filled in for BMEG 230 and CHEM 201 from their sections' types. You can change them under
+  Courses." (up to three named, else "12 new courses"); Copy Semester keeps them in both copy modes.
+- **E-core built 2026-11-24** (Sonnet; Opus reviewed): `AccessSetupService`, `ComponentSuggestion`,
+  `AccessInputsFactory`, `AccessSetupWizardViewModel`, `AccessTextSetup` (wording from the r9 mock, marked approved),
+  `SectionTypeRowViewModel`, `CourseComponentsContext`; 53 tests (`AccessSetup*Tests`). Choices: rule 8b runs in
+  the planner (`SectionImportPlanningRun`), so plan, summary and rows agree; "this term" counts and the Courses
+  column read every loaded semester; a never-set course opens in Edit Course on the suggestion; the wizard keeps
+  course ticks across Back. Not covered: rule 8b through the writer; demo saves aren't one transaction (no tx).
+- **E-ui built 2026-11-24** (Opus): wizard view (`Views/Access/AccessSetupWizardView`), Access tab invite, Courses
+  column (DataGrid columns can't bind width, so `CourseListView.SyncComponentsColumn` sets it), Edit Course group,
+  Copy Semester and import lines, Section Type's Component column. Change from the mock: the "Stop counting it?" ask
+  shows under the list, not in the row (the list is a DataGrid of stored values); the box only changes after a save.
+- **Greg's hand check (2026-11-24/25), all built; E committed:**
+  - "Access checks" is "access watches" in all user text (code comments still say checks).
+  - Wizard: his new wording for the parallel-courses note (italics via `InlineFormatter`'s new `*word*`), question 2
+    and the course check; course headings stay put (the flyout hosts pages in a ScrollViewer, so the rows' own
+    ScrollViewer is capped by `WizardCourseTableMaxHeight`).
+  - "Any one section" removed everywhere (wizard rows, Courses column now blank, Edit Course hint): it describes how
+    the analyzer counts, not the course, and confused next to a lone ticked type.
+  - Section Type description: his two paragraphs.
+  - **Component boxes work before the setup** (a user who never makes a watch can still mark types). They show the
+    guess (`ComponentBoxChecked`, display only, `[JsonIgnore]`) under a line saying so; the first click saves guess
+    plus change as the setup (`SetComponentBeforeSetup`), courses stay null. A tick asks "which courses have it?"
+    only when some course has a stored list; that step then returns to Scheduling Environment, not the main panels.
+  - Access tab: invite is just "Two quick questions before using access watches" + Set up + "What's an access
+    watch?" link (URL is a placeholder, `AccessText.WhatIsAWatchUri`: set in H); the empty-tab paragraph is gone;
+    Add a watch and Mark all conflicts hide until set up. Workload | Access tabs: panel-title size, a divider.
+  - Test DB: Greg's demo DB is `C:\ProgramData\TermPoint\DEMO\Test-TT.db`; to see the wizard again, delete the
+    `AccessChecksSetUp` row of `AppConfiguration` and strip `isComponent` / `componentTypeIds` from the JSON (backup
+    first; done once 2026-11-24).
 
 </details>
 

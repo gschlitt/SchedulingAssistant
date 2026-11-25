@@ -4,6 +4,8 @@ using TermPoint.Data;
 using TermPoint.Data.Repositories;
 using TermPoint.Models;
 using TermPoint.Services;
+using TermPoint.Services.Access;
+using TermPoint.ViewModels.Access;
 using TermPoint.ViewModels;
 using System.Collections.ObjectModel;
 
@@ -25,7 +27,70 @@ public partial class CopySemesterViewModel : ViewModelBase, IDisposable
     /// <summary>Returns true when the current user holds the write lock. Used as a CanExecute predicate for all write commands.</summary>
     private bool CanWrite() => _lockService.IsWriter;
 
+    private readonly AccessSetupService? _setup;
+
     private List<Section>? _sourceSections;
+
+    /// <summary>The courses with sections in the source semester that have two or more components (rule 36).</summary>
+    private HashSet<string> _multiComponentCourseIds = new();
+
+    /// <summary>The course codes of <see cref="_multiComponentCourseIds"/>, sorted, for the line before Copy.</summary>
+    private List<string> _multiComponentCodes = new();
+
+    /// <summary>The ids of the tags that are access watches, kept when the tags option is off (Q40).</summary>
+    private HashSet<string> _watchedTagIds = new();
+
+    /// <summary>True when some source section carries a watched tag.</summary>
+    private bool _sourceHasWatchedTags;
+
+    /// <summary>
+    /// Rule 36's line, shown while the section types option would not copy them: section types are still copied for
+    /// courses with more than one component. Null when the option is on, or no course in the source has two or more
+    /// components. Recomputed when the From semester or an option changes.
+    /// </summary>
+    public string? ComponentTypesLine =>
+        !(CopyAndMore && IncludeSectionType) && _multiComponentCodes.Count > 0
+            ? AccessText.CopyComponentTypesLine(_multiComponentCodes)
+            : null;
+
+    /// <summary>
+    /// Q40's line, shown while the tags option would not copy them: watched tags are still copied. Null when the
+    /// option is on, or no source section carries a watched tag. Recomputed when the From semester or an option changes.
+    /// </summary>
+    public string? WatchedTagsLine =>
+        !(CopyAndMore && IncludeAllTags) && _sourceHasWatchedTags ? AccessText.CopyWatchedTagsLine : null;
+
+    /// <summary>Tells the view to re-read the two lines.</summary>
+    private void RaiseAccessLinesChanged()
+    {
+        OnPropertyChanged(nameof(ComponentTypesLine));
+        OnPropertyChanged(nameof(WatchedTagsLine));
+    }
+
+    /// <summary>
+    /// Works out, over the source semester's sections, which courses have two or more components (the engine's rules,
+    /// so before the access setup the suggestion counts) and whether any section carries a watched tag. Without the
+    /// access service both stay empty and nothing extra is copied.
+    /// </summary>
+    /// <param name="source">The source semester's sections.</param>
+    private void ComputeSourceFacts(IReadOnlyList<Section> source)
+    {
+        _multiComponentCourseIds = new();
+        _multiComponentCodes = new();
+        _watchedTagIds = new();
+        _sourceHasWatchedTags = false;
+        if (_setup is null || source.Count == 0) return;
+
+        var inputs = _setup.InputsFor(source);
+        var courseIds = source.Where(s => s.CourseId is not null).Select(s => s.CourseId!).Distinct()
+            .Where(id => inputs.ComponentsOf(id).Count >= 2)
+            .OrderBy(id => inputs.CourseCode(id), StringComparer.OrdinalIgnoreCase)
+            .ToList();
+        _multiComponentCourseIds = courseIds.ToHashSet();
+        _multiComponentCodes = courseIds.Select(inputs.CourseCode).ToList();
+        _watchedTagIds = _setup.WatchedTagIds().ToHashSet();
+        _sourceHasWatchedTags = source.Any(s => s.TagIds.Any(_watchedTagIds.Contains));
+    }
 
     [ObservableProperty] private ObservableCollection<AcademicYear> _academicYears = new();
     [ObservableProperty] private AcademicYear? _fromAcademicYear;
@@ -73,7 +138,9 @@ public partial class CopySemesterViewModel : ViewModelBase, IDisposable
     [ObservableProperty] private bool _includeAllReserves;
 
     partial void OnCopyDesignationsOnlyChanged(bool value) { if (value) CopyAndMore = false; }
-    partial void OnCopyAndMoreChanged(bool value) { if (value) CopyDesignationsOnly = false; }
+    partial void OnCopyAndMoreChanged(bool value) { if (value) CopyDesignationsOnly = false; RaiseAccessLinesChanged(); }
+    partial void OnIncludeSectionTypeChanged(bool value) => RaiseAccessLinesChanged();
+    partial void OnIncludeAllTagsChanged(bool value) => RaiseAccessLinesChanged();
 
     // UI state
     [ObservableProperty]
@@ -91,8 +158,10 @@ public partial class CopySemesterViewModel : ViewModelBase, IDisposable
         ISemesterRepository semRepo,
         ISectionRepository sectionRepo,
         IDatabaseContext db,
-        WriteLockService lockService)
+        WriteLockService lockService,
+        AccessSetupService? setupService = null)
     {
+        _setup = setupService;
         _ayRepo = ayRepo;
         _semRepo = semRepo;
         _sectionRepo = sectionRepo;
@@ -127,6 +196,8 @@ public partial class CopySemesterViewModel : ViewModelBase, IDisposable
 
     partial void OnFromSemesterChanged(Semester? value)
     {
+        ComputeSourceFacts(value is null || _setup is null ? [] : _sectionRepo.GetAll(value.Id));
+        RaiseAccessLinesChanged();
         UpdateCopyEnabled();
     }
 
@@ -194,6 +265,7 @@ public partial class CopySemesterViewModel : ViewModelBase, IDisposable
             return;
         }
 
+        ComputeSourceFacts(_sourceSections);
         ExecuteCopy();
     }
 
@@ -233,6 +305,14 @@ public partial class CopySemesterViewModel : ViewModelBase, IDisposable
             SectionCode = source.SectionCode,
             CampusId = source.CampusId,
         };
+
+        // Access watches still need these two, whatever the options say (rule 36, Q40): the section type of a course
+        // with two or more components, and the tags that are access watches.
+        bool typesOption = CopyAndMore && IncludeSectionType;
+        if (!typesOption && source.CourseId is not null && _multiComponentCourseIds.Contains(source.CourseId))
+            s.SectionTypeId = source.SectionTypeId;
+        if (!(CopyAndMore && IncludeAllTags))
+            s.TagIds = source.TagIds.Where(_watchedTagIds.Contains).ToList();
 
         if (!CopyAndMore)
             return s;

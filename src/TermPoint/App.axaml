@@ -28,8 +28,6 @@
 			<x:Double x:Key="FontSizeFilterPopup">11</x:Double>
 			<!--  The Access tab's watch list, its health lines, notes and the Mark all conflicts box  -->
 			<x:Double x:Key="FontSizePanelList">11</x:Double>
-			<!--  The Workload / Access tab names in the bottom-left panel's header  -->
-			<x:Double x:Key="FontSizePanelTab">13</x:Double>
 
 			<!--  Tallest the Focus picker's subject checklist grows before it scrolls  -->
 			<x:Double x:Key="FocusPickerListMaxHeight">220</x:Double>

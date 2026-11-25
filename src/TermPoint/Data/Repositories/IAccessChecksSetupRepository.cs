@@ -20,6 +20,7 @@ public interface IAccessChecksSetupRepository
     /// <summary>
     /// Records that the setup is finished. Safe to repeat. A read-only session is refused like any other write.
     /// </summary>
+    /// <param name="tx">Optional transaction to join; null for auto-commit behaviour.</param>
     /// <exception cref="InvalidOperationException">Not thrown by the demo version. The SQLite version throws <c>WriteAccessLostException</c>;The session is read-only; nothing was written.</exception>
-    void MarkSetUp();
+    void MarkSetUp(System.Data.Common.DbTransaction? tx = null);
 }

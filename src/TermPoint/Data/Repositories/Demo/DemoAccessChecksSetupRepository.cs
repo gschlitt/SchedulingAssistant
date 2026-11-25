@@ -12,5 +12,5 @@ public class DemoAccessChecksSetupRepository : IAccessChecksSetupRepository
     public bool IsSetUp() => _isSetUp;
 
     /// <inheritdoc/>
-    public void MarkSetUp() => _isSetUp = true;
+    public void MarkSetUp(System.Data.Common.DbTransaction? tx = null) => _isSetUp = true;
 }

@@ -19,6 +19,7 @@ No hardcoded dimensions in ViewModels: pixel widths/heights and other view conce
 
 # Avalonia Gotchas (cross-cutting)
 
+- **Flyout pages sit inside a ScrollViewer** (`MainView`'s flyout host), so a page gets unbounded height: a ScrollViewer inside the page never scrolls and anything "docked above" it scrolls away. Cap the inner one with a `MaxHeight` resource (e.g. `WizardCourseTableMaxHeight`).
 - Collapsed controls (`IsVisible=false`) have zero size — `OnSizeChanged` never fires and `Bounds` is zero. If a control must track size while hidden, seed the size from the parent when it becomes visible.
 - **Tunnel handlers on one element run last-added first** (checked on 12.1.3). A handler added to a TopLevel's tunnelling key events runs before Avalonia's own access-key handler, so it can mark Alt handled to stop Alt from showing menu underlines and opening the main menu (used by the meeting drag; rationale in `ScheduleGridView.OnDragKeyDown`).
 - **Section list scrolling:** to show a section, set `SelectedItem` or call `ListScrollAnchorBehavior.ScrollItemIntoView(list, item)`. Never scroll the section ListBox's ScrollViewer directly (`Offset`, `ScrollIntoView`, `BringIntoView`) — scroll anchoring undoes it.

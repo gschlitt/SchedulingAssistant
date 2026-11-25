@@ -19,6 +19,7 @@ namespace TermPoint.Helpers
     /// attribute values with no XML escaping:</para>
     /// <list type="bullet">
     ///   <item><c>**text**</c> — bold.</item>
+    ///   <item><c>*text*</c> — italic (one asterisk each side, not part of a <c>**</c>).</item>
     ///   <item><c>[[text]]</c> or <c>[[text|color]]</c> — a rounded colored "pill" badge.
     ///         color = <c>accent</c>(default)/<c>info</c>/<c>warn</c>/<c>success</c>/<c>neutral</c> or a <c>#hex</c>.</item>
     ///   <item><c>[label](url)</c> — an underlined link; click opens the URL via the OS handler.</item>
@@ -49,6 +50,7 @@ namespace TermPoint.Helpers
         private static readonly Regex TokenRegex = new(
             @"(?<brk>[ \t]*(?:\n|\[br\])[ \t]*)" +
             @"|(?<bold>\*\*(?<bcontent>.+?)\*\*)" +
+            @"|(?<ital>(?<!\*)\*(?<icontent>[^*\n]+?)\*(?!\*))" +
             @"|(?<pill>\[\[(?<pcontent>[^\]|]+?)(?:\|(?<pcolor>[^\]]+?))?\]\])" +
             @"|(?<link>\[(?<lcontent>[^\]]+?)\]\((?<href>[^)]+?)\))" +
             @"|(?<color>\{(?<cname>[^{}]*?)\}(?<ccontent>.*?)\{/\})",
@@ -82,6 +84,14 @@ namespace TermPoint.Helpers
                         {
                             Text = m.Groups["bcontent"].Value,
                             FontWeight = FontWeight.Bold
+                        });
+                    }
+                    else if (m.Groups["ital"].Success)
+                    {
+                        tb.Inlines.Add(new Run
+                        {
+                            Text = m.Groups["icontent"].Value,
+                            FontStyle = FontStyle.Italic
                         });
                     }
                     else if (m.Groups["pill"].Success)

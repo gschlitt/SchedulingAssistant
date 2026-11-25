@@ -55,7 +55,7 @@ public class DemoSchedulingEnvironmentRepository : ISchedulingEnvironmentReposit
         ListFor(type).Add(value);
 
     /// <inheritdoc/>
-    public void Update(SchedulingEnvironmentValue value)
+    public void Update(SchedulingEnvironmentValue value, System.Data.Common.DbTransaction? tx = null)
     {
         foreach (var bucket in AllBuckets) // find which list owns this id
         {

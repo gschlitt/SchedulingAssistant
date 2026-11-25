@@ -59,6 +59,12 @@ public sealed class ImportSetupSnapshot
     public bool IncludeSunday { get; }
 
     /// <summary>
+    /// True when the access-checks setup has been done (Access Analyzer rule 8b): only then does the import fill in
+    /// each new course's components from its sections' section types.
+    /// </summary>
+    public bool AccessSetUp { get; }
+
+    /// <summary>
     /// Creates a snapshot. Only the semester and its academic year are required; every list defaults
     /// to empty, so a test names only what it needs. Lists are copied, so later changes to the
     /// caller's lists do not affect the snapshot.
@@ -79,6 +85,7 @@ public sealed class ImportSetupSnapshot
     /// <param name="defaultSectionCapacity">The default section capacity, or null.</param>
     /// <param name="includeSaturday">Whether Saturday meetings are turned on.</param>
     /// <param name="includeSunday">Whether Sunday meetings are turned on.</param>
+    /// <param name="accessSetUp">Whether the access-checks setup has been done.</param>
     /// <exception cref="ArgumentNullException">The semester or academic year is null.</exception>
     public ImportSetupSnapshot(
         Semester semester,
@@ -96,8 +103,10 @@ public sealed class ImportSetupSnapshot
         IEnumerable<LegalStartTime>? legalStartTimes = null,
         int? defaultSectionCapacity = null,
         bool includeSaturday = false,
-        bool includeSunday = false)
+        bool includeSunday = false,
+        bool accessSetUp = false)
     {
+        AccessSetUp = accessSetUp;
         Semester = semester ?? throw new ArgumentNullException(nameof(semester));
         AcademicYear = academicYear ?? throw new ArgumentNullException(nameof(academicYear));
         Subjects = Copy(subjects);

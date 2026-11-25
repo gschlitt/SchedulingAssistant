@@ -25,11 +25,8 @@ public sealed partial class AccessTabViewModel : ViewModelBase
     private readonly SemesterContext _semesters;
     private readonly ICampusRepository _campusRepo;
     private readonly AccessWatchToggler _toggler;
-
-    /// <summary>The text of the empty tab (approved wording).</summary>
-    // approved wording
-    public const string EmptyMessage =
-        "No access watches yet. An access watch is a tag you watch: TermPoint then shows whether students can still take all its courses together.";
+    private readonly AccessSetupService _setup;
+    private bool _isSetUp;
 
     /// <summary>The tooltip of the Add a watch button when it is enabled (approved wording).</summary>
     // approved wording
@@ -51,11 +48,8 @@ public sealed partial class AccessTabViewModel : ViewModelBase
     /// <summary>True when at least one watch exists.</summary>
     public bool HasRows => Rows.Count > 0;
 
-    /// <summary>True when there are no watches: the tab shows <see cref="EmptyText"/>.</summary>
+    /// <summary>True when there are no watches.</summary>
     public bool IsEmpty => Rows.Count == 0;
-
-    /// <summary>What the empty tab says.</summary>
-    public string EmptyText => EmptyMessage;
 
     /// <summary>True when any watch needs a look (drives the dot on the tab).</summary>
     [ObservableProperty] private bool _needsALook;
@@ -85,18 +79,54 @@ public sealed partial class AccessTabViewModel : ViewModelBase
     /// <summary>The Add a watch button's tooltip: the button's name, or why it is off.</summary>
     public string AddWatchTip => CanAddWatch ? AddWatchEnabledTip : AddWatchReadOnlyTip;
 
+    /// <summary>The Set up command: asks the main window to open the setup wizard (the invitation's button).</summary>
+    public IRelayCommand SetUpCommand { get; }
+
+    /// <summary>
+    /// True once access watches are set up. Until then Add a watch and Mark all conflicts are hidden (Greg,
+    /// 2026-11-25): watches start from the setup.
+    /// </summary>
+    public bool IsSetUp => _isSetUp;
+
+    /// <summary>True when the invitation shows: access watches are not set up and this computer can save.</summary>
+    public bool ShowSetupInvite => !_isSetUp && _setup.CanSave;
+
+    /// <summary>True when the quiet read-only line shows instead: not set up, and this computer cannot save.</summary>
+    public bool ShowSetupReadOnlyLine => !_isSetUp && !_setup.CanSave;
+
+    /// <summary>The invitation's title.</summary>
+    public string SetupInviteTitle => AccessText.SetupInviteTitle;
+
+    /// <summary>The invitation's button text.</summary>
+    public string SetupInviteButton => AccessText.SetupInviteButton;
+
+    /// <summary>The invitation's link text: "What's an access watch?".</summary>
+    public string WhatIsAWatchLink => AccessText.WhatIsAWatchLink;
+
+    /// <summary>Opens the help page or video on access watches in the browser.</summary>
+    public IRelayCommand WhatIsAWatchCommand { get; } = new RelayCommand(() => PlatformProcess.OpenUri(AccessText.WhatIsAWatchUri));
+
+    /// <summary>The read-only line's sentence, naming the section types that look like components.</summary>
+    public string SetupReadOnlyText => AccessText.SetupReadOnlyText(_setup.LikelyComponentNames());
+
     /// <summary>Creates the tab and fills it from the current access state.</summary>
     /// <param name="state">The access results.</param>
     /// <param name="semesters">The loaded semesters (their names).</param>
     /// <param name="campusRepo">Campus names for the health lines.</param>
     /// <param name="toggler">Says whether this computer may change watches.</param>
-    public AccessTabViewModel(AccessState state, SemesterContext semesters, ICampusRepository campusRepo, AccessWatchToggler toggler)
+    /// <param name="setup">The access setup: whether it is done, whether this computer can save, and how to open the wizard.</param>
+    public AccessTabViewModel(
+        AccessState state, SemesterContext semesters, ICampusRepository campusRepo, AccessWatchToggler toggler,
+        AccessSetupService setup)
     {
+        _setup = setup;
         _state = state;
         _semesters = semesters;
         _campusRepo = campusRepo;
         _toggler = toggler;
         AddWatchCommand = new RelayCommand(() => AddWatchRequested?.Invoke(), () => CanAddWatch);
+        SetUpCommand = new RelayCommand(() => _setup.RequestSetupWizard(), () => _setup.CanSave);
+        _setup.CanSaveChanged += OnCanToggleChanged;
         // Never unsubscribed: singletons that live as long as the services of one database.
         _state.Changed += Refresh;
         _toggler.CanToggleChanged += OnCanToggleChanged;
@@ -111,6 +141,9 @@ public sealed partial class AccessTabViewModel : ViewModelBase
         OnPropertyChanged(nameof(CanAddWatch));
         OnPropertyChanged(nameof(AddWatchTip));
         AddWatchCommand.NotifyCanExecuteChanged();
+        SetUpCommand.NotifyCanExecuteChanged();
+        OnPropertyChanged(nameof(ShowSetupInvite));
+        OnPropertyChanged(nameof(ShowSetupReadOnlyLine));
     }
 
     /// <summary>Sets <see cref="Title"/> from the loaded semesters.</summary>
@@ -129,6 +162,11 @@ public sealed partial class AccessTabViewModel : ViewModelBase
     {
         try
         {
+            _isSetUp = _setup.IsSetUp;
+            OnPropertyChanged(nameof(IsSetUp));
+            OnPropertyChanged(nameof(ShowSetupInvite));
+            OnPropertyChanged(nameof(ShowSetupReadOnlyLine));
+            OnPropertyChanged(nameof(SetupReadOnlyText));
             RebuildRows();
         }
         catch (Exception ex)

@@ -10,7 +10,7 @@
     <Grid
         MaxWidth="420"
         Margin="10,0"
-        RowDefinitions="Auto,Auto,*,Auto">
+        RowDefinitions="Auto,Auto,*,Auto,Auto,Auto">
 
         <TextBlock
             Grid.Row="0"
@@ -19,15 +19,22 @@
             FontWeight="SemiBold"
             Text="{Binding DisplayName}" />
 
-        <!--  Per-type description — hidden when Description is null or empty  -->
-        <TextBlock
-            Grid.Row="1"
-            Margin="0,0,0,10"
-            FontSize="{StaticResource FontSizeNormal}"
-            Foreground="{StaticResource TextSecondary}"
-            IsVisible="{Binding Description, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"
-            Text="{Binding Description}"
-            TextWrapping="Wrap" />
+        <StackPanel Grid.Row="1" Margin="0,0,0,10" Spacing="6">
+            <!--  Per-type description — hidden when Description is null or empty  -->
+            <TextBlock
+                FontSize="{StaticResource FontSizeNormal}"
+                Foreground="{StaticResource TextSecondary}"
+                IsVisible="{Binding Description, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"
+                Text="{Binding Description}"
+                TextWrapping="Wrap" />
+            <!--  Section Type, until a Component box is saved: the ticks are TermPoint's guess  -->
+            <TextBlock
+                FontSize="{StaticResource FontSizeNormal}"
+                Foreground="{StaticResource TextAttention}"
+                IsVisible="{Binding ShowComponentGuessNote}"
+                Text="{Binding ComponentGuessNote}"
+                TextWrapping="Wrap" />
+        </StackPanel>
 
         <!--  Edit form (shown when EditVm is not null)  -->
         <ContentControl Grid.Row="2" Content="{Binding EditVm}">
@@ -122,6 +129,32 @@
                             </DataTemplate>
                         </DataGridTemplateColumn.CellTemplate>
                     </DataGridTemplateColumn>
+                    <!--
+                        Section Type only: the Component box (Access Analyzer, 8f). The cell shows ComponentBoxChecked
+                        (the stored value, or before the access-watch setup TermPoint's guess) and a click goes through
+                        ToggleComponentCommand, which saves (then opens "which courses have it?") or asks under the list
+                        first; the CheckBox itself takes no clicks, so it never shows an unsaved state. Disabled read-only.
+                    -->
+                    <DataGridTemplateColumn IsVisible="{Binding $parent[UserControl].DataContext.ShowComponentColumn}">
+                        <DataGridTemplateColumn.Header>
+                            <TextBlock Background="Transparent" Text="Component" ToolTip.Tip="{Binding $parent[UserControl].DataContext.ComponentHeadingTip}" />
+                        </DataGridTemplateColumn.Header>
+                        <DataGridTemplateColumn.CellTemplate>
+                            <DataTemplate>
+                                <Button
+                                    Padding="2,0"
+                                    MinHeight="0"
+                                    HorizontalAlignment="Center"
+                                    Background="Transparent"
+                                    BorderThickness="0"
+                                    Command="{Binding $parent[UserControl].DataContext.ToggleComponentCommand}"
+                                    CommandParameter="{Binding}"
+                                    IsEnabled="{Binding $parent[UserControl].DataContext.CanChangeComponents}">
+                                    <CheckBox MinHeight="0" IsChecked="{Binding ComponentBoxChecked, Mode=OneWay}" IsHitTestVisible="False" />
+                                </Button>
+                            </DataTemplate>
+                        </DataGridTemplateColumn.CellTemplate>
+                    </DataGridTemplateColumn>
                 </DataGrid.Columns>
             </DataGrid>
 
@@ -156,8 +189,26 @@
                 Content="Delete"
                 IsEnabled="{Binding SelectedItem, Converter={x:Static ObjectConverters.IsNotNull}}" />
         </StackPanel>
+        <!--  Section Type: "Stop counting X as a component? It comes off A and B." (one at a time, under the list)  -->
+        <Border
+            Grid.Row="4"
+            Margin="0,8,0,0"
+            Padding="6,4"
+            BorderBrush="{StaticResource TextFaint}"
+            BorderThickness="1"
+            CornerRadius="3"
+            IsVisible="{Binding PendingAsk, Converter={x:Static ObjectConverters.IsNotNull}}">
+            <StackPanel Spacing="4">
+                <TextBlock FontSize="12" Text="{Binding PendingAsk.AskText}" TextWrapping="Wrap" />
+                <StackPanel Orientation="Horizontal" Spacing="8">
+                    <Button Command="{Binding PendingAsk.ConfirmUnmarkCommand}" Content="Stop counting it" />
+                    <Button Command="{Binding PendingAsk.CancelUnmarkCommand}" Content="Cancel" />
+                </StackPanel>
+            </StackPanel>
+        </Border>
         <!--  Inline error message  -->
         <TextBlock
+            Grid.Row="5"
             FontSize="10"
             Foreground="{StaticResource TextError}"
             IsVisible="{Binding LastErrorMessage, Converter={x:Static ObjectConverters.IsNotNull}}"

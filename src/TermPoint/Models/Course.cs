@@ -29,6 +29,20 @@ public class Course : PersistedRecord
     public string TagSummary { get; set; } = string.Empty;
 
     /// <summary>
+    /// The Components column's text for the Courses list (Access Analyzer): the course's components joined, or "Any one
+    /// section". Empty before the access setup. Populated by the ViewModel; not persisted.
+    /// </summary>
+    [JsonIgnore]
+    public string ComponentsText { get; set; } = string.Empty;
+
+    /// <summary>
+    /// Rule 8a's sentences for this course in the semester(s) shown (sections of a component type the course does not
+    /// list), joined with a space; null when there is nothing to say. Populated by the ViewModel; not persisted.
+    /// </summary>
+    [JsonIgnore]
+    public string? MismatchText { get; set; }
+
+    /// <summary>
     /// The course level band, e.g. "100", "200", "300".
     /// Set by the administrator in the course editor; auto-suggested from the course
     /// number by <see cref="Services.CourseLevelParser.ParseLevel"/> but may be

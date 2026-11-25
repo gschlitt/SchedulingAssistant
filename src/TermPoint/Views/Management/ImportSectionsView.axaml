@@ -303,6 +303,12 @@
                        IsVisible="{Binding HasSkippedText}"
                        Text="{Binding SkippedText}"
                        TextWrapping="Wrap" />
+            <!-- Access Analyzer rule 8b: new courses whose components were filled in from their sections' types -->
+            <TextBlock FontSize="{StaticResource FontSizeSmall}"
+                       Foreground="{StaticResource TextFaint}"
+                       IsVisible="{Binding ComponentsText, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"
+                       Text="{Binding ComponentsText}"
+                       TextWrapping="Wrap" />
 
             <!-- Expandable lists, collapsed by default -->
             <Expander Header="{Binding NewSections.Count, StringFormat='Sections ({0})'}">

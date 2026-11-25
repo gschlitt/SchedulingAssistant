@@ -108,13 +108,14 @@ internal static class SectionImportTestKit
         int? defaultSectionCapacity = null,
         bool includeSaturday = false,
         bool includeSunday = false,
-        IEnumerable<SchedulingEnvironmentValue>? deliveryTypes = null) =>
+        IEnumerable<SchedulingEnvironmentValue>? deliveryTypes = null,
+        bool accessSetUp = false) =>
         new(OpenSemester, new AcademicYear { Id = "ay-1", Name = AcademicYearName },
             subjects: subjects, courses: courses, instructors: instructors, sections: sections,
             sectionTypes: sectionTypes, deliveryTypes: deliveryTypes, meetingTypes: meetingTypes, tags: tags,
             campuses: campuses, rooms: rooms, legalStartTimes: legalStartTimes,
             defaultSectionCapacity: defaultSectionCapacity, includeSaturday: includeSaturday,
-            includeSunday: includeSunday);
+            includeSunday: includeSunday, accessSetUp: accessSetUp);
 
     /// <summary>
     /// Builds a row for a section that meets once: the key cells plus Meeting Days, Begin and End,

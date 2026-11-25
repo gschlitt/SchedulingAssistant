@@ -63,25 +63,25 @@ Notes: [lost-notices/NOTES.md](lost-notices/NOTES.md). Source: backlog WN1, plus
 
 **Goal:** administrators see at a glance whether students can still take every course of a watched set (a full "slate" of one section per component), get notices when a change breaks it, and create watches easily. Done means the feature in the app, field-tested.
 
-**State:** On branch 1.2.5 (pushed), design locked; pieces A–D committed 2026-11-24 and D hand-checked by Greg.
-B and D must ship together with E (Q46). The whole feature (A–H) ships in 1.2.5 (Greg, Q45). Next is piece E.
+**State:** On branch 1.2.5, design locked; pieces A–E committed (E hand-checked by Greg, 2026-11-25; full suite
+passes). Next is piece F. B and D must ship together with E (Q46). The whole feature ships in 1.2.5 (Q45).
 
 <details>
-<summary>Steps (4 left)</summary>
+<summary>Steps (3 left)</summary>
 
-1. E: components (setup wizard, Courses, Copy Semester, import).
-2. F: analyzer screens (detail, notices, picture, Check all courses).
-3. G: editor pointer and drag line.
-4. H: release (version stamp, WASM demo, help, field test).
+1. F: analyzer screens (detail, notices, picture, Check all courses).
+2. G: editor pointer and drag line.
+3. H: release (version stamp, WASM demo, help page or video for the "What's an access watch?" link, field test).
 
 </details>
 
 **Open questions:**
-- Copy Semester's line about watched tags (Q40): draft wording to approve.
-- The import summary's line for pre-filled components (rule 8b): wording to draft for Greg.
 - Check all courses' read-only "not set up" comment: draft wording, awaiting Greg's approval.
 - The left-open Phase 2 items (Q18 extra component names, Q28).
 - The too-big-to-check line for a watch over 30 courses (Q53): wording to draft for Greg in F.
+- Should the wizard's question 2 start with every section type ticked (his new Section Type text says most are components)?
+- A database with converted watches but no setup hides Add a watch and Mark all conflicts: is that right?
+- After setup with no watches the Access tab is blank: does it need a line?
 
 Notes: [access-analyzer/NOTES.md](access-analyzer/NOTES.md). Design: [designs/1.2.5/access-analyzer.md](../../designs/1.2.5/access-analyzer.md).
 

@@ -45,4 +45,11 @@ public class SchedulingEnvironmentValue : PersistedRecord
     /// </summary>
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)]
     public bool IsComponent { get; set; }
+
+    /// <summary>
+    /// Display only, never saved: what the Section Type list's Component box shows. <see cref="IsComponent"/> once
+    /// the access-watch setup is done; before it, TermPoint's guess (nothing is stored yet). Set by the list's load.
+    /// </summary>
+    [JsonIgnore]
+    public bool ComponentBoxChecked { get; set; }
 }

@@ -16,10 +16,11 @@ public class AccessChecksSetupRepository(IDatabaseContext db) : IAccessChecksSet
     }
 
     /// <inheritdoc/>
-    public void MarkSetUp()
+    public void MarkSetUp(System.Data.Common.DbTransaction? tx = null)
     {
         db.MarkDirty();
         using var cmd = db.Connection.CreateCommand();
+        cmd.Transaction = tx;
         cmd.CommandText = """
             INSERT INTO AppConfiguration (key, value) VALUES ($k, $v)
             ON CONFLICT(key) DO UPDATE SET value = $v

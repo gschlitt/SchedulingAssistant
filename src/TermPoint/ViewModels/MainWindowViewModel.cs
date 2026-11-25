@@ -2,6 +2,7 @@ using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using Microsoft.Extensions.DependencyInjection;
 using TermPoint.Data;
+using TermPoint.Data.Repositories;
 using TermPoint.Models;
 using TermPoint.Services;
 using TermPoint.Services.Access;
@@ -775,7 +776,8 @@ public partial class MainWindowViewModel : ViewModelBase
         TourRunner tourRunner,
         FocusViewModel focusVm,
         AccessTabViewModel accessTabVm,
-        AccessWatchToggler watchToggler)
+        AccessWatchToggler watchToggler,
+        AccessSetupService setupService)
     {
         _services             = services;
         SemesterContext       = semesterContext;
@@ -791,6 +793,10 @@ public partial class MainWindowViewModel : ViewModelBase
 
         // The eyes in the Tags popup save through the shared toggler; "Add a watch" opens that popup with its note.
         scheduleGridVm.Filter.WatchToggler = watchToggler;
+        scheduleGridVm.Filter.SetupService = setupService;
+        // The access setup wizard opens as a flyout page: from the Access tab, from a first eye, and after a type is marked.
+        setupService.SetupWizardRequested += then => OpenAccessSetupWizard(null, then);
+        setupService.NewTypeWizardRequested += typeId => OpenAccessSetupWizard(typeId, null);
         accessTabVm.AddWatchRequested += () => _scheduleGridVm.Filter.OpenTagsForWatch();
         accessTabVm.PropertyChanged += (_, e) =>
         { if (e.PropertyName == nameof(AccessTabViewModel.NeedsALook)) OnPropertyChanged(nameof(ShowAccessDot)); };
@@ -1207,6 +1213,33 @@ public partial class MainWindowViewModel : ViewModelBase
         {
             FlyoutPage = new ErrorViewModel($"Failed to open {title}: {ex.Message}\n\n{ex}");
             FlyoutTitle = title;
+        }
+    }
+
+    /// <summary>
+    /// Opens the access setup wizard as the flyout page. Cancel, Skip and a finished save close it. Replaces any
+    /// flyout page that was open (Scheduling Environment, when a type was just marked). In new-type mode closing goes
+    /// back to Scheduling Environment (Section Type is its first page), so the user can mark more types.
+    /// </summary>
+    /// <param name="newTypeId">The section type just marked as a component (new-type mode), or null for the setup.</param>
+    /// <param name="then">Work to run after the setup has saved (the watch that was waiting), or null.</param>
+    private void OpenAccessSetupWizard(string? newTypeId, Action? then)
+    {
+        try
+        {
+            FlyoutPage = new AccessSetupWizardViewModel(
+                _services.GetRequiredService<AccessSetupService>(),
+                _services.GetRequiredService<ISchedulingEnvironmentRepository>(),
+                _services.GetRequiredService<ICourseRepository>(),
+                _services.GetRequiredService<ISectionRepository>(),
+                close: newTypeId is null ? () => FlyoutPage = null : NavigateToSchedulingEnvironment,
+                onFinished: then, newTypeId: newTypeId);
+            FlyoutTitle = AccessText.WizardFlyoutTitle;
+        }
+        catch (Exception ex)
+        {
+            FlyoutPage = new ErrorViewModel($"Failed to open {AccessText.WizardFlyoutTitle}: {ex.Message}\n\n{ex}");
+            FlyoutTitle = AccessText.WizardFlyoutTitle;
         }
     }
 

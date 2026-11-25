@@ -2,6 +2,7 @@ using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using TermPoint.Models;
 using TermPoint.Services;
+using TermPoint.ViewModels.Access;
 using System.Collections.ObjectModel;
 
 namespace TermPoint.ViewModels.Management;
@@ -89,6 +90,62 @@ public partial class CourseEditViewModel : UnappliedChangesEditor
     private readonly Func<string, bool> _codeExists;
     private readonly Func<List<string>, Task<int>>? _applyTagsToAll;
     private readonly Func<string?>? _whyApplyTagsRefused;
+    private readonly CourseComponentsContext? _components;
+
+    // ── Components group (Access Analyzer revision 8f) ──
+
+    /// <summary>True when the Components group shows (the access checks are set up); false shows <see cref="ComponentsHint"/> instead.</summary>
+    public bool HasComponentGroup => _components is not null;
+
+    /// <summary>True when the access checks are not set up: the hint shows in place of the group.</summary>
+    public bool ShowComponentsHint => _components is null;
+
+    /// <summary>The hint shown before the access setup.</summary>
+    public string ComponentsHint => AccessText.ComponentsHintNotSetUp;
+
+    /// <summary>The text shown when no section type is marked Component (and the course lists none).</summary>
+    public string NoComponentTypesText => AccessText.NoComponentTypes;
+
+    /// <summary>The boxes: the component section types plus any type the course lists that is no longer one, in section type order.</summary>
+    public ObservableCollection<ComponentOptionViewModel> ComponentOptions { get; } = new();
+
+    /// <summary>True when there is no box to show.</summary>
+    public bool HasNoComponentOptions => _components is not null && ComponentOptions.Count == 0;
+
+    /// <summary>
+    /// "Not counted with these components: X01 (no section type), ...": shown when two or more components are ticked
+    /// and a section's type is neither ticked nor a component type (rule 8). Null when there is nothing to say.
+    /// </summary>
+    public string? NotCountedText { get; private set; }
+
+    /// <summary>Rule 8a's sentences for the ticked list (a section of a component type the course does not list), each prefixed with the warning mark by the view.</summary>
+    public IReadOnlyList<string> ComponentMismatchLines { get; private set; } = [];
+
+    /// <summary>The ticked component type ids, in section type order.</summary>
+    private List<string> TickedComponentIds() =>
+        ComponentOptions.Where(o => o.IsSelected).Select(o => o.Type.Id).ToList();
+
+    /// <summary>Re-reads the warnings after a box changed.</summary>
+    private void RefreshComponentWarnings()
+    {
+        if (_components is null) return;
+        var ticked = TickedComponentIds();
+        NotCountedText = null;
+        if (ticked.Count >= 2)
+        {
+            var typeById = _components.SectionTypes.ToDictionary(t => t.Id);
+            var labels = _components.Sections
+                .Where(s => s.SectionTypeId is null
+                            || (!ticked.Contains(s.SectionTypeId)
+                                && !(typeById.TryGetValue(s.SectionTypeId, out var t) && t.IsComponent)))
+                .Select(s => $"{s.SectionCode} ({(s.SectionTypeId is not null && typeById.TryGetValue(s.SectionTypeId, out var ty) ? ty.Name : "no section type")})")
+                .ToList();
+            if (labels.Count > 0) NotCountedText = AccessText.NotCountedWarning(labels);
+        }
+        ComponentMismatchLines = _components.MismatchLines(ticked);
+        OnPropertyChanged(nameof(NotCountedText));
+        OnPropertyChanged(nameof(ComponentMismatchLines));
+    }
 
     public string? ValidationError
     {
@@ -138,6 +195,7 @@ public partial class CourseEditViewModel : UnappliedChangesEditor
     /// <param name="applyTagsToAll">Optional callback that applies the given tag IDs to all sections of this course. Returns the number of sections updated.</param>
     /// <param name="identityLocked">When true (and not a new course), the subject and course-number fields are locked because the course already has sections scheduled.</param>
     /// <param name="whyApplyTagsRefused">Optional check run before "Apply tags to all sections": returns the message to show when it must be refused (an open section card would be discarded by the reload), or null to proceed.</param>
+    /// <param name="components">The Components group's data, given only once the access checks are set up; null shows the hint and leaves the course's stored components alone.</param>
     public CourseEditViewModel(
         Course course,
         bool isNew,
@@ -148,8 +206,10 @@ public partial class CourseEditViewModel : UnappliedChangesEditor
         ObservableCollection<Subject> subjects,
         Func<List<string>, Task<int>>? applyTagsToAll = null,
         bool identityLocked = false,
-        Func<string?>? whyApplyTagsRefused = null)
+        Func<string?>? whyApplyTagsRefused = null,
+        CourseComponentsContext? components = null)
     {
+        _components = components;
         _course = course;
         IsNew = isNew;
         IsIdentityLocked = identityLocked && !isNew;
@@ -191,13 +251,31 @@ public partial class CourseEditViewModel : UnappliedChangesEditor
         foreach (var tag in TagSelections)
             tag.PropertyChanged += (_, e) => { if (e.PropertyName == "IsSelected") OnPropertyChanged(nameof(TagSummary)); };
 
+        if (components is not null)
+        {
+            var initial = components.Initial.ToHashSet();
+            foreach (var type in components.SectionTypes.OrderBy(t => t.SortOrder).Where(t => t.IsComponent || initial.Contains(t.Id)))
+            {
+                int n = components.Sections.Count(s => s.SectionTypeId == type.Id);
+                var option = new ComponentOptionViewModel(type, initial.Contains(type.Id), AccessText.ThisTermCount(n));
+                option.PropertyChanged += (_, e) =>
+                {
+                    if (e.PropertyName != nameof(ComponentOptionViewModel.IsSelected)) return;
+                    RefreshComponentWarnings();
+                };
+                ComponentOptions.Add(option);
+            }
+            RefreshComponentWarnings();
+        }
+
         TakeSnapshot();
     }
 
     /// <inheritdoc/>
     protected override string CaptureState() => UnappliedChangesKey.Of(
         SelectedSubject?.Id, CourseNumber.Trim(), SelectedLevel ?? "", CourseTitle.Trim(), CapacityText.Trim(),
-        IsActive, TagSelections.Where(t => t.IsSelected).Select(t => t.Value.Id));
+        IsActive, TagSelections.Where(t => t.IsSelected).Select(t => t.Value.Id),
+        ComponentOptions.Where(o => o.IsSelected).Select(o => o.Type.Id));
 
     /// <inheritdoc/>
     protected override System.Windows.Input.ICommand ApplyCommand => SaveCommand;
@@ -218,6 +296,9 @@ public partial class CourseEditViewModel : UnappliedChangesEditor
             .Where(t => t.IsSelected)
             .Select(t => t.Value.Id)
             .ToList();
+        // Only once the access checks are set up: before that the stored list stays as it is (null = never set).
+        if (_components is not null)
+            _course.ComponentTypeIds = TickedComponentIds();
         await _onSave(_course);
         MarkApplied();
     }

@@ -5,6 +5,7 @@ using CommunityToolkit.Mvvm.Input;
 using TermPoint.Data.Repositories;
 using TermPoint.Services;
 using TermPoint.Services.SectionImport;
+using TermPoint.ViewModels.Access;
 
 namespace TermPoint.ViewModels.Management;
 
@@ -206,6 +207,13 @@ public partial class ImportSectionsViewModel : ViewModelBase, IDisposable
     /// <summary>The summary sentence ("Will add 37 sections, …"); empty outside Ready-to-import.</summary>
     [ObservableProperty]
     private string _summaryText = string.Empty;
+
+    /// <summary>
+    /// Rule 8b's line shown with the summary: new courses were given two or more components from their sections' types.
+    /// Null when the access checks are not set up or no new course got two or more.
+    /// </summary>
+    [ObservableProperty]
+    private string? _componentsText;
 
     /// <summary>"Already in Fall 2026, not changed: 12 sections."; null when no section is skipped.</summary>
     [ObservableProperty]
@@ -614,6 +622,12 @@ public partial class ImportSectionsViewModel : ViewModelBase, IDisposable
 
         var plan = report.Plan;
         SummaryText = ImportMessages.Summary(plan.NewSections.Count, plan.NewCourses.Count, plan.NewInstructors.Count);
+        var filled = plan.NewCourses
+            .Where(c => c.Record.ComponentTypeIds is { Count: >= 2 })
+            .Select(c => c.Record.CalendarCode)
+            .OrderBy(code => code, StringComparer.OrdinalIgnoreCase)
+            .ToList();
+        ComponentsText = filled.Count == 0 ? null : AccessText.ImportComponentsLine(filled);
         SkippedText = report.SkippedSections.Count > 0
             ? ImportMessages.Skipped(target.TermName, report.SkippedSections.Count)
             : null;
@@ -652,6 +666,7 @@ public partial class ImportSectionsViewModel : ViewModelBase, IDisposable
         _problems = Array.Empty<ImportProblem>();
         ProblemLines = Array.Empty<string>();
         SummaryText = string.Empty;
+        ComponentsText = null;
         SkippedText = null;
         NewSections = Array.Empty<string>();
         NewCourses = Array.Empty<string>();

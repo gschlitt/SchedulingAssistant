@@ -20,6 +20,7 @@ public sealed class ImportSetupSnapshotBuilder
     private readonly ICampusRepository _campuses;
     private readonly IRoomRepository _rooms;
     private readonly ILegalStartTimeRepository _legalStartTimes;
+    private readonly IAccessChecksSetupRepository? _accessSetup;
 
     /// <summary>Creates a builder over the given repositories.</summary>
     /// <param name="semesters">Looks up the open semester.</param>
@@ -32,6 +33,7 @@ public sealed class ImportSetupSnapshotBuilder
     /// <param name="campuses">Reads all campuses.</param>
     /// <param name="rooms">Reads all rooms.</param>
     /// <param name="legalStartTimes">Reads the academic year's legal start times.</param>
+    /// <param name="accessSetup">Reads whether the access-checks setup has been done; null counts as not done.</param>
     public ImportSetupSnapshotBuilder(
         ISemesterRepository semesters,
         IAcademicYearRepository academicYears,
@@ -42,8 +44,10 @@ public sealed class ImportSetupSnapshotBuilder
         ISchedulingEnvironmentRepository environment,
         ICampusRepository campuses,
         IRoomRepository rooms,
-        ILegalStartTimeRepository legalStartTimes)
+        ILegalStartTimeRepository legalStartTimes,
+        IAccessChecksSetupRepository? accessSetup = null)
     {
+        _accessSetup = accessSetup;
         _semesters = semesters;
         _academicYears = academicYears;
         _subjects = subjects;
@@ -89,6 +93,7 @@ public sealed class ImportSetupSnapshotBuilder
             legalStartTimes: _legalStartTimes.GetAll(academicYear.Id),
             defaultSectionCapacity: settings.DefaultSectionCapacity,
             includeSaturday: settings.IncludeSaturday,
-            includeSunday: settings.IncludeSunday);
+            includeSunday: settings.IncludeSunday,
+            accessSetUp: _accessSetup?.IsSetUp() ?? false);
     }
 }

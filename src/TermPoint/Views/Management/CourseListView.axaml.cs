@@ -27,6 +27,24 @@ public partial class CourseListView : UserControl
 
         if (_vm is not null)
             _vm.PropertyChanged += OnViewModelPropertyChanged;
+        SyncComponentsColumn();
+    }
+
+    /// <summary>
+    /// Shows or hides the Components column (Access Analyzer) and folds it to a narrow strip. DataGrid columns are not
+    /// in the visual tree, so their IsVisible and Width can't be bound; this reads them from the view model whenever
+    /// <see cref="CourseListViewModel.ShowComponentsColumn"/> or <see cref="CourseListViewModel.ComponentsColumnOpen"/>
+    /// changes. Resetting the width to Auto when it opens lets the column size to its text again.
+    /// </summary>
+    private void SyncComponentsColumn()
+    {
+        if (_vm is null || this.FindControl<DataGrid>("CoursesDataGrid") is not { } grid) return;
+        foreach (var column in grid.Columns)
+        {
+            if (!Equals(column.Tag, "Components")) continue;
+            column.IsVisible = _vm.ShowComponentsColumn;
+            column.Width = _vm.ComponentsColumnOpen ? DataGridLength.Auto : DataGridLength.SizeToHeader;
+        }
     }
 
     /// <summary>
@@ -36,6 +54,11 @@ public partial class CourseListView : UserControl
     /// </summary>
     private void OnViewModelPropertyChanged(object? sender, PropertyChangedEventArgs e)
     {
+        if (e.PropertyName is nameof(CourseListViewModel.ShowComponentsColumn) or nameof(CourseListViewModel.ComponentsColumnOpen))
+        {
+            SyncComponentsColumn();
+            return;
+        }
         if (e.PropertyName == nameof(CourseListViewModel.EditVm) && _vm?.EditVm is null)
         {
             var coursesDataGrid = this.FindControl<DataGrid>("CoursesDataGrid");

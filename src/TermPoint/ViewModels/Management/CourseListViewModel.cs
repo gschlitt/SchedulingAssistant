@@ -3,6 +3,8 @@ using CommunityToolkit.Mvvm.Input;
 using TermPoint.Data.Repositories;
 using TermPoint.Models;
 using TermPoint.Services;
+using TermPoint.Services.Access;
+using TermPoint.ViewModels.Access;
 using System.Collections.ObjectModel;
 
 namespace TermPoint.ViewModels.Management;
@@ -17,6 +19,38 @@ public partial class CourseListViewModel : ViewModelBase, IDismissableEditor, IU
     private readonly WriteLockService _lockService;
     private readonly SectionStore _sectionStore;
     private readonly SubjectColorStore _colorStore;
+    private readonly AccessSetupService? _setup;
+    private readonly AccessState? _accessState;
+
+    /// <summary>True when some listed course has two or more components (the Components column then starts open).</summary>
+    private bool _anyMultiComponent;
+
+    /// <summary>True when the access checks are set up: the list shows the Components column.</summary>
+    [ObservableProperty] private bool _showComponentsColumn;
+
+    /// <summary>The Components column heading's tooltip.</summary>
+    public string ComponentsColumnTip => AccessText.ComponentsColumnTip;
+
+    /// <summary>
+    /// Whether the Components column is open (two-way). Remembered per computer in
+    /// <see cref="AppSettings.ComponentsColumnOpen"/>; until the user chooses, open only when some course has two or
+    /// more components, so a department whose courses are all "Lecture" starts folded.
+    /// </summary>
+    public bool ComponentsColumnOpen
+    {
+        get => AppSettings.Current.ComponentsColumnOpen ?? _anyMultiComponent;
+        set
+        {
+            if (ComponentsColumnOpen == value) return;
+            AppSettings.Current.ComponentsColumnOpen = value;
+            AppSettings.Current.Save();
+            OnPropertyChanged();
+        }
+    }
+
+    /// <summary>Folds or opens the Components column (the ◂/▸ button in its heading); a view setting, so it works read-only.</summary>
+    [RelayCommand]
+    private void ToggleComponentsColumn() => ComponentsColumnOpen = !ComponentsColumnOpen;
 
     /// <summary>
     /// The subject colour presenter the Section list and Schedule view read. Told to drop its caches after a subject's
@@ -72,8 +106,12 @@ public partial class CourseListViewModel : ViewModelBase, IDismissableEditor, IU
         SectionStore sectionStore,
         SubjectColorStore colorStore,
         SubjectColorPresenter subjectColors,
-        ISectionCardState cardState)
+        ISectionCardState cardState,
+        AccessSetupService? setupService = null,
+        AccessState? accessState = null)
     {
+        _setup = setupService;
+        _accessState = accessState;
         _cardState = cardState;
         _courseRepo = courseRepo;
         _sectionRepo = sectionRepo;
@@ -262,8 +300,67 @@ public partial class CourseListViewModel : ViewModelBase, IDismissableEditor, IU
                 course.TagIds.Select(id => tagById.TryGetValue(id, out var name) ? name : null)
                              .Where(n => n is not null));
 
+        FillComponentTexts(courses);
         Courses = new ObservableCollection<Course>(courses);
         SelectedCourse = null;
+    }
+
+    /// <summary>The sections of every loaded semester (the Components column's and Edit Course's "this term" view).</summary>
+    private List<Section> LoadedSections() =>
+        _sectionStore.SectionsBySemester.Values.SelectMany(s => s).ToList();
+
+    /// <summary>
+    /// Fills each course's <see cref="Course.ComponentsText"/> and <see cref="Course.MismatchText"/> from the engine's
+    /// rules over the loaded semester(s) once the access checks are set up, and sets <see cref="ShowComponentsColumn"/>.
+    /// Before the setup both stay empty and the column is hidden.
+    /// </summary>
+    /// <param name="courses">The courses about to be listed.</param>
+    private void FillComponentTexts(IReadOnlyList<Course> courses)
+    {
+        ShowComponentsColumn = _setup is { IsSetUp: true };
+        _anyMultiComponent = false;
+        if (_setup is not { IsSetUp: true } setup)
+        {
+            OnPropertyChanged(nameof(ComponentsColumnOpen));
+            return;
+        }
+        var inputs = setup.InputsFor(LoadedSections());
+        foreach (var course in courses)
+        {
+            course.ComponentsText = AccessText.ComponentsLabel(inputs, course.Id);
+            var sentences = AccessText.MismatchSentences(inputs, course.Id);
+            course.MismatchText = sentences.Count == 0 ? null : string.Join(" ", sentences);
+            if (inputs.ComponentsOf(course.Id).Count >= 2) _anyMultiComponent = true;
+        }
+        OnPropertyChanged(nameof(ComponentsColumnOpen));
+    }
+
+    /// <summary>
+    /// Builds Edit Course's Components group data for a course, or null before the access setup (the group then shows
+    /// its hint and the course's stored components are left alone).
+    /// </summary>
+    /// <param name="course">The course being added or edited (the edit's copy).</param>
+    /// <param name="isNew">True for Add Course: the group starts with nothing ticked.</param>
+    /// <returns>The context, or null when the access checks are not set up.</returns>
+    private CourseComponentsContext? BuildComponentsContext(Course course, bool isNew)
+    {
+        if (_setup is not { IsSetUp: true } setup) return null;
+        var all = LoadedSections();
+        var types = _propertyRepo.GetAll(SchedulingEnvironmentTypes.SectionType).OrderBy(t => t.SortOrder).ToList();
+        var courses = _courseRepo.GetAll().ToDictionary(c => c.Id);
+        var suggestion = _sectionRepo.GetSectionTypeIdsByCourse();
+        IReadOnlyList<string> initial = isNew
+            ? []
+            : course.ComponentTypeIds ?? new AccessInputs(all, courses, types, true, suggestion).ComponentsOf(course.Id);
+        IReadOnlyList<string> Mismatches(IReadOnlyList<string> ticked)
+        {
+            var edited = new Dictionary<string, Course>(courses)
+            {
+                [course.Id] = new Course { Id = course.Id, CalendarCode = course.CalendarCode, ComponentTypeIds = ticked.ToList() },
+            };
+            return AccessText.MismatchSentences(new AccessInputs(all, edited, types, true, suggestion), course.Id);
+        }
+        return new CourseComponentsContext(types, all.Where(s => s.CourseId == course.Id).ToList(), initial, Mismatches);
     }
 
     /// <summary>
@@ -302,13 +399,14 @@ public partial class CourseListViewModel : ViewModelBase, IDismissableEditor, IU
             allTags: LoadAllTags(),
             onSave: async c =>
             {
-                try { _courseRepo.Insert(c); LoadCourses(); SelectedCourse = Courses.FirstOrDefault(x => x.Id == c.Id); EditVm = null; }
+                try { _courseRepo.Insert(c); _accessState?.Invalidate(); LoadCourses(); SelectedCourse = Courses.FirstOrDefault(x => x.Id == c.Id); EditVm = null; }
                 catch (Exception ex) { App.Logger.LogError(ex, "CourseListViewModel.Add"); LastErrorMessage = WriteFailureText.For(ex, "The save could not be completed. Please try again."); }
                 await Task.CompletedTask;
             },
             onCancel: () => EditVm = null,
             codeExists: code => _courseRepo.ExistsByCalendarCode(code),
-            subjects: Subjects);
+            subjects: Subjects,
+            components: BuildComponentsContext(course, isNew: true));
     }
 
     [RelayCommand(CanExecute = nameof(CanWrite))]
@@ -337,7 +435,7 @@ public partial class CourseListViewModel : ViewModelBase, IDismissableEditor, IU
             allTags: LoadAllTags(),
             onSave: async c =>
             {
-                try { _courseRepo.Update(c); LoadCourses(); SelectedCourse = Courses.FirstOrDefault(x => x.Id == c.Id); EditVm = null; }
+                try { _courseRepo.Update(c); _accessState?.Invalidate(); LoadCourses(); SelectedCourse = Courses.FirstOrDefault(x => x.Id == c.Id); EditVm = null; }
                 catch (Exception ex) { App.Logger.LogError(ex, "CourseListViewModel.Edit"); LastErrorMessage = WriteFailureText.For(ex, "The save could not be completed. Please try again."); }
                 await Task.CompletedTask;
             },
@@ -348,7 +446,8 @@ public partial class CourseListViewModel : ViewModelBase, IDismissableEditor, IU
             // Lock subject + course number once sections exist — same rule that forbids deletion.
             identityLocked: _courseRepo.HasSections(SelectedCourse.Id),
             // Applying tags reloads the section list, which would discard an open section card.
-            whyApplyTagsRefused: () => OpenCardMessages.WhyRefused(_cardState));
+            whyApplyTagsRefused: () => OpenCardMessages.WhyRefused(_cardState),
+            components: BuildComponentsContext(clone, isNew: false));
     }
 
     [RelayCommand(CanExecute = nameof(CanWrite))]
@@ -367,6 +466,7 @@ public partial class CourseListViewModel : ViewModelBase, IDismissableEditor, IU
         try
         {
             _courseRepo.Delete(SelectedCourse.Id);
+            _accessState?.Invalidate();
             LoadCourses();
         }
         catch (Exception ex)

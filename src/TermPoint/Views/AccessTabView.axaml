@@ -11,7 +11,7 @@
 	-->
 	<DockPanel Margin="6,4,6,4">
 
-		<!--  Header: the semester and Add a watch (disabled read-only; its hover says why)  -->
+		<!--  Header: the semester and Add a watch (only once set up; disabled read-only, its hover says why)  -->
 		<DockPanel DockPanel.Dock="Top" Margin="0,0,0,4">
 			<Button
 				Padding="6,1"
@@ -21,6 +21,7 @@
 				DockPanel.Dock="Right"
 				FontSize="{StaticResource FontSizePanelList}"
 				IsEnabled="{Binding CanAddWatch}"
+				IsVisible="{Binding IsSetUp}"
 				ToolTip.ShowOnDisabled="True"
 				ToolTip.Tip="{Binding AddWatchTip}" />
 			<TextBlock
@@ -32,24 +33,68 @@
 				TextTrimming="CharacterEllipsis" />
 		</DockPanel>
 
-		<!--  Foot: Mark all conflicts (a view setting, remembered on this computer; works read-only)  -->
+		<!--  Until access watches are set up (8f): the invite while editing, or the quiet read-only line  -->
+		<Border
+			Margin="0,0,0,6"
+			Padding="6,4"
+			BorderBrush="{StaticResource TextFaint}"
+			BorderThickness="1"
+			CornerRadius="3"
+			DockPanel.Dock="Top"
+			IsVisible="{Binding ShowSetupInvite}">
+			<StackPanel Spacing="3">
+				<TextBlock
+					FontSize="{StaticResource FontSizePanelList}"
+					FontWeight="SemiBold"
+					Foreground="{StaticResource TextPrimary}"
+					Text="{Binding SetupInviteTitle}"
+					TextWrapping="Wrap" />
+				<!--  Set up at the left; the "What's an access watch?" link at the bottom right  -->
+				<DockPanel>
+					<Button
+						Padding="6,1"
+						MinHeight="0"
+						Command="{Binding SetUpCommand}"
+						Content="{Binding SetupInviteButton}"
+						DockPanel.Dock="Left"
+						FontSize="{StaticResource FontSizePanelList}" />
+					<Button
+						Padding="0"
+						MinHeight="0"
+						HorizontalAlignment="Right"
+						VerticalAlignment="Bottom"
+						Background="Transparent"
+						BorderThickness="0"
+						Command="{Binding WhatIsAWatchCommand}">
+						<TextBlock
+							FontSize="{StaticResource FontSizePanelList}"
+							Foreground="{StaticResource TextSecondary}"
+							Text="{Binding WhatIsAWatchLink}"
+							TextDecorations="Underline" />
+					</Button>
+				</DockPanel>
+			</StackPanel>
+		</Border>
+		<TextBlock
+			Margin="0,0,0,6"
+			DockPanel.Dock="Top"
+			FontSize="{StaticResource FontSizePanelList}"
+			Foreground="{StaticResource TextFaint}"
+			IsVisible="{Binding ShowSetupReadOnlyLine}"
+			Text="{Binding SetupReadOnlyText}"
+			TextWrapping="Wrap" />
+
+		<!--  Foot: Mark all conflicts (a view setting, remembered on this computer; works read-only; only once set up)  -->
 		<CheckBox
 			Margin="0,4,0,0"
 			Content="Mark all conflicts"
 			DockPanel.Dock="Bottom"
 			FontSize="{StaticResource FontSizePanelList}"
 			IsChecked="{Binding MarkAllConflicts}"
+			IsVisible="{Binding IsSetUp}"
 			ToolTip.Tip="Marks all conflicts, even those students can avoid by registering in different slates. Removing them can still improve access." />
 
 		<Panel>
-			<!--  Empty state (approved wording)  -->
-			<TextBlock
-				FontSize="{StaticResource FontSizePanelList}"
-				Foreground="{StaticResource TextFaint}"
-				IsVisible="{Binding IsEmpty}"
-				Text="{Binding EmptyText}"
-				TextWrapping="Wrap" />
-
 			<ScrollViewer IsVisible="{Binding HasRows}" VerticalScrollBarVisibility="Auto">
 				<ItemsControl ItemsSource="{Binding Rows}">
 					<ItemsControl.ItemTemplate>
