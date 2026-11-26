@@ -149,7 +149,8 @@ switches, restores and recovers it is held to four rules. Check every design tha
 2. **Never write it unless the lock is ours and the database is exactly as we last saw it.**
 3. **Never delete the only copy of someone's unsaved work until a copy exists somewhere else.** The guarantee must
    come from the data layer (for example, a closed connection), never from a dialog that hides the controls: a modal
-   blocks only the main window, not detached panels, sticky notes, focus-loss saves or background work.
+   blocks only the main window, not detached panels, sticky notes, focus-loss saves or background work. A deliberate
+   **Don't save** is the user's choice and is not covered: keep the simple model everyone knows (Greg, 2026-11-26).
 4. **Never confuse the user.**
    - Every message says what happened, whether their work is safe, and what to do next.
    - Never ask about something the user has already dealt with.

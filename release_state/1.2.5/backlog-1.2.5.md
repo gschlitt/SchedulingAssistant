@@ -52,7 +52,7 @@ it and need 1.6 (in-app Store updates) first.
 
 | # | Item | Notes |
 |---|---|---|
-| 2.1 | Experimenting without saving, plus Save a Copy… (Greg's priority) | Decide first; two of three designs need 3.5 |
+| 2.1 | Save a Copy… (Greg's priority) | Experimenting without saving was folded into the ledger entry "Undo and rollback before saving" (2026-11-26); Save a Copy… stays here |
 | 2.4 | Hide sections that meet for only part of the semester | |
 | 2.6 | Instructor names don't wrap properly in the Workload view | |
 | 2.7 | Workload view: show out-of-scope instructors who teach loaded sections | |
