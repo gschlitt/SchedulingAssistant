@@ -8,9 +8,9 @@ Ledger: [RELEASE_1.2.5.md](../RELEASE_1.2.5.md). Design: [designs/1.2.5/access-a
 - `designs/1.2.5/access-analyzer.md`: the spec. Status block at the top; Terms (D2); decisions D1-D29; Phase 2 rules 1-41; Phase 3 wireframe rounds table; Phase 4 (what is stored, the watch upgrade) and Phase 5 (layers, saving, tests) at the end.
 - `designs/1.2.5/access-analyzer-handoff.md`: older handoff (written 2026-11-10). Its branch and release notes are out of date; the ledger replaces it for state. Its summary of the method and working agreements still holds.
 - `designs/wireframes/`: the clickable HTML wireframes (rounds 1-8 settled; r8 is components in Courses, the setup wizard and D28; r9, Check all courses, settled 2026-11-23; all planned rounds done). Each round starts as a copy of the last and keeps its own file as the record. Reviewing them in Claude's browser pane: see `docs/dev/dev-machines.md` (to load an edited file afresh, close the tab and open the `file:///` URL again; reload and a same-tab navigate can keep the old page and its test clicks). `window.__access` exposes the mock's engine (`proposal`, `accessChanges`, `analysesFor`) for checking scenarios from the console.
-- For the open no-full-slate question: `ConflictMarks.For`, `AccessReasons.Best`, `SlateSearch` (backtracking, shortest
-  component first, a compatibility table), `GridAccessPicture.BlockingSections`, and the section "No full slate: what
-  to mark" below.
+- For the no-full-slate trial: `Services/Access/MoveSuggestions.cs` (rules and why in its doc comment),
+  `SlateSearch.ExistsWithout`/`FewestConflictsOf`, `ConflictMarks.For`, `GridAccessPicture.Movers`, and the section
+  "No full slate: what to mark" below.
 - `src/TermPoint/Services/Access/`: the engine (piece C); start with `AccessAnalyzer.cs`, `AccessInputs.cs`, `ConflictMarks.cs`. Shape in "Piece C: engine shape" below. Tests: `src/TermPoint.Tests/Access*Tests.cs`; `AccessEngineMeasurementTests` times it on a copy of the UBC demo database.
 - Piece D's session state and UI (to build E on): `Services/Access/AccessState.cs` (invalidate it after any change to
   component types, courses' components or the set-up mark), `AccessWatchToggler.cs`, `ViewModels/Access/`
@@ -530,7 +530,7 @@ rounds 5–9. Split like D and E: **F-core** (Sonnet; no `.axaml`) then **F-ui**
 </details>
 
 <details>
-<summary>No full slate: what to mark (open, 2026-11-25)</summary>
+<summary>No full slate: what to mark (trial built, awaiting Greg, 2026-11-25)</summary>
 
 **What Greg saw.** CIVL-Y3 on the UBC import (`UBC_Engineering_WinterTerm1_import_tagged.csv` in the UBC demo
 folder): red marks and ▲ on Monday, Tuesday, Wednesday and Thursday. Moving CIVL303's Friday meeting to 11:30 cleared
@@ -563,6 +563,40 @@ conflicts in the SMALLEST fixes, where a fix is a set of clashes whose removal b
   CIVL320 101 must be fixed too." The same gap exists with a full slate: a stranded section freed only by removing two
   clashes gets no mark today.
 - Also open from the CHBE-Y3 case: nothing on the tiles says "either course" when the best partial has alternatives.
+
+**Greg's reframe (2026-11-25, replaces the proposal above as the direction to explore).** Schedulers adjust an
+existing schedule; they need the least they can do about a problem, not every conflict. Think of slates as cliques
+(sections adjacent when they don't conflict): with no N-clique, take an (N-1)-clique C and show the conflicts from
+the candidates for the missing component to C, suggesting a move. In user terms: **the fewest sections to move**.
+Counting moves, not conflicts: one section that conflicts with two others (Q22's CHEM 213 A) is ONE move. Moves
+needed = components minus the most components that can be filled together (component level, not
+`AccessReasons.Best`'s course level).
+
+**Probe (2026-11-25, UBC, Greg's section-level tags in `C:\ProgramData\TermPoint\UBC\FAS-TT.db`, a copy):**
+[probes/](probes/) holds the code (a test, moved out of the project) and its output. 43 watches, 11 with no full
+slate. 9 need one move: mostly two options, the two ends of one conflict (one line, two ▲); ENVE-Y4 and MINE-Y4 one
+section conflicting with two (one ▲, two lines); MANU-Y4 three ▲, three lines. Against today: CIVL-Y3 18 marks and
+12 ▲ → 1 line and 2 ▲; ENVE-Y4 10 marks and 7 ▲ → 2 lines and 1 ▲. Two need two moves: GEOE-Y4 is two separate
+one-move problems (CPEN481 × ELEC481, CIVL410 × MECH431); GEOE-Y3 is genuinely crowded (15 components, afternoon
+labs, 31 different two-move fixes over 10 components: nothing to single out; today 59 marks, 19 ▲). Whole run under
+half a second. Several breaks look like data quirks, not scheduling errors: CPEN481 and ELEC481 meet at the same
+time (cross-listed); CHBE453/454's and MANU430's lectures sit inside their own studio or lab hours; MINE491 meets
+8 h a week; EOSC323 L1E has no meetings (so always fits).
+
+**Built for a trial (2026-11-25, Greg: "just try it", UBC as the test case; committed as a trial, Greg's verdict pending).** Read first:
+`Services/Access/MoveSuggestions.cs` (the rules and why, in its doc comment), `SlateSearch.ExistsWithout` and
+`FewestConflictsOf`. One move: one problem, every option across every way of leaving a component out; two moves that
+split into two separate one-move problems: two problems; anything else: nothing marked. `ConflictMarkKind.Move`
+replaces NoFull and NoSingleFix (Q22's rule is gone); the ▲ goes on the sections to move (the campus-reason case keeps
+the old ▲ on every section of the courses that can't fit). Keep in place: right-click "Don't suggest moving this", a
+session-only set in `AccessState` shared by every watch; keeping every one-move option falls through to two moves.
+All new user wording is marked DRAFT (`MoveTip`, `KeptInPlaceTip`, the two menu texts). Checked on the UBC copy:
+same counts as the probe; marks for all 43 tags as watches about 16 ms. Not done: the Access tab still says "X or Y
+can't fit" (course level); Mark all conflicts still calls the other conflicts "harmless" with no full slate; the spec's
+rule 33 and Q22 still describe the old marks; `MinimumVersionToWrite`: No (nothing saved).
+
+**Help text:** a short user explanation was drafted in chat only (Greg asked for no separate doc; no verdict yet). The
+help page in H must explain the ▲, the lines, the two-problem and nothing-marked cases, and "Don't suggest moving this".
 
 </details>
 

@@ -182,6 +182,64 @@ public sealed class SlateSearch
     public bool ExistsForCourses(IReadOnlyCollection<string> courseIds) =>
         Exists(GroupIndexesOf(courseIds), -1, -1, -1);
 
+    /// <summary>
+    /// Whether every group except <paramref name="skipGroups"/> can be filled together: with those groups' sections
+    /// moved somewhere free, would a full slate exist? The test behind the fewest sections to move
+    /// (<see cref="MoveSuggestions"/>).
+    /// </summary>
+    /// <param name="skipGroups">The groups left out, by index.</param>
+    /// <returns><c>true</c> when the other groups can be filled.</returns>
+    internal bool ExistsWithout(IReadOnlyCollection<int> skipGroups) =>
+        Exists(AllGroups().Where(g => !skipGroups.Contains(g)).ToArray(), -1, -1, -1);
+
+    /// <summary>
+    /// The fewest time conflicts <paramref name="mover"/> can have with a filling of every group except
+    /// <paramref name="skipGroups"/>: the conflicts that moving it to a free time would clear. The filling's sections
+    /// must all fit together, and when the one-campus rule applies each must be on a campus the mover can share
+    /// (moving changes a time, never a campus). Branch and bound, smallest group first; it stops as soon as it finds
+    /// a filling with <paramref name="floor"/> conflicts, which the caller knows to be the least possible.
+    /// </summary>
+    /// <param name="mover">The section that would move; its own group must be among <paramref name="skipGroups"/>.</param>
+    /// <param name="skipGroups">The groups left out of the filling, by index.</param>
+    /// <param name="mustUse">A section the filling must use, or null.</param>
+    /// <param name="floor">The fewest conflicts any filling can have (1 when there is no full slate).</param>
+    /// <returns>The fewest conflicts; -1 when no such filling exists, or the mover is not a candidate of a skipped group.</returns>
+    internal int FewestConflictsOf(Section mover, IReadOnlyCollection<int> skipGroups, Section? mustUse, int floor)
+    {
+        int m = IndexOf(mover);
+        if (m < 0 || !skipGroups.Contains(_groupOf[m])) return -1;
+        int f = mustUse is null ? -1 : IndexOf(mustUse);
+        if (mustUse is not null && (f < 0 || skipGroups.Contains(_groupOf[f]))) return -1;
+        int fixedGroup = f >= 0 ? _groupOf[f] : -1;
+        int[] order = AllGroups().Where(g => !skipGroups.Contains(g))
+            .OrderBy(g => g == fixedGroup ? 0 : _members[g].Length).ToArray();
+        var pick = new int[order.Length];
+        int best = int.MaxValue;
+
+        // Returns false to stop the whole search (a filling at the floor was found).
+        bool Recurse(int depth, int cost)
+        {
+            if (cost >= best) return true;
+            if (depth == order.Length) { best = cost; return cost > floor; }
+            int g = order[depth];
+            foreach (int s in _members[g])
+            {
+                if (g == fixedGroup && s != f) continue;
+                if (_oneCampusRule && !_campusOk[m][s]) continue;
+                bool ok = true;
+                for (int d = 0; d < depth; d++)
+                    if (!Compatible(pick[d], s, -1, -1)) { ok = false; break; }
+                if (!ok) continue;
+                pick[depth] = s;
+                if (!Recurse(depth + 1, cost + (_timeOk[m][s] ? 0 : 1))) return false;
+            }
+            return true;
+        }
+
+        Recurse(0, 0);
+        return best == int.MaxValue ? -1 : best;
+    }
+
     /// <summary>The indexes of the groups belonging to the given courses.</summary>
     /// <param name="courseIds">The courses.</param>
     /// <returns>Group indexes, ascending.</returns>

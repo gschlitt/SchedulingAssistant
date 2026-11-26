@@ -54,6 +54,42 @@ public static partial class AccessText
     // approved wording (round 3)
     public static string PinInSlatesText(string watchName) => $"Pin in slates for {watchName}";
 
+    /// <summary>The right-click menu's text for keeping a section in place: no-full-slate suggestions won't move it.</summary>
+    // DRAFT wording (fewest moves, 2026-11-25)
+    public const string KeepInPlaceText = "Don't suggest moving this";
+
+    /// <summary>The right-click menu's text for a section kept in place, to let suggestions move it again.</summary>
+    // DRAFT wording (fewest moves, 2026-11-25)
+    public const string LetMoveText = "Suggest moving this again";
+
+    /// <summary>
+    /// The hover line of a section in a move suggestion, on its tile and on its conflict marks: what it conflicts
+    /// with and which sections to move (<see cref="MoveSuggestions"/>). Read with the ▲ on the sections to move.
+    /// </summary>
+    /// <param name="inputs">The semester view (for course codes).</param>
+    /// <param name="section">The section the line is about.</param>
+    /// <param name="conflictsWith">The sections it conflicts with in the suggestion.</param>
+    /// <param name="problem">The problem: moving any one of its sections fixes it.</param>
+    /// <param name="problemCount">How many separate problems the watch has (1 or 2).</param>
+    /// <param name="watchName">The watch's name, already bold where it should be.</param>
+    /// <returns>"CIVL303 T1A conflicts with CIVL315 101, so CIVL-Y3 has no full slate. Moving CIVL303 T1A or CIVL315 101 brings one back."</returns>
+    // DRAFT wording (fewest moves, 2026-11-25)
+    public static string MoveTip(AccessInputs inputs, Section section, IReadOnlyList<Section> conflictsWith,
+        MoveProblem problem, int problemCount, string watchName)
+    {
+        string movers = ByCourseOr(inputs, problem.Options.Select(o => o.Section));
+        string conflict = $"{SectionLabel(inputs, section)} conflicts with {ByCourse(inputs, conflictsWith)}";
+        return problemCount <= 1
+            ? $"{conflict}, so {watchName} has no full slate. Moving {movers} brings one back."
+            : $"{conflict}. This is one of {problemCount} separate problems keeping {watchName} from a full slate; moving {movers} fixes it.";
+    }
+
+    /// <summary>The hover line of a section the user has kept in place, while the watch has no full slate.</summary>
+    /// <param name="label">The section's name.</param>
+    /// <returns>The sentence.</returns>
+    // DRAFT wording (fewest moves, 2026-11-25)
+    public static string KeptInPlaceTip(string label) => $"{label} is kept in place: suggestions won't ask to move it.";
+
     /// <summary>
     /// The title of the legend bar: the watch's name, then " · 3 of 5 courses" when a subset is ticked.
     /// </summary>

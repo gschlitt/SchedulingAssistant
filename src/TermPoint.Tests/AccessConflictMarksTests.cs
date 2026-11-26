@@ -6,8 +6,8 @@ using static TermPoint.Tests.AccessTestKit;
 namespace TermPoint.Tests;
 
 /// <summary>
-/// <see cref="ConflictMarks"/> (rule 33, Q22, round 6b): each kind of mark, Mark all conflicts, and the case where
-/// the campus rule alone leaves no slate.
+/// <see cref="ConflictMarks"/> (rule 33, round 6b, fewest moves): each kind of mark, Mark all conflicts, and the case
+/// where the campus rule alone leaves no slate.
 /// </summary>
 public sealed class AccessConflictMarksTests
 {
@@ -44,27 +44,61 @@ public sealed class AccessConflictMarksTests
     }
 
     [Fact]
-    public void NoFull_WithNoSlate_FixingThisOneConflictBringsOneBack()
+    public void Move_WithNoSlate_TheOneConflictIsMarked_EitherSectionCanMove()
     {
         var marks = Marks([Sec("A", "1", Lecture, At(0, 9, 10)), Sec("B", "1", Lecture, At(0, 9, 10))]);
         var mark = Assert.Single(marks);
-        Assert.Equal(ConflictMarkKind.NoFull, mark.Kind);
+        Assert.Equal(ConflictMarkKind.Move, mark.Kind);
+        Assert.Equal(1, mark.ProblemCount);
+        Assert.Equal(["A 1", "B 1"], Ids(mark.Problem!.Options.Select(o => o.Section)));
     }
 
     [Fact]
-    public void NoSingleFix_Q22ThreeCourseCase_NamesEverythingTheCantFitSectionConflictsWith()
+    public void Move_Q22ThreeCourseCase_OneSectionToMoveWithBothConflicts()
     {
-        // c conflicts with both a and b, which fit together: fixing either conflict alone is not enough
+        // c conflicts with both a and b, which fit together: moving c is one move and clears both conflicts
         var marks = Marks([
             Sec("A", "1", Lecture, At(0, 9, 10)), Sec("B", "1", Lecture, At(1, 9, 10)),
             Sec("C", "1", Lecture, At([0, 1], 9, 10))]);
         Assert.Equal(2, marks.Count);
-        Assert.All(marks, m =>
+        Assert.All(marks, m => Assert.Equal(ConflictMarkKind.Move, m.Kind));
+        var option = Assert.Single(marks[0].Problem!.Options);
+        Assert.Equal("C 1", option.Section.Id);
+        Assert.Equal(["A 1", "B 1"], Ids(option.ConflictsWith).Order().ToArray());
+    }
+
+    [Fact]
+    public void Move_OnlyTheFewestMovesAreMarked_NotEveryConflictOfACourseThatCantFit()
+    {
+        // a1-b1 is the problem (CIVL-Y3's Friday); b1-c1 is a conflict students get around with c2, so no mark
+        var marks = Marks([
+            Sec("A", "1", Lecture, At(0, 9, 10)),
+            Sec("B", "1", Lecture, At([0, 1], 9, 10)),
+            Sec("C", "1", Lecture, At(1, 9, 10)), Sec("C", "2", Lecture, At(2, 9, 10))]);
+        var mark = Assert.Single(marks);
+        Assert.Equal(["A 1", "B 1"], new[] { mark.A.Id, mark.B.Id }.Order().ToArray());
+    }
+
+    [Fact]
+    public void Move_TangledProblems_NothingIsMarked()
+    {
+        // three single sections at the same time: two must move, in three different ways, so nothing is singled out
+        var sections = new[]
         {
-            Assert.Equal(ConflictMarkKind.NoSingleFix, m.Kind);
-            Assert.Equal("C 1", m.X!.Id);
-            Assert.Equal(["A 1", "B 1"], Ids(m.XConflictsWith).Order().ToArray());
-        });
+            Sec("A", "1", Lecture, At(0, 9, 10)), Sec("B", "1", Lecture, At(0, 9, 10)), Sec("C", "1", Lecture, At(0, 9, 10)),
+        };
+        Assert.Empty(Marks(sections));
+        Assert.All(Marks(sections, markAll: true), m => Assert.Equal(ConflictMarkKind.Harmless, m.Kind));
+    }
+
+    [Fact]
+    public void Move_KeptInPlace_IsNeverSuggestedToMove()
+    {
+        var sections = new[] { Sec("A", "1", Lecture, At(0, 9, 10)), Sec("B", "1", Lecture, At(0, 9, 10)) };
+        var inputs = Simple(sections);
+        var mark = Assert.Single(ConflictMarks.For(inputs, inputs.Sections, false, false, new HashSet<string> { "A 1" }));
+        Assert.Equal(["B 1"], Ids(mark.Problem!.Options.Select(o => o.Section)));
+        Assert.Empty(ConflictMarks.For(inputs, inputs.Sections, false, false, new HashSet<string> { "A 1", "B 1" }));
     }
 
     [Fact]
@@ -139,7 +173,7 @@ public sealed class AccessConflictMarksTests
         };
         var inputs = Simple(sections);
         var marks = ConflictMarks.For(inputs, new AccessWatch("w", false), markAll: false);
-        Assert.Equal(ConflictMarkKind.NoFull, Assert.Single(marks).Kind);
+        Assert.Equal(ConflictMarkKind.Move, Assert.Single(marks).Kind);
     }
 
     [Fact]

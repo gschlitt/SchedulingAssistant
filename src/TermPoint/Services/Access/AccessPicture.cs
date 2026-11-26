@@ -245,6 +245,24 @@ public sealed class AccessPicture
         return true;
     }
 
+    // ── Kept in place ────────────────────────────────────────────────────────────────────────────────
+
+    /// <summary>The sections the user has said can't move (<see cref="AccessState.KeptInPlace"/>; shared by every watch).</summary>
+    public IReadOnlySet<string> KeptInPlace => _state.KeptInPlace;
+
+    /// <summary>
+    /// Whether the right-click menu offers to keep a section in place (or to let it move again): the open watch
+    /// covers it and has no full slate, or it is kept already (so it can always be let go).
+    /// </summary>
+    /// <param name="sectionId">The section id.</param>
+    /// <returns><c>true</c> when the item belongs in the menu.</returns>
+    public bool OffersKeepInPlace(string sectionId) =>
+        _state.KeptInPlace.Contains(sectionId) || (IsOpen && Covers(sectionId) && Analysis is { HasSlate: false });
+
+    /// <summary>Keeps a section in place, or lets it move again (<see cref="AccessState.ToggleKeptInPlace"/>).</summary>
+    /// <param name="sectionId">The section id.</param>
+    public void ToggleKeptInPlace(string sectionId) => _state.ToggleKeptInPlace(sectionId);
+
     /// <summary>Unpins every section.</summary>
     public void ClearPins()
     {

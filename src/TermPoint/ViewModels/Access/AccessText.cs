@@ -39,8 +39,29 @@ public static partial class AccessText
     /// <summary>Joins phrases as "a, b and c" (a single phrase stays as it is; none gives an empty string).</summary>
     /// <param name="items">The phrases.</param>
     /// <returns>The joined text.</returns>
-    public static string JoinAnd(IReadOnlyList<string> items) =>
-        items.Count <= 1 ? string.Concat(items) : $"{string.Join(", ", items.Take(items.Count - 1))} and {items[^1]}";
+    public static string JoinAnd(IReadOnlyList<string> items) => JoinWith(items, "and");
+
+    /// <summary>Joins phrases as "a, b or c" (a single phrase stays as it is; none gives an empty string).</summary>
+    /// <param name="items">The phrases.</param>
+    /// <returns>The joined text.</returns>
+    public static string JoinOr(IReadOnlyList<string> items) => JoinWith(items, "or");
+
+    /// <summary>Joins phrases with commas and <paramref name="word"/> before the last.</summary>
+    private static string JoinWith(IReadOnlyList<string> items, string word) =>
+        items.Count <= 1 ? string.Concat(items) : $"{string.Join(", ", items.Take(items.Count - 1))} {word} {items[^1]}";
+
+    /// <summary>
+    /// Names sections as alternatives, the course code given once per course: "CIVL303 T1A or CIVL315 101",
+    /// "MANU430 001, L0A or L0B".
+    /// </summary>
+    /// <param name="inputs">The semester view (for course codes).</param>
+    /// <param name="sections">The sections, in the order to name them.</param>
+    /// <returns>The text.</returns>
+    public static string ByCourseOr(AccessInputs inputs, IEnumerable<Section> sections)
+    {
+        var named = new HashSet<string>();
+        return JoinOr(sections.Select(s => named.Add(s.CourseId ?? string.Empty) ? SectionLabel(inputs, s) : s.SectionCode).ToList());
+    }
 
     /// <summary>
     /// Names sections grouped by course, in order of first appearance: "PSYCH 101 A, B, C and GEOG 250 A".
@@ -120,20 +141,18 @@ public static partial class AccessText
                     : $"{ByCourse(inputs, xs)} conflict with {others}, so they can't be part of any slate for {w}.");
             }
 
-            // approved wording (round 6)
-            var nf = ks.Where(m => m.Mark.Kind == ConflictMarkKind.NoFull).Select(m => OtherEnd(m.Mark)).ToList();
-            if (nf.Count > 0)
-                Say($"{id} conflicts with {ByCourse(inputs, nf)}, so {w} has no full slate.");
+            // Move (no full slate): one sentence per problem, naming this line's conflicts and the sections to move.
+            foreach (var problemMarks in ks.Where(m => m.Mark.Kind == ConflictMarkKind.Move).GroupBy(m => m.Mark.Problem))
+                Say(MoveTip(inputs, section, problemMarks.Select(m => OtherEnd(m.Mark)).ToList(), problemMarks.Key!,
+                    problemMarks.First().Mark.ProblemCount, w));
 
-            // Q22 and Other: one sentence per mark, repeats dropped.
+            // Other: one sentence per mark, repeats dropped.
             // approved wording (round 6)
             var seen = new HashSet<string>();
-            foreach (var m in ks.Where(m => m.Mark.Kind is ConflictMarkKind.NoSingleFix or ConflictMarkKind.Other))
+            foreach (var m in ks.Where(m => m.Mark.Kind == ConflictMarkKind.Other))
             {
                 var k = m.Mark;
-                string tip = k.Kind == ConflictMarkKind.NoSingleFix
-                    ? $"{SectionLabel(inputs, k.X!)} conflicts with {ByCourse(inputs, k.XConflictsWith)}, so {w} has no full slate. Fixing only one of these conflicts isn't enough."
-                    : $"{SectionLabel(inputs, k.A)} conflicts with {SectionLabel(inputs, k.B)}. Because of this conflict, {JoinAnd(FreedLabels(inputs, k))} can't be part of any slate for {w}.";
+                string tip = $"{SectionLabel(inputs, k.A)} conflicts with {SectionLabel(inputs, k.B)}. Because of this conflict, {JoinAnd(FreedLabels(inputs, k))} can't be part of any slate for {w}.";
                 if (seen.Add(tip)) Say(tip);
             }
 

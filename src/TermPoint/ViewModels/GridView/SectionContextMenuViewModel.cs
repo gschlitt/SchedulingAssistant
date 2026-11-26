@@ -399,13 +399,37 @@ public partial class SectionContextMenuViewModel : ObservableObject
         IsOpen = false;
     }
 
-    /// <summary>Sets <see cref="HasPinItem"/> and <see cref="PinItemText"/> from the open watch and the loaded section.</summary>
+    /// <summary>
+    /// True while the menu offers to keep the right-clicked section in place (no-full-slate suggestions won't move
+    /// it) or to let it move again (<see cref="AccessPicture.OffersKeepInPlace"/>). Set on <see cref="Load"/>.
+    /// </summary>
+    [ObservableProperty] private bool _hasKeepItem;
+
+    /// <summary>"Don't suggest moving this", or "Suggest moving this again" when it is kept. Set on <see cref="Load"/>.</summary>
+    [ObservableProperty] private string _keepItemText = string.Empty;
+
+    /// <summary>Keeps the right-clicked section in place, or lets it move again, and closes the menu. Never saved.</summary>
+    [RelayCommand]
+    private void ToggleKeepInPlace()
+    {
+        if (_section is null || _picture is null) return;
+        _picture.ToggleKeptInPlace(_section.Id);
+        IsOpen = false;
+    }
+
+    /// <summary>
+    /// Sets <see cref="HasPinItem"/>, <see cref="PinItemText"/>, <see cref="HasKeepItem"/> and
+    /// <see cref="KeepItemText"/> from the open watch and the loaded section.
+    /// </summary>
     private void RefreshPinState()
     {
         bool offer = _picture is { IsOpen: true } && _section is not null && _picture.Covers(_section.Id);
         HasPinItem = offer;
         PinItemText = !offer ? string.Empty
             : _picture!.IsPinned(_section!.Id) ? AccessText.UnpinText : AccessText.PinInSlatesText(_picture.Name);
+        HasKeepItem = _picture is not null && _section is not null && _picture.OffersKeepInPlace(_section.Id);
+        KeepItemText = !HasKeepItem ? string.Empty
+            : _picture!.KeptInPlace.Contains(_section!.Id) ? AccessText.LetMoveText : AccessText.KeepInPlaceText;
     }
 
     /// <summary>Refreshes <see cref="MarkItemText"/> and <see cref="HasAnyMarks"/> from the marks and the loaded section.</summary>

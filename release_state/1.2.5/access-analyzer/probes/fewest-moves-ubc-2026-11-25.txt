@@ -1,0 +1,262 @@
+Semester Winter Term 1: 561 sections; set up: True
+
+=== CHBE-Y4 (converted watch): 4 courses, 7 groups, 7 sections; campus reason: no; self-fail: 1; missing components: 0
+  today: 1 marks (1 NoFull), 2 ▲
+  best partial (course level): covers 3, can't fit: CHBE453
+  fewest moves: 1; 2 option(s)
+  option: move one section of each of [CHBE453 Lecture]
+    CHBE453 001 [T 14:00-15:00, F 14:00-15:00]: at best 1 conflict(s) with the rest (1 fillings): CHBE453 T0A [T 14:00-16:00, F 14:00-16:00]
+  option: move one section of each of [CHBE453 Studio]
+    CHBE453 T0A [T 14:00-16:00, F 14:00-16:00]: at best 1 conflict(s) with the rest (1 fillings): CHBE453 001 [T 14:00-15:00, F 14:00-15:00]
+  proposed: 2 section(s) to move (▲), 1 line(s)
+
+=== CHML-Y4 (converted watch): 4 courses, 7 groups, 7 sections; campus reason: no; self-fail: 1; missing components: 0
+  today: 1 marks (1 NoFull), 2 ▲
+  best partial (course level): covers 3, can't fit: CHBE454
+  fewest moves: 1; 2 option(s)
+  option: move one section of each of [CHBE454 Lecture]
+    CHBE454 001 [T 14:00-15:00, F 14:00-15:00]: at best 1 conflict(s) with the rest (1 fillings): CHBE454 T0A [T 14:00-16:00, F 14:00-16:00]
+  option: move one section of each of [CHBE454 Studio]
+    CHBE454 T0A [T 14:00-16:00, F 14:00-16:00]: at best 1 conflict(s) with the rest (1 fillings): CHBE454 001 [T 14:00-15:00, F 14:00-15:00]
+  proposed: 2 section(s) to move (▲), 1 line(s)
+
+=== CIVL-Y3 (converted watch): 6 courses, 13 groups, 34 sections; campus reason: no; self-fail: 0; missing components: 0
+  today: 18 marks (1 NoFull, 17 NoSingleFix), 12 ▲
+  best partial (course level): covers 5, can't fit: CIVL315, CIVL303
+  fewest moves: 1; 2 option(s)
+  option: move one section of each of [CIVL303 Discussion]
+    CIVL303 T1A [T 12:30-13:30, F 12:30-13:30]: at best 1 conflict(s) with the rest (214 fillings): CIVL315 101 [M 13:00-14:00, W 13:00-14:00, F 13:00-14:00]
+  option: move one section of each of [CIVL315 Lecture]
+    CIVL315 101 [M 13:00-14:00, W 13:00-14:00, F 13:00-14:00]: at best 1 conflict(s) with the rest (214 fillings): CIVL303 T1A [T 12:30-13:30, F 12:30-13:30]
+  proposed: 2 section(s) to move (▲), 1 line(s)
+
+=== CPEN-Y4: 3 courses, 4 groups, 4 sections; campus reason: no; self-fail: 0; missing components: 0
+  today: 1 marks (1 NoFull), 2 ▲
+  best partial (course level): covers 2, can't fit: ELEC481, CPEN481
+  fewest moves: 1; 2 option(s)
+  option: move one section of each of [CPEN481 (one component)]
+    CPEN481 101 [M 17:00-18:30, W 17:00-18:30]: at best 1 conflict(s) with the rest (1 fillings): ELEC481 101 [M 17:00-18:30, W 17:00-18:30]
+  option: move one section of each of [ELEC481 (one component)]
+    ELEC481 101 [M 17:00-18:30, W 17:00-18:30]: at best 1 conflict(s) with the rest (1 fillings): CPEN481 101 [M 17:00-18:30, W 17:00-18:30]
+  proposed: 2 section(s) to move (▲), 1 line(s)
+
+=== ELEC-Y4: 3 courses, 4 groups, 4 sections; campus reason: no; self-fail: 0; missing components: 0
+  today: 1 marks (1 NoFull), 2 ▲
+  best partial (course level): covers 2, can't fit: ELEC481, CPEN481
+  fewest moves: 1; 2 option(s)
+  option: move one section of each of [CPEN481 (one component)]
+    CPEN481 101 [M 17:00-18:30, W 17:00-18:30]: at best 1 conflict(s) with the rest (1 fillings): ELEC481 101 [M 17:00-18:30, W 17:00-18:30]
+  option: move one section of each of [ELEC481 (one component)]
+    ELEC481 101 [M 17:00-18:30, W 17:00-18:30]: at best 1 conflict(s) with the rest (1 fillings): CPEN481 101 [M 17:00-18:30, W 17:00-18:30]
+  proposed: 2 section(s) to move (▲), 1 line(s)
+
+=== ENVE-Y4: 5 courses, 7 groups, 11 sections; campus reason: no; self-fail: 0; missing components: 0
+  today: 10 marks (10 NoSingleFix), 7 ▲
+  best partial (course level): covers 4, can't fit: EOSC329, ENVE401
+  fewest moves: 1; 1 option(s)
+  option: move one section of each of [EOSC329 Lecture]
+    EOSC329 101 [T 14:00-15:30, R 14:00-15:30]: at best 2 conflict(s) with the rest (1 fillings): ENVE401 001 [T 14:00-15:00, R 14:00-15:00, F 14:00-15:00], ENVE401 T0B [T 15:00-17:00, W 15:00-17:00, R 15:00-17:00, F 15:00-17:00]
+  proposed: 1 section(s) to move (▲), 2 line(s)
+
+=== GEOE-Y3: 7 courses, 15 groups, 39 sections; campus reason: no; self-fail: 0; missing components: 0
+  today: 59 marks (59 NoSingleFix), 19 ▲
+  best partial (course level): covers 6, can't fit: EOSC331, EOSC321, CIVL311
+  fewest moves: 2; 31 option(s)
+  groups:
+    [0] CIVL311 Lecture: 101 [M 11:00-12:00, W 11:00-12:00, F 11:00-12:00]
+    [1] CIVL311 Discussion: T1A [M 16:00-17:00], T1B [M 16:00-17:00], T1C [T 16:00-17:00], T1D [T 16:00-17:00], T1E [W 16:00-17:00], T1F [W 16:00-17:00]
+    [2] CIVL311 Laboratory: L1A [M 14:00-16:00 (odd)], L1B [M 14:00-16:00 (even)], L1C [T 15:00-17:00 (odd)], L1D [T 15:00-17:00 (even)], L1E [W 15:00-17:00 (odd)], L1F [W 15:00-17:00 (even)]
+    [3] EOSC321 Lecture: 101 [T 11:00-12:00, R 11:00-12:00]
+    [4] EOSC321 Laboratory: L1A [M 15:00-18:00], L1B [F 14:00-17:00], L1C [R 14:00-17:00]
+    [5] EOSC323 Lecture: 101 [M 14:00-15:00, W 14:00-15:00]
+    [6] EOSC323 Laboratory: L1A [W 15:00-18:00], L1B [R 16:00-19:00], L1C [F 15:00-18:00], L1D [M 16:00-19:00], L1E []
+    [7] EOSC329 Lecture: 101 [T 14:00-15:30, R 14:00-15:30]
+    [8] EOSC329 Laboratory: L1A [M 15:00-17:00 (even)], L1B [T 15:30-17:30 (even)], L1C [R 15:30-17:30 (even)], L1D [F 15:00-17:00 (even)]
+    [9] EOSC330 Lecture: 101 [M 10:00-11:00, W 10:00-11:00, F 10:00-11:00]
+    [10] EOSC330 Laboratory: L1A [T 15:30-17:30], L1B [T 11:00-13:00], L1C [R 9:00-11:00], L1D [T 9:00-11:00]
+    [11] EOSC331 Lecture: 101 [T 10:00-11:00, R 10:00-11:00]
+    [12] EOSC331 Laboratory: L1A [W 15:00-18:00], L1B [F 14:00-17:00]
+    [13] EOSC350 Lecture: 101 [M 13:00-14:00, W 13:00-14:00, F 13:00-14:00]
+    [14] EOSC350 Laboratory: L1A [M 15:00-17:00], L1B [T 15:30-17:30]
+  conflicts between groups:
+    CIVL311 T1C x CIVL311 L1C
+    CIVL311 T1C x CIVL311 L1D
+    CIVL311 T1D x CIVL311 L1C
+    CIVL311 T1D x CIVL311 L1D
+    CIVL311 T1E x CIVL311 L1E
+    CIVL311 T1E x CIVL311 L1F
+    CIVL311 T1F x CIVL311 L1E
+    CIVL311 T1F x CIVL311 L1F
+    CIVL311 T1A x EOSC321 L1A
+    CIVL311 T1B x EOSC321 L1A
+    CIVL311 T1A x EOSC323 L1D
+    CIVL311 T1B x EOSC323 L1D
+    CIVL311 T1E x EOSC323 L1A
+    CIVL311 T1F x EOSC323 L1A
+    CIVL311 T1A x EOSC329 L1A
+    CIVL311 T1B x EOSC329 L1A
+    CIVL311 T1C x EOSC329 L1B
+    CIVL311 T1D x EOSC329 L1B
+    CIVL311 T1C x EOSC330 L1A
+    CIVL311 T1D x EOSC330 L1A
+    CIVL311 T1E x EOSC331 L1A
+    CIVL311 T1F x EOSC331 L1A
+    CIVL311 T1A x EOSC350 L1A
+    CIVL311 T1B x EOSC350 L1A
+    CIVL311 T1C x EOSC350 L1B
+    CIVL311 T1D x EOSC350 L1B
+    CIVL311 L1A x EOSC321 L1A
+    CIVL311 L1B x EOSC321 L1A
+    CIVL311 L1A x EOSC323 101
+    CIVL311 L1B x EOSC323 101
+    CIVL311 L1E x EOSC323 L1A
+    CIVL311 L1F x EOSC323 L1A
+    CIVL311 L1C x EOSC329 101
+    CIVL311 L1D x EOSC329 101
+    CIVL311 L1B x EOSC329 L1A
+    CIVL311 L1D x EOSC329 L1B
+    CIVL311 L1C x EOSC330 L1A
+    CIVL311 L1D x EOSC330 L1A
+    CIVL311 L1E x EOSC331 L1A
+    CIVL311 L1F x EOSC331 L1A
+    CIVL311 L1A x EOSC350 L1A
+    CIVL311 L1B x EOSC350 L1A
+    CIVL311 L1C x EOSC350 L1B
+    CIVL311 L1D x EOSC350 L1B
+    EOSC321 101 x EOSC330 L1B
+    EOSC321 L1A x EOSC323 L1D
+    EOSC321 L1B x EOSC323 L1C
+    EOSC321 L1C x EOSC323 L1B
+    EOSC321 L1C x EOSC329 101
+    EOSC321 L1A x EOSC329 L1A
+    EOSC321 L1B x EOSC329 L1D
+    EOSC321 L1C x EOSC329 L1C
+    EOSC321 L1B x EOSC331 L1B
+    EOSC321 L1A x EOSC350 L1A
+    EOSC323 L1B x EOSC329 L1C
+    EOSC323 L1C x EOSC329 L1D
+    EOSC323 L1D x EOSC329 L1A
+    EOSC323 L1A x EOSC331 L1A
+    EOSC323 L1C x EOSC331 L1B
+    EOSC323 L1D x EOSC350 L1A
+    EOSC329 L1B x EOSC330 L1A
+    EOSC329 L1D x EOSC331 L1B
+    EOSC329 L1A x EOSC350 L1A
+    EOSC329 L1B x EOSC350 L1B
+    EOSC330 L1C x EOSC331 101
+    EOSC330 L1D x EOSC331 101
+    EOSC330 L1A x EOSC350 L1B
+  all-options: [CIVL311 Discussion; CIVL311 Laboratory]
+  all-options: [CIVL311 Discussion; EOSC321 Lecture]
+  all-options: [CIVL311 Discussion; EOSC321 Laboratory]
+  all-options: [CIVL311 Discussion; EOSC330 Laboratory]
+  all-options: [CIVL311 Discussion; EOSC331 Lecture]
+  all-options: [CIVL311 Discussion; EOSC331 Laboratory]
+  all-options: [CIVL311 Discussion; EOSC350 Laboratory]
+  all-options: [CIVL311 Laboratory; EOSC321 Lecture]
+  all-options: [CIVL311 Laboratory; EOSC321 Laboratory]
+  all-options: [CIVL311 Laboratory; EOSC330 Laboratory]
+  all-options: [CIVL311 Laboratory; EOSC331 Lecture]
+  all-options: [CIVL311 Laboratory; EOSC331 Laboratory]
+  all-options: [CIVL311 Laboratory; EOSC350 Laboratory]
+  all-options: [EOSC321 Lecture; EOSC321 Laboratory]
+  all-options: [EOSC321 Lecture; EOSC323 Lecture]
+  all-options: [EOSC321 Lecture; EOSC329 Lecture]
+  all-options: [EOSC321 Lecture; EOSC331 Laboratory]
+  all-options: [EOSC321 Lecture; EOSC350 Laboratory]
+  all-options: [EOSC321 Laboratory; EOSC330 Laboratory]
+  all-options: [EOSC321 Laboratory; EOSC331 Lecture]
+  all-options: [EOSC321 Laboratory; EOSC350 Laboratory]
+  all-options: [EOSC323 Lecture; EOSC330 Laboratory]
+  all-options: [EOSC323 Lecture; EOSC331 Lecture]
+  all-options: [EOSC323 Lecture; EOSC350 Laboratory]
+  all-options: [EOSC329 Lecture; EOSC330 Laboratory]
+  all-options: [EOSC329 Lecture; EOSC331 Lecture]
+  all-options: [EOSC330 Laboratory; EOSC331 Laboratory]
+  all-options: [EOSC330 Laboratory; EOSC350 Laboratory]
+  all-options: [EOSC331 Lecture; EOSC331 Laboratory]
+  all-options: [EOSC331 Lecture; EOSC350 Laboratory]
+  all-options: [EOSC331 Laboratory; EOSC350 Laboratory]
+  option: move one section of each of [CIVL311 Discussion; CIVL311 Laboratory]
+  option: move one section of each of [CIVL311 Discussion; EOSC321 Lecture]
+  option: move one section of each of [CIVL311 Discussion; EOSC321 Laboratory]
+  option: move one section of each of [CIVL311 Discussion; EOSC330 Laboratory]
+  option: move one section of each of [CIVL311 Discussion; EOSC331 Lecture]
+  option: move one section of each of [CIVL311 Discussion; EOSC331 Laboratory]
+  option: move one section of each of [CIVL311 Discussion; EOSC350 Laboratory]
+  option: move one section of each of [CIVL311 Laboratory; EOSC321 Lecture]
+  option: move one section of each of [CIVL311 Laboratory; EOSC321 Laboratory]
+  option: move one section of each of [CIVL311 Laboratory; EOSC330 Laboratory]
+  option: move one section of each of [CIVL311 Laboratory; EOSC331 Lecture]
+  option: move one section of each of [CIVL311 Laboratory; EOSC331 Laboratory]
+  … 19 more options
+
+=== GEOE-Y4: 9 courses, 11 groups, 12 sections; campus reason: no; self-fail: 0; missing components: 0
+  today: 2 marks (2 NoSingleFix), 4 ▲
+  best partial (course level): covers 7, can't fit: ELEC481, MECH431, CPEN481, CIVL410
+  fewest moves: 2; 4 option(s)
+  groups:
+    [0] CIVL402 (one component): 101 [T 11:00-12:30, R 11:00-12:30]
+    [1] CIVL410 (one component): 101 [M 10:00-11:00, W 10:00-11:00, F 10:00-11:00]
+    [2] CPEN481 (one component): 101 [M 17:00-18:30, W 17:00-18:30]
+    [3] ELEC481 (one component): 101 [M 17:00-18:30, W 17:00-18:30]
+    [4] EOSC433 Lecture: 101 [R 13:00-15:00]
+    [5] EOSC433 Laboratory: L1A [F 13:00-15:00], L1B [R 15:30-17:30]
+    [6] EOSC445 (one component): 001 [T 13:00-15:00]
+    [7] MECH431 (one component): 101 [M 10:00-11:00, W 10:00-11:00, F 10:00-11:00]
+    [8] MINE396 (one component): 101 [T 8:00-9:30 (even), R 8:00-9:30 (even)]
+    [9] MTRL455 Lecture: 101 [M 9:00-10:00, W 9:00-10:00]
+    [10] MTRL455 Discussion: T1A [F 8:00-10:00]
+  conflicts between groups:
+    CIVL410 101 x MECH431 101
+    CPEN481 101 x ELEC481 101
+  all-options: [CIVL410 (one component); CPEN481 (one component)]
+  all-options: [CIVL410 (one component); ELEC481 (one component)]
+  all-options: [CPEN481 (one component); MECH431 (one component)]
+  all-options: [ELEC481 (one component); MECH431 (one component)]
+  option: move one section of each of [CIVL410 (one component); CPEN481 (one component)]
+  option: move one section of each of [CIVL410 (one component); ELEC481 (one component)]
+  option: move one section of each of [CPEN481 (one component); MECH431 (one component)]
+  option: move one section of each of [ELEC481 (one component); MECH431 (one component)]
+
+=== MANU-Y2: 5 courses, 10 groups, 13 sections; campus reason: no; self-fail: 0; missing components: 0
+  today: 1 marks (1 NoFull), 2 ▲
+  best partial (course level): covers 4, can't fit: MANU261, MANU231
+  fewest moves: 1; 2 option(s)
+  option: move one section of each of [MANU231 Lecture]
+    MANU231 101 [W 13:00-14:00, F 13:00-14:00]: at best 1 conflict(s) with the rest (8 fillings): MANU261 101 [M 13:00-14:00, W 13:00-14:00, F 13:00-14:00]
+  option: move one section of each of [MANU261 Lecture]
+    MANU261 101 [M 13:00-14:00, W 13:00-14:00, F 13:00-14:00]: at best 1 conflict(s) with the rest (8 fillings): MANU231 101 [W 13:00-14:00, F 13:00-14:00]
+  proposed: 2 section(s) to move (▲), 1 line(s)
+
+=== MANU-Y4: 3 courses, 6 groups, 7 sections; campus reason: no; self-fail: 0; missing components: 0
+  today: 3 marks (1 NoFull, 2 NoSingleFix), 5 ▲
+  best partial (course level): covers 2, can't fit: MECH491, MANU430
+  fewest moves: 1; 2 option(s)
+  option: move one section of each of [MANU430 Lecture]
+    MANU430 001 [F 11:00-12:00]: at best 1 conflict(s) with the rest (1 fillings): MANU430 L0B [F 11:00-13:00]
+  option: move one section of each of [MANU430 Laboratory]
+    MANU430 L0A [W 14:30-16:30, F 14:30-16:30]: at best 2 conflict(s) with the rest (1 fillings): MECH491 101 [W 16:00-18:00], MECH491 L1A [F 16:00-18:00]
+    MANU430 L0B [F 11:00-13:00]: at best 1 conflict(s) with the rest (1 fillings): MANU430 001 [F 11:00-12:00]
+  proposed: 3 section(s) to move (▲), 3 line(s)
+
+=== MINE-Y4: 5 courses, 8 groups, 8 sections; campus reason: no; self-fail: 0; missing components: 0
+  today: 2 marks (2 NoSingleFix), 1 ▲
+  best partial (course level): covers 4, can't fit: MINE491
+  fewest moves: 1; 1 option(s)
+  option: move one section of each of [MINE491 (one component)]
+    MINE491 001 [M 11:00-13:00, T 11:00-13:00, R 11:00-13:00, F 11:00-13:00]: at best 2 conflict(s) with the rest (1 fillings): MINE402 101 [M 12:30-14:00, F 12:30-14:00], MINE432 101 [T 11:00-12:00, R 11:00-12:00]
+  proposed: 1 section(s) to move (▲), 2 line(s)
+
+SUMMARY: 43 watches, 11 with no full slate; by fewest moves: 1: 9, 2: 2
+  CHBE-Y4: 1 move(s), 2 option(s), 2 ▲ / 1 lines; today 1 marks / 2 ▲
+  CHML-Y4: 1 move(s), 2 option(s), 2 ▲ / 1 lines; today 1 marks / 2 ▲
+  CIVL-Y3: 1 move(s), 2 option(s), 2 ▲ / 1 lines; today 18 marks / 12 ▲
+  CPEN-Y4: 1 move(s), 2 option(s), 2 ▲ / 1 lines; today 1 marks / 2 ▲
+  ELEC-Y4: 1 move(s), 2 option(s), 2 ▲ / 1 lines; today 1 marks / 2 ▲
+  ENVE-Y4: 1 move(s), 1 option(s), 1 ▲ / 2 lines; today 10 marks / 7 ▲
+  GEOE-Y3: 2 move(s), 31 option(s); today 59 marks / 19 ▲
+  GEOE-Y4: 2 move(s), 4 option(s); today 2 marks / 4 ▲
+  MANU-Y2: 1 move(s), 2 option(s), 2 ▲ / 1 lines; today 1 marks / 2 ▲
+  MANU-Y4: 1 move(s), 2 option(s), 3 ▲ / 3 lines; today 3 marks / 5 ▲
+  MINE-Y4: 1 move(s), 1 option(s), 1 ▲ / 2 lines; today 2 marks / 1 ▲

@@ -105,6 +105,27 @@ public sealed class AccessState
     }
 
     /// <summary>
+    /// Ids of the sections the user has said can't move (right-click on the grid): with no full slate, they are never
+    /// suggested to move (<see cref="MoveSuggestions"/>). One set for every watch, since a section that can't move
+    /// can't move for any of them. Session only, never saved; a database switch starts empty (a new instance).
+    /// </summary>
+    public IReadOnlySet<string> KeptInPlace => _keptInPlace;
+
+    private readonly HashSet<string> _keptInPlace = [];
+
+    /// <summary>
+    /// Keeps a section in place, or lets it be suggested to move again when it is kept. Marks the state stale, raises
+    /// <see cref="Changed"/> and asks the grid to redraw (as <see cref="MarkAllConflicts"/> does).
+    /// </summary>
+    /// <param name="sectionId">The section's id.</param>
+    public void ToggleKeptInPlace(string sectionId)
+    {
+        if (!_keptInPlace.Remove(sectionId)) _keptInPlace.Add(sectionId);
+        Invalidate();
+        _changeNotifier.NotifyGridContentChanged();
+    }
+
+    /// <summary>
     /// The results for every loaded semester, recomputed first when stale.
     /// </summary>
     /// <returns>The snapshot; never null. Empty when no semester is loaded.</returns>
@@ -268,7 +289,7 @@ public sealed class AccessState
             foreach (var tag in tags)
             {
                 var watch = AccessWatch.FromTag(tag);
-                watches.Add(new WatchAccess(tag, watch, ConflictMarks.For(inputs, watch, markAll),
+                watches.Add(new WatchAccess(tag, watch, ConflictMarks.For(inputs, watch, markAll, _keptInPlace),
                     () => AccessAnalyzer.Analyze(inputs, watch)));
             }
             result[semesterId] = new SemesterAccess(semesterId, inputs, watches);

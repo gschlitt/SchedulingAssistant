@@ -556,6 +556,12 @@
 								<TextBlock VerticalAlignment="Center" Text="{Binding ContextMenu.PinItemText}" />
 							</StackPanel>
 						</Button>
+						<!--  With no full slate: keep this section out of the move suggestions, or let it back in (never saved)  -->
+						<Button
+							Classes="CtxMenuItem"
+							Command="{Binding ContextMenu.ToggleKeepInPlaceCommand}"
+							Content="{Binding ContextMenu.KeepItemText}"
+							IsVisible="{Binding ContextMenu.HasKeepItem}" />
 					</StackPanel>
 
 					<!--  Sub-panel: appears when a menu item is chosen  -->

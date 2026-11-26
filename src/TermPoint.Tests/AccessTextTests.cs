@@ -28,7 +28,7 @@ public sealed class AccessTextTests
         AccessText.ConflictTips(Simple(sections), sections.Single(s => s.Id == sectionId), day, marks, hidden);
 
     private static ConflictMark Hand(ConflictMarkKind kind, Section a, Section b) =>
-        new(kind, a, b, SectionOverlap.OverlappingMeetings(a, b), null, [], []);
+        new(kind, a, b, SectionOverlap.OverlappingMeetings(a, b), null, []);
 
     [Fact]
     public void Stranded_OneSection()
@@ -59,15 +59,16 @@ public sealed class AccessTextTests
     }
 
     [Fact]
-    public void NoFull_NamesThePartnersByCourse()
+    public void Move_OneConflict_NamesThePartnerAndEitherSectionToMove()
     {
         var sections = new[] { Sec("A", "1", Lecture, At(0, 9, 10)), Sec("B", "1", Lecture, At(0, 9, 10)) };
         var marks = WatchMarks("Y2", Engine(sections));
-        Assert.Equal(["A 1 conflicts with B 1, so **Y2** has no full slate."], Tips(sections, "A 1", marks));
+        Assert.Equal(["A 1 conflicts with B 1, so **Y2** has no full slate. Moving A 1 or B 1 brings one back."],
+            Tips(sections, "A 1", marks));
     }
 
     [Fact]
-    public void NoSingleFix_Q22_SaysFixingOneIsNotEnough()
+    public void Move_Q22_OneSectionClashingWithTwo_IsOneMove()
     {
         var sections = new[]
         {
@@ -75,8 +76,32 @@ public sealed class AccessTextTests
             Sec("C", "1", Lecture, At([0, 1], 9, 10)),
         };
         var marks = WatchMarks("Y2", Engine(sections));
-        var line = Assert.Single(Tips(sections, "A 1", marks));
-        Assert.Equal("C 1 conflicts with A 1 and B 1, so **Y2** has no full slate. Fixing only one of these conflicts isn't enough.", line);
+        Assert.Equal(["A 1 conflicts with C 1, so **Y2** has no full slate. Moving C 1 brings one back."],
+            Tips(sections, "A 1", marks));
+        Assert.Equal(["C 1 conflicts with A 1, so **Y2** has no full slate. Moving C 1 brings one back."],
+            Tips(sections, "C 1", marks));
+        Assert.Equal(["C 1 conflicts with B 1, so **Y2** has no full slate. Moving C 1 brings one back."],
+            Tips(sections, "C 1", marks, day: 2));
+    }
+
+    [Fact]
+    public void Move_TwoSeparateProblems_SaysWhichOneThisIs()
+    {
+        var sections = new[]
+        {
+            Sec("A", "1", Lecture, At(0, 9, 10)), Sec("B", "1", Lecture, At(0, 9, 10)),
+            Sec("C", "1", Lecture, At(1, 9, 10)), Sec("D", "1", Lecture, At(1, 9, 10)),
+        };
+        var marks = WatchMarks("Y2", Engine(sections));
+        Assert.Equal(["A 1 conflicts with B 1. This is one of 2 separate problems keeping **Y2** from a full slate; moving A 1 or B 1 fixes it."],
+            Tips(sections, "A 1", marks));
+    }
+
+    [Fact]
+    public void ByCourseOr_GivesEachCourseCodeOnce()
+    {
+        var sections = new[] { Sec("A", "1"), Sec("A", "2"), Sec("B", "1") };
+        Assert.Equal("A 1, 2 or B 1", AccessText.ByCourseOr(Simple(sections), sections));
     }
 
     [Fact]
@@ -134,9 +159,9 @@ public sealed class AccessTextTests
         var mark = Engine(sections).Single();
         var both = WatchMarks("Y2", [mark]).Concat(WatchMarks("Y3", [mark])).ToList();
         Assert.Equal(
-            ["**Y2**: A 1 conflicts with B 1, so **Y2** has no full slate.", "**Y3**: A 1 conflicts with B 1, so **Y3** has no full slate."],
+            ["**Y2**: A 1 conflicts with B 1, so **Y2** has no full slate. Moving A 1 or B 1 brings one back.", "**Y3**: A 1 conflicts with B 1, so **Y3** has no full slate. Moving A 1 or B 1 brings one back."],
             Tips(sections, "A 1", both));
-        Assert.Equal(["A 1 conflicts with B 1, so **Y2** has no full slate."],
+        Assert.Equal(["A 1 conflicts with B 1, so **Y2** has no full slate. Moving A 1 or B 1 brings one back."],
             Tips(sections, "A 1", WatchMarks("Y2", [mark])));
     }
 
@@ -146,8 +171,8 @@ public sealed class AccessTextTests
         var sections = new[] { Sec("A", "1", Lecture, At(0, 9, 10)), Sec("B", "1", Lecture, At(0, 9, 10)) };
         var marks = WatchMarks("Y2", Engine(sections));
         var lines = Tips(sections, "A 1", marks, hidden: id => id == "B 1" ? HiddenReason.Filters : null);
-        Assert.Equal(["A 1 conflicts with B 1, so **Y2** has no full slate.", "B 1 is hidden by the filters."], lines);
-        Assert.Equal(["A 1 conflicts with B 1, so **Y2** has no full slate."], Tips(sections, "A 1", marks, hidden: _ => null));
+        Assert.Equal(["A 1 conflicts with B 1, so **Y2** has no full slate. Moving A 1 or B 1 brings one back.", "B 1 is hidden by the filters."], lines);
+        Assert.Equal(["A 1 conflicts with B 1, so **Y2** has no full slate. Moving A 1 or B 1 brings one back."], Tips(sections, "A 1", marks, hidden: _ => null));
     }
 
     /// <summary>A partner left out by the chosen subjects (not the filters) says so (Greg, 2026-11-24).</summary>
@@ -157,7 +182,7 @@ public sealed class AccessTextTests
         var sections = new[] { Sec("A", "1", Lecture, At(0, 9, 10)), Sec("B", "1", Lecture, At(0, 9, 10)) };
         var marks = WatchMarks("Y2", Engine(sections));
         var lines = Tips(sections, "A 1", marks, hidden: id => id == "B 1" ? HiddenReason.Subjects : null);
-        Assert.Equal(["A 1 conflicts with B 1, so **Y2** has no full slate.",
+        Assert.Equal(["A 1 conflicts with B 1, so **Y2** has no full slate. Moving A 1 or B 1 brings one back.",
                       "B 1 isn't shown: its subject isn't one of your chosen Subjects."], lines);
     }
 

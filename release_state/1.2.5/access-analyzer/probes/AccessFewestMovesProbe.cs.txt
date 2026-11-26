@@ -1,0 +1,218 @@
+using System.IO;
+using TermPoint.Data;
+using TermPoint.Data.Repositories;
+using TermPoint.Models;
+using TermPoint.Services.Access;
+using TermPoint.ViewModels.Access;
+using TermPoint.ViewModels.Management;
+using Xunit;
+using Xunit.Abstractions;
+
+namespace TermPoint.Tests;
+
+/// <summary>
+/// TEMPORARY read-only probe (no-full-slate question, 2026-11-25): for each UBC program-year tag treated as a watch
+/// with no full slate, how many sections would have to move to bring a full slate back (component groups that must
+/// be skipped), and how many one-move options there are. Compares with today's marks and ▲. Works on a copy.
+/// </summary>
+public sealed class AccessFewestMovesProbe(ITestOutputHelper output)
+{
+    private const int MaxMoves = 4;
+    private const int SlateCap = 200_000;
+
+    /// <summary>Writes the probe's report to the test output and %TEMP%\access-fewest-moves-probe.txt.</summary>
+    [Fact]
+    public void ProbeFewestMovesOnUbc()
+    {
+        const string source = @"C:\ProgramData\TermPoint\UBC\FAS-TT.db";
+        if (!File.Exists(source)) return;
+        string temp = Path.Combine(Path.GetTempPath(), $"access-probe-{Guid.NewGuid():N}.db");
+        File.Copy(source, temp);
+        var lines = new List<string>();
+        void Say(string s) { lines.Add(s); output.WriteLine(s); }
+        try
+        {
+            AccessInputs inputs;
+            List<SchedulingEnvironmentValue> tags;
+            using (var db = new DatabaseContext(temp))
+            {
+                var sectionRepo = new SectionRepository(db);
+                var semester = new SemesterRepository(db).GetAll()
+                    .OrderByDescending(s => sectionRepo.CountBySemesterId(s.Id)).First();
+                var env = new SchedulingEnvironmentRepository(db);
+                tags = env.GetAll(SchedulingEnvironmentTypes.Tag);
+                inputs = new AccessInputs(
+                    sectionRepo.GetAll(semester.Id),
+                    new CourseRepository(db).GetAll().ToDictionary(c => c.Id),
+                    env.GetAll(SchedulingEnvironmentTypes.SectionType),
+                    new AccessChecksSetupRepository(db).IsSetUp(),
+                    sectionRepo.GetSectionTypeIdsByCourse());
+                Say($"Semester {semester.Name}: {inputs.Sections.Count} sections; set up: {inputs.SetUp}");
+            }
+
+            var summary = new List<string>();
+            int total = 0, broken = 0;
+            var byMoves = new SortedDictionary<int, int>();
+            foreach (var tag in tags.OrderBy(t => t.Name))
+            {
+                var watch = new AccessWatch(tag.Id, tag.WatchMultiCampus);
+                var covered = watch.CoveredSections(inputs);
+                if (covered.Count == 0) continue;
+                total++;
+                var a = AccessAnalyzer.Analyze(inputs, watch);
+                if (a.HasSlate || a.Health == AccessHealth.TooLarge) continue;
+                broken++;
+                bool oneCampus = !watch.MultiCampus;
+                var groups = a.Groups;
+                int n = groups.Count;
+                bool Ok(Section x, Section y) =>
+                    !SectionOverlap.Conflicts(x, y) && (!oneCampus || !CampusRule.Splits(x, y));
+
+                // Today: marks and ▲.
+                var marks = ConflictMarks.For(inputs, covered, watch.MultiCampus, markAll: false);
+                var looks = GridAccessPicture.Build(inputs, a, tag.Name, covered, null, Cautions.For(a), false, id => id ?? "");
+                int triangles = looks.Values.Count(l => l.CantFit);
+
+                // Fewest moves: the smallest set of groups to leave out so the rest can be filled.
+                int moves = -1;
+                var skipSets = new List<int[]>();
+                for (int m = 1; m <= Math.Min(MaxMoves, n) && moves < 0; m++)
+                {
+                    foreach (var skip in Combinations(n, m))
+                    {
+                        var rest = Enumerable.Range(0, n).Except(skip).ToArray();
+                        if (Exists(groups, rest, Ok)) skipSets.Add(skip);
+                    }
+                    if (skipSets.Count > 0) moves = m;
+                }
+                byMoves[moves] = byMoves.GetValueOrDefault(moves) + 1;
+
+                string G(int g) => $"{inputs.CourseCode(groups[g].CourseId)} " +
+                    (groups[g].ComponentTypeId is { } ct ? inputs.SectionTypes.FirstOrDefault(t => t.Id == ct)?.Name ?? ct : "(one component)");
+                string L(Section s) => AccessText.SectionLabel(inputs, s);
+
+                Say("");
+                Say($"=== {tag.Name}{(tag.IsAccessWatch ? " (converted watch)" : "")}: {a.OfferedCourseIds.Count} courses, {n} groups, " +
+                    $"{covered.Count} sections; campus reason: {(a.CampusReason is null ? "no" : "YES")}; self-fail: {a.SelfFailCourses.Count}; " +
+                    $"missing components: {a.MissingComponents.Count}");
+                Say($"  today: {marks.Count} marks ({string.Join(", ", marks.GroupBy(k => k.Kind).Select(g => $"{g.Count()} {g.Key}"))}), {triangles} ▲");
+                Say($"  best partial (course level): covers {a.BestPartial?.Covers}, can't fit: {string.Join(", ", (a.BestPartial?.CantFit ?? []).Select(inputs.CourseCode))}");
+                if (moves < 0) { Say($"  fewest moves: more than {MaxMoves}"); summary.Add($"{tag.Name}: >{MaxMoves} moves"); continue; }
+                Say($"  fewest moves: {moves}; {skipSets.Count} option(s)");
+
+                var drawnLines = new HashSet<(string, string)>();
+                var toMove = new HashSet<string>();
+                if (moves >= 2)
+                {
+                    Say("  groups:");
+                    for (int g = 0; g < n; g++)
+                        Say($"    [{g}] {G(g)}: " + string.Join(", ", groups[g].Candidates.Select(c => $"{c.SectionCode} [{Meetings(c)}]")));
+                    Say("  conflicts between groups:");
+                    for (int g = 0; g < n; g++)
+                        for (int h = g + 1; h < n; h++)
+                            foreach (var x in groups[g].Candidates)
+                                foreach (var y in groups[h].Candidates)
+                                    if (!Ok(x, y)) Say($"    {L(x)} x {L(y)}");
+                    foreach (var skip in skipSets) Say($"  all-options: [{string.Join("; ", skip.Select(G))}]");
+                }
+                foreach (var skip in skipSets.Take(12))
+                {
+                    Say($"  option: move one section of each of [{string.Join("; ", skip.Select(G))}]");
+                    if (moves != 1) continue;
+                    int g0 = skip[0];
+                    var rest = Enumerable.Range(0, n).Where(g => g != g0).ToArray();
+                    foreach (var cand in groups[g0].Candidates)
+                    {
+                        // Min conflicts of this candidate against any filling of the other groups, and the partners at that min.
+                        int best = int.MaxValue;
+                        var partners = new HashSet<Section>();
+                        int seen = Walk(groups, rest, Ok, pick =>
+                        {
+                            var hits = pick.Where(t => !Ok(cand, t)).ToList();
+                            if (hits.Count < best) { best = hits.Count; partners.Clear(); }
+                            if (hits.Count == best) foreach (var h in hits) partners.Add(h);
+                        });
+                        toMove.Add(cand.Id);
+                        foreach (var p in partners) drawnLines.Add(string.CompareOrdinal(cand.Id, p.Id) < 0 ? (cand.Id, p.Id) : (p.Id, cand.Id));
+                        Say($"    {L(cand)} [{Meetings(cand)}]: at best {best} conflict(s) with the rest ({seen}{(seen >= SlateCap ? "+" : "")} fillings): " +
+                            string.Join(", ", partners.Select(p => $"{L(p)} [{Meetings(p)}]")));
+                    }
+                }
+                if (skipSets.Count > 12) Say($"  … {skipSets.Count - 12} more options");
+                if (moves == 1) Say($"  proposed: {toMove.Count} section(s) to move (▲), {drawnLines.Count} line(s)");
+                summary.Add($"{tag.Name}: {moves} move(s), {skipSets.Count} option(s)" +
+                    (moves == 1 ? $", {toMove.Count} ▲ / {drawnLines.Count} lines" : "") +
+                    $"; today {marks.Count} marks / {triangles} ▲");
+            }
+
+            Say("");
+            Say($"SUMMARY: {total} watches, {broken} with no full slate; by fewest moves: " +
+                string.Join(", ", byMoves.Select(kv => $"{(kv.Key < 0 ? $">{MaxMoves}" : kv.Key.ToString())}: {kv.Value}")));
+            foreach (var s in summary) Say("  " + s);
+        }
+        finally
+        {
+            File.WriteAllLines(Path.Combine(Path.GetTempPath(), "access-fewest-moves-probe.txt"), lines);
+            Microsoft.Data.Sqlite.SqliteConnection.ClearAllPools();
+            foreach (var f in new[] { temp, temp + "-wal", temp + "-shm" })
+                try { File.Delete(f); } catch { /* best effort */ }
+        }
+    }
+
+    /// <summary>A section's meetings as "Tu 12:30-13:30, F 12:30-13:30".</summary>
+    private static string Meetings(Section s) => string.Join(", ", s.Schedule.Select(m =>
+        $"{"?MTWRF".ElementAtOrDefault(m.Day)} {m.StartMinutes / 60}:{m.StartMinutes % 60:D2}-{m.EndMinutes / 60}:{m.EndMinutes % 60:D2}" +
+        (string.IsNullOrEmpty(m.Frequency) ? "" : $" ({m.Frequency})")));
+
+    /// <summary>Every m-subset of 0..n-1.</summary>
+    private static IEnumerable<int[]> Combinations(int n, int m)
+    {
+        var idx = Enumerable.Range(0, m).ToArray();
+        while (true)
+        {
+            yield return (int[])idx.Clone();
+            int i = m - 1;
+            while (i >= 0 && idx[i] == n - m + i) i--;
+            if (i < 0) yield break;
+            idx[i]++;
+            for (int j = i + 1; j < m; j++) idx[j] = idx[j - 1] + 1;
+        }
+    }
+
+    /// <summary>Whether the given groups can be filled together.</summary>
+    private static bool Exists(IReadOnlyList<ComponentGroup> groups, int[] which, Func<Section, Section, bool> ok)
+    {
+        bool found = false;
+        WalkCore(groups, which, ok, _ => { found = true; return false; });
+        return found;
+    }
+
+    /// <summary>Visits every filling of the given groups (up to <see cref="SlateCap"/>); returns how many.</summary>
+    private static int Walk(IReadOnlyList<ComponentGroup> groups, int[] which, Func<Section, Section, bool> ok, Action<Section[]> visit)
+    {
+        int count = 0;
+        WalkCore(groups, which, ok, pick => { visit(pick); return ++count < SlateCap; });
+        return count;
+    }
+
+    /// <summary>Depth-first walk, smallest group first; the callback returns false to stop.</summary>
+    private static void WalkCore(IReadOnlyList<ComponentGroup> groups, int[] which, Func<Section, Section, bool> ok, Func<Section[], bool> onFill)
+    {
+        var order = which.OrderBy(g => groups[g].Candidates.Count).ToArray();
+        var pick = new Section[order.Length];
+        bool Recurse(int d)
+        {
+            if (d == order.Length) return onFill(pick);
+            foreach (var s in groups[order[d]].Candidates)
+            {
+                bool fits = true;
+                for (int e = 0; e < d; e++) if (!ok(pick[e], s)) { fits = false; break; }
+                if (!fits) continue;
+                pick[d] = s;
+                if (!Recurse(d + 1)) return false;
+            }
+            return true;
+        }
+        Recurse(0);
+    }
+}

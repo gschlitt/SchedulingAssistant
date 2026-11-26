@@ -112,7 +112,7 @@ public sealed class GridWatchFocusTests : IDisposable
     {
         Assert.Single(_grid.GridData.ProgramConflicts);
         var lines = _grid.GridData.ConflictHoverLines[(_biolSection.Id, 1)];
-        Assert.Contains("BIOL101 A conflicts with CHEM101 A, so **Pre-med** has no full slate.", lines);
+        Assert.Contains("BIOL101 A conflicts with CHEM101 A, so **Pre-med** has no full slate. Moving BIOL101 A or CHEM101 A brings one back.", lines);
         Assert.DoesNotContain(lines, l => l.Contains("hidden by the filters"));
     }
 

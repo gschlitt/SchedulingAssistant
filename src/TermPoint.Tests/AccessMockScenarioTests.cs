@@ -77,19 +77,20 @@ public sealed class AccessMockScenarioTests
     }
 
     [Fact]
-    public void BiomedY2_Variant5_Marks_TheLectureConflictsWithEverythingSoNoSingleConflictIsToBlame()
+    public void BiomedY2_Variant5_Marks_MovingTheLectureIsTheOneMove()
     {
-        // the lecture also conflicts with both ELEC 203 sections, so fixing any one conflict is not enough (Q22)
+        // the lecture lands on every lab and on both ELEC 203 sections: moving it alone brings a full slate back
         var marks = ConflictMarks.For(AccessMockSemester.Inputs(5), new AccessWatch(BiomedY2, false), false);
-        Assert.All(marks, m => Assert.Equal(ConflictMarkKind.NoSingleFix, m.Kind));
-        Assert.All(marks, m => Assert.True(m.A.CourseId == "BMEG 230" || m.B.CourseId == "BMEG 230"));
-        var lectureLab = marks.Single(m => m.A.Id == "BMEG 230 101" && m.B.Id == "BMEG 230 L1A");
-        Assert.Equal("BMEG 230 101", lectureLab.X!.Id);
-        var blockers = Ids(lectureLab.XConflictsWith);
-        foreach (var id in new[] { "BMEG 230 L1A", "BMEG 230 L1B", "BMEG 230 L1C", "BMEG 230 T1A", "ELEC 203 101", "ELEC 203 102" })
-            Assert.Contains(id, blockers);
-        Assert.DoesNotContain("BMEG 230 T1B", blockers);
-        Assert.DoesNotContain("CHBE 201 101", blockers);
+        Assert.NotEmpty(marks);
+        Assert.All(marks, m => Assert.Equal(ConflictMarkKind.Move, m.Kind));
+        var option = Assert.Single(marks[0].Problem!.Options);
+        Assert.Equal("BMEG 230 101", option.Section.Id);
+        var partners = Ids(option.ConflictsWith);
+        foreach (var id in new[] { "BMEG 230 L1A", "BMEG 230 L1B", "BMEG 230 L1C", "ELEC 203 101", "ELEC 203 102" })
+            Assert.Contains(id, partners);
+        // T1B lets students get around T1A, so the lecture's conflict with T1A is not part of the move
+        Assert.DoesNotContain("BMEG 230 T1A", partners);
+        Assert.DoesNotContain("CHBE 201 101", partners);
     }
 
     [Fact]

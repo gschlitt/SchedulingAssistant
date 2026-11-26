@@ -182,14 +182,14 @@ public sealed class AccessGridPictureTests : IDisposable
     }
 
     [Fact]
-    public void WithNoFullSlate_ACourseThatCantFitIsMarked()
+    public void WithNoFullSlate_TheSectionsToMoveAreMarked()
     {
         var inputs = Simple([Sec("A", "A1", meetings: At(0, 9, 10)), Sec("B", "B1", meetings: At(0, 9, 10))]);
         var looks = Looks(inputs, AnalyzeAll(inputs));
 
         Assert.True(looks["A A1"].CantFit);
         Assert.Equal("▲", looks["A A1"].Mark);
-        Assert.Equal("A can't fit with the rest of **W**: no A section fits around the other courses.", looks["A A1"].Hover);
+        Assert.Equal("A A1 conflicts with B B1, so **W** has no full slate. Moving A A1 or B B1 brings one back.", looks["A A1"].Hover);
     }
 
     /// <summary>
@@ -403,13 +403,13 @@ public sealed class AccessGridPictureTests : IDisposable
     public void ALook_IsRepeatedOnlyByAMarkSayingTheSame()
     {
         var a = Sec("A", "A1"); var b = Sec("B", "B1");
-        ConflictMark Mark(ConflictMarkKind kind, Section? x = null) => new(kind, a, b, [], x, [], []);
+        ConflictMark Mark(ConflictMarkKind kind, Section? x = null) => new(kind, a, b, [], x, []);
         var stranded = new AccessTileLook(Stranded: true, Hover: "h");
 
         Assert.True(stranded.IsRepeatedBy(Mark(ConflictMarkKind.Stranded, a), a.Id));
         Assert.False(stranded.IsRepeatedBy(Mark(ConflictMarkKind.Stranded, b), a.Id));
-        Assert.True(new AccessTileLook(CantFit: true, Hover: "h").IsRepeatedBy(Mark(ConflictMarkKind.NoFull), a.Id));
-        Assert.True(new AccessTileLook(CantFit: true, Hover: "h").IsRepeatedBy(Mark(ConflictMarkKind.NoSingleFix, a), a.Id));
+        Assert.True(new AccessTileLook(CantFit: true, Hover: "h").IsRepeatedBy(Mark(ConflictMarkKind.Move), a.Id));
+        Assert.False(new AccessTileLook(Hover: "h").IsRepeatedBy(Mark(ConflictMarkKind.Move), a.Id));
         Assert.True(new AccessTileLook(Usable: true, Hover: "h").IsRepeatedBy(Mark(ConflictMarkKind.Harmless), a.Id));
         Assert.False(new AccessTileLook(Essential: true, Hover: "h").IsRepeatedBy(Mark(ConflictMarkKind.Other), a.Id));
         Assert.False(new AccessTileLook(Stranded: true).IsRepeatedBy(Mark(ConflictMarkKind.Stranded, a), a.Id));

@@ -32,9 +32,9 @@ public sealed record AccessTileLook(
     /// Whether a conflict mark of the open watch already says what this look's hover says, so the tile's hover shows
     /// the mark's line alone (Greg, 2026-11-25: the two lines repeated each other). The mark's line is kept because
     /// it is the same with or without the watch open and names every conflict, where the look names one.
-    /// Stranded repeats a Stranded mark about this section; can't fit repeats a no-full-slate mark on it; usable
-    /// repeats a harmless mark ("other sections still let students get around"). An essential or only section and
-    /// an Other mark say different things, so both stay.
+    /// Stranded repeats a Stranded mark about this section; can't fit (a section to move) repeats a move mark on it;
+    /// usable repeats a harmless mark ("other sections still let students get around"). An essential or only section
+    /// and an Other mark say different things, so both stay.
     /// </summary>
     /// <param name="mark">A mark of the open watch that involves this section on the tile's day.</param>
     /// <param name="sectionId">This section's id.</param>
@@ -43,7 +43,7 @@ public sealed record AccessTileLook(
         !string.IsNullOrEmpty(Hover) && mark.Kind switch
         {
             ConflictMarkKind.Stranded => Stranded && mark.X?.Id == sectionId,
-            ConflictMarkKind.NoFull or ConflictMarkKind.NoSingleFix => CantFit,
+            ConflictMarkKind.Move => CantFit,
             ConflictMarkKind.Harmless => Usable,
             _ => false,
         };
@@ -78,7 +78,7 @@ public static class GridAccessPicture
         if (!picture.IsOpen || inputs is null || analysis is null) return new Dictionary<string, AccessTileLook>();
         var cautions = Cautions.For(analysis);
         return Build(inputs, analysis, picture.Name, picture.CoveredSections, picture.CurrentSlate, cautions,
-            picture.IsCourseOnly, campusName);
+            picture.IsCourseOnly, campusName, picture.KeptInPlace);
     }
 
     /// <summary>
@@ -92,58 +92,55 @@ public static class GridAccessPicture
     /// <param name="cautions">The analysis's cautions.</param>
     /// <param name="isCourseOnly">True when one course is checked alone (no "Multi-campus is off" in reasons).</param>
     /// <param name="campusName">Gives a campus's name from its id.</param>
+    /// <param name="keptInPlace">Ids of sections the user has said can't move; null for none.</param>
     /// <returns>The looks by section id.</returns>
     public static IReadOnlyDictionary<string, AccessTileLook> Build(
         AccessInputs inputs, Analysis analysis, string name, IReadOnlyList<Section> covered,
-        IReadOnlyList<Section>? slate, IReadOnlyList<Caution> cautions, bool isCourseOnly, Func<string?, string> campusName)
+        IReadOnlyList<Section>? slate, IReadOnlyList<Caution> cautions, bool isCourseOnly, Func<string?, string> campusName,
+        IReadOnlySet<string>? keptInPlace = null)
     {
         var looks = new Dictionary<string, AccessTileLook>();
         var chosen = analysis.ChosenCourseIds.ToHashSet();
         var pins = analysis.PinnedSectionIds;
         var inSlate = slate?.Select(s => s.Id).ToHashSet();
         var cautionBySection = cautions.GroupBy(c => c.Section.Id).ToDictionary(g => g.Key, g => g.First());
-        var blocking = BlockingSections(analysis, covered);
+        var kept = keptInPlace ?? new HashSet<string>();
+        var movers = Movers(analysis, kept);
         foreach (var s in covered)
         {
-            var look = LookOf(inputs, analysis, name, s, chosen, inSlate, cautionBySection, blocking, isCourseOnly, campusName);
+            var look = LookOf(inputs, analysis, name, s, chosen, inSlate, cautionBySection, movers, kept, isCourseOnly, campusName);
             looks[s.Id] = pins.Contains(s.Id) ? look with { Pinned = true } : look;
         }
         return looks;
     }
 
+    /// <summary>One section to move, with its problem and how many separate problems the watch has.</summary>
+    private sealed record Mover(MoveOption Option, MoveProblem Problem, int ProblemCount);
+
     /// <summary>
-    /// With no full slate, the sections of the courses that can't fit that get the ▲: those in a time conflict with a
-    /// section of another component, which are the ones keeping the course out (Greg, 2026-11-25: the ▲ was on every
-    /// section of the course, so lectures that fit fine said "no section fits"). A course with no such section (the
-    /// clash is among three or more sections at once) keeps the ▲ on all of its sections, and so does every course
-    /// when the campus rule is to blame, since then no time conflict is the reason (the conflict marks skip that
-    /// case too).
+    /// With no full slate, the sections that get the ▲: the sections to move, the fewest moves that bring a full
+    /// slate back (<see cref="MoveSuggestions"/>; Greg, 2026-11-25: show what can be done, not every conflict).
+    /// Tangled problems give none. With the campus rule to blame no time conflict is the reason, so this is empty and
+    /// <see cref="LookOf"/> puts the ▲ on every section of the courses that can't fit, as before.
     /// </summary>
-    /// <param name="a">The analysis.</param>
-    /// <param name="covered">The sections the watch covers.</param>
-    /// <returns>The ids of the sections that get the ▲; empty when there is a full slate.</returns>
-    private static IReadOnlySet<string> BlockingSections(Analysis a, IReadOnlyList<Section> covered)
+    /// <param name="a">The analysis (with its ticks and pins).</param>
+    /// <param name="kept">Ids of sections the user has said can't move.</param>
+    /// <returns>The sections to move by id; empty when there is a full slate.</returns>
+    private static IReadOnlyDictionary<string, Mover> Movers(Analysis a, IReadOnlySet<string> kept)
     {
-        var blocking = new HashSet<string>();
-        if (a.HasSlate || a.BestPartial is not { } best) return blocking;
-        foreach (var courseId in best.CantFit)
-        {
-            var own = covered.Where(s => s.CourseId == courseId).ToList();
-            var inConflict = a.CampusReason is not null ? [] : a.Groups
-                .Where(g => g.CourseId == courseId)
-                .SelectMany(g => g.Candidates.Where(s => a.Groups.Any(other => other != g
-                    && other.Candidates.Any(t => SectionOverlap.Conflicts(s, t)))))
-                .ToList();
-            foreach (var s in inConflict.Count > 0 ? inConflict : own) blocking.Add(s.Id);
-        }
-        return blocking;
+        var movers = new Dictionary<string, Mover>();
+        var moves = MoveSuggestions.For(a, kept);
+        foreach (var problem in moves.Problems)
+            foreach (var option in problem.Options)
+                movers.TryAdd(option.Section.Id, new Mover(option, problem, moves.Problems.Count));
+        return movers;
     }
 
     /// <summary>One covered section's look (the body of the mock's <c>entry</c>).</summary>
     private static AccessTileLook LookOf(
         AccessInputs inputs, Analysis a, string name, Section s, IReadOnlySet<string> chosen, IReadOnlySet<string>? inSlate,
-        IReadOnlyDictionary<string, Caution> cautions, IReadOnlySet<string> blocking, bool isCourseOnly,
-        Func<string?, string> campusName)
+        IReadOnlyDictionary<string, Caution> cautions, IReadOnlyDictionary<string, Mover> movers, IReadOnlySet<string> kept,
+        bool isCourseOnly, Func<string?, string> campusName)
     {
         string label = AccessText.SectionLabel(inputs, s);
         string code = s.CourseId is null ? string.Empty : inputs.CourseCode(s.CourseId);
@@ -179,15 +176,20 @@ public static class GridAccessPicture
             if (blockPin is { Pin: { } pin, Reason: { } reason })
                 return new AccessTileLook(CantFit: true,
                     Hover: AccessText.PinnedCantFitTip(label, AccessText.StrandedWhy(inputs, pin, reason, campusName, !isCourseOnly)));
-            if (a.BestPartial is { } best && best.CantFit.Contains(s.CourseId) && blocking.Contains(s.Id))
+            // The campus rule to blame: every section of a course that can't fit, as no time conflict is the reason.
+            if (a.CampusReason is { } cr && a.BestPartial is { } best && best.CantFit.Contains(s.CourseId))
             {
                 var selfFail = a.SelfFailCourses.FirstOrDefault(x => x.CourseId == s.CourseId);
                 string hover = selfFail is not null
                     ? AccessText.CourseCantBeTakenTip(code, AccessText.SelfFailWhy(inputs, a, selfFail, campusName))
-                    : AccessText.CourseCantFitTip(code, name,
-                        a.CampusReason is { } cr ? AccessText.CampusWhy(inputs, cr, false, campusName) : null);
+                    : AccessText.CourseCantFitTip(code, name, AccessText.CampusWhy(inputs, cr, false, campusName));
                 return new AccessTileLook(CantFit: true, Hover: hover);
             }
+            if (movers.TryGetValue(s.Id, out var mover))
+                return new AccessTileLook(CantFit: true, Hover: AccessText.MoveTip(inputs, s,
+                    mover.Option.ConflictsWith, mover.Problem, mover.ProblemCount, name));
+            if (kept.Contains(s.Id))
+                return new AccessTileLook(Hover: AccessText.KeptInPlaceTip(label));
             return new AccessTileLook();
         }
 
