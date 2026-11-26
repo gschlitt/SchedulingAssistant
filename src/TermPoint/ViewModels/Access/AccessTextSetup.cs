@@ -30,8 +30,8 @@ public static partial class AccessText
     /// <summary>Step 1's example paragraph.</summary>
     // approved wording (8f)
     public const string WizardExample =
-        "For example, students taking CHEM 101 might register in a lecture section, CHEM 101 A, and a lab section, CHEM 101 L1. " +
-        "Students taking MUSIC 390 might register in a theory section and a recital section. These sections are the course's components.";
+        "For example, students taking the course CHEM 101 must register in a lecture section, CHEM 101 A, and a lab section, CHEM 101 L1. " +
+        "Students taking the course MUSIC 390 must register in a theory section and a recital section.";
 
     /// <summary>Step 1's note about parallel courses (InlineFormatter markup: <c>*word*</c> is italic).</summary>
     // approved wording (Greg, 2026-11-25)

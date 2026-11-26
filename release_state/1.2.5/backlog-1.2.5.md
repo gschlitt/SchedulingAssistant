@@ -70,6 +70,7 @@ it and need 1.6 (in-app Store updates) first.
 | 7.5 | Gaps in the exception-reporting tests | Test-only |
 | 7.2 B | One numbers-only summary per run | Deferred: BugSnag can't sum metadata; needs a usage-metrics tool and a privacy decision |
 | 8.10 | An automated two-machine rig | Later |
+| — | Breadcrumb the results of the wake and heartbeat lock checks (Ours / Unreachable / NotOurs, and a lock re-acquired) | From a 1.2.4 production report, 2026-11-25: a wake, two failed heartbeats, then an autosave and a backup that couldn't reach the share. Bugsnag couldn't show what either check concluded, including after an earlier 6 am wake; today that goes only to the local log. Logging only, no change to the save path |
 | — | Teach the harness the ~85 s death of a stalled network call | Then known finding F22 retires; test-timing builds scale the 170 s but not the 85 s (4.12 Done note) |
 | — | Flaky `FocusServiceTests.Prune_LastFocusedSubjectDeleted_BecomesNone` | Failed once in a full harness run 2026-11-11, passes alone; tests don't run in parallel. Keep the `.trx` and read the message |
 | — | Optional NetworkProbe runs for 4.10 (`write-bytes`, `export-write`, `rotate`) on the clumsy rig | |

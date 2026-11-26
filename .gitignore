@@ -79,3 +79,6 @@ tools/FieldTest/fieldtest.config.psd1
 
 # Recycling bin for retired files (kept locally, never committed)
 /_recycle/
+
+# Test run output (.trx, sequence files) — holds local usernames and paths
+TestResults/

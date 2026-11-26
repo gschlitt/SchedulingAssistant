@@ -119,14 +119,21 @@ public sealed class ShutdownBackstopTests
         Assert.Empty(_steps);
     }
 
-    /// <summary>A failing log, report or run-marker step never stops the exit.</summary>
+    /// <summary>
+    /// A failing log, report or run-marker step never stops the exit.
+    ///
+    /// <para>The failed delete is read back after the run (<c>failedDelete.Exception</c>). The backstop never awaits a
+    /// task that has already finished, so without that read nothing observes the exception, and the garbage collector
+    /// later raises it as an unobserved task exception (this once reached BugSnag as a "delete failed" report).</para>
+    /// </summary>
     [Fact]
     public async Task FailingSteps_StillExit()
     {
         var exits = new List<int>();
+        var failedDelete = Task.FromException(new IOException("delete failed"));
         var backstop = new ShutdownBackstop(
             mainReturned:   () => false,
-            pendingRelease: () => Task.FromException(new IOException("delete failed")),
+            pendingRelease: () => failedDelete,
             endRunMarker:   () => throw new InvalidOperationException(),
             log:            _ => throw new InvalidOperationException(),
             report:         () => throw new InvalidOperationException(),
@@ -135,6 +142,7 @@ public sealed class ShutdownBackstopTests
 
         Assert.True(await backstop.FireIfStillRunningAsync());
         Assert.Equal([0], exits);
+        Assert.IsType<IOException>(failedDelete.Exception!.InnerException);
     }
 
     /// <summary>Arm waits <see cref="ShutdownBackstop.Delay"/> first and runs once, however often it is called.</summary>

@@ -120,6 +120,11 @@ internal static class TestAssemblyGuards
     /// from BugSnag too: its <c>BugsnagClient</c> is cleared. (Those services may still append lines to the real log
     /// file if a test drives them directly; none of the harness does.) The swap uses the compiler-generated backing
     /// field, as <c>WatchCommandErrorsTests</c> already does, because the setter is private.</para>
+    ///
+    /// <para>Clearing the logger's reference is not enough on its own: the BugSnag client's constructor hooked the
+    /// process-wide unhandled-exception and unobserved-task-exception events, and those hooks stay. Any test that leaked
+    /// a faulted task would still be reported (one was, as "delete failed"). So the client itself is muted with
+    /// <see cref="MuteBugsnag"/> and kept in <see cref="OriginalBugsnagClient"/> for the test that checks it.</para>
     /// </summary>
     [ModuleInitializer]
     internal static void KeepAppLoggerAwayFromRealFilesAndBugsnag()
@@ -130,11 +135,38 @@ internal static class TestAssemblyGuards
 
         var original = App.Logger;
         if (original is FileAppLogger fileLogger)
+        {
+            OriginalBugsnagClient = fileLogger.BugsnagClient;
+            if (OriginalBugsnagClient is not null)
+                MuteBugsnag(OriginalBugsnagClient);
             fileLogger.BugsnagClient = null;
+        }
 
         var field = typeof(App).GetField("<Logger>k__BackingField",
             System.Reflection.BindingFlags.Static | System.Reflection.BindingFlags.NonPublic)!;
         field.SetValue(null, new SilentAppLogger { ThrowOnError = original.ThrowOnError });
+    }
+
+    /// <summary>
+    /// The real BugSnag client <c>App</c>'s static initialiser built for this test process, muted by
+    /// <see cref="MuteBugsnag"/>; null if the app logger had none.
+    /// </summary>
+    internal static Bugsnag.IClient? OriginalBugsnagClient { get; private set; }
+
+    /// <summary>
+    /// Stops a BugSnag client from sending anything, including reports raised by its own process-wide exception hooks:
+    /// it no longer auto-notifies, and no release stage is allowed to notify (BugSnag checks that list as each report
+    /// is sent, so changing it after the client was built still takes effect).
+    /// </summary>
+    /// <param name="client">The client to mute.</param>
+    /// <exception cref="InvalidOperationException">The client's configuration is not a <see cref="Bugsnag.Configuration"/>, so it can't be changed.</exception>
+    internal static void MuteBugsnag(Bugsnag.IClient client)
+    {
+        if (client.Configuration is not Bugsnag.Configuration configuration)
+            throw new InvalidOperationException("The BugSnag client's configuration can't be changed, so it can't be muted.");
+
+        configuration.AutoNotify          = false;
+        configuration.NotifyReleaseStages = Array.Empty<string>();
     }
 
     /// <summary>
