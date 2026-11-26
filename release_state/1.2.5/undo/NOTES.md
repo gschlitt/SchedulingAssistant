@@ -72,6 +72,7 @@ Opus briefs and reviews; Sonnet codes A–D; Opus does the AXAML (E). Each piece
   - Not checked yet (hand check): the list closing on a click, the hover highlight, ToolTip on disabled buttons, the top bar's width with the new buttons (ResponsiveMenuPanel).
   - For Greg: the What's-new line shows as a second banner beside the access-watch one (merge them into one 1.2.4-style bulleted entry?). The harness's `Computer.StartAutoSaveLikeTheWindow` still turns autosave on, though the window no longer does: harness runs exercise the outage notice's autosave branch the app can no longer reach (belongs with the 1.2.6 autosave-code removal).
 - **F. Checks.** Both compile checks, full suite, harness, Greg's hand check, field test with the drag's.
+  - Harness run 2026-11-26 after piece E: 5318 passed, 3 skipped, 1 failed. `HarnessWalkTests.Walk2_BobCrashes…` asserted that the open saves restored work, which piece D removed on purpose; it is now `Walk2_BobCrashes_RestartsAndRestores_TheCloseSavesHisWork` (D stays empty and the marker stays after the open; the harness's close, a Save answer, saves bob-1). The walk tests pass. Left: Greg's hand check, field test.
 - Wording gap to raise in D: the close question says "since you last saved at 10:42", but a session may not have saved yet.
 
 </details>

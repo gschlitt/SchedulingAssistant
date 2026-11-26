@@ -118,12 +118,13 @@ public sealed class HarnessWalkTests
     /// <summary>
     /// Bob edits, then his TermPoint is killed. Bob starts it again on the same computer: his dead process is
     /// recognised, so the lock is reclaimed at once; he is offered his unsaved changes, chooses Restore, and — because
-    /// nobody else has touched D — the open saves them: bob-1 reaches D.
+    /// nobody else has touched D — they come back as unsaved changes (the open no longer saves them; undo, piece D).
+    /// His close saves them: bob-1 reaches D.
     /// </summary>
     [HarnessFact]
-    public async Task Walk2_BobCrashes_RestartsAndRestores_TheOpenSavesHisWork()
+    public async Task Walk2_BobCrashes_RestartsAndRestores_TheCloseSavesHisWork()
     {
-        using var world = new World(_output, "Walk2_BobCrashes_RestartsAndRestores_TheOpenSavesHisWork");
+        using var world = new World(_output, "Walk2_BobCrashes_RestartsAndRestores_TheCloseSavesHisWork");
         world.CreateDatabase();
         var bob = world.AddComputer("bob");
 
@@ -151,10 +152,11 @@ public sealed class HarnessWalkTests
         Assert.Equal("Restore|Discard", bob.Prompts.Calls.Single().Buttons);
         Assert.Equal(CheckoutMode.WriteAccess, bob.Checkout.Mode);
         Assert.True(bob.Checkout.ReclaimedDeadSession, "same computer, dead process: the lock is reclaimed without a wait");
-        Assert.Equal(new[] { "bob-1" }, world.EditsInDatabase());     // the open saved the restored work
-        Assert.False(bob.HasDirtyMarker);
+        Assert.Empty(world.EditsInDatabase());                        // restored, but unsaved: Save is the line (undo, piece D)
+        Assert.Equal(new[] { "bob-1" }, bob.WorkingFileEdits());
+        Assert.True(bob.HasDirtyMarker);
 
-        await bob.CloseAsync();
+        await bob.CloseAsync();                                       // the harness's close is a Save answer
         Assert.Equal(new[] { "bob-1" }, world.EditsInDatabase());
         world.AssertAllScriptsConsumed();
         Assert.DoesNotContain(world.Violations, v => v.Invariant == "I6");   // nobody holds a lock they cannot use (step 9.3c-2b)

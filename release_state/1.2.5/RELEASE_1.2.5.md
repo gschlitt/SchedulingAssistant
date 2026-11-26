@@ -11,12 +11,12 @@
 
 **Goal:** an administrator can experiment freely. Until they press Save they can step back through section changes (drags, right-click edits, card Applies, creates, deletes, copies) or throw them all away. The shared database changes only when they save; closing with unsaved changes asks Save / Don't save / Cancel. Done means the feature in the app, field-tested, with a "What's new" line for the changed behaviour.
 
-**State:** On branch 1.2.5: pieces A–E built and committed; full suite passes (2026-11-26). Greg's first hand check found the history list doing nothing (fixed; undo confirmed working). Harness not run since piece E.
+**State:** On branch 1.2.5: pieces A–E built and committed; full suite passes (2026-11-26). Greg's first hand check found the history list doing nothing (fixed; undo confirmed working). Harness passed after piece E (one walk test updated to the new recovery behaviour).
 
 <details>
 <summary>Steps (1 left)</summary>
 
-1. Harness; rest of Greg's hand check (hover highlight, disabled-button tooltips, top-bar width, Ctrl+Z in a card's text box); field test alongside the drag's.
+1. Rest of Greg's hand check (hover highlight, disabled-button tooltips, top-bar width, Ctrl+Z in a card's text box); field test alongside the drag's.
 
 </details>
 
