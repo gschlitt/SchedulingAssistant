@@ -558,11 +558,10 @@ public sealed class SessionLifecycleLeaveTests : SessionLifecycleTestBase
     /// <summary>
     /// The save that must precede the restore fails: the restore is never started. The wait dialog is shown, then
     /// "Restore Not Started" with the save-failed text; D, D' and the marker are untouched, the window is not closed,
-    /// the periodic backup is not stopped, and autosave (which the restore stopped) is started again because the user
-    /// has it switched on.
+    /// the periodic backup is not stopped, and autosave stays off (TermPoint no longer saves on its own).
     /// </summary>
     [Fact]
-    public async Task Restore_TheSaveBeforeItFails_RestoreNotStarted_SessionContinues_AutoSaveResumes()
+    public async Task Restore_TheSaveBeforeItFails_RestoreNotStarted_SessionContinues()
     {
         var db = NewDb();
         await OpenCleanAsync(db);
@@ -591,7 +590,7 @@ public sealed class SessionLifecycleLeaveTests : SessionLifecycleTestBase
         Assert.Empty(Directory.GetFiles(_shareDir, "dept (before restore *"));
         Assert.Equal(CheckoutMode.WriteAccess, _checkout.Mode);
         Assert.False(_lifecycle.IsRestoreInProgress);
-        Assert.True(IsAutoSaveRunning(), "autosave was stopped for the restore and is started again");
+        Assert.False(IsAutoSaveRunning(), "TermPoint no longer saves on its own, so nothing restarts autosave");
         AssertScriptConsumed();
     }
 
@@ -655,7 +654,7 @@ public sealed class SessionLifecycleLeaveTests : SessionLifecycleTestBase
     /// The restore itself is refused with D unchanged (here: the "backup" is not a database at all). The user's
     /// changes were saved first (so D holds them), the message says the backup is damaged and the database is
     /// unchanged, the session simply continues — no relaunch, no window close, no pre-restore copy, no D.tmp — and
-    /// autosave resumes.
+    /// autosave stays off (TermPoint no longer saves on its own).
     /// </summary>
     [Fact]
     public async Task Restore_RefusedWithDUnchanged_ShowsItsMessage_AndTheSessionContinues()
@@ -684,7 +683,7 @@ public sealed class SessionLifecycleLeaveTests : SessionLifecycleTestBase
         Assert.Equal(CheckoutMode.WriteAccess, _checkout.Mode);
         Assert.True(_lockSvc.IsWriter);
         Assert.False(_lifecycle.IsRestoreInProgress);
-        Assert.True(IsAutoSaveRunning());
+        Assert.False(IsAutoSaveRunning(), "TermPoint no longer saves on its own, so nothing restarts autosave");
         AssertScriptConsumed();
     }
 

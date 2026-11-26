@@ -75,6 +75,13 @@ public interface ISessionHost
     IUnappliedChanges? FindUnappliedChanges();
 
     /// <summary>
+    /// What the close question (<see cref="UnsavedChangesGate"/>) needs to know about the open database: whether
+    /// anything is unsaved, when the user last saved, and the heading of a section card with unapplied changes.
+    /// </summary>
+    /// <returns>The state, or null when no database is wired to the window.</returns>
+    UnsavedState? ReadUnsavedState();
+
+    /// <summary>
     /// Wires a freshly opened database to the window: data context, panels, curtain lift and the rest of the
     /// per-database setup.
     /// </summary>

@@ -277,11 +277,72 @@ public partial class MainWindowViewModel : ViewModelBase
     /// </summary>
     public bool ShowDirtyIndicator => IsDirty && !IsSaving;
 
-    /// <summary>Called by MainWindow when the database first becomes dirty.</summary>
-    internal void SetDirty()   => IsDirty = true;
+    /// <summary>
+    /// The text of the unsaved line beside Save: "Unsaved changes since 10:42" (approved wording, Greg 2026-11-26), or
+    /// the plain "Unsaved changes" when no time is known. Bound by the main view (piece E of the undo build).
+    /// </summary>
+    public string UnsavedLineText =>
+        _history?.UnsavedSince is { } since ? HistoryText.UnsavedSince(since) : "Unsaved changes";
 
-    /// <summary>Called by MainWindow when a save completes and dirty state is cleared.</summary>
-    internal void ClearDirty() => IsDirty = false;
+    /// <summary>The undo history of the open database; it drives the unsaved indicator. Null only if none is registered.</summary>
+    private readonly SectionHistory? _history;
+
+    /// <summary>The one-shot timer for the two-hour notice (<see cref="UnsavedReminder"/>); null when none is due.</summary>
+    private DispatcherTimer? _reminderTimer;
+
+    /// <summary>The unsaved stretch (its start) the two-hour notice was last shown for; null if never.</summary>
+    private DateTime? _remindedFor;
+
+    /// <summary>
+    /// Follows the undo history: the unsaved indicator and its time (undoing everything clears them), and the two-hour
+    /// notice's timer. When the history is disposed (the database is closing) the timer stops and the subscription ends.
+    /// </summary>
+    private void OnHistoryChanged()
+    {
+        if (_history is null) return;
+        if (_history.IsDisposed)
+        {
+            StopReminderTimer();
+            _history.Changed -= OnHistoryChanged;
+            return;
+        }
+
+        IsDirty = _history.HasUnsavedChanges;
+        OnPropertyChanged(nameof(UnsavedLineText));
+        ScheduleReminder();
+    }
+
+    /// <summary>
+    /// (Re)starts the one-shot timer for the two-hour notice of the current unsaved stretch, or stops it when none is
+    /// due. On firing it checks the stretch is still the same, then shows the dismissable notice once.
+    /// </summary>
+    private void ScheduleReminder()
+    {
+        StopReminderTimer();
+        var since = _history?.UnsavedSince;
+        if (UnsavedReminder.DueIn(since, _remindedFor, DateTime.Now) is not { } wait) return;
+
+        _reminderTimer = new DispatcherTimer { Interval = wait < TimeSpan.FromSeconds(1) ? TimeSpan.FromSeconds(1) : wait };
+        _reminderTimer.Tick += (_, _) =>
+        {
+            StopReminderTimer();
+            if (_history is null || _history.IsDisposed || _history.UnsavedSince != since || since is null) return;
+            _remindedFor = since;
+            _notificationService.Enqueue(new AppNotification
+            {
+                Message  = HistoryText.TwoHourNotice(since.Value),
+                Severity = NotificationSeverity.Info
+            });
+        };
+        _reminderTimer.Start();
+    }
+
+    /// <summary>Stops the two-hour notice's timer, if any.</summary>
+    private void StopReminderTimer()
+    {
+        _reminderTimer?.Stop();
+        _reminderTimer = null;
+    }
 
     /// <summary>Called by MainWindow when a save attempt begins.</summary>
     internal void SetSaving()   => IsSaving = true;
@@ -312,8 +373,8 @@ public partial class MainWindowViewModel : ViewModelBase
     public bool SupportsSave => PlatformCapabilities.SupportsSave;
 
     /// <summary>
-    /// Whether the autosave timer is enabled. Persisted to <see cref="AppSettings"/>.
-    /// Setting this starts or stops the timer in <see cref="CheckoutService"/> immediately.
+    /// The old Auto-save checkbox's setting, persisted to <see cref="AppSettings"/> only. TermPoint no longer saves on
+    /// its own (undo design, decision 9), so it starts no timer; the checkbox and this property go with piece E.
     /// Always false and a no-op in the browser demo.
     /// </summary>
     public bool AutoSaveEnabled
@@ -330,8 +391,6 @@ public partial class MainWindowViewModel : ViewModelBase
             if (AppSettings.Current.AutoSaveEnabled == value) return;
             AppSettings.Current.AutoSaveEnabled = value;
             AppSettings.Current.Save();
-            if (value) App.Checkout.StartAutoSave();
-            else        App.Checkout.StopAutoSave();
             OnPropertyChanged();
 #endif
         }
@@ -790,6 +849,14 @@ public partial class MainWindowViewModel : ViewModelBase
         _tourRunner           = tourRunner;
         FocusVm               = focusVm;
         AccessTabVm           = accessTabVm;
+
+        // The unsaved indicator follows the undo history, which also knows when undo has cleared everything.
+        _history = services.GetService(typeof(SectionHistory)) as SectionHistory;
+        if (_history is not null)
+        {
+            _history.Changed += OnHistoryChanged;
+            OnHistoryChanged();
+        }
 
         // The eyes in the Tags popup save through the shared toggler; "Add a watch" opens that popup with its note.
         scheduleGridVm.Filter.WatchToggler = watchToggler;

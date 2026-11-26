@@ -1,4 +1,4 @@
-using Moq;
+﻿using Moq;
 using TermPoint.Data.Repositories;
 using TermPoint.Models;
 using TermPoint.Services;
@@ -45,121 +45,11 @@ internal sealed class FakeUnappliedEditor : IUnappliedChanges
 }
 
 /// <summary>
-/// Tests for spec item 3.1 (unapplied editor changes): the gate's behaviour, the snapshot comparison in the editors,
-/// and the wording of the question.
+/// Tests of the editors' unapplied-changes support: the finder and the snapshot comparison in the editors. The close
+/// question itself is tested in <c>UnsavedChangesGateTests</c>.
 /// </summary>
 public sealed class UnappliedChangesTests
 {
-    // ── The wording ───────────────────────────────────────────────────────────
-
-    /// <summary>The approved question wording, verbatim.</summary>
-    [Fact]
-    public void Prompt_WordingIsTheApprovedText()
-    {
-        Assert.Equal("Unapplied Changes", UnappliedChangesPrompt.Title);
-        Assert.Equal("You have changes in the open editor that you haven't applied.", UnappliedChangesPrompt.Message);
-        Assert.Equal("Apply", UnappliedChangesPrompt.ApplyButton);
-        Assert.Equal("Discard", UnappliedChangesPrompt.DiscardButton);
-        Assert.Equal("Cancel", UnappliedChangesPrompt.CancelButton);
-    }
-
-    // ── The gate ──────────────────────────────────────────────────────────────
-
-    /// <summary>Builds a scripted prompt set that expects the unapplied-changes question and answers it.</summary>
-    private static ScriptedPrompts Asked(ThreeChoiceResult answer) =>
-        new ScriptedPrompts().ExpectThreeChoice(
-            UnappliedChangesPrompt.Title, answer, UnappliedChangesPrompt.Message);
-
-    /// <summary>Apply, and the editor applies: carry on, and the editor was applied once.</summary>
-    [Fact]
-    public async Task Gate_Apply_Success_CarriesOn()
-    {
-        var editor = new FakeUnappliedEditor();
-        var prompts = Asked(ThreeChoiceResult.First);
-
-        Assert.True(await UnappliedChangesGate.ResolveAsync(editor, isWriter: true, prompts));
-
-        Assert.Equal(1, editor.ApplyCalls);
-        Assert.Equal(0, editor.DiscardCalls);
-        Assert.Equal("Apply|Discard|Cancel", Assert.Single(prompts.Calls).Buttons);
-        Assert.Equal(0, prompts.Remaining);
-    }
-
-    /// <summary>Apply, and the editor refuses (validation): stop; nothing discarded; no extra message.</summary>
-    [Fact]
-    public async Task Gate_Apply_Refused_Stops_WithNoExtraMessage()
-    {
-        var editor = new FakeUnappliedEditor { ApplySucceeds = false };
-        var prompts = Asked(ThreeChoiceResult.First);
-
-        Assert.False(await UnappliedChangesGate.ResolveAsync(editor, isWriter: true, prompts));
-
-        Assert.Equal(1, editor.ApplyCalls);
-        Assert.Equal(0, editor.DiscardCalls);
-        Assert.Single(prompts.Calls);   // only the question; no message
-    }
-
-    /// <summary>Apply succeeds but the session went read-only meanwhile: the apply cannot be saved, so stop.</summary>
-    [Fact]
-    public async Task Gate_Apply_Success_ButSessionWentReadOnly_Stops()
-    {
-        var editor = new FakeUnappliedEditor();
-        var prompts = Asked(ThreeChoiceResult.First);
-
-        Assert.False(await UnappliedChangesGate.ResolveAsync(editor, isWriter: true, prompts, isStillWriter: () => false));
-    }
-
-    /// <summary>Discard: the editor's changes are dropped and the close or switch carries on.</summary>
-    [Fact]
-    public async Task Gate_Discard_DiscardsAndCarriesOn()
-    {
-        var editor = new FakeUnappliedEditor();
-        var prompts = Asked(ThreeChoiceResult.Second);
-
-        Assert.True(await UnappliedChangesGate.ResolveAsync(editor, isWriter: true, prompts));
-
-        Assert.Equal(1, editor.DiscardCalls);
-        Assert.Equal(0, editor.ApplyCalls);
-    }
-
-    /// <summary>Cancel (and the window's X, which the dialog reports as the third button): stop; nothing changes.</summary>
-    [Fact]
-    public async Task Gate_Cancel_StopsAndChangesNothing()
-    {
-        var editor = new FakeUnappliedEditor();
-        var prompts = Asked(ThreeChoiceResult.Third);
-
-        Assert.False(await UnappliedChangesGate.ResolveAsync(editor, isWriter: true, prompts));
-
-        Assert.Equal(0, editor.ApplyCalls);
-        Assert.Equal(0, editor.DiscardCalls);
-        Assert.True(editor.Has);
-    }
-
-    /// <summary>A read-only session is never asked (nothing could be saved anyway).</summary>
-    [Fact]
-    public async Task Gate_ReadOnly_AsksNothing_AndCarriesOn()
-    {
-        var editor = new FakeUnappliedEditor();
-        var prompts = new ScriptedPrompts();   // any question would throw
-
-        Assert.True(await UnappliedChangesGate.ResolveAsync(editor, isWriter: false, prompts));
-
-        Assert.Empty(prompts.Calls);
-        Assert.Equal(0, editor.ApplyCalls + editor.DiscardCalls);
-    }
-
-    /// <summary>No editor with unapplied changes: nothing is asked.</summary>
-    [Fact]
-    public async Task Gate_NoEditor_AsksNothing_AndCarriesOn()
-    {
-        var prompts = new ScriptedPrompts();
-
-        Assert.True(await UnappliedChangesGate.ResolveAsync(null, isWriter: true, prompts));
-
-        Assert.Empty(prompts.Calls);
-    }
-
     // ── The finder ────────────────────────────────────────────────────────────
 
     /// <summary>The finder skips nulls and clean editors, looks inside hosts, and returns the first dirty editor.</summary>
@@ -346,99 +236,10 @@ public sealed class UnappliedChangesTests
 }
 
 /// <summary>
-/// Lifecycle tests for spec item 3.1: the question before a database switch, and the lost-lock banner sentence.
+/// Lifecycle test for the unapplied-editor sentence of the lost-lock banner.
 /// </summary>
 public sealed class SessionLifecycleUnappliedChangesTests : SessionLifecycleTestBase
 {
-    /// <summary>
-    /// Cancel: the switch stops before anything is touched. The result is false, the open database is still open and
-    /// checked out, no host call was made, and the settings and recents never saw the target.
-    /// </summary>
-    [Fact]
-    public async Task Switch_UnappliedChanges_Cancel_StaysOnTheCurrentDatabase_SettingsAndRecentsUntouched()
-    {
-        var a = NewDb("a.db");
-        var b = NewDb("b.db");
-        await OpenCleanAsync(a);
-        var recentsBefore = AppSettings.Current.RecentDatabases.ToList();
-        var pathBefore = AppSettings.Current.DatabasePath;
-        _host.UnappliedEditor = new FakeUnappliedEditor();
-        _prompts.ExpectThreeChoice(UnappliedChangesPrompt.Title, ThreeChoiceResult.Third, UnappliedChangesPrompt.Message);
-
-        var opened = await _lifecycle.SwitchDatabaseAsync(b);
-
-        Assert.False(opened);
-        AssertPrompts("ThreeChoice:Unapplied Changes");
-        Assert.Empty(HostTrace());
-        Assert.True(_host.IsDatabaseOpen);
-        Assert.Equal(CheckoutMode.WriteAccess, _checkout.Mode);
-        Assert.Equal(a, _checkout.SourcePath);
-        Assert.True(_guard.IsHeld(a));
-        Assert.False(_guard.IsHeld(b));
-        Assert.Equal(recentsBefore, AppSettings.Current.RecentDatabases);
-        Assert.Equal(pathBefore, AppSettings.Current.DatabasePath);
-        AssertScriptConsumed();
-    }
-
-    /// <summary>Apply refused: the switch stops and the editor keeps its changes.</summary>
-    [Fact]
-    public async Task Switch_UnappliedChanges_ApplyRefused_Stops()
-    {
-        var a = NewDb("a.db");
-        var b = NewDb("b.db");
-        await OpenCleanAsync(a);
-        var editor = new FakeUnappliedEditor { ApplySucceeds = false };
-        _host.UnappliedEditor = editor;
-        _prompts.ExpectThreeChoice(UnappliedChangesPrompt.Title, ThreeChoiceResult.First);
-
-        Assert.False(await _lifecycle.SwitchDatabaseAsync(b));
-
-        Assert.Equal(1, editor.ApplyCalls);
-        Assert.Equal(a, _checkout.SourcePath);
-        Assert.Empty(HostTrace());
-        AssertScriptConsumed();
-    }
-
-    /// <summary>
-    /// Apply succeeds (the editor closes itself, as its list does): the question is asked once and the switch then
-    /// carries on and opens the target.
-    /// </summary>
-    [Fact]
-    public async Task Switch_UnappliedChanges_Apply_CarriesOn_AndOpensTheTarget()
-    {
-        var a = NewDb("a.db");
-        var b = NewDb("b.db");
-        await OpenCleanAsync(a);
-        var editor = new FakeUnappliedEditor { OnApplied = () => _host.UnappliedEditor = null };
-        _host.UnappliedEditor = editor;
-        _prompts.ExpectThreeChoice(UnappliedChangesPrompt.Title, ThreeChoiceResult.First);
-
-        var opened = await _lifecycle.SwitchDatabaseAsync(b);
-        SettleLocks();
-
-        Assert.True(opened);
-        Assert.Equal(1, editor.ApplyCalls);
-        Assert.Equal(b, _checkout.SourcePath);
-        AssertPrompts("ThreeChoice:Unapplied Changes");
-        AssertScriptConsumed();
-    }
-
-    /// <summary>A read-only session (or no editor) is never asked: the switch runs with no question.</summary>
-    [Fact]
-    public async Task Switch_NoUnappliedChanges_AsksNothing()
-    {
-        var a = NewDb("a.db");
-        var b = NewDb("b.db");
-        await OpenCleanAsync(a);
-        _host.UnappliedEditor = new FakeUnappliedEditor { Has = false };
-
-        var opened = await _lifecycle.SwitchDatabaseAsync(b);
-        SettleLocks();
-
-        Assert.True(opened);
-        Assert.Empty(_prompts.Calls);
-    }
-
     /// <summary>
     /// A lost lock with an editor holding unapplied changes: the single banner gains the approved sentence (and only
     /// then); the editor is not asked about.

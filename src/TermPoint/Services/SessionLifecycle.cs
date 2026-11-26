@@ -41,14 +41,6 @@ public sealed class SessionLifecycle
     /// <summary>The checkout service (was <c>App.Checkout</c>; created once and never replaced).</summary>
     private readonly CheckoutService _checkout;
 
-    /// <summary>
-    /// Whether the checkout that <see cref="RunCheckoutAsync"/> finally ran (after any recovery-conflict re-run) was asked to
-    /// restore a crashed session's unsaved changes. The caller's own "restore" answer is NOT enough: when the
-    /// recovery conflicts, the user saves a copy or discards, the checkout re-runs as a normal one, and nothing was restored.
-    /// Read only by <see cref="SaveRestoredChangesAsync"/>.
-    /// </summary>
-    private bool _lastCheckoutRestoredChanges;
-
     /// <summary>The single-instance guard (was <c>App.InstanceGuard</c>).</summary>
     private readonly DatabaseInstanceGuard _instanceGuard;
 
@@ -252,25 +244,9 @@ public sealed class SessionLifecycle
         vm.SetDatabaseName(Path.GetFileNameWithoutExtension(canonicalPath), canonicalPath);
         await _host.SetupWindowAsync(canonicalPath, vm);
 
-        // Restored unsaved changes are still only in the working copy — make them durable right away.
-        await SaveRestoredChangesAsync();
-
+        // Restored unsaved changes are NOT saved here (undo design, decision 8: Save is the line). They stay unsaved,
+        // kept in the working copy with its dirty marker exactly like any other unsaved work, until the user saves.
         return null;
-    }
-
-    /// <summary>
-    /// The post-open step shared by startup and <see cref="SwitchCoreAsync"/>: when the open really restored a crashed
-    /// session's unsaved changes, they are still only in the working copy, so save them at once rather than leaving them one
-    /// crash away from a second recovery. Runs only when the checkout that finally succeeded was a recovery
-    /// (<see cref="_lastCheckoutRestoredChanges"/>; not when a recovery conflict was dealt with by Save a Copy or
-    /// Discard, where nothing was restored and a failing save would wrongly say the changes are kept) and the session has
-    /// write access. A failure is non-fatal: the standard save-error banner surfaces it and autosave/manual save will retry.
-    /// </summary>
-    /// <returns>A task that completes when the save (if any) has finished.</returns>
-    private async Task SaveRestoredChangesAsync()
-    {
-        if (_lastCheckoutRestoredChanges && _checkout.Mode == CheckoutMode.WriteAccess)
-            await _checkout.SaveAsync();
     }
 
     /// <summary>
@@ -379,10 +355,6 @@ public sealed class SessionLifecycle
     private async Task<string?> RunCheckoutAsync(
         string sourcePath, bool recoverUnsaved = false, bool ignoreObserverMode = false)
     {
-        // Each (re-)run overwrites this, so after a recovery conflict re-runs us with recoverUnsaved: false the final
-        // value is false: the post-open save (SaveRestoredChangesAsync) then does not run for changes that were not restored.
-        _lastCheckoutRestoredChanges = recoverUnsaved;
-
         var outcome = await _checkout.CheckoutAsync(sourcePath, recoverUnsaved, ignoreObserverMode);
 
         switch (outcome)
@@ -864,16 +836,25 @@ public sealed class SessionLifecycle
         string newDatabasePath, bool isNewDatabase = false, bool createIfMissing = false,
         Func<string, Task>? resolveKeptChanges = null)
     {
-        // Before anything else (before the pre-check records the new path in the settings and the
-        // recents, and before the instance guard), ask about an open editor's unapplied changes. Stop leaves the
-        // open database exactly as it is.
-        if (!await ResolveUnappliedChangesAsync())
+        // Before anything else (before the pre-check records the new path in the settings and the recents, and before
+        // the instance guard), the one "Save your changes to BIOL before opening CHEM?" question (the open editor folded
+        // in). Stop leaves the open database exactly as it is. The save-conflict resolution asks nothing: it refuses
+        // while an editor holds changes, and decides the fate of the unsaved changes itself.
+        var discardChanges = false;
+        if (resolveKeptChanges is null)
         {
-            _logger().LogBreadcrumb("SwitchDatabase: stopped by the unapplied-changes question");
-            return false;
+            var answer = await AskUnsavedAsync(HistoryText.SwitchTitle(
+                Path.GetFileNameWithoutExtension(_checkout.SourcePath), Path.GetFileNameWithoutExtension(newDatabasePath)));
+            if (answer == UnsavedChangesAnswer.Stop)
+            {
+                _logger().LogBreadcrumb("SwitchDatabase: stopped by the unsaved-changes question");
+                return false;
+            }
+            discardChanges = answer == UnsavedChangesAnswer.DontSave;
         }
 
-        var result = await SwitchCoreAsync(newDatabasePath, isNewDatabase, createIfMissing, resolveKeptChanges);
+        var result = await SwitchCoreAsync(
+            newDatabasePath, isNewDatabase, createIfMissing, resolveKeptChanges, discardChanges);
 
         if (result == SwitchResult.NoDatabaseOpen)
             await RecoverToDatabaseChooserAsync(newDatabasePath);
@@ -889,11 +870,61 @@ public sealed class SessionLifecycle
         _checkout.Mode == CheckoutMode.WriteAccess && !_checkout.IsEnding;
 
     /// <summary>
-    /// True when a close or switch must first ask about unapplied changes: a writer session with an
-    /// open editor that has them. Read synchronously by the window's closing handler, so it can cancel the close
-    /// before the question is shown.
+    /// The answer to the close question once it has been given (Save or Don't Save); null until then. Set by
+    /// <see cref="AskBeforeCloseAsync"/>, read by <see cref="TeardownForCloseAsync"/>: Don't Save ends the session without
+    /// saving and discards the working copy. Once set, <see cref="NeedsCloseQuestion"/> is false, so the window's second
+    /// close request (after the answer) goes straight to the teardown.
     /// </summary>
-    public bool NeedsUnappliedChangesQuestion => IsWriterSession && OpenEditorWithChanges() is not null;
+    private UnsavedChangesAnswer? _closeAnswer;
+
+    /// <summary>
+    /// True while a close, switch or restore question is showing. The window's closing handler then ignores a further
+    /// close request rather than stacking a second question over the first.
+    /// </summary>
+    public bool IsUnsavedQuestionShowing { get; private set; }
+
+    /// <summary>
+    /// True when a close must first ask "Save Changes?": not answered yet, not ending after a restore (that session is
+    /// stale and closes without saving), a writer session, and something unsaved or an open editor with unapplied
+    /// changes. Read synchronously by the window's closing handler, so it can cancel the close before the question shows.
+    /// </summary>
+    public bool NeedsCloseQuestion =>
+        _closeAnswer is null && !_endSessionAfterRestore && IsWriterSession
+        && (_host.ReadUnsavedState()?.HasUnsavedChanges == true || OpenEditorWithChanges() is not null);
+
+    /// <summary>
+    /// Asks the close question ("Save Changes?") and records a Save or Don't Save answer for the teardown.
+    /// </summary>
+    /// <returns>True to carry on with the close (Save, Don't Save, or nothing to ask); false to stop.</returns>
+    public async Task<bool> AskBeforeCloseAsync()
+    {
+        var answer = await AskUnsavedAsync(HistoryText.CloseTitle);
+        if (answer is UnsavedChangesAnswer.Save or UnsavedChangesAnswer.DontSave) _closeAnswer = answer;
+        return answer != UnsavedChangesAnswer.Stop;
+    }
+
+    /// <summary>
+    /// Asks the one unsaved-changes question (<see cref="UnsavedChangesGate"/>) with <paramref name="title"/>, keeping
+    /// <see cref="IsUnsavedQuestionShowing"/> true while it shows.
+    /// </summary>
+    /// <param name="title">The question's title.</param>
+    /// <returns>The answer.</returns>
+    private async Task<UnsavedChangesAnswer> AskUnsavedAsync(string title)
+    {
+        IsUnsavedQuestionShowing = true;
+        try
+        {
+            var answer = await UnsavedChangesGate.ResolveAsync(
+                title, _host.ReadUnsavedState(), OpenEditorWithChanges, _prompts, () => IsWriterSession);
+            if (answer != UnsavedChangesAnswer.NothingToAsk)
+                _logger().LogBreadcrumb("UnsavedChangesQuestion", new() { ["answer"] = answer.ToString() });
+            return answer;
+        }
+        finally
+        {
+            IsUnsavedQuestionShowing = false;
+        }
+    }
 
     /// <summary>
     /// The open editor that really holds unapplied changes, or null. The host is trusted to find it; the editor is
@@ -902,26 +933,6 @@ public sealed class SessionLifecycle
     /// <returns>The editor, or null.</returns>
     private IUnappliedChanges? OpenEditorWithChanges() =>
         _host.FindUnappliedChanges() is { HasUnappliedChanges: true } editor ? editor : null;
-
-    /// <summary>
-    /// Asks the one "Unapplied Changes" question (<see cref="UnappliedChangesGate"/>) for each open editor that has
-    /// unapplied changes, until none is left. Normally that is one question; a second editor in another panel
-    /// asks once more. If the same editor is still open with changes after the user's answer (an Apply the editor
-    /// accepted but its list refused to complete), it stops rather than ask again.
-    /// </summary>
-    /// <returns>True to carry on with the close or switch; false to stop (Cancel, X, or an Apply that was refused).</returns>
-    public async Task<bool> ResolveUnappliedChangesAsync()
-    {
-        IUnappliedChanges? previous = null;
-        while (IsWriterSession && OpenEditorWithChanges() is { } editor)
-        {
-            if (ReferenceEquals(editor, previous)) return false;
-            if (!await UnappliedChangesGate.ResolveAsync(editor, IsWriterSession, _prompts, () => IsWriterSession))
-                return false;
-            previous = editor;
-        }
-        return true;
-    }
 
     /// <summary>
     /// One attempt to switch databases: the pre-check, the teardown of the current database, the checkout
@@ -940,6 +951,12 @@ public sealed class SessionLifecycle
     /// delete the user's only copy of their changes). The pre-check and the single-instance guard still run first,
     /// so a refusal leaves the session untouched.
     /// </param>
+    /// <param name="discardChanges">
+    /// True when the user answered Don't Save to the switch question: the old session is released WITHOUT saving and,
+    /// once the services (and with them the connection) are closed, its working copy and dirty marker are deleted
+    /// (<see cref="CheckoutService.DiscardCrash"/>), the user's deliberate choice. Ignored, so the changes are kept as
+    /// today, if the session is no longer the writer by the time it is torn down (the lock was lost meanwhile).
+    /// </param>
     /// <returns>
     /// <see cref="SwitchResult.Opened"/>; <see cref="SwitchResult.StayedOnCurrentDatabase"/> after a refusal
     /// that left the open database untouched; or <see cref="SwitchResult.NoDatabaseOpen"/> (after a failure
@@ -948,7 +965,7 @@ public sealed class SessionLifecycle
     /// </returns>
     private async Task<SwitchResult> SwitchCoreAsync(
         string newDatabasePath, bool isNewDatabase, bool createIfMissing,
-        Func<string, Task>? resolveKeptChanges = null)
+        Func<string, Task>? resolveKeptChanges = null, bool discardChanges = false)
     {
         _logger().LogBreadcrumb("SwitchDatabase", new() { ["path"] = newDatabasePath });
         var phase = SwitchPhase.BeforeTeardown;
@@ -1002,8 +1019,10 @@ public sealed class SessionLifecycle
             _checkout.StopAutoSave();
 
             // A save-conflict resolution (resolveKeptChanges != null) NEVER saves: the save would be refused
-            // (D changed elsewhere) and must never write D. The lock is simply given back.
-            var saveOutcome = await _checkout.ReleaseAsync(saveFirst: wasWriteMode && resolveKeptChanges is null);
+            // (D changed elsewhere) and must never write D. The lock is simply given back. Nor does Don't Save.
+            var discard = discardChanges && wasWriteMode && resolveKeptChanges is null;
+            var saveOutcome = await _checkout.ReleaseAsync(
+                saveFirst: wasWriteMode && resolveKeptChanges is null && !discard);
             CrashPoints.Hit("Switch.AfterRelease");
 
             // Capture the current semester selection before DI teardown so it can be
@@ -1038,6 +1057,15 @@ public sealed class SessionLifecycle
                 // recovery offers them again, or the failed-switch path
                 // (ResetAfterFailedOpenAsync) keeps a marked D'. Nothing is deleted in a catch.
                 await resolveKeptChanges(oldSourcePath);
+            }
+            else if (discard)
+            {
+                // ── DON'T SAVE ──────────────────────────────────────────
+                // The user chose to throw the unsaved changes away (rule 3 exempts a deliberate Don't Save). The
+                // services are closed above, so nothing can write D' any more; CleanupWorkingCopy would keep a marked
+                // D', so the deliberate discard deletes D', its WAL files and its marker explicitly.
+                _logger().LogInfo("SwitchDatabase: Don't Save — discarding the unsaved changes of the database being closed.");
+                _checkout.DiscardCrash(oldSourcePath);
             }
             // Delete the old D' ONLY when its content is safely in the old D (save
             // succeeded) or nothing was edited (no dirty marker). Otherwise leave the
@@ -1169,10 +1197,7 @@ public sealed class SessionLifecycle
                 // Re-apply the semester selection after the DataContext swap.
                 if (savedYearId != null && savedSemesterIds != null)
                     vm.RestoreSemesterSelection(savedYearId, savedSemesterIds);
-
-                // Restored unsaved changes are still only in the working copy — make them
-                // durable right away (the same shared step as the startup path).
-                await SaveRestoredChangesAsync();
+                // Restored unsaved changes stay unsaved until the user saves (as at startup).
             }
             catch (Exception ex)
             {
@@ -1620,8 +1645,12 @@ public sealed class SessionLifecycle
             }
             else
             {
-                // Stop autosave and save D' → D (releases lock on success).
+                // Save D' → D (releases lock on success), unless the user answered Don't Save to the close question.
+                // A Don't Save is ignored if the session is no longer the writer (the lock was lost after the answer):
+                // the changes are then kept for the next open, exactly as today.
                 var wasWriteMode = _checkout.Mode == CheckoutMode.WriteAccess;
+                var discard      = wasWriteMode && _closeAnswer == UnsavedChangesAnswer.DontSave;
+                var sourcePath   = _checkout.SourcePath;
                 _checkout.StopAutoSave();
 
 #if DEBUG
@@ -1631,7 +1660,7 @@ public sealed class SessionLifecycle
                 await SlowExitSave.WaitIfRequestedAsync(_logger());
 #endif
 
-                var saveOutcome = await _checkout.ReleaseAsync(saveFirst: wasWriteMode);
+                var saveOutcome = await _checkout.ReleaseAsync(saveFirst: wasWriteMode && !discard);
                 CrashPoints.Hit("Close.AfterRelease");
 
                 // Close any detached panels / sticky notes BEFORE disposing the DI container,
@@ -1650,7 +1679,14 @@ public sealed class SessionLifecycle
                 // only copy of the user's unsaved changes, and the next launch will offer
                 // to restore them. (ReleaseAsync has already parked the write lock
                 // appropriately for each failure kind.)
-                if (saveOutcome == SaveOutcome.Success || !_checkout.HasDirtyMarker)
+                if (discard)
+                {
+                    // Don't Save: the user's deliberate choice (rule 3 exempts it). The connection is closed above;
+                    // CleanupWorkingCopy would keep a marked D', so the discard deletes D', its WAL files and marker.
+                    _logger().LogInfo("MainWindow: Don't Save — discarding the unsaved changes at close.");
+                    _checkout.DiscardCrash(sourcePath);
+                }
+                else if (saveOutcome == SaveOutcome.Success || !_checkout.HasDirtyMarker)
                 {
                     _checkout.CleanupWorkingCopy();
                 }
@@ -1704,19 +1740,20 @@ public sealed class SessionLifecycle
     /// <para><b>Sequence.</b></para>
     /// <list type="number">
     /// <item><description>Only the writer may restore; anyone else is told so and nothing happens.</description></item>
-    /// <item><description>Autosave is stopped (an autosave tick must not collide with the restore's use of the
-    /// save gate) and window closing is blocked (<see cref="_restoreInProgress"/>).</description></item>
-    /// <item><description>Under a wait dialog that blocks edits: the user's changes are SAVED FIRST; if that save
-    /// fails the restore is never started. Then <see cref="CheckoutService.RestoreFromBackupAsync"/> runs the
+    /// <item><description>Window closing is blocked (<see cref="_restoreInProgress"/>) and, when anything is unsaved or
+    /// an editor holds changes, the one question is asked ("Save your changes to BIOL before restoring a backup?");
+    /// Cancel stops here.</description></item>
+    /// <item><description>Under a wait dialog that blocks edits: the user's changes are SAVED FIRST (skipped after
+    /// Don't Save, the user's deliberate choice); if that save fails the restore is never started. Then <see cref="CheckoutService.RestoreFromBackupAsync"/> runs the
     /// shared safe restore (<see cref="DatabaseRestore"/>), which keeps the replaced database beside it.</description></item>
     /// <item><description>Every outcome that leaves the database unchanged is reported and the session simply
-    /// continues (autosave resumes). <see cref="RestoreOutcome.Restored"/> and
+    /// continues, its unsaved changes untouched. <see cref="RestoreOutcome.Restored"/> and
     /// <see cref="RestoreOutcome.RenameUnconfirmed"/> are reported and then the window is closed: the normal
     /// close path (<see cref="MainWindow.OnClosing"/>) ends the stale session without saving, and after a confirmed restore
     /// restarts TermPoint.</description></item>
     /// </list>
     ///
-    /// <para>Nothing is ever lost: the changes were saved before the restore began, so they are in the
+    /// <para>Nothing is ever lost unless the user chose Don't Save: the changes were saved before the restore began, so they are in the
     /// pre-restore copy; a failed save means the restore did not start.</para>
     /// </summary>
     /// <param name="backupPath">Full path of the backup .db file to restore (may be on a share).</param>
@@ -1743,6 +1780,27 @@ public sealed class SessionLifecycle
         _restoreStoppedForEdit = false;
         _checkout.StopAutoSave();
 
+        // "Save your changes to BIOL before restoring a backup?" (the open editor folded in). Asked with closing
+        // already blocked, so a close request can't stack a second question. Don't Save skips the save first and lets
+        // the restore replace D anyway; if the restore then doesn't happen, the changes are simply still there.
+        UnsavedChangesAnswer answer;
+        try
+        {
+            answer = await AskUnsavedAsync(HistoryText.RestoreTitle(Path.GetFileNameWithoutExtension(sourcePath)));
+        }
+        catch
+        {
+            _restoreInProgress = false;
+            throw;
+        }
+        if (answer == UnsavedChangesAnswer.Stop)
+        {
+            _restoreInProgress = false;
+            _logger().LogInfo("MainWindow: restore not started — stopped at the unsaved-changes question.");
+            return;
+        }
+        var discardChanges = answer == UnsavedChangesAnswer.DontSave;
+
         // Null means "the save failed, so the restore was never started".
         RestoreResult? result;
         try
@@ -1750,7 +1808,7 @@ public sealed class SessionLifecycle
             result = await _prompts.RunWithWaitAsync(
                 RestorePrompt.WaitTitle,
                 RestorePrompt.WaitMessage,
-                () => SaveThenRestoreAsync(backupPath));
+                () => SaveThenRestoreAsync(backupPath, discardChanges));
         }
         catch (Exception ex)
         {
@@ -1772,7 +1830,6 @@ public sealed class SessionLifecycle
                 ? RestorePrompt.EditDuringSaveMessage
                 : RestorePrompt.SaveFailedMessage;
             await _prompts.ShowMessageAsync(RestorePrompt.NotStartedTitle, notStartedMessage);
-            ResumeAutoSave();
             return;
         }
 
@@ -1780,7 +1837,6 @@ public sealed class SessionLifecycle
         if (result.TargetUnchanged)
         {
             await ShowRestoreMessageAsync(result);
-            ResumeAutoSave();
             return;
         }
 
@@ -1814,16 +1870,21 @@ public sealed class SessionLifecycle
 
     /// <summary>
     /// The work behind the wait dialog: saves the user's current changes, and only if that succeeded runs the
-    /// restore. Neither call throws.
+    /// restore. With <paramref name="discardChanges"/> (the user answered Don't Save) the save is skipped and the
+    /// restore is told the unsaved changes may be lost. Neither call throws.
     /// </summary>
     /// <param name="backupPath">The backup to restore.</param>
+    /// <param name="discardChanges">True when the user chose Don't Save: no save first.</param>
     /// <returns>The restore's result, or null when the save did not succeed (so the restore was not started).</returns>
-    private async Task<RestoreResult?> SaveThenRestoreAsync(string backupPath)
+    private async Task<RestoreResult?> SaveThenRestoreAsync(string backupPath, bool discardChanges)
     {
-        // Autosave was stopped before this, but stopping the timer doesn't stop a tick that is already
-        // saving. Wait for it (bounded), or our save would hit the in-flight gate and be skipped as
-        // "already in progress" — reported to the user as a failed save. Same as ReleaseAsync's exit save.
+        // A save that is already running (the Save button, just before the restore) must finish first, or our save
+        // would hit the in-flight gate and be skipped as "already in progress" — reported to the user as a failed save,
+        // and the restore itself would answer Busy. Same as ReleaseAsync's exit save.
         await _checkout.WaitForInFlightSaveAsync();
+
+        if (discardChanges)
+            return await _checkout.RestoreFromBackupAsync(backupPath, discardUnsavedChanges: true);
 
         // SaveUntilMarkerClearAsync: when an edit arrives while the save runs, the save keeps the marker (the edit is
         // not in D) and the helper saves once more.
@@ -1856,16 +1917,6 @@ public sealed class SessionLifecycle
     {
         var (title, message) = RestorePrompt.Describe(result);
         return _prompts.ShowMessageAsync(title, message);
-    }
-
-    /// <summary>
-    /// Restarts autosave after a restore that left the database unchanged, if the user has it switched on and
-    /// this session is still the writer. (The restore stopped it so no autosave tick could collide with it.)
-    /// </summary>
-    private void ResumeAutoSave()
-    {
-        if (_settings().AutoSaveEnabled && _checkout.Mode == CheckoutMode.WriteAccess)
-            _checkout.StartAutoSave();
     }
 
     /// <summary>
@@ -1932,7 +1983,8 @@ public sealed class SessionLifecycle
         }
 
         // An unapplied inline edit is not in the database at all: refuse first.
-        if (_host.IsInlineEditorOpen)
+        // An unapplied flyout edit counts too: the switch below asks no question on this path.
+        if (_host.IsInlineEditorOpen || OpenEditorWithChanges() is not null)
         {
             _logger().LogBreadcrumb("SaveConflict: refused — an editor is open");
             await _prompts.ShowMessageAsync(SaveConflictPrompt.EditorOpenTitle, SaveConflictPrompt.EditorOpenMessage);

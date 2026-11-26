@@ -2904,12 +2904,17 @@ public sealed class CheckoutService : IDisposable, ISaveSignals
     /// the working copy and the session fully usable.</para>
     /// </summary>
     /// <param name="backupPath">Full path of the backup file to restore (may be on a share). It is only copied, never opened with SQLite.</param>
+    /// <param name="discardUnsavedChanges">
+    /// True only when the user answered Don't Save to the question before the restore: skips the dirty-marker backstop,
+    /// because losing the unsaved changes is then their deliberate choice. Every other check runs as usual, and an
+    /// outcome that leaves D unchanged leaves the working copy and its unsaved changes exactly as they were.
+    /// </param>
     /// <returns>
     /// The outcome. This method <b>does not throw</b>: an exception nobody anticipated comes back as
     /// <see cref="RestoreOutcome.Failed"/> (and is logged with LogError). The result of a successful restore
     /// carries <see cref="RestoreResult.PreRestoreCopyPath"/> and <see cref="RestoreResult.RestoredHash"/>.
     /// </returns>
-    public async Task<RestoreResult> RestoreFromBackupAsync(string backupPath)
+    public async Task<RestoreResult> RestoreFromBackupAsync(string backupPath, bool discardUnsavedChanges = false)
     {
         // Same gating as every other write: a restore is a write to D, so only the lock holder may do it.
         // HashAtCheckout is the proof of what D looked like when this session last read or wrote it.
@@ -2936,7 +2941,7 @@ public sealed class CheckoutService : IDisposable, ISaveSignals
             // is only meaningful once no save is rewriting it). Reported as Failed with no detail, whose text is
             // "Something went wrong, so the restore was stopped. Your database is unchanged." (true, and no new
             // wording). Nothing is touched.
-            if (HasDirtyMarker)
+            if (HasDirtyMarker && !discardUnsavedChanges)
             {
                 _logger.LogInfo("CheckoutService: RestoreFromBackupAsync refused — unsaved changes exist (the dirty marker is present).");
                 return new RestoreResult(RestoreOutcome.Failed);

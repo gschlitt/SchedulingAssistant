@@ -122,6 +122,15 @@ internal sealed class FakeSessionHost : ISessionHost, IDisposable
     /// <inheritdoc/>
     public IUnappliedChanges? FindUnappliedChanges() => UnappliedEditor;
 
+    /// <summary>
+    /// What <see cref="ReadUnsavedState"/> reports; null (no database state, so nothing counts as unsaved) by default.
+    /// An undo test sets it to model unsaved changes for the close question.
+    /// </summary>
+    public UnsavedState? UnsavedState { get; set; }
+
+    /// <inheritdoc/>
+    public UnsavedState? ReadUnsavedState() => UnsavedState;
+
     /// <summary>Runs inside <see cref="ReleaseServices"/>, before it closes the connection (lets a test observe the world at that moment); null for none.</summary>
     public Action? OnReleaseServices { get; set; }
 

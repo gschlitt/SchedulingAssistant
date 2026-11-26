@@ -119,9 +119,17 @@ public sealed class SectionHistory : IDisposable
     {
     }
 
-    /// <summary>Unsubscribes from the save signals and the log.</summary>
+    /// <summary>True once the history has been disposed (its database is closing).</summary>
+    public bool IsDisposed { get; private set; }
+
+    /// <summary>
+    /// Unsubscribes from the save signals and the log, then raises <see cref="Changed"/> once more so listeners (the
+    /// main view model's two-hour notice timer) see <see cref="IsDisposed"/> and let go.
+    /// </summary>
     public void Dispose()
     {
+        if (IsDisposed) return;
+        IsDisposed = true;
         if (_log is not null) _log.Reset -= OnLogReset;
         if (_signals is not null)
         {
@@ -129,6 +137,7 @@ public sealed class SectionHistory : IDisposable
             _signals.SaveCompleted -= OnSaveCompleted;
             _signals.SaveSucceeded -= OnSaveSucceeded;
         }
+        Changed?.Invoke();
     }
 
     // ── State ────────────────────────────────────────────────────────────────
@@ -163,6 +172,12 @@ public sealed class SectionHistory : IDisposable
 
     /// <summary>The session's start, then the moment of each save that kept no marker: the list's "Your last save" line.</summary>
     public DateTime LastSaveTime { get; private set; }
+
+    /// <summary>
+    /// True once a save that kept no marker has succeeded in this session: until then <see cref="LastSaveTime"/> is only
+    /// the session's start, and the close question names no save time.
+    /// </summary>
+    public bool SavedThisSession { get; private set; }
 
     /// <summary>
     /// True when something is unsaved. Without a log it is today's indicator; with one, the indicator AND (a step not
@@ -568,6 +583,7 @@ public sealed class SectionHistory : IDisposable
         if (!keptMarker)
         {
             LastSaveTime = DateTime.Now;
+            SavedThisSession = true;
             var editedSince = (_signals?.EditGeneration ?? editCountAtSnapshot) != editCountAtSnapshot;
             if (IsAvailable) _log!.TrimAfterSave(editCountAtSnapshot, resetFlags: !editedSince);
 

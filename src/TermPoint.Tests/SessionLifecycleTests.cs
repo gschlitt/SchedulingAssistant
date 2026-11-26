@@ -165,11 +165,11 @@ public sealed class SessionLifecycleTests : SessionLifecycleTestBase
 
     /// <summary>
     /// Kept changes, the user chooses Restore, D is unchanged since: the recovery checkout adopts the kept D', the
-    /// services open on it, and — because changes were restored — a save runs right after the window is wired up,
-    /// so the restored changes reach D.
+    /// services open on it, and NO save runs: the restored changes stay unsaved (marker kept, D untouched) until the
+    /// user saves (undo design, decision 8).
     /// </summary>
     [Fact]
-    public async Task Open_KeptChanges_Restore_DUnchanged_RecoversAndSavesAfterTheWindowIsUp()
+    public async Task Open_KeptChanges_Restore_DUnchanged_Recovers_AndDoesNotSave()
     {
         var db = NewDb();
         var kept = await LeaveKeptChangesAsync(db, colleagueChangedD: false);
@@ -184,9 +184,10 @@ public sealed class SessionLifecycleTests : SessionLifecycleTestBase
         Assert.Equal("Restore|Discard", _prompts.Calls.Single().Buttons);
         Assert.Equal(kept, _checkout.WorkingPath);                       // the SAME D' was adopted
         Assert.Equal(UnsavedValue, NewestValue(_host.OpenCalls.Single().WorkingPath));
-        AssertInOrder(_trace, "host:OpenServices", "host:SetupWindow", "checkout:SaveCompleted");
-        Assert.Equal(UnsavedValue, NewestValue(db));                     // the save carried the restored change into D
-        Assert.False(File.Exists(MarkerOf(kept)), "after the save the changes are in D, so the marker is gone");
+        AssertInOrder(_trace, "host:OpenServices", "host:SetupWindow");
+        Assert.DoesNotContain("checkout:SaveCompleted", _trace);         // restored changes stay unsaved (undo design, decision 8)
+        Assert.Equal("original", NewestValue(db));                       // D is untouched until the user saves
+        Assert.True(File.Exists(MarkerOf(kept)), "the restored changes are still unsaved, so the marker stays");
         Assert.True(_lockSvc.IsWriter);
         AssertScriptConsumed();
     }
@@ -242,8 +243,9 @@ public sealed class SessionLifecycleTests : SessionLifecycleTestBase
         Assert.True(keptWhenAskedAgain, "the X must not delete anything");
         Assert.Equal(kept, _checkout.WorkingPath);                                       // the SAME D' was adopted
         Assert.Equal(UnsavedValue, NewestValue(_host.OpenCalls.Single().WorkingPath));
-        AssertInOrder(_trace, "host:OpenServices", "host:SetupWindow", "checkout:SaveCompleted");
-        Assert.Equal(UnsavedValue, NewestValue(db));                                     // the restored change reached D
+        AssertInOrder(_trace, "host:OpenServices", "host:SetupWindow");
+        Assert.DoesNotContain("checkout:SaveCompleted", _trace);                         // restored changes stay unsaved
+        Assert.Equal("original", NewestValue(db));                                       // D is untouched until the user saves
         Assert.Empty(Directory.GetFiles(_workingDir, "*corrupt*"));
         AssertScriptConsumed();
     }
@@ -268,7 +270,7 @@ public sealed class SessionLifecycleTests : SessionLifecycleTestBase
         Assert.True(keptWhenAskedAgain, "Go Back must not delete anything");
         Assert.Equal(kept, _checkout.WorkingPath);
         Assert.Equal(UnsavedValue, NewestValue(_host.OpenCalls.Single().WorkingPath));
-        Assert.Equal(UnsavedValue, NewestValue(db));
+        Assert.Equal("original", NewestValue(db));                  // restored changes stay unsaved; D is untouched
         AssertScriptConsumed();
     }
 
@@ -291,7 +293,7 @@ public sealed class SessionLifecycleTests : SessionLifecycleTestBase
         AssertPrompts("Choice:Restore Unsaved Changes?", "Choice:Discard Unsaved Changes?", "Choice:Restore Unsaved Changes?");
         Assert.True(keptWhenAskedAgain, "the confirmation's X must not delete anything");
         Assert.Equal(UnsavedValue, NewestValue(_host.OpenCalls.Single().WorkingPath));
-        Assert.Equal(UnsavedValue, NewestValue(db));
+        Assert.Equal("original", NewestValue(db));                  // restored changes stay unsaved; D is untouched
         AssertScriptConsumed();
     }
 
@@ -1175,11 +1177,11 @@ public sealed class SessionLifecycleTests : SessionLifecycleTestBase
     }
 
     /// <summary>
-    /// F23 must not break the real thing: a switch to a database with restorable kept changes (nobody changed it) restores them and
-    /// the post-open save makes them durable in the shared database at once.
+    /// A switch to a database with restorable kept changes (nobody changed it) restores them and, since TermPoint no longer
+    /// saves on its own, leaves them unsaved: D is untouched.
     /// </summary>
     [Fact]
-    public async Task Switch_KeptChanges_Restore_RunsThePostOpenSave()
+    public async Task Switch_KeptChanges_Restore_DoesNotSave()
     {
         var a = NewDb("a.db");
         var b = NewDb("b.db");
@@ -1190,8 +1192,9 @@ public sealed class SessionLifecycleTests : SessionLifecycleTestBase
         var opened = await _lifecycle.SwitchDatabaseAsync(b);
 
         Assert.True(opened);
-        AssertInOrder(_trace, "host:SetupWindow", "checkout:SaveCompleted");
-        Assert.Equal(UnsavedValue, NewestValue(b));
+        AssertInOrder(_trace, "host:SetupWindow");
+        Assert.DoesNotContain(_trace.SkipWhile(t => t != "host:SetupWindow"), t => t == "checkout:SaveCompleted");
+        Assert.Equal("original", NewestValue(b));                   // restored changes stay unsaved; D is untouched
         AssertScriptConsumed();
     }
 
@@ -1365,7 +1368,7 @@ public sealed class SessionLifecycleTests : SessionLifecycleTestBase
         Assert.True(opened);
         AssertPrompts("Choice:Restore Unsaved Changes?");
         Assert.Equal("kept-edit", NewestValue(_host.OpenCalls.Single().WorkingPath));
-        Assert.Equal("kept-edit", NewestValue(a));                   // saved right after the reopen
+        Assert.Equal("original", NewestValue(a));                    // restored changes stay unsaved; D is untouched
         AssertScriptConsumed();
     }
 
@@ -1427,7 +1430,7 @@ public sealed class SessionLifecycleTests : SessionLifecycleTestBase
 
         AssertPrompts("Choice:Couldn't Open the Database", "Choice:Restore Unsaved Changes?");
         Assert.Equal(kept, _checkout.WorkingPath);
-        Assert.Equal(UnsavedValue, NewestValue(db));               // restored, then saved
+        Assert.Equal("original", NewestValue(db));                 // restored, but not saved
         Assert.Empty(Directory.GetFiles(_workingDir, "*corrupt*"));
         AssertScriptConsumed();
     }

@@ -216,12 +216,6 @@ public partial class MainWindow : Window, ILifecyclePrompts, ISessionHost
     private readonly ExitCloseGuard _exitGuard = new();
 
     /// <summary>
-    /// True while the "Unapplied Changes" question is showing for a close request, so a second close
-    /// request in the meantime is ignored rather than stacking a second question.
-    /// </summary>
-    private bool _unappliedQuestionShowing;
-
-    /// <summary>
     /// Called whenever the window is about to close — whether via Files → Exit or the title-bar X.
     /// The first request cancels the close, hides the secondary windows, covers the window with the loading
     /// curtain and runs the async shutdown (save to D, release lock); the teardown then calls Close() again, which
@@ -258,19 +252,22 @@ public partial class MainWindow : Window, ILifecyclePrompts, ISessionHost
             }
         }
 
-        // A writer with an editor holding unapplied changes is asked once, BEFORE the exit guard
-        // moves on. The close is cancelled while the question shows; a second close request in the meantime is
-        // ignored. On "carry on" Close() runs again and finds nothing left to ask, so the exit proceeds as always.
-        // All the behaviour is in SessionLifecycle.ResolveUnappliedChangesAsync / UnappliedChangesGate.
-        if (_exitGuard.State == ExitCloseState.Open && Lifecycle.NeedsUnappliedChangesQuestion)
+        // A close, switch or restore question is already showing: ignore this request rather than stack a second one.
+        if (_exitGuard.State == ExitCloseState.Open && Lifecycle.IsUnsavedQuestionShowing)
         {
             e.Cancel = true;
-            if (_unappliedQuestionShowing) return;
-            _unappliedQuestionShowing = true;
-            bool carryOn;
-            try { carryOn = await Lifecycle.ResolveUnappliedChangesAsync(); }
-            finally { _unappliedQuestionShowing = false; }
-            if (carryOn) Close();
+            App.Logger.LogInfo("MainWindow: close request ignored — the unsaved-changes question is showing.");
+            return;
+        }
+
+        // A writer with unsaved changes or an editor holding unapplied changes is asked "Save Changes?" once, BEFORE the
+        // exit guard moves on. The close is cancelled while the question shows. On Save or Don't Save the answer is
+        // recorded and Close() runs again, which finds nothing left to ask, so the exit proceeds (the teardown saves,
+        // or discards after Don't Save). All the behaviour is in SessionLifecycle.AskBeforeCloseAsync / UnsavedChangesGate.
+        if (_exitGuard.State == ExitCloseState.Open && Lifecycle.NeedsCloseQuestion)
+        {
+            e.Cancel = true;
+            if (await Lifecycle.AskBeforeCloseAsync()) Close();
             return;
         }
 
@@ -717,7 +714,6 @@ public partial class MainWindow : Window, ILifecyclePrompts, ISessionHost
         App.Checkout.LocationReachableAgain -= OnCheckoutLocationReachableAgain;
         App.Checkout.SaveConflictDetected -= OnCheckoutSaveConflictDetected;
         App.Checkout.WriteLockLost -= OnWriteLockLost;
-        App.Checkout.BecameDirty     -= OnCheckoutBecameDirty;
         App.Checkout.SaveStarted     -= OnCheckoutSaveStarted;
         App.Checkout.SaveFinished    -= OnCheckoutSaveFinished;
         App.Checkout.SaveAlreadyInProgress -= OnCheckoutSaveAlreadyInProgress;
@@ -726,14 +722,11 @@ public partial class MainWindow : Window, ILifecyclePrompts, ISessionHost
         App.Checkout.LocationReachableAgain += OnCheckoutLocationReachableAgain;
         App.Checkout.SaveConflictDetected += OnCheckoutSaveConflictDetected;
         App.Checkout.WriteLockLost += OnWriteLockLost;
-        App.Checkout.BecameDirty     += OnCheckoutBecameDirty;
         App.Checkout.SaveStarted     += OnCheckoutSaveStarted;
         App.Checkout.SaveFinished    += OnCheckoutSaveFinished;
         App.Checkout.SaveAlreadyInProgress += OnCheckoutSaveAlreadyInProgress;
 
-        // Start autosave if it was enabled in settings.
-        if (AppSettings.Current.AutoSaveEnabled)
-            App.Checkout.StartAutoSave();
+        // No autosave: only Save (and Save in the close question) writes the shared database (undo design, decision 9).
 
         // Set the main window reference and load recent databases
         vm.MainWindowReference = this;
@@ -1288,17 +1281,9 @@ public partial class MainWindow : Window, ILifecyclePrompts, ISessionHost
 
     private void OnCheckoutSaveCompleted()
     {
+        // The unsaved indicator follows SectionHistory (MainWindowViewModel), which undo can clear as well.
         if (DataContext is MainWindowViewModel vm)
-        {
             vm.ClearSaveError();
-            vm.ClearDirty();
-        }
-    }
-
-    private void OnCheckoutBecameDirty()
-    {
-        if (DataContext is MainWindowViewModel vm)
-            vm.SetDirty();
     }
 
     private void OnCheckoutSaveStarted()
@@ -2031,6 +2016,15 @@ public partial class MainWindow : Window, ILifecyclePrompts, ISessionHost
 
     /// <inheritdoc cref="ISessionHost.FindUnappliedChanges"/>
     IUnappliedChanges? ISessionHost.FindUnappliedChanges() => (DataContext as MainWindowViewModel)?.FindUnappliedChanges();
+
+    /// <inheritdoc cref="ISessionHost.ReadUnsavedState"/>
+    UnsavedState? ISessionHost.ReadUnsavedState()
+    {
+        if (DataContext is not MainWindowViewModel vm
+            || App.Services?.GetService(typeof(SectionHistory)) is not SectionHistory history) return null;
+        return new UnsavedState(
+            history.HasUnsavedChanges, history.LastSaveTime, history.SavedThisSession, vm.SectionListVm.UnappliedCardHeading);
+    }
 
     /// <inheritdoc cref="ISessionHost.SetupWindowAsync"/>
     /// <exception cref="InvalidCastException"><paramref name="opened"/> was not produced by <see cref="ISessionHost.OpenServices"/> of this window.</exception>

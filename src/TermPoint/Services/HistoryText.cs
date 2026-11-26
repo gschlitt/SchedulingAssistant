@@ -320,6 +320,33 @@ public static class HistoryText
     public static string CloseCardSentence(string cardHeading)
         => $"{cardHeading}'s card has changes you haven't applied; Save applies them too.";
 
+    /// <summary>
+    /// The close question's body when nothing has been saved since the database was opened, so there is no "last saved"
+    /// time to name (the open may also have restored changes from before it). new wording, not yet approved.
+    /// </summary>
+    public const string CloseBodyNotSavedYet =
+        "You've changed the schedule and haven't saved yet. Colleagues won't see these changes until you save.";
+
+    /// <summary>
+    /// The extra sentence when an editor other than an existing section's card has unapplied changes (a new section, an
+    /// instructor, a course...). new wording, not yet approved.
+    /// </summary>
+    public const string CloseEditorSentence = "The open editor has changes you haven't applied; Save applies them too.";
+
+    /// <summary>
+    /// The close question's whole body when only a section card has unapplied changes and nothing else is unsaved.
+    /// new wording, not yet approved.
+    /// </summary>
+    /// <param name="cardHeading">The open card's heading.</param>
+    public static string CloseBodyCardOnly(string cardHeading)
+        => $"{cardHeading}'s card has changes you haven't applied. Save applies and saves them.";
+
+    /// <summary>
+    /// The close question's whole body when only another editor has unapplied changes and nothing else is unsaved.
+    /// new wording, not yet approved.
+    /// </summary>
+    public const string CloseBodyEditorOnly = "The open editor has changes you haven't applied. Save applies and saves them.";
+
     /// <summary>The question before opening another database. approved wording (Greg, 2026-11-26).</summary>
     /// <param name="currentName">The open database's name.</param>
     /// <param name="nextName">The database about to be opened.</param>

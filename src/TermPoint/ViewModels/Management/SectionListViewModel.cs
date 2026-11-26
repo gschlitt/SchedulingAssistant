@@ -164,6 +164,14 @@ public partial class SectionListViewModel : ViewModelBase, IUnappliedChangesHost
     }
 
     /// <summary>
+    /// The heading of an existing section whose open card has unapplied changes; null when no card is open, the card
+    /// has no changes, or it is a new section (which has no heading yet). Read by the close question
+    /// (<c>UnsavedChangesGate</c>) to name the card.
+    /// </summary>
+    public string? UnappliedCardHeading =>
+        EditVm is { HasUnappliedChanges: true } && ExpandedItem?.Heading is { Length: > 0 } heading ? heading : null;
+
+    /// <summary>
     /// True when the list should virtualize its cards (build only those on screen, with scroll
     /// anchoring), false for the classic panel that builds every card. The value in force is the
     /// user's <see cref="AppSettings.VirtualizeSectionList"/> preference AND the platform's
