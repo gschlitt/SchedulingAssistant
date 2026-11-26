@@ -157,6 +157,24 @@ public partial class MainWindow : Window, ILifecyclePrompts, ISessionHost
                 }
             }
 
+            // Ctrl+Z / Ctrl+Y (Ctrl+Shift+Z too) undo and redo section changes, except in a text box, where they keep
+            // undoing typing as before (undo design, story 3).
+            if (!e.Handled && e.Source is not TextBox && DataContext is MainWindowViewModel { UndoBar.IsAvailable: true } undoVm)
+            {
+                var mods = e.KeyModifiers & ~KeyModifiers.Shift;
+                var shift = e.KeyModifiers.HasFlag(KeyModifiers.Shift);
+                if (mods is KeyModifiers.Control or KeyModifiers.Meta)
+                {
+                    if (e.Key == Key.Z && !shift) { undoVm.UndoBar.UndoCommand.Execute(null); e.Handled = true; return; }
+                    if ((e.Key == Key.Y && !shift) || (e.Key == Key.Z && shift))
+                    {
+                        undoVm.UndoBar.RedoCommand.Execute(null);
+                        e.Handled = true;
+                        return;
+                    }
+                }
+            }
+
             // Ctrl+Shift+D toggles the Dev Tools menu (all builds, session-only).
             if (e.Key == Key.D
                 && e.KeyModifiers == (KeyModifiers.Control | KeyModifiers.Shift)

@@ -279,10 +279,16 @@ public partial class MainWindowViewModel : ViewModelBase
 
     /// <summary>
     /// The text of the unsaved line beside Save: "Unsaved changes since 10:42" (approved wording, Greg 2026-11-26), or
-    /// the plain "Unsaved changes" when no time is known. Bound by the main view (piece E of the undo build).
+    /// the plain "Unsaved changes" when no time is known. Bound by the main view.
     /// </summary>
     public string UnsavedLineText =>
         _history?.UnsavedSince is { } since ? HistoryText.UnsavedSince(since) : "Unsaved changes";
+
+    /// <summary>
+    /// The Undo and Redo buttons beside Save and their history list; null when no history is registered. In the demo the
+    /// history exists but is never available, so the bar stays hidden (<see cref="UndoBarViewModel.IsAvailable"/>).
+    /// </summary>
+    public UndoBarViewModel? UndoBar { get; }
 
     /// <summary>The undo history of the open database; it drives the unsaved indicator. Null only if none is registered.</summary>
     private readonly SectionHistory? _history;
@@ -367,34 +373,9 @@ public partial class MainWindowViewModel : ViewModelBase
 
     /// <summary>
     /// True when the platform supports saving to the database file.
-    /// Drives <see cref="SaveCommand"/> CanExecute and the enabled state of the
-    /// Auto-save checkbox in the toolbar. Always false in the browser demo.
+    /// Drives <see cref="SaveCommand"/> CanExecute. Always false in the browser demo.
     /// </summary>
     public bool SupportsSave => PlatformCapabilities.SupportsSave;
-
-    /// <summary>
-    /// The old Auto-save checkbox's setting, persisted to <see cref="AppSettings"/> only. TermPoint no longer saves on
-    /// its own (undo design, decision 9), so it starts no timer; the checkbox and this property go with piece E.
-    /// Always false and a no-op in the browser demo.
-    /// </summary>
-    public bool AutoSaveEnabled
-    {
-        get =>
-#if !BROWSER
-            AppSettings.Current.AutoSaveEnabled;
-#else
-            false;
-#endif
-        set
-        {
-#if !BROWSER
-            if (AppSettings.Current.AutoSaveEnabled == value) return;
-            AppSettings.Current.AutoSaveEnabled = value;
-            AppSettings.Current.Save();
-            OnPropertyChanged();
-#endif
-        }
-    }
 
     private bool CanSave() => PlatformCapabilities.SupportsSave;
 
@@ -856,6 +837,8 @@ public partial class MainWindowViewModel : ViewModelBase
         {
             _history.Changed += OnHistoryChanged;
             OnHistoryChanged();
+            if (services.GetService(typeof(SectionStore)) is SectionStore store)
+                UndoBar = new UndoBarViewModel(_history, store);
         }
 
         // The eyes in the Tags popup save through the shared toggler; "Add a watch" opens that popup with its note.

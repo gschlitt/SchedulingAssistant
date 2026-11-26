@@ -24,27 +24,6 @@
                     FontWeight="SemiBold"
                     Text="Save &amp; Backup" />
 
-                <!--  Autosave interval  -->
-                <TextBlock
-                    Margin="0,4,0,0"
-                    FontSize="{StaticResource FontSizeNormal}"
-                    FontWeight="SemiBold"
-                    Text="Auto-save interval (minutes)" />
-                <TextBlock
-                    FontSize="{StaticResource FontSizeNormal}"
-                    Foreground="{StaticResource TextDimLabel}"
-                    Text="When Auto-save is enabled (checkbox in the toolbar), the app saves automatically at this interval (in minutes)."
-                    TextWrapping="Wrap" />
-                <NumericUpDown
-                    MaxWidth="140"
-                    HorizontalAlignment="Left"
-                    FontSize="{StaticResource FontSizeNormal}"
-                    FormatString="0"
-                    Increment="5"
-                    Maximum="120"
-                    Minimum="1"
-                    Value="{Binding AutoSaveIntervalMinutes, Mode=TwoWay}" />
-
                 <TextBlock
                     Margin="0,8,0,0"
                     FontSize="{StaticResource FontSizeNormal}"

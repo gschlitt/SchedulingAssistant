@@ -28,6 +28,12 @@
 			<x:Double x:Key="FontSizeFilterPopup">11</x:Double>
 			<!--  The Access tab's watch list, its health lines, notes and the Mark all conflicts box  -->
 			<x:Double x:Key="FontSizePanelList">11</x:Double>
+			<!--  The top bar's Save, Undo and Redo buttons, and the status lines beside them ("Unsaved changes since 10:42", "Undone: ...")  -->
+			<x:Double x:Key="FontSizeToolbarButton">13</x:Double>
+			<x:Double x:Key="FontSizeSaveStatus">11</x:Double>
+			<!--  Tallest the undo history list grows before it scrolls, and widest the "Undone: ..." line grows before it is trimmed  -->
+			<x:Double x:Key="UndoHistoryMaxHeight">400</x:Double>
+			<x:Double x:Key="UndoResultLineMaxWidth">360</x:Double>
 
 			<!--  Tallest the Focus picker's subject checklist grows before it scrolls  -->
 			<x:Double x:Key="FocusPickerListMaxHeight">220</x:Double>

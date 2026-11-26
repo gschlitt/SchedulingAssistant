@@ -11,19 +11,19 @@
 
 **Goal:** an administrator can experiment freely. Until they press Save they can step back through section changes (drags, right-click edits, card Applies, creates, deletes, copies) or throw them all away. The shared database changes only when they save; closing with unsaved changes asks Save / Don't save / Cancel. Done means the feature in the app, field-tested, with a "What's new" line for the changed behaviour.
 
-**State:** On branch 1.2.5: log, history and callers committed and pushed. The session changes (close question, Don't Save, no autosave, recovery left unsaved, two-hour notice) are built and committed unfinished; full suite passes (2026-11-26). Nothing shows undo yet. Next: step 2.
+**State:** On branch 1.2.5: pieces A–E built and committed; full suite passes (2026-11-26). Greg's first hand check found the history list doing nothing (fixed; undo confirmed working). Harness not run since piece E.
 
 <details>
-<summary>Steps (2 left)</summary>
+<summary>Steps (1 left)</summary>
 
-1. The Undo and Redo buttons with the history list, the keys, the line beside Save; remove the Auto-save controls; the "What's new" line (Greg closes the main view's layout files in VS first).
-2. Both compile checks, full suite and harness; Greg's hand check; field test alongside the drag's field test.
+1. Harness; rest of Greg's hand check (hover highlight, disabled-button tooltips, top-bar width, Ctrl+Z in a card's text box); field test alongside the drag's.
 
 </details>
 
 **Open questions:**
 - Six small new wordings the build needed (listed in the notes): approve or change.
 - Four new close-question wordings (notes, "Piece D"): no save yet this session, only a card has changes, a non-section editor, a new section.
+- The "What's new" line shows as a second 1.2.5 banner: merge it with the access-watch line?
 - Room delete and room edit can close an open section card (found in passing, notes): fix here, or a backlog line?
 
 Notes: [undo/NOTES.md](undo/NOTES.md). Design: [designs/1.2.5/undo.md](../../designs/1.2.5/undo.md).

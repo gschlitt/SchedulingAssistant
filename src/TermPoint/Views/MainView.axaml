@@ -119,7 +119,10 @@
 						Text="Reader Mode"
 						ToolTip.Tip="{Binding LockStatusMessage}" />
 
-					<!--  Save button + autosave checkbox  -->
+					<!--  Save, Undo (with the history list under its arrow) and Redo, then the status lines.
+					      Undo design (designs/1.2.5/undo.md, stories 1-3); the rules live in SectionHistory, the
+					      buttons' state in UndoBarViewModel. The undo buttons hide when no history is available
+					      (a reader session, the browser demo).  -->
 					<StackPanel
 						controls:ResponsiveMenuPanel.IsPriority="True"
 						Margin="0,4,6,4"
@@ -129,26 +132,93 @@
 						Spacing="8">
 						<Button
 							Padding="8,4"
-							
 							Command="{Binding SaveCommand}"
 							Content="Save"
-							FontSize="13"
+							FontSize="{StaticResource FontSizeToolbarButton}"
 							FontWeight="Normal"
 							ToolTip.Tip="Save changes to the database" />
+						<StackPanel
+							IsVisible="{Binding UndoBar.IsAvailable, FallbackValue=False}"
+							Orientation="Horizontal"
+							Spacing="2">
+							<Button
+								Padding="8,4"
+								Command="{Binding UndoBar.UndoCommand}"
+								Content="Undo"
+								FontSize="{StaticResource FontSizeToolbarButton}"
+								FontWeight="Normal"
+								IsEnabled="{Binding UndoBar.CanUndo}"
+								ToolTip.ShowOnDisabled="True"
+								ToolTip.Tip="{Binding UndoBar.UndoTooltip}" />
+							<!--  The arrow opens the history list: steps newest first, then "Your last save".
+							      Pointing at a line highlights it and every newer line (the ones a click undoes).  -->
+							<Button
+								Padding="4,4"
+								VerticalAlignment="Stretch"
+								IsEnabled="{Binding UndoBar.CanUndo}">
+								<PathIcon
+									Width="8"
+									Height="8"
+									Data="{StaticResource ChevronDownIcon}" />
+								<Button.Flyout>
+									<Flyout Placement="BottomEdgeAlignedLeft">
+										<ScrollViewer MaxHeight="{StaticResource UndoHistoryMaxHeight}" VerticalScrollBarVisibility="Auto">
+											<ItemsControl b:HoverTracking.ClosesFlyout="True" ItemsSource="{Binding UndoBar.Lines}">
+												<ItemsControl.Styles>
+													<Style Selector="Button.historyLine">
+														<Setter Property="Background" Value="Transparent" />
+														<Setter Property="BorderThickness" Value="0" />
+														<Setter Property="CornerRadius" Value="0" />
+													</Style>
+													<Style Selector="Button.historyLine.highlighted /template/ ContentPresenter#PART_ContentPresenter">
+														<Setter Property="Background" Value="{StaticResource ListRowSelectedBackground}" />
+													</Style>
+												</ItemsControl.Styles>
+												<ItemsControl.ItemTemplate>
+													<DataTemplate>
+														<Button
+															Padding="8,3"
+															HorizontalAlignment="Stretch"
+															HorizontalContentAlignment="Left"
+															b:HoverTracking.IsEnabled="True"
+															Classes="historyLine"
+															Classes.highlighted="{Binding IsHighlighted}"
+															Command="{Binding Command}"
+															CommandParameter="{Binding}"
+															Content="{Binding Text}"
+															FontSize="{StaticResource FontSizeNormal}"
+															ToolTip.Tip="{Binding Tooltip}" />
+													</DataTemplate>
+												</ItemsControl.ItemTemplate>
+											</ItemsControl>
+										</ScrollViewer>
+									</Flyout>
+								</Button.Flyout>
+							</Button>
+							<Button
+								Padding="8,4"
+								Command="{Binding UndoBar.RedoCommand}"
+								Content="Redo"
+								FontSize="{StaticResource FontSizeToolbarButton}"
+								FontWeight="Normal"
+								IsEnabled="{Binding UndoBar.CanRedo}"
+								ToolTip.ShowOnDisabled="True"
+								ToolTip.Tip="{Binding UndoBar.RedoTooltip}" />
+						</StackPanel>
 						<TextBlock
 							VerticalAlignment="Center"
-							FontSize="11"
+							FontSize="{StaticResource FontSizeSaveStatus}"
 							FontStyle="Italic"
-							Foreground="Red"
+							Foreground="{StaticResource TextError}"
 							IsEnabled="{Binding SupportsSave}"
 							IsVisible="{Binding ShowDirtyIndicator}"
-							Text="Unsaved changes"
+							Text="{Binding UnsavedLineText}"
 							ToolTip.Tip="You have unsaved changes" />
 						<!--  Replaces "Unsaved changes" while a save is writing; saves over a
 						      slow network can legitimately run for tens of seconds.  -->
 						<TextBlock
 							VerticalAlignment="Center"
-							FontSize="11"
+							FontSize="{StaticResource FontSizeSaveStatus}"
 							FontStyle="Italic"
 							Foreground="{StaticResource TextSecondary}"
 							IsVisible="{Binding ShowSavingIndicator}"
@@ -159,19 +229,22 @@
 						      being silently skipped.  -->
 						<TextBlock
 							VerticalAlignment="Center"
-							FontSize="11"
+							FontSize="{StaticResource FontSizeSaveStatus}"
 							FontStyle="Italic"
 							Foreground="{StaticResource TextSecondary}"
 							IsVisible="{Binding ShowSaveBusyNotice}"
 							Text="A save is already in progress…"
 							ToolTip.Tip="Your changes are still being written — no need to save again" />
-						<CheckBox
+						<!--  What the last undo or redo did, or why it was refused; clears itself.  -->
+						<TextBlock
+							MaxWidth="{StaticResource UndoResultLineMaxWidth}"
 							VerticalAlignment="Center"
-							Content="Auto-save"
-							FontSize="{StaticResource FontSizeNormal}"
-							IsChecked="{Binding AutoSaveEnabled, Mode=TwoWay}"
-							IsEnabled="{Binding SupportsSave}"
-							ToolTip.Tip="Automatically save at the interval configured under Settings" />
+							FontSize="{StaticResource FontSizeSaveStatus}"
+							Foreground="{StaticResource TextSecondary}"
+							IsVisible="{Binding UndoBar.ShowResultLine, FallbackValue=False}"
+							Text="{Binding UndoBar.ResultLine}"
+							TextTrimming="CharacterEllipsis"
+							ToolTip.Tip="{Binding UndoBar.ResultLine}" />
 					</StackPanel>
 
 					<Border
