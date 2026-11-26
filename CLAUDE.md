@@ -38,7 +38,7 @@ No hardcoded dimensions in ViewModels: pixel widths/heights and other view conce
 - **Section writes and undo:** every writer connection carries TEMP triggers recording section changes for undo
   (`designs/1.2.5/undo.md`). A new code path that writes sections runs inside `SectionHistory.Record` (a user's
   section edit) or `PauseRecording` (anything else), never inside an open transaction; otherwise it silently empties
-  the undo history. SQLite's `total_changes()` counts trigger writes, so the triggers' flag updates are guarded.
+  the undo history. `SectionWritePathTests` lists every caller and fails on a new one. SQLite's `total_changes()` counts trigger writes, so the triggers' flag updates are guarded.
 - **`MinimumVersionToWrite`** is the oldest TermPoint allowed to edit a database (older versions open it read-only); it only ever goes up. For EVERY release ask: *"Could the new version save anything the old version wouldn't have?"* If Yes, set `ThisReleaseRequires`/`ThisReleaseReason` in `Services/MinimumVersionToWrite.cs`, update the test that pins them, and mark the Store submission mandatory. Never reset or lower them later. Full procedure: `UPDATE_NUMBERING_README.md`.
 
 # Build & Test

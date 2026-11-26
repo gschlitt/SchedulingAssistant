@@ -11,7 +11,7 @@
 
 **Goal:** an administrator can experiment freely. Until they press Save they can step back through section changes (drags, right-click edits, card Applies, creates, deletes, copies) or throw them all away. The shared database changes only when they save; closing with unsaved changes asks Save / Don't save / Cancel. Done means the feature in the app, field-tested, with a "What's new" line for the changed behaviour.
 
-**State:** On branch 1.2.5: the change log, the history service and its callers are built and tested (full suite passes, 2026-11-26). Every section edit is now recorded as a step, but nothing shows it yet, so behaviour is unchanged. Next: step 1 (the session changes).
+**State:** On branch 1.2.5: the change log, the history service and its callers are built, tested (full suite passes, 2026-11-26) and pushed, committed unfinished. Every section edit is now recorded as a step, but nothing shows it yet, so behaviour is unchanged. Next: step 1 (the session changes).
 
 <details>
 <summary>Steps (3 left)</summary>
