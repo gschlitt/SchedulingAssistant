@@ -43,6 +43,17 @@ public class DatabaseContext : IDatabaseContext
     private string _dbPath;
 
     /// <summary>
+    /// The undo history for section changes: TEMP tables and triggers on <see cref="_conn"/> (design:
+    /// <c>designs/1.2.5/undo.md</c>, "Technical detail"). One instance for the context's lifetime; it reads the CURRENT
+    /// connection, and is created (<see cref="CreateChangeLog"/>) at every writer open and marked unavailable before the
+    /// connection it lives on is disposed. It never fails an open and never reaches a copied file.
+    /// </summary>
+    private readonly SqliteSectionChangeLog _changeLog;
+
+    /// <inheritdoc/>
+    public ISectionChangeLog? ChangeLog => _changeLog;
+
+    /// <summary>
     /// True while this session may not write: the user never held the write lock, or lost it. Set by the
     /// constructor / <see cref="ReinitializeConnection"/> (the session's mode) and by <see cref="MarkReadOnly"/>
     /// (the start of a demotion, before the connection is closed). While true, <see cref="MarkDirty"/> refuses
@@ -158,6 +169,7 @@ public class DatabaseContext : IDatabaseContext
         _onFirstWrite = onFirstWrite;
         _onEveryWrite = onEveryWrite;
         _dbPath       = dbPath;
+        _changeLog    = new SqliteSectionChangeLog(() => _conn);
 
         // Constructing the connection does not touch the filesystem; the folder is created and the
         // file is opened inside the try below so that a Controlled Folder Access block (or any other
@@ -177,9 +189,13 @@ public class DatabaseContext : IDatabaseContext
 
             // Last of all: the init above legitimately writes to a snapshot of an older database.
             ApplyReadOnly(readOnly);
+
+            // Only a writer can hold the log (a query_only connection refuses TEMP DDL). Never fails the open.
+            if (!readOnly) CreateChangeLog();
         }
         catch (Exception ex)
         {
+            _changeLog.MarkUnavailable();
             _conn.Dispose();
 
             // Distinguish "this folder won't accept writes" (e.g. Controlled Folder Access, a
@@ -201,6 +217,15 @@ public class DatabaseContext : IDatabaseContext
                 ex);
         }
     }
+
+    /// <summary>
+    /// Creates the undo log on the current connection. Called at the end of every WRITER open (the constructor and
+    /// <see cref="ReinitializeConnection"/> with <c>readOnly: false</c>), after <see cref="ApplyReadOnly"/>, so the log
+    /// always starts empty. Creation failure must never fail the open: <see cref="SqliteSectionChangeLog.Install"/>
+    /// catches it, keeps it in <see cref="ISectionChangeLog.InstallError"/> (this class has no logger; the service layer
+    /// logs it) and leaves <see cref="ISectionChangeLog.IsAvailable"/> false, so the session simply has no undo.
+    /// </summary>
+    private void CreateChangeLog() => _changeLog.Install();
 
     /// <summary>
     /// Applies per-connection settings to the shared repository connection.
@@ -717,7 +742,11 @@ public class DatabaseContext : IDatabaseContext
     /// </summary>
     public void CloseConnection()
     {
+        _changeLog.MarkUnavailable();
         _conn.Dispose();
+
+        // Also load-bearing for the undo log: a pooled connection hands its TEMP tables to the next opener of the same
+        // connection string, so this is what makes every log start empty (notes, "Probe results", catch 1).
         SqliteConnection.ClearAllPools();
     }
 
@@ -739,7 +768,27 @@ public class DatabaseContext : IDatabaseContext
     /// <exception cref="InvalidOperationException">Thrown if the new database cannot be opened.</exception>
     public void ReinitializeConnection(string newDbPath, bool readOnly)
     {
-        // Close and clear the old connection from the pool.
+        // The undo history lives on the connection being closed, so it goes with it. Reset is raised however the
+        // reopen ends (the history is gone either way), so owners of history-derived state can drop it.
+        try
+        {
+            ReopenConnection(newDbPath, readOnly);
+        }
+        finally
+        {
+            _changeLog.RaiseReset();
+        }
+    }
+
+    /// <summary>The body of <see cref="ReinitializeConnection"/>; see there.</summary>
+    /// <param name="newDbPath">Absolute path to the database file.</param>
+    /// <param name="readOnly">Whether the reopened session may not write.</param>
+    /// <exception cref="InvalidOperationException">Thrown if the new database cannot be opened.</exception>
+    private void ReopenConnection(string newDbPath, bool readOnly)
+    {
+        // Close and clear the old connection from the pool. The pool clear also matters to the undo log: a pooled
+        // connection would hand its TEMP tables to the new one (catch 1).
+        _changeLog.MarkUnavailable();
         _conn.Dispose();
         SqliteConnection.ClearAllPools();
 
@@ -767,9 +816,13 @@ public class DatabaseContext : IDatabaseContext
                 Migrate(newDbPath, takeBackup: false);
             }
             ApplyReadOnly(readOnly);
+
+            // A writer gets a fresh, empty log; a read-only session has none (the log stays unavailable).
+            if (!readOnly) CreateChangeLog();
         }
         catch (Exception ex)
         {
+            _changeLog.MarkUnavailable();
             _conn.Dispose();
             throw new InvalidOperationException(
                 $"Failed to reopen the database at '{newDbPath}' after refresh. " +
@@ -780,6 +833,7 @@ public class DatabaseContext : IDatabaseContext
 
     public void Dispose()
     {
+        _changeLog.MarkUnavailable();
         _conn.Dispose();
 
         // Microsoft.Data.Sqlite pools connections by default: Dispose() returns
@@ -788,6 +842,7 @@ public class DatabaseContext : IDatabaseContext
         // all file handles immediately. Without this, File.Move(D.tmp → D) in
         // CheckoutService.SaveAsync fails on Windows with "Access to the path is
         // denied" because the pool still holds D open without FILE_SHARE_DELETE.
+        // The undo log depends on this too: pooled TEMP tables would otherwise reach the next context (catch 1).
         SqliteConnection.ClearAllPools();
     }
 }

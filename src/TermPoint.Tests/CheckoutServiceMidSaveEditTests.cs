@@ -513,4 +513,40 @@ public sealed class CheckoutServiceMidSaveEditTests : IDisposable
         Assert.True(File.Exists(s.MarkerPath));
         Assert.True(s.Lock.IsWriter);
     }
+
+    // ── SaveSucceeded (the undo history's trimming signal) ────────────────────
+
+    /// <summary>
+    /// <see cref="CheckoutService.SaveSucceeded"/> follows <c>SaveCompleted</c> in every successful save and carries the
+    /// edit count read before the snapshot and whether the marker was kept: a plain save gives (count, false); a save an
+    /// edit arrived during gives (count before the snapshot, true); a second save with nothing to save (the skipped
+    /// path) gives (count, false) again.
+    /// </summary>
+    [Fact]
+    public async Task SaveSucceeded_CarriesTheEditCountAndTheKeptFlag()
+    {
+        using var s = await OpenSessionAsync();
+        var events = new List<string>();
+        s.Svc.SaveCompleted += () => events.Add("completed");
+        s.Svc.SaveSucceeded += (count, kept) => events.Add($"succeeded {count} {kept}");
+
+        s.Edit("e1");
+        Assert.Equal(SaveOutcome.Success, await s.Svc.SaveAsync());
+        Assert.Equal(new[] { "completed", "succeeded 1 False" }, events);
+
+        events.Clear();
+        s.Edit("e2");
+        s.Svc.BeforeTmpVerifyAsync = DuringUpload(() => s.Edit("e3"));
+        Assert.Equal(SaveOutcome.Success, await s.Svc.SaveAsync());
+        Assert.Equal(new[] { "completed", "succeeded 2 True" }, events);
+
+        events.Clear();
+        s.Svc.BeforeTmpVerifyAsync = null;
+        Assert.Equal(SaveOutcome.Success, await s.Svc.SaveAsync());
+        Assert.Equal(new[] { "completed", "succeeded 3 False" }, events);
+
+        events.Clear();
+        Assert.Equal(SaveOutcome.Success, await s.Svc.SaveAsync());   // nothing changed since: the skipped path
+        Assert.Equal(new[] { "completed", "succeeded 3 False" }, events);
+    }
 }

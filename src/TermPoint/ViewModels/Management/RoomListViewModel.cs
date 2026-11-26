@@ -238,13 +238,7 @@ public partial class RoomListViewModel : ViewModelBase, IDismissableEditor, IUna
             var sections = _sectionRepo.GetAll();
             foreach (var section in sections)
             {
-                var changed = false;
-                foreach (var sched in section.Schedule.Where(s => s.RoomId == id))
-                {
-                    sched.RoomId = null;
-                    changed = true;
-                }
-                if (changed) _sectionRepo.Update(section, tx);
+                if (SectionReferences.RemoveRoom(section, id)) _sectionRepo.Update(section, tx);
             }
             _repo.Delete(id, tx);
             tx?.Commit();

@@ -7,32 +7,26 @@
 ## Work
 
 <details>
-<summary><b>Undo and rollback before saving</b> · Not started · **ACTIVE**</summary>
+<summary><b>Undo and rollback before saving</b> · In progress · **ACTIVE**</summary>
 
 **Goal:** an administrator can experiment freely. Until they press Save they can step back through section changes (drags, right-click edits, card Applies, creates, deletes, copies) or throw them all away. The shared database changes only when they save; closing with unsaved changes asks Save / Don't save / Cancel. Done means the feature in the app, field-tested, with a "What's new" line for the changed behaviour.
 
-**State:** Not started; no code yet (branch 1.2.5). Model decided with Greg 2026-11-26 (notes): Save is the line, autosave to the shared file dropped, a deliberate Don't save is the user's choice. Folds in backlog 2.1's experimenting without saving. Next: step 1.
+**State:** On branch 1.2.5: the change log and the history service are built and tested (full suite passes, 2026-11-26), committed unfinished. Nothing in the app uses them yet, so behaviour is unchanged. Next: step 1.
 
 <details>
-<summary>Steps (6 left)</summary>
+<summary>Steps (4 left)</summary>
 
-1. Probe the TEMP-trigger change log on the working copy's connection: never reaches the shared file, can be emptied at each save, gone after a lost lock or a database switch.
-2. List every section write path (drag, right-click edits, card Apply, create, delete, copy) and what reloads after each, and every place that saves today without being asked.
-3. Write the design doc as Alice-and-Bob stories (undo, throw away, the close question, no autosave, a lost lock with long unsaved work); check it against the four rules; answer `MinimumVersionToWrite`.
-4. Greg approves the design and all wording, including the "What's new" line.
-5. Build (Opus briefs, Sonnet codes) with unit tests, including a re-inserted section keeping its meetings and extension data.
-6. Both compile checks, full suite and harness; Greg's hand check; field test alongside the drag's field test.
+1. Wire the history into the section edits (each one a step) and pause it for the clean-ups, imports, copies and semester deletes; a test that every section write path is one or the other.
+2. The close question at close, switch and restore, with Don't Save; remove autosave; crash recovery leaves changes unsaved; the unsaved time and the two-hour notice.
+3. The Undo and Redo buttons with the history list, the keys, the line beside Save; remove the Auto-save controls; the "What's new" line (Greg closes the main view's layout files in VS first).
+4. Both compile checks, full suite and harness; Greg's hand check; field test alongside the drag's field test.
 
 </details>
 
 **Open questions:**
-- Rollback: only "throw away everything since my last save", or also back to points in between (e.g. before I started dragging)?
-- Where the controls go: toolbar buttons, a menu, Ctrl+Z outside text boxes?
-- Does the history span semesters? How many steps to keep?
-- Shrinking the lost-lock cost: an unsaved-changes marker, a nudge after a long stretch, a warning to Alice before a takeover?
-- Database switches, restores and other reloads that save today: ask the close question, or something else?
+- Five small new wordings the build needed (listed in the notes): approve or change. Not blocking step 1.
 
-Notes: [undo/NOTES.md](undo/NOTES.md). Design: not written yet (step 3).
+Notes: [undo/NOTES.md](undo/NOTES.md). Design: [designs/1.2.5/undo.md](../../designs/1.2.5/undo.md).
 
 </details>
 

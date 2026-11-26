@@ -123,7 +123,7 @@ namespace TermPoint.Services;
 ///         network interruptions.</item>
 /// </list>
 /// </summary>
-public sealed class CheckoutService : IDisposable
+public sealed class CheckoutService : IDisposable, ISaveSignals
 {
     // ── Dependencies ─────────────────────────────────────────────────────────
 
@@ -610,6 +610,17 @@ public sealed class CheckoutService : IDisposable
     /// The UI can use this to show a brief "Saved" indicator.
     /// </summary>
     public event Action? SaveCompleted;
+
+    /// <summary>
+    /// Raised on the UI thread right after <see cref="SaveCompleted"/>, in BOTH success paths (a real save and the
+    /// "nothing changed" skip). Carries what the undo history needs to trim itself: the edit count read before the
+    /// save's snapshot (every edit up to it is in what was saved) and whether the save kept the dirty marker because an
+    /// edit arrived while it ran (then nothing may be trimmed: the next save will). See <see cref="SectionHistory"/>.
+    /// </summary>
+    public event Action<long, bool>? SaveSucceeded;
+
+    /// <inheritdoc/>
+    long ISaveSignals.EditGeneration => EditGeneration;
 
     /// <summary>
     /// Raised on the UI thread when a save attempt begins (after the
@@ -2548,7 +2559,9 @@ public sealed class CheckoutService : IDisposable
             ["elapsedMs"] = elapsedMs.ToString(),
             ["autoSave"]  = isAutoSave.ToString(),
         });
+        var savedEditCount = snapshot.EditGenerationBefore;
         _dispatch(() => SaveCompleted?.Invoke());
+        _dispatch(() => SaveSucceeded?.Invoke(savedEditCount, markerKept));
 
         // The unsaved-changes indicator was just cleared by SaveCompleted; the edit that arrived during this save
         // is still unsaved, so turn it back on (posted after SaveCompleted so the order is preserved).
@@ -2584,6 +2597,7 @@ public sealed class CheckoutService : IDisposable
     private SaveOutcome FinishUnchangedSave(bool releaseLockAfter, bool isAutoSave, SaveSnapshotState snapshot, long saveStart)
     {
         var editArrived = EditArrivedDuringSave(snapshot);
+        var savedEditCount = snapshot.EditGenerationBefore;
         snapshot.Dispose();   // the source connection has served its purpose (as at step 6)
 
         if (editArrived)
@@ -2604,6 +2618,7 @@ public sealed class CheckoutService : IDisposable
             ["autoSave"]  = isAutoSave.ToString(),
         });
         _dispatch(() => SaveCompleted?.Invoke());
+        _dispatch(() => SaveSucceeded?.Invoke(savedEditCount, editArrived));
         if (editArrived)
             _dispatch(() => BecameDirty?.Invoke());
         return SaveOutcome.Success;

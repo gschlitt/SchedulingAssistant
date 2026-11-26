@@ -61,4 +61,12 @@ public interface IDatabaseContext : IDisposable
     /// save, so that the dirty marker is re-written only when new edits follow.
     /// </summary>
     void ResetDirty();
+
+    /// <summary>
+    /// The undo history for section changes (<c>designs/1.2.5/undo.md</c>), or null when this context has none: the
+    /// WASM demo keeps this default (no undo in the demo). The SQLite context returns its log for every session; the
+    /// log itself says whether it exists on the current connection (<see cref="ISectionChangeLog.IsAvailable"/>: false
+    /// for a read-only session).
+    /// </summary>
+    ISectionChangeLog? ChangeLog => null;
 }

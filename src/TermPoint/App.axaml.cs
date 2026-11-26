@@ -508,6 +508,11 @@ public partial class App : Application
         services.AddSingleton<IDatabaseContext>(_ => new DatabaseContext(
             dbPath, App.Checkout.MarkDirty, readOnly: App.Checkout.Mode != CheckoutMode.WriteAccess,
             onEveryWrite: App.Checkout.NoteEdit));   // counts every edit so a save can tell one arrived while it ran
+        // The undo history (one per database container): listens to the checkout service's save signals.
+        services.AddSingleton(sp => new SectionHistory(
+            sp.GetRequiredService<IDatabaseContext>(), sp.GetRequiredService<SectionStore>(),
+            sp.GetRequiredService<ISectionRepository>(), sp.GetRequiredService<SemesterContext>(),
+            sp.GetRequiredService<ISectionCardState>(), App.Checkout, App.Logger));
         services.AddSingleton<IAcademicYearRepository, AcademicYearRepository>();
         services.AddSingleton<ISemesterRepository, SemesterRepository>();
         services.AddSingleton<IInstructorRepository, InstructorRepository>();
@@ -641,6 +646,12 @@ public partial class App : Application
         services.AddTransient<IDialogService, NullDialogService>();
 
         services.AddSingleton<IDatabaseContext, DemoDatabaseContext>();
+
+        // The WASM demo has no undo: no change log, and no checkout service to listen to.
+        services.AddSingleton(sp => new SectionHistory(
+            sp.GetRequiredService<IDatabaseContext>(), sp.GetRequiredService<SectionStore>(),
+            sp.GetRequiredService<ISectionRepository>(), sp.GetRequiredService<SemesterContext>(),
+            sp.GetRequiredService<ISectionCardState>(), null, App.Logger));
         services.AddSingleton<IAcademicYearRepository,        DemoAcademicYearRepository>();
         services.AddSingleton<ISemesterRepository,            DemoSemesterRepository>();
         services.AddSingleton<IInstructorRepository,          DemoInstructorRepository>();

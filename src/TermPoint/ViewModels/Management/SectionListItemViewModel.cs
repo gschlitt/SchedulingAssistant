@@ -319,7 +319,7 @@ public partial class SectionListItemViewModel : ObservableObject, ISectionListEn
     /// <summary>Hex color override for the semester border (e.g. "#C65D1E"), or empty.</summary>
     public string SemesterColor { get; }
 
-    private static readonly string[] DayNames = ["", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
+    internal static readonly string[] DayNames = ["", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
 
     public SectionListItemViewModel(
         Section section,

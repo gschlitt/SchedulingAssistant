@@ -35,6 +35,10 @@ No hardcoded dimensions in ViewModels: pixel widths/heights and other view conce
 - Every class serialized into a `data` column (and every class nested inside one) must derive from `PersistedRecord`, so JSON fields written by newer app versions survive a round trip.
 - Code that builds a fresh object to replace an existing record (editing copies, editor rebuilds of nested lists, clones) must call `WithExtensionDataFrom(original)` and copy every persisted field. Omitting either silently wipes data on save (this happened with section Flag/RoomTypeId and course Capacity/Level). `SectionCloneTests` and the `ExtensionData*Tests` enforce this.
 - A meeting (`SectionDaySchedule`) is copied only through `SectionDaySchedule.Clone()`, so a new field is added in one place.
+- **Section writes and undo:** every writer connection carries TEMP triggers recording section changes for undo
+  (`designs/1.2.5/undo.md`). A new code path that writes sections runs inside `SectionHistory.Record` (a user's
+  section edit) or `PauseRecording` (anything else), never inside an open transaction; otherwise it silently empties
+  the undo history. SQLite's `total_changes()` counts trigger writes, so the triggers' flag updates are guarded.
 - **`MinimumVersionToWrite`** is the oldest TermPoint allowed to edit a database (older versions open it read-only); it only ever goes up. For EVERY release ask: *"Could the new version save anything the old version wouldn't have?"* If Yes, set `ThisReleaseRequires`/`ThisReleaseReason` in `Services/MinimumVersionToWrite.cs`, update the test that pins them, and mark the Store submission mandatory. Never reset or lower them later. Full procedure: `UPDATE_NUMBERING_README.md`.
 
 # Build & Test

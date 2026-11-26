@@ -442,37 +442,7 @@ public partial class SchedulingEnvironmentListViewModel : ViewModelBase, IDismis
             var sections = _sectionRepo.GetAll();
             foreach (var section in sections)
             {
-                var changed = false;
-                switch (_type)
-                {
-                    case SchedulingEnvironmentTypes.Tag:
-                        changed = section.TagIds.Remove(id);
-                        break;
-                    case SchedulingEnvironmentTypes.Resource:
-                        changed = section.ResourceIds.Remove(id);
-                        break;
-                    case SchedulingEnvironmentTypes.SectionType:
-                        if (section.SectionTypeId == id) { section.SectionTypeId = null; changed = true; }
-                        break;
-                    case SchedulingEnvironmentTypes.DeliveryType:
-                        if (section.DeliveryTypeId == id) { section.DeliveryTypeId = null; changed = true; }
-                        break;
-                    case SchedulingEnvironmentTypes.Reserve:
-                        var before = section.Reserves.Count;
-                        section.Reserves.RemoveAll(r => r.ReserveId == id);
-                        changed = section.Reserves.Count != before;
-                        break;
-                    case SchedulingEnvironmentTypes.MeetingType:
-                        foreach (var sched in section.Schedule.Where(s => s.MeetingTypeId == id))
-                        {
-                            sched.MeetingTypeId = null;
-                            changed = true;
-                        }
-                        break;
-                    case SchedulingEnvironmentTypes.RoomType:
-                        break;
-                }
-                if (changed) _sectionRepo.Update(section, tx);
+                if (SectionReferences.RemoveEnvironmentValue(section, _type, id)) _sectionRepo.Update(section, tx);
             }
 
             if (_type == SchedulingEnvironmentTypes.StaffType)
