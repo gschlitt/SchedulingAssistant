@@ -105,7 +105,7 @@ Why a field test at all: a drop is an ordinary local edit (same repository call 
 <details>
 <summary>Undo: costing (advice to Greg, 2026-11-16; backlogged)</summary>
 
-- **Decided (Greg, 2026-11-16): backlogged, not in this entry.** A one-step "Moved X to ... · Undo" notice after a drop (Claude's proposal: reads as part of the drag, not an app feature) was judged short of really useful; the useful form is multi-step undo across section changes, which belongs in its own entry. Line in `release_state/backlog.md`.
+- **Decided (Greg, 2026-11-16): backlogged, not in this entry.** A one-step "Moved X to ... · Undo" notice after a drop (Claude's proposal: reads as part of the drag, not an app feature) was judged short of really useful; the useful form is multi-step undo across section changes, which belongs in its own entry. Its own 1.2.5 entry since 2026-11-26: [undo/NOTES.md](../undo/NOTES.md).
 
 - Greg, trying the drag, saw that users will want an undo. The design says no undo (his earlier decision); where it goes is an open question in the ledger.
 - Cheap (about one build session): undo for grid edits only (drags and right-click edits), last 5, in memory, never saved (`MinimumVersionToWrite` stays No). Before each grid save keep the section before and after; undo writes "before" back through the same save path, with the open-card guard.

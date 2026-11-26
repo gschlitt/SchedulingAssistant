@@ -7,6 +7,35 @@
 ## Work
 
 <details>
+<summary><b>Undo and rollback for section changes</b> · Not started · **ACTIVE**</summary>
+
+**Goal:** an administrator can experiment with sections and get back: step back through recent section changes (drags, right-click edits, card Applies, creates, deletes, copies), or return in one go to an earlier point, such as before they started dragging. Works after a save, until the app closes. Done means the feature in the app, field-tested.
+
+**State:** Not started. Greg's answers (2026-11-26) are in the notes: undo and rollback, all section changes, undoable after a save until the app closes.
+
+<details>
+<summary>Steps (6 left)</summary>
+
+1. Probe the TEMP-trigger change log on the working copy's connection: it survives a save, never reaches the shared file, and is gone after a lost lock or a database switch.
+2. List every section write path (drag, right-click edits, card Apply, create, delete, copy) and what reloads after each.
+3. Write the design doc as Alice-and-Bob stories (undo, rollback points, what clears the history, refusals, the controls); check it against the four rules; answer `MinimumVersionToWrite`.
+4. Greg approves the design and all wording.
+5. Build (Opus briefs, Sonnet codes) with unit tests, including a re-inserted section keeping its meetings and extension data.
+6. Both compile checks, full suite and harness; Greg's hand check; field test alongside the drag's field test.
+
+</details>
+
+**Open questions:**
+- Rollback points: set automatically (database opened, before a run of drags), marked by the user, or both?
+- Where the controls go: toolbar buttons, a menu, Ctrl+Z outside text boxes?
+- Does the history span semesters (undo a change made in a semester not on screen)?
+- How many steps to keep?
+
+Notes: [undo/NOTES.md](undo/NOTES.md). Design: `designs/1.2.5/undo.md` (not written yet).
+
+</details>
+
+<details>
 <summary><b>Late lock acquire holds a lock nobody uses</b> · Not started</summary>
 
 **Goal:** a lock acquire that the app gave up on (5 s deadline) can never leave this computer holding a live lock it doesn't know about. Found by the 2026-11-14 hang/deadlock audit; backlog item N2.
@@ -59,13 +88,12 @@ Notes: [lost-notices/NOTES.md](lost-notices/NOTES.md). Source: backlog WN1, plus
 </details>
 
 <details>
-<summary><b>Access Analyzer and easy access watches</b> · In progress · **ACTIVE**</summary>
+<summary><b>Access Analyzer and easy access watches</b> · Waiting on Greg</summary>
 
 **Goal:** administrators see at a glance whether students can still take every course of a watched set (a full "slate" of one section per component), get notices when a change breaks it, and create watches easily. Done means the feature in the app, field-tested.
 
-**State:** On branch 1.2.5; pieces A–F committed. Greg's hand check of F is under way. With no full slate the marks
-now show the fewest sections to move, plus "Don't suggest moving this" (committed for a trial on UBC; Greg's verdict
-and the DRAFT wording pending). F leftovers committed except health-line styling (not hand-checked).
+**State:** Set aside 2026-11-26 for Undo; waits on Greg's fewest-moves trial verdict and the DRAFT wording (step 1).
+On branch 1.2.5, pieces A–F committed, F leftovers too except health-line styling. Greg's hand check of F is part-done.
 
 <details>
 <summary>Steps (5 left)</summary>
@@ -108,7 +136,7 @@ Notes: [access-analyzer/NOTES.md](access-analyzer/NOTES.md). Design: [designs/1.
 
 </details>
 
-**Open questions:** none. (Undo: backlogged by Greg, 2026-11-16.)
+**Open questions:** none. (Undo: its own entry since 2026-11-26.)
 
 Notes: [click-drag-meetings/NOTES.md](click-drag-meetings/NOTES.md). Design: [designs/1.2.5/click-drag-meetings.md](../../designs/1.2.5/click-drag-meetings.md).
 
