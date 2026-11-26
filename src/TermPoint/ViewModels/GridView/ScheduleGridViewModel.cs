@@ -40,6 +40,7 @@ public partial class ScheduleGridViewModel : ViewModelBase
     private readonly WriteLockService _lockService;
     private readonly SharedScheduleService _sharedScheduleService;
     private readonly ISectionCardState _cardState;
+    private readonly SectionHistory? _history;
     private readonly ILegalStartTimeRepository _legalStartTimeRepo;
 
     /// <summary>
@@ -220,8 +221,10 @@ public partial class ScheduleGridViewModel : ViewModelBase
         ILegalStartTimeRepository legalStartTimeRepo,
         SectionMarks marks,
         AccessState accessState,
-        AccessPicture? picture = null)
+        AccessPicture? picture = null,
+        SectionHistory? history = null)
     {
+        _history = history;
         Marks = marks;
         _accessState = accessState;
         _picture = picture;
@@ -251,7 +254,7 @@ public partial class ScheduleGridViewModel : ViewModelBase
 
         // After a context-menu save, refresh the shared section cache so all views
         // (including this one via SectionsChanged below) reload in one shot.
-        ContextMenu = new SectionContextMenuViewModel(sectionRepo, ReloadSectionStore, lockService, cardState, Marks, picture);
+        ContextMenu = new SectionContextMenuViewModel(sectionRepo, ReloadSectionStore, lockService, cardState, Marks, picture, history);
 
         // The "finish editing first" message a refused drag shows goes away when the card closes.
         _cardState.OpenCardChanged += OnOpenCardChanged;
@@ -453,8 +456,12 @@ public partial class ScheduleGridViewModel : ViewModelBase
             return false;
         }
 
+        // The label compares the stored meetings (equal to the drag's snapshot) with the dropped ones, before assigning.
+        var moves = MeetingMove.Between(section.Schedule, preview.Result.Schedule!);
+        var courseCode = section.CourseId is null ? null : _courseRepo.GetById(section.CourseId)?.CalendarCode;
+        var label = HistoryText.Move(HistoryText.Heading(courseCode, section.SectionCode), moves);
         section.Schedule = preview.Result.Schedule!;
-        _sectionRepo.Update(section);
+        _history.RecordOrRun(label, () => _sectionRepo.Update(section));
         ReloadSectionStore();
         SelectSection(section.Id);
         return true;

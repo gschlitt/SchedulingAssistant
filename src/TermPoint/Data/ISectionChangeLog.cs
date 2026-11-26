@@ -197,7 +197,8 @@ public interface ISectionChangeLog
     /// <summary>
     /// True when the row of <paramref name="table"/> with <paramref name="id"/> was deleted since the log was created and
     /// is still gone. Covers every table with an <c>id</c> and a <c>data</c> column, and is never trimmed during a session
-    /// (it goes with the connection).
+    /// (it goes with the connection). For <c>Sections</c> only deletes made under a <see cref="ChangeLogPause.NotAStep"/>
+    /// pause count (Empty Semester); a step's own delete is in the step's entries, and a barrier delete is not recorded.
     /// </summary>
     /// <param name="table">The table's name, e.g. "Rooms".</param>
     /// <param name="id">The row's id.</param>

@@ -19,6 +19,7 @@ public partial class RoomListViewModel : ViewModelBase, IDismissableEditor, IUna
     private readonly ICampusRepository _campusRepo;
     private readonly ISchedulingEnvironmentRepository _envRepo;
     private readonly ISectionRepository _sectionRepo;
+    private readonly SectionHistory? _history;
     private readonly SectionListViewModel _sectionListVm;
     private readonly IDatabaseContext _db;
     private readonly IDialogService _dialog;
@@ -58,6 +59,7 @@ public partial class RoomListViewModel : ViewModelBase, IDismissableEditor, IUna
     /// <param name="db">Database context for transaction support on delete.</param>
     /// <param name="dialog">Confirmation and error dialogs.</param>
     /// <param name="lockService">Write lock; gates edit operations in read-only mode.</param>
+    /// <param name="history">Undo history; the delete's section cleanup pauses it. Null (the tests) records nothing.</param>
     public RoomListViewModel(
         IRoomRepository repo,
         ICampusRepository campusRepo,
@@ -66,8 +68,10 @@ public partial class RoomListViewModel : ViewModelBase, IDismissableEditor, IUna
         SectionListViewModel sectionListVm,
         IDatabaseContext db,
         IDialogService dialog,
-        WriteLockService lockService)
+        WriteLockService lockService,
+        SectionHistory? history = null)
     {
+        _history = history;
         _repo = repo;
         _campusRepo = campusRepo;
         _envRepo = envRepo;
@@ -232,6 +236,9 @@ public partial class RoomListViewModel : ViewModelBase, IDismissableEditor, IUna
 
         // Desktop builds wrap this in a DB transaction for atomicity; the WASM demo
         // uses in-memory repositories with no real connection, so tx is null there.
+        // The section cleanup below is not an undo step and is never undone, but it is unsaved. The pause starts before
+        // the transaction and ends after it is disposed (this method's end), as SectionHistory requires.
+        using var pause = _history.PauseOrNothing();
         DbTransaction? tx = _db.BeginWriteTransaction();
         try
         {

@@ -11,20 +11,20 @@
 
 **Goal:** an administrator can experiment freely. Until they press Save they can step back through section changes (drags, right-click edits, card Applies, creates, deletes, copies) or throw them all away. The shared database changes only when they save; closing with unsaved changes asks Save / Don't save / Cancel. Done means the feature in the app, field-tested, with a "What's new" line for the changed behaviour.
 
-**State:** On branch 1.2.5: the change log and the history service are built and tested (full suite passes, 2026-11-26), committed unfinished. Nothing in the app uses them yet, so behaviour is unchanged. Next: step 1.
+**State:** On branch 1.2.5: the change log, the history service and its callers are built and tested (full suite passes, 2026-11-26). Every section edit is now recorded as a step, but nothing shows it yet, so behaviour is unchanged. Next: step 1 (the session changes).
 
 <details>
-<summary>Steps (4 left)</summary>
+<summary>Steps (3 left)</summary>
 
-1. Wire the history into the section edits (each one a step) and pause it for the clean-ups, imports, copies and semester deletes; a test that every section write path is one or the other.
-2. The close question at close, switch and restore, with Don't Save; remove autosave; crash recovery leaves changes unsaved; the unsaved time and the two-hour notice.
-3. The Undo and Redo buttons with the history list, the keys, the line beside Save; remove the Auto-save controls; the "What's new" line (Greg closes the main view's layout files in VS first).
-4. Both compile checks, full suite and harness; Greg's hand check; field test alongside the drag's field test.
+1. The close question at close, switch and restore, with Don't Save; remove autosave; crash recovery leaves changes unsaved; the unsaved time and the two-hour notice.
+2. The Undo and Redo buttons with the history list, the keys, the line beside Save; remove the Auto-save controls; the "What's new" line (Greg closes the main view's layout files in VS first).
+3. Both compile checks, full suite and harness; Greg's hand check; field test alongside the drag's field test.
 
 </details>
 
 **Open questions:**
-- Five small new wordings the build needed (listed in the notes): approve or change. Not blocking step 1.
+- Six small new wordings the build needed (listed in the notes): approve or change. Not blocking step 1.
+- Room delete and room edit can close an open section card (found in passing, notes): fix here, or a backlog line?
 
 Notes: [undo/NOTES.md](undo/NOTES.md). Design: [designs/1.2.5/undo.md](../../designs/1.2.5/undo.md).
 

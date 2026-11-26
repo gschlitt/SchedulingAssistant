@@ -45,7 +45,7 @@ public sealed class SectionHistory : IDisposable
     private readonly SectionStore _store;
     private readonly ISectionRepository _sectionRepo;
     private readonly SemesterContext _semesters;
-    private readonly ISectionCardState _cardState;
+    private readonly Func<ISectionCardState> _cardState;
     private readonly ISaveSignals? _signals;
     private readonly IAppLogger _logger;
 
@@ -68,12 +68,15 @@ public sealed class SectionHistory : IDisposable
     /// <param name="store">The section store reloaded after an undo.</param>
     /// <param name="sectionRepo">Reads the selected semesters' sections for that reload.</param>
     /// <param name="semesters">Says which semesters are shown (the reload, and the "not shown" note).</param>
-    /// <param name="cardState">The Section List's card state: an open card refuses an undo.</param>
+    /// <param name="cardState">
+    /// Returns the Section List's card state: an open card refuses an undo. A delegate, read only when an undo runs, so
+    /// the Section List (which itself records through this history) can be created after it without a dependency cycle.
+    /// </param>
     /// <param name="signals">The checkout service's save signals; null for the demo.</param>
     /// <param name="logger">Where warnings and errors go.</param>
     internal SectionHistory(
         IDatabaseContext db, SectionStore store, ISectionRepository sectionRepo, SemesterContext semesters,
-        ISectionCardState cardState, ISaveSignals? signals, IAppLogger logger)
+        Func<ISectionCardState> cardState, ISaveSignals? signals, IAppLogger logger)
     {
         _db = db;
         _log = db.ChangeLog;
@@ -97,6 +100,23 @@ public sealed class SectionHistory : IDisposable
         ReportInstallError();
         if (_dirty && IsAvailable) _log!.MarkHistoryIncomplete();
         Reevaluate();
+    }
+
+    /// <summary>
+    /// Convenience overload for a card state that already exists (tests); forwards to the delegate constructor.
+    /// </summary>
+    /// <param name="db">The database context.</param>
+    /// <param name="store">The section store reloaded after an undo.</param>
+    /// <param name="sectionRepo">Reads the selected semesters' sections for that reload.</param>
+    /// <param name="semesters">Says which semesters are shown.</param>
+    /// <param name="cardState">The Section List's card state.</param>
+    /// <param name="signals">The checkout service's save signals; null for the demo.</param>
+    /// <param name="logger">Where warnings and errors go.</param>
+    internal SectionHistory(
+        IDatabaseContext db, SectionStore store, ISectionRepository sectionRepo, SemesterContext semesters,
+        ISectionCardState cardState, ISaveSignals? signals, IAppLogger logger)
+        : this(db, store, sectionRepo, semesters, () => cardState, signals, logger)
+    {
     }
 
     /// <summary>Unsubscribes from the save signals and the log.</summary>
@@ -280,7 +300,7 @@ public sealed class SectionHistory : IDisposable
     private HistoryResult Run(IReadOnlyList<UndoStepInfo> steps, bool undo)
     {
         if (!IsAvailable) return Nothing(undo ? HistoryText.NothingToUndo : HistoryText.NothingToRedo);
-        if (OpenCardMessages.WhyRefused(_cardState) is { } refusal) return Nothing(refusal);
+        if (OpenCardMessages.WhyRefused(_cardState()) is { } refusal) return Nothing(refusal);
 
         var sentences = new List<string>();
         string? last = null, select = null, notShown = null;
@@ -392,7 +412,7 @@ public sealed class SectionHistory : IDisposable
 
     /// <summary>
     /// Decides the row to write for a step's target: null deletes (or keeps deleted) a section whose course or semester
-    /// was deleted this session (with a sentence); a row that refers to things deleted this session is rewritten without
+    /// was deleted this session, or that was removed by Empty Semester (each with a sentence); a row that refers to things deleted this session is rewritten without
     /// them (with a sentence naming them); any other row is written exactly as logged.
     /// </summary>
     /// <param name="target">The logged row to go back to; null means the section should not exist.</param>
@@ -415,6 +435,11 @@ public sealed class SectionHistory : IDisposable
             sentences.Add(HistoryText.SectionNotPutBack(HistoryText.Heading(target), "semester", name));
             return null;
         }
+        if (log.WasDeleted("Sections", target.Id))
+        {
+            sentences.Add(HistoryText.SectionNotPutBackEmptied(HistoryText.Heading(target), target.SemesterName ?? ""));
+            return null;
+        }
 
         var section = JsonHelpers.Deserialize<Section>(target.Data);
         var removed = SectionReferences.RemoveDeleted(section, log.WasDeleted);
@@ -431,7 +456,7 @@ public sealed class SectionHistory : IDisposable
     /// Whether a section's current row is what the step says it should be. True when both are absent; when they are equal
     /// (ignoring the readable columns); when the current row equals the expected one after the deletes' own cleanup
     /// (<see cref="SectionReferences.RemoveDeleted"/> applied to the expected row); or when the section is gone because
-    /// its course or semester was deleted this session.
+    /// its course or semester was deleted this session, or it was removed by a paused delete (Empty Semester).
     /// </summary>
     /// <param name="current">The row in the database now; null when absent.</param>
     /// <param name="expected">The row the step left (undo) or started from (redo); null when it should be absent.</param>
@@ -441,7 +466,8 @@ public sealed class SectionHistory : IDisposable
         if (current is null && expected is null) return true;
         if (expected is null) return false;
         if (current is null)
-            return (expected.CourseId is { } c && _log!.WasDeleted("Courses", c)) || _log!.WasDeleted("Semesters", expected.SemesterId);
+            return (expected.CourseId is { } c && _log!.WasDeleted("Courses", c)) || _log!.WasDeleted("Semesters", expected.SemesterId)
+                || _log!.WasDeleted("Sections", expected.Id);
         if (SameRow(current, expected)) return true;
 
         var section = JsonHelpers.Deserialize<Section>(expected.Data);

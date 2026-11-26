@@ -41,6 +41,7 @@ public sealed class SectionImportWriter
     private readonly ICourseRepository _courses;
     private readonly IInstructorRepository _instructors;
     private readonly ISectionRepository _sections;
+    private readonly SectionHistory? _history;
 
     /// <summary>Creates a writer over the open database and its repositories.</summary>
     /// <param name="db">The open database; supplies the transaction and the write guard.</param>
@@ -51,6 +52,7 @@ public sealed class SectionImportWriter
     /// <param name="courses">Inserts courses.</param>
     /// <param name="instructors">Inserts instructors.</param>
     /// <param name="sections">Inserts sections.</param>
+    /// <param name="history">Undo history; the import's section inserts pause it (an import is never undone). Null records nothing.</param>
     public SectionImportWriter(
         IDatabaseContext db,
         ISubjectRepository subjects,
@@ -59,8 +61,10 @@ public sealed class SectionImportWriter
         IRoomRepository rooms,
         ICourseRepository courses,
         IInstructorRepository instructors,
-        ISectionRepository sections)
+        ISectionRepository sections,
+        SectionHistory? history = null)
     {
+        _history = history;
         _db = db;
         _subjects = subjects;
         _campuses = campuses;
@@ -99,6 +103,9 @@ public sealed class SectionImportWriter
 
         // Nullable-tx pattern, as SemesterContentsService.RunInTransaction: a context without transactions
         // (the WASM demo) runs the same inserts with a null transaction.
+        // The inserted sections are not an undo step and are never undone, but they are unsaved. The pause is declared
+        // before the transaction, so it ends after the transaction is disposed, as SectionHistory requires.
+        using var pause = _history.PauseOrNothing();
         using var tx = _db.BeginWriteTransaction();
         try
         {

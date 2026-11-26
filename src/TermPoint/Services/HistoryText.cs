@@ -12,7 +12,27 @@ namespace TermPoint.Services;
 /// <param name="FromStart">Start before, in minutes after midnight.</param>
 /// <param name="ToDay">Day after.</param>
 /// <param name="ToStart">Start after, in minutes after midnight.</param>
-public sealed record MeetingMove(int FromDay, int FromStart, int ToDay, int ToStart);
+public sealed record MeetingMove(int FromDay, int FromStart, int ToDay, int ToStart)
+{
+    /// <summary>
+    /// The meetings a drag moved: compares two index-aligned lists (<c>MeetingMover.Move</c> returns the meetings in the
+    /// same order) and gives one move per meeting whose day or start changed.
+    /// </summary>
+    /// <param name="before">The meetings before the drag.</param>
+    /// <param name="after">The meetings after it, same order.</param>
+    /// <returns>The moves, ordered by (FromDay, FromStart); empty when nothing moved.</returns>
+    public static IReadOnlyList<MeetingMove> Between(IReadOnlyList<SectionDaySchedule> before, IReadOnlyList<SectionDaySchedule> after)
+    {
+        var moves = new List<MeetingMove>();
+        for (var i = 0; i < Math.Min(before.Count, after.Count); i++)
+        {
+            var (b, a) = (before[i], after[i]);
+            if (b.Day != a.Day || b.StartMinutes != a.StartMinutes)
+                moves.Add(new MeetingMove(b.Day, b.StartMinutes, a.Day, a.StartMinutes));
+        }
+        return moves.OrderBy(m => m.FromDay).ThenBy(m => m.FromStart).ToList();
+    }
+}
 
 /// <summary>
 /// Every user-facing string of the undo feature, in one place (<c>designs/1.2.5/undo.md</c>, "Wording"). The step
@@ -184,6 +204,15 @@ public static class HistoryText
     /// <param name="name">The course's calendar code or the semester's name.</param>
     public static string SectionNotPutBack(string sectionHeading, string kind, string name)
         => $"{sectionHeading} wasn't put back: the {kind} {name} has been deleted.";
+
+    /// <summary>
+    /// "HIST 101 A wasn't put back: the semester Winter 2026 has been emptied." The section was removed by Empty Semester.
+    /// new wording, not yet approved.
+    /// </summary>
+    /// <param name="sectionHeading">The section's heading.</param>
+    /// <param name="semesterName">The emptied semester's name.</param>
+    public static string SectionNotPutBackEmptied(string sectionHeading, string semesterName)
+        => $"{sectionHeading} wasn't put back: the semester {semesterName} has been emptied.";
 
     /// <summary>
     /// The name of a deleted thing, read from its logged <c>data</c> JSON, shown the way the app shows it: a room as

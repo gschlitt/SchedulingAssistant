@@ -21,7 +21,8 @@ namespace TermPoint.Data;
 /// and history-incomplete flags), <c>undo_steps</c>, <c>undo_entries</c> (every <c>Sections</c> column, old and new) and
 /// the triggers. Section triggers read the state in their WHEN clauses: no pause and a current step records an entry;
 /// no pause and no step is the barrier (empties both lists, sets history-incomplete); pause NotAStep sets
-/// other-changes; pause WritingHistory does nothing. For every other table in <c>sqlite_master</c>, generated when the
+/// other-changes (and, for a delete, keeps the section's data in <c>undo_deleted</c> so undo can tell it was removed
+/// since); pause WritingHistory does nothing. For every other table in <c>sqlite_master</c>, generated when the
 /// log is created, a trigger on insert, update and delete only sets other-changes, whatever the pause.</para>
 ///
 /// <para>Not thread-safe by itself: like every repository write it is meant for the UI thread that owns the connection.</para>
@@ -181,8 +182,13 @@ internal sealed class SqliteSectionChangeLog : ISectionChangeLog
                           $"WHEN {NoPause} AND NOT {HasStep} BEGIN " +
                           "DELETE FROM temp.undo_entries; DELETE FROM temp.undo_steps; " +
                           "UPDATE temp.undo_state SET history_incomplete = 1 WHERE history_incomplete = 0; END;");
+            // A paused delete (Empty Semester) also keeps the section's data in undo_deleted, so a step that touched the
+            // section can tell "removed since" from "changed another way". A step's own delete is in its entries instead.
+            var keepDeleted = ev == "DELETE"
+                ? "INSERT OR REPLACE INTO temp.undo_deleted(tbl, id, data) VALUES ('Sections', OLD.id, OLD.data); "
+                : "";
             sb.AppendLine($"CREATE TEMP TRIGGER undo_sections_{ev.ToLowerInvariant()}_other AFTER {ev} ON main.Sections " +
-                          "WHEN (SELECT pause FROM temp.undo_state) = 1 BEGIN " +
+                          "WHEN (SELECT pause FROM temp.undo_state) = 1 BEGIN " + keepDeleted +
                           "UPDATE temp.undo_state SET other_changes = 1 WHERE other_changes = 0; END;");
         }
         return sb.ToString();
@@ -218,6 +224,7 @@ internal sealed class SqliteSectionChangeLog : ISectionChangeLog
             while (r.Read()) columns.Add(r.GetString(0));
             if (columns.Contains("id") && columns.Contains("data")) deletedTables.Add(table);
         }
+        deletedTables.Add("Sections");   // its paused deletes are kept by the Sections triggers (BuildSectionTriggersSql)
         _deletedTables = deletedTables;
 
         const string SetFlag = "UPDATE temp.undo_state SET other_changes = 1 WHERE other_changes = 0;";

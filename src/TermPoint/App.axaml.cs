@@ -451,6 +451,8 @@ public partial class App : Application
         // marker is already gone — opening a window during which a write could fail
         // to re-arm the marker, leading to silent data loss on crash.
         App.Checkout.BeforeDirtyMarkerDeleted += dbCtx.ResetDirty;
+        // Created before any write, so it hears the first BecameDirty and reads the dirty marker at the session's start.
+        Services.GetRequiredService<SectionHistory>();
 
         // Fall back to persisted AppSettings values when no in-memory IDs were passed.
         var startupSettings = AppSettings.Current;
@@ -512,7 +514,7 @@ public partial class App : Application
         services.AddSingleton(sp => new SectionHistory(
             sp.GetRequiredService<IDatabaseContext>(), sp.GetRequiredService<SectionStore>(),
             sp.GetRequiredService<ISectionRepository>(), sp.GetRequiredService<SemesterContext>(),
-            sp.GetRequiredService<ISectionCardState>(), App.Checkout, App.Logger));
+            () => sp.GetRequiredService<ISectionCardState>(), App.Checkout, App.Logger));
         services.AddSingleton<IAcademicYearRepository, AcademicYearRepository>();
         services.AddSingleton<ISemesterRepository, SemesterRepository>();
         services.AddSingleton<IInstructorRepository, InstructorRepository>();
@@ -651,7 +653,7 @@ public partial class App : Application
         services.AddSingleton(sp => new SectionHistory(
             sp.GetRequiredService<IDatabaseContext>(), sp.GetRequiredService<SectionStore>(),
             sp.GetRequiredService<ISectionRepository>(), sp.GetRequiredService<SemesterContext>(),
-            sp.GetRequiredService<ISectionCardState>(), null, App.Logger));
+            () => sp.GetRequiredService<ISectionCardState>(), null, App.Logger));
         services.AddSingleton<IAcademicYearRepository,        DemoAcademicYearRepository>();
         services.AddSingleton<ISemesterRepository,            DemoSemesterRepository>();
         services.AddSingleton<IInstructorRepository,          DemoInstructorRepository>();
@@ -823,7 +825,9 @@ public partial class App : Application
             // GridContentChanged, before the grid's reload handlers run (same reason as FocusService above).
             sp.GetRequiredService<AccessState>(),
             // The open access watch: the grid shows its sections and redraws when it changes.
-            sp.GetRequiredService<AccessPicture>()));
+            sp.GetRequiredService<AccessPicture>(),
+            // Wraps the drag-move and the right-click menu's saves as undo steps.
+            sp.GetRequiredService<SectionHistory>()));
         services.AddSingleton<WorkloadPanelViewModel>(sp => new WorkloadPanelViewModel(
             sp.GetRequiredService<IInstructorRepository>(),
             sp.GetRequiredService<ISectionRepository>(),

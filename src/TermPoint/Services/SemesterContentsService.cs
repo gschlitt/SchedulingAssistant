@@ -46,6 +46,11 @@ namespace TermPoint.Services;
 /// <param name="academicYearRepo">Academic years, used for names and for deleting the year row.</param>
 /// <param name="legalStartTimeRepo">Legal start times (academic-year-scoped).</param>
 /// <param name="semesterContext">Knows which semesters are currently loaded.</param>
+/// <param name="history">
+/// The undo history; <see cref="EmptySemester"/> pauses it, because its section delete is not an undo step. Null (the
+/// tests) records nothing. <see cref="DeleteSemester"/> and <see cref="DeleteAcademicYear"/> write no sections (both
+/// require empty semesters), so they need no pause.
+/// </param>
 public sealed class SemesterContentsService(
     IDatabaseContext db,
     ISectionRepository sectionRepo,
@@ -56,7 +61,8 @@ public sealed class SemesterContentsService(
     ISemesterRepository semesterRepo,
     IAcademicYearRepository academicYearRepo,
     ILegalStartTimeRepository legalStartTimeRepo,
-    SemesterContext semesterContext)
+    SemesterContext semesterContext,
+    SectionHistory? history = null)
 {
     // ── Counting ──────────────────────────────────────────────────────────────
 
@@ -166,6 +172,8 @@ public sealed class SemesterContentsService(
     /// Deletes everything attached to the semester — sections, meetings, releases, instructor
     /// commitments, scheduling notes — in ONE transaction: either all five are
     /// emptied or (on any failure) none are. The semester row itself is kept.
+    /// <para>The section delete runs under an undo-history pause (it is never undone, but it is unsaved, and the removed
+    /// sections are remembered so an undo of an earlier edit of one of them says it was emptied).</para>
     /// </summary>
     /// <param name="semesterId">The semester to empty.</param>
     /// <exception cref="InvalidOperationException">
@@ -179,6 +187,8 @@ public sealed class SemesterContentsService(
         if (IsLoaded(semesterId))
             throw new InvalidOperationException(LoadedSemesterMessage(SemesterName(semesterId), "emptying"));
 
+        // The pause begins before the transaction and ends after it is disposed, as SectionHistory requires.
+        using var pause = history.PauseOrNothing();
         RunInTransaction(tx =>
         {
             sectionRepo.DeleteBySemesterId(semesterId, tx);

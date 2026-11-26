@@ -32,34 +32,35 @@ public partial class SchedulingEnvironmentViewModel : ViewModelBase, IDismissabl
         WriteLockService lockService,
         AccessWatchToggler watchToggler,
         GridChangeNotifier changeNotifier,
-        AccessSetupService setupService)
+        AccessSetupService setupService,
+        SectionHistory? history = null)
     {
         // Pass lockService to every child VM so their button panels are gated consistently.
         Categories = new ObservableCollection<ViewModelBase>
         {
-            new SchedulingEnvironmentListViewModel(SchedulingEnvironmentTypes.SectionType, "Section Type",  repo, sectionRepo, courseRepo, instructorRepo, db, sectionListVm, dialog, lockService,
+            new SchedulingEnvironmentListViewModel(SchedulingEnvironmentTypes.SectionType, "Section Type",  repo, sectionRepo, courseRepo, instructorRepo, db, sectionListVm, dialog, lockService, history: history,
                 // approved wording
                 description: AccessText.SectionTypeDescription,
                 changeNotifier: changeNotifier, setupService: setupService),
-            new SchedulingEnvironmentListViewModel(SchedulingEnvironmentTypes.DeliveryType, "Delivery Type", repo, sectionRepo, courseRepo, instructorRepo, db, sectionListVm, dialog, lockService,
+            new SchedulingEnvironmentListViewModel(SchedulingEnvironmentTypes.DeliveryType, "Delivery Type", repo, sectionRepo, courseRepo, instructorRepo, db, sectionListVm, dialog, lockService, history: history,
                 // approved wording
                 description: "How a section is taught: e.g. F2F, Blended, Online live, Online self-paced. A section has at most one. Shown on section cards and used for filtering in the schedule grid."),
-            new SchedulingEnvironmentListViewModel(SchedulingEnvironmentTypes.MeetingType, "Meeting Type",  repo, sectionRepo, courseRepo, instructorRepo, db, sectionListVm, dialog, lockService,
+            new SchedulingEnvironmentListViewModel(SchedulingEnvironmentTypes.MeetingType, "Meeting Type",  repo, sectionRepo, courseRepo, instructorRepo, db, sectionListVm, dialog, lockService, history: history,
                 // approved wording
                 description: "How one meeting is held: e.g. In-Person, Remote. Set for each meeting of a section, so a section can meet in person on Tuesday and online on Thursday. For the section as a whole, use Delivery Types."),
-            new SchedulingEnvironmentListViewModel(SchedulingEnvironmentTypes.StaffType,   "Staff Type",    repo, sectionRepo, courseRepo, instructorRepo, db, sectionListVm, dialog, lockService,
+            new SchedulingEnvironmentListViewModel(SchedulingEnvironmentTypes.StaffType,   "Staff Type",    repo, sectionRepo, courseRepo, instructorRepo, db, sectionListVm, dialog, lockService, history: history,
                 description: "Categorize instructors by employment type or role — e.g. Full-Time, Part-Time, Adjunct, Lab Instructor"),
-            new SchedulingEnvironmentListViewModel(SchedulingEnvironmentTypes.Tag,         "Tags",          repo, sectionRepo, courseRepo, instructorRepo, db, sectionListVm, dialog, lockService,
+            new SchedulingEnvironmentListViewModel(SchedulingEnvironmentTypes.Tag,         "Tags",          repo, sectionRepo, courseRepo, instructorRepo, db, sectionListVm, dialog, lockService, history: history,
                 description: "Freeform labels that can be attached to sections and courses for custom grouping and filtering e.g. 'Cohort1' or 'PSYMAJOR'",
                 watchToggler: watchToggler, changeNotifier: changeNotifier, setupService: setupService),
-            new SchedulingEnvironmentListViewModel(SchedulingEnvironmentTypes.Resource,    "Resources",     repo, sectionRepo, courseRepo, instructorRepo, db, sectionListVm, dialog, lockService,
+            new SchedulingEnvironmentListViewModel(SchedulingEnvironmentTypes.Resource,    "Resources",     repo, sectionRepo, courseRepo, instructorRepo, db, sectionListVm, dialog, lockService, history: history,
                 description: "Special facilities or equipment a section requires — e.g. Recording Studio, Smart Board."),
-            new SchedulingEnvironmentListViewModel(SchedulingEnvironmentTypes.Reserve,     "Reserve Codes", repo, sectionRepo, courseRepo, instructorRepo, db, sectionListVm, dialog, lockService,
+            new SchedulingEnvironmentListViewModel(SchedulingEnvironmentTypes.Reserve,     "Reserve Codes", repo, sectionRepo, courseRepo, instructorRepo, db, sectionListVm, dialog, lockService, history: history,
                 description: "Enrollment codes for reserved registration access to specific student groups."),
-            new SchedulingEnvironmentListViewModel(SchedulingEnvironmentTypes.RoomType,   "Room Types",    repo, sectionRepo, courseRepo, instructorRepo, db, sectionListVm, dialog, lockService,
+            new SchedulingEnvironmentListViewModel(SchedulingEnvironmentTypes.RoomType,   "Room Types",    repo, sectionRepo, courseRepo, instructorRepo, db, sectionListVm, dialog, lockService, history: history,
                 description: "Classify rooms by purpose — e.g. Lecture Hall, Lab, Seminar Room.",
                 roomRepo: roomRepo),
-            new RoomListViewModel(roomRepo, campusRepo, repo, sectionRepo, sectionListVm, db, dialog, lockService),
+            new RoomListViewModel(roomRepo, campusRepo, repo, sectionRepo, sectionListVm, db, dialog, lockService, history),
             new CampusListViewModel(campusRepo, dialog, lockService),
         };
         SelectedCategory = Categories[0];

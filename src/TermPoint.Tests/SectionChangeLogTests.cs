@@ -640,6 +640,43 @@ public sealed class SectionChangeLogTests : IDisposable
         Assert.False(log.WasDeleted("Rooms", room.Id));
     }
 
+    /// <summary>
+    /// A section deleted under a NotAStep pause (Empty Semester) is remembered as deleted, with its data. A step's own
+    /// delete is not (it is in the step's entries), a barrier delete (no step, no pause) is not, and a row put back under
+    /// the same id is not deleted any more.
+    /// </summary>
+    [Fact]
+    public void DeletedSections_AreTrackedOnlyForAPausedDelete()
+    {
+        using var ctx = new DatabaseContext(Path.Combine(_dir, "wc.db"));
+        var repo = new SectionRepository(ctx);
+        var log = ctx.ChangeLog!;
+        var paused = NewSection("P"); repo.Insert(paused);
+        var inStep = NewSection("S"); repo.Insert(inStep);
+        var barrier = NewSection("B"); repo.Insert(barrier);
+        log.ClearHistory();
+
+        log.BeginPause(ChangeLogPause.NotAStep);
+        repo.Delete(paused.Id);
+        log.EndPause();
+        var step = log.BeginStep("Delete S", DateTime.Now);
+        repo.Delete(inStep.Id);
+        log.EndStep(step, 1);
+        Assert.Single(log.GetEntries(step));   // the step's own delete is in its entries
+        repo.Delete(barrier.Id);   // no step, no pause: the barrier (it also empties the history)
+
+        Assert.True(log.WasDeleted("Sections", paused.Id));
+        Assert.False(string.IsNullOrWhiteSpace(log.DeletedData("Sections", paused.Id)));
+        Assert.False(log.WasDeleted("Sections", inStep.Id));
+        Assert.False(log.WasDeleted("Sections", barrier.Id));
+        Assert.True(log.HistoryIncomplete);
+
+        log.BeginPause(ChangeLogPause.NotAStep);
+        repo.Insert(paused);
+        log.EndPause();
+        Assert.False(log.WasDeleted("Sections", paused.Id));
+    }
+
     /// <summary>ClearHistory empties both lists and sets HistoryIncomplete, and is refused without a log.</summary>
     [Fact]
     public void ClearHistory_EmptiesAndFlags()

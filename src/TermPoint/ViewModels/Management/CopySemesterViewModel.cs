@@ -18,6 +18,7 @@ public partial class CopySemesterViewModel : ViewModelBase, IDisposable
     private readonly IAcademicYearRepository _ayRepo;
     private readonly ISemesterRepository _semRepo;
     private readonly ISectionRepository _sectionRepo;
+    private readonly SectionHistory? _history;
     private readonly IDatabaseContext _db;
     private readonly WriteLockService _lockService;
 
@@ -159,8 +160,10 @@ public partial class CopySemesterViewModel : ViewModelBase, IDisposable
         ISectionRepository sectionRepo,
         IDatabaseContext db,
         WriteLockService lockService,
-        AccessSetupService? setupService = null)
+        AccessSetupService? setupService = null,
+        SectionHistory? history = null)
     {
+        _history = history;
         _setup = setupService;
         _ayRepo = ayRepo;
         _semRepo = semRepo;
@@ -275,6 +278,9 @@ public partial class CopySemesterViewModel : ViewModelBase, IDisposable
 
         // Use the nullable-tx pattern so WASM demo contexts (SupportsTransactions = false)
         // can complete without throwing NotSupportedException on Connection access.
+        // The copied sections are not an undo step and are never undone, but they are unsaved. The pause is declared
+        // before the transaction, so it ends after the transaction is disposed, as SectionHistory requires.
+        using var pause = _history.PauseOrNothing();
         using var tx = _db.BeginWriteTransaction();
         try
         {

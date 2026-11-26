@@ -15,6 +15,7 @@ public partial class SchedulingEnvironmentListViewModel : ViewModelBase, IDismis
 {
     private readonly ISchedulingEnvironmentRepository _repo;
     private readonly ISectionRepository _sectionRepo;
+    private readonly SectionHistory? _history;
     private readonly ICourseRepository _courseRepo;
     private readonly IInstructorRepository _instructorRepo;
     private readonly IRoomRepository? _roomRepo;
@@ -120,8 +121,10 @@ public partial class SchedulingEnvironmentListViewModel : ViewModelBase, IDismis
         IRoomRepository? roomRepo = null,
         AccessWatchToggler? watchToggler = null,
         GridChangeNotifier? changeNotifier = null,
-        AccessSetupService? setupService = null)
+        AccessSetupService? setupService = null,
+        SectionHistory? history = null)
     {
+        _history = history;
         _setupService = setupService;
         if (_setupService is not null) _setupService.CanSaveChanged += OnLockStateChanged;
         _watchToggler = watchToggler;
@@ -436,6 +439,9 @@ public partial class SchedulingEnvironmentListViewModel : ViewModelBase, IDismis
 
         // Desktop builds wrap this in a DB transaction for atomicity; the WASM demo
         // uses in-memory repositories with no real connection, so tx is null there.
+        // The section cleanup below is not an undo step and is never undone, but it is unsaved. The pause starts before
+        // the transaction and ends after it is disposed (this method's end), as SectionHistory requires.
+        using var pause = _history.PauseOrNothing();
         DbTransaction? tx = _db.BeginWriteTransaction();
         try
         {

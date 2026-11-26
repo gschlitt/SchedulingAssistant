@@ -93,6 +93,9 @@ public partial class CourseListViewModel : ViewModelBase, IDismissableEditor, IU
     /// <summary>Tells whether a section card is open, so "Apply tags to all sections" can be refused.</summary>
     private readonly ISectionCardState _cardState;
 
+    /// <summary>The undo history; "Apply tags to all sections" is one step. Null (the tests) records nothing.</summary>
+    private readonly SectionHistory? _history;
+
     public CourseListViewModel(
         ICourseRepository courseRepo,
         ISubjectRepository subjectRepo,
@@ -108,8 +111,10 @@ public partial class CourseListViewModel : ViewModelBase, IDismissableEditor, IU
         SubjectColorPresenter subjectColors,
         ISectionCardState cardState,
         AccessSetupService? setupService = null,
-        AccessState? accessState = null)
+        AccessState? accessState = null,
+        SectionHistory? history = null)
     {
+        _history = history;
         _setup = setupService;
         _accessState = accessState;
         _cardState = cardState;
@@ -383,16 +388,23 @@ public partial class CourseListViewModel : ViewModelBase, IDismissableEditor, IU
     /// <summary>
     /// Overwrites the tag list on every section of the given course (all semesters)
     /// with the specified tag IDs. Refreshes the shared section cache so the section
-    /// list and grid reflect the changes immediately. Returns the number of sections updated.
+    /// list and grid reflect the changes immediately. All the updates are ONE undo step. Not called inside a transaction.
     /// </summary>
-    private int ApplyTagsToAllSections(string courseId, List<string> tagIds)
+    /// <param name="courseId">The course whose sections are changed.</param>
+    /// <param name="courseCode">The course's calendar code, for the undo step's label.</param>
+    /// <param name="tagIds">The tag ids every section gets.</param>
+    /// <returns>The number of sections updated.</returns>
+    private int ApplyTagsToAllSections(string courseId, string courseCode, List<string> tagIds)
     {
         var sections = _sectionRepo.GetByCourseId(courseId);
-        foreach (var section in sections)
+        _history.RecordOrRun(HistoryText.ApplyTags(sections.Count, courseCode), () =>
         {
-            section.TagIds = new List<string>(tagIds);
-            _sectionRepo.Update(section);
-        }
+            foreach (var section in sections)
+            {
+                section.TagIds = new List<string>(tagIds);
+                _sectionRepo.Update(section);
+            }
+        });
 
         if (sections.Count > 0)
             _sectionStore.Reload(_sectionRepo, _sectionStore.SectionsBySemester.Keys);
@@ -460,7 +472,7 @@ public partial class CourseListViewModel : ViewModelBase, IDismissableEditor, IU
             onCancel: () => EditVm = null,
             codeExists: code => _courseRepo.ExistsByCalendarCode(code, excludeId: clone.Id),
             subjects: Subjects,
-            applyTagsToAll: tagIds => Task.FromResult(ApplyTagsToAllSections(clone.Id, tagIds)),
+            applyTagsToAll: tagIds => Task.FromResult(ApplyTagsToAllSections(clone.Id, clone.CalendarCode, tagIds)),
             // Lock subject + course number once sections exist — same rule that forbids deletion.
             identityLocked: _courseRepo.HasSections(SelectedCourse.Id),
             // Applying tags reloads the section list, which would discard an open section card.

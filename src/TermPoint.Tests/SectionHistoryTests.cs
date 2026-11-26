@@ -379,6 +379,52 @@ public sealed class SectionHistoryTests : IDisposable
         Assert.True(_history.CanRedo);
     }
 
+    /// <summary>
+    /// Alice edits HIST 101 A in Winter, then empties Winter (a paused delete). Undoing the edit does not cut the history:
+    /// nothing is written, the step moves to the redo list, and the message says the semester was emptied.
+    /// </summary>
+    [Fact]
+    public void AnEmptiedSemester_KeepsItsSectionDeleted_OnUndo()
+    {
+        var a = Seed(Make("A", semesterId: "sem2"));
+        _history.Record("Edit HIST 101 A", () => { a.Notes = "x"; _sections.Update(a); });
+        using (_history.PauseRecording()) _sections.DeleteBySemesterId("sem2");
+        var editsBefore = _signals.EditGeneration;   // no write reached the database (every write counts an edit)
+
+        var result = _history.Undo();
+
+        Assert.True(result.Done);
+        Assert.Contains("HIST 101 A wasn't put back: the semester Winter 2026 has been emptied.", result.Message);
+        Assert.DoesNotContain("changed another way", result.Message);
+        Assert.Null(_sections.GetById(a.Id));
+        Assert.Equal(editsBefore, _signals.EditGeneration);
+        Assert.True(_history.HistoryReachesLastSave);
+        Assert.False(_history.CanUndo);
+        Assert.True(_history.CanRedo);
+    }
+
+    /// <summary>The same for redo: the section was emptied away while the step sat on the redo list.</summary>
+    [Fact]
+    public void AnEmptiedSemester_KeepsItsSectionDeleted_OnRedo()
+    {
+        var a = Seed(Make("A", semesterId: "sem2"));
+        _history.Record("Edit HIST 101 A", () => { a.Notes = "x"; _sections.Update(a); });
+        Assert.True(_history.Undo().Done);
+        using (_history.PauseRecording()) _sections.DeleteBySemesterId("sem2");
+        var editsBefore = _signals.EditGeneration;   // no write reached the database (every write counts an edit)
+
+        var result = _history.Redo();
+
+        Assert.True(result.Done);
+        Assert.Contains("HIST 101 A wasn't put back: the semester Winter 2026 has been emptied.", result.Message);
+        Assert.DoesNotContain("changed another way", result.Message);
+        Assert.Null(_sections.GetById(a.Id));
+        Assert.Equal(editsBefore, _signals.EditGeneration);
+        Assert.True(_history.HistoryReachesLastSave);
+        Assert.True(_history.CanUndo);
+        Assert.False(_history.CanRedo);
+    }
+
     /// <summary>A section whose course was deleted since stays deleted.</summary>
     [Fact]
     public void ADeletedCourse_KeepsItsSectionDeleted()

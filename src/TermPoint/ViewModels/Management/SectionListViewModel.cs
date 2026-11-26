@@ -13,6 +13,7 @@ namespace TermPoint.ViewModels.Management;
 public partial class SectionListViewModel : ViewModelBase, IUnappliedChangesHost, ISectionCardState, IDisposable
 {
     private readonly ISectionRepository _sectionRepo;
+    private readonly SectionHistory? _history;
     private readonly ICourseRepository _courseRepo;
     private readonly ISubjectRepository _subjectRepo;
     private readonly IInstructorRepository _instructorRepo;
@@ -348,8 +349,10 @@ public partial class SectionListViewModel : ViewModelBase, IUnappliedChangesHost
         WriteLockService lockService,
         FocusService focus,
         SubjectColorPresenter subjectColors,
-        SectionMarks marks)
+        SectionMarks marks,
+        SectionHistory? history = null)
     {
+        _history = history;
         _focus = focus;
         _subjectColors = subjectColors;
         _marks = marks;
@@ -1297,10 +1300,12 @@ public partial class SectionListViewModel : ViewModelBase, IUnappliedChangesHost
     /// <param name="ctx">Editor context loaded by <see cref="BuildEditorContext"/>.</param>
     /// <param name="semesterId">Semester scoping section-code uniqueness enforcement.</param>
     /// <param name="callerTag">Short label used in error log entries (e.g. "Add", "Edit", "Copy").</param>
+    /// <param name="isCopy">True for Copy: the undo step is labelled "Copy ... as ...".</param>
+    /// <param name="copyOfHeading">The copied section's heading (Copy only); names the source in the undo step's label.</param>
     /// <returns>A <see cref="SectionEditViewModel"/> ready to be assigned to <see cref="EditVm"/>.</returns>
     private SectionEditViewModel CreateEditVm(
         Section section, bool isNew, EditorContext ctx,
-        string semesterId, string callerTag, bool isCopy = false)
+        string semesterId, string callerTag, bool isCopy = false, string? copyOfHeading = null)
     {
         // The Subject chooser follows the subject focus, but always keeps the section's current
         // subject (an edit or a copy), so an untouched section can never lose its course. The Course Number list
@@ -1328,7 +1333,12 @@ public partial class SectionListViewModel : ViewModelBase, IUnappliedChangesHost
             {
                 try
                 {
-                    if (isNew) _sectionRepo.Insert(s); else _sectionRepo.Update(s);
+                    var newHeading = HistoryText.Heading(
+                        ctx.AllCourses.FirstOrDefault(c => c.Id == s.CourseId)?.CalendarCode, s.SectionCode);
+                    var label = isCopy ? HistoryText.Copy(copyOfHeading ?? newHeading, newHeading)
+                        : isNew ? HistoryText.Add(newHeading)
+                        : HistoryText.Edit(newHeading);
+                    _history.RecordOrRun(label, () => { if (isNew) _sectionRepo.Insert(s); else _sectionRepo.Update(s); });
                     CollapseEditor();
 
                     var semIds = _semesterContext.SelectedSemesters.Select(sem => sem.Semester.Id);
@@ -1628,7 +1638,7 @@ public partial class SectionListViewModel : ViewModelBase, IUnappliedChangesHost
         int insertIndex = SectionItems.IndexOf(afterItem) + 1;
         SectionItems.Insert(insertIndex, placeholder);
 
-        var editVm = CreateEditVm(section, isNew: true, ctx, section.SemesterId, callerTag: "Copy", isCopy: true);
+        var editVm = CreateEditVm(section, isNew: true, ctx, section.SemesterId, callerTag: "Copy", isCopy: true, copyOfHeading: afterItem.Heading);
         editVm.RequestClose = () =>
         {
             SectionItems.Remove(placeholder);
@@ -1652,7 +1662,9 @@ public partial class SectionListViewModel : ViewModelBase, IUnappliedChangesHost
             CollapseEditor();
         try
         {
-            _sectionRepo.Delete(SelectedSection.Id);
+            var deletedId = SelectedSection.Id;
+            var label = HistoryText.Delete(SelectedSectionItem!.Heading);
+            _history.RecordOrRun(label, () => _sectionRepo.Delete(deletedId));
             var semIds = _semesterContext.SelectedSemesters.Select(s => s.Semester.Id);
             _sectionStore.Reload(_sectionRepo, semIds); // notifies Grid + Workload via SectionsChanged
             // Load() on this VM is also triggered by the SectionsChanged subscription

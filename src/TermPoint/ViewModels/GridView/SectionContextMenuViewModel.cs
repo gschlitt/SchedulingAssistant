@@ -17,6 +17,7 @@ public partial class SectionContextMenuViewModel : ObservableObject
     private readonly Action _onSaved;
     private readonly WriteLockService _lockService;
     private readonly ISectionCardState _cardState;
+    private readonly SectionHistory? _history;
     private readonly AccessPicture? _picture;
 
     /// <summary>CanExecute predicate for the Confirm command; refuses writes in reader mode.</summary>
@@ -131,9 +132,11 @@ public partial class SectionContextMenuViewModel : ObservableObject
     /// "Unpin" for a section the watch covers. Like marking, it is not gated by the write lock or an open card: pins
     /// are for looking and save nothing.
     /// </param>
+    /// <param name="history">The undo history; each Confirm is one step. Null (the tests) runs the save unrecorded.</param>
     public SectionContextMenuViewModel(ISectionRepository sectionRepo, Action onSaved, WriteLockService lockService,
-        ISectionCardState cardState, SectionMarks marks, AccessPicture? picture = null)
+        ISectionCardState cardState, SectionMarks marks, AccessPicture? picture = null, SectionHistory? history = null)
     {
+        _history = history;
         _picture = picture;
         _marks = marks;
         _cardState = cardState;
@@ -373,7 +376,17 @@ public partial class SectionContextMenuViewModel : ObservableObject
                 return;
         }
 
-        _sectionRepo.Update(_section);
+        // DetailHeading is the course code and section code the grid passed to Load (the label's heading).
+        var section = _section;
+        var heading = DetailHeading;
+        var label = ActiveSubPanel switch
+        {
+            TileSubPanel.Instructors => HistoryText.ChangeInstructors(heading),
+            TileSubPanel.Room => HistoryText.ChangeRoom(heading),
+            TileSubPanel.Tags => HistoryText.ChangeTags(heading),
+            _ => HistoryText.ChangeFlag(heading),
+        };
+        _history.RecordOrRun(label, () => _sectionRepo.Update(section));
         _onSaved();
         IsOpen = false;
     }
