@@ -1409,7 +1409,8 @@ public partial class ScheduleGridView : UserControl
                 // Meeting tiles get an attendee tooltip. Section tiles get one only when the Access conflict marks or an
                 // open watch have something to say about one of their entries (Markup: those lines alone, even a single
                 // one; a tile with nothing to say would show just its time, which the tile already shows).
-                var tileTooltip = ScheduleGridViewModel.BuildTileTooltip(tile, data.ConflictHoverLines, data.DayOfColumn(d));
+                var tileTooltip = ScheduleGridViewModel.BuildTileTooltip(tile, data.ConflictHoverLines, data.DayOfColumn(d),
+                    data.RepeatedAccessHovers);
                 if (tileTooltip.IsShownOnTile)
                     ToolTip.SetTip(border, BuildTileTooltipContent(tileTooltip));
 

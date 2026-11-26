@@ -801,7 +801,7 @@ public partial class ScheduleGridViewModel : ViewModelBase
         // the old rule of scanning only the visible sections. AccessState was built before this view model (a
         // constructor dependency), so it already knows the reload that brought us here is stale-marked.
         var visibleSectionIds = allBlocks.OfType<SectionMeetingBlock>().Select(b => b.SectionId).ToHashSet();
-        var accessMarks = BuildAccessMarks(visibleSectionIds);
+        var accessMarks = BuildAccessMarks(visibleSectionIds, allBlocks);
 
         _gridInputs = (semesters, allBlocks, accessMarks);
         UpdateDisplayProperties(semesters, allBlocks, accessMarks);
@@ -871,12 +871,18 @@ public partial class ScheduleGridViewModel : ViewModelBase
     /// the page.
     /// </summary>
     /// <param name="visibleSectionIds">The sections on the grid; a mark's partner outside it gets the hidden-partner hover line.</param>
+    /// <param name="blocks">The blocks being drawn, stamped with the open watch's looks when one is open.</param>
     /// <returns>The drawing records and hover lines; <see cref="GridAccessMarks.None"/> when there are none or on failure.</returns>
-    private GridAccessMarks BuildAccessMarks(IReadOnlySet<string> visibleSectionIds)
+    private GridAccessMarks BuildAccessMarks(IReadOnlySet<string> visibleSectionIds, List<GridBlock> blocks)
     {
         try
         {
-            return GridAccessMarks.Build(_accessState.Current, visibleSectionIds, _focus.Matches);
+            // The open watch's looks, so the marks can tell where a look's hover repeats a mark's line.
+            var looks = new Dictionary<string, AccessTileLook>();
+            foreach (var m in blocks.OfType<SectionMeetingBlock>())
+                if (m.Access is { } look) looks[m.SectionId] = look;
+            return GridAccessMarks.Build(_accessState.Current, visibleSectionIds, _focus.Matches,
+                _picture?.TagId, id => looks.GetValueOrDefault(id));
         }
         catch (Exception ex)
         {
@@ -1180,9 +1186,11 @@ public partial class ScheduleGridViewModel : ViewModelBase
     /// <param name="tile">The tile whose tooltip is being built.</param>
     /// <param name="conflictLines">The grid's conflict hover lines by (section id, day); null for none.</param>
     /// <param name="day">The tile's day number, to look the lines up.</param>
+    /// <param name="repeatedLooks">The (section id, day) lines whose open-watch hover repeats a conflict line, so it is left out; null for none.</param>
     /// <returns>A <see cref="TileTooltip"/> whose <c>Lines</c> are ready for display.</returns>
     internal static TileTooltip BuildTileTooltip(
-        GridTile tile, IReadOnlyDictionary<(string SectionId, int Day), IReadOnlyList<string>>? conflictLines = null, int day = 0)
+        GridTile tile, IReadOnlyDictionary<(string SectionId, int Day), IReadOnlyList<string>>? conflictLines = null, int day = 0,
+        IReadOnlySet<(string SectionId, int Day)>? repeatedLooks = null)
     {
         static string Fmt(int minutes) => $"{minutes / 60:D2}{minutes % 60:D2}";
         var lines = new List<string>();
@@ -1194,8 +1202,10 @@ public partial class ScheduleGridViewModel : ViewModelBase
                          .Distinct())
                 lines.Add(line);
 
-        // While an access watch is open: what it says about each section on the tile (after the conflict lines, as the mock does).
+        // While an access watch is open: what it says about each section on the tile (after the conflict lines, as the
+        // mock does), unless a conflict line already says it.
         foreach (var line in tile.Entries
+                     .Where(e => repeatedLooks is null || !repeatedLooks.Contains((e.SectionId, day)))
                      .Select(e => e.Access?.Hover)
                      .Where(h => !string.IsNullOrEmpty(h))
                      .Distinct())
@@ -1879,6 +1889,7 @@ public partial class ScheduleGridViewModel : ViewModelBase
         {
             ProgramConflicts = accessMarks?.Conflicts ?? [],
             ConflictHoverLines = accessMarks?.HoverLines ?? new Dictionary<(string SectionId, int Day), IReadOnlyList<string>>(),
+            RepeatedAccessHovers = accessMarks?.RepeatedLooks ?? new HashSet<(string SectionId, int Day)>(),
         };
 
         // ── Semester line and colored segment chips ────────────────────────────

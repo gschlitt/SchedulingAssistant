@@ -399,4 +399,11 @@ public record GridData(
     /// </summary>
     public IReadOnlyDictionary<(string SectionId, int Day), IReadOnlyList<string>> ConflictHoverLines { get; init; }
         = new Dictionary<(string SectionId, int Day), IReadOnlyList<string>>();
+
+    /// <summary>
+    /// The (section id, day number) lines whose open-watch hover repeats one of <see cref="ConflictHoverLines"/>, so the
+    /// tile's tooltip leaves it out (<c>GridAccessMarks.RepeatedLooks</c>). Empty when no watch is open.
+    /// </summary>
+    public IReadOnlySet<(string SectionId, int Day)> RepeatedAccessHovers { get; init; }
+        = new HashSet<(string SectionId, int Day)>();
 }

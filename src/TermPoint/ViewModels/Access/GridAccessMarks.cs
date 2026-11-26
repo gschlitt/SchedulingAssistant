@@ -12,7 +12,8 @@ namespace TermPoint.ViewModels.Access;
 public sealed class GridAccessMarks
 {
     /// <summary>No marks.</summary>
-    public static GridAccessMarks None { get; } = new([], new Dictionary<(string, int), IReadOnlyList<string>>());
+    public static GridAccessMarks None { get; } =
+        new([], new Dictionary<(string, int), IReadOnlyList<string>>(), new HashSet<(string, int)>());
 
     /// <summary>One drawing record per overlapping meeting pair of every mark of every watched tag.</summary>
     public IReadOnlyList<GridConflict> Conflicts { get; }
@@ -20,11 +21,20 @@ public sealed class GridAccessMarks
     /// <summary>The hover lines of a section's line on a day, keyed by (section id, day number); absent when there is none.</summary>
     public IReadOnlyDictionary<(string SectionId, int Day), IReadOnlyList<string>> HoverLines { get; }
 
+    /// <summary>
+    /// The (section id, day number) lines on which the open watch's own hover repeats what its conflict marks say
+    /// (<see cref="AccessTileLook.IsRepeatedBy"/>): the tile's hover leaves the look's line out there. Per day, since a
+    /// section's other days have no mark lines and keep the look's line.
+    /// </summary>
+    public IReadOnlySet<(string SectionId, int Day)> RepeatedLooks { get; }
+
     private GridAccessMarks(IReadOnlyList<GridConflict> conflicts,
-                            IReadOnlyDictionary<(string, int), IReadOnlyList<string>> hoverLines)
+                            IReadOnlyDictionary<(string, int), IReadOnlyList<string>> hoverLines,
+                            IReadOnlySet<(string, int)> repeatedLooks)
     {
         Conflicts = conflicts;
         HoverLines = hoverLines;
+        RepeatedLooks = repeatedLooks;
     }
 
     /// <summary>
@@ -34,12 +44,16 @@ public sealed class GridAccessMarks
     /// <param name="snapshot">The access results for the loaded semesters.</param>
     /// <param name="visibleSectionIds">The sections on the grid; a mark's partner outside it gets the hidden-partner hover line.</param>
     /// <param name="inSubjectFocus">Whether a section's subject is among the chosen subjects; null treats every section as in focus.</param>
+    /// <param name="openWatchId">The tag id of the watch open in the picture; null when none (or a course checked alone).</param>
+    /// <param name="lookOf">The open watch's look of a section, by id; null when none. Used with <paramref name="openWatchId"/> for <see cref="RepeatedLooks"/>.</param>
     /// <returns>The drawing records and hover lines; <see cref="None"/> when no watched tag has a mark.</returns>
     public static GridAccessMarks Build(AccessSnapshot snapshot, IReadOnlySet<string> visibleSectionIds,
-                                        Func<Section, bool>? inSubjectFocus = null)
+                                        Func<Section, bool>? inSubjectFocus = null,
+                                        string? openWatchId = null, Func<string, AccessTileLook?>? lookOf = null)
     {
         var conflicts = new List<GridConflict>();
         var hover = new Dictionary<(string, int), IReadOnlyList<string>>();
+        var repeated = new HashSet<(string, int)>();
 
         foreach (var semester in snapshot.Semesters.Values)
         {
@@ -70,9 +84,12 @@ public sealed class GridAccessMarks
                         : inSubjectFocus is not null && sections.TryGetValue(id, out var hidden) && !inSubjectFocus(hidden)
                             ? HiddenReason.Subjects : HiddenReason.Filters);
                 if (lines.Count > 0) hover[(sectionId, day)] = lines;
+                if (openWatchId is not null && lookOf?.Invoke(sectionId) is { } look
+                    && marks.Any(m => m.WatchId == openWatchId && look.IsRepeatedBy(m.Mark, sectionId)))
+                    repeated.Add((sectionId, day));
             }
         }
 
-        return conflicts.Count == 0 ? None : new GridAccessMarks(conflicts, hover);
+        return conflicts.Count == 0 ? None : new GridAccessMarks(conflicts, hover, repeated);
     }
 }

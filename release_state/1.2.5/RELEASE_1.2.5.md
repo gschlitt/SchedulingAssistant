@@ -63,20 +63,25 @@ Notes: [lost-notices/NOTES.md](lost-notices/NOTES.md). Source: backlog WN1, plus
 
 **Goal:** administrators see at a glance whether students can still take every course of a watched set (a full "slate" of one section per component), get notices when a change breaks it, and create watches easily. Done means the feature in the app, field-tested.
 
-**State:** On branch 1.2.5, design locked; pieces A–E committed (E hand-checked by Greg, 2026-11-25; full suite
-passes). Piece F built, not committed (2026-11-25): awaits Greg's hand check. B and D must ship together with E (Q46). The whole feature ships in 1.2.5 (Q45).
+**State:** On branch 1.2.5; pieces A–F committed, full suite passes. Greg's hand check of F is under way; its fixes so
+far are committed. Found in the hand check: with no full slate, the conflict marks flag clashes all over the grid
+when only one is to blame. Strategy and UI to be settled with Greg. B and D ship with E (Q46); all in 1.2.5 (Q45).
 
 <details>
-<summary>Steps (3 left)</summary>
+<summary>Steps (5 left)</summary>
 
-1. F: analyzer screens (detail, notices, picture, Check all courses).
-2. G: editor pointer and drag line.
-3. H: release (version stamp, WASM demo, help page or video for the "What's an access watch?" link, field test).
+1. Talk through with Greg the strategy and UI for conflict marks and the ▲ when there is no full slate (notes: "No full slate: what to mark").
+2. Build what that settles, then finish Greg's hand check of F.
+3. F leftovers: Escape closes the detail, a few labels still in the view, "Open in Courses" selecting the course, health-line styling.
+4. G: editor pointer and drag line.
+5. H: release (version stamp, WASM demo, help page or video for the "What's an access watch?" link, field test).
 
 </details>
 
 **Open questions:**
-- F's draft wording (in the notes): Check all courses' read-only comment, the general notice cause, the components causes.
+- No full slate: mark only the smallest fixes? What when no small fix is found (no marks, or mark every clash as today)? Cover the full-slate case too?
+- F's draft wording (in the notes): notice causes, Check all courses' read-only comment, the legend's hidden-sections line, the missing-component hover, three failure lines.
+- The uncommitted wizard example wording in the setup text: Greg's to keep? (left out of the commits)
 - Round 6d's day widths while a watch is open: build in F, or leave out?
 - The left-open Phase 2 items (Q18 extra component names, Q28).
 - The too-big-to-check line for a watch over 30 courses (Q53): wording to draft for Greg in F.

@@ -192,6 +192,28 @@ public sealed class AccessGridPictureTests : IDisposable
         Assert.Equal("A can't fit with the rest of **W**: no A section fits around the other courses.", looks["A A1"].Hover);
     }
 
+    /// <summary>
+    /// The CHBE-Y3 case (Greg, 2026-11-25): two courses whose only discussions clash. Only the discussions get the ▲;
+    /// the lectures fit fine and are drawn plainly.
+    /// </summary>
+    [Fact]
+    public void WithNoFullSlate_OnlyTheSectionsInTheClashGetTheTriangle()
+    {
+        var inputs = Simple([
+            Sec("C346", "101", type: Lecture, meetings: At([0, 2, 4], 10, 11)),
+            Sec("C346", "T1A", type: Discussion, meetings: At(0, 14, 16)),
+            Sec("C352", "101", type: Lecture, meetings: At([0, 1, 3], 12.5, 14)),
+            Sec("C352", "T1A", type: Discussion, meetings: At(0, 14, 16)),
+        ], Crs("C346", Lecture, Discussion), Crs("C352", Lecture, Discussion));
+        var looks = Looks(inputs, AnalyzeAll(inputs));
+
+        Assert.True(looks["C346 T1A"].CantFit);
+        Assert.True(looks["C352 T1A"].CantFit);
+        Assert.False(looks["C346 101"].CantFit);
+        Assert.False(looks["C352 101"].CantFit);
+        Assert.Equal(string.Empty, looks["C346 101"].Hover);
+    }
+
     [Fact]
     public void ACautionedSection_GetsTheDiamond()
     {
@@ -351,6 +373,46 @@ public sealed class AccessGridPictureTests : IDisposable
         // A single Access line is enough for the tile to show its tooltip (Greg, 2026-11-25: a faded section had none).
         Assert.True(tip.IsShownOnTile);
         Assert.False(new TileTooltip(["0830-1000"]).IsShownOnTile);
+    }
+
+    /// <summary>
+    /// With the open watch's conflicts marked, a line the watch's own hover would repeat shows the mark's line alone
+    /// (Greg, 2026-11-25); a day with no mark keeps the watch's line.
+    /// </summary>
+    [Fact]
+    public void TheTooltip_DoesNotRepeatAMarkedConflict()
+    {
+        _picture.OpenWatch(_tag.Id);
+        _state.MarkAllConflicts = true; // A1 and B1 conflict harmlessly on Monday
+        var tiles = _grid.GridData.DayColumns.SelectMany(c => c.Tiles).ToList();
+        var monday = tiles.First(t => t.Entries.Any(e => e.SectionId == Get("A1").Id));
+        var tuesday = tiles.First(t => t.Entries.Any(e => e.SectionId == Get("A2").Id));
+
+        var tip = ScheduleGridViewModel.BuildTileTooltip(monday, _grid.GridData.ConflictHoverLines, 1,
+            _grid.GridData.RepeatedAccessHovers);
+        Assert.Contains(tip.Lines, l => l.StartsWith("A A1 conflicts with B B1."));
+        Assert.DoesNotContain("A A1 can be part of a slate for **W**.", tip.Lines);
+
+        var other = ScheduleGridViewModel.BuildTileTooltip(tuesday, _grid.GridData.ConflictHoverLines, 2,
+            _grid.GridData.RepeatedAccessHovers);
+        Assert.Contains("A A2 can be part of a slate for **W**.", other.Lines);
+    }
+
+    /// <summary>Which conflict marks a look's hover repeats: the same news about the same section, and nothing else.</summary>
+    [Fact]
+    public void ALook_IsRepeatedOnlyByAMarkSayingTheSame()
+    {
+        var a = Sec("A", "A1"); var b = Sec("B", "B1");
+        ConflictMark Mark(ConflictMarkKind kind, Section? x = null) => new(kind, a, b, [], x, [], []);
+        var stranded = new AccessTileLook(Stranded: true, Hover: "h");
+
+        Assert.True(stranded.IsRepeatedBy(Mark(ConflictMarkKind.Stranded, a), a.Id));
+        Assert.False(stranded.IsRepeatedBy(Mark(ConflictMarkKind.Stranded, b), a.Id));
+        Assert.True(new AccessTileLook(CantFit: true, Hover: "h").IsRepeatedBy(Mark(ConflictMarkKind.NoFull), a.Id));
+        Assert.True(new AccessTileLook(CantFit: true, Hover: "h").IsRepeatedBy(Mark(ConflictMarkKind.NoSingleFix, a), a.Id));
+        Assert.True(new AccessTileLook(Usable: true, Hover: "h").IsRepeatedBy(Mark(ConflictMarkKind.Harmless), a.Id));
+        Assert.False(new AccessTileLook(Essential: true, Hover: "h").IsRepeatedBy(Mark(ConflictMarkKind.Other), a.Id));
+        Assert.False(new AccessTileLook(Stranded: true).IsRepeatedBy(Mark(ConflictMarkKind.Stranded, a), a.Id));
     }
 
     [Fact]

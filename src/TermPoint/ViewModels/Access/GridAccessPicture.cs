@@ -16,6 +16,7 @@ namespace TermPoint.ViewModels.Access;
 /// <param name="InSlate">In the slate being stepped to: drawn as a ghost.</param>
 /// <param name="Pinned">Pinned: only slates with it count.</param>
 /// <param name="Hover">The hover line; empty when there is nothing to say.</param>
+/// <param name="Usable">In at least one slate and nothing more to say (drawn as usual, with the "can be part of a slate" hover).</param>
 public sealed record AccessTileLook(
     bool Faded = false,
     bool Stranded = false,
@@ -24,8 +25,29 @@ public sealed record AccessTileLook(
     bool Caution = false,
     bool InSlate = false,
     bool Pinned = false,
-    string Hover = "")
+    string Hover = "",
+    bool Usable = false)
 {
+    /// <summary>
+    /// Whether a conflict mark of the open watch already says what this look's hover says, so the tile's hover shows
+    /// the mark's line alone (Greg, 2026-11-25: the two lines repeated each other). The mark's line is kept because
+    /// it is the same with or without the watch open and names every conflict, where the look names one.
+    /// Stranded repeats a Stranded mark about this section; can't fit repeats a no-full-slate mark on it; usable
+    /// repeats a harmless mark ("other sections still let students get around"). An essential or only section and
+    /// an Other mark say different things, so both stay.
+    /// </summary>
+    /// <param name="mark">A mark of the open watch that involves this section on the tile's day.</param>
+    /// <param name="sectionId">This section's id.</param>
+    /// <returns>True when the look's hover adds nothing to the mark's line.</returns>
+    public bool IsRepeatedBy(ConflictMark mark, string sectionId) =>
+        !string.IsNullOrEmpty(Hover) && mark.Kind switch
+        {
+            ConflictMarkKind.Stranded => Stranded && mark.X?.Id == sectionId,
+            ConflictMarkKind.NoFull or ConflictMarkKind.NoSingleFix => CantFit,
+            ConflictMarkKind.Harmless => Usable,
+            _ => false,
+        };
+
     /// <summary>
     /// The mark drawn after the label: "▲" for can't fit, "◆" for a caution, "●" for essential; empty for none.
     /// </summary>
@@ -80,18 +102,48 @@ public static class GridAccessPicture
         var pins = analysis.PinnedSectionIds;
         var inSlate = slate?.Select(s => s.Id).ToHashSet();
         var cautionBySection = cautions.GroupBy(c => c.Section.Id).ToDictionary(g => g.Key, g => g.First());
+        var blocking = BlockingSections(analysis, covered);
         foreach (var s in covered)
         {
-            var look = LookOf(inputs, analysis, name, s, chosen, inSlate, cautionBySection, isCourseOnly, campusName);
+            var look = LookOf(inputs, analysis, name, s, chosen, inSlate, cautionBySection, blocking, isCourseOnly, campusName);
             looks[s.Id] = pins.Contains(s.Id) ? look with { Pinned = true } : look;
         }
         return looks;
     }
 
+    /// <summary>
+    /// With no full slate, the sections of the courses that can't fit that get the ▲: those in a time conflict with a
+    /// section of another component, which are the ones keeping the course out (Greg, 2026-11-25: the ▲ was on every
+    /// section of the course, so lectures that fit fine said "no section fits"). A course with no such section (the
+    /// clash is among three or more sections at once) keeps the ▲ on all of its sections, and so does every course
+    /// when the campus rule is to blame, since then no time conflict is the reason (the conflict marks skip that
+    /// case too).
+    /// </summary>
+    /// <param name="a">The analysis.</param>
+    /// <param name="covered">The sections the watch covers.</param>
+    /// <returns>The ids of the sections that get the ▲; empty when there is a full slate.</returns>
+    private static IReadOnlySet<string> BlockingSections(Analysis a, IReadOnlyList<Section> covered)
+    {
+        var blocking = new HashSet<string>();
+        if (a.HasSlate || a.BestPartial is not { } best) return blocking;
+        foreach (var courseId in best.CantFit)
+        {
+            var own = covered.Where(s => s.CourseId == courseId).ToList();
+            var inConflict = a.CampusReason is not null ? [] : a.Groups
+                .Where(g => g.CourseId == courseId)
+                .SelectMany(g => g.Candidates.Where(s => a.Groups.Any(other => other != g
+                    && other.Candidates.Any(t => SectionOverlap.Conflicts(s, t)))))
+                .ToList();
+            foreach (var s in inConflict.Count > 0 ? inConflict : own) blocking.Add(s.Id);
+        }
+        return blocking;
+    }
+
     /// <summary>One covered section's look (the body of the mock's <c>entry</c>).</summary>
     private static AccessTileLook LookOf(
         AccessInputs inputs, Analysis a, string name, Section s, IReadOnlySet<string> chosen, IReadOnlySet<string>? inSlate,
-        IReadOnlyDictionary<string, Caution> cautions, bool isCourseOnly, Func<string?, string> campusName)
+        IReadOnlyDictionary<string, Caution> cautions, IReadOnlySet<string> blocking, bool isCourseOnly,
+        Func<string?, string> campusName)
     {
         string label = AccessText.SectionLabel(inputs, s);
         string code = s.CourseId is null ? string.Empty : inputs.CourseCode(s.CourseId);
@@ -127,7 +179,7 @@ public static class GridAccessPicture
             if (blockPin is { Pin: { } pin, Reason: { } reason })
                 return new AccessTileLook(CantFit: true,
                     Hover: AccessText.PinnedCantFitTip(label, AccessText.StrandedWhy(inputs, pin, reason, campusName, !isCourseOnly)));
-            if (a.BestPartial is { } best && best.CantFit.Contains(s.CourseId))
+            if (a.BestPartial is { } best && best.CantFit.Contains(s.CourseId) && blocking.Contains(s.Id))
             {
                 var selfFail = a.SelfFailCourses.FirstOrDefault(x => x.CourseId == s.CourseId);
                 string hover = selfFail is not null
@@ -155,7 +207,7 @@ public static class GridAccessPicture
             return new AccessTileLook(Hover: AccessText.OnlySectionTip(label, code, word));
         }
         if (role == SectionRole.Usable)
-            return new AccessTileLook(Hover: AccessText.UsableTip(label, name));
+            return new AccessTileLook(Hover: AccessText.UsableTip(label, name), Usable: true);
         return new AccessTileLook();
     }
 }

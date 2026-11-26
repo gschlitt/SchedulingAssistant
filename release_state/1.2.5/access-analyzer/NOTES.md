@@ -8,6 +8,9 @@ Ledger: [RELEASE_1.2.5.md](../RELEASE_1.2.5.md). Design: [designs/1.2.5/access-a
 - `designs/1.2.5/access-analyzer.md`: the spec. Status block at the top; Terms (D2); decisions D1-D29; Phase 2 rules 1-41; Phase 3 wireframe rounds table; Phase 4 (what is stored, the watch upgrade) and Phase 5 (layers, saving, tests) at the end.
 - `designs/1.2.5/access-analyzer-handoff.md`: older handoff (written 2026-11-10). Its branch and release notes are out of date; the ledger replaces it for state. Its summary of the method and working agreements still holds.
 - `designs/wireframes/`: the clickable HTML wireframes (rounds 1-8 settled; r8 is components in Courses, the setup wizard and D28; r9, Check all courses, settled 2026-11-23; all planned rounds done). Each round starts as a copy of the last and keeps its own file as the record. Reviewing them in Claude's browser pane: see `docs/dev/dev-machines.md` (to load an edited file afresh, close the tab and open the `file:///` URL again; reload and a same-tab navigate can keep the old page and its test clicks). `window.__access` exposes the mock's engine (`proposal`, `accessChanges`, `analysesFor`) for checking scenarios from the console.
+- For the open no-full-slate question: `ConflictMarks.For`, `AccessReasons.Best`, `SlateSearch` (backtracking, shortest
+  component first, a compatibility table), `GridAccessPicture.BlockingSections`, and the section "No full slate: what
+  to mark" below.
 - `src/TermPoint/Services/Access/`: the engine (piece C); start with `AccessAnalyzer.cs`, `AccessInputs.cs`, `ConflictMarks.cs`. Shape in "Piece C: engine shape" below. Tests: `src/TermPoint.Tests/Access*Tests.cs`; `AccessEngineMeasurementTests` times it on a copy of the UBC demo database.
 - Piece D's session state and UI (to build E on): `Services/Access/AccessState.cs` (invalidate it after any change to
   component types, courses' components or the set-up mark), `AccessWatchToggler.cs`, `ViewModels/Access/`
@@ -508,6 +511,58 @@ rounds 5–9. Split like D and E: **F-core** (Sonnet; no `.axaml`) then **F-ui**
   branch returned first; the not-in-any-group check now runs before the slates. Full suite 5043 passed.
   Then (Greg): still no hover. Cause: tiles showed a tooltip only with more than one line (the time used to be line
   one), so a single Access line was dropped after the time was removed. Now `TileTooltip.IsShownOnTile`.
+- **Greg (2026-11-25), built:** the hover repeated itself when the open watch's own line and its
+  conflict-mark line said the same thing. The look's line is now left out on that day (`AccessTileLook.IsRepeatedBy`,
+  `GridAccessMarks.RepeatedLooks`): stranded/Stranded mark on it, can't fit/no-full-slate mark, usable/harmless mark.
+  Essential or only section with an Other mark keeps both. Left as is (Greg): two conflicting co-scheduled sections on
+  one tile get mirror-image no-full-slate or harmless lines ("A conflicts with B…", "B conflicts with A…"). Full
+  suite 5045 passed.
+- **Greg, CHBE-Y3 on the UBC import (2026-11-25), built:** ▲ "can't fit" sat on every section of
+  CHBE346 and CHBE352, lectures included, with no conflict in sight. Cause (diagnosed first): their only
+  discussions (both T1A, Monday 14:00–16:00) clash, so there is no full slate, and the best partial drops either
+  course, so both are "can't fit"; the grid then marked the whole course. The analysis was right, the picture misled.
+  Greg chose "mark blocking sections": ▲ now goes only on a can't-fit course's sections in a time conflict with
+  another component (`GridAccessPicture.BlockingSections`); the course's other sections are drawn plainly. A course
+  with no such section (a clash of three or more at once) or a campus-rule cause keeps the ▲ on all its sections.
+  Not addressed: nothing on the tiles says "either one" (dropping either course fixes it). Full suite 5045 passed.
+  This rule is too broad too (see the next section): it marks any section of the course that clashes with anything.
+
+</details>
+
+<details>
+<summary>No full slate: what to mark (open, 2026-11-25)</summary>
+
+**What Greg saw.** CIVL-Y3 on the UBC import (`UBC_Engineering_WinterTerm1_import_tagged.csv` in the UBC demo
+folder): red marks and ▲ on Monday, Tuesday, Wednesday and Thursday. Moving CIVL303's Friday meeting to 11:30 cleared
+them all except Thursday's. Greg: "highly misleading now, suggesting problems all over the place when there's really
+only one."
+
+**Cause.** CIVL303 T1A (Tue/Fri 12:30–13:30, its only discussion) clashes on Friday with CIVL315 101 (MWF 13:00–14:00,
+its only lecture): no full slate. Best partial (course-level, `AccessReasons.Best`: tries every set of courses from
+the largest down, asking `SlateSearch.ExistsForCourses`) covers 5 of 6, two alternatives, so both courses are
+"can't fit". `ConflictMarks.For` then, with no full slate, marks EVERY clash touching a can't-fit course: NoFull when
+ignoring that one clash brings a slate back (only Friday's), else NoSingleFix (Q22). So CIVL315's lab clashes with
+CIVL311's labs and discussions, which students can get around, all got "Fixing only one of these conflicts isn't
+enough", which is false here. The bug: Q22 marks fire per clash without asking whether some OTHER single clash already
+fixes the watch. Thursday is a real separate problem: CIVL332 T1A (Thu 12:30–14:30, only discussion) strands CIVL315
+L1M/L1N (Thu 14:00–16:00); with a full slate the Stranded rule marks it, rightly.
+
+**Proposal (not agreed; Greg wants a strategy and UI conversation first).** Principle: mark only what's essential: the
+conflicts in the SMALLEST fixes, where a fix is a set of clashes whose removal brings a full slate back.
+- One problem: only single-clash fixes are marked (here Friday only). Cheap: `ConflictMarks` already runs that test.
+- Two problems: no single fix, so test pairs; mark the clashes in every pair that works.
+- Q22's CHEM/PSYCH/GEOG example gives the same two marks Greg agreed on 2026-11-10, so the principle includes Q22.
+- Pruning: a clash in any fix must touch a can't-fit course (dropping that course would remove the clash), so pairs
+  come only from the clashes `ConflictMarks` already considers; a couple of hundred tests for CIVL-Y3. Budget it, and
+  time it with `AccessEngineMeasurementTests`.
+- ▲ follows the marks (sections in marked clashes), replacing `GridAccessPicture.BlockingSections`'s rule.
+- `SlateSearch` ignores one pair today (`Compatible`'s ignoreA/ignoreB); extending to two is small.
+- Open: when no fix of size 1–2 is found within budget, no marks (recommended: the detail panel names the courses) or
+  today's mark-everything? DRAFT wording for a two-clash fix whose clashes share no section: "CIVL303 T1A conflicts
+  with CIVL315 101, so **CIVL-Y3** has no full slate. Fixing this alone isn't enough: CIVL332 T1A's conflict with
+  CIVL320 101 must be fixed too." The same gap exists with a full slate: a stranded section freed only by removing two
+  clashes gets no mark today.
+- Also open from the CHBE-Y3 case: nothing on the tiles says "either course" when the best partial has alternatives.
 
 </details>
 
