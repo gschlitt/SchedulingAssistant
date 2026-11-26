@@ -1345,7 +1345,8 @@ public partial class SectionListViewModel : ViewModelBase, IUnappliedChangesHost
                         ctx.AllCourses.FirstOrDefault(c => c.Id == s.CourseId)?.CalendarCode, s.SectionCode);
                     var label = isCopy ? HistoryText.Copy(copyOfHeading ?? newHeading, newHeading)
                         : isNew ? HistoryText.Add(newHeading)
-                        : HistoryText.Edit(newHeading);
+                        : HistoryText.EditLabel(newHeading,
+                            _sectionRepo.GetById(s.Id) is { } stored ? SectionEditChanges.Describe(stored, s) : []);
                     _history.RecordOrRun(label, () => { if (isNew) _sectionRepo.Insert(s); else _sectionRepo.Update(s); });
                     CollapseEditor();
 

@@ -29,6 +29,7 @@ No hardcoded dimensions in ViewModels: pixel widths/heights and other view conce
   resource file (`AppColors.axaml`, `AppLayout.axaml`, `Icons.axaml`) rebuilds `MainWindow`'s contents: the loading
   curtain returns and the startup wiring is lost, so restart instead. HotAvalonia 3.1.0 failed on Avalonia 12.1
   (3.1.5 works): after an Avalonia upgrade, check that a view edit still hot-reloads.
+- **Italic TextBlocks clip their last letter** (the slant overhangs the measured width): give an italic status line about 2px of right `Padding`.
 - **Saving sections from outside the section card** (grid, other panels): check `OpenCardMessages.WhyRefused(ISectionCardState)` first and refuse with its message. The save reloads `SectionStore`, which closes an open card and silently throws away what was typed.
 
 # Persisted records

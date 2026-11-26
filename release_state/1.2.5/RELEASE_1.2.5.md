@@ -7,24 +7,22 @@
 ## Work
 
 <details>
-<summary><b>Undo and rollback before saving</b> · In progress · **ACTIVE**</summary>
+<summary><b>Undo and rollback before saving</b> · Needs testing</summary>
 
 **Goal:** an administrator can experiment freely. Until they press Save they can step back through section changes (drags, right-click edits, card Applies, creates, deletes, copies) or throw them all away. The shared database changes only when they save; closing with unsaved changes asks Save / Don't save / Cancel. Done means the feature in the app, field-tested, with a "What's new" line for the changed behaviour.
 
-**State:** On branch 1.2.5: pieces A–E built and committed; full suite passes (2026-11-26). Greg's first hand check found the history list doing nothing (fixed; undo confirmed working). Harness passed after piece E (one walk test updated to the new recovery behaviour).
+**State:** On branch 1.2.5: built and committed; full suite and harness pass; all wording approved, one 1.2.5 What's-new entry (2026-11-26).
+Greg's hand checks passed; the narrower Save area and the card Apply's new labels are not yet seen in the app. Set aside 2026-11-26 for the Access Analyzer.
 
 <details>
-<summary>Steps (1 left)</summary>
+<summary>Steps (2 left)</summary>
 
-1. Rest of Greg's hand check (hover highlight, disabled-button tooltips, top-bar width, Ctrl+Z in a card's text box); field test alongside the drag's.
+1. Greg looks at the narrower Save/Undo area and the card Apply's new labels in the app.
+2. Field test alongside the drag's.
 
 </details>
 
-**Open questions:**
-- Six small new wordings the build needed (listed in the notes): approve or change.
-- Four new close-question wordings (notes, "Piece D"): no save yet this session, only a card has changes, a non-section editor, a new section.
-- The "What's new" line shows as a second 1.2.5 banner: merge it with the access-watch line?
-- Room delete and room edit can close an open section card (found in passing, notes): fix here, or a backlog line?
+**Open questions:** none.
 
 Notes: [undo/NOTES.md](undo/NOTES.md). Design: [designs/1.2.5/undo.md](../../designs/1.2.5/undo.md).
 
@@ -83,11 +81,11 @@ Notes: [lost-notices/NOTES.md](lost-notices/NOTES.md). Source: backlog WN1, plus
 </details>
 
 <details>
-<summary><b>Access Analyzer and easy access watches</b> · Waiting on Greg</summary>
+<summary><b>Access Analyzer and easy access watches</b> · Waiting on Greg · **ACTIVE**</summary>
 
 **Goal:** administrators see at a glance whether students can still take every course of a watched set (a full "slate" of one section per component), get notices when a change breaks it, and create watches easily. Done means the feature in the app, field-tested.
 
-**State:** Set aside 2026-11-26 for Undo; waits on Greg's fewest-moves trial verdict and the DRAFT wording (step 1).
+**State:** Set aside 2026-11-26 for Undo, made ACTIVE again the same day; waits on Greg's fewest-moves trial verdict and the DRAFT wording (step 1).
 On branch 1.2.5, pieces A–F committed, F leftovers too except health-line styling. Greg's hand check of F is part-done.
 
 <details>

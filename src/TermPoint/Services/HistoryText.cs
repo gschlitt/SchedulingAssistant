@@ -37,7 +37,7 @@ public sealed record MeetingMove(int FromDay, int FromStart, int ToDay, int ToSt
 /// <summary>
 /// Every user-facing string of the undo feature, in one place (<c>designs/1.2.5/undo.md</c>, "Wording"). The step
 /// labels, the "Undone:" lines, the tooltips, the history list and the close question are approved by Greg
-/// (2026-11-26); strings marked "new wording, not yet approved" are not, and need his OK before release.
+/// (2026-11-26). A new string is marked "new wording, not yet approved" until Greg approves it.
 /// </summary>
 public static class HistoryText
 {
@@ -115,6 +115,56 @@ public static class HistoryText
     /// <param name="heading">The section's heading.</param>
     public static string Edit(string heading) => $"Edit {heading}";
 
+    /// <summary>
+    /// The label of a section card's Apply, naming what changed (<see cref="SectionEditChanges.Describe"/>). One area:
+    /// "Change instructors of HIST 101 A" (the right-click menu's labels, extended to every area). Several:
+    /// "Edit HIST 101 A: instructors, meeting times". None recognised: "Edit HIST 101 A". approved wording (Greg,
+    /// 2026-11-26).
+    /// </summary>
+    /// <param name="heading">The section's heading after the Apply.</param>
+    /// <param name="areas">The changed areas, from <see cref="SectionEditChanges.Describe"/>.</param>
+    /// <returns>The label.</returns>
+    public static string EditLabel(string heading, IReadOnlyList<string> areas) => areas.Count switch
+    {
+        0 => Edit(heading),
+        1 => $"Change {areas[0]} of {heading}",
+        _ => $"Edit {heading}: {string.Join(", ", areas)}",
+    };
+
+    // The area words of EditLabel, in the card's order. approved wording (Greg, 2026-11-26).
+    // AreaInstructors, AreaRoom, AreaTags and AreaFlag give the right-click menu's approved labels.
+
+    /// <summary>Area word: the section's course.</summary>
+    public const string AreaCourse = "course";
+    /// <summary>Area word: the section code.</summary>
+    public const string AreaSectionCode = "section code";
+    /// <summary>Area word: the section type.</summary>
+    public const string AreaSectionType = "section type";
+    /// <summary>Area word: the delivery type.</summary>
+    public const string AreaDeliveryType = "delivery type";
+    /// <summary>Area word: the campus.</summary>
+    public const string AreaCampus = "campus";
+    /// <summary>Area word: the instructors (or their workloads).</summary>
+    public const string AreaInstructors = "instructors";
+    /// <summary>Area word: a meeting's day, start or length.</summary>
+    public const string AreaMeetingTimes = "meeting times";
+    /// <summary>Area word: a meeting's room.</summary>
+    public const string AreaRoom = "room";
+    /// <summary>Area word: meetings added or removed, or a meeting's type, room type or frequency.</summary>
+    public const string AreaMeetings = "meetings";
+    /// <summary>Area word: the capacity.</summary>
+    public const string AreaCapacity = "capacity";
+    /// <summary>Area word: the tags.</summary>
+    public const string AreaTags = "tags";
+    /// <summary>Area word: the resources.</summary>
+    public const string AreaResources = "resources";
+    /// <summary>Area word: the reserves.</summary>
+    public const string AreaReserves = "reserves";
+    /// <summary>Area word: the flag.</summary>
+    public const string AreaFlag = "flag";
+    /// <summary>Area word: the notes.</summary>
+    public const string AreaNotes = "notes";
+
     /// <summary>"Add HIST 101 C". approved wording (Greg, 2026-11-26).</summary>
     /// <param name="heading">The new section's heading.</param>
     public static string Add(string heading) => $"Add {heading}";
@@ -130,7 +180,7 @@ public static class HistoryText
 
     /// <summary>
     /// "Apply tags to 4 HIST 101 sections". approved wording (Greg, 2026-11-26) for the plural; the singular
-    /// ("Apply tags to 1 HIST 101 section") is new wording, not yet approved.
+    /// ("Apply tags to 1 HIST 101 section") is approved wording (Greg, 2026-11-26).
     /// </summary>
     /// <param name="count">How many sections were changed.</param>
     /// <param name="courseCode">The course's calendar code.</param>
@@ -152,7 +202,7 @@ public static class HistoryText
         => Compose("Undone", label, notShownSemester, sentences);
 
     /// <summary>
-    /// The line shown after a redo: "Redone: ...", built like <see cref="Undone"/>. new wording, not yet approved.
+    /// The line shown after a redo: "Redone: ...", built like <see cref="Undone"/>. approved wording (Greg, 2026-11-26).
     /// </summary>
     /// <param name="label">The step's label.</param>
     /// <param name="notShownSemester">The semester's name when it is not among the shown ones; otherwise null.</param>
@@ -178,7 +228,7 @@ public static class HistoryText
     /// <summary>
     /// The sentence naming what was deleted since and so was not put back. One thing: "The tag Lab has been deleted, so
     /// it wasn't put back." (approved wording, Greg, 2026-11-26.) Several: "The tag Lab and the room B204 have been
-    /// deleted, so they weren't put back." (new wording, not yet approved; three or more read "The a, the b and the c ...".)
+    /// deleted, so they weren't put back." (approved wording (Greg, 2026-11-26); three or more read "The a, the b and the c ...".)
     /// </summary>
     /// <param name="things">Each thing as (kind, name); a null or empty name leaves just "the tag".</param>
     /// <returns>The sentence; an empty string when there are no things.</returns>
@@ -197,7 +247,7 @@ public static class HistoryText
 
     /// <summary>
     /// "HIST 101 A wasn't put back: the course HIST 101 has been deleted." approved wording (Greg, 2026-11-26) for the
-    /// course; the semester form ("...: the semester Winter 2026 has been deleted.") is new wording, not yet approved.
+    /// course; the semester form ("...: the semester Winter 2026 has been deleted.") is approved wording (Greg, 2026-11-26).
     /// </summary>
     /// <param name="sectionHeading">The section's heading.</param>
     /// <param name="kind">"course" or "semester".</param>
@@ -207,7 +257,7 @@ public static class HistoryText
 
     /// <summary>
     /// "HIST 101 A wasn't put back: the semester Winter 2026 has been emptied." The section was removed by Empty Semester.
-    /// new wording, not yet approved.
+    /// approved wording (Greg, 2026-11-26).
     /// </summary>
     /// <param name="sectionHeading">The section's heading.</param>
     /// <param name="semesterName">The emptied semester's name.</param>
@@ -273,7 +323,7 @@ public static class HistoryText
     /// <param name="label">The next redoable step's label.</param>
     public static string RedoTooltip(string label) => $"Redo: {label} (Ctrl+Y)";
 
-    /// <summary>The Redo tooltip when there is nothing to redo. new wording, not yet approved.</summary>
+    /// <summary>The Redo tooltip when there is nothing to redo. approved wording (Greg, 2026-11-26).</summary>
     public const string NothingToRedo = "Nothing to redo";
 
     /// <summary>Hover text of a history line: it and every newer line will be undone. approved wording (Greg, 2026-11-26).</summary>
@@ -322,20 +372,20 @@ public static class HistoryText
 
     /// <summary>
     /// The close question's body when nothing has been saved since the database was opened, so there is no "last saved"
-    /// time to name (the open may also have restored changes from before it). new wording, not yet approved.
+    /// time to name (the open may also have restored changes from before it). approved wording (Greg, 2026-11-26).
     /// </summary>
     public const string CloseBodyNotSavedYet =
         "You've changed the schedule and haven't saved yet. Colleagues won't see these changes until you save.";
 
     /// <summary>
     /// The extra sentence when an editor other than an existing section's card has unapplied changes (a new section, an
-    /// instructor, a course...). new wording, not yet approved.
+    /// instructor, a course...). approved wording (Greg, 2026-11-26).
     /// </summary>
     public const string CloseEditorSentence = "The open editor has changes you haven't applied; Save applies them too.";
 
     /// <summary>
     /// The close question's whole body when only a section card has unapplied changes and nothing else is unsaved.
-    /// new wording, not yet approved.
+    /// approved wording (Greg, 2026-11-26).
     /// </summary>
     /// <param name="cardHeading">The open card's heading.</param>
     public static string CloseBodyCardOnly(string cardHeading)
@@ -343,7 +393,7 @@ public static class HistoryText
 
     /// <summary>
     /// The close question's whole body when only another editor has unapplied changes and nothing else is unsaved.
-    /// new wording, not yet approved.
+    /// approved wording (Greg, 2026-11-26).
     /// </summary>
     public const string CloseBodyEditorOnly = "The open editor has changes you haven't applied. Save applies and saves them.";
 

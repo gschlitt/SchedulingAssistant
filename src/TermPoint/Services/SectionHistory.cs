@@ -37,7 +37,7 @@ public sealed record HistoryResult(bool Done, string Message, string? SectionIdT
 /// </summary>
 public sealed class SectionHistory : IDisposable
 {
-    /// <summary>Shown when an undo's write fails for a reason other than lost write access. new wording, not yet approved.</summary>
+    /// <summary>Shown when an undo's write fails for a reason other than lost write access. approved wording (Greg, 2026-11-26).</summary>
     private const string WriteFailedMessage = "The undo could not be completed. No changes were made. Please try again.";
 
     private readonly IDatabaseContext _db;

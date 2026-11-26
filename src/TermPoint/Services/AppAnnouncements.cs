@@ -68,16 +68,14 @@ public static class AppAnnouncements
             LinkUrl      :"https://youtu.be/_u7DI5SxxRE"
             ),
 
-        // approved wording (Greg, 2026-11-24)
+        // One bulleted entry, like 1.2.4's (Greg, 2026-11-26). approved wording: the save-behaviour bullet
+        // (HistoryText.WhatsNew, Greg 2026-11-26) and the access-watch bullet (Greg, 2026-11-24).
         new VersionedAnnouncement(
             SinceVersion: new Version(1,2,5),
-            Message     : "New in TermPoint 1.2.5: access watches now mark only conflicts that cost students something: " +
+            Message     : "New in TermPoint 1.2.5:\n" +
+            "  •  " + HistoryText.WhatsNew + "\n" +
+            "  •  Access watches now mark only conflicts that cost students something: " +
                           "a section no one taking the watch's courses can use, or no way to take every course. " +
-                          "To see every conflict as before, tick Mark all conflicts in the Access tab."),
-
-        // approved wording (Greg, 2026-11-26): the undo design's changed save behaviour
-        new VersionedAnnouncement(
-            SinceVersion: new Version(1,2,5),
-            Message     : HistoryText.WhatsNew)
+                          "To see every conflict as before, tick Mark all conflicts in the Access tab.")
     ];
 }

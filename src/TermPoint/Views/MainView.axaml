@@ -122,16 +122,17 @@
 					<!--  Save, Undo (with the history list under its arrow) and Redo, then the status lines.
 					      Undo design (designs/1.2.5/undo.md, stories 1-3); the rules live in SectionHistory, the
 					      buttons' state in UndoBarViewModel. The undo buttons hide when no history is available
-					      (a reader session, the browser demo).  -->
+					      (a reader session, the browser demo). The buttons sit 2px apart to save top-bar width; the
+					      status lines keep a 6px gap, and 2px of right padding so an italic last letter isn't clipped.  -->
 					<StackPanel
 						controls:ResponsiveMenuPanel.IsPriority="True"
 						Margin="0,4,6,4"
 						VerticalAlignment="Center"
 						IsVisible="{Binding IsWriteEnabled}"
 						Orientation="Horizontal"
-						Spacing="8">
+						Spacing="2">
 						<Button
-							Padding="8,4"
+							Padding="6,4"
 							Command="{Binding SaveCommand}"
 							Content="Save"
 							FontSize="{StaticResource FontSizeToolbarButton}"
@@ -142,7 +143,7 @@
 							Orientation="Horizontal"
 							Spacing="2">
 							<Button
-								Padding="8,4"
+								Padding="6,4"
 								Command="{Binding UndoBar.UndoCommand}"
 								Content="Undo"
 								FontSize="{StaticResource FontSizeToolbarButton}"
@@ -196,7 +197,7 @@
 								</Button.Flyout>
 							</Button>
 							<Button
-								Padding="8,4"
+								Padding="6,4"
 								Command="{Binding UndoBar.RedoCommand}"
 								Content="Redo"
 								FontSize="{StaticResource FontSizeToolbarButton}"
@@ -207,6 +208,8 @@
 						</StackPanel>
 						<TextBlock
 							VerticalAlignment="Center"
+							Margin="6,0,0,0"
+							Padding="0,0,2,0"
 							FontSize="{StaticResource FontSizeSaveStatus}"
 							FontStyle="Italic"
 							Foreground="{StaticResource TextError}"
@@ -218,6 +221,8 @@
 						      slow network can legitimately run for tens of seconds.  -->
 						<TextBlock
 							VerticalAlignment="Center"
+							Margin="6,0,0,0"
+							Padding="0,0,2,0"
 							FontSize="{StaticResource FontSizeSaveStatus}"
 							FontStyle="Italic"
 							Foreground="{StaticResource TextSecondary}"
@@ -229,6 +234,8 @@
 						      being silently skipped.  -->
 						<TextBlock
 							VerticalAlignment="Center"
+							Margin="6,0,0,0"
+							Padding="0,0,2,0"
 							FontSize="{StaticResource FontSizeSaveStatus}"
 							FontStyle="Italic"
 							Foreground="{StaticResource TextSecondary}"
@@ -239,6 +246,8 @@
 						<TextBlock
 							MaxWidth="{StaticResource UndoResultLineMaxWidth}"
 							VerticalAlignment="Center"
+							Margin="6,0,0,0"
+							Padding="0,0,2,0"
 							FontSize="{StaticResource FontSizeSaveStatus}"
 							Foreground="{StaticResource TextSecondary}"
 							IsVisible="{Binding UndoBar.ShowResultLine, FallbackValue=False}"

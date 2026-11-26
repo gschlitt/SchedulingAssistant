@@ -235,7 +235,7 @@ public sealed class SectionWritePathTests : IDisposable
         AssertOneNewStep(label);
     }
 
-    /// <summary>Step 3: applying the section editor on an existing section is one "Edit ..." step.</summary>
+    /// <summary>Step 3: applying the section editor on an existing section is one step naming what changed ("Change notes of ...").</summary>
     [Fact]
     public async Task SectionList_Edit_IsOneEditStep()
     {
@@ -247,7 +247,7 @@ public sealed class SectionWritePathTests : IDisposable
         await list.EditVm.SaveCommand.ExecuteAsync(null);
 
         Assert.Null(list.LastErrorMessage);
-        AssertOneNewStep("Edit HIST101 A");
+        AssertOneNewStep("Change notes of HIST101 A");
     }
 
     /// <summary>Step 3: applying the section editor on a new section is one "Add ..." step.</summary>
