@@ -2,14 +2,18 @@
 	x:Class="TermPoint.Views.AccessTabView"
 	xmlns="https://github.com/avaloniaui"
 	xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-	x:CompileBindings="False">
+	xmlns:b="using:TermPoint.Behaviors"
+	x:CompileBindings="False"
+	b:DismissBehaviors.EscapeCommand="{Binding EscapeCommand}">
 
 	<!--
 		The Access tab (Access Analyzer, D17). DataContext: AccessTabViewModel. Three pages, one shown at a time:
 		the list (notices, then one line per watched tag, worst first, Mark all conflicts at the foot), the detail of
 		the open watch or of a course checked alone (DataContext Detail), and Check all courses (DataContext Check).
 		The wording comes from the view models (AccessText). Marks are Paths shown by direct bools, never
-		class-conditioned styles; chevrons are Paths too (the WASM fonts lack the glyphs).
+		class-conditioned styles; chevrons are Paths too (the WASM fonts lack the glyphs). Escape backs out one page
+		(the detail closes the open watch); the detail and Check pages take focus when shown so Escape reaches them
+		(FocusWhenShownBehavior says why).
 	-->
 	<UserControl.Styles>
 		<!--  A text link: no chrome, underlined text  -->
@@ -68,7 +72,7 @@
 					Classes="abtn"
 					Margin="4,0,0,0"
 					Command="{Binding AddWatchCommand}"
-					Content="+ Add a watch"
+					Content="{Binding AddWatchButtonText}"
 					DockPanel.Dock="Right"
 					IsEnabled="{Binding CanAddWatch}"
 					IsVisible="{Binding IsSetUp}"
@@ -118,12 +122,12 @@
 			<!--  Foot: Mark all conflicts (a view setting, remembered on this computer; works read-only; only once set up)  -->
 			<CheckBox
 				Margin="0,4,0,0"
-				Content="Mark all conflicts"
+				Content="{Binding MarkAllConflictsText}"
 				DockPanel.Dock="Bottom"
 				FontSize="{StaticResource FontSizePanelList}"
 				IsChecked="{Binding MarkAllConflicts}"
 				IsVisible="{Binding IsSetUp}"
-				ToolTip.Tip="Marks all conflicts, even those students can avoid by registering in different slates. Removing them can still improve access." />
+				ToolTip.Tip="{Binding MarkAllConflictsTip}" />
 
 			<ScrollViewer VerticalScrollBarVisibility="Auto">
 				<StackPanel>
@@ -136,11 +140,11 @@
 									<Border Background="{StaticResource AccessNoticeBackground}" BorderBrush="{StaticResource AccessNoticeBadBorder}" BorderThickness="1" CornerRadius="3" IsVisible="{Binding IsBad}" />
 									<Border Background="{StaticResource AccessNoticeBackground}" BorderBrush="{StaticResource AccessNoticeGoodBorder}" BorderThickness="1" CornerRadius="3" IsVisible="{Binding !IsBad}" />
 									<DockPanel Margin="6,3">
-										<Button Classes="alink" Margin="6,0,0,0" VerticalAlignment="Top" Command="{Binding DismissCommand}" DockPanel.Dock="Right" ToolTip.Tip="Dismiss">
+										<Button Classes="alink" Margin="6,0,0,0" VerticalAlignment="Top" Command="{Binding DismissCommand}" DockPanel.Dock="Right" ToolTip.Tip="{Binding DismissTip}">
 											<Path Width="8" Height="8" Margin="0,3,0,0" Data="{StaticResource RemoveIcon}" Fill="{StaticResource TextSecondary}" Stretch="Uniform" />
 										</Button>
 										<Button Classes="alink" Margin="6,0,0,0" VerticalAlignment="Top" Command="{Binding OpenCommand}" DockPanel.Dock="Right">
-											<TextBlock Text="Open" TextDecorations="Underline" />
+											<TextBlock Text="{Binding OpenText}" TextDecorations="Underline" />
 										</Button>
 										<TextBlock Classes="body" Text="{Binding Text}" />
 									</DockPanel>
@@ -198,7 +202,7 @@
 		</DockPanel>
 
 		<!--  ═════════════ Page 2: a watch's detail (or a course checked alone) ═════════════  -->
-		<DockPanel DataContext="{Binding Detail}" IsVisible="{Binding $parent[UserControl].DataContext.IsDetailPage}">
+		<DockPanel b:FocusWhenShownBehavior.IsEnabled="True" DataContext="{Binding Detail}" IsVisible="{Binding $parent[UserControl].DataContext.IsDetailPage}">
 
 			<!--  Header: back, name, Watching (click to stop watching; the tag stays)  -->
 			<DockPanel DockPanel.Dock="Top" Margin="0,0,0,3">
@@ -256,7 +260,7 @@
 					<!--  Pins narrow the slates: a tinted banner at the top, so nobody wonders where their slates went  -->
 					<Border Padding="6,3" Background="{StaticResource AccessPinBannerBackground}" CornerRadius="3" IsVisible="{Binding HasPins}">
 						<DockPanel>
-							<Button Classes="abtn" Command="{Binding UnpinAllCommand}" Content="Unpin all" DockPanel.Dock="Right" />
+							<Button Classes="abtn" Command="{Binding UnpinAllCommand}" Content="{Binding UnpinAllText}" DockPanel.Dock="Right" />
 							<WrapPanel VerticalAlignment="Center">
 								<Path Width="9" Height="9" Margin="0,0,4,0" VerticalAlignment="Center" Data="{StaticResource PinIcon}" Fill="{StaticResource TextPrimary}" Stretch="Uniform" />
 								<TextBlock Classes="body" Margin="0,0,4,0" VerticalAlignment="Center" Text="{Binding PinBannerLead}" />
@@ -266,7 +270,7 @@
 									</ItemsControl.ItemsPanel>
 									<ItemsControl.ItemTemplate>
 										<DataTemplate>
-											<Button Classes="abtn" Padding="4,0" Command="{Binding UnpinCommand}" ToolTip.Tip="Unpin">
+											<Button Classes="abtn" Padding="4,0" Command="{Binding UnpinCommand}" ToolTip.Tip="{Binding UnpinTip}">
 												<StackPanel Orientation="Horizontal" Spacing="4">
 													<TextBlock VerticalAlignment="Center" Text="{Binding Label}" />
 													<Path Width="7" Height="7" VerticalAlignment="Center" Data="{StaticResource RemoveIcon}" Fill="{StaticResource TextSecondary}" Stretch="Uniform" />
@@ -398,13 +402,13 @@
 		</DockPanel>
 
 		<!--  ═════════════ Page 3: Check all courses (round 9) ═════════════  -->
-		<DockPanel DataContext="{Binding Check}" IsVisible="{Binding $parent[UserControl].DataContext.IsCheckPage}">
+		<DockPanel b:FocusWhenShownBehavior.IsEnabled="True" DataContext="{Binding Check}" IsVisible="{Binding $parent[UserControl].DataContext.IsCheckPage}">
 
 			<DockPanel DockPanel.Dock="Top" Margin="0,0,0,4">
 				<Button Classes="alink" Margin="0,0,8,0" VerticalAlignment="Center" Command="{Binding BackCommand}" DockPanel.Dock="Left">
 					<StackPanel Orientation="Horizontal" Spacing="3">
 						<Path Width="7" Height="7" VerticalAlignment="Center" Data="{StaticResource ChevronLeftIcon}" Fill="{StaticResource TextSecondary}" Stretch="Uniform" />
-						<TextBlock VerticalAlignment="Center" Text="All watches" />
+						<TextBlock VerticalAlignment="Center" Text="{Binding BackText}" />
 					</StackPanel>
 				</Button>
 				<Button Classes="abtn" Command="{Binding RunCommand}" Content="{Binding CheckAgainText}" DockPanel.Dock="Right" IsVisible="{Binding CanCheckAgain}" />

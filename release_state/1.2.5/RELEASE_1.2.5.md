@@ -2,7 +2,7 @@
 
 **Goal:** to be set by Greg (the unassigned candidate work is in [backlog-1.2.5.md](backlog-1.2.5.md)).
 **MinimumVersionToWrite:** not asked yet.
-**Updated:** 2026-11-25
+**Updated:** 2026-11-26
 
 ## Work
 
@@ -65,14 +65,14 @@ Notes: [lost-notices/NOTES.md](lost-notices/NOTES.md). Source: backlog WN1, plus
 
 **State:** On branch 1.2.5; pieces A–F committed. Greg's hand check of F is under way. With no full slate the marks
 now show the fewest sections to move, plus "Don't suggest moving this" (committed for a trial on UBC; Greg's verdict
-and the DRAFT wording pending). B and D ship with E (Q46); all in 1.2.5 (Q45).
+and the DRAFT wording pending). F leftovers committed except health-line styling (not hand-checked).
 
 <details>
 <summary>Steps (5 left)</summary>
 
 1. Greg tries the fewest-moves marks and "Don't suggest moving this" on UBC; approve or change the DRAFT wording (notes: "No full slate: what to mark").
-2. Settle what the trial leaves open (Access tab line, Mark all conflicts, the spec's rule 33), then finish Greg's hand check of F.
-3. F leftovers: Escape closes the detail, a few labels still in the view, "Open in Courses" selecting the course, health-line styling.
+2. Settle what the trial leaves open (Access tab line, Mark all conflicts, the spec's rule 33), then finish Greg's hand check of F, including Escape and Open in Courses.
+3. F leftover: health-line styling (the mock's warn colour and hovers per phrase), after step 2.
 4. G: editor pointer and drag line.
 5. H: release (version stamp, WASM demo, help page or video for the "What's an access watch?" link, field test).
 

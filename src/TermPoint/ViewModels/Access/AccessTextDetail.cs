@@ -64,6 +64,35 @@ public static partial class AccessText
     // approved wording (round 9)
     public const string BackToCheckText = "Check all courses";
 
+    /// <summary>The Access tab's button that makes a watch (it opens the Tags popup with its note).</summary>
+    // approved wording (round 5)
+    public const string AddWatchButtonText = "+ Add a watch";
+
+    /// <summary>The Mark all conflicts box, at the foot of the Access tab and in the legend bar.</summary>
+    // approved wording (round 6b)
+    public const string MarkAllConflictsText = "Mark all conflicts";
+
+    /// <summary>The Mark all conflicts box's hover.</summary>
+    // approved wording (round 6, Greg's own)
+    public const string MarkAllConflictsTip =
+        "Marks all conflicts, even those students can avoid by registering in different slates. Removing them can still improve access.";
+
+    /// <summary>A notice's link that opens the watch it is about.</summary>
+    // approved wording (round 7)
+    public const string NoticeOpenText = "Open";
+
+    /// <summary>The hover of a notice's ✕.</summary>
+    // approved wording (round 7)
+    public const string NoticeDismissTip = "Dismiss";
+
+    /// <summary>The hover of the stepper's ‹ button.</summary>
+    // approved wording (round 3)
+    public const string PreviousSlateTip = "Previous slate";
+
+    /// <summary>The hover of the stepper's › button.</summary>
+    // approved wording (round 3)
+    public const string NextSlateTip = "Next slate";
+
     /// <summary>The Watching button.</summary>
     // approved wording (round 3)
     public const string WatchingText = "Watching";

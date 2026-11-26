@@ -798,8 +798,12 @@ public partial class MainWindowViewModel : ViewModelBase
         setupService.SetupWizardRequested += then => OpenAccessSetupWizard(null, then);
         setupService.NewTypeWizardRequested += typeId => OpenAccessSetupWizard(typeId, null);
         accessTabVm.AddWatchRequested += () => _scheduleGridVm.Filter.OpenTagsForWatch();
-        // Check all courses: a quiet finding about a course opens the Courses flyout.
-        accessTabVm.OpenCoursesRequested += _ => NavigateToCourses();
+        // Check all courses: a quiet finding about a course opens the Courses flyout on that course.
+        accessTabVm.OpenCoursesRequested += courseId =>
+        {
+            NavigateToCourses();
+            if (FlyoutPage is CourseListViewModel courses) courses.SelectCourse(courseId);
+        };
         accessTabVm.PropertyChanged += (_, e) =>
         { if (e.PropertyName == nameof(AccessTabViewModel.NeedsALook)) OnPropertyChanged(nameof(ShowAccessDot)); };
         TourOverlayVm         = new TourOverlayViewModel(tourRunner);

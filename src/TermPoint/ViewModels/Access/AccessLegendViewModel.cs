@@ -142,6 +142,18 @@ public sealed partial class AccessLegendViewModel : ViewModelBase
         }
     }
 
+    /// <summary>The Mark all conflicts box's text.</summary>
+    public string MarkAllConflictsText => AccessText.MarkAllConflictsText;
+
+    /// <summary>The Mark all conflicts box's hover.</summary>
+    public string MarkAllConflictsTip => AccessText.MarkAllConflictsTip;
+
+    /// <summary>The stepper's ‹ hover.</summary>
+    public string PreviousSlateTip => AccessText.PreviousSlateTip;
+
+    /// <summary>The stepper's › hover.</summary>
+    public string NextSlateTip => AccessText.NextSlateTip;
+
     /// <summary>The Close button's text.</summary>
     public string CloseText => AccessText.CloseWatchText;
 

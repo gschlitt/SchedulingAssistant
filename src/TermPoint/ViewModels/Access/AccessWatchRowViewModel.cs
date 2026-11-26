@@ -35,6 +35,12 @@ public sealed class AccessNoticeViewModel
     /// <summary>Dismisses the notice.</summary>
     public IRelayCommand DismissCommand { get; }
 
+    /// <summary>The Open link's text.</summary>
+    public string OpenText => AccessText.NoticeOpenText;
+
+    /// <summary>The ✕'s hover.</summary>
+    public string DismissTip => AccessText.NoticeDismissTip;
+
     /// <summary>Creates a notice row.</summary>
     /// <param name="id">The notice's id.</param>
     /// <param name="text">The sentence.</param>

@@ -16,6 +16,21 @@ public partial class CourseListView : UserControl
         InitializeComponent();
         DataContextChanged += OnDataContextChanged;
         AddHandler(InputElement.KeyDownEvent, OnKeyDown, Avalonia.Interactivity.RoutingStrategies.Tunnel);
+        if (this.FindControl<DataGrid>("CoursesDataGrid") is { } courses)
+            courses.Loaded += (_, _) => ScrollSelectedIntoView(courses);
+    }
+
+    /// <summary>
+    /// Scrolls the grid's selected row into view. Run when the Courses grid first appears, because a course can be
+    /// selected before the list is shown (<see cref="CourseListViewModel.SelectCourse"/>, from Check all courses) and
+    /// Avalonia's DataGrid does not scroll to its selected item by itself. Beside <see cref="RestoreFocusToGrid"/>,
+    /// which scrolls the same way, rather than in a behavior used by this one grid.
+    /// </summary>
+    /// <param name="grid">The grid.</param>
+    private static void ScrollSelectedIntoView(DataGrid grid)
+    {
+        if (grid.SelectedItem is { } item)
+            grid.ScrollIntoView(item, null);
     }
 
     private void OnDataContextChanged(object? sender, EventArgs e)

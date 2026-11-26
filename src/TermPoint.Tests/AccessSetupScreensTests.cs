@@ -362,6 +362,19 @@ public sealed class AccessSetupScreensTests : IDisposable
             FocusTestSupport.NoColours(_rig.Courses, subjects, _rig.Store), new FakeSectionCardState(), service, _rig.State);
     }
 
+    /// <summary>Check all courses' "Open in Courses" selects its course; an id the list doesn't show selects nothing.</summary>
+    [Fact]
+    public void Courses_SelectCourse_SelectsTheListedCourse_OrNothing()
+    {
+        var vm = NewCourseList(_rig.Service());
+
+        vm.SelectCourse(_rig.Biol.Id);
+        Assert.Equal(_rig.Biol.Id, vm.SelectedCourse?.Id);
+
+        vm.SelectCourse("no-such-course");
+        Assert.Null(vm.SelectedCourse);
+    }
+
     /// <summary>Before the setup the Components column is hidden and the rows carry no texts.</summary>
     [Fact]
     public void Courses_BeforeSetup_HaveNoComponentsColumn()

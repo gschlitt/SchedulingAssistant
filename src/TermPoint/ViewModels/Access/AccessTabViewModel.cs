@@ -90,6 +90,12 @@ public sealed partial class AccessTabViewModel : ViewModelBase
     /// <summary>Goes back to the list, closing the open watch when there is one.</summary>
     public IRelayCommand BackToListCommand { get; }
 
+    /// <summary>
+    /// Escape in the tab: backs out one level (<see cref="GoBack"/>). Off on the list, so Escape there is left to
+    /// others (an open flyout).
+    /// </summary>
+    public IRelayCommand EscapeCommand { get; }
+
     /// <summary>The tab's title: "Access · " and the loaded semester(s), or just "Access" when none is loaded.</summary>
     [ObservableProperty] private string _title = "Access";
 
@@ -120,6 +126,15 @@ public sealed partial class AccessTabViewModel : ViewModelBase
             OnPropertyChanged();
         }
     }
+
+    /// <summary>The Mark all conflicts box's text.</summary>
+    public string MarkAllConflictsText => AccessText.MarkAllConflictsText;
+
+    /// <summary>The Mark all conflicts box's hover.</summary>
+    public string MarkAllConflictsTip => AccessText.MarkAllConflictsTip;
+
+    /// <summary>The Add a watch button's text.</summary>
+    public string AddWatchButtonText => AccessText.AddWatchButtonText;
 
     /// <summary>The Add a watch command; raises <see cref="AddWatchRequested"/>. Disabled while this computer cannot save.</summary>
     public IRelayCommand AddWatchCommand { get; }
@@ -187,6 +202,7 @@ public sealed partial class AccessTabViewModel : ViewModelBase
         OpenWatchCommand = new RelayCommand<AccessWatchRowViewModel>(row =>
         { if (row is not null) _picture.OpenWatch(row.TagId, row.SemesterId.Length == 0 ? null : row.SemesterId); });
         BackToListCommand = new RelayCommand(() => { _picture.Close(); Page = AccessTabPage.List; });
+        EscapeCommand = new RelayCommand(() => GoBack(), () => Page != AccessTabPage.List);
         _picture.Changed += OnPictureChanged;
         Detail.BackRequested += _picture.Close;
         Check.ShowRequested += () => Page = AccessTabPage.Check;
@@ -330,6 +346,27 @@ public sealed partial class AccessTabViewModel : ViewModelBase
         else if (Page == AccessTabPage.Detail)
         {
             Page = _returnPage;
+        }
+    }
+
+    /// <summary>
+    /// Backs out one level, as Escape does in the r9 mock: the detail closes the open watch or course (the page goes
+    /// back to the list, or to Check all courses when the course was opened from there), and Check all courses goes
+    /// back to the list.
+    /// </summary>
+    /// <returns>True when a page closed; false on the list, where there is nothing to back out of.</returns>
+    public bool GoBack()
+    {
+        switch (Page)
+        {
+            case AccessTabPage.Detail:
+                _picture.Close();
+                return true;
+            case AccessTabPage.Check:
+                Page = AccessTabPage.List;
+                return true;
+            default:
+                return false;
         }
     }
 

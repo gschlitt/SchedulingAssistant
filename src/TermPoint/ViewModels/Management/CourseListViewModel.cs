@@ -305,6 +305,16 @@ public partial class CourseListViewModel : ViewModelBase, IDismissableEditor, IU
         SelectedCourse = null;
     }
 
+    /// <summary>
+    /// Selects a course in the list, for callers that open Courses on one course (Check all courses' "Open in
+    /// Courses"). The view scrolls the selected row into view when the list appears. A course the list does not show
+    /// (inactive while Show only active is ticked) or that no longer exists leaves nothing selected; the setting is
+    /// not changed behind the user's back.
+    /// </summary>
+    /// <param name="courseId">The course's id.</param>
+    public void SelectCourse(string courseId) =>
+        SelectedCourse = Courses.FirstOrDefault(c => c.Id == courseId);
+
     /// <summary>The sections of every loaded semester (the Components column's and Edit Course's "this term" view).</summary>
     private List<Section> LoadedSections() =>
         _sectionStore.SectionsBySemester.Values.SelectMany(s => s).ToList();

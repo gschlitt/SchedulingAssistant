@@ -146,6 +146,9 @@ public sealed partial class AccessCheckViewModel : ViewModelBase
     /// <summary>The page's title.</summary>
     public string Title => AccessText.CheckAllCoursesText;
 
+    /// <summary>The back button's text: "All watches" (the view draws the chevron).</summary>
+    public string BackText => AccessText.BackToWatchesText;
+
     /// <summary>One block per loaded semester.</summary>
     public ObservableCollection<AccessCheckSemesterViewModel> Semesters { get; } = [];
 

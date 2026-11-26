@@ -191,6 +191,26 @@ public sealed class AccessCheckAndTabPagesTests : IDisposable
     }
 
     [Fact]
+    public void Escape_BacksOutOnePage_AndIsLeftToOthersOnTheList()
+    {
+        DoSetup();
+        Assert.False(_tab.EscapeCommand.CanExecute(null));   // the list: Escape goes on to an open flyout
+
+        _tab.CheckAllCoursesCommand.Execute(null);
+        _tab.Check.Semesters[0].Problems[1].OpenCommand.Execute(null); // B, alone
+        Assert.True(_tab.IsDetailPage);
+
+        Assert.True(_tab.EscapeCommand.CanExecute(null));
+        _tab.EscapeCommand.Execute(null);
+        Assert.False(_picture.IsOpen);
+        Assert.True(_tab.IsCheckPage);
+
+        _tab.EscapeCommand.Execute(null);
+        Assert.True(_tab.IsListPage);
+        Assert.False(_tab.GoBack());
+    }
+
+    [Fact]
     public void QuietLines_OpenInCourses_OrShowTheSection()
     {
         Add("B", "BX", null, 3); // a lab-less, typeless section of B

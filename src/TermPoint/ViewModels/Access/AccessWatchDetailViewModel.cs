@@ -42,6 +42,9 @@ public sealed class AccessPinChipViewModel
     /// <summary>Unpins this section.</summary>
     public IRelayCommand UnpinCommand { get; }
 
+    /// <summary>The chip's hover.</summary>
+    public string UnpinTip => AccessText.UnpinText;
+
     /// <summary>Creates a chip.</summary>
     /// <param name="sectionId">The section id.</param>
     /// <param name="label">The section's name.</param>
@@ -261,6 +264,9 @@ public sealed partial class AccessWatchDetailViewModel : ViewModelBase
 
     /// <summary>The end of the pin banner.</summary>
     public string PinBannerTail => AccessText.PinBannerTail;
+
+    /// <summary>The pin banner's Unpin all button text.</summary>
+    public string UnpinAllText => AccessText.UnpinAllText;
 
     /// <summary>Unpins every section (the pin banner's Unpin all).</summary>
     public IRelayCommand UnpinAllCommand { get; }

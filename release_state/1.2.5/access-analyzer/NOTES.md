@@ -526,6 +526,18 @@ rounds 5–9. Split like D and E: **F-core** (Sonnet; no `.axaml`) then **F-ui**
   with no such section (a clash of three or more at once) or a campus-rule cause keeps the ▲ on all its sections.
   Not addressed: nothing on the tiles says "either one" (dropping either course fixes it). Full suite 5045 passed.
   This rule is too broad too (see the next section): it marks any section of the course that clashes with anything.
+- **F leftovers built and committed 2026-11-26, not hand-checked** (Opus; while Greg's trial verdict is pending):
+  (1) Escape backs out one page as in the mock (`AccessTabViewModel.GoBack`/`EscapeCommand` on the tab's root; off on
+  the list so Escape still reaches a flyout). The detail and Check pages take focus when shown
+  (`FocusWhenShownBehavior`, why in its doc): the clicked row hides, and Avalonia moves focus out of hidden controls,
+  so Escape would otherwise never reach the tab. Not done on purpose: Escape with focus on the grid doesn't close the
+  watch (the legend's Close does); a main-window Escape would mean overloading `CloseFlyout`, which tours call too.
+  (2) The view's last literal labels moved to `AccessText` ("+ Add a watch", Mark all conflicts and its hover, the
+  notice's Open and Dismiss, Unpin, Unpin all, All watches, Previous/Next slate), in both `AccessTabView` and the
+  legend bar. (3) Open in Courses selects the course (`CourseListViewModel.SelectCourse`; the grid scrolls to it when
+  it appears, in `CourseListView.axaml.cs`); an inactive course hidden by Show only active selects nothing.
+  Left: health-line styling (the mock's warn colour and hovers per phrase), held until step 2 settles the
+  no-full-slate line. Full suite 5061 passed, 0 failed; both compile checks and a full AXAML build clean.
 
 </details>
 
