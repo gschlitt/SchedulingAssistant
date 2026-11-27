@@ -195,6 +195,7 @@ public sealed partial class AccessWatchDetailViewModel : ViewModelBase
     private readonly AccessWatchToggler _toggler;
     private readonly SemesterContext _semesters;
     private readonly ICampusRepository _campusRepo;
+    private readonly SectionStore _sectionStore;
     private readonly HashSet<string> _expanded = [];
     private string? _openKey;
     private bool _multiCampus;
@@ -214,26 +215,20 @@ public sealed partial class AccessWatchDetailViewModel : ViewModelBase
     /// <summary>The back button's text: "All watches", or "Check all courses" in check mode (no chevron; the view draws it).</summary>
     [ObservableProperty] private string _backText = AccessText.BackToWatchesText;
 
-    /// <summary>The watch's source line: the start, before the name (empty in check mode).</summary>
-    [ObservableProperty] private string _sourceLead = string.Empty;
+    /// <summary>
+    /// What a course checked on its own covers ("A checked on its own: ..."); empty for a watch, whose name in the
+    /// header says it (Greg, 2026-11-26: the watch's name once, not again in a "Watching the tag" line).
+    /// </summary>
+    [ObservableProperty] private string _sourceText = string.Empty;
 
-    /// <summary>The watch's source line: the name in bold (empty in check mode).</summary>
-    [ObservableProperty] private string _sourceName = string.Empty;
+    /// <summary>The bold title above the courses ("Sections Watched"; Greg, 2026-11-26).</summary>
+    public string SectionsWatchedText => AccessText.SectionsWatchedText;
 
-    /// <summary>The watch's source line: the end, after the name. In check mode the whole source line.</summary>
-    [ObservableProperty] private string _sourceTail = string.Empty;
-
-    /// <summary>The Watching button's text.</summary>
-    public string WatchingText => AccessText.WatchingText;
-
-    /// <summary>True when the Watching button shows (a watch, not a checked course).</summary>
+    /// <summary>True for a watch, not a course checked alone: the title and Mark all conflicts show. (Stopping a watch is the eye on the list.)</summary>
     [ObservableProperty] private bool _showWatching;
 
     /// <summary>True while this computer can save: the Watching button and the Multi-campus box work.</summary>
     [ObservableProperty] private bool _canChange;
-
-    /// <summary>The Watching button's tooltip: what it does, or why it is off.</summary>
-    [ObservableProperty] private string _watchingTip = AccessText.UnwatchTip;
 
     /// <summary>The Multi-campus box's tooltip.</summary>
     public string MultiCampusTip => CanChange ? AccessText.MultiCampusTip : AccessText.ReadOnlyTip;
@@ -244,8 +239,8 @@ public sealed partial class AccessWatchDetailViewModel : ViewModelBase
     /// <summary>True when more than one loaded semester has the open thing (the switch shows).</summary>
     [ObservableProperty] private bool _hasSemesterChoice;
 
-    /// <summary>The health line's phrases, in order (the view puts " · " between them).</summary>
-    [ObservableProperty] private IReadOnlyList<string> _healthPhrases = [];
+    /// <summary>The health line's phrases, in order, each carrying the " · " that follows it.</summary>
+    [ObservableProperty] private IReadOnlyList<HealthPhraseItem> _healthPhrases = [];
 
     /// <summary>The health line as one text.</summary>
     [ObservableProperty] private string _healthLine = string.Empty;
@@ -329,10 +324,100 @@ public sealed partial class AccessWatchDetailViewModel : ViewModelBase
         }
     }
 
-    /// <summary>True when the hint about pinning and stepping shows.</summary>
+    /// <summary>
+    /// True when there is more than one slate: the stepper, the slate's sections and the pinning hint show (Greg,
+    /// 2026-11-26: they move here from the grid's banner, and only appear when there is something to step through).
+    /// </summary>
+    [ObservableProperty] private bool _isStepping;
+
+    /// <summary>"Slate 3 of 12", or "Slate 3 of more than 10,000".</summary>
+    [ObservableProperty] private string _positionText = string.Empty;
+
+    /// <summary>True when there is a previous slate.</summary>
+    [ObservableProperty] private bool _canGoPrevious;
+
+    /// <summary>True when there is a next slate.</summary>
+    [ObservableProperty] private bool _canGoNext;
+
+    /// <summary>Goes to the previous slate.</summary>
+    public IRelayCommand PreviousCommand { get; }
+
+    /// <summary>Goes to the next slate.</summary>
+    public IRelayCommand NextCommand { get; }
+
+    /// <summary>The stepper's ‹ hover.</summary>
+    public string PreviousSlateTip => AccessText.PreviousSlateTip;
+
+    /// <summary>The stepper's › hover.</summary>
+    public string NextSlateTip => AccessText.NextSlateTip;
+
+    /// <summary>
+    /// The slate being shown as plain lines, one per course ("CHEM 213  A + B"), for the view to show in selectable
+    /// text so it can be copied and pasted elsewhere.
+    /// </summary>
+    [ObservableProperty] private string _slateText = string.Empty;
+
+    /// <summary>True when the slate being shown puts in-person sections on more than one campus.</summary>
+    [ObservableProperty] private bool _mixesCampuses;
+
+    /// <summary>The "mixes campuses" tag's text.</summary>
+    public string MixesCampusesText => AccessText.MixesCampusesText;
+
+    /// <summary>The tag's tooltip, naming the campuses.</summary>
+    [ObservableProperty] private string _mixesCampusesTip = string.Empty;
+
+    /// <summary>
+    /// The quiet line when the filters or the subject focus hide some of the open watch's sections, e.g. "2 of
+    /// Cohort 1's sections are hidden by the filters."; empty when none is hidden.
+    /// </summary>
+    [ObservableProperty] private string _hiddenSectionsText = string.Empty;
+
+    /// <summary>True while <see cref="HiddenSectionsText"/> has something to say.</summary>
+    public bool HasHiddenSections => HiddenSectionsText.Length > 0;
+
+    partial void OnHiddenSectionsTextChanged(string value) => OnPropertyChanged(nameof(HasHiddenSections));
+
+    /// <summary>Rebuilds the hidden-sections line from what the grid reported (the grid draws after the picture changes).</summary>
+    private void RefreshHiddenSections() =>
+        HiddenSectionsText = !_picture.IsOpen || _picture.HiddenSectionCount == 0 ? string.Empty
+            : AccessText.HiddenWatchSectionsText(_picture.HiddenSectionCount, _picture.Name, _picture.HiddenByFocus);
+
+    /// <summary>Fills the stepper from the picture: the position, the slate's lines and whether it mixes campuses.</summary>
+    /// <param name="inputs">The semester view.</param>
+    /// <param name="a">The analysis.</param>
+    private void RebuildStepper(AccessInputs inputs, Analysis a)
+    {
+        IsStepping = _picture.IsStepping;
+        if (!IsStepping || _picture.CurrentSlate is not { } slate)
+        {
+            IsStepping = false;
+            PositionText = SlateText = string.Empty;
+            CanGoPrevious = CanGoNext = MixesCampuses = false;
+            return;
+        }
+        int index = _picture.SlateIndex;
+        PositionText = AccessText.SlatePosition(index, _picture.Slates.Count, a.SlateCountCapped);
+        CanGoPrevious = index > 0;
+        CanGoNext = index < _picture.Slates.Count - 1;
+        SlateText = string.Join(Environment.NewLine, a.ChosenCourseIds
+            .Select(c => (Course: c, Mine: slate.Where(s => s.CourseId == c).ToList()))
+            .Where(x => x.Mine.Count > 0)
+            .Select(x => $"{inputs.CourseCode(x.Course)}  {string.Join(" + ", x.Mine.Select(s => s.SectionCode))}"));
+        var campusIds = slate.Where(CampusRule.IsInPerson).Select(s => s.CampusId).Distinct().ToList();
+        MixesCampuses = campusIds.Count > 1;
+        if (MixesCampuses)
+        {
+            var names = _campusRepo.GetAll().ToDictionary(c => c.Id, c => c.Name);
+            MixesCampusesTip = AccessText.MixesCampusesTip(
+                campusIds.Select(id => id is not null && names.TryGetValue(id, out var n) ? n : "another campus")
+                    .OrderBy(n => n, StringComparer.OrdinalIgnoreCase).ToList());
+        }
+    }
+
+    /// <summary>True when the hint about pinning shows (with the stepper: there is more than one slate).</summary>
     [ObservableProperty] private bool _showStepHint;
 
-    /// <summary>The hint about pinning and stepping.</summary>
+    /// <summary>The hint about pinning.</summary>
     public string StepHint => AccessText.StepHint;
 
     /// <summary>The quieter facts, shown under the fold.</summary>
@@ -350,11 +435,14 @@ public sealed partial class AccessWatchDetailViewModel : ViewModelBase
     /// <summary>Opens or closes the fold of quieter facts.</summary>
     public IRelayCommand ToggleFoldCommand { get; }
 
+    /// <summary>
+    /// Selects a section named in the detail (a section link's target, <c>section:id</c>), as clicking it on the grid
+    /// would: Schedule View and the section list show it and its meetings selected.
+    /// </summary>
+    public IRelayCommand<string?> SelectSectionCommand { get; }
+
     /// <summary>Goes back (to the list, or to Check all courses in check mode).</summary>
     public IRelayCommand BackCommand { get; }
-
-    /// <summary>Stops watching the open watch's tag (the Watching button). The tag stays.</summary>
-    public IRelayCommand UnwatchCommand { get; }
 
     /// <summary>
     /// Creates the detail and fills it from the picture.
@@ -364,44 +452,38 @@ public sealed partial class AccessWatchDetailViewModel : ViewModelBase
     /// <param name="toggler">Stops watching a tag and saves the Multi-campus box; says whether this computer can save.</param>
     /// <param name="semesters">The loaded semesters (their names, for the switch).</param>
     /// <param name="campusRepo">Campus names for the sentences.</param>
+    /// <param name="sectionStore">Selects a section when its name is clicked in the detail.</param>
     public AccessWatchDetailViewModel(
-        AccessPicture picture, AccessState state, AccessWatchToggler toggler, SemesterContext semesters, ICampusRepository campusRepo)
+        AccessPicture picture, AccessState state, AccessWatchToggler toggler, SemesterContext semesters, ICampusRepository campusRepo,
+        SectionStore sectionStore)
     {
+        _sectionStore = sectionStore;
+        SelectSectionCommand = new RelayCommand<string?>(SelectSection);
         _picture = picture;
         _state = state;
         _toggler = toggler;
         _semesters = semesters;
         _campusRepo = campusRepo;
         BackCommand = new RelayCommand(() => BackRequested?.Invoke());
-        UnwatchCommand = new RelayCommand(Unwatch);
         UnpinAllCommand = new RelayCommand(_picture.ClearPins);
+        PreviousCommand = new RelayCommand(() => _picture.Step(-1));
+        NextCommand = new RelayCommand(() => _picture.Step(1));
         TickAllCommand = new RelayCommand(_picture.TickAll);
         ToggleFoldCommand = new RelayCommand(() => { IsFoldOpen = !IsFoldOpen; RefreshFold(); });
         // Never unsubscribed: singletons that live as long as the services of one database.
         _picture.Changed += Refresh;
+        _picture.HiddenSectionsChanged += RefreshHiddenSections;
         _state.Changed += Refresh;
         _toggler.CanToggleChanged += Refresh;
         Refresh();
     }
 
-    /// <summary>Stops watching the open watch's tag; a refused or failed save is shown inline.</summary>
-    private void Unwatch()
+    /// <summary>Selects the section a clicked section link names; ignores any other target.</summary>
+    /// <param name="target">The link's target, <c>section:id</c>.</param>
+    private void SelectSection(string? target)
     {
-        if (_picture.TagId is not { } tagId) return;
-        try
-        {
-            LastErrorMessage = null;
-            _toggler.SetWatched(tagId, false);
-        }
-        catch (InvalidOperationException)
-        {
-            LastErrorMessage = AccessText.ReadOnlyTip;
-        }
-        catch (Exception ex)
-        {
-            App.Logger.LogError(ex, "AccessWatchDetailViewModel.Unwatch");
-            LastErrorMessage = "The watch couldn't be changed. Your work is safe; try again.";
-        }
+        if (target is null || !target.StartsWith(AccessText.SectionLinkScheme, StringComparison.Ordinal)) return;
+        _sectionStore.SetSelection(target[AccessText.SectionLinkScheme.Length..]);
     }
 
     /// <summary>
@@ -434,6 +516,9 @@ public sealed partial class AccessWatchDetailViewModel : ViewModelBase
             return;
         }
 
+        // Section names in the detail are links that select the section (the mock's sref); hovers stay plain
+        using var links = AccessText.LinkSections();
+
         // A different watch or semester opened: forget what was expanded and the fold
         string key = $"{_picture.TagId}|{_picture.CourseId}|{_picture.SemesterId}";
         if (key != _openKey)
@@ -453,22 +538,20 @@ public sealed partial class AccessWatchDetailViewModel : ViewModelBase
         Name = name;
         BackText = check ? AccessText.BackToCheckText : AccessText.BackToWatchesText;
         ShowWatching = !check;
-        SourceLead = check ? string.Empty : AccessText.SourceWatchLead;
-        SourceName = check ? string.Empty : name;
-        SourceTail = check ? AccessText.SourceCheckText(name) : AccessText.SourceWatchTail;
-        WatchingTip = CanChange ? AccessText.UnwatchTip : AccessText.ReadOnlyTip;
+        SourceText = check ? AccessText.SourceCheckText(name) : string.Empty;
         RebuildSemesterChoices();
 
         bool tooLarge = a.Health == AccessHealth.TooLarge;
         var cautions = tooLarge ? [] : Cautions.For(a);
-        var phrases = new List<string>();
+        var phrases = new List<HealthPhrase>();
         if (a.IsSubset) phrases.Add(AccessText.SubsetText(a));
         if (a.PinnedSectionIds.Count > 0)
             phrases.Add($"{AccessText.Plural(a.PinnedSectionIds.Count, "section", "sections")} pinned");
         phrases.AddRange(AccessText.HealthPhrases(inputs, a, CampusName, cautions, _state.KeptInPlace));
-        HealthPhrases = phrases;
-        HealthLine = string.Join(" · ", phrases);
         IsHealthAttention = tooLarge || !a.HasSlate || a.MissingComponents.Count > 0;
+        HealthPhrases = phrases.Select((p, i) => new HealthPhraseItem(p.Text, AccessText.Plain(p.Tip), p.Warn, IsHealthAttention,
+            i < phrases.Count - 1 ? " · " : string.Empty)).ToList();
+        HealthLine = AccessText.Plain(string.Join(" · ", phrases.Select(p => p.Text)));
 
         RebuildPins(inputs);
         RebuildFlags(inputs, a, cautions, name, check, CampusName, tooLarge);
@@ -478,7 +561,9 @@ public sealed partial class AccessWatchDetailViewModel : ViewModelBase
         ShowMultiCampus = !check && _picture.Watch is { } w && (a.SpansCampuses || w.Watch.MultiCampus);
         _multiCampus = _picture.Watch?.Watch.MultiCampus ?? false;
         OnPropertyChanged(nameof(MultiCampus));
-        ShowStepHint = _picture.CanStep;
+        RebuildStepper(inputs, a);
+        ShowStepHint = IsStepping;
+        RefreshHiddenSections();
 
         Facts = tooLarge ? [] : AccessText.QuieterFacts(inputs, a);
         HasFacts = Facts.Count > 0;
@@ -490,7 +575,7 @@ public sealed partial class AccessWatchDetailViewModel : ViewModelBase
     {
         _openKey = null;
         Name = string.Empty;
-        SourceLead = SourceName = SourceTail = string.Empty;
+        SourceText = string.Empty;
         SemesterChoices.Clear();
         HasSemesterChoice = false;
         HealthPhrases = [];
@@ -503,6 +588,8 @@ public sealed partial class AccessWatchDetailViewModel : ViewModelBase
         ShowTickAll = false;
         ShowMultiCampus = false;
         ShowStepHint = false;
+        IsStepping = MixesCampuses = CanGoPrevious = CanGoNext = false;
+        PositionText = SlateText = HiddenSectionsText = string.Empty;
         Facts = [];
         HasFacts = false;
     }
@@ -528,7 +615,7 @@ public sealed partial class AccessWatchDetailViewModel : ViewModelBase
         {
             var section = inputs.Sections.FirstOrDefault(s => s.Id == id);
             if (section is null) continue;
-            PinChips.Add(new AccessPinChipViewModel(id, AccessText.SectionLabel(inputs, section), () => _picture.TogglePin(id)));
+            PinChips.Add(new AccessPinChipViewModel(id, AccessText.Plain(AccessText.SectionLabel(inputs, section)), () => _picture.TogglePin(id)));
         }
         HasPins = PinChips.Count > 0;
     }
@@ -593,4 +680,20 @@ public sealed partial class AccessWatchDetailViewModel : ViewModelBase
     /// <summary>Sets the fold's label from its state.</summary>
     private void RefreshFold() =>
         FoldLabel = IsFoldOpen ? AccessText.FoldLessText : AccessText.FoldMoreText(IsCheckMode, Facts.Count);
+}
+
+/// <summary>
+/// One phrase of the watch detail's health line as the view draws it (the mock's <c>segsHtml</c>): a phrase with a
+/// hover gets a dotted underline, a warning phrase the warning colour, and every phrase the attention colour when
+/// the whole line needs attention. The " · " rides on the phrase before it, so a wrapped line never starts with one.
+/// </summary>
+/// <param name="Text">The phrase.</param>
+/// <param name="Tip">Its hover; null for none.</param>
+/// <param name="Warn">Whether it is drawn in the warning colour.</param>
+/// <param name="Attention">Whether the whole line is drawn in the attention colour.</param>
+/// <param name="Trail">" · " after every phrase but the last; empty for the last.</param>
+public sealed record HealthPhraseItem(string Text, string? Tip, bool Warn, bool Attention, string Trail)
+{
+    /// <summary>True when the phrase has a hover (the view underlines it).</summary>
+    public bool HasTip => !string.IsNullOrEmpty(Tip);
 }

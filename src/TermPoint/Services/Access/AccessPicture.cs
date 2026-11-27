@@ -35,7 +35,6 @@ public sealed class AccessPicture
     private string? _semesterId;
     private HashSet<string>? _ticked;
     private readonly List<string> _pins = [];
-    private bool _stepping;
     private int _slateIndex;
 
     private Analysis? _analysis;
@@ -304,13 +303,18 @@ public sealed class AccessPicture
     }
 
     /// <summary>
-    /// Whether the grid can step through slates: there is a full slate and the watch is not the one-section-per-
+    /// Whether the open thing has a full slate that is worth listing: there is a full slate and the watch is not the one-section-per-
     /// component case (which has one slate or none, and says whether the sections fit together instead).
     /// </summary>
     public bool CanStep => Analysis is { HasSlate: true, IsSingleSectionCase: false, HasNoGroups: false };
 
-    /// <summary>Whether the grid is stepping through slates (<see cref="CanStep"/> and started).</summary>
-    public bool IsStepping => _stepping && CanStep;
+    /// <summary>
+    /// Whether there is more than one slate to step through (<see cref="CanStep"/> and at least two slates). Then the grid
+    /// shows the current slate and fades the rest, and the Access tab shows the stepper; with one slate there is
+    /// nothing to step through and the grid is drawn as usual. Stepping starts by itself (Greg, 2026-11-26: no Step
+    /// through slates button, no Clear).
+    /// </summary>
+    public bool IsStepping => CanStep && Slates.Count > 1;
 
     /// <summary>
     /// The slates in the stable order of Q34, at most <see cref="AccessAnalyzer.DefaultCap"/> of them; empty when
@@ -335,21 +339,27 @@ public sealed class AccessPicture
     /// <summary>The slate being shown while stepping; null when not stepping.</summary>
     public IReadOnlyList<Section>? CurrentSlate => IsStepping && Slates.Count > 0 ? Slates[SlateIndex] : null;
 
-    /// <summary>Starts stepping through slates at the first one, when that can be done.</summary>
-    public void StartStepping()
-    {
-        if (!CanStep || _stepping) return;
-        _stepping = true;
-        _slateIndex = 0;
-        Changed?.Invoke();
-    }
+    /// <summary>
+    /// How many of the open watch's sections with meeting times are not on the grid (the filters or the subject focus
+    /// hide them); set by the grid after it draws, because only the grid knows what it drew.
+    /// </summary>
+    public int HiddenSectionCount { get; private set; }
 
-    /// <summary>Stops stepping (the legend bar's Clear).</summary>
-    public void StopStepping()
+    /// <summary>Whether the subject focus hides at least one of the hidden sections (the filters hide the rest).</summary>
+    public bool HiddenByFocus { get; private set; }
+
+    /// <summary>Raised when <see cref="HiddenSectionCount"/> or <see cref="HiddenByFocus"/> changed (not <see cref="Changed"/>, which would redraw the grid that just set them).</summary>
+    public event Action? HiddenSectionsChanged;
+
+    /// <summary>Records what the grid left out of the open watch's sections.</summary>
+    /// <param name="count">How many sections with times are not on the grid.</param>
+    /// <param name="byFocus">Whether the subject focus hides at least one.</param>
+    public void SetHiddenSections(int count, bool byFocus)
     {
-        if (!_stepping) return;
-        _stepping = false;
-        Changed?.Invoke();
+        if (count == HiddenSectionCount && byFocus == HiddenByFocus) return;
+        HiddenSectionCount = count;
+        HiddenByFocus = byFocus;
+        HiddenSectionsChanged?.Invoke();
     }
 
     /// <summary>Moves to another slate, staying within the list.</summary>
@@ -380,7 +390,6 @@ public sealed class AccessPicture
     {
         _ticked = null;
         _pins.Clear();
-        _stepping = false;
         _slateIndex = 0;
         InvalidateAnalysis();
     }

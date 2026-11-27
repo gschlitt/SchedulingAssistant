@@ -40,7 +40,7 @@ internal static class AccessStateTestSupport
     {
         picture = new AccessPicture(state);
         var campuses = new CampusRepository(db);
-        var detail = new AccessWatchDetailViewModel(picture, state, toggler, semesters, campuses);
+        var detail = new AccessWatchDetailViewModel(picture, state, toggler, semesters, campuses, sectionStore);
         var check = new AccessCheckViewModel(state, picture, setup, semesters, campuses, sectionStore);
         return new AccessTabViewModel(state, semesters, campuses, toggler, setup, picture, detail, check);
     }

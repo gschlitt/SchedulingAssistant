@@ -133,12 +133,10 @@ public sealed class AccessTabTests : IDisposable
     }
 
     [Fact]
-    public void OneSemester_HasNoPrefix_AndTheTitleNamesIt()
+    public void OneSemester_HasNoPrefix()
     {
         var tab = NewTab();
         Assert.Equal("Both sections fit together", tab.Rows.Single(r => r.Name == "Zeta").HealthLine);
-        Assert.StartsWith("Access · ", tab.Title);
-        Assert.Contains("Fall", tab.Title);
     }
 
     [Fact]
@@ -186,6 +184,27 @@ public sealed class AccessTabTests : IDisposable
         var tab = NewTab();
         NewToggler().SetWatched(_alpha.Id, false);
         Assert.Equal(["Zeta"], tab.Rows.Select(r => r.Name).ToArray());
+    }
+
+    [Fact]
+    public void TheListEye_StopsWatching_AndKeepsTheTag()
+    {
+        var tab = NewTab();
+        tab.UnwatchCommand.Execute(tab.Rows.Single(r => r.Name == "Alpha"));
+        Assert.Equal(["Zeta"], tab.Rows.Select(r => r.Name).ToArray());
+        Assert.False(_envRepo.GetById(_alpha.Id)!.IsAccessWatch);
+        Assert.NotNull(_envRepo.GetById(_alpha.Id));   // the tag stays
+        Assert.Null(tab.ListErrorMessage);
+    }
+
+    [Fact]
+    public void TheListEye_ReadOnly_DoesNothing()
+    {
+        var tab = NewTab();
+        _canWrite = false;
+        Assert.False(tab.UnwatchCommand.CanExecute(tab.Rows[0]));
+        Assert.Equal(AccessText.ReadOnlyTip, tab.UnwatchTip);
+        Assert.Equal(2, tab.Rows.Count);
     }
 
     // ── The toggler ───────────────────────────────────────────────────────────

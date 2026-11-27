@@ -65,7 +65,7 @@ public sealed class AccessWatchDetailTests : IDisposable
         _state = AccessStateTestSupport.For(db, _store, _notifier);
         _picture = new AccessPicture(_state);
         var toggler = new AccessWatchToggler(_envRepo, _state, _notifier, () => _canWrite);
-        _detail = new AccessWatchDetailViewModel(_picture, _state, toggler, _semesters, new CampusRepository(db));
+        _detail = new AccessWatchDetailViewModel(_picture, _state, toggler, _semesters, new CampusRepository(db), _store);
         _semesters.Reload(ayRepo, semesterRepo, year.Id, new HashSet<string> { _fall });
         _store.Reload(_sectionRepo, [_fall]);
     }
@@ -111,9 +111,7 @@ public sealed class AccessWatchDetailTests : IDisposable
         Assert.False(_detail.IsCheckMode);
         Assert.Equal("W", _detail.Name);
         Assert.Equal("All watches", _detail.BackText);
-        Assert.Equal("Watching the tag ", _detail.SourceLead);
-        Assert.Equal("W", _detail.SourceName);
-        Assert.Equal(": the sections carrying it.", _detail.SourceTail);
+        Assert.Empty(_detail.SourceText);   // a watch's name is in the header only
         Assert.True(_detail.ShowWatching);
         Assert.True(_detail.CanChange);
         Assert.Equal("3 slates · 1 conflict", _detail.HealthLine);
@@ -190,10 +188,59 @@ public sealed class AccessWatchDetailTests : IDisposable
 
         var flag = Assert.Single(_detail.Flags, f => !f.IsCaution);
         Assert.Equal("▲", flag.Mark);
-        Assert.StartsWith("A 1 is stranded: ", flag.Text);
-        Assert.EndsWith(" No student taking all of W can use it.", flag.Text);
+        Assert.StartsWith("A 1 is stranded: ", AccessText.Plain(flag.Text));
+        Assert.EndsWith(" No student taking all of W can use it.", AccessText.Plain(flag.Text));
         Assert.Contains("1 section stranded", _detail.HealthLine);
         Assert.Contains("depends on A 2", _detail.HealthLine);
+    }
+
+    [Fact]
+    public void WithSeveralSlates_TheDetailStepsAndListsTheSlateAsText()
+    {
+        _picture.OpenWatch(_tag.Id);
+        Assert.True(_detail.IsStepping);
+        Assert.True(_detail.ShowStepHint);
+        Assert.Equal("Slate 1 of 3", _detail.PositionText);
+        Assert.False(_detail.CanGoPrevious);
+        Assert.True(_detail.CanGoNext);
+        Assert.Equal($"A  1{Environment.NewLine}B  2", _detail.SlateText);
+
+        _detail.NextCommand.Execute(null);
+        Assert.Equal("Slate 2 of 3", _detail.PositionText);
+        Assert.Equal($"A  2{Environment.NewLine}B  1", _detail.SlateText);
+        Assert.True(_detail.CanGoPrevious);
+    }
+
+    [Fact]
+    public void WithOneSlate_NoStepperAndNoPinningHint()
+    {
+        // pin A 1 and B 2: one slate left
+        _picture.OpenWatch(_tag.Id);
+        _picture.TogglePin(Get(_fall, "A", "1").Id);
+        _picture.TogglePin(Get(_fall, "B", "2").Id);
+        Assert.False(_detail.IsStepping);
+        Assert.False(_detail.ShowStepHint);
+        Assert.Equal(string.Empty, _detail.SlateText);
+    }
+
+    [Fact]
+    public void ASectionNameInTheDetail_IsALinkThatSelectsTheSection()
+    {
+        // Same stranded setup: the flag names A 1, which is a link; clicking it selects A 1 (grid and section list)
+        var b2 = Get(_fall, "B", "2");
+        b2.Schedule = [new SectionDaySchedule { Day = 1, StartMinutes = 540, DurationMinutes = 60 }];
+        _sectionRepo.Update(b2);
+        Reload();
+        _picture.OpenWatch(_tag.Id);
+        var a1 = Get(_fall, "A", "1");
+
+        var flag = Assert.Single(_detail.Flags, f => !f.IsCaution);
+        string link = $"[A 1]({AccessText.SectionLinkScheme}{a1.Id})";
+        Assert.StartsWith(link, flag.Text);
+        Assert.DoesNotContain("](", _detail.HealthLine);   // the one-text line stays plain
+
+        _detail.SelectSectionCommand.Execute($"{AccessText.SectionLinkScheme}{a1.Id}");
+        Assert.Equal(new HashSet<string> { a1.Id }, _store.SelectedSectionIds);
     }
 
     [Fact]
@@ -204,7 +251,7 @@ public sealed class AccessWatchDetailTests : IDisposable
         _picture.OpenWatch(_tag.Id);
 
         Assert.True(_detail.HasFacts);
-        Assert.Equal("Assumes A 3 (no times) fits anywhere.", _detail.Facts.Single());
+        Assert.Equal("Assumes A 3 (no times) fits anywhere.", AccessText.Plain(_detail.Facts.Single()));
         Assert.Equal("More about this watch (1)", _detail.FoldLabel);
         Assert.False(_detail.IsFoldOpen);
         _detail.ToggleFoldCommand.Execute(null);
@@ -250,7 +297,7 @@ public sealed class AccessWatchDetailTests : IDisposable
     }
 
     [Fact]
-    public void ReadOnly_RefusesTheMultiCampusBoxAndTheWatchingButton_ButTicksStillWork()
+    public void ReadOnly_RefusesTheMultiCampusBox_ButTicksStillWork()
     {
         foreach (var (course, code, campus) in new[] { ("A", "1", "c1"), ("A", "2", "c2"), ("B", "1", "c1"), ("B", "2", "c2") })
         {
@@ -264,28 +311,13 @@ public sealed class AccessWatchDetailTests : IDisposable
         _detail.Refresh();
 
         Assert.False(_detail.CanChange);
-        Assert.Equal(AccessText.ReadOnlyTip, _detail.WatchingTip);
         _detail.MultiCampus = true;
         Assert.False(_envRepo.GetById(_tag.Id)!.WatchMultiCampus);
         Assert.False(_detail.MultiCampus);
         Assert.Equal(AccessText.ReadOnlyTip, _detail.LastErrorMessage);
 
-        _detail.UnwatchCommand.Execute(null);
-        Assert.True(_envRepo.GetById(_tag.Id)!.IsAccessWatch);
-
         _detail.Courses[1].IsTicked = false; // ticks save nothing
         Assert.False(_detail.Courses[1].IsTicked);
-    }
-
-    [Fact]
-    public void Watching_StopsWatchingTheTag_AndTheDetailCloses()
-    {
-        _picture.OpenWatch(_tag.Id);
-        _detail.UnwatchCommand.Execute(null);
-
-        Assert.False(_envRepo.GetById(_tag.Id)!.IsAccessWatch);
-        Assert.False(_picture.IsOpen);
-        Assert.False(_detail.IsOpen);
     }
 
     [Fact]
@@ -311,7 +343,7 @@ public sealed class AccessWatchDetailTests : IDisposable
         Assert.True(_detail.IsCheckMode);
         Assert.Equal("Check all courses", _detail.BackText);
         Assert.False(_detail.ShowWatching);
-        Assert.Equal("A checked on its own: all its sections this term. Not a watch; nothing is saved.", _detail.SourceTail);
+        Assert.Equal("A checked on its own: all its sections this term. Not a watch; nothing is saved.", _detail.SourceText);
         Assert.Equal("A", _detail.Name);
         Assert.False(_detail.ShowUntagged);
         Assert.Equal(["A"], _detail.Courses.Select(r => r.Code).ToArray());

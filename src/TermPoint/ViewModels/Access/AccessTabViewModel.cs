@@ -96,9 +96,6 @@ public sealed partial class AccessTabViewModel : ViewModelBase
     /// </summary>
     public IRelayCommand EscapeCommand { get; }
 
-    /// <summary>The tab's title: "Access · " and the loaded semester(s), or just "Access" when none is loaded.</summary>
-    [ObservableProperty] private string _title = "Access";
-
     /// <summary>The watches, attention first, then by name (ordinal, ignoring case).</summary>
     public ObservableCollection<AccessWatchRowViewModel> Rows { get; } = new();
 
@@ -134,6 +131,21 @@ public sealed partial class AccessTabViewModel : ViewModelBase
     public string MarkAllConflictsTip => AccessText.MarkAllConflictsTip;
 
     /// <summary>The Add a watch button's text.</summary>
+    /// <summary>
+    /// Stops watching a row's tag from the list (the eye at the row's left), as the detail's Watching button does: the
+    /// tag stays and so do its sections. A refused or failed save shows in <see cref="ListErrorMessage"/>.
+    /// </summary>
+    public IRelayCommand<AccessWatchRowViewModel> UnwatchCommand { get; }
+
+    /// <summary>The eye's hover on a row: what a click does, or why it can't (read-only).</summary>
+    public string UnwatchTip => CanAddWatch ? AccessText.UnwatchTip : AccessText.ReadOnlyTip;
+
+    /// <summary>Why the eye on a row did nothing (read-only, or the save failed); null when it worked.</summary>
+    [ObservableProperty] private string? _listErrorMessage;
+
+    /// <summary>The list's bold heading.</summary>
+    public string ListHeadingText => AccessText.ListHeadingText;
+
     public string AddWatchButtonText => AccessText.AddWatchButtonText;
 
     /// <summary>The Add a watch command; raises <see cref="AddWatchRequested"/>. Disabled while this computer cannot save.</summary>
@@ -199,6 +211,7 @@ public sealed partial class AccessTabViewModel : ViewModelBase
         AddWatchCommand = new RelayCommand(() => AddWatchRequested?.Invoke(), () => CanAddWatch);
         SetUpCommand = new RelayCommand(() => _setup.RequestSetupWizard(), () => _setup.CanSave);
         CheckAllCoursesCommand = new RelayCommand(Check.Run);
+        UnwatchCommand = new RelayCommand<AccessWatchRowViewModel>(Unwatch, _ => CanAddWatch);
         OpenWatchCommand = new RelayCommand<AccessWatchRowViewModel>(row =>
         { if (row is not null) _picture.OpenWatch(row.TagId, row.SemesterId.Length == 0 ? null : row.SemesterId); });
         BackToListCommand = new RelayCommand(() => { _picture.Close(); Page = AccessTabPage.List; });
@@ -213,9 +226,28 @@ public sealed partial class AccessTabViewModel : ViewModelBase
         // Never unsubscribed: singletons that live as long as the services of one database.
         _state.Changed += Refresh;
         _toggler.CanToggleChanged += OnCanToggleChanged;
-        _semesters.PropertyChanged += (_, e) =>
-        { if (e.PropertyName == nameof(SemesterContext.SelectedSemesters)) UpdateTitle(); };
         Refresh();
+    }
+
+    /// <summary>Stops watching the row's tag; a refused or failed save is shown above the list.</summary>
+    /// <param name="row">The row whose eye was clicked.</param>
+    private void Unwatch(AccessWatchRowViewModel? row)
+    {
+        if (row is null) return;
+        try
+        {
+            ListErrorMessage = null;
+            _toggler.SetWatched(row.TagId, false);
+        }
+        catch (InvalidOperationException)
+        {
+            ListErrorMessage = AccessText.ReadOnlyTip;
+        }
+        catch (Exception ex)
+        {
+            App.Logger.LogError(ex, "AccessTabViewModel.Unwatch");
+            ListErrorMessage = AccessText.WatchNotChangedText;
+        }
     }
 
     /// <summary>Re-reads the write lock for the Add a watch button.</summary>
@@ -223,17 +255,12 @@ public sealed partial class AccessTabViewModel : ViewModelBase
     {
         OnPropertyChanged(nameof(CanAddWatch));
         OnPropertyChanged(nameof(AddWatchTip));
+        OnPropertyChanged(nameof(UnwatchTip));
+        UnwatchCommand.NotifyCanExecuteChanged();
         AddWatchCommand.NotifyCanExecuteChanged();
         SetUpCommand.NotifyCanExecuteChanged();
         OnPropertyChanged(nameof(ShowSetupInvite));
         OnPropertyChanged(nameof(ShowSetupReadOnlyLine));
-    }
-
-    /// <summary>Sets <see cref="Title"/> from the loaded semesters.</summary>
-    private void UpdateTitle()
-    {
-        var names = _semesters.SelectedSemesters.Select(s => s.DisplayName).ToList();
-        Title = names.Count == 0 ? "Access" : $"Access · {string.Join(", ", names)}";
     }
 
     /// <summary>
@@ -256,7 +283,6 @@ public sealed partial class AccessTabViewModel : ViewModelBase
         {
             App.Logger.LogError(ex, "AccessTabViewModel.Refresh");
         }
-        UpdateTitle();
         OnCanToggleChanged();
         OnPropertyChanged(nameof(MarkAllConflicts));
     }

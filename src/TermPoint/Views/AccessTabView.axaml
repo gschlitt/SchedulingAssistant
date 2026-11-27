@@ -3,6 +3,7 @@
 	xmlns="https://github.com/avaloniaui"
 	xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
 	xmlns:b="using:TermPoint.Behaviors"
+	xmlns:h="using:TermPoint.Helpers"
 	x:CompileBindings="False"
 	b:DismissBehaviors.EscapeCommand="{Binding EscapeCommand}">
 
@@ -24,7 +25,7 @@
 			<Setter Property="BorderThickness" Value="0" />
 			<Setter Property="Cursor" Value="Hand" />
 			<Setter Property="Foreground" Value="{StaticResource TextSecondary}" />
-			<Setter Property="FontSize" Value="{StaticResource FontSizePanelList}" />
+			<Setter Property="FontSize" Value="{StaticResource FontSizeAccessText}" />
 		</Style>
 		<Style Selector="Button.alink:pointerover /template/ ContentPresenter">
 			<Setter Property="Background" Value="Transparent" />
@@ -50,9 +51,25 @@
 			<Setter Property="Background" Value="{StaticResource ButtonHover}" />
 		</Style>
 		<Style Selector="TextBlock.body">
-			<Setter Property="FontSize" Value="{StaticResource FontSizePanelList}" />
+			<Setter Property="FontSize" Value="{StaticResource FontSizeAccessText}" />
 			<Setter Property="Foreground" Value="{StaticResource TextPrimary}" />
 			<Setter Property="TextWrapping" Value="Wrap" />
+		</Style>
+		<!--  The detail's health line, phrase by phrase (the mock's segsHtml): the attention colour for the whole line,
+		      the warning colour for a warning phrase, a dotted underline and help cursor for a phrase with a hover  -->
+		<Style Selector="TextBlock.hattn">
+			<Setter Property="Foreground" Value="{StaticResource AccessMarkAttention}" />
+		</Style>
+		<Style Selector="TextBlock.hwarn">
+			<Setter Property="Foreground" Value="{StaticResource AccessMarkFragile}" />
+		</Style>
+		<Style Selector="TextBlock.htip">
+			<Setter Property="Cursor" Value="Help" />
+			<Setter Property="TextDecorations">
+				<TextDecorationCollection>
+					<TextDecoration Location="Underline" StrokeDashArray="1,2" StrokeThickness="1" StrokeThicknessUnit="Pixel" StrokeOffset="2" StrokeOffsetUnit="Pixel" />
+				</TextDecorationCollection>
+			</Setter>
 		</Style>
 		<Style Selector="TextBlock.quiet">
 			<Setter Property="FontSize" Value="{StaticResource FontSizePanelList}" />
@@ -66,8 +83,16 @@
 		<!--  ═════════════ Page 1: the list ═════════════  -->
 		<DockPanel IsVisible="{Binding IsListPage}">
 
-			<!--  Header: the semester, Check all courses and Add a watch (only once set up; disabled read-only, its hover says why)  -->
-			<DockPanel DockPanel.Dock="Top" Margin="0,0,0,4">
+			<!--  Header: the "Access Watches" heading, and Add a watch at the right (Add only once set up; disabled read-only, its hover
+			      says why). No "Access · semester" title: the tab says Access and the semester is chosen elsewhere (Greg, 2026-11-26).  -->
+			<DockPanel DockPanel.Dock="Top" Margin="0,0,0,4" LastChildFill="False">
+				<TextBlock
+					VerticalAlignment="Center"
+					DockPanel.Dock="Left"
+					FontSize="{StaticResource FontSizeAccessHeading}"
+					FontWeight="Bold"
+					Foreground="{StaticResource TextPrimary}"
+					Text="{Binding ListHeadingText}" />
 				<Button
 					Classes="abtn"
 					Margin="4,0,0,0"
@@ -78,18 +103,6 @@
 					IsVisible="{Binding IsSetUp}"
 					ToolTip.ShowOnDisabled="True"
 					ToolTip.Tip="{Binding AddWatchTip}" />
-				<Button
-					Classes="abtn"
-					Command="{Binding CheckAllCoursesCommand}"
-					Content="{Binding CheckAllCoursesText}"
-					DockPanel.Dock="Right" />
-				<TextBlock
-					VerticalAlignment="Center"
-					FontSize="{StaticResource FontSizePanelList}"
-					FontWeight="SemiBold"
-					Foreground="{StaticResource TextSecondary}"
-					Text="{Binding Title}"
-					TextTrimming="CharacterEllipsis" />
 			</DockPanel>
 
 			<!--  Until access watches are set up (8f): the invite while editing, or the quiet read-only line  -->
@@ -153,15 +166,29 @@
 						</ItemsControl.ItemTemplate>
 					</ItemsControl>
 
-					<!--  One line per watch: mark, name, health line (trimmed; the whole line on hover). Click opens its detail.  -->
+					<!--  One line per watch: eye, mark, name, health line (wrapping, so nothing hides behind a hover). Click opens its detail.  -->
 					<ItemsControl IsVisible="{Binding HasRows}" ItemsSource="{Binding Rows}">
 						<ItemsControl.ItemTemplate>
 							<DataTemplate>
+							<!--  The green eye at the far left stops watching from the list (the tag stays), as the detail's Watching does  -->
+							<Grid ColumnDefinitions="Auto,*">
 								<Button
+									Classes="alink"
+									Margin="0,0,5,0"
+									Padding="2,2"
+									VerticalAlignment="Center"
+									Command="{Binding $parent[ItemsControl].DataContext.UnwatchCommand}"
+									CommandParameter="{Binding}"
+									IsEnabled="{Binding $parent[ItemsControl].DataContext.CanAddWatch}"
+									ToolTip.ShowOnDisabled="True"
+									ToolTip.Tip="{Binding $parent[ItemsControl].DataContext.UnwatchTip}">
+									<Path Width="12" Height="9" Data="{StaticResource AccessWatchEyeIcon}" Stroke="{StaticResource AccessWatchEyeOn}" StrokeThickness="1.4" Stretch="Uniform" />
+								</Button>
+								<Button
+									Grid.Column="1"
 									Classes="arow"
 									Command="{Binding $parent[ItemsControl].DataContext.OpenWatchCommand}"
-									CommandParameter="{Binding}"
-									ToolTip.Tip="{Binding HealthLine}">
+									CommandParameter="{Binding}">
 									<Grid Margin="0,1" ColumnDefinitions="14,Auto,*,Auto">
 										<Panel Grid.Column="0" VerticalAlignment="Center">
 											<Path Width="9" Height="9" Data="{StaticResource AccessMarkAttentionIcon}" Fill="{StaticResource AccessMarkAttention}" IsVisible="{Binding IsAttention}" Stretch="Uniform" />
@@ -172,17 +199,17 @@
 											Grid.Column="1"
 											Margin="0,0,8,0"
 											VerticalAlignment="Center"
-											FontSize="{StaticResource FontSizePanelList}"
+											FontSize="{StaticResource FontSizeAccessText}"
 											FontWeight="SemiBold"
 											Foreground="{StaticResource TextPrimary}"
 											Text="{Binding Name}" />
 										<TextBlock
 											Grid.Column="2"
 											VerticalAlignment="Center"
-											FontSize="{StaticResource FontSizePanelList}"
-											Foreground="{StaticResource TextFaint}"
+											FontSize="{StaticResource FontSizeAccessText}"
+											Foreground="{StaticResource TextPrimary}"
 											Text="{Binding HealthLine}"
-											TextTrimming="CharacterEllipsis" />
+											TextWrapping="Wrap" />
 										<Path
 											Grid.Column="3"
 											Width="6"
@@ -194,52 +221,66 @@
 											Stretch="Uniform" />
 									</Grid>
 								</Button>
+							</Grid>
 							</DataTemplate>
 						</ItemsControl.ItemTemplate>
 					</ItemsControl>
+
+					<!--  The eye did nothing: read-only, or the save failed  -->
+					<TextBlock
+						FontSize="{StaticResource FontSizeAccessText}"
+						Foreground="{StaticResource TextError}"
+						IsVisible="{Binding ListErrorMessage, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"
+						Text="{Binding ListErrorMessage}"
+						TextWrapping="Wrap" />
+
+					<!--  Check all courses, at the foot of the list (Greg, 2026-11-26)  -->
+					<Button
+						Classes="abtn"
+						Margin="0,6,0,0"
+						HorizontalAlignment="Left"
+						Command="{Binding CheckAllCoursesCommand}"
+						Content="{Binding CheckAllCoursesText}" />
 				</StackPanel>
 			</ScrollViewer>
 		</DockPanel>
 
 		<!--  ═════════════ Page 2: a watch's detail (or a course checked alone) ═════════════  -->
-		<DockPanel b:FocusWhenShownBehavior.IsEnabled="True" DataContext="{Binding Detail}" IsVisible="{Binding $parent[UserControl].DataContext.IsDetailPage}">
+		<DockPanel x:Name="DetailPage" b:FocusWhenShownBehavior.IsEnabled="True" DataContext="{Binding Detail}" IsVisible="{Binding $parent[UserControl].DataContext.IsDetailPage}">
 
-			<!--  Header: back, name, Watching (click to stop watching; the tag stays)  -->
+			<!--  Header: back and the name (stopping a watch is the eye on the list)  -->
 			<DockPanel DockPanel.Dock="Top" Margin="0,0,0,3">
 				<Button Classes="alink" Margin="0,0,8,0" VerticalAlignment="Center" Command="{Binding BackCommand}" DockPanel.Dock="Left">
 					<StackPanel Orientation="Horizontal" Spacing="3">
-						<Path Width="7" Height="7" VerticalAlignment="Center" Data="{StaticResource ChevronLeftIcon}" Fill="{StaticResource TextSecondary}" Stretch="Uniform" />
-						<TextBlock VerticalAlignment="Center" Text="{Binding BackText}" />
+						<Path Width="9" Height="9" VerticalAlignment="Center" Data="{StaticResource ChevronLeftIcon}" Fill="{StaticResource TextSecondary}" Stretch="Uniform" />
+						<TextBlock VerticalAlignment="Center" FontSize="{StaticResource FontSizeAccessHeading}" Text="{Binding BackText}" />
 					</StackPanel>
 				</Button>
-				<Button
-					Classes="abtn"
-					Command="{Binding UnwatchCommand}"
-					DockPanel.Dock="Right"
-					IsEnabled="{Binding CanChange}"
-					IsVisible="{Binding ShowWatching}"
-					ToolTip.ShowOnDisabled="True"
-					ToolTip.Tip="{Binding WatchingTip}">
-					<StackPanel Orientation="Horizontal" Spacing="4">
-						<Path Width="12" Height="9" VerticalAlignment="Center" Data="{StaticResource AccessWatchEyeIcon}" Stroke="{StaticResource AccessWatchEyeOn}" StrokeThickness="1.4" Stretch="Uniform" />
-						<TextBlock VerticalAlignment="Center" Text="{Binding WatchingText}" />
-					</StackPanel>
-				</Button>
+				<!--  The watch's name, said once (no "Watching the tag X" line under it; Greg, 2026-11-26)  -->
 				<TextBlock
 					VerticalAlignment="Center"
-					FontSize="{StaticResource FontSizePanelList}"
-					FontWeight="SemiBold"
+					FontSize="{StaticResource FontSizeAccessHeading}"
+					FontWeight="Bold"
 					Foreground="{StaticResource TextPrimary}"
 					Text="{Binding Name}"
 					TextTrimming="CharacterEllipsis" />
 			</DockPanel>
 
+			<!--  Foot: Mark all conflicts, the same per-computer setting as on the list; with a watch open it adds the conflicts
+			      of this watch only (GridAccessMarks.Build). Not for a course checked alone.  -->
+			<CheckBox
+				Margin="0,4,0,0"
+				Content="{Binding $parent[UserControl].DataContext.MarkAllConflictsText}"
+				DockPanel.Dock="Bottom"
+				FontSize="{StaticResource FontSizePanelList}"
+				IsChecked="{Binding $parent[UserControl].DataContext.MarkAllConflicts}"
+				IsVisible="{Binding ShowWatching}"
+				ToolTip.Tip="{Binding $parent[UserControl].DataContext.MarkAllConflictsTip}" />
+
 			<ScrollViewer VerticalScrollBarVisibility="Auto">
 				<StackPanel Spacing="3">
-					<!--  What the watch covers ("Watching the tag X: the sections carrying it.")  -->
-					<TextBlock Classes="quiet">
-						<Run Text="{Binding SourceLead}" /><Run FontWeight="SemiBold" Text="{Binding SourceName}" /><Run Text="{Binding SourceTail}" />
-					</TextBlock>
+					<!--  A course checked on its own: what it covers (nothing for a watch)  -->
+					<TextBlock Classes="quiet" IsVisible="{Binding SourceText, Converter={x:Static StringConverters.IsNotNullOrEmpty}}" Text="{Binding SourceText}" />
 
 					<!--  Several semesters (Q43): which one the detail shows  -->
 					<ItemsControl IsVisible="{Binding HasSemesterChoice}" ItemsSource="{Binding SemesterChoices}">
@@ -248,14 +289,38 @@
 						</ItemsControl.ItemsPanel>
 						<ItemsControl.ItemTemplate>
 							<DataTemplate>
-								<ToggleButton Classes="abtn" Padding="6,1" MinHeight="0" Command="{Binding ChooseCommand}" Content="{Binding Name}" FontSize="{StaticResource FontSizePanelList}" IsChecked="{Binding IsSelected, Mode=OneWay}" />
+								<ToggleButton Classes="abtn" Padding="6,1" MinHeight="0" Command="{Binding ChooseCommand}" Content="{Binding Name}" FontSize="{StaticResource FontSizeAccessText}" IsChecked="{Binding IsSelected, Mode=OneWay}" />
 							</DataTemplate>
 						</ItemsControl.ItemTemplate>
 					</ItemsControl>
 
-					<!--  Health line (attention colour when there is no full slate or something is missing)  -->
-					<TextBlock Classes="body" FontWeight="SemiBold" IsVisible="{Binding !IsHealthAttention}" Text="{Binding HealthLine}" />
-					<TextBlock Classes="body" FontWeight="SemiBold" Foreground="{StaticResource AccessMarkAttention}" IsVisible="{Binding IsHealthAttention}" Text="{Binding HealthLine}" />
+					<!--  Health line, one phrase per item so each can carry its own hover (attention colour when there is
+					      no full slate or something is missing; warning colour for a phrase like "every slate mixes campuses").
+					      WrapPanel measures each phrase at the full width, so a long phrase still wraps on its own. The " · " is its
+					      own TextBlock so the warning colour and dotted underline stop at the phrase. Section names here, in the
+					      flags, course rows and facts are links that select the section (InlineFormatter.LinkCommand).  -->
+					<ItemsControl ItemsSource="{Binding HealthPhrases}">
+						<ItemsControl.ItemsPanel>
+							<ItemsPanelTemplate><WrapPanel /></ItemsPanelTemplate>
+						</ItemsControl.ItemsPanel>
+						<ItemsControl.ItemTemplate>
+							<DataTemplate>
+								<DockPanel>
+									<TextBlock Classes="body" Classes.hattn="{Binding Attention}" DockPanel.Dock="Right" FontSize="{StaticResource FontSizeAccessText}" FontWeight="SemiBold" Text="{Binding Trail}" />
+									<TextBlock
+										Classes="body"
+										Classes.hattn="{Binding Attention}"
+										Classes.htip="{Binding HasTip}"
+										Classes.hwarn="{Binding Warn}"
+										FontSize="{StaticResource FontSizeAccessText}"
+										FontWeight="SemiBold"
+										ToolTip.Tip="{Binding Tip}"
+										h:InlineFormatter.LinkCommand="{Binding #DetailPage.DataContext.SelectSectionCommand}"
+										h:InlineFormatter.Text="{Binding Text}" />
+								</DockPanel>
+							</DataTemplate>
+						</ItemsControl.ItemTemplate>
+					</ItemsControl>
 
 					<!--  Pins narrow the slates: a tinted banner at the top, so nobody wonders where their slates went  -->
 					<Border Padding="6,3" Background="{StaticResource AccessPinBannerBackground}" CornerRadius="3" IsVisible="{Binding HasPins}">
@@ -293,7 +358,7 @@
 										<Path Width="9" Height="9" Data="{StaticResource AccessMarkAttentionIcon}" Fill="{StaticResource AccessMarkAttention}" IsVisible="{Binding !IsCaution}" Stretch="Uniform" />
 										<Path Width="8" Height="8" Data="{StaticResource AccessMarkCautionIcon}" Fill="{StaticResource AccessMarkFragile}" IsVisible="{Binding IsCaution}" Stretch="Uniform" />
 									</Panel>
-									<TextBlock Grid.Column="1" Classes="body" Text="{Binding Text}" />
+									<TextBlock Grid.Column="1" Classes="body" h:InlineFormatter.LinkCommand="{Binding #DetailPage.DataContext.SelectSectionCommand}" h:InlineFormatter.Text="{Binding Text}" />
 								</Grid>
 							</DataTemplate>
 						</ItemsControl.ItemTemplate>
@@ -301,6 +366,37 @@
 
 					<!--  8g: one very quiet line, never a list  -->
 					<TextBlock Classes="quiet" FontStyle="Italic" IsVisible="{Binding ShowUntagged}" Text="{Binding UntaggedText}" />
+
+					<!--  The slates, only when there is more than one (it moved here from the grid's banner, Greg 2026-11-26):
+					      ‹ Slate i of N ›, the slate's sections one course per line in text that can be selected and copied,
+					      "mixes campuses" when it does, then the pinning hint  -->
+					<StackPanel Margin="0,3,0,0" IsVisible="{Binding IsStepping}" Spacing="2">
+						<StackPanel Orientation="Horizontal" Spacing="6">
+							<Button Padding="6,1" MinHeight="0" Command="{Binding PreviousCommand}" IsEnabled="{Binding CanGoPrevious}" ToolTip.Tip="{Binding PreviousSlateTip}">
+								<Path Width="8" Height="8" Data="{StaticResource ChevronLeftIcon}" Fill="{StaticResource TextPrimary}" Stretch="Uniform" />
+							</Button>
+							<TextBlock Classes="body" VerticalAlignment="Center" FontWeight="SemiBold" Text="{Binding PositionText}" />
+							<Button Padding="6,1" MinHeight="0" Command="{Binding NextCommand}" IsEnabled="{Binding CanGoNext}" ToolTip.Tip="{Binding NextSlateTip}">
+								<Path Width="8" Height="8" Data="{StaticResource ChevronRightIcon}" Fill="{StaticResource TextPrimary}" Stretch="Uniform" />
+							</Button>
+							<TextBlock
+								Classes="body"
+								VerticalAlignment="Center"
+								Foreground="{StaticResource AccessMarkFragile}"
+								IsVisible="{Binding MixesCampuses}"
+								Text="{Binding MixesCampusesText}"
+								ToolTip.Tip="{Binding MixesCampusesTip}" />
+						</StackPanel>
+						<!--  SelectableTextBlock is not a TextBlock to the "body" style, so it sets its own size and colour  -->
+						<SelectableTextBlock Margin="2,0,0,0" FontSize="{StaticResource FontSizeAccessText}" Foreground="{StaticResource TextPrimary}" Text="{Binding SlateText}" />
+						<TextBlock Classes="quiet" IsVisible="{Binding ShowStepHint}" Text="{Binding StepHint}" />
+						</StackPanel>
+
+					<!--  Some of the watch's sections are not on the grid (the filters or the chosen Subjects hide them)  -->
+					<TextBlock Classes="quiet" FontStyle="Italic" Padding="0,0,2,0" IsVisible="{Binding HasHiddenSections}" Text="{Binding HiddenSectionsText}" />
+
+					<!--  What the ticks below are about (a watch, not a course checked alone)  -->
+					<TextBlock Classes="body" Margin="0,4,0,0" FontWeight="Bold" IsVisible="{Binding ShowWatching}" Text="{Binding SectionsWatchedText}" />
 
 					<!--  Courses: a tick box each (never saved; works read-only), the sections each offers the slates  -->
 					<ItemsControl Margin="0,3,0,0" ItemsSource="{Binding Courses}">
@@ -321,7 +417,7 @@
 											Grid.Column="1"
 											Margin="0,0,8,0"
 											VerticalAlignment="Center"
-											FontSize="{StaticResource FontSizePanelList}"
+											FontSize="{StaticResource FontSizeAccessText}"
 											FontWeight="SemiBold"
 											Foreground="{StaticResource TextPrimary}"
 											Text="{Binding Code}" />
@@ -333,8 +429,8 @@
 											<ItemsControl.ItemTemplate>
 												<DataTemplate>
 													<StackPanel Margin="0,0,8,0" Orientation="Horizontal">
-														<TextBlock VerticalAlignment="Center" FontSize="{StaticResource FontSizePanelList}" Foreground="{StaticResource TextFaint}" Text="{Binding Label}" />
-														<TextBlock VerticalAlignment="Center" FontSize="{StaticResource FontSizePanelList}" Foreground="{StaticResource TextSecondary}" IsVisible="{Binding !IsExpandable}" Text="{Binding Text}" />
+														<TextBlock VerticalAlignment="Center" FontSize="{StaticResource FontSizeAccessText}" Foreground="{StaticResource TextSecondary}" Text="{Binding Label}" />
+														<TextBlock VerticalAlignment="Center" FontSize="{StaticResource FontSizeAccessText}" Foreground="{StaticResource TextPrimary}" IsVisible="{Binding !IsExpandable}" h:InlineFormatter.LinkCommand="{Binding #DetailPage.DataContext.SelectSectionCommand}" h:InlineFormatter.Text="{Binding Text}" />
 														<Button Classes="alink" VerticalAlignment="Center" Command="{Binding $parent[ItemsControl].DataContext.TogglePhraseCommand}" CommandParameter="{Binding Key}" IsVisible="{Binding IsExpandable}">
 															<StackPanel Orientation="Horizontal" Spacing="3">
 																<TextBlock VerticalAlignment="Center" Text="{Binding Text}" TextDecorations="Underline" />
@@ -350,7 +446,7 @@
 									<ItemsControl Margin="22,0,0,0" ItemsSource="{Binding ExpandedLines}">
 										<ItemsControl.ItemTemplate>
 											<DataTemplate>
-												<TextBlock Classes="quiet" Text="{Binding}" />
+												<TextBlock Classes="quiet" h:InlineFormatter.LinkCommand="{Binding #DetailPage.DataContext.SelectSectionCommand}" h:InlineFormatter.Text="{Binding}" />
 											</DataTemplate>
 										</ItemsControl.ItemTemplate>
 									</ItemsControl>
@@ -366,14 +462,13 @@
 					<CheckBox
 						MinHeight="0"
 						Content="{Binding MultiCampusLabel}"
-						FontSize="{StaticResource FontSizePanelList}"
+						FontSize="{StaticResource FontSizeAccessText}"
 						IsChecked="{Binding MultiCampus}"
 						IsEnabled="{Binding CanChange}"
 						IsVisible="{Binding ShowMultiCampus}"
 						ToolTip.ShowOnDisabled="True"
 						ToolTip.Tip="{Binding MultiCampusTip}" />
 
-					<TextBlock Classes="quiet" IsVisible="{Binding ShowStepHint}" Text="{Binding StepHint}" />
 
 					<!--  Quieter facts, folded: "More about this watch (2)"  -->
 					<Button Classes="alink" HorizontalAlignment="Left" Command="{Binding ToggleFoldCommand}" IsVisible="{Binding HasFacts}">
@@ -386,13 +481,13 @@
 					<ItemsControl Margin="10,0,0,0" IsVisible="{Binding IsFoldOpen}" ItemsSource="{Binding Facts}">
 						<ItemsControl.ItemTemplate>
 							<DataTemplate>
-								<TextBlock Classes="quiet" Text="{Binding}" />
+								<TextBlock Classes="quiet" h:InlineFormatter.LinkCommand="{Binding #DetailPage.DataContext.SelectSectionCommand}" h:InlineFormatter.Text="{Binding}" />
 							</DataTemplate>
 						</ItemsControl.ItemTemplate>
 					</ItemsControl>
 
 					<TextBlock
-						FontSize="{StaticResource FontSizePanelList}"
+						FontSize="{StaticResource FontSizeAccessText}"
 						Foreground="{StaticResource TextError}"
 						IsVisible="{Binding LastErrorMessage, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"
 						Text="{Binding LastErrorMessage}"
@@ -407,8 +502,8 @@
 			<DockPanel DockPanel.Dock="Top" Margin="0,0,0,4">
 				<Button Classes="alink" Margin="0,0,8,0" VerticalAlignment="Center" Command="{Binding BackCommand}" DockPanel.Dock="Left">
 					<StackPanel Orientation="Horizontal" Spacing="3">
-						<Path Width="7" Height="7" VerticalAlignment="Center" Data="{StaticResource ChevronLeftIcon}" Fill="{StaticResource TextSecondary}" Stretch="Uniform" />
-						<TextBlock VerticalAlignment="Center" Text="{Binding BackText}" />
+						<Path Width="9" Height="9" VerticalAlignment="Center" Data="{StaticResource ChevronLeftIcon}" Fill="{StaticResource TextSecondary}" Stretch="Uniform" />
+						<TextBlock VerticalAlignment="Center" FontSize="{StaticResource FontSizeAccessHeading}" Text="{Binding BackText}" />
 					</StackPanel>
 				</Button>
 				<Button Classes="abtn" Command="{Binding RunCommand}" Content="{Binding CheckAgainText}" DockPanel.Dock="Right" IsVisible="{Binding CanCheckAgain}" />

@@ -29,11 +29,14 @@ public static partial class AccessText
 
     /// <summary>The hint under the courses while there are slates to step through.</summary>
     // approved wording (round 3)
-    public const string StepHint = "Right-click a section on the grid to pin it. Step through slates in the grid's legend bar.";
+    public const string StepHint = "Right-click a section on the grid to pin it.";
 
-    /// <summary>The Watching button's tooltip when it can be clicked.</summary>
+    /// <summary>The tooltip of the green eye that stops a watch (the detail's Watching button, and the eye at the left of each row of the list) when it can be clicked.</summary>
     // approved wording (round 5)
     public const string UnwatchTip = "Click to stop watching (the tag stays)";
+
+    /// <summary>What a watch's eye says when stopping the watch failed.</summary>
+    public const string WatchNotChangedText = "The watch couldn't be changed. Your work is safe; try again.";
 
     /// <summary>The tooltip of a control that cannot change anything while this computer cannot save.</summary>
     // approved wording (round 5)
@@ -64,6 +67,10 @@ public static partial class AccessText
     // approved wording (round 9)
     public const string BackToCheckText = "Check all courses";
 
+    /// <summary>The heading of the Access tab's list of watches.</summary>
+    // approved wording (Greg, 2026-11-26)
+    public const string ListHeadingText = "Access Watches";
+
     /// <summary>The Access tab's button that makes a watch (it opens the Tags popup with its note).</summary>
     // approved wording (round 5)
     public const string AddWatchButtonText = "+ Add a watch";
@@ -93,17 +100,9 @@ public static partial class AccessText
     // approved wording (round 3)
     public const string NextSlateTip = "Next slate";
 
-    /// <summary>The Watching button.</summary>
-    // approved wording (round 3)
-    public const string WatchingText = "Watching";
-
-    /// <summary>The start of the source line of a watch (the watch's name follows, in bold).</summary>
-    // approved wording (round 3)
-    public const string SourceWatchLead = "Watching the tag ";
-
-    /// <summary>The end of the source line of a watch.</summary>
-    // approved wording (round 3)
-    public const string SourceWatchTail = ": the sections carrying it.";
+    /// <summary>The bold title above a watch's courses.</summary>
+    // approved wording (Greg, 2026-11-26)
+    public const string SectionsWatchedText = "Sections Watched";
 
     /// <summary>The source line of a course checked on its own.</summary>
     /// <param name="courseCode">The course's calendar code.</param>
@@ -236,7 +235,7 @@ public static partial class AccessText
     {
         var s = caution.Section;
         string F(Section t, Section? relativeTo = null) =>
-            relativeTo is not null && t.CourseId == relativeTo.CourseId ? t.SectionCode : SectionLabel(inputs, t);
+            relativeTo is not null && t.CourseId == relativeTo.CourseId ? CodeOf(t) : SectionLabel(inputs, t);
         if (caution.Kind == CautionKind.HardToReach)
         {
             if (caution.BlockingGroup is not { } h)
@@ -317,14 +316,14 @@ public static partial class AccessText
             // With a component label ("Lab: ") the noun is left out: "Lab: all 3", "Lab: 4 of 8 ▸", "Lab: none"
             string label = part is null ? string.Empty : $"{char.ToUpperInvariant(noun[0])}{noun[1..]}: ";
             string key = $"{courseId}|{part}";
-            string Codes(IEnumerable<Section> xs) => string.Join(", ", xs.Select(s => s.SectionCode));
+            string Codes(IEnumerable<Section> xs) => string.Join(", ", xs.Select(CodeOf));
 
             if (mine.Count == 0)
                 phrases.Add(new CandidatePhrase(key, label, part is null ? "no sections" : "none", false, null, true));
             else if (left.Count == 0)
-                phrases.Add(new CandidatePhrase(key, label, every.Count == 1 ? $"only {mine[0].SectionCode}" : $"all {every.Count}{nouns}", false, null, false));
+                phrases.Add(new CandidatePhrase(key, label, every.Count == 1 ? $"only {CodeOf(mine[0])}" : $"all {every.Count}{nouns}", false, null, false));
             else if (mine.Count == 1)
-                phrases.Add(new CandidatePhrase(key, label, $"only {mine[0].SectionCode}", false, null, false));
+                phrases.Add(new CandidatePhrase(key, label, $"only {CodeOf(mine[0])}", false, null, false));
             else if (left.Count <= 2 && left.Count < mine.Count)
                 phrases.Add(new CandidatePhrase(key, label, $"all but {Codes(left)}", false, null, false));
             else if (mine.Count <= 3)

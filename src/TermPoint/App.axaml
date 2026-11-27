@@ -28,6 +28,10 @@
 			<x:Double x:Key="FontSizeFilterPopup">11</x:Double>
 			<!--  The Access tab's watch list, its health lines, notes and the Mark all conflicts box  -->
 			<x:Double x:Key="FontSizePanelList">11</x:Double>
+			<!--  The Access tab's main text: the watch rows and health lines, and a watch's detail (its flags and course rows)  -->
+			<x:Double x:Key="FontSizeAccessText">12</x:Double>
+			<!--  The Access tab's headings: "All watches" and the open watch's name, a couple of points above its text  -->
+			<x:Double x:Key="FontSizeAccessHeading">14</x:Double>
 			<!--  The top bar's Save, Undo and Redo buttons, and the status lines beside them ("Unsaved changes since 10:42", "Undone: ...")  -->
 			<x:Double x:Key="FontSizeToolbarButton">13</x:Double>
 			<x:Double x:Key="FontSizeSaveStatus">11</x:Double>

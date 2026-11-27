@@ -81,20 +81,19 @@ Notes: [lost-notices/NOTES.md](lost-notices/NOTES.md). Source: backlog WN1, plus
 </details>
 
 <details>
-<summary><b>Access Analyzer and easy access watches</b> · Waiting on Greg · **ACTIVE**</summary>
+<summary><b>Access Analyzer and easy access watches</b> · In progress · **ACTIVE**</summary>
 
 **Goal:** administrators see at a glance whether students can still take every course of a watched set (a full "slate" of one section per component), get notices when a change breaks it, and create watches easily. Done means the feature in the app, field-tested.
 
-**State:** Fewest-moves trial adopted 2026-11-26: wording approved, Access tab line, Mark all conflicts and spec settled. Waits on Greg's hand check of F.
-On branch 1.2.5, pieces A–F committed, F leftovers too except health-line styling. Greg's hand check of F is part-done.
+**State:** Fewest-moves trial adopted 2026-11-26: wording approved, Access tab line, Mark all conflicts and spec settled. Greg's hand check of F passed the same day.
+On branch 1.2.5, pieces A–F pushed. Access panel rework done 2026-11-27 (grid banner gone, stepper and Mark all conflicts in the watch panel, eye on the list), Greg checked; stepping now starts by itself with 2+ slates (his call to confirm).
 
 <details>
-<summary>Steps (4 left)</summary>
+<summary>Steps (3 left)</summary>
 
-1. Greg finishes his hand check of F, including Escape, Open in Courses and the fewest-moves marks on UBC.
-2. F leftover: health-line styling (the mock's warn colour and hovers per phrase), after step 1.
-3. G: editor pointer and drag line.
-4. H: release (version stamp, WASM demo, help page or video for the "What's an access watch?" link, field test).
+1. More Access Analyzer issues from Greg (next session); confirm that stepping starting by itself suits him.
+2. G: editor pointer and drag line.
+3. H: release (version stamp, WASM demo, help page or video for the "What's an access watch?" link, field test).
 
 </details>
 

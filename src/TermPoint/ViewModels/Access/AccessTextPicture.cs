@@ -9,20 +9,12 @@ namespace TermPoint.ViewModels.Access;
 /// </summary>
 public static partial class AccessText
 {
-    /// <summary>The legend bar's button that starts stepping through slates.</summary>
-    // approved wording (round 3 review)
-    public const string StepThroughSlatesText = "Step through slates";
-
-    /// <summary>The legend bar's button that stops stepping.</summary>
-    // approved wording (round 3)
-    public const string ClearSlateText = "Clear";
-
     /// <summary>The legend bar's button that unpins every section.</summary>
     // approved wording (round 3)
     public const string UnpinAllText = "Unpin all";
 
     /// <summary>
-    /// The legend bar's quiet line when some of the open watch's sections are not on the grid, e.g. "2 of Cohort 1's
+    /// The Access tab's quiet line when some of the open watch's sections are not on the grid, e.g. "2 of Cohort 1's
     /// sections are hidden by the filters." DRAFT wording, for Greg.
     /// </summary>
     /// <param name="count">How many are hidden (at least 1).</param>
@@ -31,14 +23,6 @@ public static partial class AccessText
     /// <returns>The line.</returns>
     public static string HiddenWatchSectionsText(int count, string name, bool byFocus) =>
         $"{count} of {name}'s sections {(count == 1 ? "is" : "are")} hidden by the filters{(byFocus ? " or the chosen Subjects" : "")}.";
-
-    /// <summary>The legend bar's Close button (the view draws its ✕).</summary>
-    // approved wording (round 3)
-    public const string CloseWatchText = "Close";
-
-    /// <summary>The start of the legend bar's pins (the pinned sections follow as chips).</summary>
-    // approved wording (round 3)
-    public const string PinnedLeadText = "Pinned: ";
 
     /// <summary>The label of the "mixes campuses" tag on a slate.</summary>
     // approved wording (round 6e)
@@ -89,16 +73,6 @@ public static partial class AccessText
     /// <returns>The sentence.</returns>
     // approved wording (fewest moves, 2026-11-26)
     public static string KeptInPlaceTip(string label) => $"{label} is kept in place: suggestions won't ask to move it.";
-
-    /// <summary>
-    /// The title of the legend bar: the watch's name, then " · 3 of 5 courses" when a subset is ticked.
-    /// </summary>
-    /// <param name="name">The watch's name or the checked course's code.</param>
-    /// <param name="analysis">The analysis.</param>
-    /// <returns>The title.</returns>
-    // approved wording (round 3)
-    public static string LegendTitle(string name, Analysis analysis) =>
-        analysis.IsSubset ? $"{name} · {SubsetText(analysis)}" : name;
 
     /// <summary>"Slate 3 of 12" (or "Slate 3 of more than 10,000" when the count was capped).</summary>
     /// <param name="index">The slate's position, counted from zero.</param>

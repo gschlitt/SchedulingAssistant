@@ -92,6 +92,46 @@ public sealed class AccessHealthLineTests
             AccessText.HealthLine(inputs, AnalyzeAll(inputs), Campus, new HashSet<string> { "A 1", "B 1" }));
     }
 
+    /// <summary>The phrase whose text is <paramref name="text"/>, from a watch over <paramref name="sections"/>.</summary>
+    private static HealthPhrase Phrase(IReadOnlyList<Section> sections, string text, IReadOnlySet<string>? kept = null)
+    {
+        var inputs = Simple(sections);
+        return Assert.Single(AccessText.HealthPhrases(inputs, AnalyzeAll(inputs), Campus, keptInPlace: kept), p => p.Text == text);
+    }
+
+    [Fact]
+    public void Tips_BestPartial_SaysWhatStudentsCanTake()
+    {
+        var sections = new[]
+        {
+            Sec("A", "1", Lecture, At(0, 9, 10)), Sec("B", "1", Lecture, At(0, 9, 10)),
+            Sec("C", "1", Lecture, At(1, 9, 10)), Sec("C", "2", Lecture, At(2, 9, 10)),
+        };
+        var p = Phrase(sections, "A or B can't fit", new HashSet<string> { "A 1", "B 1" });
+        Assert.Equal("Students can take all but A, or all but B.", p.Tip);
+        Assert.False(p.Warn);
+    }
+
+    [Fact]
+    public void Tips_MoreConflicts_ListsTheRest()
+    {
+        var sections = new[] { Sec("A", "1", Lecture, At(0, 9, 10)), Sec("B", "1", Lecture, At(0, 9, 10)), Sec("C", "1", Lecture, At(0, 9, 10)) };
+        Assert.Equal("A 1 conflicts with C 1; B 1 conflicts with C 1.", Phrase(sections, "2 more conflicts").Tip);
+        Assert.Null(Phrase(sections, "A 1 conflicts with B 1").Tip);
+    }
+
+    [Fact]
+    public void Tips_DependsOn_SaysWhyTheOtherSectionsCantBeUsed()
+    {
+        // B 1 is B's only section and conflicts with A 2, so every slate uses A 1
+        var sections = new[]
+        {
+            Sec("A", "1", Lecture, At(0, 9, 10)), Sec("A", "2", Lecture, At(1, 9, 10)),
+            Sec("B", "1", Lecture, At(1, 9, 10)), Sec("C", "1", Lecture, At(2, 9, 10)), Sec("C", "2", Lecture, At(3, 9, 10)),
+        };
+        Assert.Equal("A 2 conflicts with B 1.", Phrase(sections, "depends on A 1").Tip);
+    }
+
     [Fact]
     public void NoFullSlate_TwoSeparateProblems_SaysSo()
     {

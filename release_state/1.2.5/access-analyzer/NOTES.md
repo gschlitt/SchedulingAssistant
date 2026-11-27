@@ -537,7 +537,35 @@ rounds 5–9. Split like D and E: **F-core** (Sonnet; no `.axaml`) then **F-ui**
   legend bar. (3) Open in Courses selects the course (`CourseListViewModel.SelectCourse`; the grid scrolls to it when
   it appears, in `CourseListView.axaml.cs`); an inactive course hidden by Show only active selects nothing.
   Left: health-line styling (the mock's warn colour and hovers per phrase), held until step 2 settles the
-  no-full-slate line. Full suite 5061 passed, 0 failed; both compile checks and a full AXAML build clean.
+  no-full-slate line. Built 2026-11-26: `HealthPhrase` (text, tip, warn; a string converts to a plain one) from
+  `AccessText.HealthPhrases`, with the mock's tips (more conflicts, depends on, campus reasons, mix counts, can't fit);
+  the detail draws `HealthPhraseItem`s in a WrapPanel (dotted underline + help cursor on tipped phrases, warn colour =
+  `AccessMarkFragile` as no caution brush exists; " · " rides on the phrase before it). The list rows stay plain, as
+  in the mock. "try moving" has no tip (not in the mock; the grid explains). Full suite 5061 passed, 0 failed; both compile checks and a full AXAML build clean.
+  Styling round, Greg 2026-11-26 (checked in the app): health lines use `FontSizeAccessHealth` (12; row line now
+  TextPrimary, wraps, no hover since it only repeated the line). Section names in the detail (health line, flags,
+  course rows, expanded lines, facts) are links that select the section: `AccessText.LinkSections()` (thread-static
+  scope, used only by the detail's Rebuild) makes `SectionLabel`/`CodeOf` emit `[label](section:id)`; hovers, the
+  one-text `HealthLine` and pin chips go through `AccessText.Plain`. `InlineFormatter` draws a non-web link as a plain
+  Run found by hit-testing (an inline box sat off the baseline and lost the host's colour) and sends its target to
+  `InlineFormatter.LinkCommand` (bound to the detail's `SelectSectionCommand`). A "missing" health line in an open
+  watch was a stale hot reload, not a bug.
+  Second round (checked): no "Access · semester" title (Title removed); detail text at `FontSizeAccessText` 12 like
+  the list (labels TextSecondary, values TextPrimary; quiet lines stay 11 faint); "All watches" and the watch's name
+  at `FontSizeAccessHeading` 14, the name once in bold; the "Watching the tag" line dropped (`SourceText` only for a
+  course checked alone).
+  Third round (2026-11-26, Greg checked the panels): list heading "Access Watches"; Check all courses below the
+  last row; the green eye at each row's left stops a watch (`AccessTabViewModel.UnwatchCommand`, tag stays) and the
+  detail's Watching button is gone; Mark all conflicts also at the detail's foot, and with a watch open
+  `GridAccessMarks.Build` adds only that watch's extra (Harmless/Plain) marks. The grid's legend banner is GONE
+  (`AccessLegendViewModel` deleted): the stepper (‹ Slate i of N ›, selectable slate text, "mixes campuses"), the
+  pin hint and the hidden-sections line live in the detail (`AccessWatchDetailViewModel.RebuildStepper`; hidden
+  counts come from `AccessPicture.SetHiddenSections`, set by the grid). DECISION: stepping now starts by itself
+  whenever `AccessPicture.Slates.Count > 1` (no Step through slates button, no Clear), so the grid always ghosts
+  slate 1 and fades the rest when there are 2+ slates; four grid tests were updated for it. Greg may want the old
+  "all usable shown until first chevron click" overview back: say so if he does. The "Sections Watched" title sits
+  above the courses. `SelectableTextBlock` is not matched by `TextBlock.body`: set its size and colour directly.
+  Unused leftovers: the `AccessLegend*` resources in AppColors/AppLayout (could be deleted).
 
 </details>
 

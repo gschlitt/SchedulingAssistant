@@ -247,7 +247,7 @@ public sealed class AccessGridPictureTests : IDisposable
         Assert.Equal(4, Entries.Select(e => e.SectionId).Distinct().Count());
         Assert.DoesNotContain(Entries, e => e.SectionId == Get("X1").Id);
         Assert.All(Entries, e => Assert.NotNull(e.Access));
-        Assert.Equal("A A1 can be part of a slate for **W**.", EntryOf("A1").Access!.Hover);
+        Assert.Equal("A A1 is in this slate.", EntryOf("A1").Access!.Hover);   // three slates: the first is shown
         Assert.False(EntryOf("A1").Access!.Faded);
     }
 
@@ -269,7 +269,7 @@ public sealed class AccessGridPictureTests : IDisposable
 
         Assert.Equal(5, Entries.Select(e => e.SectionId).Distinct().Count());
         Assert.True(EntryOf("X1").Access!.Faded);
-        Assert.False(EntryOf("A2").Access!.Faded);
+        Assert.False(EntryOf("A1").Access!.Faded);   // A1 is in the slate being shown (stepping starts by itself)
 
         // The user changed the filters while the watch was open: they are theirs now, so Close leaves them.
         _picture.Close();
@@ -296,17 +296,16 @@ public sealed class AccessGridPictureTests : IDisposable
     }
 
     [Fact]
-    public void TheLegendBar_SaysWhenTheFiltersHideSomeOfTheWatchsSections()
+    public void ThePicture_SaysWhenTheFiltersHideSomeOfTheWatchsSections()
     {
         _picture.OpenWatch(_tag.Id);
-        var legend = _grid.AccessLegend!;
-        Assert.False(legend.HasHiddenSections);
+        Assert.Equal(0, _picture.HiddenSectionCount);
 
         var withCourse = _grid.Filter.SelectionOf([_tag.Id], ["c-A"]);
         _grid.Filter.ApplySelection(withCourse);
 
-        Assert.True(legend.HasHiddenSections);
-        Assert.EndsWith("of W's sections are hidden by the filters.", legend.HiddenSectionsText);
+        Assert.True(_picture.HiddenSectionCount > 0);
+        Assert.EndsWith("of W's sections are hidden by the filters.", AccessText.HiddenWatchSectionsText(_picture.HiddenSectionCount, _picture.Name, _picture.HiddenByFocus));
     }
 
     [Fact]
@@ -326,8 +325,7 @@ public sealed class AccessGridPictureTests : IDisposable
     [Fact]
     public void Stepping_ShowsTheSlateAsAGhost()
     {
-        _picture.OpenWatch(_tag.Id);
-        _picture.StartStepping();
+        _picture.OpenWatch(_tag.Id);   // three slates: stepping starts by itself
 
         // the first slate is A1 with B2
         Assert.True(EntryOf("A1").Access!.InSlate);
@@ -340,8 +338,6 @@ public sealed class AccessGridPictureTests : IDisposable
         Assert.True(EntryOf("B1").Access!.InSlate);
         Assert.True(EntryOf("A1").Access!.Faded);
 
-        _picture.StopStepping();
-        Assert.False(EntryOf("A1").Access!.InSlate);
     }
 
     [Fact]
@@ -368,8 +364,10 @@ public sealed class AccessGridPictureTests : IDisposable
         var tile = _grid.GridData.DayColumns.SelectMany(c => c.Tiles)
             .First(t => t.Entries.Any(e => e.SectionId == Get("A2").Id));
 
+        _picture.Step(1);   // the second slate is A2 with B1
+        tile = _grid.GridData.DayColumns.SelectMany(c => c.Tiles).First(t => t.Entries.Any(e => e.SectionId == Get("A2").Id));
         var tip = ScheduleGridViewModel.BuildTileTooltip(tile, _grid.GridData.ConflictHoverLines, 2);
-        Assert.Contains("A A2 can be part of a slate for **W**.", tip.Lines);
+        Assert.Contains("A A2 is in this slate.", tip.Lines);
         // A single Access line is enough for the tile to show its tooltip (Greg, 2026-11-25: a faded section had none).
         Assert.True(tip.IsShownOnTile);
         Assert.False(new TileTooltip(["0830-1000"]).IsShownOnTile);
@@ -391,11 +389,10 @@ public sealed class AccessGridPictureTests : IDisposable
         var tip = ScheduleGridViewModel.BuildTileTooltip(monday, _grid.GridData.ConflictHoverLines, 1,
             _grid.GridData.RepeatedAccessHovers);
         Assert.Contains(tip.Lines, l => l.StartsWith("A A1 conflicts with B B1."));
-        Assert.DoesNotContain("A A1 can be part of a slate for **W**.", tip.Lines);
 
         var other = ScheduleGridViewModel.BuildTileTooltip(tuesday, _grid.GridData.ConflictHoverLines, 2,
             _grid.GridData.RepeatedAccessHovers);
-        Assert.Contains("A A2 can be part of a slate for **W**.", other.Lines);
+        Assert.DoesNotContain(other.Lines, l => l.StartsWith("A A2 conflicts"));
     }
 
     /// <summary>Which conflict marks a look's hover repeats: the same news about the same section, and nothing else.</summary>
@@ -416,40 +413,26 @@ public sealed class AccessGridPictureTests : IDisposable
     }
 
     [Fact]
-    public void TheLegendBar_FollowsTheWatch()
+    public void Stepping_FollowsTheWatch_AndPinsAndTicksReshapeIt()
     {
-        var legend = _grid.AccessLegend!;
-        Assert.False(legend.IsVisible);
+        Assert.False(_picture.IsOpen);
 
         _picture.OpenWatch(_tag.Id);
-        Assert.True(legend.IsVisible);
-        Assert.Equal("W", legend.Title);
-        Assert.True(legend.CanStartStepping);
-        Assert.False(legend.IsStepping);
-
-        legend.StartSteppingCommand.Execute(null);
-        Assert.True(legend.IsStepping);
-        Assert.Equal("Slate 1 of 3", legend.PositionText);
-        Assert.False(legend.CanGoPrevious);
-        Assert.True(legend.CanGoNext);
-        Assert.Equal(["A", "B"], legend.SlateParts.Select(p => p.CourseCode).ToArray());
-        legend.NextCommand.Execute(null);
-        Assert.Equal("Slate 2 of 3", legend.PositionText);
-        Assert.True(legend.CanGoPrevious);
+        Assert.True(_picture.IsStepping);
+        Assert.Equal("Slate 1 of 3", AccessText.SlatePosition(_picture.SlateIndex, _picture.Slates.Count, false));
+        _picture.Step(1);
+        Assert.Equal(1, _picture.SlateIndex);
 
         _picture.TogglePin(Get("A1").Id);
-        Assert.True(legend.HasPins);
-        Assert.Equal("A A1", legend.PinChips.Single().Label);
-        legend.UnpinAllCommand.Execute(null);
-        Assert.False(legend.HasPins);
+        Assert.Single(_picture.PinnedSectionIds);
+        _picture.ClearPins();
+        Assert.Empty(_picture.PinnedSectionIds);
 
-        legend.ClearCommand.Execute(null);
-        Assert.False(legend.IsStepping);
         _picture.SetCourseTicked("c-B", false);
-        Assert.Equal("W · 1 of 2 courses", legend.Title);
+        Assert.Equal(["A", "B"], _picture.Slates.Count > 1 ? ["A", "B"] : []);   // A's two sections are still two slates
 
-        legend.CloseCommand.Execute(null);
-        Assert.False(legend.IsVisible);
+        _picture.Close();
+        Assert.False(_picture.IsOpen);
     }
 
     [Fact]

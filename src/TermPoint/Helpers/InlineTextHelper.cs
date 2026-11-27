@@ -22,11 +22,13 @@ namespace TermPoint.Helpers
     ///   <item><c>*text*</c> — italic (one asterisk each side, not part of a <c>**</c>).</item>
     ///   <item><c>[[text]]</c> or <c>[[text|color]]</c> — a rounded colored "pill" badge.
     ///         color = <c>accent</c>(default)/<c>info</c>/<c>warn</c>/<c>success</c>/<c>neutral</c> or a <c>#hex</c>.</item>
-    ///   <item><c>[label](url)</c> — an underlined link; click opens the URL via the OS handler.</item>
+    ///   <item><c>[label](url)</c> — an underlined link; click opens the URL via the OS handler. A target that
+    ///         isn't a web URL is an in-app link: plain text that underlines on hover, its click sent to
+    ///         <c>InlineFormatter.LinkCommand</c>.</item>
     ///   <item><c>{color}…{/}</c> — legacy colored text (named color or <c>#hex</c>); still used elsewhere.</item>
     /// </list>
     ///
-    /// <para>Markup does not nest. Pills and links render as atomic inline boxes
+    /// <para>Markup does not nest. Pills and web links render as atomic inline boxes
     /// (they do not wrap across a line break), which suits the short phrases they target.</para>
     /// </summary>
     public static class InlineFormatter
@@ -42,6 +44,30 @@ namespace TermPoint.Helpers
 
         public static void SetText(TextBlock element, string value) =>
             element.SetValue(TextProperty, value);
+
+        /// <summary>
+        /// A command that receives a link's target when a link is clicked, instead of the OS opening it. Set it on a
+        /// TextBlock whose links are in-app actions (the Access detail's section names, <c>[CHEM 213 A](section:id)</c>).
+        /// Such links are drawn as the surrounding text (its colour and weight), underlined only while the pointer is
+        /// over them (the r9 wireframe's <c>sref</c>), because a run of blue underlined names would swamp a sentence.
+        /// Read when a link is clicked, so the binding may arrive after the text.
+        /// </summary>
+        public static readonly AttachedProperty<System.Windows.Input.ICommand?> LinkCommandProperty =
+            AvaloniaProperty.RegisterAttached<TextBlock, System.Windows.Input.ICommand?>(
+                "LinkCommand",
+                typeof(InlineFormatter));
+
+        /// <summary>Gets the command that receives clicked links' targets.</summary>
+        /// <param name="element">The TextBlock.</param>
+        /// <returns>The command, or null when links open in the OS.</returns>
+        public static System.Windows.Input.ICommand? GetLinkCommand(TextBlock element) =>
+            element.GetValue(LinkCommandProperty);
+
+        /// <summary>Sets the command that receives clicked links' targets.</summary>
+        /// <param name="element">The TextBlock.</param>
+        /// <param name="value">The command, or null to open links in the OS.</param>
+        public static void SetLinkCommand(TextBlock element, System.Windows.Input.ICommand? value) =>
+            element.SetValue(LinkCommandProperty, value);
 
         // One pass over the text, matching any supported token. Ordered alternation;
         // pill (`[[ ]]`) is tried before link (`[ ]( )`) so the double-bracket wins.
@@ -100,7 +126,14 @@ namespace TermPoint.Helpers
                     }
                     else if (m.Groups["link"].Success)
                     {
-                        tb.Inlines.Add(BuildLink(m.Groups["lcontent"].Value, m.Groups["href"].Value));
+                        string href = m.Groups["href"].Value, label = m.Groups["lcontent"].Value;
+                        if (IsWebLink(href))
+                            tb.Inlines.Add(BuildLink(label, href));
+                        else
+                        {
+                            tb.Inlines.Add(new AppLinkRun { Text = label, Target = href });
+                            HookAppLinks(tb);
+                        }
                     }
                     else if (m.Groups["color"].Success)
                     {
@@ -147,11 +180,19 @@ namespace TermPoint.Helpers
             return new InlineUIContainer(border) { BaselineAlignment = BaselineAlignment.TextBottom };
         }
 
+        /// <summary>True for a web link's target ("://" or "mailto:"); any other target is an in-app link.</summary>
+        /// <param name="url">The link's target.</param>
+        /// <returns>Whether the OS should open it.</returns>
+        private static bool IsWebLink(string url) =>
+            url.Contains("://", StringComparison.Ordinal) || url.StartsWith("mailto:", StringComparison.OrdinalIgnoreCase);
+
         /// <summary>
-        /// Builds an underlined inline link. Clicking opens the URL via the OS default
-        /// handler (gated by <see cref="PlatformCapabilities.SupportsLinks"/>); self-contained,
-        /// so AXAML-authored cards need no command wiring.
+        /// Builds a web link: blue and underlined, and a click opens it via the OS default handler (gated by
+        /// <see cref="PlatformCapabilities.SupportsLinks"/>), so AXAML-authored cards need no command wiring.
         /// </summary>
+        /// <param name="label">The link's text.</param>
+        /// <param name="url">The link's target.</param>
+        /// <returns>The link as an inline box.</returns>
         private static InlineUIContainer BuildLink(string label, string url)
         {
             var link = new TextBlock
@@ -179,6 +220,80 @@ namespace TermPoint.Helpers
             };
 
             return new InlineUIContainer(link) { BaselineAlignment = BaselineAlignment.Center };
+        }
+
+        /// <summary>
+        /// An in-app link (any target that isn't a web link): a plain Run, so it takes the host's colour, size and
+        /// weight and sits exactly on the line's baseline (an inline box drifts off it). The host finds it by
+        /// hit-testing its text (<see cref="AppLinkAt"/>): a hand cursor and an underline while the pointer is over it,
+        /// and a click hands <see cref="Target"/> to the host's <see cref="LinkCommandProperty"/>.
+        /// </summary>
+        private sealed class AppLinkRun : Run
+        {
+            /// <summary>The link's target, e.g. <c>section:id</c>.</summary>
+            public string Target { get; init; } = string.Empty;
+        }
+
+        /// <summary>Marks a TextBlock whose pointer handlers for in-app links are already attached.</summary>
+        private static readonly AttachedProperty<bool> AppLinksHookedProperty =
+            AvaloniaProperty.RegisterAttached<TextBlock, bool>("AppLinksHooked", typeof(InlineFormatter));
+
+        /// <summary>Attaches the pointer handlers that make the TextBlock's in-app links work (once per TextBlock).</summary>
+        /// <param name="tb">The host TextBlock.</param>
+        private static void HookAppLinks(TextBlock tb)
+        {
+            if (tb.GetValue(AppLinksHookedProperty)) return;
+            tb.SetValue(AppLinksHookedProperty, true);
+            tb.PointerMoved += (_, e) => ShowHover(tb, AppLinkAt(tb, e.GetPosition(tb)));
+            tb.PointerExited += (_, _) => ShowHover(tb, null);
+            tb.PointerPressed += (_, e) =>
+            {
+                if (AppLinkAt(tb, e.GetPosition(tb)) is not { } link) return;
+                e.Handled = true;
+                var command = GetLinkCommand(tb);
+                if (command?.CanExecute(link.Target) == true) command.Execute(link.Target);
+            };
+        }
+
+        /// <summary>Underlines the hovered in-app link (and no other) and shows a hand cursor over it.</summary>
+        /// <param name="tb">The host TextBlock.</param>
+        /// <param name="hovered">The link under the pointer, or null.</param>
+        private static void ShowHover(TextBlock tb, AppLinkRun? hovered)
+        {
+            if (tb.Inlines is null) return;
+            foreach (var link in tb.Inlines.OfType<AppLinkRun>())
+            {
+                // ClearValue, not null: a decoration the host's style sets (a dotted underline) comes back
+                if (link == hovered) link.TextDecorations = TextDecorations.Underline;
+                else link.ClearValue(Inline.TextDecorationsProperty);
+            }
+            if (hovered is not null) tb.Cursor = new Cursor(StandardCursorType.Hand);
+            else tb.ClearValue(InputElement.CursorProperty);
+        }
+
+        /// <summary>The in-app link under a point of the TextBlock, if any.</summary>
+        /// <param name="tb">The host TextBlock.</param>
+        /// <param name="point">The point, relative to the TextBlock.</param>
+        /// <returns>The link, or null.</returns>
+        private static AppLinkRun? AppLinkAt(TextBlock tb, Point point)
+        {
+            if (tb.Inlines is null) return null;
+            var hit = tb.TextLayout.HitTestPoint(new Point(point.X - tb.Padding.Left, point.Y - tb.Padding.Top));
+            if (!hit.IsInside) return null;
+            int offset = 0;
+            foreach (var inline in tb.Inlines)
+            {
+                // Each inline's length in the laid-out text: a Run its text, a box one character, a line break a newline
+                int length = inline switch
+                {
+                    Run r => r.Text?.Length ?? 0,
+                    LineBreak => Environment.NewLine.Length,
+                    _ => 1,
+                };
+                if (hit.TextPosition >= offset && hit.TextPosition < offset + length) return inline as AppLinkRun;
+                offset += length;
+            }
+            return null;
         }
 
         /// <summary>

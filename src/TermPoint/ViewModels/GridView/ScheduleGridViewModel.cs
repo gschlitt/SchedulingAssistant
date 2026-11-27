@@ -65,12 +65,6 @@ public partial class ScheduleGridViewModel : ViewModelBase
     private readonly AccessPicture? _picture;
 
     /// <summary>
-    /// The legend bar above the grid while a watch is open (name, pins, stepper, Show other courses, Close). Null when
-    /// the grid was built without a picture.
-    /// </summary>
-    public AccessLegendViewModel? AccessLegend { get; }
-
-    /// <summary>
     /// Subject colours (colour by subject). Every section block is stamped
     /// with <see cref="SubjectColorPresenter.ColorFor"/>, and the grid reloads once on
     /// <see cref="SubjectColorPresenter.Changed"/>.
@@ -228,7 +222,6 @@ public partial class ScheduleGridViewModel : ViewModelBase
         Marks = marks;
         _accessState = accessState;
         _picture = picture;
-        if (picture is not null) AccessLegend = new AccessLegendViewModel(picture, accessState, campusRepo);
         _cardState = cardState;
         _legalStartTimeRepo = legalStartTimeRepo;
         _sectionRepo = sectionRepo;
@@ -830,7 +823,7 @@ public partial class ScheduleGridViewModel : ViewModelBase
     }
 
     /// <summary>
-    /// Tells the legend bar how many of the open watch's sections that have meeting times are not on the grid, and
+    /// Tells the picture (and so the Access tab) how many of the open watch's sections that have meeting times are not on the grid, and
     /// whether the subject focus hides any of them (the filters hide the rest).
     /// </summary>
     /// <param name="blocks">The blocks being drawn.</param>
@@ -840,7 +833,7 @@ public partial class ScheduleGridViewModel : ViewModelBase
         {
             var drawn = blocks.OfType<SectionMeetingBlock>().Select(b => b.SectionId).ToHashSet();
             var hidden = _picture!.CoveredSections.Where(s => s.Schedule.Count > 0 && !drawn.Contains(s.Id)).ToList();
-            AccessLegend?.SetHiddenSections(hidden.Count, hidden.Any(s => !_focus.Matches(s)));
+            _picture.SetHiddenSections(hidden.Count, hidden.Any(s => !_focus.Matches(s)));
         }
         catch (Exception ex)
         {

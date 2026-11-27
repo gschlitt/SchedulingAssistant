@@ -10,6 +10,21 @@ namespace TermPoint.ViewModels.Access;
 /// <param name="Mark">The mark.</param>
 public sealed record WatchMark(string WatchId, string WatchName, ConflictMark Mark);
 
+/// <summary>
+/// One phrase of a watch's health line (the mock's <c>healthSegs</c> entries): its text, an optional hover that
+/// explains it, and whether it is a warning (every slate mixes campuses, round 6e). A plain string converts to a
+/// phrase with no hover, so most phrases are written as strings.
+/// </summary>
+/// <param name="Text">The phrase.</param>
+/// <param name="Tip">The hover; null for none.</param>
+/// <param name="Warn">Whether the phrase is drawn in the warning colour.</param>
+public sealed record HealthPhrase(string Text, string? Tip = null, bool Warn = false)
+{
+    /// <summary>A phrase with no hover and no warning.</summary>
+    /// <param name="text">The phrase.</param>
+    public static implicit operator HealthPhrase(string text) => new(text);
+}
+
 /// <summary>Why a conflict's other section is not on the grid (Q41).</summary>
 public enum HiddenReason
 {
@@ -27,6 +42,63 @@ public enum HiddenReason
 public static partial class AccessText
 {
     /// <summary>
+    /// The scheme of a section link's target in InlineFormatter markup: <c>[CHEM 213 A](section:id)</c>. The view
+    /// draws such a link as the surrounding text with an underline on hover, and a click selects the section (the
+    /// mock's <c>sref</c>).
+    /// </summary>
+    public const string SectionLinkScheme = "section:";
+
+    /// <summary>
+    /// True while <see cref="LinkSections"/> is in force on this thread: section names come out as section links.
+    /// Ambient rather than a parameter so the many sentence builders keep one signature for the plain consumers (the
+    /// grid's hover, the list rows, tests) and the linked one (the watch detail).
+    /// </summary>
+    [ThreadStatic] private static bool t_linkSections;
+
+    /// <summary>
+    /// Makes section names in the sentences built on this thread section links until the result is disposed. Used
+    /// only by the watch detail, around building its text. Hovers built in the same pass must go through
+    /// <see cref="Plain"/>, since a tooltip can't be clicked.
+    /// </summary>
+    /// <returns>Disposing it restores plain names.</returns>
+    public static IDisposable LinkSections()
+    {
+        bool before = t_linkSections;
+        t_linkSections = true;
+        return new LinkScope(before);
+    }
+
+    /// <summary>Restores the earlier linking state when disposed.</summary>
+    private sealed class LinkScope(bool before) : IDisposable
+    {
+        /// <summary>Puts the linking state back.</summary>
+        public void Dispose() => t_linkSections = before;
+    }
+
+    /// <summary>The text with every section link replaced by its label (for hovers and other unclickable places).</summary>
+    /// <param name="text">Text that may hold section links; null gives null.</param>
+    /// <returns>The plain text.</returns>
+    [return: System.Diagnostics.CodeAnalysis.NotNullIfNotNull(nameof(text))]
+    public static string? Plain(string? text) =>
+        text is null ? null : SectionLinkRegex().Replace(text, "$1");
+
+    /// <summary>Matches a section link: <c>[label](section:id)</c>.</summary>
+    [System.Text.RegularExpressions.GeneratedRegex(@"\[([^\]]+)\]\(section:[^)]*\)")]
+    private static partial System.Text.RegularExpressions.Regex SectionLinkRegex();
+
+    /// <summary>The label as a section link to <paramref name="section"/> while linking is on; else the label.</summary>
+    /// <param name="section">The section the label names.</param>
+    /// <param name="label">What the sentence says for it.</param>
+    /// <returns>The label, linked or plain.</returns>
+    private static string Link(Section section, string label) =>
+        t_linkSections ? $"[{label}]({SectionLinkScheme}{section.Id})" : label;
+
+    /// <summary>A section's code alone ("A"), linked while linking is on; for use where the course is already named.</summary>
+    /// <param name="section">The section.</param>
+    /// <returns>The code.</returns>
+    public static string CodeOf(Section section) => Link(section, section.SectionCode);
+
+    /// <summary>
     /// A section's name in a sentence: its course's calendar code and its section code, e.g. "CHEM 213 A"; just the
     /// section code when the section has no course.
     /// </summary>
@@ -34,7 +106,7 @@ public static partial class AccessText
     /// <param name="section">The section.</param>
     /// <returns>The label.</returns>
     public static string SectionLabel(AccessInputs inputs, Section section) =>
-        section.CourseId is null ? section.SectionCode : $"{inputs.CourseCode(section.CourseId)} {section.SectionCode}";
+        Link(section, section.CourseId is null ? section.SectionCode : $"{inputs.CourseCode(section.CourseId)} {section.SectionCode}");
 
     /// <summary>Joins phrases as "a, b and c" (a single phrase stays as it is; none gives an empty string).</summary>
     /// <param name="items">The phrases.</param>
@@ -60,7 +132,7 @@ public static partial class AccessText
     public static string ByCourseOr(AccessInputs inputs, IEnumerable<Section> sections)
     {
         var named = new HashSet<string>();
-        return JoinOr(sections.Select(s => named.Add(s.CourseId ?? string.Empty) ? SectionLabel(inputs, s) : s.SectionCode).ToList());
+        return JoinOr(sections.Select(s => named.Add(s.CourseId ?? string.Empty) ? SectionLabel(inputs, s) : CodeOf(s)).ToList());
     }
 
     /// <summary>
@@ -77,7 +149,7 @@ public static partial class AccessText
         {
             var key = s.CourseId ?? string.Empty;
             if (!codes.TryGetValue(key, out var list)) { codes[key] = list = []; courses.Add(key); }
-            list.Add(s.SectionCode);
+            list.Add(CodeOf(s));
         }
         return JoinAnd(courses.Select(c =>
             (c.Length == 0 ? string.Empty : inputs.CourseCode(c) + " ") + string.Join(", ", codes[c])).ToList());
@@ -247,12 +319,12 @@ public static partial class AccessText
         if (r.OnlyGroup is { } g && r.OtherGroup is { } h && g.Candidates.Count > 0 && h.Candidates.Count > 0)
         {
             var o = g.Candidates[0];
-            string only = $"its only {PartWord(inputs, g.ComponentTypeId)} ({o.SectionCode})";
+            string only = $"its only {PartWord(inputs, g.ComponentTypeId)} ({CodeOf(o)})";
             string hw = PartWord(inputs, h.ComponentTypeId);
             // approved wording (round 6d)
             if (r.Kind == SelfFailKind.TimeConflict)
                 return h.Candidates.Count == 1
-                    ? $"{c}'s only {hw} ({h.Candidates[0].SectionCode}) conflicts with {only}"
+                    ? $"{c}'s only {hw} ({CodeOf(h.Candidates[0])}) conflicts with {only}"
                     : $"{c}'s {hw}s all conflict with {only}";
             if (r.Kind == SelfFailKind.Campus)
                 return $"{c}'s {hw}s are all at {campusName(h.Candidates[0].CampusId)}, but {only} is at {campusName(o.CampusId)}";
@@ -287,6 +359,49 @@ public static partial class AccessText
     }
 
     /// <summary>
+    /// The hover of a <see cref="CampusWhy"/> phrase (the mock's <c>campusWhy</c> tips).
+    /// </summary>
+    /// <param name="reason">The structured campus reason.</param>
+    /// <param name="mixed">As for <see cref="CampusWhy"/>.</param>
+    /// <returns>The hover.</returns>
+    // approved wording (round 6d, 6e)
+    private static string CampusTip(CampusReason reason, bool mixed) =>
+        !mixed ? "A slate keeps its in-person sections at one campus. Tick Multi-campus, under the courses, to count slates across campuses."
+        : reason.Kind == CampusReasonKind.OnlySectionsOnDifferentCampuses
+            ? "Every slate uses these sections, so a student taking every course has classes on more than one campus."
+            : "Each slate puts in-person sections on more than one campus, so a student taking every course has classes on more than one campus.";
+
+    /// <summary>
+    /// The hover of "depends on …" (the mock's <c>conflictText</c>): for each section every slate uses by timing, why
+    /// its component's other sections can't be used, e.g. "CHEM 213 B conflicts with PSYCH 101 A; CHEM 213 C doesn't
+    /// fit with the other courses."
+    /// </summary>
+    /// <param name="inputs">The semester view.</param>
+    /// <param name="a">The analysis.</param>
+    /// <returns>The hover.</returns>
+    private static string DependsOnTip(AccessInputs inputs, Analysis a)
+    {
+        bool Always(Section t) => a.Roles.TryGetValue(t.Id, out var r)
+                                  && r is SectionRole.EssentialByTiming or SectionRole.OnlySection;
+        var parts = new List<string>();
+        foreach (var s in a.EssentialByTimingSections)
+        {
+            var group = a.Groups.FirstOrDefault(g => g.Candidates.Any(c => c.Id == s.Id));
+            if (group is null) continue;
+            foreach (var x in group.Candidates.Where(c => c.Id != s.Id))
+            {
+                var hit = a.Groups.Where(g => g != group).SelectMany(g => g.Candidates)
+                    .FirstOrDefault(t => Always(t) && SectionOverlap.Conflicts(x, t));
+                // approved wording (round 3)
+                parts.Add(hit is not null
+                    ? $"{SectionLabel(inputs, x)} conflicts with {SectionLabel(inputs, hit)}"
+                    : $"{SectionLabel(inputs, x)} doesn't fit with the other courses");
+            }
+        }
+        return string.Join("; ", parts) + ".";
+    }
+
+    /// <summary>
     /// The phrases of a watch's health line, in order (see <see cref="HealthLine"/>).
     /// </summary>
     /// <param name="inputs">The semester view the analysis was made on.</param>
@@ -299,12 +414,12 @@ public static partial class AccessText
     /// </param>
     /// <param name="keptInPlace">Ids of sections the user has said can't move (<see cref="AccessState.KeptInPlace"/>),
     /// so a watch with no full slate names the same sections to move as the grid; null for none.</param>
-    /// <returns>The phrases; never empty.</returns>
-    public static IReadOnlyList<string> HealthPhrases(
+    /// <returns>The phrases, some with a hover or a warning (the mock's tips and <c>warn</c>); never empty.</returns>
+    public static IReadOnlyList<HealthPhrase> HealthPhrases(
         AccessInputs inputs, Analysis a, Func<string?, string> campusName, IReadOnlyList<Caution>? cautions = null,
         IReadOnlySet<string>? keptInPlace = null)
     {
-        var segs = new List<string>();
+        var segs = new List<HealthPhrase>();
         // approved wording (Q53, Greg 2026-11-24)
         if (a.Health == AccessHealth.TooLarge)
             return [$"Too many courses to check (more than {AccessAnalyzer.MaxCourses})"];
@@ -344,19 +459,22 @@ public static partial class AccessText
             if (p.Count > 0)
             {
                 segs.Add($"{SectionLabel(inputs, p[0].A)} conflicts with {SectionLabel(inputs, p[0].B)}");
-                if (p.Count > 1) segs.Add(Plural(p.Count - 1, "more conflict", "more conflicts"));
+                if (p.Count > 1)
+                    segs.Add(new(Plural(p.Count - 1, "more conflict", "more conflicts"),
+                        string.Join("; ", p.Skip(1).Select(x => $"{SectionLabel(inputs, x.A)} conflicts with {SectionLabel(inputs, x.B)}")) + "."));
             }
             else if (!a.HasSlate)
             {
                 // approved wording (round 6d)
                 segs.Add(a.SelfFailCourses.Count > 0 ? SelfFailWhy(inputs, a, a.SelfFailCourses[0], campusName)
-                    : a.CampusReason is { } cr ? CampusWhy(inputs, cr, false, campusName)
+                    : a.CampusReason is { } cr ? new HealthPhrase(CampusWhy(inputs, cr, false, campusName), CampusTip(cr, false))
                     : "these sections don't fit together");
             }
             else
             {
                 segs.Add(n == 1 ? "1 section" : n == 2 ? "Both sections fit together" : $"All {n} sections fit together");
-                if (a.MixedCampusReason is { } mr) segs.Add(CampusWhy(inputs, mr, true, campusName));
+                if (a.MixedCampusReason is { } mr)
+                    segs.Add(new(CampusWhy(inputs, mr, true, campusName), CampusTip(mr, true), Warn: true));
             }
             Tail();
             return segs;
@@ -368,16 +486,21 @@ public static partial class AccessText
             // approved wording (round 6e)
             if (a.MixedCampusReason is { } mr)
             {
-                segs.Add(a.SlateCount == 1 ? "it mixes campuses" : "every slate mixes campuses");
-                segs.Add(CampusWhy(inputs, mr, true, campusName));
+                segs.Add(new(a.SlateCount == 1 ? "it mixes campuses" : "every slate mixes campuses", CampusTip(mr, true), Warn: true));
+                segs.Add(new(CampusWhy(inputs, mr, true, campusName), Warn: true));
             }
             else if (!a.OneCampusRule && a.MixedSlateCount != 0)
             {
-                segs.Add(a.MixedSlateCount is null ? "some mix campuses"
-                    : $"{a.MixedSlateCount.Value.ToString("N0", CultureInfo.InvariantCulture)} {(a.MixedSlateCount == 1 ? "mixes" : "mix")} campuses");
+                static string N(int x) => x.ToString("N0", CultureInfo.InvariantCulture);
+                segs.Add(a.MixedSlateCount is not { } mixed
+                    ? new HealthPhrase("some mix campuses", "Some slates put in-person sections on more than one campus.")
+                    : new HealthPhrase($"{N(mixed)} {(mixed == 1 ? "mixes" : "mix")} campuses",
+                        $"{N(mixed)} of {N(a.SlateCount)} slates put in-person sections on more than one campus; the other "
+                        + $"{N(a.OneCampusSlateCount ?? a.SlateCount - mixed)} keep to one. Step through slates to see which."));
             }
             if (a.EssentialByTimingSections.Count > 0)
-                segs.Add($"depends on {NameList(a.EssentialByTimingSections.Select(s => SectionLabel(inputs, s)).ToList())}");
+                segs.Add(new($"depends on {NameList(a.EssentialByTimingSections.Select(s => SectionLabel(inputs, s)).ToList())}",
+                    DependsOnTip(inputs, a)));
             if (a.StrandedSections.Count > 0)
                 segs.Add($"{Plural(a.StrandedSections.Count, "section", "sections")} stranded");
             if (cautions is { Count: > 0 })
@@ -399,7 +522,7 @@ public static partial class AccessText
             segs.Add("No full slate");
             foreach (var x in a.SelfFailCourses) segs.Add(SelfFailWhy(inputs, a, x, campusName));
             var moves = MoveSuggestions.For(a, keptInPlace);
-            if (a.CampusReason is { } cr) segs.Add(CampusWhy(inputs, cr, false, campusName));
+            if (a.CampusReason is { } cr) segs.Add(new(CampusWhy(inputs, cr, false, campusName), CampusTip(cr, false)));
             // The same suggestion the grid's ▲ and lines show (Greg, 2026-11-26: the course-level "X or Y can't fit"
             // no longer matched them); with nothing suggested, the best partial as before.
             // approved wording (Greg, 2026-11-26)
@@ -419,18 +542,24 @@ public static partial class AccessText
         return segs;
     }
 
-    /// <summary>"A and B can't fit", "A or B can't fit", "only one of A, B and C fits" or "2 of A, B and C can't fit" (round 6d, gap 3).</summary>
-    private static string CantFitText(AccessInputs inputs, BestPartial best)
+    /// <summary>
+    /// "A and B can't fit", "A or B can't fit", "only one of A, B and C fits" or "2 of A, B and C can't fit" (round 6d,
+    /// gap 3), with the hover "Students can take all but A, or all but B." ("No A section fits with the other
+    /// courses." when one course alone can't fit).
+    /// </summary>
+    private static HealthPhrase CantFitText(AccessInputs inputs, BestPartial best)
     {
         var alts = best.Alternatives.Select(alt => (IReadOnlyList<string>)alt.Select(inputs.CourseCode).ToList()).ToList();
         int k = alts[0].Count;
         // Sorted by code: the search finds the left-out courses in an order that means nothing to the reader.
         var union = alts.SelectMany(x => x).Distinct().OrderBy(c => c, StringComparer.OrdinalIgnoreCase).ToList();
         // approved wording (round 6d)
-        if (alts.Count == 1) return $"{JoinAnd(alts[0])} can't fit";
-        if (k == 1) return $"{string.Join(" or ", union)} can't fit";
-        if (union.Count - k == 1) return $"only one of {JoinAnd(union)} fits";
-        return $"{k} of {JoinAnd(union)} can't fit";
+        string tip = $"Students can take all but {string.Join(", or all but ", alts.Select(JoinAnd).Order(StringComparer.OrdinalIgnoreCase))}.";
+        if (alts.Count == 1)
+            return new($"{JoinAnd(alts[0])} can't fit", k == 1 ? $"No {alts[0][0]} section fits with the other courses." : tip);
+        if (k == 1) return new($"{string.Join(" or ", union)} can't fit", tip);
+        if (union.Count - k == 1) return new($"only one of {JoinAnd(union)} fits", tip);
+        return new($"{k} of {JoinAnd(union)} can't fit", tip);
     }
 
     /// <summary>
@@ -445,5 +574,5 @@ public static partial class AccessText
     /// <returns>The line.</returns>
     public static string HealthLine(AccessInputs inputs, Analysis analysis, Func<string?, string> campusName,
         IReadOnlySet<string>? keptInPlace = null) =>
-        string.Join(PhraseSeparator, HealthPhrases(inputs, analysis, campusName, keptInPlace: keptInPlace));
+        string.Join(PhraseSeparator, HealthPhrases(inputs, analysis, campusName, keptInPlace: keptInPlace).Select(p => p.Text));
 }

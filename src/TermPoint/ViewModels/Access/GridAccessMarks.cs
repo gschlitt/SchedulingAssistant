@@ -62,6 +62,9 @@ public sealed class GridAccessMarks
             foreach (var watch in semester.Watches)
                 foreach (var mark in watch.Marks)
                 {
+                    // Mark all conflicts, with a watch open, adds only that watch's extra marks (Greg, 2026-11-26)
+                    if (openWatchId is not null && watch.Tag.Id != openWatchId
+                        && mark.Kind is ConflictMarkKind.Harmless or ConflictMarkKind.Plain) continue;
                     var wm = new WatchMark(watch.Tag.Id, watch.Tag.Name, mark);
                     sections[mark.A.Id] = mark.A;
                     sections[mark.B.Id] = mark.B;
