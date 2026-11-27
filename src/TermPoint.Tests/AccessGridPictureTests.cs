@@ -189,7 +189,7 @@ public sealed class AccessGridPictureTests : IDisposable
 
         Assert.True(looks["A A1"].CantFit);
         Assert.Equal("▲", looks["A A1"].Mark);
-        Assert.Equal("A A1 conflicts with B B1, so **W** has no full slate. Moving A A1 or B B1 brings one back.", looks["A A1"].Hover);
+        Assert.Equal("A A1 conflicts with B B1, so **W** has no full slate. Try moving A A1 or B B1.", looks["A A1"].Hover);
     }
 
     /// <summary>

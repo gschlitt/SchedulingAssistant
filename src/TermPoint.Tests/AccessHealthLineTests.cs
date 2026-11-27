@@ -68,14 +68,39 @@ public sealed class AccessHealthLineTests
     }
 
     [Fact]
-    public void NoFullSlate_NamesTheBestPartialAndWhatCannotFit()
+    public void NoFullSlate_OneMove_NamesTheSectionsToMove()
     {
         var sections = new[]
         {
             Sec("A", "1", Lecture, At(0, 9, 10)), Sec("B", "1", Lecture, At(0, 9, 10)),
             Sec("C", "1", Lecture, At(1, 9, 10)), Sec("C", "2", Lecture, At(2, 9, 10)),
         };
-        Assert.Equal("No full slate · best partial covers 2 of 3 · A or B can't fit · 1 conflict", Line(sections));
+        Assert.Equal("No full slate · try moving A 1 or B 1 · 1 conflict", Line(sections));
+    }
+
+    [Fact]
+    public void NoFullSlate_EveryOptionKeptInPlace_NamesTheBestPartialAndWhatCannotFit()
+    {
+        // the same watch with both ends of its one conflict kept in place: nothing to suggest, so the best partial
+        var sections = new[]
+        {
+            Sec("A", "1", Lecture, At(0, 9, 10)), Sec("B", "1", Lecture, At(0, 9, 10)),
+            Sec("C", "1", Lecture, At(1, 9, 10)), Sec("C", "2", Lecture, At(2, 9, 10)),
+        };
+        var inputs = Simple(sections);
+        Assert.Equal("No full slate · best partial covers 2 of 3 · A or B can't fit · 1 conflict",
+            AccessText.HealthLine(inputs, AnalyzeAll(inputs), Campus, new HashSet<string> { "A 1", "B 1" }));
+    }
+
+    [Fact]
+    public void NoFullSlate_TwoSeparateProblems_SaysSo()
+    {
+        var sections = new[]
+        {
+            Sec("A", "1", Lecture, At(0, 9, 10)), Sec("B", "1", Lecture, At(0, 9, 10)),
+            Sec("C", "1", Lecture, At(1, 9, 10)), Sec("C", "2", Lecture, At(1, 9, 10)), Sec("D", "1", Lecture, At(1, 9, 10)),
+        };
+        Assert.Equal("No full slate · 2 separate problems · 3 conflicts", Line(sections));
     }
 
     [Theory]

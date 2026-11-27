@@ -278,7 +278,7 @@ public sealed partial class AccessTabViewModel : ViewModelBase
         {
             var (semester, watch) = group.OrderByDescending(x => Rank(x.Watch.Analysis.Health)).First();
             var analysis = watch.Analysis;
-            var line = AccessText.HealthLine(semester.Inputs, analysis, CampusName);
+            var line = AccessText.HealthLine(semester.Inputs, analysis, CampusName, _state.KeptInPlace);
             if (several)
                 line = $"{(semesterNames.TryGetValue(semester.SemesterId, out var sn) ? sn : semester.SemesterId)}: {line}";
             rows.Add(new AccessWatchRowViewModel(watch.Tag.Name, line, analysis.Health, watch.Tag.Id, semester.SemesterId));

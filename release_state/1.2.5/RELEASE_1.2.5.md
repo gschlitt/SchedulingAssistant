@@ -85,22 +85,20 @@ Notes: [lost-notices/NOTES.md](lost-notices/NOTES.md). Source: backlog WN1, plus
 
 **Goal:** administrators see at a glance whether students can still take every course of a watched set (a full "slate" of one section per component), get notices when a change breaks it, and create watches easily. Done means the feature in the app, field-tested.
 
-**State:** Set aside 2026-11-26 for Undo, made ACTIVE again the same day; waits on Greg's fewest-moves trial verdict and the DRAFT wording (step 1).
+**State:** Fewest-moves trial adopted 2026-11-26: wording approved, Access tab line, Mark all conflicts and spec settled. Waits on Greg's hand check of F.
 On branch 1.2.5, pieces A–F committed, F leftovers too except health-line styling. Greg's hand check of F is part-done.
 
 <details>
-<summary>Steps (5 left)</summary>
+<summary>Steps (4 left)</summary>
 
-1. Greg tries the fewest-moves marks and "Don't suggest moving this" on UBC; approve or change the DRAFT wording (notes: "No full slate: what to mark").
-2. Settle what the trial leaves open (Access tab line, Mark all conflicts, the spec's rule 33), then finish Greg's hand check of F, including Escape and Open in Courses.
-3. F leftover: health-line styling (the mock's warn colour and hovers per phrase), after step 2.
-4. G: editor pointer and drag line.
-5. H: release (version stamp, WASM demo, help page or video for the "What's an access watch?" link, field test).
+1. Greg finishes his hand check of F, including Escape, Open in Courses and the fewest-moves marks on UBC.
+2. F leftover: health-line styling (the mock's warn colour and hovers per phrase), after step 1.
+3. G: editor pointer and drag line.
+4. H: release (version stamp, WASM demo, help page or video for the "What's an access watch?" link, field test).
 
 </details>
 
 **Open questions:**
-- Fewest-moves trial: does it read well on UBC? Keep "Don't suggest moving this"? The DRAFT hover and menu wording.
 - The help text drafted in chat for the no-full-slate marks: right length and tone for the help page?
 - F's draft wording (in the notes): notice causes, Check all courses' read-only comment, the legend's hidden-sections line, the missing-component hover, three failure lines.
 - The uncommitted wizard example wording in the setup text: Greg's to keep? (left out of the commits)

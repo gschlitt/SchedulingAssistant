@@ -88,7 +88,7 @@ public sealed class AccessConflictMarksTests
             Sec("A", "1", Lecture, At(0, 9, 10)), Sec("B", "1", Lecture, At(0, 9, 10)), Sec("C", "1", Lecture, At(0, 9, 10)),
         };
         Assert.Empty(Marks(sections));
-        Assert.All(Marks(sections, markAll: true), m => Assert.Equal(ConflictMarkKind.Harmless, m.Kind));
+        Assert.All(Marks(sections, markAll: true), m => Assert.Equal(ConflictMarkKind.Plain, m.Kind));
     }
 
     [Fact]
@@ -118,7 +118,7 @@ public sealed class AccessConflictMarksTests
     }
 
     [Fact]
-    public void MarkAll_AddsHarmlessMarksBesideTheCostlyOnes()
+    public void MarkAll_NoFullSlate_AddsPlainMarksBesideTheMoveOnes()
     {
         var sections = new[]
         {
@@ -130,8 +130,9 @@ public sealed class AccessConflictMarksTests
         var costly = Marks(sections);
         var all = Marks(sections, markAll: true);
         Assert.True(all.Count > costly.Count);
-        Assert.Contains(all, m => m.Kind == ConflictMarkKind.Harmless);
-        Assert.DoesNotContain(costly, m => m.Kind == ConflictMarkKind.Harmless);
+        Assert.Contains(all, m => m.Kind == ConflictMarkKind.Plain);
+        Assert.DoesNotContain(all, m => m.Kind == ConflictMarkKind.Harmless);   // no full slate: no "students get around it" claim
+        Assert.DoesNotContain(costly, m => m.Kind == ConflictMarkKind.Plain);
     }
 
     [Fact]
@@ -148,7 +149,7 @@ public sealed class AccessConflictMarksTests
         Assert.False(analysis.HasSlate);
         Assert.NotNull(analysis.CampusReason);
         Assert.Empty(Marks(sections));
-        Assert.Equal(ConflictMarkKind.Harmless, Assert.Single(Marks(sections, markAll: true)).Kind);
+        Assert.Equal(ConflictMarkKind.Plain, Assert.Single(Marks(sections, markAll: true)).Kind);
     }
 
     [Fact]

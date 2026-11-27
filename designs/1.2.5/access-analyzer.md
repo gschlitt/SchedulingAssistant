@@ -470,10 +470,20 @@ component-name list until confirmed course by course. 8d (superseded): courses f
 
 **Costly overlaps (teal boxes, Q16)**
 33. A conflict between two covered sections of different components (different courses, or a lecture and a lab of one
-    course) **costs something** if, with that one conflict ignored, a stranded section would become usable, or the best
-    partial slate would cover more courses. Only costly conflicts are boxed. When the watch has no full slate, every
-    conflict that involves a course that can't fit is also boxed, and the hover says where fixing only one conflict isn't
-    enough (Q22).
+    course) **costs something** if, with that one conflict ignored, a stranded section would become usable. Only costly
+    conflicts are boxed. **With no full slate (fewest moves, Greg 2026-11-25/26; replaces the best-partial test and
+    Q22's answer):** the marks show the fewest sections to move. Moves needed = components minus the most components
+    that can be filled together; a section conflicting with two others is one move. One move: every option is marked
+    (its conflicts as lines, a ▲ on each section to move), hover "CIVL303 T1A conflicts with CIVL315 101, so CIVL-Y3
+    has no full slate. Try moving CIVL303 T1A or CIVL315 101." Two moves that split into two separate one-move
+    problems: both are marked, hover "… This is one of 2 separate problems keeping CIVL-Y3 from a full slate; moving
+    X or Y fixes it." Anything else (a crowded watch): nothing marked. Right-click "Don't suggest moving this" keeps a
+    section in place (session only, every watch; hover "X is kept in place: suggestions won't ask to move it.").
+    With the campus rule alone to blame, no time conflict is marked. The Access tab line follows the same suggestion:
+    "No full slate · try moving X or Y", or "No full slate · 2 separate problems"; with nothing suggested it keeps the
+    best partial ("best partial covers 5 of 6 · X or Y can't fit"). Mark all conflicts with no full slate adds the
+    other conflicts with the plain hover "X conflicts with Y." (no claim that students can get around them). Code:
+    `MoveSuggestions`, `ConflictMarks`.
 
 **Carrying forward (Q6)**
 34. A copied watch is the same watch (name, enabled, course set, tag/level rule) in the new semester, with its own
@@ -524,7 +534,7 @@ component-name list until confirmed course by course. 8d (superseded): courses f
 | Q19 | **Which essential sections to name. ANSWERED 2026-11-10: only those essential by timing (recommendation adopted).** Every single-section component is trivially essential | The health line names only sections *essential by timing*; only-sections are mentioned in the watch's detail, not the line. Newly-essential notices are for timing only |
 | Q20 | **Seats with no capacities. ANSWERED 2026-11-10: no number, one quiet hint (recommendation adopted).** Neither UFV nor UBC has any set, so "seats unknown" would be all either ever shows | If any usable section lacks a capacity, show no seat number; say once, quietly, "Set section capacities to see how many students fit." Treating unknown as unlimited gives numbers that look real and aren't |
 | Q21 | **How long notices live, and whose saves make them. ANSWERED 2026-11-10: session only, from any saves (recommendation adopted).** | Kept in memory for the session; cleared when dismissed or when no longer true. They come from any change this app sees (own saves, and other users' saves when the semester reloads). Not stored: the health line already shows the current state after a restart. Storing them would be new data (Yes) |
-| Q22 | **Teal boxes when no single conflict is to blame. ANSWERED 2026-11-10: box every conflict involving a course that can't fit (recommendation adopted).** Rule 33 boxes a conflict only if ignoring *that one conflict* would help. Example: each of PSYCH 101, CHEM 213 and GEOG 250 has one section. CHEM 213 A (Tue 10:00–11:20) conflicts with PSYCH 101 A (Tue 9:00–10:20) and with GEOG 250 A (Tue 10:30–11:50); PSYCH and GEOG don't conflict. There's no full slate. Ignore the CHEM–PSYCH conflict and CHEM–GEOG still blocks it; ignore CHEM–GEOG and CHEM–PSYCH still blocks it. So neither conflict counts as costly, and the grid would show **no boxes** while the watch is broken | Box every conflict that involves a course that can't fit (here both CHEM 213 conflicts). Hover: "CHEM 213 A conflicts with PSYCH 101 A and GEOG 250 A; fixing only one of these isn't enough." Alternative: for such a watch, box every overlap as today, including harmless ones |
+| Q22 | **Teal boxes when no single conflict is to blame. ANSWERED 2026-11-10: box every conflict involving a course that can't fit (recommendation adopted). SUPERSEDED 2026-11-26 by the fewest-moves marks (rule 33): it marked conflicts all over the grid when one was to blame. In this example CHEM 213 A is the one section to move.** Rule 33 boxes a conflict only if ignoring *that one conflict* would help. Example: each of PSYCH 101, CHEM 213 and GEOG 250 has one section. CHEM 213 A (Tue 10:00–11:20) conflicts with PSYCH 101 A (Tue 9:00–10:20) and with GEOG 250 A (Tue 10:30–11:50); PSYCH and GEOG don't conflict. There's no full slate. Ignore the CHEM–PSYCH conflict and CHEM–GEOG still blocks it; ignore CHEM–GEOG and CHEM–PSYCH still blocks it. So neither conflict counts as costly, and the grid would show **no boxes** while the watch is broken | Box every conflict that involves a course that can't fit (here both CHEM 213 conflicts). Hover: "CHEM 213 A conflicts with PSYCH 101 A and GEOG 250 A; fixing only one of these isn't enough." Alternative: for such a watch, box every overlap as today, including harmless ones |
 | Q23 | **"Keep anyway" for not-offered courses. ANSWERED 2026-11-10: no mark (recommendation adopted).** Phase 1's Q6 mentioned a possible per-semester mark | No mark: leaving the course in the list *is* keeping it, and the flag is computed (rule 35). Phase 1's "one-time offer" to bring watches over needs remembering that it was declined; that is Phase 4's to settle |
 | Q24 | **Tied components. ANSWERED 2026-11-10: no ties in the first version (recommendation adopted).** Is a particular lab ever tied to a particular lecture (MECH 463: lectures 101 and 102; are labs L1A/L1B open to both)? Same question for UFV's AB lectures and A# labs | Leave ties out of the first version: any section of a component goes with any section of another component. Add ties later if real data needs them |
 | Q26 | **The "several types, one component" prompt (rule 38). ANSWERED 2026-11-10: dropped (recommendation adopted).** "BIO 105 has F2F and Online sections; they're counted as alternatives. Is that right?" catches a component name the list doesn't know, but at UFV it would come up for many courses | Drop it; rely on the components being visible in the watch's detail (rule 37). The other two prompts point at a real problem and stay |
@@ -830,6 +840,7 @@ meeting rows (day, start; length as is; + Meeting and ✕), section type and cam
   CHEM 213 A, so they can't be part of any slate for Enviro Y2." · "CHEM 213 A conflicts with PSYCH 101 A, B, C, so
   Enviro Y2 has no full slate." · Q22: "CHEM 213 A conflicts with GEOG 250 A, B and PSYCH 101 A, B, C, so Enviro Y2
   has no full slate. Fixing only one of these conflicts isn't enough." The line between tiles has the pair's hover.
+  (The no-full-slate hovers here were replaced on 2026-11-26 by rule 33's fewest-moves hovers.)
 - **What's new** goes in the app's announcement banner (`AppAnnouncements`), once.
 - **Delivery type:** optional "Delivery Type" box beside Campus in the section editor (hover: "How this section is
   taught. Delivery types are set under Scheduling Environment."); cards show "Lecture · Blended"; the filter bar's
@@ -1397,7 +1408,8 @@ in slates** / **Unpin** to the existing menu. Otherwise the item isn't there.
 not a detail is open. Tag/level watches keep today's boxes. No box for harmless overlaps (D24). Hover:
 - "PSYCH 101 A conflicts with CHEM 213 A. Because of this conflict Enviro Y2 has no full slate."
 - "PSYCH 101 B conflicts with CHEM 213 A, so PSYCH 101 B can't be part of any slate for Enviro Y2."
-- "CHEM 213 A conflicts with PSYCH 101 A and GEOG 250 A; fixing only one of these isn't enough." (Q22)
+- "CHEM 213 A conflicts with PSYCH 101 A and GEOG 250 A; fixing only one of these isn't enough." (Q22; superseded
+  2026-11-26 by rule 33's fewest-moves marks)
 - One line per watch when several are involved.
 - **What's new:** "Access watches now box only overlaps that cost students something: a section nobody in the watch
   can use, or no way to take every course. Other overlaps are no longer boxed."

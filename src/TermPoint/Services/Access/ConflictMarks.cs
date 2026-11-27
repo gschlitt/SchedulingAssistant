@@ -17,6 +17,12 @@ public enum ConflictMarkKind
     Move,
     /// <summary>Costs nothing (other sections let students get around it); produced only when Mark all conflicts is on.</summary>
     Harmless,
+    /// <summary>
+    /// With no full slate: a conflict outside the move suggestion; produced only when Mark all conflicts is on. Nothing
+    /// is claimed about its cost (Greg, 2026-11-26): "other sections let students get around it" is false while no
+    /// full slate exists, and in a crowded watch with nothing suggested it may be part of the trouble.
+    /// </summary>
+    Plain,
 }
 
 /// <summary>One conflict between two sections of different components, with what it costs.</summary>
@@ -69,7 +75,8 @@ public static class ConflictMarks
     /// <param name="inputs">The semester view.</param>
     /// <param name="covered">The sections under analysis.</param>
     /// <param name="multiCampus">Whether Multi-campus is on.</param>
-    /// <param name="markAll">Whether Mark all conflicts is on (adds <see cref="ConflictMarkKind.Harmless"/> marks).</param>
+    /// <param name="markAll">Whether Mark all conflicts is on (adds <see cref="ConflictMarkKind.Harmless"/> marks, or
+    /// <see cref="ConflictMarkKind.Plain"/> ones with no full slate).</param>
     /// <param name="keptInPlace">Ids of sections the user has said can't move; null for none.</param>
     /// <returns>The marks, in group-pair order.</returns>
     public static IReadOnlyList<ConflictMark> For(
@@ -115,7 +122,8 @@ public static class ConflictMarks
                                 problem, moves.Problems.Count);
                         }
                         if (mark is null && markAll)
-                            mark = new ConflictMark(ConflictMarkKind.Harmless, s, t, meetings, null, []);
+                            mark = new ConflictMark(analysis.HasSlate ? ConflictMarkKind.Harmless : ConflictMarkKind.Plain,
+                                s, t, meetings, null, []);
                         if (mark is not null) marks.Add(mark);
                     }
         return marks;

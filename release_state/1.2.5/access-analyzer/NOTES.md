@@ -542,7 +542,7 @@ rounds 5–9. Split like D and E: **F-core** (Sonnet; no `.axaml`) then **F-ui**
 </details>
 
 <details>
-<summary>No full slate: what to mark (trial built, awaiting Greg, 2026-11-25)</summary>
+<summary>No full slate: what to mark (fewest moves, adopted 2026-11-26)</summary>
 
 **What Greg saw.** CIVL-Y3 on the UBC import (`UBC_Engineering_WinterTerm1_import_tagged.csv` in the UBC demo
 folder): red marks and ▲ on Monday, Tuesday, Wednesday and Thursday. Moving CIVL303's Friday meeting to 11:30 cleared
@@ -602,10 +602,11 @@ split into two separate one-move problems: two problems; anything else: nothing 
 replaces NoFull and NoSingleFix (Q22's rule is gone); the ▲ goes on the sections to move (the campus-reason case keeps
 the old ▲ on every section of the courses that can't fit). Keep in place: right-click "Don't suggest moving this", a
 session-only set in `AccessState` shared by every watch; keeping every one-move option falls through to two moves.
-All new user wording is marked DRAFT (`MoveTip`, `KeptInPlaceTip`, the two menu texts). Checked on the UBC copy:
-same counts as the probe; marks for all 43 tags as watches about 16 ms. Not done: the Access tab still says "X or Y
-can't fit" (course level); Mark all conflicts still calls the other conflicts "harmless" with no full slate; the spec's
-rule 33 and Q22 still describe the old marks; `MinimumVersionToWrite`: No (nothing saved).
+The new wording (`MoveTip`, `KeptInPlaceTip`, the two menu texts) was approved by Greg on 2026-11-26, with one change: the one-problem hover ends "Try moving X or Y." instead of "Moving X or Y brings one back." (unclear when, why, or whether there was a full slate before). Checked on the UBC copy:
+same counts as the probe; marks for all 43 tags as watches about 16 ms. Settled 2026-11-26 (Greg): the Access tab line names the same suggestion ("try moving X or Y", "2 separate problems";
+best partial when nothing is suggested; `HealthPhrases` takes the kept-in-place set); Mark all conflicts with no full
+slate adds `ConflictMarkKind.Plain` marks, hover "X conflicts with Y." (no "get around" claim); spec rule 33 and Q22
+rewritten; `MinimumVersionToWrite`: No (nothing saved).
 
 **Help text:** a short user explanation was drafted in chat only (Greg asked for no separate doc; no verdict yet). The
 help page in H must explain the ▲, the lines, the two-problem and nothing-marked cases, and "Don't suggest moving this".

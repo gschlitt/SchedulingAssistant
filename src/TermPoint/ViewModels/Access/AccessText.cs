@@ -161,6 +161,11 @@ public static partial class AccessText
             if (hl.Count > 0)
                 Say($"{id} conflicts with {ByCourse(inputs, hl)}. Other sections still let students in {w} get around "
                     + $"{(hl.Count == 1 ? "this conflict" : "these conflicts")}.");
+
+            // Plain (no full slate, Mark all conflicts): the conflict alone, no claim about its cost.
+            // approved wording (Greg, 2026-11-26)
+            var plain = ks.Where(m => m.Mark.Kind == ConflictMarkKind.Plain).Select(m => OtherEnd(m.Mark)).ToList();
+            if (plain.Count > 0) Say($"{id} conflicts with {ByCourse(inputs, plain)}.");
         }
 
         // Q41: a partner the grid is not showing, and why: the subjects chosen in the top banner (Greg, 2026-11-24:
@@ -292,9 +297,12 @@ public static partial class AccessText
     /// sections; <c>null</c> (the list's rows) leaves them out. A watch whose pins stop a full slate names the pins
     /// instead of a best partial.
     /// </param>
+    /// <param name="keptInPlace">Ids of sections the user has said can't move (<see cref="AccessState.KeptInPlace"/>),
+    /// so a watch with no full slate names the same sections to move as the grid; null for none.</param>
     /// <returns>The phrases; never empty.</returns>
     public static IReadOnlyList<string> HealthPhrases(
-        AccessInputs inputs, Analysis a, Func<string?, string> campusName, IReadOnlyList<Caution>? cautions = null)
+        AccessInputs inputs, Analysis a, Func<string?, string> campusName, IReadOnlyList<Caution>? cautions = null,
+        IReadOnlySet<string>? keptInPlace = null)
     {
         var segs = new List<string>();
         // approved wording (Q53, Greg 2026-11-24)
@@ -390,7 +398,15 @@ public static partial class AccessText
             // approved wording (round 6d)
             segs.Add("No full slate");
             foreach (var x in a.SelfFailCourses) segs.Add(SelfFailWhy(inputs, a, x, campusName));
+            var moves = MoveSuggestions.For(a, keptInPlace);
             if (a.CampusReason is { } cr) segs.Add(CampusWhy(inputs, cr, false, campusName));
+            // The same suggestion the grid's ▲ and lines show (Greg, 2026-11-26: the course-level "X or Y can't fit"
+            // no longer matched them); with nothing suggested, the best partial as before.
+            // approved wording (Greg, 2026-11-26)
+            else if (moves.Problems.Count == 1)
+                segs.Add($"try moving {ByCourseOr(inputs, moves.Problems[0].Options.Select(o => o.Section))}");
+            else if (moves.Problems.Count > 1)
+                segs.Add($"{moves.Problems.Count} separate problems");
             else if (a.BestPartial is { Alternatives.Count: > 0 } best)
             {
                 segs.Add($"best partial covers {(best.Complete ? "" : "at least ")}{best.Covers} of {best.Of}");
@@ -425,7 +441,9 @@ public static partial class AccessText
     /// <param name="inputs">The semester view the analysis was made on.</param>
     /// <param name="analysis">The watch's analysis over the whole semester.</param>
     /// <param name="campusName">Gives a campus's name from its id (for the campus reasons).</param>
+    /// <param name="keptInPlace">Ids of sections the user has said can't move; null for none.</param>
     /// <returns>The line.</returns>
-    public static string HealthLine(AccessInputs inputs, Analysis analysis, Func<string?, string> campusName) =>
-        string.Join(PhraseSeparator, HealthPhrases(inputs, analysis, campusName));
+    public static string HealthLine(AccessInputs inputs, Analysis analysis, Func<string?, string> campusName,
+        IReadOnlySet<string>? keptInPlace = null) =>
+        string.Join(PhraseSeparator, HealthPhrases(inputs, analysis, campusName, keptInPlace: keptInPlace));
 }

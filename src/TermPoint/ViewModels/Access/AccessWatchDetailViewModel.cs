@@ -465,7 +465,7 @@ public sealed partial class AccessWatchDetailViewModel : ViewModelBase
         if (a.IsSubset) phrases.Add(AccessText.SubsetText(a));
         if (a.PinnedSectionIds.Count > 0)
             phrases.Add($"{AccessText.Plural(a.PinnedSectionIds.Count, "section", "sections")} pinned");
-        phrases.AddRange(AccessText.HealthPhrases(inputs, a, CampusName, cautions));
+        phrases.AddRange(AccessText.HealthPhrases(inputs, a, CampusName, cautions, _state.KeptInPlace));
         HealthPhrases = phrases;
         HealthLine = string.Join(" · ", phrases);
         IsHealthAttention = tooLarge || !a.HasSlate || a.MissingComponents.Count > 0;
