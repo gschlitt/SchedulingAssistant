@@ -414,10 +414,15 @@ public static partial class AccessText
     /// </param>
     /// <param name="keptInPlace">Ids of sections the user has said can't move (<see cref="AccessState.KeptInPlace"/>),
     /// so a watch with no full slate names the same sections to move as the grid; null for none.</param>
+    /// <param name="brief">
+    /// True for the list's rows: a course that can't be taken even alone is not explained when a move is suggested,
+    /// since the suggestion names the same sections (the watch's detail keeps the sentence). Every kind of finding is
+    /// still there, so the rows treat every watch alike (Greg, 2026-11-27).
+    /// </param>
     /// <returns>The phrases, some with a hover or a warning (the mock's tips and <c>warn</c>); never empty.</returns>
     public static IReadOnlyList<HealthPhrase> HealthPhrases(
         AccessInputs inputs, Analysis a, Func<string?, string> campusName, IReadOnlyList<Caution>? cautions = null,
-        IReadOnlySet<string>? keptInPlace = null)
+        IReadOnlySet<string>? keptInPlace = null, bool brief = false)
     {
         var segs = new List<HealthPhrase>();
         // approved wording (Q53, Greg 2026-11-24)
@@ -428,6 +433,22 @@ public static partial class AccessText
         {
             if (a.NotCountedSections.Count > 0) segs.Add($"{Plural(a.NotCountedSections.Count, "section", "sections")} not counted");
             if (a.SectionsWithoutTimes.Count > 0) segs.Add($"{Plural(a.SectionsWithoutTimes.Count, "section", "sections")} without times");
+        }
+        // What the slates that count say about single sections: the same phrases whether the slates are full or
+        // (with no full slate) the most complete partial ones, so every watch reports them (Greg, 2026-11-27).
+        void Findings()
+        {
+            if (a.EssentialByTimingSections.Count > 0)
+                segs.Add(new($"depends on {NameList(a.EssentialByTimingSections.Select(s => SectionLabel(inputs, s)).ToList())}",
+                    DependsOnTip(inputs, a)));
+            if (a.StrandedSections.Count > 0)
+                segs.Add($"{Plural(a.StrandedSections.Count, "section", "sections")} stranded");
+            if (cautions is { Count: > 0 })
+            {
+                int hard = cautions.Count(c => c.Kind == CautionKind.HardToReach), heavy = cautions.Count - hard;
+                if (hard > 0) segs.Add($"{Plural(hard, "section", "sections")} hard to reach");
+                if (heavy > 0) segs.Add($"{Plural(heavy, "section carries", "sections carry")} a heavy load");
+            }
         }
         string SlateCountText(bool lead) => a.SlateCountCapped
             ? $"{(lead ? "More" : "more")} than {a.SlateCount.ToString("N0", CultureInfo.InvariantCulture)} slates"
@@ -446,6 +467,7 @@ public static partial class AccessText
             {
                 var gone = JoinAnd(a.MissingComponents.Select(x => inputs.CourseCode(x.CourseId)).Distinct().ToList());
                 segs.Add(a.IsSingleSectionCase ? "the other sections fit together" : $"{SlateCountText(false)} without {gone}");
+                Findings();
             }
             Tail();
             return segs;
@@ -498,17 +520,7 @@ public static partial class AccessText
                         $"{N(mixed)} of {N(a.SlateCount)} slates put in-person sections on more than one campus; the other "
                         + $"{N(a.OneCampusSlateCount ?? a.SlateCount - mixed)} keep to one. Step through slates to see which."));
             }
-            if (a.EssentialByTimingSections.Count > 0)
-                segs.Add(new($"depends on {NameList(a.EssentialByTimingSections.Select(s => SectionLabel(inputs, s)).ToList())}",
-                    DependsOnTip(inputs, a)));
-            if (a.StrandedSections.Count > 0)
-                segs.Add($"{Plural(a.StrandedSections.Count, "section", "sections")} stranded");
-            if (cautions is { Count: > 0 })
-            {
-                int hard = cautions.Count(c => c.Kind == CautionKind.HardToReach), heavy = cautions.Count - hard;
-                if (hard > 0) segs.Add($"{Plural(hard, "section", "sections")} hard to reach");
-                if (heavy > 0) segs.Add($"{Plural(heavy, "section carries", "sections carry")} a heavy load");
-            }
+            Findings();
         }
         else if (a.PinBlocks.Count > 0)
         {
@@ -520,8 +532,9 @@ public static partial class AccessText
         {
             // approved wording (round 6d)
             segs.Add("No full slate");
-            foreach (var x in a.SelfFailCourses) segs.Add(SelfFailWhy(inputs, a, x, campusName));
             var moves = MoveSuggestions.For(a, keptInPlace);
+            if (!brief || moves.Problems.Count == 0)
+                foreach (var x in a.SelfFailCourses) segs.Add(SelfFailWhy(inputs, a, x, campusName));
             if (a.CampusReason is { } cr) segs.Add(new(CampusWhy(inputs, cr, false, campusName), CampusTip(cr, false)));
             // The same suggestion the grid's ▲ and lines show (Greg, 2026-11-26: the course-level "X or Y can't fit"
             // no longer matched them); with nothing suggested, the best partial as before.
@@ -535,6 +548,7 @@ public static partial class AccessText
                 segs.Add($"best partial covers {(best.Complete ? "" : "at least ")}{best.Covers} of {best.Of}");
                 segs.Add(CantFitText(inputs, best));
             }
+            Findings();
         }
         Tail();
         // approved wording (round 6b): every conflict between two components of the watch, harmless or not
@@ -574,5 +588,5 @@ public static partial class AccessText
     /// <returns>The line.</returns>
     public static string HealthLine(AccessInputs inputs, Analysis analysis, Func<string?, string> campusName,
         IReadOnlySet<string>? keptInPlace = null) =>
-        string.Join(PhraseSeparator, HealthPhrases(inputs, analysis, campusName, keptInPlace: keptInPlace).Select(p => p.Text));
+        string.Join(PhraseSeparator, HealthPhrases(inputs, analysis, campusName, keptInPlace: keptInPlace, brief: true).Select(p => p.Text));
 }

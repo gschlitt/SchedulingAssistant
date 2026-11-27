@@ -82,24 +82,6 @@ public static class AccessAnalyzer
         bool noSlate = hasGroups && counted.Count == 0;
         bool hasSlate = counted.Count > 0;
 
-        // Roles (rules 20, 21)
-        var roles = new Dictionary<string, SectionRole>();
-        var essential = new List<Section>();
-        var only = new List<Section>();
-        var stranded = new List<Section>();
-        foreach (var g in groups)
-        {
-            int usedInGroup = g.Candidates.Count(s => counted.UsedSectionIds.Contains(s.Id));
-            foreach (var s in g.Candidates)
-            {
-                if (!hasSlate) roles[s.Id] = SectionRole.None;
-                else if (!counted.UsedSectionIds.Contains(s.Id)) { roles[s.Id] = SectionRole.Stranded; stranded.Add(s); }
-                else if (usedInGroup == 1 && g.Candidates.Count > 1) { roles[s.Id] = SectionRole.EssentialByTiming; essential.Add(s); }
-                else if (usedInGroup == 1) { roles[s.Id] = SectionRole.OnlySection; if (!g.Pinned) only.Add(s); }
-                else roles[s.Id] = SectionRole.Usable;
-            }
-        }
-
         // Round 6c: one section per component
         bool single = hasGroups && groups.All(g => g.All.Count == 1);
         var singlePairs = new List<SectionPair>();
@@ -163,6 +145,33 @@ public static class AccessAnalyzer
             if (oneCampus.Count == 0) mixedReason = AccessReasons.Campus(groups);
         }
 
+        // Roles (rules 20, 21), against the slates that count: the full slates, or with none (and neither pins nor the
+        // campus rule to blame) the most complete partial slates (Greg, 2026-11-27: otherwise a watch with no full
+        // slate hid its stranded sections, which then seemed to appear when an unrelated conflict was fixed).
+        var counting = Counting(search, groups, counted, cap,
+            hasSlate ? [[]] : noSlate && pinBlocks.Count == 0 && campusReason is null ? search.FewestSkipSets(2) : []);
+        var roles = new Dictionary<string, SectionRole>();
+        var essential = new List<Section>();
+        var only = new List<Section>();
+        var stranded = new List<Section>();
+        for (int gi = 0; gi < groups.Count; gi++)
+        {
+            var g = groups[gi];
+            int filledBy = counting.SkipSets.Count(set => !set.Contains(gi));
+            // Every counting slate fills it: only then can a section of it be one that every slate uses.
+            bool filledByAll = filledBy == counting.SkipSets.Count;
+            int usedInGroup = g.Candidates.Count(s => counting.Used.Contains(s.Id));
+            foreach (var s in g.Candidates)
+            {
+                // A group every counting slate leaves out holds the sections to move, which the suggestion names.
+                if (filledBy == 0) roles[s.Id] = SectionRole.None;
+                else if (!counting.Used.Contains(s.Id)) { roles[s.Id] = SectionRole.Stranded; stranded.Add(s); }
+                else if (usedInGroup == 1 && filledByAll && g.Candidates.Count > 1) { roles[s.Id] = SectionRole.EssentialByTiming; essential.Add(s); }
+                else if (usedInGroup == 1 && filledByAll) { roles[s.Id] = SectionRole.OnlySection; if (!g.Pinned) only.Add(s); }
+                else roles[s.Id] = SectionRole.Usable;
+            }
+        }
+
         var noTimes = groups.SelectMany(g => g.Candidates)
             .Where(s => s.Schedule.Count == 0 && (!hasSlate || counted.UsedSectionIds.Contains(s.Id))).ToList();
 
@@ -188,7 +197,10 @@ public static class AccessAnalyzer
             EssentialByTimingSections = essential,
             OnlySections = only,
             StrandedSections = stranded,
-            SlatesPerSection = counted.SlatesPerSection,
+            SlatesPerSection = counting.PerSection,
+            CountingSkipSets = counting.SkipSets,
+            SlatesFillingGroup = counting.FillingGroup,
+            CountingSlatesCapped = counting.Capped,
             IsSingleSectionCase = single,
             SingleSectionConflicts = singlePairs,
             ConflictCount = conflictCount,
@@ -205,5 +217,46 @@ public static class AccessAnalyzer
             Health = health,
             HasUntaggedSections = untagged,
         };
+    }
+
+    /// <summary>The slates that count, tallied: see <see cref="Analysis.CountingSkipSets"/>.</summary>
+    private sealed record CountingSlates(
+        IReadOnlyList<IReadOnlyList<int>> SkipSets, IReadOnlySet<string> Used,
+        IReadOnlyDictionary<string, int> PerSection, IReadOnlyList<int> FillingGroup, bool Capped);
+
+    /// <summary>
+    /// Tallies the slates that count. With a full slate (one empty skip set) that is the full count already made.
+    /// Otherwise each skip set's partial slates are counted, the cap shared between the sets (so a crowded watch costs
+    /// no more than one full count), and a section is used when some partial slate holds it.
+    /// </summary>
+    /// <param name="search">The search over the groups.</param>
+    /// <param name="groups">The groups.</param>
+    /// <param name="full">The count of full slates.</param>
+    /// <param name="cap">The slate-count cap.</param>
+    /// <param name="skipSets">The groups each kind of counting slate leaves out; empty to judge nothing.</param>
+    /// <returns>The tallies.</returns>
+    private static CountingSlates Counting(
+        SlateSearch search, IReadOnlyList<ComponentGroup> groups, SlateCountResult full, int cap, IReadOnlyList<int[]> skipSets)
+    {
+        if (skipSets.Count == 0)
+            return new CountingSlates([], NoIds, new Dictionary<string, int>(), new int[groups.Count], false);
+        if (skipSets.Count == 1 && skipSets[0].Length == 0)
+            return new CountingSlates([skipSets[0]], full.UsedSectionIds, full.SlatesPerSection,
+                Enumerable.Repeat(full.Count, groups.Count).ToArray(), full.Capped);
+        var used = new HashSet<string>();
+        var per = new Dictionary<string, int>();
+        var filling = new int[groups.Count];
+        bool capped = false;
+        int share = Math.Max(1, cap / skipSets.Count);
+        foreach (var set in skipSets)
+        {
+            var kept = search.Without(set);
+            var r = search.Count(share, kept);
+            capped |= r.Capped;
+            used.UnionWith(r.UsedSectionIds);
+            foreach (var (id, n) in r.SlatesPerSection) per[id] = per.GetValueOrDefault(id) + n;
+            foreach (int g in kept) filling[g] += r.Count;
+        }
+        return new CountingSlates(skipSets, used, per, filling, capped);
     }
 }

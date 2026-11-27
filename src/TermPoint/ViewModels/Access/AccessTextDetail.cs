@@ -148,17 +148,20 @@ public static partial class AccessText
     /// <param name="reason">The structured reason (<see cref="Analysis.StrandedReasonFor"/>).</param>
     /// <param name="campusName">Gives a campus's name from its id.</param>
     /// <param name="mentionMultiCampus">True to add "(Multi-campus is off)" to a campus reason; false for a course checked alone, where the box does not exist.</param>
+    /// <param name="noFullSlate">True when there is no full slate: "every slate would use" (the slates a move would bring).</param>
     /// <returns>A sentence starting with "it" and ending with a full stop.</returns>
-    // approved wording (round 6d)
+    // approved wording (round 6d; with no full slate, Greg 2026-11-27)
     public static string StrandedWhy(
-        AccessInputs inputs, Section section, StrandedReason reason, Func<string?, string> campusName, bool mentionMultiCampus = true)
+        AccessInputs inputs, Section section, StrandedReason reason, Func<string?, string> campusName, bool mentionMultiCampus = true,
+        bool noFullSlate = false)
     {
+        string uses = noFullSlate ? "would use" : "uses";
         switch (reason.Kind)
         {
             case StrandedKind.ConflictsWithAlwaysUsed when reason.Other is { } other:
-                return $"it conflicts with {SectionLabel(inputs, other)}, which every slate uses.";
+                return $"it conflicts with {SectionLabel(inputs, other)}, which every slate {uses}.";
             case StrandedKind.CampusConflictsWithAlwaysUsed when reason.Other is { } away:
-                return $"it is at {campusName(section.CampusId)}, and every slate uses {SectionLabel(inputs, away)} at {campusName(away.CampusId)}"
+                return $"it is at {campusName(section.CampusId)}, and every slate {uses} {SectionLabel(inputs, away)} at {campusName(away.CampusId)}"
                      + $"{(mentionMultiCampus ? " (Multi-campus is off)" : string.Empty)}.";
             default:
                 return "no combination of the other courses fits around it.";
@@ -193,14 +196,18 @@ public static partial class AccessText
     /// <param name="name">The watch's name, or the checked course's code.</param>
     /// <param name="isCheck">True for a course checked on its own.</param>
     /// <param name="campusName">Gives a campus's name from its id.</param>
+    /// <param name="move">With no full slate, "the suggested move" (<see cref="SuggestedMove"/>); null with a full slate.</param>
     /// <returns>The sentence (without the mark).</returns>
-    // approved wording (round 7)
+    // approved wording (round 7; with no full slate, Greg 2026-11-27)
     public static string StrandedFlagText(
-        AccessInputs inputs, Analysis analysis, Section section, string name, bool isCheck, Func<string?, string> campusName)
+        AccessInputs inputs, Analysis analysis, Section section, string name, bool isCheck, Func<string?, string> campusName,
+        string? move = null)
     {
-        string why = StrandedWhy(inputs, section, analysis.StrandedReasonFor(section), campusName, !isCheck);
+        string why = StrandedWhy(inputs, section, analysis.StrandedReasonFor(section), campusName, !isCheck, move is not null);
         string whom = analysis.IsSubset ? "these courses" : isCheck ? name : "all of " + name;
-        return $"{SectionLabel(inputs, section)} is stranded: {why} No student taking {whom} can use it.";
+        return move is null
+            ? $"{SectionLabel(inputs, section)} is stranded: {why} No student taking {whom} can use it."
+            : $"{SectionLabel(inputs, section)} is stranded: {why} Even with {move}, no student taking {whom} could use it.";
     }
 
     /// <summary>The flag for a component with no sections in the watch.</summary>

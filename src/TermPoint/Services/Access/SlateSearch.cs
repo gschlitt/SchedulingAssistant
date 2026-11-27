@@ -190,7 +190,94 @@ public sealed class SlateSearch
     /// <param name="skipGroups">The groups left out, by index.</param>
     /// <returns><c>true</c> when the other groups can be filled.</returns>
     internal bool ExistsWithout(IReadOnlyCollection<int> skipGroups) =>
-        Exists(AllGroups().Where(g => !skipGroups.Contains(g)).ToArray(), -1, -1, -1);
+        Exists(Without(skipGroups), -1, -1, -1);
+
+    /// <summary>
+    /// The conflicts whose setting aside would let <paramref name="stranded"/> into a filling of every group except
+    /// <paramref name="skipGroups"/>: rule 33's test for a stranded section, for every conflict at once. One search
+    /// over fillings that hold the section and break exactly one time conflict (campus never), recording that
+    /// conflict; a branch whose conflict is already recorded is cut. Much cheaper than one existence search per
+    /// conflict, most of which fail only after trying everything (Greg's GEOE-Y3: 13 stranded sections, 62
+    /// conflicts).
+    /// </summary>
+    /// <param name="stranded">The section that must be in the filling (normally a stranded one).</param>
+    /// <param name="skipGroups">The groups left out, by index; empty for full slates.</param>
+    /// <returns>The conflicts as order-free id pairs (smaller id first); empty when the section is not a candidate or its group is skipped.</returns>
+    internal IReadOnlySet<(string, string)> FreeingConflicts(Section stranded, IReadOnlyCollection<int> skipGroups)
+    {
+        var found = new HashSet<(int, int)>();
+        int f = IndexOf(stranded);
+        if (f < 0 || skipGroups.Contains(_groupOf[f])) return new HashSet<(string, string)>();
+        int fixedGroup = _groupOf[f];
+        int[] order = Without(skipGroups).OrderBy(g => g == fixedGroup ? 0 : _members[g].Length).ToArray();
+        var pick = new int[order.Length];
+
+        void Recurse(int depth, int va, int vb)
+        {
+            if (va >= 0 && found.Contains((va, vb))) return; // this conflict is already known to free the section
+            if (depth == order.Length)
+            {
+                if (va >= 0) found.Add((va, vb));
+                return;
+            }
+            int g = order[depth];
+            foreach (int s in _members[g])
+            {
+                if (g == fixedGroup && s != f) continue;
+                int na = va, nb = vb;
+                bool ok = true;
+                for (int d = 0; d < depth && ok; d++)
+                {
+                    int p = pick[d];
+                    if (_oneCampusRule && !_campusOk[p][s]) ok = false;
+                    else if (!_timeOk[p][s])
+                    {
+                        var pair = p < s ? (p, s) : (s, p);
+                        if (na < 0 && !found.Contains(pair)) (na, nb) = pair;
+                        else if ((na, nb) != pair) ok = false;
+                    }
+                }
+                if (!ok) continue;
+                pick[depth] = s;
+                Recurse(depth + 1, na, nb);
+            }
+        }
+
+        Recurse(0, -1, -1);
+        var ids = new HashSet<(string, string)>();
+        foreach (var (a, b) in found)
+        {
+            string x = _sections[a].Id, y = _sections[b].Id;
+            ids.Add(string.CompareOrdinal(x, y) < 0 ? (x, y) : (y, x));
+        }
+        return ids;
+    }
+
+    /// <summary>
+    /// The smallest sets of groups whose leaving out lets the rest be filled: the most complete partial slates (Greg,
+    /// 2026-11-27: with no full slate, stranded, depends on and the cautions are judged against these, so every watch
+    /// reports them). Sets of one group first; if none works, every working pair. The same test
+    /// <see cref="MoveSuggestions"/> runs, without the sections kept in place: the analysis describes the schedule,
+    /// not the session.
+    /// </summary>
+    /// <param name="maxSize">The largest set to try (1 or 2).</param>
+    /// <returns>The sets, each ascending; empty when the full set fills (no set is needed), or no set of at most <paramref name="maxSize"/> groups works.</returns>
+    internal IReadOnlyList<int[]> FewestSkipSets(int maxSize)
+    {
+        int n = _groups.Count;
+        var sets = new List<int[]>();
+        for (int a = 0; a < n; a++)
+            if (ExistsWithout([a])) sets.Add([a]);
+        if (sets.Count > 0 || maxSize < 2) return sets;
+        for (int a = 0; a < n; a++)
+            for (int b = a + 1; b < n; b++)
+                if (ExistsWithout([a, b])) sets.Add([a, b]);
+        return sets;
+    }
+
+    /// <summary>Every group index except those in <paramref name="skipGroups"/>, ascending.</summary>
+    internal int[] Without(IReadOnlyCollection<int> skipGroups) =>
+        AllGroups().Where(g => !skipGroups.Contains(g)).ToArray();
 
     /// <summary>
     /// The fewest time conflicts <paramref name="mover"/> can have with a filling of every group except

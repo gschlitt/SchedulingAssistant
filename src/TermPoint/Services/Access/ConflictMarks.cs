@@ -65,12 +65,13 @@ public static class ConflictMarks
 
     /// <summary>
     /// Marks for a set of covered sections. A conflict between sections of different components (different
-    /// courses, or a lecture and a lab of one course) is marked when, with it ignored, a stranded section becomes
-    /// usable (<see cref="ConflictMarkKind.Stranded"/>, <see cref="ConflictMarkKind.Other"/>); or, with no full
-    /// slate, when moving one of its sections is among the fewest moves that bring a full slate back
-    /// (<see cref="ConflictMarkKind.Move"/>, <see cref="MoveSuggestions"/>). With no slate and the campus rule alone
-    /// to blame, no time conflict is marked. Each stranded section is tested with an existence search with the pair
-    /// ignored, not a full recount.
+    /// courses, or a lecture and a lab of one course) is marked, with no full slate, when moving one of its sections
+    /// is among the fewest moves that bring a full slate back (<see cref="ConflictMarkKind.Move"/>,
+    /// <see cref="MoveSuggestions"/>); otherwise when, with it ignored, a stranded section becomes usable in a slate
+    /// that counts (<see cref="ConflictMarkKind.Stranded"/>, <see cref="ConflictMarkKind.Other"/>;
+    /// <see cref="Analysis.CountingSkipSets"/>: with no full slate, the most complete partial slates). With no slate
+    /// and the campus rule alone to blame, no time conflict is marked. Each stranded section is tested with one
+    /// search that allows any one conflict (<see cref="SlateSearch.FreeingConflicts"/>), not one search per conflict.
     /// </summary>
     /// <param name="inputs">The semester view.</param>
     /// <param name="covered">The sections under analysis.</param>
@@ -88,7 +89,18 @@ public static class ConflictMarks
         var groups = analysis.Groups;
         var search = new SlateSearch(groups, !multiCampus);
         var marks = new List<ConflictMark>();
-        bool stranded = analysis.HasSlate && analysis.StrandedSections.Count > 0;
+        // Stranded sections are judged against the slates that count, full or (with no full slate) the most complete
+        // partial ones (Greg, 2026-11-27), so the stranded marks show beside the move marks.
+        bool stranded = analysis.StrandedSections.Count > 0;
+        var skipSets = analysis.CountingSkipSets;
+        // For each stranded section, the conflicts whose setting aside would free it, over every kind of counting slate.
+        var freeing = analysis.StrandedSections.ToDictionary(st => st.Id, st =>
+        {
+            var pairs = new HashSet<(string, string)>();
+            foreach (var set in skipSets) pairs.UnionWith(search.FreeingConflicts(st, set));
+            return pairs;
+        });
+        bool Freed(Section st, Section s, Section t) => freeing[st.Id].Contains(PairKey(s, t));
 
         // With no full slate: the conflicts the fewest moves would clear, by pair (the first problem naming a pair wins).
         var moves = MoveSuggestions.For(analysis, keptInPlace);
@@ -106,20 +118,20 @@ public static class ConflictMarks
                         var meetings = SectionOverlap.OverlappingMeetings(s, t);
                         if (meetings.Count == 0) continue;
                         ConflictMark? mark = null;
-                        if (stranded)
+                        if (movePairs.TryGetValue(PairKey(s, t), out var problem))
                         {
-                            var freed = analysis.StrandedSections.Where(st => search.ExistsWith(st, s, t)).ToList();
+                            mark = new ConflictMark(ConflictMarkKind.Move, s, t, meetings, null, [],
+                                problem, moves.Problems.Count);
+                        }
+                        else if (stranded)
+                        {
+                            var freed = analysis.StrandedSections.Where(st => Freed(st, s, t)).ToList();
                             var freedOfPair = freed.FirstOrDefault(f => f.Id == s.Id) ?? freed.FirstOrDefault(f => f.Id == t.Id);
                             if (freedOfPair is not null)
                                 mark = new ConflictMark(ConflictMarkKind.Stranded, s, t, meetings, freedOfPair, []);
                             else if (freed.Count > 0)
                                 mark = new ConflictMark(ConflictMarkKind.Other, s, t, meetings, null,
                                     freed.Select(f => f.Id).ToList());
-                        }
-                        else if (movePairs.TryGetValue(PairKey(s, t), out var problem))
-                        {
-                            mark = new ConflictMark(ConflictMarkKind.Move, s, t, meetings, null, [],
-                                problem, moves.Problems.Count);
                         }
                         if (mark is null && markAll)
                             mark = new ConflictMark(analysis.HasSlate ? ConflictMarkKind.Harmless : ConflictMarkKind.Plain,

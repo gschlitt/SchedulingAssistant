@@ -53,6 +53,25 @@ public sealed class AccessConflictMarksTests
         Assert.Equal(["A 1", "B 1"], Ids(mark.Problem!.Options.Select(o => o.Section)));
     }
 
+    /// <summary>
+    /// The CIVL-Y3 case (Greg, 2026-11-27): with no full slate the move is marked, and a separate stranding (C's only
+    /// section strands D 1) is marked beside it, judged against the most complete partial slates, instead of showing
+    /// up only once the move is made.
+    /// </summary>
+    [Fact]
+    public void Stranded_WithNoFullSlate_IsMarkedBesideTheMove()
+    {
+        var marks = Marks([
+            Sec("A", "1", Lecture, At(0, 9, 10)), Sec("B", "1", Lecture, At(0, 9, 10)),
+            Sec("C", "1", Lecture, At(1, 9, 10)),
+            Sec("D", "1", Lecture, At(1, 9, 10)), Sec("D", "2", Lecture, At(2, 9, 10))]);
+        Assert.Equal(ConflictMarkKind.Move, Between(marks, "A 1", "B 1").Kind);
+        var stranded = Between(marks, "C 1", "D 1");
+        Assert.Equal(ConflictMarkKind.Stranded, stranded.Kind);
+        Assert.Equal("D 1", stranded.X!.Id);
+        Assert.Equal(2, marks.Count);
+    }
+
     [Fact]
     public void Move_Q22ThreeCourseCase_OneSectionToMoveWithBothConflicts()
     {

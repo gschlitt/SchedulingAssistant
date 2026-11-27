@@ -115,10 +115,13 @@ public static partial class AccessText
     /// <param name="label">The section's name.</param>
     /// <param name="watchName">The watch's name (or the course's code).</param>
     /// <param name="why">Why (<see cref="StrandedWhy"/>).</param>
+    /// <param name="move">With no full slate, "the suggested move" (<see cref="SuggestedMove"/>); null with a full slate.</param>
     /// <returns>The sentence.</returns>
-    // approved wording (round 6)
-    public static string StrandedTip(string label, string watchName, string why) =>
-        $"{label} can't be part of any slate for {watchName}: {why}";
+    // approved wording (round 6; with no full slate, Greg 2026-11-27)
+    public static string StrandedTip(string label, string watchName, string why, string? move = null) =>
+        move is null
+            ? $"{label} can't be part of any slate for {watchName}: {why}"
+            : $"Even with {move}, {label} couldn't be part of a slate for {watchName}: {why}";
 
     /// <summary>The hover line of a pinned section that no slate can use.</summary>
     /// <param name="label">The section's name.</param>
@@ -147,10 +150,13 @@ public static partial class AccessText
     /// <param name="label">The section's name.</param>
     /// <param name="courseCode">The course's code.</param>
     /// <param name="watchName">The watch's name.</param>
+    /// <param name="move">With no full slate, "the suggested move" (<see cref="SuggestedMove"/>); null with a full slate.</param>
     /// <returns>The sentence.</returns>
-    // approved wording (round 3)
-    public static string EssentialTip(string label, string courseCode, string watchName) =>
-        $"Every slate for {watchName} uses {label}: {courseCode}'s other sections can't fit. If it moves to a conflicting time, students lose every full slate.";
+    // approved wording (round 3; with no full slate, Greg 2026-11-27)
+    public static string EssentialTip(string label, string courseCode, string watchName, string? move = null) =>
+        move is null
+            ? $"Every slate for {watchName} uses {label}: {courseCode}'s other sections can't fit. If it moves to a conflicting time, students lose every full slate."
+            : $"Every slate for {watchName} would use {label}, even with {move}: {courseCode}'s other sections can't fit.";
 
     /// <summary>The hover line of a pinned section.</summary>
     /// <param name="label">The section's name.</param>
@@ -162,10 +168,23 @@ public static partial class AccessText
     /// <param name="label">The section's name.</param>
     /// <param name="courseCode">The course's code.</param>
     /// <param name="componentWord">The component's name in lower case, or "section" for a course with fewer than two components.</param>
+    /// <param name="noFullSlate">True when there is no full slate: the slates are ones a move would bring.</param>
     /// <returns>The sentence.</returns>
-    // approved wording (round 3)
-    public static string OnlySectionTip(string label, string courseCode, string componentWord) =>
-        $"{label} is the only {courseCode} {componentWord}, so every slate uses it.";
+    // approved wording (round 3; with no full slate, Greg 2026-11-27)
+    public static string OnlySectionTip(string label, string courseCode, string componentWord, bool noFullSlate = false) =>
+        $"{label} is the only {courseCode} {componentWord}, so every slate {(noFullSlate ? "would use" : "uses")} it.";
+
+    /// <summary>
+    /// With no full slate, how the roles' hovers name what would bring slates back: "the suggested move", or "the
+    /// suggested moves" for two separate problems (the roles are judged against the most complete partial slates,
+    /// <see cref="Analysis.CountingSkipSets"/>). Null with a full slate, or when no role is judged.
+    /// </summary>
+    /// <param name="a">The analysis.</param>
+    /// <param name="keptInPlace">Ids of sections the user has said can't move; null for none.</param>
+    /// <returns>The phrase, or null.</returns>
+    public static string? SuggestedMove(Analysis a, IReadOnlySet<string>? keptInPlace) =>
+        a.HasSlate || a.CountingSkipSets.Count == 0 ? null
+        : MoveSuggestions.For(a, keptInPlace).Problems.Count == 2 ? "the suggested moves" : "the suggested move";
 
     /// <summary>The hover line of a section that is in at least one slate.</summary>
     /// <param name="label">The section's name.</param>

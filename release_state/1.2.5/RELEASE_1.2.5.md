@@ -89,15 +89,17 @@ Notes: [lost-notices/NOTES.md](lost-notices/NOTES.md). Source: backlog WN1, plus
 On branch 1.2.5, pieces A–F pushed. Access panel rework done 2026-11-27 (grid banner gone, stepper and Mark all conflicts in the watch panel, eye on the list), Greg checked; stepping now starts by itself with 2+ slates (his call to confirm).
 
 <details>
-<summary>Steps (3 left)</summary>
+<summary>Steps (4 left)</summary>
 
 1. More Access Analyzer issues from Greg (next session); confirm that stepping starting by itself suits him.
-2. G: editor pointer and drag line.
+2. Clarity: design how the three kinds of hover (facts, conditional on the move, what-ifs) and the narrative explanations show; wording for the conflict hovers with no full slate.
+3. G: editor pointer and drag line.
 3. H: release (version stamp, WASM demo, help page or video for the "What's an access watch?" link, field test).
 
 </details>
 
 **Open questions:**
+- Stepper greying: the grid fades watch sections for several different reasons at once (not in the slate shown, stranded, unticked, pinned out), which confuses; Greg set it aside 2026-11-27 to come back to.
 - The help text drafted in chat for the no-full-slate marks: right length and tone for the help page?
 - F's draft wording (in the notes): notice causes, Check all courses' read-only comment, the legend's hidden-sections line, the missing-component hover, three failure lines.
 - The uncommitted wizard example wording in the setup text: Greg's to keep? (left out of the commits)

@@ -2556,7 +2556,7 @@ public partial class ScheduleGridView : UserControl
     /// <param name="fallback">Returned when the key is missing or holds another type.</param>
     /// <returns>The resource value, or <paramref name="fallback"/>.</returns>
     /// <summary>
-    /// The opacity of a section line under an open access watch: faded (another course, an unticked course, a section
+    /// The opacity of a section line under an open access watch: faded (an unticked course, a section
     /// a pin leaves out, or not in the slate being stepped to), dimmed when stranded, else fully drawn.
     /// </summary>
     /// <param name="look">The line's look; null when no watch is open.</param>

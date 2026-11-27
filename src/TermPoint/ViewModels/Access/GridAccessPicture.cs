@@ -8,7 +8,7 @@ namespace TermPoint.ViewModels.Access;
 /// the looks below applies, plus <see cref="Pinned"/>, and the hover line says why. All false and no hover means
 /// "drawn as usual". Immutable.
 /// </summary>
-/// <param name="Faded">Drawn faded: not in the watch, an unticked course, or not in the slate being shown.</param>
+/// <param name="Faded">Drawn faded: an unticked course, or not in the slate being shown.</param>
 /// <param name="Stranded">In no slate: no student taking the watch's courses can use it.</param>
 /// <param name="Essential">Every slate uses it (●): its component's other sections can't fit.</param>
 /// <param name="CantFit">A course that can't fit with the rest (▲): this section is of it, or is a pin no slate can use.</param>
@@ -52,16 +52,12 @@ public sealed record AccessTileLook(
     /// The mark drawn after the label: "▲" for can't fit, "◆" for a caution, "●" for essential; empty for none.
     /// </summary>
     public string Mark => CantFit ? "▲" : Caution ? "◆" : Essential ? "●" : string.Empty;
-
-    /// <summary>How a section of another course is drawn while a watch is open and Show other courses is on: faded, nothing to say.</summary>
-    public static AccessTileLook OtherCourse { get; } = new(Faded: true);
 }
 
 /// <summary>
 /// The picture of an open watch on the grid: for each section the watch covers, how its line is drawn and what its
 /// hover says. A pure port of the r9 wireframe's <c>entry</c>, built from the picture's analysis, its ticks and pins
-/// and the slate being stepped to. Sections the watch does not cover get no entry here: the grid draws them
-/// <see cref="AccessTileLook.OtherCourse"/>.
+/// and the slate being stepped to. Sections the watch does not cover get no entry here: the grid draws them as usual.
 /// </summary>
 public static class GridAccessPicture
 {
@@ -106,9 +102,11 @@ public static class GridAccessPicture
         var cautionBySection = cautions.GroupBy(c => c.Section.Id).ToDictionary(g => g.Key, g => g.First());
         var kept = keptInPlace ?? new HashSet<string>();
         var movers = Movers(analysis, kept);
+        // With no full slate the roles are judged against the slates the suggested move would bring.
+        string? move = AccessText.SuggestedMove(analysis, kept);
         foreach (var s in covered)
         {
-            var look = LookOf(inputs, analysis, name, s, chosen, inSlate, cautionBySection, movers, kept, isCourseOnly, campusName);
+            var look = LookOf(inputs, analysis, name, s, chosen, inSlate, cautionBySection, movers, kept, move, isCourseOnly, campusName);
             looks[s.Id] = pins.Contains(s.Id) ? look with { Pinned = true } : look;
         }
         return looks;
@@ -136,11 +134,12 @@ public static class GridAccessPicture
         return movers;
     }
 
-    /// <summary>One covered section's look (the body of the mock's <c>entry</c>).</summary>
+    /// <summary>One covered section's look (the body of the mock's <c>entry</c>); <paramref name="move"/> is
+    /// <see cref="AccessText.SuggestedMove"/>, null with a full slate.</summary>
     private static AccessTileLook LookOf(
         AccessInputs inputs, Analysis a, string name, Section s, IReadOnlySet<string> chosen, IReadOnlySet<string>? inSlate,
         IReadOnlyDictionary<string, Caution> cautions, IReadOnlyDictionary<string, Mover> movers, IReadOnlySet<string> kept,
-        bool isCourseOnly, Func<string?, string> campusName)
+        string? move, bool isCourseOnly, Func<string?, string> campusName)
     {
         string label = AccessText.SectionLabel(inputs, s);
         string code = s.CourseId is null ? string.Empty : inputs.CourseCode(s.CourseId);
@@ -190,25 +189,27 @@ public static class GridAccessPicture
                     mover.Option.ConflictsWith, mover.Problem, mover.ProblemCount, name));
             if (kept.Contains(s.Id))
                 return new AccessTileLook(Hover: AccessText.KeptInPlaceTip(label));
-            return new AccessTileLook();
+            // Otherwise on to the roles, judged against the most complete partial slates (Greg, 2026-11-27: a
+            // stranded section is marked whether or not there is a full slate).
         }
 
         if (role == SectionRole.Stranded)
             return new AccessTileLook(Stranded: true, Hover: AccessText.StrandedTip(label, name,
-                AccessText.StrandedWhy(inputs, s, a.StrandedReasonFor(s), campusName, !isCourseOnly)));
+                AccessText.StrandedWhy(inputs, s, a.StrandedReasonFor(s), campusName, !isCourseOnly, move is not null), move));
         if (cautions.TryGetValue(s.Id, out var caution))
             return new AccessTileLook(Caution: true, Hover: AccessText.CautionText(inputs, caution));
         if (role == SectionRole.EssentialByTiming)
-            return new AccessTileLook(Essential: true, Hover: AccessText.EssentialTip(label, code, name));
+            return new AccessTileLook(Essential: true, Hover: AccessText.EssentialTip(label, code, name, move));
         if (role == SectionRole.OnlySection)
         {
             if (a.PinnedSectionIds.Contains(s.Id)) return new AccessTileLook(Hover: AccessText.PinnedTip(label));
             string word = s.CourseId is not null && inputs.ComponentsOf(s.CourseId).Count >= 2
                 ? inputs.SectionTypes.FirstOrDefault(t => t.Id == s.SectionTypeId)?.Name.ToLowerInvariant() ?? "section"
                 : "section";
-            return new AccessTileLook(Hover: AccessText.OnlySectionTip(label, code, word));
+            return new AccessTileLook(Hover: AccessText.OnlySectionTip(label, code, word, move is not null));
         }
-        if (role == SectionRole.Usable)
+        // "Can be part of a slate" would be false with no full slate.
+        if (role == SectionRole.Usable && a.HasSlate)
             return new AccessTileLook(Hover: AccessText.UsableTip(label, name), Usable: true);
         return new AccessTileLook();
     }

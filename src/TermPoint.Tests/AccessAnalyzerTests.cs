@@ -167,11 +167,52 @@ public sealed class AccessAnalyzerTests
     }
 
     [Fact]
-    public void WhenThereIsNoSlate_NoSectionHasARole()
+    public void WhenThereIsNoSlate_RolesAreJudgedAgainstTheMostCompletePartialSlates()
     {
+        // A 1 and B 1 clash: the partial slates leave out A or B, so each is used by the ones that keep it.
         var a = Run([Sec("A", "1", Lecture, At(0, 9, 10)), Sec("B", "1", Lecture, At(0, 9, 10))]);
         Assert.False(a.HasSlate);
-        Assert.All(a.Roles.Values, r => Assert.Equal(SectionRole.None, r));
+        Assert.Equal(2, a.CountingSkipSets.Count);
+        Assert.All(a.Roles.Values, r => Assert.Equal(SectionRole.Usable, r));
+        Assert.Empty(a.StrandedSections);
+        Assert.Empty(a.EssentialByTimingSections);
+    }
+
+    /// <summary>
+    /// The CIVL-Y3 case (Greg, 2026-11-27): A 1 and B 1 clash, so there is no full slate; separately C's only section
+    /// strands D 1. D 1 is reported stranded now, not only once the clash is fixed, and C 1 is one every slate uses.
+    /// </summary>
+    [Fact]
+    public void WhenThereIsNoSlate_ASectionNoPartialSlateCanUse_IsStranded()
+    {
+        var a = Run([
+            Sec("A", "1", Lecture, At(0, 9, 10)), Sec("B", "1", Lecture, At(0, 9, 10)),
+            Sec("C", "1", Lecture, At(1, 9, 10)),
+            Sec("D", "1", Lecture, At(1, 9, 10)), Sec("D", "2", Lecture, At(2, 9, 10)),
+        ]);
+        Assert.False(a.HasSlate);
+        Assert.Equal("D 1", a.StrandedSections.Single().Id);
+        Assert.Equal(SectionRole.OnlySection, a.Roles["C 1"]);
+        Assert.Equal(StrandedKind.ConflictsWithAlwaysUsed, a.StrandedReasonFor(a.StrandedSections[0]).Kind);
+        Assert.Equal("D 2", a.EssentialByTimingSections.Single().Id);
+    }
+
+    /// <summary>
+    /// When every most complete partial slate leaves out the same component, its sections are the ones to move (the
+    /// suggestion names them), so none of them is called stranded.
+    /// </summary>
+    [Fact]
+    public void WhenEveryPartialSlateLeavesOutAComponent_ItsSectionsAreNotStranded()
+    {
+        // A's two sections both clash with B's only section and with C's only section; B and C fit together.
+        var a = Run([
+            Sec("A", "1", Lecture, At(0, 9, 11)), Sec("A", "2", Lecture, At(1, 9, 11)),
+            Sec("B", "1", Lecture, At([0, 1], 9, 10)), Sec("C", "1", Lecture, At([0, 1], 10, 11)),
+        ]);
+        Assert.False(a.HasSlate);
+        Assert.Single(a.CountingSkipSets);
+        Assert.Equal(SectionRole.None, a.Roles["A 1"]);
+        Assert.Equal(SectionRole.None, a.Roles["A 2"]);
         Assert.Empty(a.StrandedSections);
     }
 

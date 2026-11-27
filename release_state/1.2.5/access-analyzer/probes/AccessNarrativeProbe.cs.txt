@@ -1,0 +1,325 @@
+using System.IO;
+using TermPoint.Data;
+using TermPoint.Data.Repositories;
+using TermPoint.Models;
+using TermPoint.Services.Access;
+using TermPoint.ViewModels.Access;
+using TermPoint.ViewModels.Management;
+using Xunit;
+using Xunit.Abstractions;
+
+namespace TermPoint.Tests;
+
+/// <summary>
+/// PROBE (Greg, 2026-11-27; not product code, moved out of the project after running): can a narrative explanation
+/// of the Access marks be built mechanically? Propagation with recorded reasons over the slates that count:
+/// Forced (one section left), Clash (clashes with a forced section), and Footprint (every combination of a small
+/// group of components, 1 to 3, clashes with a section). Reports, for every UBC watch, how many stranded sections
+/// and move options the steps explain, with the steps as rough text.
+/// </summary>
+public sealed class ZzNarrativeProbe(ITestOutputHelper output)
+{
+    private sealed record Step(int Id, string Text, List<int> Deps, List<Section> Removes);
+
+    [Fact]
+    public void Probe()
+    {
+        string src = Environment.GetEnvironmentVariable("TERMPOINT_ACCESS_MEASURE_DB") ?? @"C:\ProgramData\TermPoint\UBC\FAS-TT.db";
+        string temp = Path.Combine(Path.GetTempPath(), $"narr-{Guid.NewGuid():N}.db");
+        File.Copy(src, temp);
+        var lines = new List<string>();
+        void Say(string s) { lines.Add(s); output.WriteLine(s); }
+        AccessInputs inputs; List<SchedulingEnvironmentValue> tags;
+        using (var db = new DatabaseContext(temp))
+        {
+            var sectionRepo = new SectionRepository(db);
+            var semester = new SemesterRepository(db).GetAll().OrderByDescending(s => sectionRepo.CountBySemesterId(s.Id)).First();
+            var env = new SchedulingEnvironmentRepository(db);
+            tags = env.GetAll(SchedulingEnvironmentTypes.Tag);
+            inputs = new AccessInputs(sectionRepo.GetAll(semester.Id), new CourseRepository(db).GetAll().ToDictionary(c => c.Id),
+                env.GetAll(SchedulingEnvironmentTypes.SectionType), new AccessChecksSetupRepository(db).IsSetUp(),
+                sectionRepo.GetSectionTypeIdsByCourse());
+        }
+        var summary = new List<string> { "watch | full? | skip sets | stranded | explained | move options | explained | steps | longest chain" };
+        var detail = new List<string>();
+        int totStr = 0, totStrEx = 0, totMov = 0, totMovEx = 0;
+        var sw = System.Diagnostics.Stopwatch.StartNew();
+
+        foreach (var tag in tags)
+        {
+            var watch = new AccessWatch(tag.Id, tag.WatchMultiCampus);
+            if (watch.CoveredSections(inputs).Count == 0) continue;
+            var a = AccessAnalyzer.Analyze(inputs, watch);
+            if (a.Health == AccessHealth.TooLarge || a.IsSingleSectionCase) continue;
+            var moves = MoveSuggestions.For(a, null);
+            if (a.StrandedSections.Count == 0 && moves.Problems.Count == 0) continue;
+            detail.Add("");
+            detail.Add($"===== {tag.Name}: {AccessText.HealthLine(inputs, a, _ => "campus")}");
+            if (a.CountingSkipSets.Count == 0) { summary.Add($"{tag.Name} | no | none (not judged) | | | | | |"); continue; }
+
+            // A section is explained when it is explained under every kind of counting slate that fills its group.
+            var strandedExplained = a.StrandedSections.ToDictionary(s => s.Id, _ => true);
+            var moveExplained = new Dictionary<string, bool>();
+            int stepsTotal = 0, longest = 0;
+            foreach (var skip in a.CountingSkipSets)
+            {
+                var r = Propagate(inputs, a, skip);
+                stepsTotal += r.Steps.Count;
+                string skipText = skip.Count == 0 ? "full slates" : "leaving out " + string.Join(", ", skip.Select(g => Comp(inputs, a.Groups[g])));
+                detail.Add($"-- judged against slates {skipText}{(r.Contradiction is { } c ? $"  !! CONTRADICTION: {c}" : "")}");
+                // Soundness: nothing crossed off may be a section some counting slate uses.
+                foreach (var id in r.RemovedBy.Keys)
+                {
+                    var x = a.Groups.SelectMany(g => g.Candidates).First(c => c.Id == id);
+                    if (FillingWith(a, skip, x)) detail.Add($"   !! UNSOUND: {L(inputs, x)} crossed off but a slate of this kind uses it");
+                }
+                foreach (var st in r.Steps) detail.Add($"   [{st.Id}] {st.Text}{(st.Deps.Count > 0 ? $"   (after {string.Join(", ", st.Deps)})" : "")}");
+                foreach (var s in a.StrandedSections)
+                {
+                    int gs = a.Groups.ToList().FindIndex(g => g.Candidates.Contains(s));
+                    if (skip.Contains(gs)) continue;
+                    if (r.RemovedBy.TryGetValue(s.Id, out int id))
+                    {
+                        var chain = Ancestors(r, id);
+                        longest = Math.Max(longest, chain.Count);
+                        detail.Add($"   stranded {L(inputs, s)}: steps {string.Join(", ", chain.OrderBy(x => x))}");
+                    }
+                    else { strandedExplained[s.Id] = false; detail.Add($"   stranded {L(inputs, s)}: NOT EXPLAINED"); }
+                }
+                // Move options: a section of a skipped group; why does it clash? Smallest group of filled
+                // components every combination of which clashes with it.
+                foreach (var opt in moves.Problems.SelectMany(p => p.Options))
+                {
+                    int go = a.Groups.ToList().FindIndex(g => g.Candidates.Contains(opt.Section));
+                    if (!skip.Contains(go)) continue;
+                    var why = ClusterAgainst(inputs, a, r, skip, opt.Section);
+                    moveExplained[opt.Section.Id] = moveExplained.GetValueOrDefault(opt.Section.Id) || why is not null;
+                    detail.Add($"   move {L(inputs, opt.Section)}: {why ?? "NOT EXPLAINED"}");
+                }
+            }
+            if (!a.CountingSkipSets.Any(s => s.Count == 0)) { }
+            int se = strandedExplained.Values.Count(v => v), me = moveExplained.Values.Count(v => v);
+            totStr += a.StrandedSections.Count; totStrEx += se; totMov += moveExplained.Count; totMovEx += me;
+            summary.Add($"{tag.Name} | {(a.HasSlate ? "yes" : "no")} | {a.CountingSkipSets.Count} | {a.StrandedSections.Count} | {se} | " +
+                        $"{moveExplained.Count} | {me} | {stepsTotal} | {longest}");
+        }
+        Say($"Narrative probe on {Path.GetFileName(src)}, {DateTime.Now:yyyy-MM-dd}. Total time {sw.ElapsedMilliseconds} ms.");
+        Say($"Stranded sections explained: {totStrEx} of {totStr}. Move options explained: {totMovEx} of {totMov}.");
+        Say("");
+        foreach (var s in summary) Say(s);
+        foreach (var s in detail) Say(s);
+        File.WriteAllLines(Path.Combine(Path.GetTempPath(), "narrative-probe.txt"), lines);
+        Microsoft.Data.Sqlite.SqliteConnection.ClearAllPools();
+        try { File.Delete(temp); } catch { }
+    }
+
+    private sealed class Run
+    {
+        public List<Step> Steps { get; } = [];
+        public Dictionary<string, int> RemovedBy { get; } = [];
+        public Dictionary<int, List<Section>> Dom { get; } = [];
+        public Dictionary<int, int> ForcedBy { get; } = [];
+        public string? Contradiction { get; set; }
+    }
+
+    private static string L(AccessInputs inputs, Section s) => AccessText.SectionLabel(inputs, s);
+
+    private static string Comp(AccessInputs inputs, ComponentGroup g) =>
+        $"{inputs.CourseCode(g.CourseId)} {AccessText.PartWord(inputs, g.ComponentTypeId)}";
+
+    private static bool Ok(Analysis a, Section x, Section y) =>
+        !SectionOverlap.Conflicts(x, y) && (!a.OneCampusRule || !CampusRule.Splits(x, y));
+
+    private static List<int> Ancestors(Run r, int id)
+    {
+        var seen = new HashSet<int>();
+        var stack = new Stack<int>([id]);
+        while (stack.Count > 0)
+        {
+            int x = stack.Pop();
+            if (!seen.Add(x)) continue;
+            foreach (int d in r.Steps[x - 1].Deps) stack.Push(d);
+        }
+        return seen.ToList();
+    }
+
+    /// <summary>Every combination (one section per group) of the given groups' current domains that fits together.</summary>
+    private static List<List<Section>> Combos(Analysis a, Run r, int[] cluster)
+    {
+        var result = new List<List<Section>>();
+        var pick = new List<Section>();
+        void Rec(int d)
+        {
+            if (result.Count > 5000) return;
+            if (d == cluster.Length) { result.Add(pick.ToList()); return; }
+            foreach (var s in r.Dom[cluster[d]])
+            {
+                if (!pick.All(p => Ok(a, p, s))) continue;
+                pick.Add(s); Rec(d + 1); pick.RemoveAt(pick.Count - 1);
+            }
+        }
+        Rec(0);
+        return result;
+    }
+
+    /// <summary>The steps that narrowed the given groups' domains (the removals and forcings they rest on).</summary>
+    private static List<int> DepsOf(Analysis a, Run r, IEnumerable<int> groups)
+    {
+        var deps = new HashSet<int>();
+        foreach (int g in groups)
+            foreach (var s in a.Groups[g].Candidates)
+                if (r.RemovedBy.TryGetValue(s.Id, out int id)) deps.Add(id);
+        return deps.OrderBy(x => x).ToList();
+    }
+
+    private static Run Propagate(AccessInputs inputs, Analysis a, IReadOnlyList<int> skip)
+    {
+        var r = new Run();
+        var filled = Enumerable.Range(0, a.Groups.Count).Where(g => !skip.Contains(g)).ToArray();
+        foreach (int g in filled) r.Dom[g] = a.Groups[g].Candidates.ToList();
+        int Add(string text, List<int> deps, List<Section> removes)
+        {
+            var st = new Step(r.Steps.Count + 1, text, deps, removes);
+            r.Steps.Add(st);
+            foreach (var s in removes)
+            {
+                r.RemovedBy[s.Id] = st.Id;
+                foreach (int g in filled) r.Dom[g].Remove(s);
+            }
+            return st.Id;
+        }
+        string Names(IEnumerable<Section> ss) => string.Join(", ", ss.Select(s => L(inputs, s)));
+
+        bool changed = true;
+        while (changed && r.Contradiction is null)
+        {
+            changed = false;
+            // Forced
+            foreach (int g in filled)
+            {
+                if (r.Dom[g].Count == 0) { r.Contradiction = $"{Comp(inputs, a.Groups[g])} has nothing left"; return r; }
+                if (r.Dom[g].Count != 1 || r.ForcedBy.ContainsKey(g)) continue;
+                var f = r.Dom[g][0];
+                bool only = a.Groups[g].Candidates.Count == 1;
+                r.ForcedBy[g] = Add(only
+                        ? $"FORCED: {L(inputs, f)} is the only {Comp(inputs, a.Groups[g])}."
+                        : $"FORCED: {L(inputs, f)} is the only {Comp(inputs, a.Groups[g])} left.",
+                    DepsOf(a, r, [g]), []);
+            }
+            // Clash with a forced section
+            foreach (var (g, fid) in r.ForcedBy.ToList())
+            {
+                var f = r.Dom[g][0];
+                var hit = filled.Where(h => h != g).SelectMany(h => r.Dom[h]).Where(x => !Ok(a, f, x)).ToList();
+                if (hit.Count == 0) continue;
+                Add($"CLASH: {Names(hit)} clash{(hit.Count == 1 ? "es" : "")} with {L(inputs, f)}.", [fid], hit);
+                changed = true;
+                break;
+            }
+            if (changed) continue;
+            // Footprints of 1 to 3 unforced groups
+            var open = filled.Where(g => r.Dom[g].Count > 1).ToArray();
+            for (int size = 1; size <= 3 && !changed; size++)
+                foreach (var cluster in Subsets(open, size))
+                {
+                    var combos = Combos(a, r, cluster);
+                    if (combos.Count == 0) { r.Contradiction = $"no combination of {string.Join(", ", cluster.Select(g => Comp(inputs, a.Groups[g])))}"; return r; }
+                    var hit = filled.Where(h => !cluster.Contains(h)).SelectMany(h => r.Dom[h])
+                        .Where(x => combos.All(c => c.Any(m => !Ok(a, m, x)))).ToList();
+                    if (hit.Count == 0) continue;
+                    string comps = string.Join(", ", cluster.Select(g => Comp(inputs, a.Groups[g])));
+                    string text = size == 1
+                        ? $"FOOTPRINT: every {comps} left ({Names(r.Dom[cluster[0]])}) clashes with {Names(hit)}."
+                        : $"FOOTPRINT: every way of taking {comps} ({Patterns(combos)} different times) fills {Footprint(combos)}; {Names(hit)} can't fit.";
+                    Add(text, DepsOf(a, r, cluster).Concat(cluster.Where(r.ForcedBy.ContainsKey).Select(g => r.ForcedBy[g])).Distinct().OrderBy(x => x).ToList(), hit);
+                    changed = true;
+                    break;
+                }
+        }
+        return r;
+    }
+
+    /// <summary>Why a move option clashes: the smallest group of filled components every combination of which clashes with it.</summary>
+    private static string? ClusterAgainst(AccessInputs inputs, Analysis a, Run r, IReadOnlyList<int> skip, Section s)
+    {
+        var filled = Enumerable.Range(0, a.Groups.Count).Where(g => !skip.Contains(g)).ToArray();
+        for (int size = 1; size <= 3; size++)
+            foreach (var cluster in Subsets(filled, size))
+            {
+                var combos = Combos(a, r, cluster);
+                if (combos.Count > 0 && combos.All(c => c.Any(m => !Ok(a, m, s))))
+                {
+                    var deps = DepsOf(a, r, cluster);
+                    string comps = string.Join(", ", cluster.Select(g => Comp(inputs, a.Groups[g])));
+                    string left = string.Join(" / ", cluster.Select(g => string.Join(", ", r.Dom[g].Select(x => L(inputs, x)))));
+                    return $"clashes with every {comps} left ({left}){(deps.Count > 0 ? $"; the rest were ruled out by steps {string.Join(", ", deps)}" : "")}";
+                }
+            }
+        return null;
+    }
+
+    /// <summary>Whether some filling of every group except skip holds x (brute force).</summary>
+    private static bool FillingWith(Analysis a, IReadOnlyList<int> skip, Section x)
+    {
+        var order = Enumerable.Range(0, a.Groups.Count).Where(g => !skip.Contains(g)).ToList();
+        var pick = new List<Section>();
+        bool Rec(int d)
+        {
+            if (d == order.Count) return true;
+            var cands = a.Groups[order[d]].Candidates;
+            foreach (var s in cands.Contains(x) ? [x] : cands)
+            {
+                if (!pick.All(p => Ok(a, p, s))) continue;
+                pick.Add(s);
+                bool found = Rec(d + 1);
+                pick.RemoveAt(pick.Count - 1);
+                if (found) return true;
+            }
+            return false;
+        }
+        return Rec(0);
+    }
+
+    private static IEnumerable<int[]> Subsets(int[] items, int size)
+    {
+        if (size == 0) { yield return []; yield break; }
+        for (int i = 0; i <= items.Length - size; i++)
+            foreach (var rest in Subsets(items[(i + 1)..], size - 1))
+                yield return [items[i], .. rest];
+    }
+
+    /// <summary>How many different timetables the combinations make (sections at the same times count once).</summary>
+    private static int Patterns(List<List<Section>> combos) =>
+        combos.Select(c => string.Join("|", c.SelectMany(s => s.Schedule).Select(m => $"{m.Day}:{m.StartMinutes}:{m.DurationMinutes}").Order()))
+            .Distinct().Count();
+
+    /// <summary>The times every combination occupies, by day ("Mon 16:00-17:00"), in 5-minute steps; odd/even weeks tracked apart.</summary>
+    private static string Footprint(List<List<Section>> combos)
+    {
+        HashSet<int>? common = null;
+        foreach (var combo in combos)
+        {
+            var occ = new HashSet<int>();
+            foreach (var s in combo)
+                foreach (var m in s.Schedule)
+                    for (int t = m.StartMinutes; t < m.EndMinutes; t += 5) occ.Add(m.Day * 10000 + t);
+            if (common is null) common = occ; else common.IntersectWith(occ);
+        }
+        if (common is null || common.Count == 0) return "no one common time (they clash with it in different ways)";
+        string[] days = ["", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
+        var parts = new List<string>();
+        foreach (int day in common.Select(k => k / 10000).Distinct().Order())
+        {
+            var sorted = common.Where(k => k / 10000 == day).Select(k => k % 10000).Order().ToList();
+            int start = sorted[0], prev = start;
+            foreach (int t in sorted.Skip(1).Append(int.MaxValue))
+            {
+                if (t == prev + 5) { prev = t; continue; }
+                parts.Add($"{days[day]} {start / 60}:{start % 60:00}-{(prev + 5) / 60}:{(prev + 5) % 60:00}");
+                start = prev = t;
+            }
+        }
+        return string.Join(", ", parts);
+    }
+
+}

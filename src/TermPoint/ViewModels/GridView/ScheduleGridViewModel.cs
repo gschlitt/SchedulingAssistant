@@ -843,7 +843,8 @@ public partial class ScheduleGridViewModel : ViewModelBase
 
     /// <summary>
     /// Stamps every section block with how the open watch draws it: the watch's own sections as
-    /// <see cref="GridAccessPicture"/> says, any other section faded.
+    /// <see cref="GridAccessPicture"/> says; a section outside the watch is left as drawn (Greg, 2026-11-27: it is on
+    /// screen because the filter bar shows it, so fading it would override that choice).
     /// </summary>
     /// <param name="blocks">The blocks to draw.</param>
     /// <returns>The same blocks with <see cref="SectionMeetingBlock.Access"/> set on the section blocks; unchanged when the looks cannot be built.</returns>
@@ -855,7 +856,7 @@ public partial class ScheduleGridViewModel : ViewModelBase
             string CampusName(string? id) => id is not null && campuses.TryGetValue(id, out var n) ? n : "another campus";
             var looks = GridAccessPicture.Build(_picture!, CampusName);
             return blocks.Select(b => b is SectionMeetingBlock m
-                ? m with { Access = looks.TryGetValue(m.SectionId, out var look) ? look : AccessTileLook.OtherCourse }
+                ? (looks.TryGetValue(m.SectionId, out var look) ? m with { Access = look } : m)
                 : b).ToList();
         }
         catch (Exception ex)

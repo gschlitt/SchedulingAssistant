@@ -1,0 +1,315 @@
+Narrative probe on FAS-TT.db, 2026-11-27. Total time 169 ms.
+Stranded sections explained: 53 of 53. Move options explained: 14 of 14.
+
+watch | full? | skip sets | stranded | explained | move options | explained | steps | longest chain
+BMEG-Y2 | no | 2 | 5 | 5 | 2 | 2 | 23 | 3
+ENVE-Y3 | yes | 1 | 5 | 5 | 0 | 0 | 14 | 2
+ENVE-Y4 | yes | 1 | 2 | 2 | 0 | 0 | 8 | 4
+GEOE-Y2 | yes | 1 | 7 | 7 | 0 | 0 | 8 | 2
+MINE-Y2 | yes | 1 | 4 | 4 | 0 | 0 | 11 | 2
+CIVL-Y3 | no | 2 | 2 | 2 | 2 | 2 | 20 | 2
+GEOE-Y3 | no | 1 | 13 | 13 | 1 | 1 | 14 | 7
+GEOE-Y4 | no | 4 | 0 | 0 | 4 | 4 | 32 | 0
+CPEN-Y3 | yes | 1 | 2 | 2 | 0 | 0 | 5 | 4
+MANU-Y2 | no | 2 | 0 | 0 | 2 | 2 | 12 | 0
+ELEC-Y3 | yes | 1 | 2 | 2 | 0 | 0 | 5 | 2
+MANU-Y4 | no | 2 | 1 | 1 | 3 | 3 | 11 | 2
+MECH-Y2 | yes | 1 | 10 | 10 | 0 | 0 | 11 | 5
+
+===== BMEG-Y2: No full slate · try moving CPEN221B B_T1A or CPEN223 101 · 5 sections stranded · 15 conflicts
+-- judged against slates leaving out CPEN221B discussion
+   [1] FORCED: BMEG210 101 is the only BMEG210 lecture.
+   [2] FORCED: BMEG210 T1A is the only BMEG210 discussion.
+   [3] FORCED: BMEG230 101 is the only BMEG230 lecture.
+   [4] FORCED: BMEG245 101 is the only BMEG245 lecture.
+   [5] FORCED: CPEN221B B_101 is the only CPEN221B lecture.
+   [6] FORCED: CPEN223 101 is the only CPEN223 lecture.
+   [7] CLASH: CPEN223 L1C clashes with BMEG230 101.   (after 3)
+   [8] CLASH: BMEG230 T1C, BMEG230 L1C clash with CPEN221B B_101.   (after 5)
+   [9] CLASH: CPEN221B B_L1A, CPEN221B B_L1C clash with CPEN223 101.   (after 6)
+   [10] FORCED: CPEN221B B_L1B is the only CPEN221B lab left.   (after 9)
+   [11] CLASH: BMEG230 T1B, BMEG230 L1B, BMEG245 L1C, BMEG245 L1D clash with CPEN221B B_L1B.   (after 10)
+   [12] FOOTPRINT: every CPEN223 lab left (CPEN223 L1A, CPEN223 L1B) clashes with BMEG230 T1D, BMEG230 L1D.   (after 7)
+   [13] FORCED: BMEG230 T1A is the only BMEG230 discussion left.   (after 8, 11, 12)
+   [14] FORCED: BMEG230 L1A is the only BMEG230 lab left.   (after 8, 11, 12)
+   stranded BMEG230 T1C: steps 5, 8
+   stranded BMEG230 T1D: steps 3, 7, 12
+   stranded BMEG230 L1C: steps 5, 8
+   stranded BMEG230 L1D: steps 3, 7, 12
+   stranded CPEN223 L1C: steps 3, 7
+   move CPEN221B B_T1A: clashes with every CPEN223 lecture left (CPEN223 101)
+-- judged against slates leaving out CPEN223 lecture
+   [1] FORCED: BMEG210 101 is the only BMEG210 lecture.
+   [2] FORCED: BMEG210 T1A is the only BMEG210 discussion.
+   [3] FORCED: BMEG230 101 is the only BMEG230 lecture.
+   [4] FORCED: BMEG245 101 is the only BMEG245 lecture.
+   [5] FORCED: CPEN221B B_101 is the only CPEN221B lecture.
+   [6] FORCED: CPEN221B B_T1A is the only CPEN221B discussion.
+   [7] CLASH: CPEN223 L1C clashes with BMEG230 101.   (after 3)
+   [8] CLASH: BMEG230 T1C, BMEG230 L1C clash with CPEN221B B_101.   (after 5)
+   [9] FOOTPRINT: every CPEN223 lab left (CPEN223 L1A, CPEN223 L1B) clashes with BMEG230 T1D, BMEG230 L1D.   (after 7)
+   stranded BMEG230 T1C: steps 5, 8
+   stranded BMEG230 T1D: steps 3, 7, 9
+   stranded BMEG230 L1C: steps 5, 8
+   stranded BMEG230 L1D: steps 3, 7, 9
+   stranded CPEN223 L1C: steps 3, 7
+   move CPEN223 101: clashes with every CPEN221B discussion left (CPEN221B B_T1A)
+
+===== ENVE-Y3: 60 slates · 5 sections stranded · 19 conflicts
+-- judged against slates full slates
+   [1] FORCED: CHBE364 101 is the only CHBE364 lecture.
+   [2] FORCED: CHBE364 L1A is the only CHBE364 lab.
+   [3] FORCED: CHBE370 101 is the only CHBE370 lecture.
+   [4] FORCED: CHBE370 T1A is the only CHBE370 discussion.
+   [5] FORCED: CHBE373 101 is the only CHBE373 lecture.
+   [6] FORCED: CHBE373 T1A is the only CHBE373 discussion.
+   [7] FORCED: CHBE485 101 is the only CHBE485 lecture.
+   [8] FORCED: CHBE485 T1A is the only CHBE485 discussion.
+   [9] FORCED: CIVL315 101 is the only CIVL315 lecture.
+   [10] FORCED: CIVL315 T1A is the only CIVL315 discussion.
+   [11] FORCED: EOSC210 101 is the only EOSC210 lecture.
+   [12] CLASH: EOSC210 L1J clashes with CHBE364 101.   (after 1)
+   [13] CLASH: CIVL315 L1J, EOSC210 L1E clash with CHBE370 T1A.   (after 4)
+   [14] CLASH: CIVL315 L1L, EOSC210 L1A clash with CHBE373 T1A.   (after 6)
+   stranded CIVL315 L1J: steps 4, 13
+   stranded CIVL315 L1L: steps 6, 14
+   stranded EOSC210 L1A: steps 6, 14
+   stranded EOSC210 L1E: steps 4, 13
+   stranded EOSC210 L1J: steps 1, 12
+
+===== ENVE-Y4: 3 slates · depends on ENVE401 T0B · 2 sections stranded · 3 conflicts
+-- judged against slates full slates
+   [1] FORCED: CHBE483 101 is the only CHBE483 section.
+   [2] FORCED: CIVL402 101 is the only CIVL402 section.
+   [3] FORCED: CIVL416 101 is the only CIVL416 section.
+   [4] FORCED: ENVE401 001 is the only ENVE401 lecture.
+   [5] FORCED: EOSC329 101 is the only EOSC329 lecture.
+   [6] CLASH: ENVE401 T0A clashes with ENVE401 001.   (after 4)
+   [7] FORCED: ENVE401 T0B is the only ENVE401 studio left.   (after 6)
+   [8] CLASH: EOSC329 L1D clashes with ENVE401 T0B.   (after 7)
+   stranded ENVE401 T0A: steps 4, 6
+   stranded EOSC329 L1D: steps 4, 6, 7, 8
+
+===== GEOE-Y2: 28 slates · 7 sections stranded · 17 conflicts
+-- judged against slates full slates
+   [1] FORCED: CIVL215 101 is the only CIVL215 lecture.
+   [2] FORCED: CIVL230 101 is the only CIVL230 lecture.
+   [3] FORCED: CIVL230 T1A is the only CIVL230 discussion.
+   [4] FORCED: EOSC210 101 is the only EOSC210 lecture.
+   [5] FORCED: EOSC220 101 is the only EOSC220 lecture.
+   [6] CLASH: EOSC220 L1A, EOSC220 L1E clash with CIVL215 101.   (after 1)
+   [7] CLASH: EOSC210 L1H, EOSC210 L1J, EOSC220 L1B clash with CIVL230 101.   (after 2)
+   [8] CLASH: EOSC210 L1B, EOSC210 L1G clash with EOSC220 101.   (after 5)
+   stranded EOSC210 L1B: steps 5, 8
+   stranded EOSC210 L1G: steps 5, 8
+   stranded EOSC210 L1H: steps 2, 7
+   stranded EOSC210 L1J: steps 2, 7
+   stranded EOSC220 L1A: steps 1, 6
+   stranded EOSC220 L1B: steps 2, 7
+   stranded EOSC220 L1E: steps 1, 6
+
+===== MINE-Y2: 11 slates · 4 sections stranded · 8 conflicts
+-- judged against slates full slates
+   [1] FORCED: CIVL215 101 is the only CIVL215 lecture.
+   [2] FORCED: CIVL215 T1A is the only CIVL215 discussion.
+   [3] FORCED: EOSC210 101 is the only EOSC210 lecture.
+   [4] FORCED: MECH260 101 is the only MECH260 lecture.
+   [5] FORCED: MECH260 T1A is the only MECH260 discussion.
+   [6] FORCED: MINE200 101 is the only MINE200 section.
+   [7] FORCED: MINE202 101 is the only MINE202 lecture.
+   [8] FORCED: MINE293 101 is the only MINE293 section.
+   [9] CLASH: EOSC210 L1E clashes with MECH260 101.   (after 4)
+   [10] CLASH: EOSC210 L1B, EOSC210 L1G clash with MINE200 101.   (after 6)
+   [11] CLASH: EOSC210 L1I clashes with MINE202 101.   (after 7)
+   stranded EOSC210 L1B: steps 6, 10
+   stranded EOSC210 L1E: steps 4, 9
+   stranded EOSC210 L1G: steps 6, 10
+   stranded EOSC210 L1I: steps 7, 11
+
+===== CIVL-Y3: No full slate · try moving CIVL303 T1A or CIVL315 101 · 2 sections stranded · 26 conflicts
+-- judged against slates leaving out CIVL303 discussion
+   [1] FORCED: CIVL301 101 is the only CIVL301 lecture.
+   [2] FORCED: CIVL301 T1A is the only CIVL301 discussion.
+   [3] FORCED: CIVL303 101 is the only CIVL303 lecture.
+   [4] FORCED: CIVL311 101 is the only CIVL311 lecture.
+   [5] FORCED: CIVL315 101 is the only CIVL315 lecture.
+   [6] FORCED: CIVL315 T1A is the only CIVL315 discussion.
+   [7] FORCED: CIVL320 101 is the only CIVL320 section.
+   [8] FORCED: CIVL332 101 is the only CIVL332 lecture.
+   [9] FORCED: CIVL332 T1A is the only CIVL332 discussion.
+   [10] CLASH: CIVL315 L1M, CIVL315 L1N clash with CIVL332 T1A.   (after 9)
+   stranded CIVL315 L1M: steps 9, 10
+   stranded CIVL315 L1N: steps 9, 10
+   move CIVL303 T1A: clashes with every CIVL315 lecture left (CIVL315 101)
+-- judged against slates leaving out CIVL315 lecture
+   [1] FORCED: CIVL301 101 is the only CIVL301 lecture.
+   [2] FORCED: CIVL301 T1A is the only CIVL301 discussion.
+   [3] FORCED: CIVL303 101 is the only CIVL303 lecture.
+   [4] FORCED: CIVL303 T1A is the only CIVL303 discussion.
+   [5] FORCED: CIVL311 101 is the only CIVL311 lecture.
+   [6] FORCED: CIVL315 T1A is the only CIVL315 discussion.
+   [7] FORCED: CIVL320 101 is the only CIVL320 section.
+   [8] FORCED: CIVL332 101 is the only CIVL332 lecture.
+   [9] FORCED: CIVL332 T1A is the only CIVL332 discussion.
+   [10] CLASH: CIVL315 L1M, CIVL315 L1N clash with CIVL332 T1A.   (after 9)
+   stranded CIVL315 L1M: steps 9, 10
+   stranded CIVL315 L1N: steps 9, 10
+   move CIVL315 101: clashes with every CIVL303 discussion left (CIVL303 T1A)
+
+===== GEOE-Y3: No full slate · try moving EOSC331 101 · depends on EOSC321 L1C, EOSC323 L1E +1 more · 13 sections stranded · 1 section without times · 62 conflicts
+-- judged against slates leaving out EOSC331 lecture
+   [1] FORCED: CIVL311 101 is the only CIVL311 lecture.
+   [2] FORCED: EOSC321 101 is the only EOSC321 lecture.
+   [3] FORCED: EOSC323 101 is the only EOSC323 lecture.
+   [4] FORCED: EOSC329 101 is the only EOSC329 lecture.
+   [5] FORCED: EOSC330 101 is the only EOSC330 lecture.
+   [6] FORCED: EOSC350 101 is the only EOSC350 lecture.
+   [7] CLASH: EOSC330 L1B clashes with EOSC321 101.   (after 2)
+   [8] CLASH: CIVL311 L1A, CIVL311 L1B clash with EOSC323 101.   (after 3)
+   [9] FOOTPRINT: every way of taking CIVL311 discussion, CIVL311 lab, EOSC350 lab (3 different times) fills Mon 16:00-17:00, Tue 16:00-17:00, Wed 16:00-17:00; EOSC321 L1A, EOSC323 L1A, EOSC323 L1D, EOSC329 L1A, EOSC330 L1A, EOSC331 L1A can't fit.   (after 8)
+   [10] FORCED: EOSC331 L1B is the only EOSC331 lab left.   (after 9)
+   [11] CLASH: EOSC321 L1B, EOSC323 L1C, EOSC329 L1D clash with EOSC331 L1B.   (after 10)
+   [12] FORCED: EOSC321 L1C is the only EOSC321 lab left.   (after 9, 11)
+   [13] CLASH: EOSC323 L1B clashes with EOSC321 L1C.   (after 12)
+   [14] FORCED: EOSC323 L1E is the only EOSC323 lab left.   (after 9, 11, 13)
+   stranded CIVL311 L1A: steps 3, 8
+   stranded CIVL311 L1B: steps 3, 8
+   stranded EOSC321 L1A: steps 3, 8, 9
+   stranded EOSC321 L1B: steps 3, 8, 9, 10, 11
+   stranded EOSC323 L1A: steps 3, 8, 9
+   stranded EOSC323 L1B: steps 3, 8, 9, 10, 11, 12, 13
+   stranded EOSC323 L1C: steps 3, 8, 9, 10, 11
+   stranded EOSC323 L1D: steps 3, 8, 9
+   stranded EOSC329 L1A: steps 3, 8, 9
+   stranded EOSC329 L1D: steps 3, 8, 9, 10, 11
+   stranded EOSC330 L1A: steps 3, 8, 9
+   stranded EOSC330 L1B: steps 2, 7
+   stranded EOSC331 L1A: steps 3, 8, 9
+   move EOSC331 101: clashes with every EOSC329 lab left (EOSC329 L1B, EOSC329 L1C); the rest were ruled out by steps 9, 11
+
+===== GEOE-Y4: No full slate · 2 separate problems · 2 conflicts
+-- judged against slates leaving out CIVL410 section, CPEN481 section
+   [1] FORCED: CIVL402 101 is the only CIVL402 section.
+   [2] FORCED: ELEC481 101 is the only ELEC481 section.
+   [3] FORCED: EOSC433 101 is the only EOSC433 lecture.
+   [4] FORCED: EOSC445 001 is the only EOSC445 section.
+   [5] FORCED: MECH431 101 is the only MECH431 section.
+   [6] FORCED: MINE396 101 is the only MINE396 section.
+   [7] FORCED: MTRL455 101 is the only MTRL455 lecture.
+   [8] FORCED: MTRL455 T1A is the only MTRL455 discussion.
+   move CIVL410 101: clashes with every MECH431 section left (MECH431 101)
+   move CPEN481 101: clashes with every ELEC481 section left (ELEC481 101)
+-- judged against slates leaving out CIVL410 section, ELEC481 section
+   [1] FORCED: CIVL402 101 is the only CIVL402 section.
+   [2] FORCED: CPEN481 101 is the only CPEN481 section.
+   [3] FORCED: EOSC433 101 is the only EOSC433 lecture.
+   [4] FORCED: EOSC445 001 is the only EOSC445 section.
+   [5] FORCED: MECH431 101 is the only MECH431 section.
+   [6] FORCED: MINE396 101 is the only MINE396 section.
+   [7] FORCED: MTRL455 101 is the only MTRL455 lecture.
+   [8] FORCED: MTRL455 T1A is the only MTRL455 discussion.
+   move CIVL410 101: clashes with every MECH431 section left (MECH431 101)
+   move ELEC481 101: clashes with every CPEN481 section left (CPEN481 101)
+-- judged against slates leaving out CPEN481 section, MECH431 section
+   [1] FORCED: CIVL402 101 is the only CIVL402 section.
+   [2] FORCED: CIVL410 101 is the only CIVL410 section.
+   [3] FORCED: ELEC481 101 is the only ELEC481 section.
+   [4] FORCED: EOSC433 101 is the only EOSC433 lecture.
+   [5] FORCED: EOSC445 001 is the only EOSC445 section.
+   [6] FORCED: MINE396 101 is the only MINE396 section.
+   [7] FORCED: MTRL455 101 is the only MTRL455 lecture.
+   [8] FORCED: MTRL455 T1A is the only MTRL455 discussion.
+   move MECH431 101: clashes with every CIVL410 section left (CIVL410 101)
+   move CPEN481 101: clashes with every ELEC481 section left (ELEC481 101)
+-- judged against slates leaving out ELEC481 section, MECH431 section
+   [1] FORCED: CIVL402 101 is the only CIVL402 section.
+   [2] FORCED: CIVL410 101 is the only CIVL410 section.
+   [3] FORCED: CPEN481 101 is the only CPEN481 section.
+   [4] FORCED: EOSC433 101 is the only EOSC433 lecture.
+   [5] FORCED: EOSC445 001 is the only EOSC445 section.
+   [6] FORCED: MINE396 101 is the only MINE396 section.
+   [7] FORCED: MTRL455 101 is the only MTRL455 lecture.
+   [8] FORCED: MTRL455 T1A is the only MTRL455 discussion.
+   move MECH431 101: clashes with every CIVL410 section left (CIVL410 101)
+   move ELEC481 101: clashes with every CPEN481 section left (CPEN481 101)
+
+===== CPEN-Y3: 3 slates · depends on CPEN391 L1B · 2 sections stranded · 2 conflicts
+-- judged against slates full slates
+   [1] FORCED: CPEN331 101 is the only CPEN331 lecture.
+   [2] FORCED: CPEN391 101 is the only CPEN391 lecture.
+   [3] CLASH: CPEN391 L1A clashes with CPEN331 101.   (after 1)
+   [4] FORCED: CPEN391 L1B is the only CPEN391 lab left.   (after 3)
+   [5] CLASH: CPEN331 L1D clashes with CPEN391 L1B.   (after 4)
+   stranded CPEN331 L1D: steps 1, 3, 4, 5
+   stranded CPEN391 L1A: steps 1, 3
+
+===== MANU-Y2: No full slate · try moving MANU231 101 or MANU261 101 · 1 section without times · 1 conflict
+-- judged against slates leaving out MANU231 lecture
+   [1] FORCED: ELEC203 101 is the only ELEC203 lecture.
+   [2] FORCED: ELEC203 T1A is the only ELEC203 discussion.
+   [3] FORCED: MANU201 101 is the only MANU201 section.
+   [4] FORCED: MANU261 101 is the only MANU261 lecture.
+   [5] FORCED: MANU261 T1A is the only MANU261 discussion.
+   [6] FORCED: MANU280 001 is the only MANU280 lecture.
+   move MANU231 101: clashes with every MANU261 lecture left (MANU261 101)
+-- judged against slates leaving out MANU261 lecture
+   [1] FORCED: ELEC203 101 is the only ELEC203 lecture.
+   [2] FORCED: ELEC203 T1A is the only ELEC203 discussion.
+   [3] FORCED: MANU201 101 is the only MANU201 section.
+   [4] FORCED: MANU231 101 is the only MANU231 lecture.
+   [5] FORCED: MANU261 T1A is the only MANU261 discussion.
+   [6] FORCED: MANU280 001 is the only MANU280 lecture.
+   move MANU261 101: clashes with every MANU231 lecture left (MANU231 101)
+
+===== ELEC-Y3: 3 slates · 2 sections stranded · 2 conflicts
+-- judged against slates full slates
+   [1] FORCED: ELEC301 101 is the only ELEC301 section.
+   [2] FORCED: ELEC315 101 is the only ELEC315 section.
+   [3] FORCED: ELEC342 101 is the only ELEC342 lecture.
+   [4] FORCED: ELEC342 T1A is the only ELEC342 discussion.
+   [5] CLASH: ELEC342 L1A, ELEC342 L1B clash with ELEC301 101.   (after 1)
+   stranded ELEC342 L1A: steps 1, 5
+   stranded ELEC342 L1B: steps 1, 5
+
+===== MANU-Y4: No full slate · try moving MANU430 001, L0A or L0B · 1 section stranded · 3 conflicts
+-- judged against slates leaving out MANU430 lecture
+   [1] FORCED: MANU480 101 is the only MANU480 lecture.
+   [2] FORCED: MANU480 T1A is the only MANU480 discussion.
+   [3] FORCED: MECH491 101 is the only MECH491 lecture.
+   [4] FORCED: MECH491 L1A is the only MECH491 lab.
+   [5] CLASH: MANU430 L0A clashes with MECH491 101.   (after 3)
+   [6] FORCED: MANU430 L0B is the only MANU430 lab left.   (after 5)
+   stranded MANU430 L0A: steps 3, 5
+   move MANU430 001: clashes with every MANU430 lab left (MANU430 L0B); the rest were ruled out by steps 5
+-- judged against slates leaving out MANU430 lab
+   [1] FORCED: MANU430 001 is the only MANU430 lecture.
+   [2] FORCED: MANU480 101 is the only MANU480 lecture.
+   [3] FORCED: MANU480 T1A is the only MANU480 discussion.
+   [4] FORCED: MECH491 101 is the only MECH491 lecture.
+   [5] FORCED: MECH491 L1A is the only MECH491 lab.
+   move MANU430 L0A: clashes with every MECH491 lecture left (MECH491 101)
+   move MANU430 L0B: clashes with every MANU430 lecture left (MANU430 001)
+
+===== MECH-Y2: 4 slates · depends on MECH221 T1C, MECH221 L1A +2 more · 10 sections stranded · 7 sections without times · 20 conflicts
+-- judged against slates full slates
+   [1] FORCED: MECH220 101 is the only MECH220 lecture.
+   [2] FORCED: MECH221 101 is the only MECH221 lecture.
+   [3] FORCED: MECH225 1RM is the only MECH225 section.
+   [4] FORCED: MECH226 001 is the only MECH226 lecture.
+   [5] CLASH: MECH221 T1A, MECH221 T1B, MECH224 101 clash with MECH220 101.   (after 1)
+   [6] FORCED: MECH224 1RM is the only MECH224 section left.   (after 5)
+   [7] FOOTPRINT: every MECH221 discussion left (MECH221 T1C, MECH221 T1D) clashes with MECH221 L1B, MECH221 L1D, MECH226 T0B, MECH226 T0C, MECH226 T0D.   (after 5)
+   [8] FORCED: MECH226 T0A is the only MECH226 discussion left.   (after 7)
+   [9] CLASH: MECH221 T1D, MECH221 L1C clash with MECH226 T0A.   (after 8)
+   [10] FORCED: MECH221 T1C is the only MECH221 discussion left.   (after 5, 9)
+   [11] FORCED: MECH221 L1A is the only MECH221 lab left.   (after 7, 9)
+   stranded MECH221 T1A: steps 1, 5
+   stranded MECH221 T1B: steps 1, 5
+   stranded MECH221 T1D: steps 1, 5, 7, 8, 9
+   stranded MECH221 L1B: steps 1, 5, 7
+   stranded MECH221 L1C: steps 1, 5, 7, 8, 9
+   stranded MECH221 L1D: steps 1, 5, 7
+   stranded MECH224 101: steps 1, 5
+   stranded MECH226 T0B: steps 1, 5, 7
+   stranded MECH226 T0C: steps 1, 5, 7
+   stranded MECH226 T0D: steps 1, 5, 7

@@ -642,6 +642,44 @@ help page in H must explain the ▲, the lines, the two-problem and nothing-mark
 </details>
 
 <details>
+<summary>Uniform findings and clarity (2026-11-27)</summary>
+
+**Built (uncommitted at time of writing):**
+- Sections outside an open watch are no longer faded: they are on screen because the filter bar shows them.
+- Every watch reports stranded / depends on / cautions, full slate or not (Greg: problems appeared and disappeared
+  as unrelated changes were made, and CIVL-Y3 said nothing about its stranded labs while ENVE-Y4 did). With no full
+  slate they are judged against the most complete partial slates: the smallest sets of 1-2 components whose leaving
+  out lets the rest fill (`SlateSearch.FewestSkipSets`, `Analysis.CountingSkipSets`). A component every such slate
+  leaves out holds the sections to move: not called stranded. Notices are unchanged (only with a full slate).
+- Stranded marks with no full slate: `SlateSearch.FreeingConflicts` (one search per stranded section, allowing one
+  conflict) replaced one search per conflict, which took GEOE-Y3's marks from 2 ms to 25 ms; back to 18 ms for all
+  43 UBC watches.
+- No-full-slate wording approved by Greg ("Even with the suggested move, X couldn't be part of a slate for W: … which
+  every slate would use."; flag, essential and only-section variants). Not yet: the conflict-mark hovers
+  ("Because of this conflict …", "so they can't be part of any slate") still say "any slate" with no full slate.
+- Outer list rows (`HealthLine`, brief) drop the self-fail sentence when a move is suggested; the detail keeps it.
+
+**Clarity problem (Greg: "clarity clarity clarity").** Hover lines on GEOE-Y3 are three different kinds drawn alike:
+1. True no matter what: X clashes with a section every slate must hold (CIVL311 L1B vs EOSC323 101, the only lecture).
+2. True only if the suggested move lands somewhere clear: stranded by the overall pattern, judged against the partial
+   slates that IGNORE EOSC331 101 (optimistic: a real move puts it at one time, which may strand more; the list is a floor).
+3. What-ifs: "Because of this conflict …" = if this one conflict were removed, these could be used. Opportunities, not
+   problems; and "conflicts with T1A, so they can't" is a false "so" when the section has other clashes too.
+Also the move hover names only the direct clash ("EOSC331 101 conflicts with EOSC329 L1B …"), inviting "why not
+EOSC329 L1A?" (answer: Monday and Friday afternoons are always taken). Direction discussed, not designed: problems
+(▲ and kind 1) on the tiles; kind 2 stated with its condition; kind 3 off the tiles, ranked by what each frees.
+
+**Narrative probe ([probes/](probes/), 2026-11-27).** Propagation with recorded reasons over the slates that count:
+FORCED (one section left), CLASH (clashes with a forced section), FOOTPRINT (every combination of 1-3 components
+clashes with a section; the common times shown). Result on UBC: 53 of 53 stranded sections and 14 of 14 move options
+explained, every step checked sound by brute force, 0.17 s for all watches. Only GEOE-Y3 needs a multi-component
+footprint ("every way of taking CIVL311 discussion, CIVL311 lab, EOSC350 lab (3 different times) fills Mon, Tue,
+Wed 16:00-17:00"); the rest is FORCED/CLASH chains, longest 7 steps. UFV BIOL has no watches to test. Next: decide
+the UI (kinds 1-3, where narratives go), then templates for Greg's wording.
+
+</details>
+
+<details>
 <summary>Dead ends</summary>
 
 - Separate course-list and tag watches (Q35, Q36): superseded by D25.

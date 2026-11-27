@@ -180,8 +180,14 @@ public sealed class AccessHealthLineTests
             Sec("X", "L1", Lab, At(0, 9, 10)), Sec("X", "L2", Lab, At(0, 9.5, 10.5)),
             Sec("Y", "1", Lecture, At(1, 9, 10)), Sec("Y", "2", Lecture, At(2, 9, 10)),
         };
-        var line = Line(sections, x);
-        Assert.StartsWith("No full slate · X's labs all conflict with its only lecture (101)", line);
+        var inputs = Simple(sections, x);
+        var a = AnalyzeAll(inputs);
+        var detail = string.Join(" · ", AccessText.HealthPhrases(inputs, a, Campus).Select(p => p.Text));
+        Assert.StartsWith("No full slate · X's labs all conflict with its only lecture (101)", detail);
+        // The list's row leaves the sentence out when a move is suggested: the suggestion names the same sections.
+        var line = Line(inputs, a);
+        Assert.StartsWith("No full slate · try moving", line);
+        Assert.DoesNotContain("conflict with its only lecture", line);
     }
 
     [Fact]

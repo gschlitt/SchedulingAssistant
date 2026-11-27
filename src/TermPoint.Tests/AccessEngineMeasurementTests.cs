@@ -33,8 +33,13 @@ public sealed class FactRequiresUbcDemoDbAttribute : FactAttribute
 /// </summary>
 public sealed class AccessEngineMeasurementTests(ITestOutputHelper output)
 {
-    /// <summary>The source database (UBC Engineering scrape with program-year tags). Only ever copied.</summary>
-    internal const string SourceDbPath = @"C:\ProgramData\TermPoint\DEMO\Test-TT.db";
+    /// <summary>
+    /// The source database (UBC Engineering scrape with program-year tags). Only ever copied. The environment variable
+    /// <c>TERMPOINT_ACCESS_MEASURE_DB</c> points it at another copy (machines keep the UBC data in different places).
+    /// </summary>
+    internal static readonly string SourceDbPath =
+        Environment.GetEnvironmentVariable("TERMPOINT_ACCESS_MEASURE_DB") is { Length: > 0 } path
+            ? path : @"C:\ProgramData\TermPoint\DEMO\Test-TT.db";
 
     private const int Runs = 15;
 

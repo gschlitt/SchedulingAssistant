@@ -42,24 +42,28 @@ public sealed record Caution(
 public static class Cautions
 {
     /// <summary>
-    /// The cautions of an analysis. Judged only when the slate count is exact: with no slate, or when the count
-    /// stopped at the cap (the per-section tallies are then partial), there are none.
+    /// The cautions of an analysis, judged against the slates that count (<see cref="Analysis.CountingSkipSets"/>: the
+    /// full slates, or with none the most complete partial slates; a share is of the counting slates that fill the
+    /// section's group). Judged only when the count is exact: when nothing counts, or a count stopped at its cap (the
+    /// per-section tallies are then partial), there are none.
     /// </summary>
     /// <param name="analysis">The analysis (with its ticks and pins).</param>
     /// <returns>The cautions in group order, then section order.</returns>
     public static IReadOnlyList<Caution> For(Analysis analysis)
     {
         var result = new List<Caution>();
-        if (!analysis.HasSlate || analysis.SlateCountCapped) return result;
+        if (analysis.CountingSkipSets.Count == 0 || analysis.CountingSlatesCapped) return result;
         var groups = analysis.Groups;
-        foreach (var g in groups)
+        for (int gi = 0; gi < groups.Count; gi++)
         {
-            if (g.Pinned || g.Candidates.Count < 2) continue;
+            var g = groups[gi];
+            int slates = gi < analysis.SlatesFillingGroup.Count ? analysis.SlatesFillingGroup[gi] : 0;
+            if (g.Pinned || g.Candidates.Count < 2 || slates == 0) continue;
             double fair = 1.0 / g.Candidates.Count;
             foreach (var s in g.Candidates)
             {
                 if (s.Schedule.Count == 0) continue; // a section with no times fits anything; a caution would be noise
-                double share = analysis.SlatesPerSection.GetValueOrDefault(s.Id) / (double)analysis.SlateCount;
+                double share = analysis.SlatesPerSection.GetValueOrDefault(s.Id) / (double)slates;
                 if (share > 0 && share < fair / 3)
                 {
                     // The reason: the group where it fits with the fewest sections

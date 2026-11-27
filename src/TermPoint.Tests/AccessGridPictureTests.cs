@@ -194,7 +194,7 @@ public sealed class AccessGridPictureTests : IDisposable
 
     /// <summary>
     /// The CHBE-Y3 case (Greg, 2026-11-25): two courses whose only discussions clash. Only the discussions get the ▲;
-    /// the lectures fit fine and are drawn plainly.
+    /// the lectures fit fine and get no mark (their hover says they are their course's only lecture, as with a full slate).
     /// </summary>
     [Fact]
     public void WithNoFullSlate_OnlyTheSectionsInTheClashGetTheTriangle()
@@ -211,7 +211,33 @@ public sealed class AccessGridPictureTests : IDisposable
         Assert.True(looks["C352 T1A"].CantFit);
         Assert.False(looks["C346 101"].CantFit);
         Assert.False(looks["C352 101"].CantFit);
-        Assert.Equal(string.Empty, looks["C346 101"].Hover);
+        Assert.Equal(string.Empty, looks["C346 101"].Mark);
+        Assert.StartsWith("C346 101 is the only C346 lecture", looks["C346 101"].Hover);
+    }
+
+    /// <summary>
+    /// The CIVL-Y3 case (Greg, 2026-11-27): with no full slate the stranded, essential and only sections still say so,
+    /// in the approved "even with the suggested move … would use" wording.
+    /// </summary>
+    [Fact]
+    public void WithNoFullSlate_TheRolesSayWhatTheSuggestedMoveWouldLeave()
+    {
+        var inputs = Simple([
+            Sec("A", "1", meetings: At(0, 9, 10)), Sec("B", "1", meetings: At(0, 9, 10)),
+            Sec("C", "1", meetings: At(1, 9, 10)),
+            Sec("D", "1", meetings: At(1, 9, 10)), Sec("D", "2", meetings: At(2, 9, 10)),
+        ]);
+        var analysis = AnalyzeAll(inputs);
+        var looks = Looks(inputs, analysis);
+
+        Assert.True(looks["D 1"].Stranded);
+        Assert.Equal("Even with the suggested move, D 1 couldn't be part of a slate for **W**: it conflicts with C 1, which every slate would use.",
+            looks["D 1"].Hover);
+        Assert.Equal("Every slate for **W** would use D 2, even with the suggested move: D's other sections can't fit.", looks["D 2"].Hover);
+        Assert.Equal("C 1 is the only C section, so every slate would use it.", looks["C 1"].Hover);
+        Assert.Equal("D 1 is stranded: it conflicts with C 1, which every slate would use. Even with the suggested move, no student taking all of W could use it.",
+            AccessText.StrandedFlagText(inputs, analysis, analysis.StrandedSections[0], "W", false, id => id ?? "none",
+                AccessText.SuggestedMove(analysis, null)));
     }
 
     [Fact]
@@ -262,13 +288,13 @@ public sealed class AccessGridPictureTests : IDisposable
     }
 
     [Fact]
-    public void RemovingTheTagFilter_ShowsTheRest_Faded_AndCloseThenLeavesTheFilters()
+    public void RemovingTheTagFilter_ShowsTheRest_AsUsual_AndCloseThenLeavesTheFilters()
     {
         _picture.OpenWatch(_tag.Id);
         _grid.Filter.ClearFilters();
 
         Assert.Equal(5, Entries.Select(e => e.SectionId).Distinct().Count());
-        Assert.True(EntryOf("X1").Access!.Faded);
+        Assert.Null(EntryOf("X1").Access);   // outside the watch: drawn as usual, not faded
         Assert.False(EntryOf("A1").Access!.Faded);   // A1 is in the slate being shown (stepping starts by itself)
 
         // The user changed the filters while the watch was open: they are theirs now, so Close leaves them.

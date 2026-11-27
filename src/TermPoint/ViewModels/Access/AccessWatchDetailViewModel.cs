@@ -627,8 +627,9 @@ public sealed partial class AccessWatchDetailViewModel : ViewModelBase
     {
         Flags.Clear();
         if (tooLarge) return;
+        string? move = AccessText.SuggestedMove(a, _state.KeptInPlace);
         foreach (var s in a.StrandedSections)
-            Flags.Add(new AccessFlagViewModel(AccessText.StrandedFlagText(inputs, a, s, name, check, campusName), false));
+            Flags.Add(new AccessFlagViewModel(AccessText.StrandedFlagText(inputs, a, s, name, check, campusName, move), false));
         foreach (var c in cautions)
             Flags.Add(new AccessFlagViewModel(AccessText.CautionText(inputs, c), true));
         foreach (var m in a.MissingComponents)

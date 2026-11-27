@@ -46,7 +46,10 @@ public sealed class Analysis
     /// <summary>Whether there is nothing to find a slate of: no groups.</summary>
     public bool HasNoGroups => Groups.Count == 0;
 
-    /// <summary>The role of every candidate section, by section id (<see cref="SectionRole.None"/> for all when there is no slate).</summary>
+    /// <summary>
+    /// The role of every candidate section, by section id, judged against <see cref="CountingSkipSets"/>
+    /// (<see cref="SectionRole.None"/> for all when that is empty, and for the sections of a group every counting slate leaves out).
+    /// </summary>
     public IReadOnlyDictionary<string, SectionRole> Roles { get; internal init; } = new Dictionary<string, SectionRole>();
 
     /// <summary>Sections essential by timing (their component's other sections are stranded), in group order.</summary>
@@ -55,14 +58,32 @@ public sealed class Analysis
     /// <summary>The only sections of their components, in group order; sections of pinned groups are left out.</summary>
     public IReadOnlyList<Section> OnlySections { get; internal init; } = [];
 
-    /// <summary>Stranded sections (in no slate), in group order.</summary>
+    /// <summary>Stranded sections (in no slate that counts, of a group some counting slate fills), in group order.</summary>
     public IReadOnlyList<Section> StrandedSections { get; internal init; } = [];
 
     /// <summary>
-    /// Slates each section is in, by section id (sections in none are absent). Exact unless
-    /// <see cref="SlateCountCapped"/>, when it is a partial tally; the cautions are only judged when not capped.
+    /// Slates that count each section is in, by section id (sections in none are absent). Exact unless
+    /// <see cref="CountingSlatesCapped"/>, when it is a partial tally; the cautions are only judged when not capped.
     /// </summary>
     public IReadOnlyDictionary<string, int> SlatesPerSection { get; internal init; } = new Dictionary<string, int>();
+
+    /// <summary>
+    /// The slates the roles, cautions and stranded marks are judged against, as the groups each leaves out (Greg,
+    /// 2026-11-27: every watch reports stranded and depends on, full slate or not). With a full slate one empty set
+    /// (the full slates). With none, the most complete partial slates: every smallest set of one or two groups whose
+    /// leaving out lets the rest be filled (<see cref="SlateSearch.FewestSkipSets"/>). Empty when nothing is judged:
+    /// no groups, pins or the campus rule to blame, or more than two groups must be left out.
+    /// </summary>
+    public IReadOnlyList<IReadOnlyList<int>> CountingSkipSets { get; internal init; } = [];
+
+    /// <summary>
+    /// For each group (by index), how many slates that count fill it: the shares behind the cautions. Equal to
+    /// <see cref="SlateCount"/> for every group when there is a full slate; 0 for a group every counting slate leaves out.
+    /// </summary>
+    public IReadOnlyList<int> SlatesFillingGroup { get; internal init; } = [];
+
+    /// <summary>Whether a count of the slates that count stopped at its cap (the tallies are then partial and no caution is judged).</summary>
+    public bool CountingSlatesCapped { get; internal init; }
 
     /// <summary>Round 6c: every group holds exactly one section (before pins), so there is one slate or none.</summary>
     public bool IsSingleSectionCase { get; internal init; }
