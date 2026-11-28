@@ -35,6 +35,7 @@ public sealed class AccessPicture
     private string? _semesterId;
     private HashSet<string>? _ticked;
     private readonly List<string> _pins = [];
+    private bool _stepping;
     private int _slateIndex;
 
     private Analysis? _analysis;
@@ -308,13 +309,25 @@ public sealed class AccessPicture
     /// </summary>
     public bool CanStep => Analysis is { HasSlate: true, IsSingleSectionCase: false, HasNoGroups: false };
 
+    /// <summary>Whether there is more than one slate to step through (<see cref="CanStep"/> and at least two slates).</summary>
+    public bool HasSlatesToStep => CanStep && Slates.Count > 1;
+
     /// <summary>
-    /// Whether there is more than one slate to step through (<see cref="CanStep"/> and at least two slates). Then the grid
-    /// shows the current slate and fades the rest, and the Access tab shows the stepper; with one slate there is
-    /// nothing to step through and the grid is drawn as usual. Stepping starts by itself (Greg, 2026-11-26: no Step
-    /// through slates button, no Clear).
+    /// Whether the user is stepping through slates (<see cref="SetStepping"/>, while <see cref="HasSlatesToStep"/>).
+    /// Then the grid shows the current slate and fades the rest. Off until the user asks (Greg, 2026-11-27: stepping
+    /// that started by itself faded sections, which clashed with fading's other meaning, stranded).
     /// </summary>
-    public bool IsStepping => CanStep && Slates.Count > 1;
+    public bool IsStepping => _stepping && HasSlatesToStep;
+
+    /// <summary>Starts stepping at the first slate, or stops; does nothing when already so.</summary>
+    /// <param name="on">True to step through slates, false to stop.</param>
+    public void SetStepping(bool on)
+    {
+        if (_stepping == on) return;
+        _stepping = on;
+        _slateIndex = 0;
+        Changed?.Invoke();
+    }
 
     /// <summary>
     /// The slates in the stable order of Q34, at most <see cref="AccessAnalyzer.DefaultCap"/> of them; empty when
@@ -390,6 +403,7 @@ public sealed class AccessPicture
     {
         _ticked = null;
         _pins.Clear();
+        _stepping = false;
         _slateIndex = 0;
         InvalidateAnalysis();
     }

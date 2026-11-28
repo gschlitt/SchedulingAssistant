@@ -213,4 +213,24 @@ public class GridTagLogicTests
         Assert.False(vm.TagsMatchAny);
         Assert.DoesNotContain(vm.Tags, t => t.IsSelected);
     }
+
+    /// <summary>
+    /// "Show sections with the same tags": the section's tags are added to those already ticked (an open watch is a
+    /// tag), the logic switches to "any", the grid re-runs once, and ids not in the list are ignored.
+    /// </summary>
+    [Fact]
+    public void ShowSectionsWithTags_AddsToTheTicked_SwitchesToAny_RunsOnce()
+    {
+        var vm = FilterWithTwoTags();
+        vm.Tags[0].IsSelected = true;
+        var filterChanges = 0;
+        vm.FilterChanged += () => filterChanges++;
+
+        vm.ShowSectionsWithTags([vm.Tags[1].Id, "no-such-tag"]);
+
+        Assert.All(vm.Tags, t => Assert.True(t.IsSelected));
+        Assert.True(vm.TagsMatchAny);
+        Assert.Equal(1, filterChanges);
+        Assert.True(vm.ClearTagsCommand.CanExecute(null));
+    }
 }

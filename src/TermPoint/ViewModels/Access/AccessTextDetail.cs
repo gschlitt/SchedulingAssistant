@@ -196,18 +196,18 @@ public static partial class AccessText
     /// <param name="name">The watch's name, or the checked course's code.</param>
     /// <param name="isCheck">True for a course checked on its own.</param>
     /// <param name="campusName">Gives a campus's name from its id.</param>
-    /// <param name="move">With no full slate, "the suggested move" (<see cref="SuggestedMove"/>); null with a full slate.</param>
-    /// <returns>The sentence (without the mark).</returns>
-    // approved wording (round 7; with no full slate, Greg 2026-11-27)
+    /// <returns>
+    /// The sentence (without the mark): why from the narrative (<see cref="StrandedClause"/>), or today's
+    /// <see cref="StrandedWhy"/> when it has none. "Even with the suggested move" went with the what-ifs (Greg, 2026-11-27).
+    /// </returns>
+    // approved wording (round 7; narrative, clarity Greg 2026-11-27)
     public static string StrandedFlagText(
-        AccessInputs inputs, Analysis analysis, Section section, string name, bool isCheck, Func<string?, string> campusName,
-        string? move = null)
+        AccessInputs inputs, Analysis analysis, Section section, string name, bool isCheck, Func<string?, string> campusName)
     {
-        string why = StrandedWhy(inputs, section, analysis.StrandedReasonFor(section), campusName, !isCheck, move is not null);
+        string why = StrandedClause(inputs, analysis, section)
+                     ?? StrandedWhy(inputs, section, analysis.StrandedReasonFor(section), campusName, !isCheck, !analysis.HasSlate);
         string whom = analysis.IsSubset ? "these courses" : isCheck ? name : "all of " + name;
-        return move is null
-            ? $"{SectionLabel(inputs, section)} is stranded: {why} No student taking {whom} can use it."
-            : $"{SectionLabel(inputs, section)} is stranded: {why} Even with {move}, no student taking {whom} could use it.";
+        return $"{SectionLabel(inputs, section)} is stranded: {why} No student taking {whom} can use it.";
     }
 
     /// <summary>The flag for a component with no sections in the watch.</summary>

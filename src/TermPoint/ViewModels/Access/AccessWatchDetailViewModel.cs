@@ -7,8 +7,12 @@ using TermPoint.Services.Access;
 
 namespace TermPoint.ViewModels.Access;
 
-/// <summary>One flag line of a watch's detail: a mark and a sentence ("▲ BMEG 230 L1 is stranded: ...", "◆ ... carries a heavy load").</summary>
-public sealed class AccessFlagViewModel
+/// <summary>
+/// One flag line of a watch's detail: a mark and a sentence ("▲ BMEG 230 L1 is stranded: ...", "◆ ... carries a heavy load").
+/// A stranded section's flag also carries its "Why" list (<see cref="WhyLines"/>), shown while that section is the one
+/// selected (<see cref="IsWhyShown"/>).
+/// </summary>
+public sealed partial class AccessFlagViewModel : ObservableObject
 {
     /// <summary>"▲" for a problem, "◆" for a caution.</summary>
     public string Mark { get; }
@@ -19,15 +23,36 @@ public sealed class AccessFlagViewModel
     /// <summary>True for a yellow caution (◆); false for a problem (▲).</summary>
     public bool IsCaution { get; }
 
+    /// <summary>The stranded section the flag is about; null for every other flag.</summary>
+    public string? SectionId { get; }
+
+    /// <summary>The numbered "Why" lines of a stranded section whose narrative has two or more steps; empty otherwise.</summary>
+    public IReadOnlyList<string> WhyLines { get; }
+
+    /// <summary>
+    /// True while the "Why" list is shown: exactly one section is selected, it is <see cref="SectionId"/>, and there are
+    /// <see cref="WhyLines"/> to show. Set by <see cref="AccessWatchDetailViewModel"/> as the selection changes.
+    /// </summary>
+    [ObservableProperty] private bool _isWhyShown;
+
     /// <summary>Creates a flag.</summary>
     /// <param name="text">The sentence.</param>
     /// <param name="isCaution">True for a caution.</param>
-    public AccessFlagViewModel(string text, bool isCaution)
+    /// <param name="sectionId">The stranded section the flag is about; null for other flags.</param>
+    /// <param name="whyLines">The "Why" lines; null or empty for none.</param>
+    public AccessFlagViewModel(string text, bool isCaution, string? sectionId = null, IReadOnlyList<string>? whyLines = null)
     {
         Text = text;
         IsCaution = isCaution;
         Mark = isCaution ? "◆" : "▲";
+        SectionId = sectionId;
+        WhyLines = whyLines ?? [];
     }
+
+    /// <summary>Sets <see cref="IsWhyShown"/> for the current selection.</summary>
+    /// <param name="selected">The ids of the selected sections.</param>
+    public void ShowWhyFor(IReadOnlySet<string> selected) =>
+        IsWhyShown = SectionId is not null && WhyLines.Count > 0 && selected.Count == 1 && selected.Contains(SectionId);
 }
 
 /// <summary>A pinned section as a chip in the pin banner: its name and a command that unpins it.</summary>
@@ -269,6 +294,18 @@ public sealed partial class AccessWatchDetailViewModel : ViewModelBase
     /// <summary>The flags: stranded sections, cautions, missing components, sections with no type, mismatches.</summary>
     public ObservableCollection<AccessFlagViewModel> Flags { get; } = [];
 
+    /// <summary>
+    /// The "Why" list of the selected section when it is one the move suggestion offers to move (shown under the
+    /// health line, which names the suggestion); empty otherwise.
+    /// </summary>
+    [ObservableProperty] private IReadOnlyList<string> _moveWhyLines = [];
+
+    /// <summary>Whether <see cref="MoveWhyLines"/> has lines to show.</summary>
+    [ObservableProperty] private bool _isMoveWhyShown;
+
+    /// <summary>The move "Why" lists of the open watch, by the id of the section to move (filled with the flags).</summary>
+    private Dictionary<string, IReadOnlyList<string>> _moveWhy = [];
+
     /// <summary>True when a watched course has sections without the tag (decision 8g): the quiet line shows.</summary>
     [ObservableProperty] private bool _showUntagged;
 
@@ -286,6 +323,19 @@ public sealed partial class AccessWatchDetailViewModel : ViewModelBase
 
     /// <summary>Ticks every course again.</summary>
     public IRelayCommand TickAllCommand { get; }
+
+    /// <summary>True when there is more than one slate, so the "Step through slates" box shows.</summary>
+    [ObservableProperty] private bool _hasSlatesToStep;
+
+    /// <summary>The "Step through slates" box's label.</summary>
+    public string StepThroughSlatesLabel => AccessText.StepThroughSlatesText;
+
+    /// <summary>The "Step through slates" box: starts or stops stepping (<see cref="AccessPicture.SetStepping"/>).</summary>
+    public bool StepThroughSlates
+    {
+        get => _picture.IsStepping;
+        set => _picture.SetStepping(value);
+    }
 
     /// <summary>True when the Multi-campus box shows: the watch's in-person sections span campuses, or the box is ticked.</summary>
     [ObservableProperty] private bool _showMultiCampus;
@@ -387,6 +437,8 @@ public sealed partial class AccessWatchDetailViewModel : ViewModelBase
     /// <param name="a">The analysis.</param>
     private void RebuildStepper(AccessInputs inputs, Analysis a)
     {
+        HasSlatesToStep = _picture.HasSlatesToStep;
+        OnPropertyChanged(nameof(StepThroughSlates));
         IsStepping = _picture.IsStepping;
         if (!IsStepping || _picture.CurrentSlate is not { } slate)
         {
@@ -472,6 +524,8 @@ public sealed partial class AccessWatchDetailViewModel : ViewModelBase
         ToggleFoldCommand = new RelayCommand(() => { IsFoldOpen = !IsFoldOpen; RefreshFold(); });
         // Never unsubscribed: singletons that live as long as the services of one database.
         _picture.Changed += Refresh;
+        // Also never unsubscribed: the store lives as long as the services of one database.
+        _sectionStore.SelectionChanged += _ => ShowWhyOfSelection();
         _picture.HiddenSectionsChanged += RefreshHiddenSections;
         _state.Changed += Refresh;
         _toggler.CanToggleChanged += Refresh;
@@ -583,12 +637,16 @@ public sealed partial class AccessWatchDetailViewModel : ViewModelBase
         PinChips.Clear();
         HasPins = false;
         Flags.Clear();
+        _moveWhy = [];
+        MoveWhyLines = [];
+        IsMoveWhyShown = false;
         ShowUntagged = false;
         Courses.Clear();
         ShowTickAll = false;
         ShowMultiCampus = false;
         ShowStepHint = false;
-        IsStepping = MixesCampuses = CanGoPrevious = CanGoNext = false;
+        IsStepping = HasSlatesToStep = MixesCampuses = CanGoPrevious = CanGoNext = false;
+        OnPropertyChanged(nameof(StepThroughSlates));
         PositionText = SlateText = HiddenSectionsText = string.Empty;
         Facts = [];
         HasFacts = false;
@@ -626,10 +684,14 @@ public sealed partial class AccessWatchDetailViewModel : ViewModelBase
         Func<string?, string> campusName, bool tooLarge)
     {
         Flags.Clear();
+        _moveWhy = [];
         if (tooLarge) return;
-        string? move = AccessText.SuggestedMove(a, _state.KeptInPlace);
+        foreach (var option in MoveSuggestions.For(a, _state.KeptInPlace).Problems.SelectMany(p => p.Options))
+            if (option.Reason is { } reason && AccessText.MoveWhyLines(inputs, a, option.Section, reason) is { Count: > 0 } lines)
+                _moveWhy.TryAdd(option.Section.Id, lines);
         foreach (var s in a.StrandedSections)
-            Flags.Add(new AccessFlagViewModel(AccessText.StrandedFlagText(inputs, a, s, name, check, campusName, move), false));
+            Flags.Add(new AccessFlagViewModel(AccessText.StrandedFlagText(inputs, a, s, name, check, campusName), false,
+                s.Id, AccessText.WhyLines(inputs, a, s)));
         foreach (var c in cautions)
             Flags.Add(new AccessFlagViewModel(AccessText.CautionText(inputs, c), true));
         foreach (var m in a.MissingComponents)
@@ -644,6 +706,16 @@ public sealed partial class AccessWatchDetailViewModel : ViewModelBase
             Flags.Add(new AccessFlagViewModel(
                 AccessText.MismatchSentence(inputs.CourseCode(m.CourseId), typeName, m.Sections.Select(s => s.SectionCode).ToList()), false));
         }
+        ShowWhyOfSelection();
+    }
+
+    /// <summary>Shows the "Why" list of the stranded section that is the one selected section, and hides the others.</summary>
+    private void ShowWhyOfSelection()
+    {
+        var selected = _sectionStore.SelectedSectionIds;
+        foreach (var flag in Flags) flag.ShowWhyFor(selected);
+        MoveWhyLines = selected.Count == 1 && _moveWhy.TryGetValue(selected.First(), out var lines) ? lines : [];
+        IsMoveWhyShown = MoveWhyLines.Count > 0;
     }
 
     /// <summary>Fills the course rows, updating them in place when the courses are the same as before.</summary>

@@ -1,0 +1,109 @@
+
+===== BMEG-Y2: No full slate · try moving CPEN221B B_T1A or CPEN223 101 · 5 sections stranded · 15 conflicts
+   root BMEG230 101: 3 of 5 stranded rest on it
+   root CPEN221B B_101: 2 of 5 stranded rest on it
+   move CPEN221B B_T1A: FIXES, frees 0, NEWLY stranded BMEG230 T1B, BMEG230 L1B, BMEG245 L1C, BMEG245 L1D, CPEN221B B_L1A, CPEN221B B_L1C  [other watches: ENPH-Y2 0->0]  -> 4 slates · depends on BMEG230 T1A, BMEG230 L1A +1 more · 11 sections stranded · 1 section without times · 14 conflicts
+   move CPEN223 101: FIXES, frees 0  -> 68 slates · 5 sections stranded · 1 section without times · 12 conflicts
+   move CPEN221B B_101: frees 2  [other watches: ENPH-Y2 0->0]  -> No full slate · try moving CPEN221B B_T1A or CPEN223 101 · 3 sections stranded · 1 section without times · 12 conflicts
+   move CPEN223 L1A: frees 2  -> No full slate · try moving CPEN221B B_T1A or CPEN223 101 · 3 sections stranded · 1 section without times · 13 conflicts
+   move CPEN223 L1B: frees 2  -> No full slate · try moving CPEN221B B_T1A or CPEN223 101 · 3 sections stranded · 1 section without times · 13 conflicts
+   move CPEN223 L1C: frees 2  -> No full slate · try moving CPEN221B B_T1A or CPEN223 101 · 2 sections stranded · 1 section without times · 13 conflicts
+   (1 of 6 helpful moves newly strand something)
+
+===== ENVE-Y3: 60 slates · 5 sections stranded · 19 conflicts
+   root CHBE370 T1A: 2 of 5 stranded rest on it
+   root CHBE373 T1A: 2 of 5 stranded rest on it
+   root CHBE364 101: 1 of 5 stranded rest on it
+   move CHBE373 T1A: frees 2  -> 77 slates · 3 sections stranded · 1 section without times · 17 conflicts
+   move CHBE364 101: frees 1  -> 70 slates · 4 sections stranded · 1 section without times · 18 conflicts
+   move CHBE370 T1A: frees 1  [other watches: CHBE-Y3 0->0; CHML-Y3 0->0]  -> 67 slates · 4 sections stranded · 1 section without times · 17 conflicts
+
+===== CHBE-Y4: CHBE453 001 conflicts with CHBE453 T0A
+   move CHBE453 001: FIXES, frees 0  -> All 7 sections fit together · 1 section without times
+   move CHBE453 T0A: FIXES, frees 0  -> All 7 sections fit together · 1 section without times
+
+===== CHML-Y4: CHBE454 001 conflicts with CHBE454 T0A
+   move CHBE454 001: FIXES, frees 0  -> All 7 sections fit together · 1 section without times
+   move CHBE454 T0A: FIXES, frees 0  -> All 7 sections fit together · 1 section without times
+
+===== ENVE-Y4: 3 slates · depends on ENVE401 T0B · 2 sections stranded · 3 conflicts
+   root ENVE401 001: 2 of 2 stranded rest on it
+   move ENVE401 001: frees 1  -> 6 slates · 1 section stranded · 1 section without times · 2 conflicts
+   move ENVE401 T0A: frees 1  -> 7 slates · 1 section without times · 1 conflict
+   move ENVE401 T0B: frees 1  -> 4 slates · depends on ENVE401 T0B · 1 section stranded · 1 section without times · 2 conflicts
+
+===== GEOE-Y2: 28 slates · 7 sections stranded · 17 conflicts
+   root CIVL230 101: 3 of 7 stranded rest on it
+   root EOSC220 101: 2 of 7 stranded rest on it
+   root CIVL215 101: 2 of 7 stranded rest on it
+   move CIVL230 101: frees 3  [other watches: CIVL-Y2 0->0]  -> 52 slates · 4 sections stranded · 1 section without times · 14 conflicts
+   move EOSC220 101: frees 2  -> 36 slates · 5 sections stranded · 1 section without times · 15 conflicts
+
+===== MINE-Y2: 11 slates · 4 sections stranded · 8 conflicts
+   root MINE200 101: 2 of 4 stranded rest on it
+   root MECH260 101: 1 of 4 stranded rest on it
+   root MINE202 101: 1 of 4 stranded rest on it
+   move MECH260 101: frees 1  [other watches: ENPH-Y3 0->0; MTRL-Y2 0->0]  -> 12 slates · 3 sections stranded · 1 section without times · 7 conflicts
+   move MINE202 101: frees 1  -> 13 slates · 3 sections stranded · 1 section without times · 5 conflicts
+
+===== CIVL-Y3: No full slate · try moving CIVL303 T1A or CIVL315 101 · 2 sections stranded · 26 conflicts
+   root CIVL332 T1A: 2 of 2 stranded rest on it
+   move CIVL303 T1A: FIXES, frees 0  -> 214 slates · 2 sections stranded · 1 section without times · 25 conflicts
+   move CIVL315 101: FIXES, frees 0  [other watches: ENVE-Y3 5->5]  -> 214 slates · 2 sections stranded · 1 section without times · 25 conflicts
+   move CIVL332 T1A: frees 2  -> No full slate · try moving CIVL303 T1A or CIVL315 101 · 1 section without times · 24 conflicts
+
+===== GEOE-Y3: No full slate · try moving EOSC331 101 · depends on EOSC321 L1C, EOSC323 L1E +1 more · 13 sections stranded · 1 section without times · 62 conflicts
+   root EOSC323 101: 12 of 13 stranded rest on it
+   root EOSC321 101: 1 of 13 stranded rest on it
+   move EOSC331 101: FIXES, frees 0  -> 24 slates · depends on EOSC321 L1C, EOSC323 L1E +1 more · 13 sections stranded · 2 sections without times · 58 conflicts
+   move EOSC350 L1A: frees 12  -> No full slate · try moving CIVL311 T1A, T1B, T1C, T1D, T1E, T1F, L1A, L1B, L1C, L1D, L1E, L1F, EOSC323 101, EOSC329 L1A, L1B, L1C, L1D, EOSC330 L1A, L1B, L1C, L1D, EOSC331 101, L1A or L1B · 1 section stranded · 2 sections without times · 55 conflicts
+   move EOSC350 L1B: frees 12  -> No full slate · try moving CIVL311 T1A, T1B, T1C, T1D, T1E, T1F, L1A, L1B, L1C, L1D, L1E, L1F, EOSC323 101, EOSC329 L1A, L1B, L1C, L1D, EOSC330 L1A, L1B, L1C, L1D, EOSC331 101, L1A or L1B · 1 section stranded · 2 sections without times · 57 conflicts
+   move EOSC323 101: frees 11  -> No full slate · try moving EOSC330 L1A, L1B, L1C, L1D, EOSC331 101, EOSC350 L1A or L1B · 2 sections stranded · 2 sections without times · 60 conflicts
+   move CIVL311 T1A: frees 10  [other watches: CIVL-Y3 2->2]  -> No full slate · try moving CIVL311 L1A, L1B, L1C, L1D, L1E, L1F, EOSC329 L1A, L1B, L1C, L1D, EOSC330 L1A, L1B, L1C, L1D, EOSC331 101, L1A, L1B, EOSC350 L1A or L1B · 3 sections stranded · 2 sections without times · 58 conflicts
+   move CIVL311 T1B: frees 10  [other watches: CIVL-Y3 2->2]  -> No full slate · try moving CIVL311 L1A, L1B, L1C, L1D, L1E, L1F, EOSC329 L1A, L1B, L1C, L1D, EOSC330 L1A, L1B, L1C, L1D, EOSC331 101, L1A, L1B, EOSC350 L1A or L1B · 3 sections stranded · 2 sections without times · 58 conflicts
+
+===== GEOE-Y4: No full slate · 2 separate problems · 2 conflicts
+
+===== CPEN-Y3: 3 slates · depends on CPEN391 L1B · 2 sections stranded · 2 conflicts
+   root CPEN331 101: 2 of 2 stranded rest on it
+   move CPEN331 101: frees 2  -> 7 slates · 1 section without times · 1 conflict
+   move CPEN391 L1A: frees 1  -> 7 slates · 1 section without times · 1 conflict
+   move CPEN391 L1B: frees 1  -> 4 slates · depends on CPEN391 L1B · 1 section stranded · 1 section without times · 1 conflict
+
+===== CPEN-Y4: CPEN481 101 conflicts with ELEC481 101
+   move CPEN481 101: FIXES, frees 0  [other watches: GEOE-Y4 0->0; ELEC-Y4 0->0]  -> All 4 sections fit together · 1 section without times
+   move ELEC481 101: FIXES, frees 0  [other watches: GEOE-Y4 0->0; ELEC-Y4 0->0; ENPH-Y5 0->0; IGEN-Y4 0->0]  -> All 4 sections fit together · 1 section without times
+
+===== ELEC-Y4: CPEN481 101 conflicts with ELEC481 101
+   move CPEN481 101: FIXES, frees 0  [other watches: GEOE-Y4 0->0; CPEN-Y4 0->0]  -> All 4 sections fit together · 1 section without times
+   move ELEC481 101: FIXES, frees 0  [other watches: GEOE-Y4 0->0; CPEN-Y4 0->0; ENPH-Y5 0->0; IGEN-Y4 0->0]  -> All 4 sections fit together · 1 section without times
+
+===== MANU-Y2: No full slate · try moving MANU231 101 or MANU261 101 · 1 section without times · 1 conflict
+   move MANU231 101: FIXES, frees 0  -> 8 slates · 2 sections without times
+   move MANU261 101: FIXES, frees 0  -> 8 slates · 2 sections without times
+
+===== ELEC-Y3: 3 slates · 2 sections stranded · 2 conflicts
+   root ELEC301 101: 2 of 2 stranded rest on it
+   move ELEC301 101: frees 2  -> 5 slates · 1 section without times
+
+===== MANU-Y4: No full slate · try moving MANU430 001, L0A or L0B · 1 section stranded · 3 conflicts
+   move MANU430 001: FIXES, frees 0  -> 1 slate · depends on MANU430 L0B · 1 section stranded · 1 section without times · 2 conflicts
+   move MANU430 L0A: FIXES, frees 0, NEWLY stranded MANU430 L0B  -> 1 slate · depends on MANU430 L0A · 1 section stranded · 1 section without times · 1 conflict
+   move MANU430 L0B: FIXES, frees 0  -> 1 slate · depends on MANU430 L0B · 1 section stranded · 1 section without times · 2 conflicts
+   move MECH491 101: frees 1  -> No full slate · try moving MANU430 001, L0A, L0B or MECH491 L1A · 1 section without times · 2 conflicts
+   move MECH491 L1A: frees 1  -> No full slate · try moving MANU430 001, L0A, L0B or MECH491 101 · 1 section without times · 2 conflicts
+   (1 of 5 helpful moves newly strand something)
+
+===== MECH-Y2: 4 slates · depends on MECH221 T1C, MECH221 L1A +2 more · 10 sections stranded · 7 sections without times · 20 conflicts
+   root MECH220 101: 10 of 10 stranded rest on it
+   move MECH220 101: frees 9  -> 112 slates · 1 section stranded · 8 sections without times · 17 conflicts
+   move MECH221 T1A: frees 6  -> 56 slates · depends on MECH224 1RM · 3 sections stranded · 8 sections without times · 18 conflicts
+   move MECH221 T1B: frees 6  -> 56 slates · depends on MECH224 1RM · 3 sections stranded · 8 sections without times · 18 conflicts
+   move MECH221 T1C: frees 6  -> 52 slates · depends on MECH221 T1C, MECH224 1RM · 4 sections stranded · 8 sections without times · 15 conflicts
+   move MECH221 T1D: frees 6  -> 56 slates · depends on MECH224 1RM · 3 sections stranded · 8 sections without times · 13 conflicts
+   move MECH226 T0A: frees 2  -> 12 slates · depends on MECH224 1RM, MECH226 T0A · 8 sections stranded · 8 sections without times · 18 conflicts
+
+===== MINE-Y4: MINE402 101 conflicts with MINE491 001 · 1 more conflict
+   move MINE491 001: FIXES, frees 0  -> All 8 sections fit together · 1 section without times
+
+Total 1084 ms, 740 analyses.

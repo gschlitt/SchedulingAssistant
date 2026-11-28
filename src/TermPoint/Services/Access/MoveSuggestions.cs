@@ -8,7 +8,12 @@ namespace TermPoint.Services.Access;
 /// The sections it conflicts with in the best filling of the rest (the fewest conflicts; every such filling, when
 /// several tie). These are the conflict marks drawn from it.
 /// </param>
-public sealed record MoveOption(Section Section, IReadOnlyList<Section> ConflictsWith);
+/// <param name="Reason">
+/// Why the section can't simply stay where it is: a group whose whole remaining domain conflicts with it
+/// (<see cref="StrandedReasons.MoveReasonFor"/>); null when the narrative has none. Data only; names the section's
+/// conflicts with a qualifier in the move hover (Greg, 2026-11-27).
+/// </param>
+public sealed record MoveOption(Section Section, IReadOnlyList<Section> ConflictsWith, MoveReason? Reason = null);
 
 /// <summary>One problem keeping a watch from a full slate: moving any one of its options fixes it.</summary>
 /// <param name="Options">The sections that could move, in group order then section order.</param>
@@ -90,7 +95,7 @@ public sealed record MoveSuggestions(IReadOnlyList<MoveProblem> Problems, int? M
                     .SelectMany(h => groups[h].Candidates)
                     .Where(t => SectionOverlap.Conflicts(s, t) && search.FewestConflictsOf(s, skip, t, fewest) == fewest)
                     .ToList();
-                yield return new MoveOption(s, partners);
+                yield return new MoveOption(s, partners, analysis.Reasons.MoveReasonFor(s));
             }
         }
     }

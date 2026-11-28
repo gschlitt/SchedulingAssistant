@@ -17,6 +17,8 @@ namespace TermPoint.ViewModels.Access;
 /// <param name="Pinned">Pinned: only slates with it count.</param>
 /// <param name="Hover">The hover line; empty when there is nothing to say.</param>
 /// <param name="Usable">In at least one slate and nothing more to say (drawn as usual, with the "can be part of a slate" hover).</param>
+/// <param name="HasWhy">The Access panel has a "Why" list for this section (shown when it is selected), so the tile's
+/// hover ends with <see cref="AccessText.ClickForWhyText"/>.</param>
 public sealed record AccessTileLook(
     bool Faded = false,
     bool Stranded = false,
@@ -26,7 +28,8 @@ public sealed record AccessTileLook(
     bool InSlate = false,
     bool Pinned = false,
     string Hover = "",
-    bool Usable = false)
+    bool Usable = false,
+    bool HasWhy = false)
 {
     /// <summary>
     /// Whether a conflict mark of the open watch already says what this look's hover says, so the tile's hover shows
@@ -186,7 +189,8 @@ public static class GridAccessPicture
             }
             if (movers.TryGetValue(s.Id, out var mover))
                 return new AccessTileLook(CantFit: true, Hover: AccessText.MoveTip(inputs, s,
-                    mover.Option.ConflictsWith, mover.Problem, mover.ProblemCount, name));
+                    mover.Option.ConflictsWith, mover.Problem, mover.ProblemCount, name),
+                    HasWhy: mover.Option.Reason is { Chain.Count: > 0 });
             if (kept.Contains(s.Id))
                 return new AccessTileLook(Hover: AccessText.KeptInPlaceTip(label));
             // Otherwise on to the roles, judged against the most complete partial slates (Greg, 2026-11-27: a
@@ -194,8 +198,11 @@ public static class GridAccessPicture
         }
 
         if (role == SectionRole.Stranded)
-            return new AccessTileLook(Stranded: true, Hover: AccessText.StrandedTip(label, name,
-                AccessText.StrandedWhy(inputs, s, a.StrandedReasonFor(s), campusName, !isCourseOnly, move is not null), move));
+            return new AccessTileLook(Stranded: true, Hover: AccessText.StrandedClause(inputs, a, s) is { } clause
+                ? AccessText.StrandedNarrativeTip(AccessText.StudentsIn(name, isCourseOnly), label, clause)
+                : AccessText.StrandedTip(label, name,
+                    AccessText.StrandedWhy(inputs, s, a.StrandedReasonFor(s), campusName, !isCourseOnly, !a.HasSlate)),
+                HasWhy: a.Reasons.ChainFor(s).Count >= 2);
         if (cautions.TryGetValue(s.Id, out var caution))
             return new AccessTileLook(Caution: true, Hover: AccessText.CautionText(inputs, caution));
         if (role == SectionRole.EssentialByTiming)

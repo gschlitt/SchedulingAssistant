@@ -2,7 +2,7 @@
 
 **Goal:** to be set by Greg (the unassigned candidate work is in [backlog-1.2.5.md](backlog-1.2.5.md)).
 **MinimumVersionToWrite:** not asked yet.
-**Updated:** 2026-11-26
+**Updated:** 2026-11-27
 
 ## Work
 
@@ -85,21 +85,27 @@ Notes: [lost-notices/NOTES.md](lost-notices/NOTES.md). Source: backlog WN1, plus
 
 **Goal:** administrators see at a glance whether students can still take every course of a watched set (a full "slate" of one section per component), get notices when a change breaks it, and create watches easily. Done means the feature in the app, field-tested.
 
-**State:** Fewest-moves trial adopted 2026-11-26: wording approved, Access tab line, Mark all conflicts and spec settled. Greg's hand check of F passed the same day.
-On branch 1.2.5, pieces A–F pushed. Access panel rework done 2026-11-27 (grid banner gone, stepper and Mark all conflicts in the watch panel, eye on the list), Greg checked; stepping now starts by itself with 2+ slates (his call to confirm).
+**State:** On branch 1.2.5, committed 2026-11-27 as unfinished: hovers give reasons, Why lists, "Show sections with the same tags", stepping waits for a box; full suite passed.
+Greg's user axioms adopted; the new direction (tiles show facts, lines show the two best moves) and its wording are approved but not built.
+Until it is built, the grid still marks every move option and only the first reason of each stranded section, which the direction replaces.
 
 <details>
 <summary>Steps (4 left)</summary>
 
-1. More Access Analyzer issues from Greg (next session); confirm that stepping starting by itself suits him.
-2. Clarity: design how the three kinds of hover (facts, conditional on the move, what-ifs) and the narrative explanations show; wording for the conflict hovers with no full slate.
+1. Build the ranked suggestions (item notes, "Tiles show what is"): panel list and grid lines for the two best moves, the stranded summary, the outer list's top move; drop the move marks and first-reason lines.
+2. Greg checks in the app: reason hovers and Why lists, "Show sections with the same tags", the stepping box, then the suggestions on GEOE-Y3, CIVL-Y3, BMEG-Y2 and MECH-Y2.
 3. G: editor pointer and drag line.
-3. H: release (version stamp, WASM demo, help page or video for the "What's an access watch?" link, field test).
+4. H: release (version stamp, WASM demo, help page or video for the "What's an access watch?" link, field test).
 
 </details>
 
 **Open questions:**
-- Stepper greying: the grid fades watch sections for several different reasons at once (not in the slate shown, stranded, unticked, pinned out), which confuses; Greg set it aside 2026-11-27 to come back to.
+- Loose tags (a "4th year" tag where students take some courses, not all): do watches need a "take some of these" kind judged by course pairs instead of full slates?
+- Mark all conflicts with a watch open adds only that watch's extra conflicts: should it also cover watches whose tags are in the filter?
+- When a watch gains a full slate, a few stranded sections can appear for the first time (axiom 4's one limit): acceptable if the moment is announced?
+- A course checked alone says "Students taking CIVL315 can't take …": approve the wording?
+- "Show sections with the same tags" in the section list too (it has no right-click menu yet)?
+- Stepper greying: the grid fades watch sections for several different reasons at once (not in the slate shown, stranded, unticked, pinned out), which confuses; Greg set it aside 2026-11-27 to come back to. Stepping no longer starts by itself (2026-11-27), so the slate fading only shows when asked for.
 - The help text drafted in chat for the no-full-slate marks: right length and tone for the help page?
 - F's draft wording (in the notes): notice causes, Check all courses' read-only comment, the legend's hidden-sections line, the missing-component hover, three failure lines.
 - The uncommitted wizard example wording in the setup text: Greg's to keep? (left out of the commits)

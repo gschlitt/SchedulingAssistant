@@ -5,10 +5,12 @@ namespace TermPoint.Services.Access;
 /// <summary>What a marked conflict costs (rule 33, round 6b; with no full slate, the fewest sections to move).</summary>
 public enum ConflictMarkKind
 {
-    /// <summary>Ignoring this conflict makes a stranded section usable; <see cref="ConflictMark.X"/> is that section (one of the pair).</summary>
+    /// <summary>
+    /// A conflict that is the reason a section is stranded: <see cref="ConflictMark.X"/> (one of the pair) is stranded
+    /// because it conflicts with the other, which is in the whole remaining domain its narrative's last step rests on
+    /// (<see cref="ConflictMark.Reason"/>). Marks follow the narrative's reasons, not what-ifs (Greg, 2026-11-27).
+    /// </summary>
     Stranded,
-    /// <summary>Ignoring this conflict frees a stranded section that is not in the pair; <see cref="ConflictMark.FreedSectionIds"/> lists them.</summary>
-    Other,
     /// <summary>
     /// With no full slate: a conflict that moving one section of <see cref="ConflictMark.Problem"/> would clear (one
     /// end of the pair is that section; <see cref="MoveSuggestions"/>). Replaces Q22's "mark every conflict of a
@@ -31,18 +33,18 @@ public enum ConflictMarkKind
 /// <param name="B">The second section of the pair.</param>
 /// <param name="Meetings">The overlapping meeting pairs, for drawing.</param>
 /// <param name="X">For <see cref="ConflictMarkKind.Stranded"/>: the section the mark is about; otherwise null.</param>
-/// <param name="FreedSectionIds">For <see cref="ConflictMarkKind.Other"/>: the stranded sections this conflict keeps out of every slate.</param>
 /// <param name="Problem">For <see cref="ConflictMarkKind.Move"/>: the problem whose options include one end of the pair; otherwise null.</param>
 /// <param name="ProblemCount">For <see cref="ConflictMarkKind.Move"/>: how many separate problems the watch has (1 or 2); otherwise 0.</param>
+/// <param name="Reason">For <see cref="ConflictMarkKind.Stranded"/>: the narrative step (a clash) that ruled <see cref="X"/> out, whose <see cref="ReasonStep.Against"/> holds the other end of the pair; otherwise null.</param>
 public sealed record ConflictMark(
     ConflictMarkKind Kind,
     Section A,
     Section B,
     IReadOnlyList<MeetingPair> Meetings,
     Section? X,
-    IReadOnlyList<string> FreedSectionIds,
     MoveProblem? Problem = null,
-    int ProblemCount = 0);
+    int ProblemCount = 0,
+    ReasonStep? Reason = null);
 
 /// <summary>
 /// The conflicts to mark on the grid for one watch (a port of the wireframe's <c>conflictMarksFor</c>), always on
@@ -67,11 +69,13 @@ public static class ConflictMarks
     /// Marks for a set of covered sections. A conflict between sections of different components (different
     /// courses, or a lecture and a lab of one course) is marked, with no full slate, when moving one of its sections
     /// is among the fewest moves that bring a full slate back (<see cref="ConflictMarkKind.Move"/>,
-    /// <see cref="MoveSuggestions"/>); otherwise when, with it ignored, a stranded section becomes usable in a slate
-    /// that counts (<see cref="ConflictMarkKind.Stranded"/>, <see cref="ConflictMarkKind.Other"/>;
-    /// <see cref="Analysis.CountingSkipSets"/>: with no full slate, the most complete partial slates). With no slate
-    /// and the campus rule alone to blame, no time conflict is marked. Each stranded section is tested with one
-    /// search that allows any one conflict (<see cref="SlateSearch.FreeingConflicts"/>), not one search per conflict.
+    /// <see cref="MoveSuggestions"/>); otherwise when it is the reason a section is stranded
+    /// (<see cref="ConflictMarkKind.Stranded"/>): the marks follow the narrative (<see cref="Analysis.Reasons"/>), one
+    /// per section of a clash step's remaining domain that the stranded section overlaps in time. A section the
+    /// narrative explains by a footprint, or not at all, gets no line (its hover says why). What-ifs ("if this
+    /// conflict were removed, X would be usable") left the grid, Greg 2026-11-27: they were false when two conflicts
+    /// each sufficed and misleading when the section had other clashes. With no slate and the campus rule alone to
+    /// blame, no time conflict is marked.
     /// </summary>
     /// <param name="inputs">The semester view.</param>
     /// <param name="covered">The sections under analysis.</param>
@@ -87,20 +91,17 @@ public static class ConflictMarks
         var analysis = AccessAnalyzer.Analyze(inputs, covered, multiCampus, null, null);
         if (analysis.Health == AccessHealth.TooLarge) return [];
         var groups = analysis.Groups;
-        var search = new SlateSearch(groups, !multiCampus);
         var marks = new List<ConflictMark>();
-        // Stranded sections are judged against the slates that count, full or (with no full slate) the most complete
-        // partial ones (Greg, 2026-11-27), so the stranded marks show beside the move marks.
-        bool stranded = analysis.StrandedSections.Count > 0;
-        var skipSets = analysis.CountingSkipSets;
-        // For each stranded section, the conflicts whose setting aside would free it, over every kind of counting slate.
-        var freeing = analysis.StrandedSections.ToDictionary(st => st.Id, st =>
-        {
-            var pairs = new HashSet<(string, string)>();
-            foreach (var set in skipSets) pairs.UnionWith(search.FreeingConflicts(st, set));
-            return pairs;
-        });
-        bool Freed(Section st, Section s, Section t) => freeing[st.Id].Contains(PairKey(s, t));
+
+        // Stranded sections are explained against the slates that count, full or (with no full slate) the most
+        // complete partial ones (Greg, 2026-11-27), so the stranded marks show beside the move marks. Each clash
+        // step names the sections the stranded one can't get round; the pairs they form are the marks.
+        var reasons = analysis.Reasons;
+        var strandedPairs = new Dictionary<(string, string), (Section X, ReasonStep Step)>();
+        foreach (var x in analysis.StrandedSections)
+            if (reasons.StepFor(x) is { Kind: ReasonStepKind.Clash } step)
+                foreach (var y in step.Against.Where(y => y.Id != x.Id && SectionOverlap.Conflicts(x, y)))
+                    strandedPairs.TryAdd(PairKey(x, y), (x, step));
 
         // With no full slate: the conflicts the fewest moves would clear, by pair (the first problem naming a pair wins).
         var moves = MoveSuggestions.For(analysis, keptInPlace);
@@ -120,22 +121,16 @@ public static class ConflictMarks
                         ConflictMark? mark = null;
                         if (movePairs.TryGetValue(PairKey(s, t), out var problem))
                         {
-                            mark = new ConflictMark(ConflictMarkKind.Move, s, t, meetings, null, [],
+                            mark = new ConflictMark(ConflictMarkKind.Move, s, t, meetings, null,
                                 problem, moves.Problems.Count);
                         }
-                        else if (stranded)
+                        else if (strandedPairs.TryGetValue(PairKey(s, t), out var why))
                         {
-                            var freed = analysis.StrandedSections.Where(st => Freed(st, s, t)).ToList();
-                            var freedOfPair = freed.FirstOrDefault(f => f.Id == s.Id) ?? freed.FirstOrDefault(f => f.Id == t.Id);
-                            if (freedOfPair is not null)
-                                mark = new ConflictMark(ConflictMarkKind.Stranded, s, t, meetings, freedOfPair, []);
-                            else if (freed.Count > 0)
-                                mark = new ConflictMark(ConflictMarkKind.Other, s, t, meetings, null,
-                                    freed.Select(f => f.Id).ToList());
+                            mark = new ConflictMark(ConflictMarkKind.Stranded, s, t, meetings, why.X, Reason: why.Step);
                         }
                         if (mark is null && markAll)
                             mark = new ConflictMark(analysis.HasSlate ? ConflictMarkKind.Harmless : ConflictMarkKind.Plain,
-                                s, t, meetings, null, []);
+                                s, t, meetings, null);
                         if (mark is not null) marks.Add(mark);
                     }
         return marks;

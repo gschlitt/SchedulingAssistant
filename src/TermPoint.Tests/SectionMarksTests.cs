@@ -127,6 +127,31 @@ public sealed class SectionMarksTests : IDisposable
         return menu;
     }
 
+    /// <summary>
+    /// "Show sections with the same tags" hands the section's tags to the filter and closes the menu; with no tags it is
+    /// disabled and says why. It only filters, so a reader gets it too.
+    /// </summary>
+    [Fact]
+    public void ShowSameTags_HandsTheTagsToTheFilter_OrIsDisabledWithNone()
+    {
+        var tagged = StoreSection("T");
+        tagged.TagIds = ["t1", "t2"];
+        IReadOnlyList<string>? shown = null;
+        var menu = new SectionContextMenuViewModel(
+            _sectionRepo, () => { }, _fx.Lock, new FakeSectionCardState(), new SectionMarks(), showSectionsWithTags: ids => shown = ids);
+        menu.Load(tagged, 1, 510, [], [], []);
+        menu.IsOpen = true;
+
+        Assert.Null(menu.ShowSameTagsTip);
+        menu.ShowSameTagsCommand.Execute(null);
+        Assert.Equal(["t1", "t2"], shown);
+        Assert.False(menu.IsOpen);
+
+        menu.Load(StoreSection("U"), 1, 510, [], [], []);
+        Assert.False(menu.ShowSameTagsCommand.CanExecute(null));
+        Assert.Equal(SectionContextMenuViewModel.NoTagsTip, menu.ShowSameTagsTip);
+    }
+
     /// <summary>Load names the button for the section's own state and reports whether any mark exists.</summary>
     [Fact]
     public void Menu_Load_SetsTextAndHasAnyMarks()

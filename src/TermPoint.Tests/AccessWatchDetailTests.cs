@@ -118,7 +118,9 @@ public sealed class AccessWatchDetailTests : IDisposable
         Assert.False(_detail.IsHealthAttention);
         Assert.Empty(_detail.Flags);
         Assert.False(_detail.ShowUntagged);
-        Assert.True(_detail.ShowStepHint);
+        Assert.True(_detail.HasSlatesToStep);   // three slates: the box shows, but stepping waits for the user
+        Assert.False(_detail.IsStepping);
+        Assert.False(_detail.ShowStepHint);
         Assert.False(_detail.ShowMultiCampus);
         Assert.Equal(["A", "B"], _detail.Courses.Select(r => r.Code).ToArray());
         Assert.All(_detail.Courses, r => Assert.True(r.IsTicked));
@@ -194,10 +196,50 @@ public sealed class AccessWatchDetailTests : IDisposable
         Assert.Contains("depends on A 2", _detail.HealthLine);
     }
 
+    /// <summary>
+    /// The "Why" list of a stranded section is shown while exactly that section is the one selected (Greg, 2026-11-27):
+    /// C 1 (Tuesday, the only C) rules out A 2, which leaves A 1 as the only A, which rules out B 1: two steps.
+    /// </summary>
+    [Fact]
+    public void AStrandedSectionWithAChain_ShowsItsWhyListOnlyWhileItIsTheSelectedSection()
+    {
+        new CourseRepository(_fx.Db).Insert(new Course { Id = "c-C", CalendarCode = "C", Title = "C" });
+        AddSection(_fall, "C", "1", 2);
+        Reload();
+        _picture.OpenWatch(_tag.Id);
+        var b1 = Get(_fall, "B", "1");
+        var a2 = Get(_fall, "A", "2");
+
+        var why = Assert.Single(_detail.Flags, f => f.SectionId == b1.Id);
+        var oneStep = Assert.Single(_detail.Flags, f => f.SectionId == a2.Id);
+        Assert.Equal(2, why.WhyLines.Count);
+        Assert.Empty(oneStep.WhyLines);
+        Assert.StartsWith("1. ", AccessText.Plain(why.WhyLines[0]));
+        Assert.All(_detail.Flags.Where(f => f.SectionId is null), f => Assert.Empty(f.WhyLines));
+        Assert.False(why.IsWhyShown);
+
+        _store.SetSelection(b1.Id);
+        Assert.True(why.IsWhyShown);
+        _store.SetSelection(a2.Id);                      // a one-step chain has nothing to list
+        Assert.False(why.IsWhyShown);
+        Assert.False(oneStep.IsWhyShown);
+        _store.SetMultiSelection([b1.Id, a2.Id]);       // exactly one section selected, or nothing is shown
+        Assert.False(why.IsWhyShown);
+        _store.SetSelection(b1.Id);
+        Assert.True(why.IsWhyShown);
+
+        _picture.OpenWatch(_tag.Id);                     // a rebuild keeps showing it for the current selection
+        _detail.Refresh();
+        Assert.True(Assert.Single(_detail.Flags, f => f.SectionId == b1.Id).IsWhyShown);
+    }
+
     [Fact]
     public void WithSeveralSlates_TheDetailStepsAndListsTheSlateAsText()
     {
         _picture.OpenWatch(_tag.Id);
+        Assert.False(_detail.IsStepping);   // off until the box is ticked (Greg, 2026-11-27)
+        _detail.StepThroughSlates = true;
+        Assert.True(_detail.StepThroughSlates);
         Assert.True(_detail.IsStepping);
         Assert.True(_detail.ShowStepHint);
         Assert.Equal("Slate 1 of 3", _detail.PositionText);

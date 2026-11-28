@@ -9,6 +9,10 @@ namespace TermPoint.ViewModels.Access;
 /// </summary>
 public static partial class AccessText
 {
+    /// <summary>The watch panel's box that starts and stops stepping through slates.</summary>
+    // approved wording (round 3 review)
+    public const string StepThroughSlatesText = "Step through slates";
+
     /// <summary>The legend bar's button that unpins every section.</summary>
     // approved wording (round 3)
     public const string UnpinAllText = "Unpin all";
@@ -56,13 +60,21 @@ public static partial class AccessText
     /// <param name="problem">The problem: moving any one of its sections fixes it.</param>
     /// <param name="problemCount">How many separate problems the watch has (1 or 2).</param>
     /// <param name="watchName">The watch's name, already bold where it should be.</param>
-    /// <returns>"CIVL303 T1A conflicts with CIVL315 101, so CIVL-Y3 has no full slate. Try moving CIVL303 T1A or CIVL315 101."</returns>
-    // approved wording (fewest moves, 2026-11-26)
+    /// <returns>
+    /// "CIVL303 T1A conflicts with CIVL315 101, CIVL315's only lecture, so CIVL-Y3 has no full slate. Try moving
+    /// CIVL303 T1A or CIVL315 101." When the narrative gives no move reason for the section (it is the partner, not an
+    /// option, or no group's whole domain conflicts with it), the conflict names <paramref name="conflictsWith"/> alone.
+    /// </returns>
+    // approved wording (fewest moves, 2026-11-26; qualifier, clarity Greg 2026-11-27)
     public static string MoveTip(AccessInputs inputs, Section section, IReadOnlyList<Section> conflictsWith,
         MoveProblem problem, int problemCount, string watchName)
     {
         string movers = ByCourseOr(inputs, problem.Options.Select(o => o.Section));
-        string conflict = $"{SectionLabel(inputs, section)} conflicts with {ByCourse(inputs, conflictsWith)}";
+        var reason = problem.Options.FirstOrDefault(o => o.Section.Id == section.Id)?.Reason;
+        string conflict = reason is null
+            ? $"{SectionLabel(inputs, section)} conflicts with {ByCourse(inputs, conflictsWith)}"
+            : $"{SectionLabel(inputs, section)} conflicts with {NamesAnd(inputs, reason.Against)}, "
+              + Qualifier(inputs, reason.Against, reason.Narrowed, "students");
         return problemCount <= 1
             ? $"{conflict}, so {watchName} has no full slate. Try moving {movers}."
             : $"{conflict}. This is one of {problemCount} separate problems keeping {watchName} from a full slate; moving {movers} fixes it.";
@@ -115,13 +127,10 @@ public static partial class AccessText
     /// <param name="label">The section's name.</param>
     /// <param name="watchName">The watch's name (or the course's code).</param>
     /// <param name="why">Why (<see cref="StrandedWhy"/>).</param>
-    /// <param name="move">With no full slate, "the suggested move" (<see cref="SuggestedMove"/>); null with a full slate.</param>
-    /// <returns>The sentence.</returns>
-    // approved wording (round 6; with no full slate, Greg 2026-11-27)
-    public static string StrandedTip(string label, string watchName, string why, string? move = null) =>
-        move is null
-            ? $"{label} can't be part of any slate for {watchName}: {why}"
-            : $"Even with {move}, {label} couldn't be part of a slate for {watchName}: {why}";
+    /// <returns>The sentence. Only the fallback for a section the narrative doesn't explain (<see cref="StrandedNarrativeTip"/>); "Even with the suggested move" went with the what-ifs (Greg, 2026-11-27).</returns>
+    // approved wording (round 6)
+    public static string StrandedTip(string label, string watchName, string why) =>
+        $"{label} can't be part of any slate for {watchName}: {why}";
 
     /// <summary>The hover line of a pinned section that no slate can use.</summary>
     /// <param name="label">The section's name.</param>

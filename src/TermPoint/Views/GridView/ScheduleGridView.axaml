@@ -406,6 +406,14 @@
 							Command="{Binding ContextMenu.ClearMarksCommand}"
 							Content="Clear All Marks"
 							IsVisible="{Binding ContextMenu.HasAnyMarks}" />
+						<!--  Adds this section's tags to the Tags filter ("any"), keeping the ones ticked; it only filters, so it
+						      is enabled for readers and while a card is open. Disabled, with a hover, when the section has no tags.  -->
+						<Button
+							Classes="CtxMenuItem"
+							Command="{Binding ContextMenu.ShowSameTagsCommand}"
+							Content="{Binding ContextMenu.ShowSameTagsItemText}"
+							ToolTip.ShowOnDisabled="True"
+							ToolTip.Tip="{Binding ContextMenu.ShowSameTagsTip}" />
 						<!--  While an access watch is open: pin this section in its slates, or unpin it (Access Analyzer)  -->
 						<Border
 							Height="1"

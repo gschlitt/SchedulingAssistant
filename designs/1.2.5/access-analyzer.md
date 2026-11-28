@@ -841,6 +841,13 @@ meeting rows (day, start; length as is; + Meeting and ✕), section type and cam
   Enviro Y2 has no full slate." · Q22: "CHEM 213 A conflicts with GEOG 250 A, B and PSYCH 101 A, B, C, so Enviro Y2
   has no full slate. Fixing only one of these conflicts isn't enough." The line between tiles has the pair's hover.
   (The no-full-slate hovers here were replaced on 2026-11-26 by rule 33's fewest-moves hovers.)
+  (Clarity design, 2026-11-27: the stranded hovers above and the "Because of this conflict" what-if marks were
+  replaced. Marks follow each stranded section's reason, and hovers state facts with that reason: "Students in
+  **CIVL-Y3** can't take CIVL315 L1M: it conflicts with CIVL332 T1A, CIVL332's only discussion." Wording and rules:
+  release_state/1.2.5/access-analyzer/NOTES.md, "Clarity design".)
+  (Direction 2026-11-27, not built: tiles show facts; the grid's lines show only the two best single moves, the same
+  two as a ranked "Moves that would help:" list in the watch panel; the move ▲ goes. Greg's user axioms, the approved
+  wording and the build notes: same NOTES.md, "User axioms, suggestions, tiles and lines".)
 - **What's new** goes in the app's announcement banner (`AppAnnouncements`), once.
 - **Delivery type:** optional "Delivery Type" box beside Campus in the section editor (hover: "How this section is
   taught. Delivery types are set under Scheduling Environment."); cards show "Lecture · Blended"; the filter bar's

@@ -106,7 +106,7 @@ public sealed class AccessGridPictureTests : IDisposable
         var looks = Looks(inputs, AnalyzeAll(inputs));
 
         Assert.True(looks["A A1"].Stranded);
-        Assert.Equal("A A1 can't be part of any slate for **W**: no combination of the other courses fits around it.", looks["A A1"].Hover);
+        Assert.Equal("Students in **W** can't take A A1: it conflicts with B B1 and B2, B's only sections.", looks["A A1"].Hover);
         Assert.True(looks["A A2"].Essential);
         Assert.Equal("●", looks["A A2"].Mark);
         Assert.Equal(
@@ -231,13 +231,11 @@ public sealed class AccessGridPictureTests : IDisposable
         var looks = Looks(inputs, analysis);
 
         Assert.True(looks["D 1"].Stranded);
-        Assert.Equal("Even with the suggested move, D 1 couldn't be part of a slate for **W**: it conflicts with C 1, which every slate would use.",
-            looks["D 1"].Hover);
+        Assert.Equal("Students in **W** can't take D 1: it conflicts with C 1, C's only section.", looks["D 1"].Hover);
         Assert.Equal("Every slate for **W** would use D 2, even with the suggested move: D's other sections can't fit.", looks["D 2"].Hover);
         Assert.Equal("C 1 is the only C section, so every slate would use it.", looks["C 1"].Hover);
-        Assert.Equal("D 1 is stranded: it conflicts with C 1, which every slate would use. Even with the suggested move, no student taking all of W could use it.",
-            AccessText.StrandedFlagText(inputs, analysis, analysis.StrandedSections[0], "W", false, id => id ?? "none",
-                AccessText.SuggestedMove(analysis, null)));
+        Assert.Equal("D 1 is stranded: it conflicts with C 1, C's only section. No student taking all of W can use it.",
+            AccessText.StrandedFlagText(inputs, analysis, analysis.StrandedSections[0], "W", false, id => id ?? "none"));
     }
 
     [Fact]
@@ -273,7 +271,8 @@ public sealed class AccessGridPictureTests : IDisposable
         Assert.Equal(4, Entries.Select(e => e.SectionId).Distinct().Count());
         Assert.DoesNotContain(Entries, e => e.SectionId == Get("X1").Id);
         Assert.All(Entries, e => Assert.NotNull(e.Access));
-        Assert.Equal("A A1 is in this slate.", EntryOf("A1").Access!.Hover);   // three slates: the first is shown
+        // three slates, but stepping waits for the user: A1 is drawn as usual
+        Assert.Equal("A A1 can be part of a slate for **W**.", EntryOf("A1").Access!.Hover);
         Assert.False(EntryOf("A1").Access!.Faded);
     }
 
@@ -351,7 +350,8 @@ public sealed class AccessGridPictureTests : IDisposable
     [Fact]
     public void Stepping_ShowsTheSlateAsAGhost()
     {
-        _picture.OpenWatch(_tag.Id);   // three slates: stepping starts by itself
+        _picture.OpenWatch(_tag.Id);   // three slates
+        _picture.SetStepping(true);
 
         // the first slate is A1 with B2
         Assert.True(EntryOf("A1").Access!.InSlate);
@@ -387,6 +387,7 @@ public sealed class AccessGridPictureTests : IDisposable
     public void TheTooltip_AppendsWhatTheWatchSays()
     {
         _picture.OpenWatch(_tag.Id);
+        _picture.SetStepping(true);
         var tile = _grid.GridData.DayColumns.SelectMany(c => c.Tiles)
             .First(t => t.Entries.Any(e => e.SectionId == Get("A2").Id));
 
@@ -426,7 +427,7 @@ public sealed class AccessGridPictureTests : IDisposable
     public void ALook_IsRepeatedOnlyByAMarkSayingTheSame()
     {
         var a = Sec("A", "A1"); var b = Sec("B", "B1");
-        ConflictMark Mark(ConflictMarkKind kind, Section? x = null) => new(kind, a, b, [], x, []);
+        ConflictMark Mark(ConflictMarkKind kind, Section? x = null) => new(kind, a, b, [], x);
         var stranded = new AccessTileLook(Stranded: true, Hover: "h");
 
         Assert.True(stranded.IsRepeatedBy(Mark(ConflictMarkKind.Stranded, a), a.Id));
@@ -434,7 +435,7 @@ public sealed class AccessGridPictureTests : IDisposable
         Assert.True(new AccessTileLook(CantFit: true, Hover: "h").IsRepeatedBy(Mark(ConflictMarkKind.Move), a.Id));
         Assert.False(new AccessTileLook(Hover: "h").IsRepeatedBy(Mark(ConflictMarkKind.Move), a.Id));
         Assert.True(new AccessTileLook(Usable: true, Hover: "h").IsRepeatedBy(Mark(ConflictMarkKind.Harmless), a.Id));
-        Assert.False(new AccessTileLook(Essential: true, Hover: "h").IsRepeatedBy(Mark(ConflictMarkKind.Other), a.Id));
+        Assert.False(new AccessTileLook(Essential: true, Hover: "h").IsRepeatedBy(Mark(ConflictMarkKind.Plain), a.Id));
         Assert.False(new AccessTileLook(Stranded: true).IsRepeatedBy(Mark(ConflictMarkKind.Stranded, a), a.Id));
     }
 
@@ -444,6 +445,8 @@ public sealed class AccessGridPictureTests : IDisposable
         Assert.False(_picture.IsOpen);
 
         _picture.OpenWatch(_tag.Id);
+        Assert.False(_picture.IsStepping);   // off until the user asks (Greg, 2026-11-27)
+        _picture.SetStepping(true);
         Assert.True(_picture.IsStepping);
         Assert.Equal("Slate 1 of 3", AccessText.SlatePosition(_picture.SlateIndex, _picture.Slates.Count, false));
         _picture.Step(1);

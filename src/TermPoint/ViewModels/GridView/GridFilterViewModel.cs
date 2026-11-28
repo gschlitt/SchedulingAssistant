@@ -710,6 +710,37 @@ public partial class GridFilterViewModel : ViewModelBase
         HeadersChanged?.Invoke();
     }
 
+    /// <summary>
+    /// Adds tags to the Tags filter, keeping those already ticked, and switches it to "any of the checked tags", then
+    /// re-runs the grid once. Used by the section menu's "Show sections with the same tags" (Greg, 2026-11-27): the
+    /// sections that share a tag with the one being moved are the ones a move can affect, and an open watch is a tag
+    /// too, so its tag stays and the others are added beside it. "Any" because adding context only means "or": under
+    /// "all" a second tag would narrow the grid instead.
+    /// </summary>
+    /// <param name="tagIds">The tags to add; ids not in the Tags list are ignored.</param>
+    public void ShowSectionsWithTags(IEnumerable<string> tagIds)
+    {
+        var wanted = tagIds.ToHashSet();
+        var handler = FilterChanged;
+        FilterChanged = null;
+        try
+        {
+            foreach (var tag in Tags.Where(t => wanted.Contains(t.Id) && !t.IsSelected).ToList())
+                tag.IsSelected = true;
+        }
+        finally
+        {
+            FilterChanged = handler;
+        }
+        _tagsMatchAny = true;
+        OnPropertyChanged(nameof(TagsMatchAny));
+        OnPropertyChanged(nameof(TagsMatchAll));
+        RefreshDerived();
+        ClearTagsCommand.NotifyCanExecuteChanged();
+        FilterChanged?.Invoke();
+        HeadersChanged?.Invoke();
+    }
+
     /// <summary>True when at least one tag is ticked; enables "Clear all tags".</summary>
     public bool AnyTagTicked => Tags.Any(t => t.IsSelected);
 

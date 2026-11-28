@@ -1,0 +1,120 @@
+using System.IO;
+using TermPoint.Data;
+using TermPoint.Data.Repositories;
+using TermPoint.Models;
+using TermPoint.Services.Access;
+using TermPoint.ViewModels.Access;
+using TermPoint.ViewModels.Management;
+using Xunit;
+using Xunit.Abstractions;
+
+namespace TermPoint.Tests;
+
+/// <summary>
+/// PROBE (temporary; moved to release_state after running): Greg's axioms 7 and 8. For every UBC watch, which single
+/// section, moved to a time clear of everything (simulated: no meetings), helps most: fixes the watch, frees stranded
+/// sections; and does it newly strand anything (axiom 4's open tension). Also the roots of the stranded sections'
+/// reasons (the summary).
+/// </summary>
+public sealed class ZzSuggestProbe(ITestOutputHelper output)
+{
+    [Fact]
+    public void Probe()
+    {
+        string src = @"C:\ProgramData\TermPoint\UBC\FAS-TT.db";
+        string temp = Path.Combine(Path.GetTempPath(), $"sugg-{Guid.NewGuid():N}.db");
+        File.Copy(src, temp);
+        var lines = new List<string>();
+        void Say(string s) { lines.Add(s); output.WriteLine(s); }
+        List<Section> sections; Dictionary<string, Course> courses; List<SchedulingEnvironmentValue> types, tags; bool setUp;
+        Dictionary<string, IReadOnlySet<string>> byCourse;
+        using (var db = new DatabaseContext(temp))
+        {
+            var sectionRepo = new SectionRepository(db);
+            var semester = new SemesterRepository(db).GetAll().OrderByDescending(s => sectionRepo.CountBySemesterId(s.Id)).First();
+            var env = new SchedulingEnvironmentRepository(db);
+            tags = env.GetAll(SchedulingEnvironmentTypes.Tag);
+            types = env.GetAll(SchedulingEnvironmentTypes.SectionType);
+            sections = sectionRepo.GetAll(semester.Id);
+            courses = new CourseRepository(db).GetAll().ToDictionary(c => c.Id);
+            setUp = new AccessChecksSetupRepository(db).IsSetUp();
+            byCourse = sectionRepo.GetSectionTypeIdsByCourse().ToDictionary(kv => kv.Key, kv => kv.Value);
+        }
+        AccessInputs Inputs() => new(sections, courses, types, setUp, byCourse);
+        var inputs0 = Inputs();
+        string L(Section s) => AccessText.Plain(AccessText.SectionLabel(inputs0, s));
+        var sw = System.Diagnostics.Stopwatch.StartNew();
+        int analyses = 0;
+
+        foreach (var tag in tags)
+        {
+            var watch = new AccessWatch(tag.Id, tag.WatchMultiCampus);
+            if (watch.CoveredSections(inputs0).Count == 0) continue;
+            var a0 = AccessAnalyzer.Analyze(inputs0, watch);
+            if (a0.Health == AccessHealth.TooLarge) continue;
+            if (a0.HasSlate && a0.StrandedSections.Count == 0) continue;
+            var stranded0 = a0.StrandedSections.Select(s => s.Id).ToHashSet();
+            Say("");
+            Say($"===== {tag.Name}: {AccessText.Plain(AccessText.HealthLine(inputs0, a0, _ => "campus"))}");
+
+            // Roots: the sections the first steps of each stranded section's reason clash against.
+            var roots = new Dictionary<string, List<string>>();
+            foreach (var s in a0.StrandedSections)
+            {
+                var chain = a0.Reasons.ChainFor(s);
+                foreach (var step in chain.Where(st => st.After.Count == 0))
+                {
+                    string key = step.Kind == ReasonStepKind.Clash
+                        ? string.Join(" / ", step.Against.Select(L))
+                        : "pattern of " + string.Join(", ", step.Groups.Select(g => inputs0.CourseCode(a0.Groups[g].CourseId)));
+                    if (!roots.TryGetValue(key, out var list)) roots[key] = list = [];
+                    if (!list.Contains(L(s))) list.Add(L(s));
+                }
+            }
+            foreach (var (key, list) in roots.OrderByDescending(kv => kv.Value.Count))
+                Say($"   root {key}: {list.Count} of {stranded0.Count} stranded rest on it");
+
+            // Single moves to a clear time.
+            var results = new List<(Section S, bool Fixes, int Freed, List<string> Newly, int SlatesAfter, string Health, string Others)>();
+            foreach (var s in a0.Groups.SelectMany(g => g.All).Distinct())
+            {
+                var saved = s.Schedule;
+                s.Schedule = [];
+                try
+                {
+                    var inputs = Inputs();
+                    var a = AccessAnalyzer.Analyze(inputs, watch);
+                    analyses++;
+                    var after = a.StrandedSections.Select(x => x.Id).ToHashSet();
+                    int freed = stranded0.Count(id => id != s.Id && !after.Contains(id));
+                    var newly = after.Where(id => !stranded0.Contains(id)).Select(id => L(sections.First(x => x.Id == id))).ToList();
+                    bool fixes = !a0.HasSlate && a.HasSlate;
+                    // Other watches this section is in: stranded before/after.
+                    var others = new List<string>();
+                    foreach (var t2 in tags.Where(t => t.Id != tag.Id && s.TagIds.Contains(t.Id)))
+                    {
+                        var w2 = new AccessWatch(t2.Id, t2.WatchMultiCampus);
+                        var b0 = AccessAnalyzer.Analyze(inputs0, w2);
+                        var b1 = AccessAnalyzer.Analyze(inputs, w2);
+                        analyses += 2;
+                        if (b0.Health == AccessHealth.TooLarge) continue;
+                        others.Add($"{t2.Name} {b0.StrandedSections.Count}->{b1.StrandedSections.Count}{(b0.HasSlate != b1.HasSlate ? (b1.HasSlate ? " fixed" : " BROKEN") : "")}");
+                    }
+                    if (fixes || freed > 0 || newly.Count > 0)
+                        results.Add((s, fixes, freed, newly, a.SlateCount, AccessText.Plain(AccessText.HealthLine(inputs, a, _ => "campus")), string.Join("; ", others)));
+                }
+                finally { s.Schedule = saved; }
+            }
+            foreach (var r in results.OrderByDescending(r => r.Fixes).ThenByDescending(r => r.Freed).Take(6))
+                Say($"   move {L(r.S)}: {(r.Fixes ? "FIXES, " : "")}frees {r.Freed}{(r.Newly.Count > 0 ? $", NEWLY stranded {string.Join(", ", r.Newly)}" : "")}" +
+                    $"{(r.Others.Length > 0 ? $"  [other watches: {r.Others}]" : "")}  -> {r.Health}");
+            int withNewly = results.Count(r => r.Newly.Count > 0);
+            if (withNewly > 0) Say($"   ({withNewly} of {results.Count} helpful moves newly strand something)");
+        }
+        Say("");
+        Say($"Total {sw.ElapsedMilliseconds} ms, {analyses} analyses.");
+        File.WriteAllLines(Path.Combine(Path.GetTempPath(), "suggest-probe.txt"), lines);
+        Microsoft.Data.Sqlite.SqliteConnection.ClearAllPools();
+        try { File.Delete(temp); } catch { }
+    }
+}

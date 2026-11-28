@@ -183,7 +183,10 @@ public sealed class AccessPictureTests : IDisposable
     {
         _picture.OpenWatch(_tag.Id);
         Assert.True(_picture.CanStep);
-        Assert.True(_picture.IsStepping);   // more than one slate: stepping starts by itself
+        Assert.True(_picture.HasSlatesToStep);
+        Assert.False(_picture.IsStepping);   // off until the user asks (Greg, 2026-11-27)
+        _picture.SetStepping(true);
+        Assert.True(_picture.IsStepping);
         Assert.Equal(3, _picture.Slates.Count);
         Assert.Equal(0, _picture.SlateIndex);
         // the first slate is the lexicographically first: A 1 with B 2
@@ -205,6 +208,7 @@ public sealed class AccessPictureTests : IDisposable
         _picture.TogglePin(Get(_fall, "A", "2").Id);
         _picture.TickAll();
         // with A 2 pinned there are two slates; step to the second
+        _picture.SetStepping(true);
         _picture.Step(1);
         Assert.Equal(1, _picture.SlateIndex);
 

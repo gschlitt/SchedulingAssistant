@@ -29,18 +29,40 @@ public sealed class AccessConflictMarksTests
         Assert.Equal(1, mark.Meetings.Count);
     }
 
+    /// <summary>
+    /// Marks follow the narrative's reasons, not what-ifs (Greg, 2026-11-27): x (B) is stranded because every way of
+    /// taking C and D conflicts with it, a footprint, so no line is drawn for it (its hover says why), and the
+    /// conflicts that merely would free it (c2-d1) are not marked either.
+    /// </summary>
     [Fact]
-    public void Other_TheConflictFreesAStrandedSectionThatIsNotInThePair()
+    public void Stranded_AFootprintExplanationGetsNoLine_AndNoWhatIfMarksAreDrawn()
     {
-        // x (B) is stranded; ignoring c2-d1 frees it although x is in neither
-        var marks = Marks(AccessAnalyzerTests.ThreeCourseChain());
-        var other = Between(marks, "C c2", "D d1");
-        Assert.Equal(ConflictMarkKind.Other, other.Kind);
-        Assert.Equal(["B x"], other.FreedSectionIds);
-        Assert.Null(other.X);
-        // the conflicts that involve x itself are Stranded marks about x
-        Assert.Equal(ConflictMarkKind.Stranded, Between(marks, "B x", "C c1").Kind);
-        Assert.Equal("B x", Between(marks, "B x", "D d2").X!.Id);
+        var sections = AccessAnalyzerTests.ThreeCourseChain();
+        Assert.Equal("B x", Assert.Single(AnalyzeAll(Simple(sections)).StrandedSections).Id);
+        Assert.Empty(Marks(sections));
+    }
+
+    [Fact]
+    public void Stranded_ACompleteClashGetsALinePerSectionItIsOverlapped_WithItsReason()
+    {
+        // A has one section; B 1 and B 2 both overlap it, so B 1 and B 2 are stranded with one line each
+        var marks = Marks([
+            Sec("A", "1", Lecture, At(0, 9, 10)),
+            Sec("B", "1", Lecture, At(0, 9, 10)), Sec("B", "2", Lecture, At(0, 9.5, 10.5)), Sec("B", "3", Lecture, At(1, 9, 10))]);
+        Assert.Equal(2, marks.Count);
+        Assert.All(marks, m =>
+        {
+            Assert.Equal(ConflictMarkKind.Stranded, m.Kind);
+            Assert.Equal(ReasonStepKind.Clash, m.Reason!.Kind);
+            Assert.Equal(["A 1"], Ids(m.Reason.Against));
+        });
+        Assert.Equal(["B 1", "B 2"], marks.Select(m => m.X!.Id).Order().ToArray());
+    }
+
+    [Fact]
+    public void ConflictMarkKind_HasNoOtherKind()
+    {
+        Assert.DoesNotContain("Other", Enum.GetNames<ConflictMarkKind>());
     }
 
     [Fact]

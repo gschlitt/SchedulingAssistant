@@ -186,47 +186,29 @@ public static partial class AccessText
             string w = Bold(ks[0].WatchName);
             void Say(string text) => lines.Add((many ? $"{w}: " : string.Empty) + text);
 
-            // Stranded: one sentence per set of stranded sections that conflict with the same sections.
-            // approved wording (round 6)
-            var xOrder = new List<string>();
-            var byX = new Dictionary<string, (Section X, List<Section> Others)>();
-            foreach (var k in ks.Where(m => m.Mark.Kind == ConflictMarkKind.Stranded).Select(m => m.Mark))
+            // Stranded: one sentence per set of stranded sections whose narrative clashes against the same sections.
+            // approved wording (clarity, Greg 2026-11-27)
+            var mergedOrder = new List<string>();
+            var merged = new Dictionary<string, (ReasonStep Step, List<Section> Xs)>();
+            foreach (var k in ks.Where(m => m.Mark.Kind == ConflictMarkKind.Stranded && m.Mark.Reason is not null).Select(m => m.Mark))
             {
                 var x = k.X!;
-                if (!byX.ContainsKey(x.Id)) { byX[x.Id] = (x, []); xOrder.Add(x.Id); }
-                byX[x.Id].Others.Add(k.A.Id == x.Id ? k.B : k.A);
+                var step = k.Reason!;
+                string key = $"{ByCourse(inputs, step.Against)}|{step.Narrowed}";
+                if (!merged.TryGetValue(key, out var entry)) { merged[key] = entry = (step, []); mergedOrder.Add(key); }
+                if (!entry.Xs.Any(e => e.Id == x.Id)) entry.Xs.Add(x);
             }
-            var mergedOrder = new List<string>();
-            var merged = new Dictionary<string, List<Section>>();
-            foreach (var xid in xOrder)
+            foreach (var key in mergedOrder)
             {
-                var (x, others) = byX[xid];
-                var key = ByCourse(inputs, others);
-                if (!merged.ContainsKey(key)) { merged[key] = []; mergedOrder.Add(key); }
-                merged[key].Add(x);
-            }
-            foreach (var others in mergedOrder)
-            {
-                var xs = merged[others];
-                Say(xs.Count == 1
-                    ? $"{SectionLabel(inputs, xs[0])} conflicts with {others}, so {SectionLabel(inputs, xs[0])} can't be part of any slate for {w}."
-                    : $"{ByCourse(inputs, xs)} conflict with {others}, so they can't be part of any slate for {w}.");
+                var (step, xs) = merged[key];
+                // Not led by "**W**: " even when several watches speak: the sentence already names the watch.
+                lines.Add(ClashTip(inputs, w, xs, step.Against, step.Narrowed));
             }
 
             // Move (no full slate): one sentence per problem, naming this line's conflicts and the sections to move.
             foreach (var problemMarks in ks.Where(m => m.Mark.Kind == ConflictMarkKind.Move).GroupBy(m => m.Mark.Problem))
                 Say(MoveTip(inputs, section, problemMarks.Select(m => OtherEnd(m.Mark)).ToList(), problemMarks.Key!,
                     problemMarks.First().Mark.ProblemCount, w));
-
-            // Other: one sentence per mark, repeats dropped.
-            // approved wording (round 6)
-            var seen = new HashSet<string>();
-            foreach (var m in ks.Where(m => m.Mark.Kind == ConflictMarkKind.Other))
-            {
-                var k = m.Mark;
-                string tip = $"{SectionLabel(inputs, k.A)} conflicts with {SectionLabel(inputs, k.B)}. Because of this conflict, {JoinAnd(FreedLabels(inputs, k))} can't be part of any slate for {w}.";
-                if (seen.Add(tip)) Say(tip);
-            }
 
             // approved wording (round 6)
             var hl = ks.Where(m => m.Mark.Kind == ConflictMarkKind.Harmless).Select(m => OtherEnd(m.Mark)).ToList();
@@ -257,14 +239,6 @@ public static partial class AccessText
         }
         return lines;
     }
-
-    /// <summary>The labels of the stranded sections an <see cref="ConflictMarkKind.Other"/> mark keeps out of every slate.</summary>
-    private static List<string> FreedLabels(AccessInputs inputs, ConflictMark mark) =>
-        mark.FreedSectionIds
-            .Select(fid => inputs.Sections.FirstOrDefault(s => s.Id == fid))
-            .OfType<Section>()
-            .Select(s => SectionLabel(inputs, s))
-            .ToList();
 
     // ── The Access tab's health line (port of the r9 wireframe's healthSegs) ────────────────────────────────────
 

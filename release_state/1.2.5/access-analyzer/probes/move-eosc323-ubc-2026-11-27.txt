@@ -1,0 +1,44 @@
+EOSC323 101 now: d1 14:00-15:00, d3 14:00-15:00
+
+########## ORIGINAL 14:00
+== GEOE-Y3: No full slate · try moving EOSC331 101 · depends on EOSC321 L1C, EOSC323 L1E +1 more · 13 sections stranded · 1 section without times · 62 conflicts
+   skip sets: EOSC331 lecture
+   stranded: CIVL311 L1A, CIVL311 L1B, EOSC321 L1A, EOSC321 L1B, EOSC323 L1A, EOSC323 L1B, EOSC323 L1C, EOSC323 L1D, EOSC329 L1A, EOSC329 L1D, EOSC330 L1A, EOSC330 L1B, EOSC331 L1A
+   mark Stranded: CIVL311 L1A x EOSC323 101
+   mark Stranded: CIVL311 L1B x EOSC323 101
+   mark Stranded: EOSC321 101 x EOSC330 L1B
+   mark Stranded: EOSC321 L1C x EOSC323 L1B
+   mark Stranded: EOSC321 L1B x EOSC331 L1B
+   mark Stranded: EOSC323 L1C x EOSC331 L1B
+   mark Move: EOSC329 L1B x EOSC331 101
+   mark Move: EOSC329 L1C x EOSC331 101
+   mark Stranded: EOSC329 L1D x EOSC331 L1B
+   mark Move: EOSC330 L1C x EOSC331 101
+   mark Move: EOSC330 L1D x EOSC331 101
+== CIVL-Y3: No full slate · try moving CIVL303 T1A or CIVL315 101 · 2 sections stranded · 26 conflicts
+   skip sets: CIVL303 discussion | CIVL315 lecture
+   stranded: CIVL315 L1M, CIVL315 L1N
+   mark Move: CIVL303 T1A x CIVL315 101
+   mark Stranded: CIVL315 L1M x CIVL332 T1A
+   mark Stranded: CIVL315 L1N x CIVL332 T1A
+
+########## MOVED 12:00
+== GEOE-Y3: No full slate · try moving EOSC330 L1A, L1B, L1C, L1D, EOSC331 101, EOSC350 L1A or L1B · 2 sections stranded · 1 section without times · 60 conflicts
+   skip sets: EOSC330 lab | EOSC331 lecture | EOSC350 lab
+   stranded: EOSC321 L1A, EOSC330 L1B
+   mark Move: CIVL311 T1A x EOSC350 L1A
+   mark Move: CIVL311 T1B x EOSC350 L1A
+   mark Move: CIVL311 L1A x EOSC350 L1A
+   mark Move: CIVL311 L1B x EOSC350 L1A
+   mark Move: EOSC321 101 x EOSC330 L1B
+   mark Move: EOSC329 101 x EOSC330 L1B
+   mark Move: EOSC329 L1A x EOSC350 L1A
+   mark Move: EOSC330 L1C x EOSC331 101
+   mark Move: EOSC330 L1D x EOSC331 101
+   mark Move: EOSC330 L1A x EOSC350 L1B
+== CIVL-Y3: No full slate · try moving CIVL303 T1A or CIVL315 101 · 2 sections stranded · 26 conflicts
+   skip sets: CIVL303 discussion | CIVL315 lecture
+   stranded: CIVL315 L1M, CIVL315 L1N
+   mark Move: CIVL303 T1A x CIVL315 101
+   mark Stranded: CIVL315 L1M x CIVL332 T1A
+   mark Stranded: CIVL315 L1N x CIVL332 T1A

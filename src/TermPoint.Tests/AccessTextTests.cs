@@ -28,7 +28,7 @@ public sealed class AccessTextTests
         AccessText.ConflictTips(Simple(sections), sections.Single(s => s.Id == sectionId), day, marks, hidden);
 
     private static ConflictMark Hand(ConflictMarkKind kind, Section a, Section b) =>
-        new(kind, a, b, SectionOverlap.OverlappingMeetings(a, b), null, []);
+        new(kind, a, b, SectionOverlap.OverlappingMeetings(a, b), null);
 
     [Fact]
     public void Stranded_OneSection()
@@ -39,7 +39,7 @@ public sealed class AccessTextTests
             Sec("B", "1", Lecture, At(0, 9, 10)), Sec("B", "2", Lecture, At(1, 9, 10)),
         };
         var marks = WatchMarks("Y2", Engine(sections));
-        var expected = "B 1 conflicts with A 1, so B 1 can't be part of any slate for **Y2**.";
+        var expected = "Students in **Y2** can't take B 1: it conflicts with A 1, A's only section.";
         Assert.Equal([expected], Tips(sections, "B 1", marks));
         Assert.Equal([expected], Tips(sections, "A 1", marks));
         Assert.Empty(Tips(sections, "B 2", marks));
@@ -55,7 +55,7 @@ public sealed class AccessTextTests
             Sec("B", "1", Lecture, At(0, 9, 10)),
         };
         var marks = WatchMarks("Y2", Engine(sections));
-        Assert.Equal(["A 1, 2 conflict with B 1, so they can't be part of any slate for **Y2**."], Tips(sections, "B 1", marks));
+        Assert.Equal(["Students in **Y2** can't take A 1 or 2: they conflict with B 1, B's only section."], Tips(sections, "B 1", marks));
     }
 
     [Fact]
@@ -105,13 +105,20 @@ public sealed class AccessTextTests
     }
 
     [Fact]
-    public void Other_NamesTheFreedSections()
+    public void ClashTip_QualifiesTheSectionsItCantGetRound_AllFourForms()
     {
-        var sections = AccessAnalyzerTests.ThreeCourseChain();
-        var mark = Engine(sections).Single(m => m.Kind == ConflictMarkKind.Other);
-        var marks = WatchMarks("Y2", [mark]);
-        var line = Assert.Single(Tips(sections, mark.A.Id, marks, day: mark.Meetings[0].A.Day));
-        Assert.Equal($"{mark.A.Id} conflicts with {mark.B.Id}. Because of this conflict, B x can't be part of any slate for **Y2**.", line);
+        var a1 = Sec("A", "1", Lecture, At(0, 9, 10)); var a2 = Sec("A", "2", Lecture, At(0, 9, 10));
+        var x = Sec("X", "1", Lecture, At(0, 9, 10));
+        var inputs = Simple([a1, a2, x]);
+        Assert.Equal("Students in **W** can't take X 1: it conflicts with A 1, A's only section.",
+            AccessText.ClashTip(inputs, "**W**", [x], [a1], narrowed: false));
+        Assert.Equal("Students in **W** can't take X 1: it conflicts with A 1, the only A section they can take.",
+            AccessText.ClashTip(inputs, "**W**", [x], [a1], narrowed: true));
+        Assert.Equal("Students in **W** can't take X 1: it conflicts with A 1 and 2, A's only sections.",
+            AccessText.ClashTip(inputs, "**W**", [x], [a1, a2], narrowed: false));
+        Assert.Equal("Students in **W** can't take X 1: it conflicts with A 1 and 2, the only A sections they can take.",
+            AccessText.ClashTip(inputs, "**W**", [x], [a1, a2], narrowed: true));
+        Assert.Equal("the only A sections students can take", AccessText.Qualifier(inputs, [a1, a2], true, "students"));
     }
 
     [Fact]

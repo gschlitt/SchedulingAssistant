@@ -19,6 +19,7 @@ public partial class SectionContextMenuViewModel : ObservableObject
     private readonly ISectionCardState _cardState;
     private readonly SectionHistory? _history;
     private readonly AccessPicture? _picture;
+    private readonly Action<IReadOnlyList<string>>? _showSectionsWithTags;
 
     /// <summary>CanExecute predicate for the Confirm command; refuses writes in reader mode.</summary>
     private bool CanConfirm() => _lockService.IsWriter;
@@ -133,9 +134,12 @@ public partial class SectionContextMenuViewModel : ObservableObject
     /// are for looking and save nothing.
     /// </param>
     /// <param name="history">The undo history; each Confirm is one step. Null (the tests) runs the save unrecorded.</param>
+    /// <param name="showSectionsWithTags">Adds tags to the grid's Tags filter ("any" logic); null (the tests) leaves the item without effect.</param>
     public SectionContextMenuViewModel(ISectionRepository sectionRepo, Action onSaved, WriteLockService lockService,
-        ISectionCardState cardState, SectionMarks marks, AccessPicture? picture = null, SectionHistory? history = null)
+        ISectionCardState cardState, SectionMarks marks, AccessPicture? picture = null, SectionHistory? history = null,
+        Action<IReadOnlyList<string>>? showSectionsWithTags = null)
     {
+        _showSectionsWithTags = showSectionsWithTags;
         _history = history;
         _picture = picture;
         _marks = marks;
@@ -218,6 +222,8 @@ public partial class SectionContextMenuViewModel : ObservableObject
         ShowRoomCommand.NotifyCanExecuteChanged();
         ShowTagsCommand.NotifyCanExecuteChanged();
         ShowFlagCommand.NotifyCanExecuteChanged();
+        ShowSameTagsCommand.NotifyCanExecuteChanged();
+        OnPropertyChanged(nameof(ShowSameTagsTip));
         RefreshMarkState();
         RefreshPinState();
         FillDetails(section, detailsHeading, instructorList, tagList, sectionTypes, deliveryTypes);
@@ -417,6 +423,37 @@ public partial class SectionContextMenuViewModel : ObservableObject
     /// it) or to let it move again (<see cref="AccessPicture.OffersKeepInPlace"/>). Set on <see cref="Load"/>.
     /// </summary>
     [ObservableProperty] private bool _hasKeepItem;
+
+    /// <summary>The menu item that adds the section's tags to the grid's filter.</summary>
+    // approved wording (Greg, 2026-11-27)
+    public const string ShowSameTagsText = "Show sections with the same tags";
+
+    /// <summary>The item's hover while the section has no tags (the item is disabled then).</summary>
+    // approved wording (Greg, 2026-11-27)
+    public const string NoTagsTip = "This section has no tags.";
+
+    /// <summary>The item's text, for binding.</summary>
+    public string ShowSameTagsItemText => ShowSameTagsText;
+
+    /// <summary>The item's hover: <see cref="NoTagsTip"/> while the section has no tags, else none.</summary>
+    public string? ShowSameTagsTip => CanShowSameTags() ? null : NoTagsTip;
+
+    /// <summary>Whether the right-clicked section carries any tag.</summary>
+    private bool CanShowSameTags() => _section is { TagIds.Count: > 0 };
+
+    /// <summary>
+    /// Adds the right-clicked section's tags to the grid's Tags filter, keeping the tags already ticked (an open watch
+    /// is a tag), and closes the menu (<see cref="GridFilterViewModel.ShowSectionsWithTags"/>). Day to day, the sections
+    /// sharing a tag with the one being moved are the ones the move can affect; with a watch open, the other watches it
+    /// belongs to come into view with their marks. Not gated by the write lock or an open card: it only filters.
+    /// </summary>
+    [RelayCommand(CanExecute = nameof(CanShowSameTags))]
+    private void ShowSameTags()
+    {
+        if (_section is null) return;
+        _showSectionsWithTags?.Invoke(_section.TagIds.ToList());
+        IsOpen = false;
+    }
 
     /// <summary>"Don't suggest moving this", or "Suggest moving this again" when it is kept. Set on <see cref="Load"/>.</summary>
     [ObservableProperty] private string _keepItemText = string.Empty;

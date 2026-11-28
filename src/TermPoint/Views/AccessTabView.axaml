@@ -322,6 +322,15 @@
 						</ItemsControl.ItemTemplate>
 					</ItemsControl>
 
+					<!--  The selected section to move: why its partners can't be avoided (the hover gives the last step only; Greg 2026-11-27)  -->
+					<ItemsControl Margin="8,0,0,2" IsVisible="{Binding IsMoveWhyShown}" ItemsSource="{Binding MoveWhyLines}">
+						<ItemsControl.ItemTemplate>
+							<DataTemplate>
+								<TextBlock Classes="quiet" h:InlineFormatter.LinkCommand="{Binding #DetailPage.DataContext.SelectSectionCommand}" h:InlineFormatter.Text="{Binding}" />
+							</DataTemplate>
+						</ItemsControl.ItemTemplate>
+					</ItemsControl>
+
 					<!--  Pins narrow the slates: a tinted banner at the top, so nobody wonders where their slates went  -->
 					<Border Padding="6,3" Background="{StaticResource AccessPinBannerBackground}" CornerRadius="3" IsVisible="{Binding HasPins}">
 						<DockPanel>
@@ -358,7 +367,17 @@
 										<Path Width="9" Height="9" Data="{StaticResource AccessMarkAttentionIcon}" Fill="{StaticResource AccessMarkAttention}" IsVisible="{Binding !IsCaution}" Stretch="Uniform" />
 										<Path Width="8" Height="8" Data="{StaticResource AccessMarkCautionIcon}" Fill="{StaticResource AccessMarkFragile}" IsVisible="{Binding IsCaution}" Stretch="Uniform" />
 									</Panel>
-									<TextBlock Grid.Column="1" Classes="body" h:InlineFormatter.LinkCommand="{Binding #DetailPage.DataContext.SelectSectionCommand}" h:InlineFormatter.Text="{Binding Text}" />
+									<StackPanel Grid.Column="1">
+										<TextBlock Classes="body" h:InlineFormatter.LinkCommand="{Binding #DetailPage.DataContext.SelectSectionCommand}" h:InlineFormatter.Text="{Binding Text}" />
+										<!--  The selected stranded section's numbered "why" (clarity design, Greg 2026-11-27): the hover gives the last step only  -->
+										<ItemsControl Margin="8,2,0,2" IsVisible="{Binding IsWhyShown}" ItemsSource="{Binding WhyLines}">
+											<ItemsControl.ItemTemplate>
+												<DataTemplate>
+													<TextBlock Classes="quiet" h:InlineFormatter.LinkCommand="{Binding #DetailPage.DataContext.SelectSectionCommand}" h:InlineFormatter.Text="{Binding}" />
+												</DataTemplate>
+											</ItemsControl.ItemTemplate>
+										</ItemsControl>
+									</StackPanel>
 								</Grid>
 							</DataTemplate>
 						</ItemsControl.ItemTemplate>
@@ -370,6 +389,9 @@
 					<!--  The slates, only when there is more than one (it moved here from the grid's banner, Greg 2026-11-26):
 					      ‹ Slate i of N ›, the slate's sections one course per line in text that can be selected and copied,
 					      "mixes campuses" when it does, then the pinning hint  -->
+					<!--  Stepping is off until the user ticks this (Greg, 2026-11-27: fading the rest by itself clashed with
+					      fading's other meaning, stranded)  -->
+					<CheckBox Margin="0,3,0,0" MinHeight="0" Content="{Binding StepThroughSlatesLabel}" FontSize="{StaticResource FontSizeAccessText}" IsChecked="{Binding StepThroughSlates}" IsVisible="{Binding HasSlatesToStep}" />
 					<StackPanel Margin="0,3,0,0" IsVisible="{Binding IsStepping}" Spacing="2">
 						<StackPanel Orientation="Horizontal" Spacing="6">
 							<Button Padding="6,1" MinHeight="0" Command="{Binding PreviousCommand}" IsEnabled="{Binding CanGoPrevious}" ToolTip.Tip="{Binding PreviousSlateTip}">

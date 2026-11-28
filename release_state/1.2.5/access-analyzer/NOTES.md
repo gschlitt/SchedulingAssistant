@@ -243,7 +243,7 @@ Ledger: [RELEASE_1.2.5.md](../RELEASE_1.2.5.md). Design: [designs/1.2.5/access-a
   that cost students something: a section no one taking the watch's courses can use, or no way to take every course.
   To see every conflict as before, tick Mark all conflicts in the Access tab."); Q41 "<section> is hidden by the
   filters."; too big "Too many courses to check (more than 30)"; empty tab "No access watches yet. An access watch is
-  a tag you watch: TermPoint then shows whether students can still take all its courses together. [+ Add a watch]";
+  a tag you watch: TermPoint then shows whether students can take all its courses together. [+ Add a watch]";
   Add a watch note, Greg's own: "An access watch is a tag watched for student access, to ensure that students can
   register in a full slate of sections without time conflicts. If your tag describes courses (or specific sections)
   you wish students to take together, you can enable the watch by clicking the eye."
@@ -676,6 +676,194 @@ explained, every step checked sound by brute force, 0.17 s for all watches. Only
 footprint ("every way of taking CIVL311 discussion, CIVL311 lab, EOSC350 lab (3 different times) fills Mon, Tue,
 Wed 16:00-17:00"); the rest is FORCED/CLASH chains, longest 7 steps. UFV BIOL has no watches to test. Next: decide
 the UI (kinds 1-3, where narratives go), then templates for Greg's wording.
+
+**Clarity design (AGREED by Greg 2026-11-27: principle, W1–W3 approved wording as drafted, the "why" in the Access panel, what-ifs dropped with the ranked list on the backlog; that list became the ranked suggestions, see "User axioms" below).**
+
+*Finding that simplifies it:* kind 2 mostly isn't. A stranded section with no full slate is judged against slates
+that leave out the component to move. Every slate the move could bring, minus that component, is one of those, so
+the section stays stranded whichever suggested move is made and wherever it lands. Its narrative never mentions the
+moved section (FORCED, CLASH, FOOTPRINT are facts about the other sections). So "stranded" is a fact now and after
+the move; the list is a floor (where the moved section lands may strand more). The only conditional statement left
+on the tiles is the suggestion itself, "Try moving X" (it needs a clear time). Harmless ("students can get around
+it") is the one claim that would be conditional, and with no full slate it is already the plain "X conflicts with Y."
+
+*Principle:* the tiles carry two voices only. **Problems** (facts, ▲ and red lines) and **the one suggestion**
+(Try moving). What-ifs ("if this conflict were removed …") leave the tiles.
+
+*Marks follow the reasons, not the what-ifs.* Today a Stranded mark is a conflict whose removal frees the section
+(a what-if; none when two conflicts each suffice, and a false "so" when the section has other clashes). Instead each
+stranded section's line goes to the section in its narrative's last step (CLASH); a FOOTPRINT section gets no line,
+its hover says why. Other marks (frees someone else) go. `FreeingConflicts` would be replaced by the narrative.
+
+*Where the narratives go (recommended):* the hover gives the last step only, with a qualifier saying why the other
+section can't be avoided. The whole chain shows in the Access panel's detail for the selected section (clicking a
+tile selects it), as a short numbered "Why" list. Alternative: a longer hover (GEOE-Y3's longest is 4 lines merged).
+
+*Wording (approved as drafted, Greg 2026-11-27):*
+- W1 stranded, tile and line, full slate or not (replaces "can't be part of any slate" and "Even with the suggested
+  move …"): "Students in **CIVL-Y3** can't take CIVL315 L1M: it conflicts with CIVL332 T1A, CIVL332's only
+  discussion." Chain variant: "… it conflicts with EOSC321 L1C, the only EOSC321 lab they can take." Footprint
+  variant: "Students in **GEOE-Y3** can't take EOSC329 L1A: whichever CIVL311 discussion, CIVL311 lab and EOSC350 lab
+  they take, Mon, Tue and Wed 16:00–17:00 are taken." Campus variant unchanged.
+- W2 move (adds the qualifier, answers "why not EOSC329 L1A?"): "EOSC331 101 conflicts with EOSC329 L1B and L1C, the
+  only EOSC329 labs students can take, so **GEOE-Y3** has no full slate. Try moving EOSC331 101." CIVL-Y3:
+  "CIVL303 T1A conflicts with CIVL315 101, CIVL315's only lecture, so **CIVL-Y3** has no full slate. Try moving
+  CIVL303 T1A or CIVL315 101."
+- W3 the "Why" list for EOSC323 L1B (GEOE-Y3): 1. EOSC323 101 is EOSC323's only lecture, so students can't take
+  CIVL311 L1A or L1B, which conflict with it. 2. Whichever CIVL311 discussion, CIVL311 lab and EOSC350 lab they take,
+  Mon, Tue and Wed 16:00–17:00 are taken. That rules out EOSC321 L1A, EOSC323 L1A and L1D, EOSC329 L1A, EOSC330 L1A
+  and EOSC331 L1A. 3. That leaves EOSC331 L1B as the only EOSC331 lab, which rules out EOSC321 L1B, EOSC323 L1C and
+  EOSC329 L1D. 4. That leaves EOSC321 L1C as the only EOSC321 lab, which rules out EOSC323 L1B.
+
+*Also approved for the build (Greg 2026-11-27):* merged line "Students in **CIVL-Y3** can't take CIVL315 L1M or
+L1N: they conflict with CIVL332 T1A, CIVL332's only discussion."; plural qualifier "CPEN223's only labs" / "the only
+CPEN223 labs they can take"; Why lines "That leaves CPEN223 L1A and L1B as the only CPEN223 labs, and both
+conflict with …" and "CPEN223 L1A and L1B are CPEN223's only labs, and both conflict with …"; no common time
+"whichever A and B they take, one of them conflicts with it."; the detail's stranded flag always "No student taking
+all of W can use it." (the "Even with the suggested move … could" form goes). The Why list shows under the selected
+section's stranded flag, only when its chain has 2+ steps. Stranded reasons use one propagation over the union of the
+counting skip sets (sound for every suggested move); move reasons use the option's own skip set.
+
+*Built (2026-11-27, committed by that day's /handoff; Greg's eye check pending):* `Services/Access/StrandedReasons.cs` (the engine, lazy
+`Analysis.Reasons`), `ViewModels/Access/AccessTextReasons.cs` (the wording), marks from reasons in `ConflictMarks`
+(Other kind, `FreedSectionIds`, `SlateSearch.FreeingConflicts` removed), `MoveOption.Reason`, Why list under the
+selected stranded flag (`AccessFlagViewModel.WhyLines`/`IsWhyShown`, `AccessTabView.axaml`). Narrative lists name
+one course's sections with "and" ("EOSC329 L1B and L1C", `NamesAnd`); `ByCourse` keeps its commas for older
+approved text. Stranded mark lines aren't led by "**W**: " (the sentence names the watch). UBC copy: 52 of 53
+stranded explained (46 clash, 6 footprint); MANU430 L0A in MANU-Y4 isn't (its group is left out by only some
+counting slates, so the union run can't reach it) and keeps the old wording; 14 of 14 move options; ~200 ms for all
+watches. Both compile checks clean; full suite passed after updating tests (5240 pass). Output of every GEOE-Y3 and
+CIVL-Y3 hover: side-session notes folder, clarity-build-output.txt. Not yet approved: a course checked alone says
+"Students taking CIVL315 can't take …".
+
+*Move Why list (2026-11-27, Greg: the EOSC331 101 hover begs "why not EOSC329's other labs?"):* selecting a
+section to move shows, under the health line, the steps that took the partner group's other sections away, then
+"That leaves EOSC329 L1B and L1C, and EOSC331 101 conflicts with both." ("it" for one; "all of them" for 3+, not
+seen by Greg). Tile hovers end "Click it to see why." when the section has a Why list (stranded or move), once per
+tile. Approved wording. `MoveReason.Chain`, `AccessText.MoveWhyLines`, `ClickForWhyText`, `AccessTileLook.HasWhy`.
+
+*"Show sections with the same tags" (2026-11-27, Greg; approved wording, also "This section has no tags."):* in the
+grid's section menu, adds the section's tags to the Tags filter, keeping those ticked, and switches the filter to "any".
+Story: CIVL-Y3 open, CIVL311 L1A glows for GEOE-Y3; one click brings GEOE-Y3's sections in. No marks change was needed:
+the grid already builds every watch's marks and draws them where both sections are shown. Adding a tag counts as the
+user changing the filters (closing the watch leaves them). Section list has no menu yet (not done). Not saved:
+`MinimumVersionToWrite` No. `GridFilterViewModel.ShowSectionsWithTags`, `SectionContextMenuViewModel.ShowSameTags`.
+
+*Decided (before the build):* all of the above. To build: narrative engine in `Services/Access` (from the probe), marks from reasons
+(Other kind and `FreeingConflicts` go), W1/W2 in `AccessText*`, the Why list in the Access panel (`.axaml`: warn
+Greg first). `MinimumVersionToWrite`: No (nothing saved).
+
+</details>
+
+<details>
+<summary>User axioms, suggestions, tiles and lines (2026-11-27; direction adopted, not built)</summary>
+
+**What Greg saw.** CIVL-Y3 and GEOE-Y3 in the filter. He moved EOSC323 101 (Mon/Wed 14:00) to Mon/Wed 12:00, where it
+clashes with nothing. New red lines appeared (CIVL311 labs and discussions, EOSC329 L1A, EOSC330 L1A …). Greg: "I moved
+a section to a block which conflicts with literally nothing else, all of a sudden there are conflicts? That just won't
+work, psychologically."
+
+**Probe** ([probes/move-eosc323-ubc-2026-11-27.txt](probes/move-eosc323-ubc-2026-11-27.txt), a copy of the UBC DB):
+GEOE-Y3's stranded sections fell from 13 to 2, as they should. The new lines are all Move marks: freeing CIVL311's labs
+made 8 different single moves able to fix GEOE-Y3 (EOSC330 L1A–D, EOSC331 101, EOSC350 L1A/B) where before only
+EOSC331 101 could, and every option's conflicts are drawn in red. More ways to fix it drew as more problems.
+
+**Greg's user axioms (2026-11-27; these lead, A1-A4 below are the engine's reading of them).** The user may be
+scheduling interlocking programs (UBC) or one department with a loose tag ("4th year": keep its courses apart as far
+as possible, though no student takes them all); the simple case must stay simple.
+1. The fewer conflicts the better, though zero may not be achievable.
+2. Conflicts are fine where there are paths through them (slates, sub-slates). The real point is seats; with no
+   enrolment data, the proxy is few stranded sections.
+3. Avoid stranded sections; but a section stranded for one watch may be usable for another watch that includes it.
+4. No surprises: a careless move may generate new conflicts, but a move must not uncover conflicts that were there
+   and not shown.
+5. The necessary information is surfaced at all times.
+6. The fewer sections to move to solve a problem, the better.
+7. Show me a move or two that would improve access greatly.
+8. Don't overwhelm me; with many issues, summarize.
+9. On request, a full explanation in English of why something doesn't work.
+
+Reading (Claude, for discussion): (4) is monotonicity: every new mark after a move traces to a conflict the moved
+section now has. (3) a section's seats are wasted only when it is stranded for every watch covering it (dim only
+then?). (7) applies with a full slate too: "moving EOSC323 101 to a time clear of GEOE-Y3 frees N stranded sections"
+(12 of GEOE-Y3's 13 trace to EOSC323 101; Greg's move freed 11), ranked in the panel, never on the grid. (8)
+summaries come from the reasons' roots. A loose tag may need "students take some of these" (pairs of courses that
+can't be taken together) rather than full slates. Open tension: (4) at the moment a watch gains a full slate.
+
+**Suggested moves and summaries (axioms 7, 8; DRAFT 2026-11-27, awaiting Greg).** Probe:
+[probes/suggest-ubc-2026-11-27.txt](probes/suggest-ubc-2026-11-27.txt) (code beside it). For every watch, each section
+moved to a time clear of everything (simulated by no meetings): does it fix the watch, how many stranded does it free,
+does it newly strand anything; plus the roots of the stranded sections' reasons. 740 analyses, 1.1 s for all watches
+(one open watch: about 60-100 analyses). Findings:
+- Roots summarize well: GEOE-Y3 12 of 13 stranded trace to EOSC323 101; MECH-Y2 10 of 10 to MECH220 101 (moving it
+  frees 9, 4 -> 112 slates); ELEC-Y3, CPEN-Y3, ENVE-Y4 all-of-them to one section.
+- The best non-fixing move is usually the root, but not always: GEOE-Y3's EOSC350 L1A (a lab in the Mon-Wed 16:00
+  pattern) frees 12, EOSC323 101 frees 11.
+- Axiom 4's tension is real and comes from equal-looking fixes: BMEG-Y2 "try moving CPEN221B B_T1A or CPEN223 101";
+  T1A fixes it but 5 -> 11 stranded and 4 slates; CPEN223 101 fixes it with 5 stranded and 68 slates. Today both are
+  offered as equals, so picking T1A surprises. MANU-Y4's L0A likewise. With no full slate, today's stranded list is
+  the union over fixes, so it hides what a particular fix leaves.
+- The "try moving" list grows huge after a helpful move (GEOE-Y3 after moving EOSC350 L1A: 24 sections named).
+Proposed: one ranked Suggestions list in the watch panel, at most two shown: fixes first (6), then stranded freed,
+then slates gained; each states its effect, including on other watches it touches (3). It replaces the Access line's
+"try moving A, B or C" and the move ▲ and lines on the grid (A4; section names are links, so a click shows it).
+With no full slate, stranded is judged against the top suggestion's fix, so following it never uncovers anything,
+and choosing another fix was warned about. The summary: "13 sections stranded, 12 of them trace back to EOSC323 101".
+Open: name an actual clear time (same days, legal starts, clear of every watch it's in) or just "a time clear of W";
+pairs of moves (greedy) now or later; whether anything of the suggestion stays on the grid.
+**Decided (Greg, 2026-11-27):** try it; at most two shown (can add later); never name a time (instructors and much
+else bear on it); one-move suggestions only; nothing of a suggestion on the grid; keep Mark all conflicts working
+throughout. Build notes: fix suggestions are ranked from per-skip-set outcomes in the engine (a fix to a free time is
+the partial slates skipping its group); improvement candidates can be pruned to the sections in the stranded
+sections' reason chains (a section outside a proof can't break it); red Move marks only where every fix clears the
+conflict (options within one pair), hover without "Try moving".
+
+**Tiles show what is, lines show what you could do (ADOPTED as the direction, Greg 2026-11-27: "I'd like to try
+this").** Replaces the "red only where every fix must touch it" rule and the problem/opportunity split (Greg: every
+red line is an opportunity too, so why divide there?). Tiles: facts, always shown, never uncovered by a move that
+adds flexibility (faded = stranded for this watch, ◆ depends on). Lines: the two best single moves, the same two as
+the panel's suggestions, ranked: brings back a full slate, then sections freed, then slates gained; each line's
+hover gives its gain. A line appearing after the user makes room means a new or better way (good news, not axiom 4's
+surprise). Explanations on demand: the faded tile's hover, the Why list on selection (maybe its reason lines drawn
+while selected). Mark all conflicts: every conflict as a plain line. One line colour (red, people already read it as
+"look here"). Not yet: line counts on the UBC copy.
+**Wording approved (Greg, 2026-11-27, all as drafted):** line hovers: "EOSC331 101 conflicts with EOSC329 L1B and
+L1C, the only EOSC329 labs students can take. Moving EOSC331 101 to a free time gives **GEOE-Y3** a full slate (24
+slates, 13 sections stranded)." / pair: "CIVL303 T1A conflicts with CIVL315 101. Moving either to a free time gives
+**CIVL-Y3** a full slate (214 slates, 2 sections stranded)." / frees: "EOSC323 101 conflicts with CIVL311 L1A and L1B.
+Moving EOSC323 101 to a free time frees 11 stranded sections in **GEOE-Y3**." plus "(4 → 112 slates)" with a full
+slate (dropped when a count is capped) / other watch: "It also frees 2 in **CIVL-Y3**." or "It also gives **CIVL-Y3**
+a full slate." Panel: heading "Moves that would help:"; "Move CIVL303 T1A or CIVL315 101 to a free time: **CIVL-Y3**
+gets a full slate (214 slates, 2 sections stranded)." (no stranded: "(68 slates)"); "Move MECH220 101 to a free time:
+frees 9 stranded sections (4 → 112 slates)."; "free time" hover: "A time when it conflicts with no other section of
+the watches it's in. Instructors, rooms and other courses aren't checked." Health line: "13 sections stranded, 12 of
+them trace back to EOSC323 101" (one root covering at least half and at least 2). Outer list: "No full slate · try
+moving CPEN223 101" (top suggestion only). Lines drawn for a "frees" move: the moved section's conflicts that appear
+in the freed sections' reason chains.
+**To build next (read first):** this section and "Suggested moves and summaries" above (ranking, pruning, the probe);
+`Services/Access/MoveSuggestions.cs` (today's options), `StrandedReasons.cs` (reason chains: the prune set and the
+summary's roots), `ConflictMarks.cs` (Move marks and first-reason Stranded marks to retire), `ViewModels/Access/
+GridAccessPicture.cs` (the ▲ and move hovers), `AccessWatchDetailViewModel.cs` (panel; the move Why list),
+`AccessTextReasons.cs`, and probes/AccessSuggestProbe.cs.txt (simulates "a free time" as no meetings). With no full
+slate, judge stranded against the top suggestion's fix (axiom 4). Run the probe's numbers again as a check.
+**Stepper off by default (done 2026-11-27):** stepping through slates waits for a "Step through slates" box (approved
+wording, round 3) in the watch panel, shown with 2+ slates; it faded sections by itself, which clashed with fading
+meaning stranded. `AccessPicture.SetStepping`/`HasSlatesToStep`.
+
+**Superseded (kept for the reasoning): the engine's first reading.** A1 More flexibility (a change that only removes conflicts) never adds a mark. A2 Red is a fact
+about now, never a what-if. A3 No arbitrary choices: a mark never depends on which of several equal reasons or
+options the engine picked. A4 A suggestion is not a problem: it never draws as a conflict.
+
+**What breaks them today.** Move marks draw every option (A1, A4). Stranded lines go to the FIRST reason found (A3; a
+move that removes it uncovers the next, A1). The basis switches when the number of moves needed changes (fewest skip
+sets, or a full slate appears), so stranded can grow (A1).
+
+**Superseded by tiles and lines (Greg: why divide problems from opportunities there?).** Red conflict = every fix clears it (intersection over the fewest-move fixes; monotone, since more
+flexibility only adds fixes). ▲ = a section every fix moves. Stranded lines = every conflict with a section all
+counting slates use (not the first reason). Options themselves live in the Access panel's suggestion line, not on the
+grid. CIVL-Y3: one red line T1A × 101, no ▲. GEOE-Y3 before: EOSC331 101's conflicts red, ▲ on it; after Greg's move:
+nothing red from the move, the panel says one move of any of 8 sections fixes it. Known limit: when the watch gains a
+full slate (or needs fewer moves) the basis changes and newly judgeable stranded sections can appear; to discuss.
 
 </details>
 

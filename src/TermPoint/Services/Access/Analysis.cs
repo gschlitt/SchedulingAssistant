@@ -141,4 +141,13 @@ public sealed class Analysis
     /// <returns>The structured reason.</returns>
     public StrandedReason StrandedReasonFor(Section section) =>
         AccessReasons.Stranded(section, Groups, Roles, OneCampusRule);
+
+    private StrandedReasons? _reasons;
+
+    /// <summary>
+    /// The narrative behind the stranded sections and move options (<see cref="StrandedReasons"/>): why each stranded
+    /// section is ruled out, as facts. Built on first use (most analyses never need it) and then kept; empty when
+    /// no slate is judged, when pins are set, and for the single-section and too-large cases.
+    /// </summary>
+    public StrandedReasons Reasons => LazyInitializer.EnsureInitialized(ref _reasons, () => StrandedReasons.Build(this));
 }

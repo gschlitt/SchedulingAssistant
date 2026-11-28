@@ -247,7 +247,8 @@ public partial class ScheduleGridViewModel : ViewModelBase
 
         // After a context-menu save, refresh the shared section cache so all views
         // (including this one via SectionsChanged below) reload in one shot.
-        ContextMenu = new SectionContextMenuViewModel(sectionRepo, ReloadSectionStore, lockService, cardState, Marks, picture, history);
+        ContextMenu = new SectionContextMenuViewModel(sectionRepo, ReloadSectionStore, lockService, cardState, Marks, picture, history,
+            Filter.ShowSectionsWithTags);
 
         // The "finish editing first" message a refused drag shows goes away when the card closes.
         _cardState.OpenCardChanged += OnOpenCardChanged;
@@ -1211,6 +1212,10 @@ public partial class ScheduleGridViewModel : ViewModelBase
                      .Where(h => !string.IsNullOrEmpty(h))
                      .Distinct())
             lines.Add(line!);
+
+        // A section with a "Why" list in the Access panel: say so once, on the last line (a hover can't be clicked).
+        if (lines.Count > 0 && tile.Entries.Any(e => e.Access?.HasWhy == true))
+            lines[^1] += " " + AccessText.ClickForWhyText;
 
         bool access = lines.Count > 0;
         if (!access) lines.Add($"{Fmt(tile.StartMinutes)}-{Fmt(tile.EndMinutes)}");
